@@ -30,9 +30,13 @@ spec:
   ignoreDifferences:
     - group: datasciencecluster.opendatahub.io
       kind: DataScienceCluster
-      jsonPointers:
-        - /spec/components
+      jqPathExpressions:
+        - .spec.components
     - group: dscinitialization.opendatahub.io
       kind: DSCInitialization
-      jsonPointers:
-        - /spec
+      jqPathExpressions:
+        - .spec
+    - group: opendatahub.io
+      kind: OdhDashboardConfig
+      jqPathExpressions:
+        - .spec
