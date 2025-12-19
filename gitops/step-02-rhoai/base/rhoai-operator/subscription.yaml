@@ -1,5 +1,6 @@
-# Subscription for RHOAI Operator
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2/html/installing_and_uninstalling_openshift_ai_self-managed/index
+# Subscription for RHOAI Operator (3.0)
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/html/installing_and_uninstalling_openshift_ai_self-managed/index
+# Note: RHOAI 3.0 requires fast-3.x channel for new installations
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -9,7 +10,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   name: rhods-operator
-  channel: stable-2.20
+  channel: fast-3.x
   source: redhat-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic

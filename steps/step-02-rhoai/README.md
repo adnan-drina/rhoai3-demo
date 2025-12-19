@@ -1,6 +1,8 @@
-# Step 02: Red Hat OpenShift AI (RHOAI)
+# Step 02: Red Hat OpenShift AI 3.0 (RHOAI)
 
-Installs Red Hat OpenShift AI operator and creates a DataScienceCluster with core components enabled.
+Installs Red Hat OpenShift AI 3.0 operator and creates a DataScienceCluster with core components enabled.
+
+> **Note**: RHOAI 3.0 is for **new installations only**. If you have 2.x, do not attempt to "upgrade" via the subscription channel.
 
 ## What Gets Installed
 
@@ -10,13 +12,21 @@ Installs Red Hat OpenShift AI operator and creates a DataScienceCluster with cor
 | Workbenches | Managed | Jupyter notebooks, VS Code |
 | KServe | Managed | Single-model serving (KNative) |
 | ModelMesh | Managed | Multi-model serving |
-| Data Science Pipelines | Managed | ML pipelines (Kubeflow) |
+| AI Pipelines | Managed | ML pipelines (renamed from datasciencepipelines in 3.0) |
 | Model Registry | Managed | Model versioning and tracking |
 | Ray | Managed | Distributed computing |
 | Kueue | Managed | Job scheduling/queuing |
 | Training Operator | Managed | Distributed training jobs |
 | CodeFlare | Managed | Distributed training orchestration |
 | TrustyAI | Removed | Model explainability (optional) |
+
+## RHOAI 3.0 Specific Resources
+
+| Resource | Purpose |
+|----------|---------|
+| Subscription | Uses `fast-3.x` channel (required for 3.0) |
+| DSCInitialization | **New in 3.0** - Global operator configuration |
+| DataScienceCluster | Core RHOAI configuration |
 
 ## Prerequisites
 

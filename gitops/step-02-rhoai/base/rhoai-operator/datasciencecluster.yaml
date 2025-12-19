@@ -1,5 +1,6 @@
-# DataScienceCluster - configures RHOAI components
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2/html/installing_and_uninstalling_openshift_ai_self-managed/index
+# DataScienceCluster - RHOAI 3.0
+# Note: In 3.0, datasciencepipelines was renamed to aipipelines
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/html/installing_and_uninstalling_openshift_ai_self-managed/index
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
 metadata:
@@ -27,29 +28,26 @@ spec:
     modelmeshserving:
       managementState: Managed
     
-    # Data Science Pipelines
-    datasciencepipelines:
+    # AI Pipelines (renamed from datasciencepipelines in 3.0)
+    aipipelines:
       managementState: Managed
     
     # Model Registry
     modelregistry:
       managementState: Managed
     
-    # Distributed workloads (Ray, Kueue)
+    # Distributed workloads
     ray:
       managementState: Managed
     kueue:
       managementState: Managed
     
-    # Training operator
+    # Training
     trainingoperator:
       managementState: Managed
-    
-    # Code Flare for distributed training
     codeflare:
       managementState: Managed
     
-    # TrustyAI for model explainability
+    # TrustyAI (optional - disabled by default)
     trustyai:
       managementState: Removed
-
