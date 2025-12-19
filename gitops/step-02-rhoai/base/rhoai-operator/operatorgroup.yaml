@@ -1,0 +1,10 @@
+# OperatorGroup for RHOAI Operator
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: redhat-ods-operator
+  namespace: redhat-ods-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec: {}
+

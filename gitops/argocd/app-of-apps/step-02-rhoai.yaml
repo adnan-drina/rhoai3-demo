@@ -3,15 +3,16 @@ kind: Application
 metadata:
   name: step-02-rhoai
   namespace: openshift-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
-  project: rhoai-demo
+  project: default
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-02-rhoai
+    path: gitops/step-02-rhoai/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: redhat-ods-operator
   syncPolicy:
     automated:
       prune: true
@@ -19,3 +20,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -1,0 +1,55 @@
+# DataScienceCluster - configures RHOAI components
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2/html/installing_and_uninstalling_openshift_ai_self-managed/index
+apiVersion: datasciencecluster.opendatahub.io/v1
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  components:
+    # Core components
+    dashboard:
+      managementState: Managed
+    workbenches:
+      managementState: Managed
+    
+    # Model serving
+    kserve:
+      managementState: Managed
+      serving:
+        ingressGateway:
+          certificate:
+            type: SelfSigned
+        managementState: Managed
+        name: knative-serving
+    modelmeshserving:
+      managementState: Managed
+    
+    # Data Science Pipelines
+    datasciencepipelines:
+      managementState: Managed
+    
+    # Model Registry
+    modelregistry:
+      managementState: Managed
+    
+    # Distributed workloads (Ray, Kueue)
+    ray:
+      managementState: Managed
+    kueue:
+      managementState: Managed
+    
+    # Training operator
+    trainingoperator:
+      managementState: Managed
+    
+    # Code Flare for distributed training
+    codeflare:
+      managementState: Managed
+    
+    # TrustyAI for model explainability
+    trustyai:
+      managementState: Removed
+
