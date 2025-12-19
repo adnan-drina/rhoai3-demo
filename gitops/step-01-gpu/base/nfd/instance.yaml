@@ -12,6 +12,11 @@ spec:
   operand:
     image: registry.redhat.io/openshift4/ose-node-feature-discovery-rhel9:v4.17
     servicePort: 12000
+    # Allow NFD workers to run on tainted GPU nodes
+    workerTolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
   workerConfig:
     configData: |
       core:
