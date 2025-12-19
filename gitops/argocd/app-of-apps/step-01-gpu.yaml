@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: step-01-gpu
+  namespace: openshift-gitops
+spec:
+  project: rhoai-demo
+  source:
+    repoURL: https://github.com/YOUR_ORG/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/step-01-gpu
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nvidia-gpu-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

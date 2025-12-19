@@ -1,0 +1,38 @@
+# Environment and secrets
+.env
+.env.local
+*.secret
+*.secrets
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Build outputs
+/output/
+/tmp/
+
+# Kubeconfig (if stored locally)
+kubeconfig
+*.kubeconfig
+
+# Helm charts cache (if used)
+charts/
+
+# Python (if any scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
