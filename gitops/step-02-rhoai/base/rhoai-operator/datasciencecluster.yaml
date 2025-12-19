@@ -1,6 +1,6 @@
 # DataScienceCluster - RHOAI 3.0
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
-# Note: Some components require additional prerequisites (ServiceMesh, Serverless, etc.)
+# Operator Version: 1.19.0 (fast-3.x channel)
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
 metadata:
@@ -10,30 +10,42 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # Core UI - Available
+    # --- Core Components (Available) ---
     dashboard:
       managementState: Managed
     workbenches:
       managementState: Managed
     
-    # GenAI - Available
+    # --- GenAI Components ---
+    # LlamaStack for GenAI Playground / Agentic workflows
     llamastackoperator:
       managementState: Managed
     
-    # Model management - Available
+    # --- Model Management ---
     modelregistry:
       managementState: Managed
+    # KServe for model serving (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
     
-    # Training - Available
+    # --- Training ---
     trainingoperator:
       managementState: Managed
     
-    # Components requiring additional prerequisites (disabled for now)
-    # Enable these after installing ServiceMesh/Serverless if needed
-    aipipelines: {}
-    ray: {}
-    kueue: {}
-    trustyai: {}
-    feastoperator: {}
+    # --- Distributed Workloads (Chapter 5 prerequisites) ---
+    # These require additional configuration per documentation
+    ray:
+      managementState: Managed
+    kueue:
+      managementState: Managed
+    
+    # --- Optional Components ---
+    # AI Pipelines - requires Argo Workflows configuration
+    aipipelines:
+      managementState: Removed
+    # TrustyAI - model explainability
+    trustyai:
+      managementState: Removed
+    # Feature Store
+    feastoperator:
+      managementState: Removed

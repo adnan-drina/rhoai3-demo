@@ -6,20 +6,23 @@ Installs Red Hat OpenShift AI 3.0 operator and creates a DataScienceCluster with
 
 ## What Gets Installed
 
+Per [RHOAI 3.0 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index):
+
 | Component | State | Purpose |
 |-----------|-------|---------|
 | Dashboard | Managed | RHOAI web console |
 | Workbenches | Managed | Jupyter notebooks, VS Code |
 | **LlamaStack Operator** | Managed | **GenAI Playground / Agentic workflows** |
 | **Model Registry** | Managed | **Model Catalog registration** |
-| KServe | Managed | Model serving (RawDeployment mode in 3.0) |
-| AI Pipelines | Managed | ML pipelines |
+| KServe | Managed | Model serving (RawDeployment mode) |
 | Ray | Managed | Distributed computing |
 | Kueue | Managed | Job scheduling/queuing |
 | Training Operator | Managed | Distributed training jobs |
+| AI Pipelines | Removed | Requires Argo Workflows config (Ch. 4) |
 | TrustyAI | Removed | Model explainability (optional) |
+| Feast Operator | Removed | Feature store (optional) |
 
-> **Note**: In RHOAI 3.0, `modelmeshserving` and `codeflare` components have been removed from the schema.
+> **Note**: RHOAI 3.0 is a new installation only (no upgrade from 2.x). See [Chapter 5](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-distributed-workloads-components_component-install) for distributed workloads prerequisites.
 
 ## RHOAI 3.0 Specific Resources
 
