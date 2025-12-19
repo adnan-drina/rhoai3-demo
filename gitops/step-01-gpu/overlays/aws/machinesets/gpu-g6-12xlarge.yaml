@@ -1,0 +1,79 @@
+# GPU MachineSet: g6.12xlarge (4x NVIDIA L4, 48 vCPU, 192GB RAM)
+# Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/modifying-machineset
+#
+# IMPORTANT: Update CLUSTER_ID placeholders before applying
+# Get your cluster ID: oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}'
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineSet
+metadata:
+  name: CLUSTER_ID-gpu-g6-12xlarge-us-east-2b
+  namespace: openshift-machine-api
+  labels:
+    machine.openshift.io/cluster-api-cluster: CLUSTER_ID
+  annotations:
+    machine.openshift.io/GPU: "4"
+    machine.openshift.io/memoryMb: "196608"
+    machine.openshift.io/vCPU: "48"
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  replicas: 0  # Scale up when needed
+  selector:
+    matchLabels:
+      machine.openshift.io/cluster-api-cluster: CLUSTER_ID
+      machine.openshift.io/cluster-api-machineset: CLUSTER_ID-gpu-g6-12xlarge-us-east-2b
+  template:
+    metadata:
+      labels:
+        machine.openshift.io/cluster-api-cluster: CLUSTER_ID
+        machine.openshift.io/cluster-api-machine-role: gpu-worker
+        machine.openshift.io/cluster-api-machine-type: g6-12xlarge
+        machine.openshift.io/cluster-api-machineset: CLUSTER_ID-gpu-g6-12xlarge-us-east-2b
+    spec:
+      lifecycleHooks: {}
+      metadata:
+        labels:
+          node-role.kubernetes.io/gpu: ""
+          nvidia.com/gpu.workload.config: "vm-passthrough"
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+      providerSpec:
+        value:
+          apiVersion: machine.openshift.io/v1beta1
+          kind: AWSMachineProviderConfig
+          ami:
+            id: AMI_ID
+          instanceType: g6.12xlarge
+          placement:
+            availabilityZone: us-east-2b
+            region: us-east-2
+          blockDevices:
+            - ebs:
+                encrypted: true
+                volumeSize: 500
+                volumeType: gp3
+          credentialsSecret:
+            name: aws-cloud-credentials
+          iamInstanceProfile:
+            id: CLUSTER_ID-worker-profile
+          securityGroups:
+            - filters:
+                - name: tag:Name
+                  values:
+                    - CLUSTER_ID-node
+            - filters:
+                - name: tag:Name
+                  values:
+                    - CLUSTER_ID-lb
+          subnet:
+            filters:
+              - name: tag:Name
+                values:
+                  - CLUSTER_ID-subnet-private-us-east-2b
+          tags:
+            - name: kubernetes.io/cluster/CLUSTER_ID
+              value: owned
+          userDataSecret:
+            name: worker-user-data
+

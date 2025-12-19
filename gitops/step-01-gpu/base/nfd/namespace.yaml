@@ -1,0 +1,11 @@
+# Vendored from redhat-cop/gitops-catalog (pinned for stability)
+# https://github.com/redhat-cop/gitops-catalog/tree/main/nfd
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-nfd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+

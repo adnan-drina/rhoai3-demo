@@ -3,15 +3,16 @@ kind: Application
 metadata:
   name: step-01-gpu
   namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: rhoai-demo
   source:
     repoURL: https://github.com/YOUR_ORG/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-01-gpu
+    path: gitops/step-01-gpu/overlays/aws
   destination:
     server: https://kubernetes.default.svc
-    namespace: nvidia-gpu-operator
   syncPolicy:
     automated:
       prune: true
@@ -19,3 +20,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

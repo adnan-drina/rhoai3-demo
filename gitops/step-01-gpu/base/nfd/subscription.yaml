@@ -1,0 +1,16 @@
+# Vendored from redhat-cop/gitops-catalog
+# Pinned to stable channel (NFD 4.14+ required per Red Hat AI prerequisites)
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: nfd
+  namespace: openshift-nfd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-8"
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: nfd
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+

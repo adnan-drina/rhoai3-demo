@@ -1,0 +1,11 @@
+# Vendored from redhat-cop/gitops-catalog
+# https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nvidia-gpu-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+

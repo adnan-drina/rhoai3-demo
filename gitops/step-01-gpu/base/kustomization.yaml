@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# NFD must be installed before GPU Operator (sync-wave ordering)
+resources:
+  # Node Feature Discovery (prerequisite for GPU Operator)
+  - nfd/namespace.yaml
+  - nfd/operatorgroup.yaml
+  - nfd/subscription.yaml
+  - nfd/instance.yaml
+  
+  # NVIDIA GPU Operator
+  - gpu-operator/namespace.yaml
+  - gpu-operator/operatorgroup.yaml
+  - gpu-operator/subscription.yaml
+  - gpu-operator/clusterpolicy.yaml
+  - gpu-operator/dcgm-dashboard-configmap.yaml
+
