@@ -28,6 +28,7 @@ Installs Red Hat OpenShift AI 3.0 operator and creates a DataScienceCluster with
 | Subscription | Uses `fast-3.x` channel (required for 3.0) |
 | DSCInitialization | **New in 3.0** - Global operator configuration |
 | DataScienceCluster | Core RHOAI configuration |
+| OdhDashboardConfig | **Enables GenAI Studio** (Playground + Model Catalog UI) |
 
 ## Prerequisites
 

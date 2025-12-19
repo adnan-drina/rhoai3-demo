@@ -9,4 +9,6 @@ resources:
   # RHOAI 3.0 requires DSCInitialization before DataScienceCluster
   - rhoai-operator/dsci.yaml
   - rhoai-operator/datasciencecluster.yaml
+  # Enable GenAI Studio (Playground + Model Catalog UI)
+  - rhoai-operator/dashboard-config.yaml
 
