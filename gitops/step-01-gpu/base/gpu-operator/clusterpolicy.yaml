@@ -16,6 +16,11 @@ spec:
     updateStrategy: RollingUpdate
     rollingUpdate:
       maxUnavailable: "1"
+    # Allow GPU Operator DaemonSets to run on tainted GPU nodes
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
   
   driver:
     enabled: true

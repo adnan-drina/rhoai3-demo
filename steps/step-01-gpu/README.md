@@ -19,6 +19,17 @@ Per [Red Hat AI documentation](https://docs.redhat.com/en/documentation/red_hat_
 - [ ] `oc` CLI installed and logged in
 - [ ] AWS account with permissions to create EC2 instances (g6 family)
 - [ ] Bootstrap completed (`./scripts/bootstrap.sh`)
+- [ ] **RHEL entitlements configured** (required for NVIDIA driver compilation)
+
+### RHEL Entitlements for Driver Compilation
+
+The NVIDIA GPU Operator compiles kernel modules on GPU nodes. This requires access to RHEL repositories for kernel-devel packages. If you see errors like:
+
+```
+FATAL: failed to install elfutils-libel-devel. RHEL entitlement may be improperly deployed.
+```
+
+Follow [Red Hat's entitlement documentation](https://docs.openshift.com/container-platform/4.20/cicd/builds/running-entitled-builds.html) to configure cluster entitlements.
 
 ## Architecture
 
