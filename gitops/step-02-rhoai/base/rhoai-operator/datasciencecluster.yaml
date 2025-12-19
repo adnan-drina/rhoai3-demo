@@ -10,21 +10,19 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # --- Core Components (Available) ---
+    # --- Core Components ---
     dashboard:
       managementState: Managed
     workbenches:
       managementState: Managed
     
     # --- GenAI Components ---
-    # LlamaStack for GenAI Playground / Agentic workflows
     llamastackoperator:
       managementState: Managed
     
     # --- Model Management ---
     modelregistry:
       managementState: Managed
-    # KServe for model serving (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
     
@@ -32,20 +30,17 @@ spec:
     trainingoperator:
       managementState: Managed
     
-    # --- Distributed Workloads (Chapter 5 prerequisites) ---
-    # These require additional configuration per documentation
+    # --- Distributed Workloads (Requires Chapter 5 prerequisites) ---
+    # Enable after installing CodeFlare SDK / MCAD / InstaScale
     ray:
-      managementState: Managed
+      managementState: Removed
     kueue:
-      managementState: Managed
+      managementState: Removed
     
     # --- Optional Components ---
-    # AI Pipelines - requires Argo Workflows configuration
     aipipelines:
       managementState: Removed
-    # TrustyAI - model explainability
     trustyai:
       managementState: Removed
-    # Feature Store
     feastoperator:
       managementState: Removed

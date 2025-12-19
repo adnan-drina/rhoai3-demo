@@ -15,9 +15,9 @@ Per [RHOAI 3.0 documentation](https://docs.redhat.com/en/documentation/red_hat_o
 | **LlamaStack Operator** | Managed | **GenAI Playground / Agentic workflows** |
 | **Model Registry** | Managed | **Model Catalog registration** |
 | KServe | Managed | Model serving (RawDeployment mode) |
-| Ray | Managed | Distributed computing |
-| Kueue | Managed | Job scheduling/queuing |
 | Training Operator | Managed | Distributed training jobs |
+| Ray | Removed | Requires distributed workloads prereqs (Ch. 5) |
+| Kueue | Removed | Requires distributed workloads prereqs (Ch. 5) |
 | AI Pipelines | Removed | Requires Argo Workflows config (Ch. 4) |
 | TrustyAI | Removed | Model explainability (optional) |
 | Feast Operator | Removed | Feature store (optional) |
