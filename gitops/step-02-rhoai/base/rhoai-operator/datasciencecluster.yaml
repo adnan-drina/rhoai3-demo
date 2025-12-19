@@ -33,10 +33,6 @@ spec:
         managementState: Managed
         name: knative-serving
     
-    # --- REQUIRED for llm-d ---
-    distributedinference:
-      managementState: Managed
-    
     # AI Pipelines (renamed from datasciencepipelines in 3.0)
     aipipelines:
       managementState: Managed
