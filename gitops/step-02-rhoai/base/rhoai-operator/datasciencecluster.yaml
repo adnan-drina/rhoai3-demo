@@ -1,6 +1,6 @@
 # DataScienceCluster - RHOAI 3.0
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
-# Note: Schema changed significantly in 3.0 - modelmeshserving, codeflare removed
+# Note: Some components require additional prerequisites (ServiceMesh, Serverless, etc.)
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
 metadata:
@@ -10,38 +10,30 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # Core UI
+    # Core UI - Available
     dashboard:
       managementState: Managed
     workbenches:
       managementState: Managed
     
-    # GenAI Playground / Agentic workflows
+    # GenAI - Available
     llamastackoperator:
       managementState: Managed
     
-    # Model Catalog registration
+    # Model management - Available
     modelregistry:
       managementState: Managed
-    
-    # Model serving (RawDeployment mode only in 3.0)
     kserve:
       managementState: Managed
     
-    # AI Pipelines
-    aipipelines:
-      managementState: Managed
-    
-    # Distributed workloads
-    ray:
-      managementState: Managed
-    kueue:
-      managementState: Managed
-    
-    # Training
+    # Training - Available
     trainingoperator:
       managementState: Managed
     
-    # Optional components
-    trustyai:
-      managementState: Removed
+    # Components requiring additional prerequisites (disabled for now)
+    # Enable these after installing ServiceMesh/Serverless if needed
+    aipipelines: {}
+    ray: {}
+    kueue: {}
+    trustyai: {}
+    feastoperator: {}
