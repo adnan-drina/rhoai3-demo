@@ -1,5 +1,4 @@
 # DataScienceCluster - RHOAI 3.0
-# Note: In 3.0, datasciencepipelines was renamed to aipipelines
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/html/installing_and_uninstalling_openshift_ai_self-managed/index
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
@@ -10,13 +9,21 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # Core components
+    # Core UI
     dashboard:
       managementState: Managed
     workbenches:
       managementState: Managed
     
-    # Model serving
+    # REQUIRED for GenAI Playground / Agentic workflows
+    llamastackoperator:
+      managementState: Managed
+    
+    # REQUIRED for Model Catalog registration
+    modelregistry:
+      managementState: Managed
+    
+    # REQUIRED for model serving in the playground
     kserve:
       managementState: Managed
       serving:
@@ -30,10 +37,6 @@ spec:
     
     # AI Pipelines (renamed from datasciencepipelines in 3.0)
     aipipelines:
-      managementState: Managed
-    
-    # Model Registry
-    modelregistry:
       managementState: Managed
     
     # Distributed workloads
