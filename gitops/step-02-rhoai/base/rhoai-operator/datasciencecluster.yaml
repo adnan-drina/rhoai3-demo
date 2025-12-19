@@ -32,17 +32,13 @@ spec:
             type: SelfSigned
         managementState: Managed
         name: knative-serving
-    modelmeshserving:
+    
+    # --- REQUIRED for llm-d ---
+    distributedinference:
       managementState: Managed
     
     # AI Pipelines (renamed from datasciencepipelines in 3.0)
     aipipelines:
-      managementState: Managed
-    
-    # Distributed workloads
-    ray:
-      managementState: Managed
-    kueue:
       managementState: Managed
     
     # Training
@@ -50,7 +46,4 @@ spec:
       managementState: Managed
     codeflare:
       managementState: Managed
-    
-    # TrustyAI (optional - disabled by default)
-    trustyai:
-      managementState: Removed
+  

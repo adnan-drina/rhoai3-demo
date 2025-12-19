@@ -122,5 +122,13 @@ oc logs -n redhat-ods-operator -l name=rhods-operator --tail=100
 
 ## Documentation Links
 
-- [RHOAI Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2/html/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [DataScienceCluster Configuration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2/html/installing_and_uninstalling_openshift_ai_self-managed/configuring-the-operator-and-datasciencecluster)
+- [RHOAI 3.0 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [Red Hat CoP GitOps Catalog - OpenShift AI](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai)
+
+## Important Notes
+
+> **Warning**: You cannot upgrade from OpenShift AI 2.25 or any earlier version to 3.0. OpenShift AI 3.0 introduces significant technology and component changes and is intended for **new installations only**.
+>
+> To use OpenShift AI 3.0, install the Red Hat OpenShift AI Operator on a cluster running OpenShift Container Platform 4.19 or later and select the `fast-3.x` channel.
+>
+> — [Red Hat Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
