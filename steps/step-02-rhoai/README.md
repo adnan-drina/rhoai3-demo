@@ -12,14 +12,14 @@ Installs Red Hat OpenShift AI 3.0 operator and creates a DataScienceCluster with
 | Workbenches | Managed | Jupyter notebooks, VS Code |
 | **LlamaStack Operator** | Managed | **GenAI Playground / Agentic workflows** |
 | **Model Registry** | Managed | **Model Catalog registration** |
-| KServe | Managed | Single-model serving (required for playground) |
-| ModelMesh | Managed | Multi-model serving |
-| AI Pipelines | Managed | ML pipelines (renamed from datasciencepipelines in 3.0) |
+| KServe | Managed | Model serving (RawDeployment mode in 3.0) |
+| AI Pipelines | Managed | ML pipelines |
 | Ray | Managed | Distributed computing |
 | Kueue | Managed | Job scheduling/queuing |
 | Training Operator | Managed | Distributed training jobs |
-| CodeFlare | Managed | Distributed training orchestration |
 | TrustyAI | Removed | Model explainability (optional) |
+
+> **Note**: In RHOAI 3.0, `modelmeshserving` and `codeflare` components have been removed from the schema.
 
 ## RHOAI 3.0 Specific Resources
 
