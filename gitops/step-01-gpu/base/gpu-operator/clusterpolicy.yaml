@@ -12,9 +12,13 @@ spec:
     defaultRuntime: crio
     use_ocp_driver_toolkit: true
   
+  daemonsets:
+    updateStrategy: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "1"
+  
   driver:
     enabled: true
-    use_precompiled_drivers: true
   
   dcgm:
     enabled: true

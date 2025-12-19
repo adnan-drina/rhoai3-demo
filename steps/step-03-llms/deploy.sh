@@ -29,7 +29,7 @@ metadata:
 spec:
   project: rhoai-demo
   source:
-    repoURL: ${GIT_REPO_URL:-https://github.com/YOUR_ORG/rhoai3-demo.git}
+    repoURL: ${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}
     targetRevision: ${GIT_REPO_BRANCH:-main}
     path: $GITOPS_PATH
   destination:

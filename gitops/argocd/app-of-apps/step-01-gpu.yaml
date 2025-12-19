@@ -1,16 +1,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-01-gpu
+  name: step-01-gpu-operators
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: rhoai-demo
   source:
-    repoURL: https://github.com/YOUR_ORG/rhoai3-demo.git
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-01-gpu/overlays/aws
+    path: gitops/step-01-gpu/base
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
