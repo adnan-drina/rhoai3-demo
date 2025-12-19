@@ -1,7 +1,7 @@
 # OdhDashboardConfig - Enable GenAI Studio (Playground) in RHOAI 3.0
 # This enables the Agent/GenAI Playground and Model Catalog UI
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/
-apiVersion: opendatahub.io/v1alpha1
+apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
   name: odh-dashboard-config
