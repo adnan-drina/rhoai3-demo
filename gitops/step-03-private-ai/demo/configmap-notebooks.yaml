@@ -1,0 +1,144 @@
+# Demo Notebooks ConfigMap
+# Contains sample notebooks for GPU-as-a-Service demonstration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-demo-notebooks
+  namespace: private-ai
+  labels:
+    app: gpu-demo
+data:
+  # GPU Test Script - Run this to verify GPU access
+  gpu-test.py: |
+    #!/usr/bin/env python3
+    """
+    GPU-as-a-Service Demo - GPU Verification Script
+    Run this to verify your workbench has GPU access.
+    """
+    import torch
+    import time
+    import os
+
+    def check_gpu():
+        print("=" * 60)
+        print("🚀 GPU-as-a-Service Demo")
+        print("=" * 60)
+        
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
+            print(f"✅ GPU Available: {gpu_name}")
+            print(f"✅ GPU Memory: {gpu_memory:.2f} GB")
+            print(f"✅ CUDA Version: {torch.version.cuda}")
+            
+            # Simple GPU computation to show it's working
+            print("\n🔄 Running GPU matrix multiplication...")
+            x = torch.randn(5000, 5000, device='cuda')
+            
+            start = time.time()
+            for i in range(5):
+                y = torch.matmul(x, x)
+                torch.cuda.synchronize()
+                print(f"   Iteration {i+1}/5 complete")
+            elapsed = time.time() - start
+            
+            print(f"\n✅ GPU computation completed in {elapsed:.2f}s")
+            print(f"   Memory allocated: {torch.cuda.memory_allocated(0)/1e9:.2f} GB")
+        else:
+            print("❌ No GPU available - check your Hardware Profile selection")
+        
+        print("=" * 60)
+
+    if __name__ == "__main__":
+        check_gpu()
+
+  # Jupyter Notebook for interactive demo
+  gpu-demo.ipynb: |
+    {
+      "cells": [
+        {
+          "cell_type": "markdown",
+          "metadata": {},
+          "source": [
+            "# 🚀 GPU-as-a-Service Demo\n",
+            "\n",
+            "This notebook demonstrates Kueue-managed GPU allocation in RHOAI 3.0.\n",
+            "\n",
+            "## What's happening behind the scenes:\n",
+            "1. You selected a **Hardware Profile** (NVIDIA L4 1GPU)\n",
+            "2. RHOAI created a **Workload** request\n",
+            "3. **Kueue** checked the ClusterQueue quota\n",
+            "4. Your workload was **Admitted** (or queued if no GPU available)"
+          ]
+        },
+        {
+          "cell_type": "code",
+          "execution_count": null,
+          "metadata": {},
+          "outputs": [],
+          "source": [
+            "# Check GPU availability\n",
+            "import torch\n",
+            "\n",
+            "print(f'CUDA Available: {torch.cuda.is_available()}')\n",
+            "if torch.cuda.is_available():\n",
+            "    print(f'GPU Device: {torch.cuda.get_device_name(0)}')\n",
+            "    print(f'GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB')"
+          ]
+        },
+        {
+          "cell_type": "code",
+          "execution_count": null,
+          "metadata": {},
+          "outputs": [],
+          "source": [
+            "# Run a simple GPU computation\n",
+            "import time\n",
+            "\n",
+            "if torch.cuda.is_available():\n",
+            "    x = torch.randn(10000, 10000, device='cuda')\n",
+            "    \n",
+            "    start = time.time()\n",
+            "    y = torch.matmul(x, x)\n",
+            "    torch.cuda.synchronize()\n",
+            "    elapsed = time.time() - start\n",
+            "    \n",
+            "    print(f'Matrix multiplication (10000x10000): {elapsed:.3f}s')\n",
+            "    print(f'Memory used: {torch.cuda.memory_allocated(0)/1e9:.2f} GB')\n",
+            "else:\n",
+            "    print('No GPU - running on CPU')"
+          ]
+        },
+        {
+          "cell_type": "markdown",
+          "metadata": {},
+          "source": [
+            "## 🔍 Check Your Kueue Status\n",
+            "\n",
+            "Run this in a terminal to see your workload's Kueue status:\n",
+            "```bash\n",
+            "oc get workloads -n private-ai\n",
+            "```\n",
+            "\n",
+            "**Columns explained:**\n",
+            "- `QUEUE`: The LocalQueue your workload is using\n",
+            "- `RESERVED IN`: The ClusterQueue that reserved resources\n",
+            "- `ADMITTED`: True = running, False/empty = queued"
+          ]
+        }
+      ],
+      "metadata": {
+        "kernelspec": {
+          "display_name": "Python 3",
+          "language": "python",
+          "name": "python3"
+        },
+        "language_info": {
+          "name": "python",
+          "version": "3.9.0"
+        }
+      },
+      "nbformat": 4,
+      "nbformat_minor": 4
+    }
+

@@ -194,46 +194,80 @@ oc login -u ai-admin -p redhat123
 
 ### 3. Demo: GPU Queuing Behavior
 
-This demonstrates what happens when demand exceeds GPU quota:
+This demonstrates what happens when demand exceeds GPU quota.
 
 **Setup:** The `rhoai-main-queue` has **1 GPU** quota (for g6.4xlarge flavor).
 
-**Step 1: Create First Workbench (Gets GPU)**
-1. Login as `ai-developer` to RHOAI Dashboard
-2. Go to **Data Science Projects** → **private-ai**
-3. Create workbench: `demo-workbench-1`
-4. Select **NVIDIA L4 1GPU** Hardware Profile
-5. Click **Create** → Status: ✅ **Running**
+#### Option A: Apply via CLI (Recommended for Demo)
 
-**Step 2: Create Second Workbench (Gets QUEUED)**
-1. Create another workbench: `demo-workbench-2`
-2. Select **NVIDIA L4 1GPU** Hardware Profile
-3. Click **Create** → Status: ⏳ **Starting** (then stays pending)
-
-**Step 3: Observe Queuing (as ai-admin)**
 ```bash
-# Watch workloads - one Admitted, one Pending
-oc get workloads -n private-ai
+# Step 1: Apply all demo resources at once
+oc apply -k gitops/step-03-private-ai/demo/
+
+# Step 2: Watch the queuing behavior
+oc get workloads -n private-ai -w
 
 # Expected output:
 # NAME                        QUEUE              ADMITTED   AGE
-# pod-demo-workbench-1-xxx    private-ai-queue   True       2m
-# pod-demo-workbench-2-xxx    private-ai-queue   False      30s  ← QUEUED!
+# pod-demo-workbench-1-xxx    private-ai-queue   True       5s   ← RUNNING
+# pod-demo-workbench-2-xxx    private-ai-queue   False      3s   ← QUEUED!
+
+# Step 3: Check pod status
+oc get pods -n private-ai
+
+# Expected output:
+# NAME                  READY   STATUS            RESTARTS   AGE
+# demo-workbench-1-0    1/1     Running           0          2m
+# demo-workbench-2-0    0/1     SchedulingGated   0          2m   ← WAITING!
+
+# Step 4: Release GPU by deleting workbench-1
+oc delete notebook demo-workbench-1 -n private-ai
+
+# Watch workbench-2 automatically start!
+oc get pods -n private-ai -w
 ```
 
-**Step 4: Release GPU (First Workbench)**
-1. Stop `demo-workbench-1` in Dashboard
-2. Watch `demo-workbench-2` automatically start!
+#### Option B: Apply Step-by-Step
 
 ```bash
-# Watch the automatic admission
-oc get workloads -n private-ai -w
+# 1. Apply ConfigMap with demo notebooks
+oc apply -f gitops/step-03-private-ai/demo/configmap-notebooks.yaml
+
+# 2. Apply PVCs for storage
+oc apply -f gitops/step-03-private-ai/demo/pvcs.yaml
+
+# 3. Create first workbench (gets GPU)
+oc apply -f gitops/step-03-private-ai/demo/workbench-1.yaml
+
+# 4. Wait for it to start
+oc wait --for=condition=ready pod/demo-workbench-1-0 -n private-ai --timeout=300s
+
+# 5. Create second workbench (gets QUEUED!)
+oc apply -f gitops/step-03-private-ai/demo/workbench-2.yaml
+
+# 6. Observe the queuing
+oc get workloads -n private-ai
+```
+
+#### Option C: Via RHOAI Dashboard
+
+1. Login as `ai-developer` to RHOAI Dashboard
+2. Go to **Data Science Projects** → **private-ai**
+3. Create workbench: `demo-workbench-1` with **NVIDIA L4 1GPU** → ✅ **Running**
+4. Create workbench: `demo-workbench-2` with **NVIDIA L4 1GPU** → ⏳ **Queued**
+
+#### Demo Cleanup
+
+```bash
+# Remove demo workbenches
+oc delete -k gitops/step-03-private-ai/demo/
 ```
 
 **Why This Matters:**
-- No GPU hoarding - unused GPUs return to the pool
-- Fair queuing - first-come-first-served
-- Quota enforcement - team/project limits respected
+- 🚫 No GPU hoarding - unused GPUs return to the pool
+- ⏳ Fair queuing - first-come-first-served
+- 📊 Quota enforcement - team/project limits respected
+- 🔄 Automatic admission - queued workloads start when resources free up
 
 ---
 
@@ -289,23 +323,34 @@ oc get localqueue -n private-ai
 
 ```
 gitops/step-03-private-ai/
-└── base/
+├── base/                           # Auto-deployed by ArgoCD
+│   ├── kustomization.yaml
+│   │
+│   ├── auth/
+│   │   ├── htpasswd-secret.yaml    # Demo user credentials
+│   │   ├── oauth.yaml              # HTPasswd identity provider
+│   │   └── groups.yaml             # rhoai-admins, rhoai-users
+│   │
+│   ├── rbac/
+│   │   ├── project-admin.yaml      # ai-admin → admin role
+│   │   ├── project-editor.yaml     # ai-developer → edit role
+│   │   └── kueue-admin-access.yaml # Kueue ClusterRole binding
+│   │
+│   ├── namespace.yaml              # private-ai namespace with Kueue labels
+│   ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
+│   ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
+│   └── local-queue.yaml            # LocalQueue named 'default' (required!)
+│
+└── demo/                           # Manual apply for demo (NOT in ArgoCD)
     ├── kustomization.yaml
-    │
-    ├── auth/
-    │   ├── htpasswd-secret.yaml    # Demo user credentials
-    │   ├── oauth.yaml              # HTPasswd identity provider
-    │   └── groups.yaml             # rhoai-admins, rhoai-users
-    │
-    ├── rbac/
-    │   ├── project-admin.yaml      # ai-admin → admin role
-    │   └── project-editor.yaml     # ai-developer → edit role
-    │
-    ├── namespace.yaml              # private-ai namespace with Kueue labels
-    ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
-    ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
-    └── local-queue.yaml            # LocalQueue named 'default' (required!)
+    ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
+    ├── pvcs.yaml                   # Storage for workbenches
+    ├── workbench-1.yaml            # First workbench (gets GPU)
+    └── workbench-2.yaml            # Second workbench (gets QUEUED)
 ```
+
+> **Note**: The `demo/` folder is NOT included in ArgoCD sync.
+> Apply manually with `oc apply -k gitops/step-03-private-ai/demo/` to demonstrate queuing.
 
 > **Note**: Hardware Profiles are **global** (in step-02-rhoai).
 > Each project only needs a LocalQueue named `default` to use them.
