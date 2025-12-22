@@ -192,20 +192,48 @@ oc login -u ai-admin -p redhat123
 2. Select **NVIDIA DCGM Exporter Dashboard**
 3. Track: GPU Utilization, Power Usage, VRAM
 
-### 3. Test Quota Enforcement
+### 3. Demo: GPU Queuing Behavior
+
+This demonstrates what happens when demand exceeds GPU quota:
+
+**Setup:** The `rhoai-main-queue` has **1 GPU** quota (for g6.4xlarge flavor).
+
+**Step 1: Create First Workbench (Gets GPU)**
+1. Login as `ai-developer` to RHOAI Dashboard
+2. Go to **Data Science Projects** → **private-ai**
+3. Create workbench: `demo-workbench-1`
+4. Select **NVIDIA L4 1GPU** Hardware Profile
+5. Click **Create** → Status: ✅ **Running**
+
+**Step 2: Create Second Workbench (Gets QUEUED)**
+1. Create another workbench: `demo-workbench-2`
+2. Select **NVIDIA L4 1GPU** Hardware Profile
+3. Click **Create** → Status: ⏳ **Starting** (then stays pending)
+
+**Step 3: Observe Queuing (as ai-admin)**
+```bash
+# Watch workloads - one Admitted, one Pending
+oc get workloads -n private-ai
+
+# Expected output:
+# NAME                        QUEUE              ADMITTED   AGE
+# pod-demo-workbench-1-xxx    private-ai-queue   True       2m
+# pod-demo-workbench-2-xxx    private-ai-queue   False      30s  ← QUEUED!
+```
+
+**Step 4: Release GPU (First Workbench)**
+1. Stop `demo-workbench-1` in Dashboard
+2. Watch `demo-workbench-2` automatically start!
 
 ```bash
-# As ai-developer, try to exceed quota
-# Create multiple workbenches requesting GPUs
-
-# As ai-admin, watch the queue
+# Watch the automatic admission
 oc get workloads -n private-ai -w
-
-# Expected output when quota exceeded:
-# NAME                    QUEUE               ADMITTED   AGE
-# notebook-jupyter-abc    private-ai-queue    True       2m
-# notebook-jupyter-xyz    private-ai-queue    False      30s  # QUEUED
 ```
+
+**Why This Matters:**
+- No GPU hoarding - unused GPUs return to the pool
+- Fair queuing - first-come-first-served
+- Quota enforcement - team/project limits respected
 
 ---
 
