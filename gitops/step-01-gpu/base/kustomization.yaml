@@ -1,18 +1,33 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# NFD must be installed before GPU Operator (sync-wave ordering)
+# All operators required for RHOAI 3.0 GPU workloads and KServe model serving
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
+
 resources:
-  # Node Feature Discovery (prerequisite for GPU Operator)
+  # 1. Node Feature Discovery (prerequisite for GPU Operator)
   - nfd/namespace.yaml
   - nfd/operatorgroup.yaml
   - nfd/subscription.yaml
   - nfd/instance.yaml
   
-  # NVIDIA GPU Operator
+  # 2. NVIDIA GPU Operator
   - gpu-operator/namespace.yaml
   - gpu-operator/operatorgroup.yaml
   - gpu-operator/subscription.yaml
   - gpu-operator/clusterpolicy.yaml
   - gpu-operator/dcgm-dashboard-configmap.yaml
+
+  # 3. OpenShift Serverless (required for KServe)
+  - serverless/namespace.yaml
+  - serverless/operatorgroup.yaml
+  - serverless/subscription.yaml
+
+  # 4. OpenShift Service Mesh 3 (required for KServe)
+  - servicemesh/subscription.yaml
+
+  # 5. Red Hat Authorino (required for KServe authentication)
+  - authorino/namespace.yaml
+  - authorino/operatorgroup.yaml
+  - authorino/subscription.yaml
 

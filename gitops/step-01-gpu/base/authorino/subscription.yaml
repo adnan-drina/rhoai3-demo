@@ -1,0 +1,17 @@
+# Red Hat - Authorino Operator Subscription
+# Required for KServe authentication/authorization in RHOAI 3.0
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: authorino-operator
+  namespace: openshift-authorino
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: authorino-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+
