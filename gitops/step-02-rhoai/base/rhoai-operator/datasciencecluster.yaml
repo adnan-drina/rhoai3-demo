@@ -1,11 +1,7 @@
 # DataScienceCluster - RHOAI 3.0
+# Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/02-02-deploy-dsc.html
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
-# Operator Version: 1.19.0 (fast-3.x channel)
-#
-# Component Naming Changes in 3.0:
-#   - datasciencepipelines → aipipelines
-#   - New: llamastackoperator, distributedinference
-apiVersion: datasciencecluster.opendatahub.io/v1
+apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   name: default-dsc
@@ -27,16 +23,10 @@ spec:
       managementState: Managed
     
     # ═══════════════════════════════════════════════════════════════════
-    # GENERATIVE AI STACK (New in 3.0)
+    # ML PIPELINES (Renamed in 3.0: datasciencepipelines → aipipelines)
     # ═══════════════════════════════════════════════════════════════════
     
-    # LlamaStack Operator - Enables GenAI Playground and Agentic workflows
-    llamastackoperator:
-      managementState: Managed
-    
-    # Distributed Inference (llm-d) - Multi-node LLM serving
-    # Requires: LeaderWorkerSet + RHCL operators from step-01-gpu
-    distributedinference:
+    aipipelines:
       managementState: Managed
     
     # ═══════════════════════════════════════════════════════════════════
@@ -47,19 +37,17 @@ spec:
     kserve:
       managementState: Managed
     
-    # ModelMesh - Multi-model serving for smaller models
-    modelmeshserving:
-      managementState: Managed
-    
     # Model Registry - Model versioning and catalog
     modelregistry:
       managementState: Managed
+      registriesNamespace: rhoai-model-registries
     
     # ═══════════════════════════════════════════════════════════════════
-    # ML PIPELINES (Renamed in 3.0: datasciencepipelines → aipipelines)
+    # GENERATIVE AI STACK (New in 3.0)
     # ═══════════════════════════════════════════════════════════════════
     
-    aipipelines:
+    # LlamaStack Operator - Enables GenAI Playground and Agentic workflows
+    llamastackoperator:
       managementState: Managed
     
     # ═══════════════════════════════════════════════════════════════════
@@ -74,26 +62,18 @@ spec:
     ray:
       managementState: Managed
     
-    # Kueue - Workload queuing and scheduling
+    # Kueue - Workload queuing (Removed - auto-managed by DSC when needed)
     kueue:
-      managementState: Managed
-    
-    # CodeFlare - Simplifies distributed computing on Ray
-    codeflare:
-      managementState: Managed
+      managementState: Removed
     
     # ═══════════════════════════════════════════════════════════════════
-    # AI GOVERNANCE & EXPLAINABILITY
+    # AI GOVERNANCE & ADDITIONAL COMPONENTS
     # ═══════════════════════════════════════════════════════════════════
     
     # TrustyAI - Model explainability, bias detection, drift monitoring
     trustyai:
       managementState: Managed
     
-    # ═══════════════════════════════════════════════════════════════════
-    # OPTIONAL COMPONENTS (Disabled by default)
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # Feast Operator - Feature store (requires additional setup)
+    # Feast Operator - Feature store
     feastoperator:
-      managementState: Removed
+      managementState: Managed
