@@ -43,6 +43,12 @@ resources:
   - rbac/project-admin.yaml
   # ai-developer as project editor
   - rbac/project-editor.yaml
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 5. Kueue Admin Access (sync-wave: 10)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Grant rhoai-admins ClusterRole for Distributed Workloads dashboard
+  - rbac/kueue-admin-access.yaml
 
 # NOTE: Hardware Profiles are GLOBAL (in redhat-ods-applications)
 # They reference localQueueName: "default" which must exist in each project.

@@ -1,0 +1,17 @@
+# ClusterRoleBinding - Grant rhoai-admins Kueue admin access
+# Required for viewing Distributed Workloads metrics in the RHOAI Dashboard
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhoai-admins-kueue-view
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kueue-batch-admin-role
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: rhoai-admins
+
