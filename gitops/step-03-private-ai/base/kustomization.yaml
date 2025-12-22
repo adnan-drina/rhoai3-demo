@@ -43,3 +43,14 @@ resources:
   - rbac/project-admin.yaml
   # ai-developer as project editor
   - rbac/project-editor.yaml
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 5. Hardware Profiles (sync-wave: 25)
+  # HardwareProfiles must be in the same namespace as workbenches
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CPU-only profile for development
+  - hardware-profiles/cpu-small.yaml
+  # NVIDIA L4 1GPU (g6.4xlarge)
+  - hardware-profiles/nvidia-l4-1gpu.yaml
+  # NVIDIA L4 4GPUs (g6.12xlarge)
+  - hardware-profiles/nvidia-l4-4gpu.yaml
