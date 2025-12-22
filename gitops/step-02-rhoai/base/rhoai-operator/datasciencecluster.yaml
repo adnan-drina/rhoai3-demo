@@ -56,9 +56,10 @@ spec:
       managementState: Managed
     
     # Kueue - Workload queuing for GPU-as-a-Service
-    # Requires Red Hat Build of Kueue operator installed (step-01-gpu)
+    # Set to Unmanaged because Kueue is managed externally via
+    # Red Hat Build of Kueue operator (installed in step-01-gpu)
     kueue:
-      managementState: Managed
+      managementState: Unmanaged
     
     # ═══════════════════════════════════════════════════════════════════
     # AI GOVERNANCE & ADDITIONAL COMPONENTS
