@@ -5,6 +5,9 @@ kind: Namespace
 metadata:
   name: private-ai
   labels:
+    # RHOAI Dashboard recognition
+    opendatahub.io/dashboard: "true"
+    modelmesh-enabled: "true"
     # Enable Kueue workload management for this namespace
     kueue.openshift.io/managed: "true"
     kueue.x-k8s.io/queue-visibility: "ClusterQueue"
