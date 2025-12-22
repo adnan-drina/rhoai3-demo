@@ -10,10 +10,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # ═══════════════════════════════════════════════════════════════════
-    # CORE PLATFORM COMPONENTS
-    # ═══════════════════════════════════════════════════════════════════
-    
+
     # Dashboard - RHOAI Web UI
     dashboard:
       managementState: Managed
@@ -22,17 +19,11 @@ spec:
     workbenches:
       managementState: Managed
     
-    # ═══════════════════════════════════════════════════════════════════
     # ML PIPELINES (Renamed in 3.0: datasciencepipelines → aipipelines)
-    # ═══════════════════════════════════════════════════════════════════
-    
     aipipelines:
       managementState: Managed
     
-    # ═══════════════════════════════════════════════════════════════════
     # MODEL SERVING
-    # ═══════════════════════════════════════════════════════════════════
-    
     # KServe - Primary model serving platform (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
@@ -53,7 +44,9 @@ spec:
     # ═══════════════════════════════════════════════════════════════════
     # DISTRIBUTED WORKLOADS
     # ═══════════════════════════════════════════════════════════════════
-    
+    distributedinference:
+      managementState: Managed
+      
     # Training Operator - Kubernetes-native distributed training
     trainingoperator:
       managementState: Managed
