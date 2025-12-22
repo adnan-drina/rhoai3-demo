@@ -56,10 +56,10 @@ spec:
       managementState: Managed
     
     # Kueue - Workload queuing for GPU-as-a-Service
-    # Set to Unmanaged because Kueue is managed externally via
-    # Red Hat Build of Kueue operator (installed in step-01-gpu)
+    # Set to Removed because RHOAI 3.0 uses standalone Red Hat Build of Kueue
+    # operator (installed in step-01-gpu) instead of the legacy embedded Kueue
     kueue:
-      managementState: Unmanaged
+      managementState: Removed
     
     # ═══════════════════════════════════════════════════════════════════
     # AI GOVERNANCE & ADDITIONAL COMPONENTS

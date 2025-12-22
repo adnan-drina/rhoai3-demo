@@ -344,32 +344,47 @@ oc get workloads -n private-ai
 
 ---
 
-## Known Limitation: Dashboard "Kueue Disabled" Warning
+## RHOAI 3.0 Kueue Architecture
 
-### The Issue
-The RHOAI 3.0 Dashboard may display:
-> "Kueue is disabled in this cluster"
+In RHOAI 3.0, Kueue has transitioned from an embedded component to a **standalone operator**.
 
-This occurs even when Kueue is fully functional.
+### The Three-Part Handshake
 
-### Why It Happens
-- RHOAI 3.0 DSC only supports `kueue.managementState: Unmanaged` or `Removed`
-- The Dashboard UI expects `Managed` but this value is **not valid** in RHOAI 3.0
-- The backend correctly shows `KueueReady: True` but the UI doesn't recognize `Unmanaged`
+For the Dashboard to recognize Kueue as enabled:
 
-### Verification (Kueue IS Working)
-```bash
-# Check DSC condition - should show True
-oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="KueueReady")].status}'
+1. **Backend**: Red Hat Build of Kueue operator installed with `Kueue` resource named `cluster`
+2. **DSC**: Set `kueue.managementState: Removed` (tells RHOAI not to install legacy embedded Kueue)
+3. **Dashboard**: Set `disableKueue: false` in `OdhDashboardConfig`
 
-# Check LocalQueue - should show 0 pending
-oc get localqueue -n private-ai
+### Configuration Summary
 
-# Test workload admission
-oc get workloads -n private-ai
+**DataScienceCluster:**
+```yaml
+spec:
+  components:
+    kueue:
+      managementState: Removed  # Use standalone operator
 ```
 
-### Workaround
-**Ignore the warning** - Kueue functions correctly. Create workbenches and deploy models normally.
+**OdhDashboardConfig:**
+```yaml
+spec:
+  dashboardConfig:
+    disableKueue: false  # Enable UI integration
+    disableDistributedWorkloads: false  # Show queues in sidebar
+```
 
-Alternatively, change the project's "Workload allocation strategy" to "None" in project settings (loses quota management).
+### Verification Commands
+```bash
+# Check Kueue operator
+oc get pods -n openshift-kueue-operator
+
+# Check Kueue instance
+oc get kueue cluster
+
+# Check LocalQueues in project
+oc get localqueue -n private-ai
+
+# Check workload admission
+oc get workloads -n private-ai
+```
