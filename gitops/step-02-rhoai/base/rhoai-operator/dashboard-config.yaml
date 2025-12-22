@@ -1,7 +1,6 @@
 # OdhDashboardConfig - RHOAI 3.0 Dashboard Feature Toggles
-# Enables GenAI Studio, Hardware Profiles, and Model Registry
+# Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-01-odh-dashboard.html
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
-# Ref: https://ai-on-openshift.io/tools/rhoai-configuration/
 apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
@@ -12,41 +11,29 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dashboardConfig:
-    # ═══════════════════════════════════════════════════════════════════
-    # GENERATIVE AI FEATURES
-    # ═══════════════════════════════════════════════════════════════════
+    # Tracking / Telemetry
+    disableTracking: false
     
-    # Enable GenAI Studio (Agent Playground + Model Catalog UI)
-    # Requires: llamastackoperator component in DataScienceCluster
+    # Model Registry UI
+    disableModelRegistry: false
+    
+    # Model Catalog UI
+    disableModelCatalog: false
+    
+    # KServe Metrics in Dashboard
+    disableKServeMetrics: false
+    
+    # GenAI Studio (Agent Playground + Model Catalog)
     genAiStudio: true
     
-    # ═══════════════════════════════════════════════════════════════════
-    # MODEL MANAGEMENT
-    # ═══════════════════════════════════════════════════════════════════
+    # Model as a Service (MaaS)
+    modelAsService: true
     
-    # Enable Model Registry UI
-    modelRegistry: true
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # HARDWARE PROFILES (New in 3.0 - Technology Preview)
-    # Replaces legacy Accelerator Profiles for better GPU/resource targeting
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # Enable Hardware Profiles UI (3.0 replacement for Accelerator Profiles)
-    disableHardwareProfiles: false
-    
-    # Disable legacy Accelerator Profiles UI (deprecated in 3.0)
-    disableAcceleratorProfiles: true
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # PIPELINE & SERVING FEATURES
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # Enable AI Pipelines UI (formerly Data Science Pipelines)
-    disablePipelines: false
-    
-    # Enable Model Serving UI
-    disableModelServing: false
-    
-    # Enable Distributed Workloads UI
-    disableDistributedWorkloads: false
+    # LM Eval (Language Model Evaluation)
+    disableLMEval: false
+  
+  # Notebook Controller Configuration
+  notebookController:
+    enabled: true
+    notebookNamespace: rhods-notebooks
+    pvcSize: 20Gi
