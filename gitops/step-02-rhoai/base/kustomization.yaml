@@ -23,6 +23,10 @@ resources:
   # 3. DataScienceCluster - Core RHOAI components (sync-wave: 10)
   - rhoai-operator/datasciencecluster.yaml
   
+  # 3b. Kueue Component - Dashboard integration (sync-wave: 11)
+  # Required for Dashboard to recognize standalone Kueue operator
+  - rhoai-operator/kueue-component.yaml
+  
   # 4. Auth - User/Admin group management (sync-wave: 12)
   # New in 3.0: Replaces group config in OdhDashboardConfig
   - rhoai-operator/auth.yaml

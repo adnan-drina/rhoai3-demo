@@ -1,0 +1,20 @@
+# ODH Kueue Component - Required for Dashboard to recognize Kueue
+# This is the RHOAI component that tells the dashboard Kueue is available.
+# The actual Kueue operator is the standalone Red Hat Build of Kueue (step-01-gpu).
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+apiVersion: components.platform.opendatahub.io/v1alpha1
+kind: Kueue
+metadata:
+  name: default-kueue
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Unmanaged: RHOAI recognizes Kueue but doesn't manage its installation
+  # The standalone Red Hat Build of Kueue operator handles the actual installation
+  managementState: Unmanaged
+  # Default queue names - matches what the standalone operator creates
+  defaultClusterQueueName: default
+  defaultLocalQueueName: default
+
