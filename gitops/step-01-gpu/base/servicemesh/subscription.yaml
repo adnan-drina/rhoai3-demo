@@ -9,10 +9,19 @@ metadata:
   namespace: openshift-operators
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   channel: stable
   installPlanApproval: Automatic
   name: servicemeshoperator3
   source: redhat-operators
   sourceNamespace: openshift-marketplace
+  config:
+    annotations:
+      openshift.io/required-scc: restricted-v2
+      target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
 

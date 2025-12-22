@@ -20,9 +20,27 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    # Subscription fields managed by OLM
+    - group: operators.coreos.com
+      kind: Subscription
+      jqPathExpressions:
+        - .spec.installPlanApproval
+        - .spec.startingCSV
+    # ClusterPolicy fields managed by GPU Operator
+    - group: nvidia.com
+      kind: ClusterPolicy
+      jqPathExpressions:
+        - .spec
+    # NFD instance fields managed by operator
+    - group: nfd.openshift.io
+      kind: NodeFeatureDiscovery
+      jqPathExpressions:
+        - .spec
