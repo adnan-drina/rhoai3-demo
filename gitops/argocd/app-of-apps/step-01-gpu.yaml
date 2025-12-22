@@ -36,6 +36,17 @@ spec:
       jsonPointers:
         - /data
         - /metadata/annotations
+    # Namespaces may have additional annotations/labels from OLM
+    - group: ""
+      kind: Namespace
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+    # OperatorGroups have status fields managed by OLM
+    - group: operators.coreos.com
+      kind: OperatorGroup
+      jsonPointers:
+        - /metadata/annotations
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy
