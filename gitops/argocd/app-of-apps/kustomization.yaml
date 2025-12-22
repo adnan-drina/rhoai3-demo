@@ -5,4 +5,4 @@ resources:
   # Uncomment to enable via app-of-apps pattern
   # - step-01-gpu.yaml
   # - step-02-rhoai.yaml
-  # - step-03-llms.yaml
+  # - step-03-private-ai.yaml
