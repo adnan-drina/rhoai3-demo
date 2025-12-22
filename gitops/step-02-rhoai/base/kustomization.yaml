@@ -30,3 +30,6 @@ resources:
   # 5. Dashboard Config - Feature toggles (sync-wave: 15)
   # Enables: GenAI Studio, Model Registry, etc.
   - rhoai-operator/dashboard-config.yaml
+  
+  # 6. Hardware Profile - GPU profile for GenAI Studio (sync-wave: 16)
+  - rhoai-operator/hardware-profile.yaml
