@@ -32,6 +32,8 @@ resources:
   - rhoai-operator/dashboard-config.yaml
   
   # 6. Hardware Profiles - GPU profiles for GenAI Studio (sync-wave: 16)
+  # Default: g6.4xlarge (16 vCPU, 64GB, 1x L4) - overrides operator default
+  - rhoai-operator/hardware-profile-default.yaml
   # L4 1GPU: g6.4xlarge (16 vCPU, 64GB, 1x L4)
   - rhoai-operator/hardware-profile-l4-1gpu.yaml
   # L4 4GPUs: g6.12xlarge (48 vCPU, 192GB, 4x L4)
