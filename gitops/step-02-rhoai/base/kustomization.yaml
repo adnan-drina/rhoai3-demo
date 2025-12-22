@@ -33,4 +33,4 @@ resources:
   
   # 6. Hardware Profiles (sync-wave: 16)
   # New in 3.0: Replaces Accelerator Profiles
-  - rhoai-operator/hardware-profile-g6.yaml
+  - rhoai-operator/hardware-profile.yaml
