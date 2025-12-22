@@ -2,11 +2,13 @@
 # =============================================================================
 # Step 02: Red Hat OpenShift AI 3.0 - Deploy Script
 # =============================================================================
-# Deploys:
+# Deploys RHOAI 3.0 Platform Layer:
 # - RHOAI Operator (fast-3.x channel)
-# - DSCInitialization
-# - DataScienceCluster with 3.0 components
-# - GenAI Studio (Playground) configuration
+# - DSCInitialization (Service Mesh: Managed)
+# - DataScienceCluster with full 3.0 components
+# - Auth resource for user/admin groups
+# - GenAI Studio configuration
+# - Hardware Profiles for AWS G6 GPU nodes
 # =============================================================================
 set -euo pipefail
 
@@ -33,11 +35,18 @@ if ! oc get applications -n openshift-gitops step-01-gpu &>/dev/null; then
     exit 1
 fi
 
-# Check Serverless is ready
+# Check Serverless is ready (required for KServe)
 if ! oc get knativeserving -n knative-serving knative-serving &>/dev/null; then
     log_error "KnativeServing not found - required for KServe"
     log_info "Please ensure step-01-gpu is fully synced"
     exit 1
+fi
+
+# Check GPU nodes exist
+GPU_NODES=$(oc get nodes -l node-role.kubernetes.io/gpu --no-headers 2>/dev/null | wc -l || echo "0")
+if [[ "$GPU_NODES" -eq 0 ]]; then
+    log_warn "No GPU nodes found with label 'node-role.kubernetes.io/gpu'"
+    log_info "Hardware Profiles will be ready but won't schedule until GPU nodes are available"
 fi
 
 log_success "Prerequisites verified"
@@ -63,7 +72,7 @@ until oc get namespace redhat-ods-operator &>/dev/null; do
 done
 
 # Wait for CSV to succeed
-log_info "Waiting for RHOAI Operator CSV..."
+log_info "Waiting for RHOAI Operator CSV (this may take a few minutes)..."
 until oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}' 2>/dev/null | grep -q "Succeeded"; do
     sleep 15
 done
@@ -82,12 +91,34 @@ until oc get crd datascienceclusters.datasciencecluster.opendatahub.io &>/dev/nu
 done
 log_success "DataScienceCluster CRD available"
 
-# Wait for DSC to be ready
-log_info "Waiting for DataScienceCluster to initialize..."
+# Wait for DSC to be created
+log_info "Waiting for DataScienceCluster to be created..."
 until oc get datasciencecluster default-dsc &>/dev/null; do
     sleep 10
 done
 log_success "DataScienceCluster created"
+
+# Wait for DSC to be Ready
+log_info "Waiting for DataScienceCluster to become Ready (this may take several minutes)..."
+until [[ "$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}' 2>/dev/null)" == "Ready" ]]; do
+    PHASE=$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
+    log_info "Current phase: $PHASE"
+    sleep 30
+done
+log_success "DataScienceCluster is Ready"
+
+# =============================================================================
+# Verify Hardware Profiles
+# =============================================================================
+log_step "Verifying Hardware Profiles..."
+
+# Wait for hardware profiles
+until oc get hardwareprofiles -n redhat-ods-applications --no-headers 2>/dev/null | grep -q .; do
+    sleep 5
+done
+
+PROFILES=$(oc get hardwareprofiles -n redhat-ods-applications -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+log_success "Hardware Profiles available: $PROFILES"
 
 # =============================================================================
 # Summary
@@ -95,28 +126,30 @@ log_success "DataScienceCluster created"
 log_step "Deployment Complete"
 
 echo ""
-echo "RHOAI 3.0 Components:"
-echo "  - RHOAI Operator (fast-3.x channel)"
-echo "  - DSCInitialization (default-dsci)"
-echo "  - DataScienceCluster (default-dsc)"
-echo "  - GenAI Studio enabled"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "RHOAI 3.0 Platform Deployed Successfully"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Managed Components:"
-echo "  - Dashboard"
-echo "  - Workbenches"
-echo "  - KServe"
-echo "  - LlamaStackOperator"
-echo "  - ModelRegistry"
-echo "  - TrainingOperator"
+echo "Enabled Components:"
+oc get datasciencecluster default-dsc -o jsonpath='{.spec.components}' 2>/dev/null | \
+  jq -r 'to_entries | .[] | "  • \(.key): \(.value.managementState)"' 2>/dev/null || \
+  echo "  (use 'oc get datasciencecluster default-dsc -o yaml' to view)"
 echo ""
-log_info "Check Argo CD Application status:"
+echo "Hardware Profiles:"
+oc get hardwareprofiles -n redhat-ods-applications \
+  -o custom-columns=NAME:.metadata.name,DISPLAY:.metadata.annotations."opendatahub\.io/display-name" 2>/dev/null || \
+  echo "  (use 'oc get hardwareprofiles -n redhat-ods-applications' to view)"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+log_info "Argo CD Application status:"
 echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
 echo ""
-log_info "Check RHOAI status:"
+log_info "RHOAI status:"
 echo "  oc get datasciencecluster default-dsc"
-echo "  oc get dscinitializations default-dsci"
 echo "  oc get pods -n redhat-ods-applications"
 echo ""
-log_info "Access Dashboard:"
+log_info "Dashboard URL:"
 DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
 echo "  https://${DASHBOARD_URL}"
+echo ""

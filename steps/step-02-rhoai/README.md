@@ -14,10 +14,10 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 |--------|-----|-----|
 | **Component Naming** | `datasciencepipelines` | `aipipelines` |
 | **User/Admin Groups** | `OdhDashboardConfig` | **`Auth` resource** |
-| **Resource Targeting** | Accelerator Profiles | **Hardware Profiles** (Tech Preview) |
+| **Resource Targeting** | Accelerator Profiles | **Hardware Profiles** |
 | **GenAI Features** | N/A | **GenAI Studio** (Playground + Model Catalog) |
-| **Distributed Inference** | N/A | **`distributedinference`** (llm-d) |
 | **LLM Agents** | N/A | **`llamastackoperator`** |
+| **Service Mesh** | SM 2.x | SM 3 (auto-installed by DSC) |
 
 ---
 
@@ -36,7 +36,6 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 | Component | State | Purpose |
 |-----------|-------|---------|
 | **LlamaStack Operator** | Managed | GenAI Playground, Agentic workflows |
-| **Distributed Inference** | Managed | llm-d multi-node LLM serving |
 | **GenAI Studio** | Enabled | Agent Playground + Model Catalog UI |
 
 ### Model Serving
@@ -44,7 +43,6 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 | Component | State | Purpose |
 |-----------|-------|---------|
 | KServe | Managed | Primary model serving (RawDeployment mode) |
-| ModelMesh | Managed | Multi-model serving for smaller models |
 | Model Registry | Managed | Model versioning and catalog |
 
 ### Distributed Workloads
@@ -53,14 +51,30 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 |-----------|-------|---------|
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
-| Kueue | Managed | Workload queuing and scheduling |
-| CodeFlare | Managed | Simplifies distributed computing on Ray |
+| Kueue | Removed | Auto-managed by DSC when needed |
 
-### AI Governance
+### AI Governance & Feature Store
 
 | Component | State | Purpose |
 |-----------|-------|---------|
 | TrustyAI | Managed | Model explainability, bias detection, drift monitoring |
+| Feast Operator | Managed | Feature store for ML features |
+
+---
+
+## Hardware Profiles (GPU Resource Targeting)
+
+Hardware Profiles are configured for our AWS G6 GPU nodes:
+
+| Profile | Display Name | Instance Type | vCPU | Memory | GPUs |
+|---------|-------------|---------------|------|--------|------|
+| **default-profile** | NVIDIA L4 1GPU (Default) | g6.4xlarge | 16 (default: 8) | 64GB (default: 32GB) | 1x L4 |
+| nvidia-l4-1gpu | NVIDIA L4 1GPU | g6.4xlarge | 16 (default: 8) | 64GB (default: 32GB) | 1x L4 |
+| nvidia-l4-4gpu | NVIDIA L4 4GPUs | g6.12xlarge | 48 (default: 24) | 192GB (default: 96GB) | 4x L4 |
+
+All profiles include:
+- **Node Selector**: `node-role.kubernetes.io/gpu` + `node.kubernetes.io/instance-type`
+- **Tolerations**: `nvidia.com/gpu:NoSchedule`
 
 ---
 
@@ -69,148 +83,33 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 | Resource | Purpose |
 |----------|---------|
 | **Subscription** | Uses `fast-3.x` channel (required for 3.0) |
-| **DSCInitialization** | Global operator configuration |
+| **DSCInitialization** | Global operator configuration (Service Mesh: Managed) |
 | **DataScienceCluster** | Core RHOAI components |
-| **Auth** | **New in 3.0** - User/Admin group management |
+| **Auth** | User/Admin group management (`rhoai-admins`, `rhoai-users`) |
 | **OdhDashboardConfig** | Feature toggles (GenAI Studio, Hardware Profiles) |
-| **HardwareProfile** | **New in 3.0** - GPU resource targeting (replaces Accelerator Profiles) |
-
----
-
-## Key 3.0 Concepts Explained
-
-### 1. Auth Resource (Replaces Dashboard Group Config)
-
-In RHOAI 3.0, user and admin group management moved from `OdhDashboardConfig` to a dedicated **`Auth`** resource:
-
-```yaml
-apiVersion: services.platform.opendatahub.io/v1alpha1
-kind: Auth
-metadata:
-  name: auth
-  namespace: redhat-ods-applications
-spec:
-  adminGroups:
-    - rhoai-admins
-    - cluster-admins
-  allowedGroups:
-    - rhoai-users
-    - system:authenticated
-```
-
-**Why the change?** Separates authentication/authorization concerns from dashboard configuration, enabling better RBAC integration.
-
-### 2. GenAI Studio
-
-GenAI Studio is the RHOAI 3.0 unified interface for generative AI capabilities:
-
-- **Agent Playground** - Interactive LLM testing and prompt engineering
-- **Model Catalog** - Browse and deploy pre-configured LLM models
-
-**Requirements:**
-1. `llamastackoperator: Managed` in DataScienceCluster
-2. `distributedinference: Managed` in DataScienceCluster
-3. `genAiStudio: true` in OdhDashboardConfig
-
-### 3. Hardware Profiles (Replaces Accelerator Profiles)
-
-Hardware Profiles are the 3.0 successor to Accelerator Profiles, providing:
-- Better node targeting via `nodeSelector`
-- Proper GPU taint tolerations
-- Resource limits (min/max GPU counts)
-
-```yaml
-apiVersion: dashboard.opendatahub.io/v1alpha1
-kind: HardwareProfile
-metadata:
-  name: aws-g6-gpu
-spec:
-  displayName: "AWS G6 - NVIDIA L4 GPU"
-  nodeSelector:
-    node-role.kubernetes.io/gpu: ""
-  tolerations:
-    - key: nvidia.com/gpu
-      operator: Exists
-      effect: NoSchedule
-  identifiers:
-    - displayName: "NVIDIA L4 GPU"
-      identifier: nvidia.com/gpu
-      minCount: 1
-      maxCount: 4
-```
-
-**Dashboard Settings:**
-```yaml
-disableHardwareProfiles: false   # Enable new 3.0 UI
-disableAcceleratorProfiles: true  # Disable legacy UI
-```
-
-### 4. aipipelines (Renamed from datasciencepipelines)
-
-The ML Pipelines component was renamed in 3.0:
-- **2.x**: `datasciencepipelines`
-- **3.0**: `aipipelines`
-
-This aligns with the broader AI Platform branding.
+| **HardwareProfile** | GPU resource targeting for AWS G6 nodes |
 
 ---
 
 ## Auto-installed Dependencies
 
-The following operators are **automatically installed** by the DataScienceCluster CR:
+The following components are **automatically managed** by the DataScienceCluster CR:
 
 | Component | Purpose |
 |-----------|---------|
 | OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
-| Kueue | Workload queuing for distributed training |
+| Kueue | Workload queuing (enabled when needed) |
 
-> **Note**: Service Mesh is managed by the DSC when `kserve.managementState: Managed`.
+> **Note**: Service Mesh is configured in DSCInitialization with `serviceMesh.managementState: Managed`.
 
 ---
 
 ## Prerequisites
 
-- [ ] Step 01 completed (GPU infrastructure, Serverless, LWS, RHCL)
-- [ ] Cluster admin access
-- [ ] `oc` CLI installed and logged in
-- [ ] OpenShift 4.19+ (4.20 recommended)
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         OpenShift Cluster                                  │
-│  ┌──────────────────────────────────────────────────────────────────────┐ │
-│  │                 RHOAI Operator (redhat-ods-operator)                 │ │
-│  │                    Subscription: fast-3.x                             │ │
-│  └──────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                       │
-│           ┌────────────────────────┼────────────────────────┐             │
-│           ▼                        ▼                        ▼             │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
-│  │ DSCInitialization│    │ DataScienceCluster│    │      Auth       │       │
-│  │  (default-dsci)  │    │   (default-dsc)   │    │  (User Groups)  │       │
-│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
-│                                    │                                       │
-│  ┌─────────────────────────────────┼─────────────────────────────────────┐│
-│  │                    redhat-ods-applications                            ││
-│  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────────────────┐ ││
-│  │  │   Dashboard   │  │  Workbenches  │  │      GenAI Studio         │ ││
-│  │  │               │  │   (Jupyter)   │  │  (Playground + Catalog)   │ ││
-│  │  └───────────────┘  └───────────────┘  └───────────────────────────┘ ││
-│  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────────────────┐ ││
-│  │  │    KServe     │  │   ModelMesh   │  │      Model Registry       │ ││
-│  │  │ (RawDeployment│  │ (Multi-model) │  │   (Versioning/Catalog)    │ ││
-│  │  └───────────────┘  └───────────────┘  └───────────────────────────┘ ││
-│  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────────────────┐ ││
-│  │  │  AI Pipelines │  │     Ray +     │  │  Distributed Inference    │ ││
-│  │  │   (Kubeflow)  │  │   CodeFlare   │  │       (llm-d)             │ ││
-│  │  └───────────────┘  └───────────────┘  └───────────────────────────┘ ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
-└──────────────────────────────────────────────────────────────────────────┘
-```
+- [x] Step 01 completed (GPU infrastructure, Serverless, LWS, RHCL)
+- [x] Cluster admin access
+- [x] `oc` CLI installed and logged in
+- [x] OpenShift 4.19+ (4.20 recommended)
 
 ---
 
@@ -221,7 +120,7 @@ The following operators are **automatically installed** by the DataScienceCluste
 ```
 
 The script will:
-1. Verify step-01-gpu prerequisites
+1. Verify step-01-gpu prerequisites (KnativeServing, etc.)
 2. Create Argo CD Application for RHOAI
 3. Wait for operator installation
 4. Verify DataScienceCluster is ready
@@ -237,8 +136,9 @@ The script will:
 oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
 # Expected: Ready
 
-# Check all component conditions
-oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions}' | jq .
+# List enabled components
+oc get datasciencecluster default-dsc -o jsonpath='{.spec.components}' | \
+  jq -r 'to_entries | .[] | "\(.key): \(.value.managementState)"'
 ```
 
 ### 2. Application Pods
@@ -247,7 +147,8 @@ oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions}' | jq .
 # Check RHOAI application pods
 oc get pods -n redhat-ods-applications
 
-# Expected: dashboard, workbenches, kserve-controller, model-controller, etc.
+# Check for key pods
+oc get pods -n redhat-ods-applications | grep -E "dashboard|kserve|llama"
 ```
 
 ### 3. Dashboard Access
@@ -257,36 +158,24 @@ oc get pods -n redhat-ods-applications
 oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='https://{.spec.host}'
 ```
 
-### 4. Auth Configuration
-
-```bash
-# Check Auth resource
-oc get auth -n redhat-ods-applications
-
-# Verify admin groups
-oc get auth auth -n redhat-ods-applications -o jsonpath='{.spec.adminGroups}'
-```
-
-### 5. Hardware Profiles
+### 4. Hardware Profiles
 
 ```bash
 # List available Hardware Profiles
 oc get hardwareprofiles -n redhat-ods-applications
 
-# Verify AWS G6 profile
-oc get hardwareprofile aws-g6-gpu -n redhat-ods-applications -o yaml
+# Check profile order
+oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+  -o jsonpath='{.spec.hardwareProfileOrder}'
 ```
 
-### 6. GenAI Studio
+### 5. GenAI Studio
 
 ```bash
-# Verify OdhDashboardConfig has GenAI enabled
+# Verify GenAI Studio is enabled
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.genAiStudio}'
 # Expected: true
-
-# Check LlamaStack Operator pods
-oc get pods -n redhat-ods-applications -l app=llama-stack-operator
 ```
 
 ---
@@ -298,14 +187,16 @@ gitops/step-02-rhoai/
 └── base/
     ├── kustomization.yaml
     └── rhoai-operator/
-        ├── namespace.yaml              # redhat-ods-operator namespace
-        ├── operatorgroup.yaml          # Operator group
-        ├── subscription.yaml           # fast-3.x channel
-        ├── dsci.yaml                   # DSCInitialization
-        ├── datasciencecluster.yaml     # Full 3.0 component stack
-        ├── auth.yaml                   # NEW: User/Admin groups
-        ├── dashboard-config.yaml       # GenAI Studio + Hardware Profiles
-        └── hardware-profile-g6.yaml    # NEW: AWS G6 GPU profile
+        ├── namespace.yaml                  # redhat-ods-operator namespace
+        ├── operatorgroup.yaml              # Operator group
+        ├── subscription.yaml               # fast-3.x channel
+        ├── dsci.yaml                       # DSCInitialization (Service Mesh: Managed)
+        ├── datasciencecluster.yaml         # Full 3.0 component stack
+        ├── auth.yaml                       # User/Admin groups
+        ├── dashboard-config.yaml           # GenAI Studio + Hardware Profile order
+        ├── hardware-profile-default.yaml   # Default: g6.4xlarge (1x L4)
+        ├── hardware-profile-l4-1gpu.yaml   # NVIDIA L4 1GPU: g6.4xlarge
+        └── hardware-profile-l4-4gpu.yaml   # NVIDIA L4 4GPUs: g6.12xlarge
 ```
 
 ---
@@ -333,9 +224,6 @@ oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions}' | jq .
 
 # Check operator logs
 oc logs -n redhat-ods-operator -l name=rhods-operator --tail=100
-
-# Check for missing CRDs
-oc get crd | grep -E "datasciencecluster|dscinitialization|auth"
 ```
 
 ### GenAI Studio Not Visible
@@ -344,14 +232,17 @@ oc get crd | grep -E "datasciencecluster|dscinitialization|auth"
 2. Check `llamastackoperator` is `Managed` in DSC
 3. Restart dashboard pod if needed:
    ```bash
-   oc delete pod -n redhat-ods-applications -l app=odh-dashboard
+   oc delete pod -n redhat-ods-applications -l app=rhods-dashboard
    ```
 
-### Hardware Profile Not Working
+### Hardware Profile Not Appearing
 
-1. Verify profile is enabled: `disableHardwareProfiles: false`
-2. Check profile exists: `oc get hardwareprofile -n redhat-ods-applications`
-3. Ensure GPU nodes have matching labels: `node-role.kubernetes.io/gpu=""`
+1. Verify profiles exist: `oc get hardwareprofile -n redhat-ods-applications`
+2. Check profile order in dashboard config
+3. Ensure GPU nodes have matching labels:
+   ```bash
+   oc get nodes -l node-role.kubernetes.io/gpu -o custom-columns=NAME:.metadata.name,INSTANCE:.metadata.labels."node\.kubernetes\.io/instance-type"
+   ```
 
 ---
 
@@ -364,7 +255,7 @@ oc get crd | grep -E "datasciencecluster|dscinitialization|auth"
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 
 ### Community Resources
-- [AI on OpenShift - RHOAI Configuration](https://ai-on-openshift.io/tools/rhoai-configuration/)
+- [RHOAI 3.0 Showroom](https://rhpds.github.io/redhat-openshift-ai-3-showroom/)
 - [Red Hat CoP GitOps Catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai)
 
 ---
