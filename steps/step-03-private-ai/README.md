@@ -341,3 +341,35 @@ oc get workloads -n private-ai
 2. **Users request** → Select Hardware Profile in Dashboard
 3. **Kueue enforces** → Admits or queues based on quota
 4. **Admin monitors** → DCGM Dashboard for utilization
+
+---
+
+## Known Limitation: Dashboard "Kueue Disabled" Warning
+
+### The Issue
+The RHOAI 3.0 Dashboard may display:
+> "Kueue is disabled in this cluster"
+
+This occurs even when Kueue is fully functional.
+
+### Why It Happens
+- RHOAI 3.0 DSC only supports `kueue.managementState: Unmanaged` or `Removed`
+- The Dashboard UI expects `Managed` but this value is **not valid** in RHOAI 3.0
+- The backend correctly shows `KueueReady: True` but the UI doesn't recognize `Unmanaged`
+
+### Verification (Kueue IS Working)
+```bash
+# Check DSC condition - should show True
+oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="KueueReady")].status}'
+
+# Check LocalQueue - should show 0 pending
+oc get localqueue -n private-ai
+
+# Test workload admission
+oc get workloads -n private-ai
+```
+
+### Workaround
+**Ignore the warning** - Kueue functions correctly. Create workbenches and deploy models normally.
+
+Alternatively, change the project's "Workload allocation strategy" to "None" in project settings (loses quota management).
