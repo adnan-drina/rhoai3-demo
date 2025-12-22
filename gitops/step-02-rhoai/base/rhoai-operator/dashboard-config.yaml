@@ -32,6 +32,14 @@ spec:
     # LM Eval (Language Model Evaluation)
     disableLMEval: false
   
+  # Hardware Profile Order (first is default)
+  # nvidia-l4-1gpu: g6.4xlarge (16 vCPU, 64GB, 1x L4)
+  # nvidia-l4-4gpu: g6.12xlarge (48 vCPU, 192GB, 4x L4)
+  hardwareProfileOrder:
+    - nvidia-l4-1gpu
+    - nvidia-l4-4gpu
+    - default-profile
+  
   # Notebook Controller Configuration
   notebookController:
     enabled: true
