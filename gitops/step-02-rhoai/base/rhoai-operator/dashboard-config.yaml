@@ -40,10 +40,12 @@ spec:
     disableKueue: false
   
   # Hardware Profile Order (first is default)
-  # default-profile: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Default selection
+  # cpu-small: CPU-only for development
+  # default-profile: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Default GPU selection
   # nvidia-l4-1gpu: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Same as default
   # nvidia-l4-4gpu: g6.12xlarge (48 vCPU, 192GB, 4x L4) - Multi-GPU
   hardwareProfileOrder:
+    - cpu-small
     - default-profile
     - nvidia-l4-1gpu
     - nvidia-l4-4gpu
