@@ -47,6 +47,12 @@ spec:
       kind: OperatorGroup
       jsonPointers:
         - /metadata/annotations
+    # Subscriptions have fields managed by OLM
+    - group: operators.coreos.com
+      kind: Subscription
+      jsonPointers:
+        - /metadata/annotations
+        - /spec/startingCSV
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy
