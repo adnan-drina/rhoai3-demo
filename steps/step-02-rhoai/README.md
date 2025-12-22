@@ -22,6 +22,15 @@ Per [RHOAI 3.0 documentation](https://docs.redhat.com/en/documentation/red_hat_o
 | TrustyAI | Removed | Model explainability (optional) |
 | Feast Operator | Removed | Feature store (optional) |
 
+### Auto-installed Dependencies
+
+The following operators are **automatically installed** by the DataScienceCluster CR:
+
+| Component | Purpose |
+|-----------|---------|
+| OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
+| Kueue | Workload queuing for distributed training |
+
 > **Note**: RHOAI 3.0 is a new installation only (no upgrade from 2.x). See [Chapter 5](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-distributed-workloads-components_component-install) for distributed workloads prerequisites.
 
 ## RHOAI 3.0 Specific Resources

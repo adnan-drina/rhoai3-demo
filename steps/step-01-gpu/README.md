@@ -14,22 +14,13 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0 b
 | Red Hat Authorino | stable | Authentication/authorization for KServe endpoints |
 | GPU MachineSets | - | AWS g6.4xlarge, g6.12xlarge instances |
 
-### Auto-installed by DataScienceCluster CR (step-02-rhoai)
-
-| Component | Purpose |
-|-----------|---------|
-| OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
-| Kueue | Workload queuing for distributed training |
-
-> **Note:** Service Mesh 3 and Kueue are automatically installed when the DataScienceCluster CR is created in step-02-rhoai.
-
 ---
 
 ## Prerequisites
 
 Per [Red Hat OpenShift AI 3.0 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index):
 
-- [ ] OpenShift 4.14+ cluster on AWS
+- [ ] OpenShift 4.20+ cluster on AWS
 - [ ] Cluster admin access
 - [ ] `oc` CLI installed and logged in
 - [ ] AWS account with permissions to create EC2 instances (g6 family)
