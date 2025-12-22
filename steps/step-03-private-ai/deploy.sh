@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Step 03: Private AI - Deploy Script
+# Step 03: Private AI - GPU as a Service
 # =============================================================================
-# Deploys private LLM models using RHOAI 3.0 model serving
+# Deploys GPU-as-a-Service infrastructure using Kueue:
+# - ResourceFlavors for GPU node types
+# - ClusterQueue for cluster-wide quota
+# - LocalQueue for private-ai namespace
 # =============================================================================
 set -euo pipefail
 
@@ -15,7 +18,7 @@ STEP_NAME="step-03-private-ai"
 load_env
 check_oc_logged_in
 
-log_step "Step 03: Private AI"
+log_step "Step 03: Private AI - GPU as a Service"
 
 # =============================================================================
 # Prerequisites check
@@ -36,19 +39,20 @@ if [[ "$DSC_PHASE" != "Ready" ]]; then
     exit 1
 fi
 
-log_success "Prerequisites verified"
-
-# =============================================================================
-# Create HuggingFace token secret if provided
-# =============================================================================
-if [[ -n "${HF_TOKEN:-}" ]]; then
-    log_step "Creating HuggingFace token secret..."
-    ensure_namespace "rhoai-models"
-    ensure_secret_from_env "hf-token" "rhoai-models" "token=${HF_TOKEN}"
-    log_success "HuggingFace token secret created"
-else
-    log_warn "HF_TOKEN not set - gated models (e.g., Llama) won't be accessible"
+# Check Kueue CRDs exist (managed by RHOAI)
+if ! oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
+    log_warn "Kueue CRDs not found - they may be installed by RHOAI DSC"
+    log_info "Continuing with deployment..."
 fi
+
+# Check GPU nodes exist
+GPU_NODES=$(oc get nodes -l node-role.kubernetes.io/gpu --no-headers 2>/dev/null | wc -l || echo "0")
+if [[ "$GPU_NODES" -eq 0 ]]; then
+    log_warn "No GPU nodes found with label 'node-role.kubernetes.io/gpu'"
+    log_info "Kueue ResourceFlavors won't match any nodes until GPU nodes are available"
+fi
+
+log_success "Prerequisites verified"
 
 # =============================================================================
 # Deploy via Argo CD Application
@@ -60,14 +64,67 @@ oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "Argo CD Application '${STEP_NAME}' created"
 
 # =============================================================================
+# Wait for resources
+# =============================================================================
+log_step "Waiting for Kueue resources..."
+
+# Wait for namespace
+until oc get namespace private-ai &>/dev/null; do
+    log_info "Waiting for private-ai namespace..."
+    sleep 5
+done
+log_success "Namespace 'private-ai' created"
+
+# Wait for ClusterQueue (if Kueue is available)
+if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
+    log_info "Waiting for ClusterQueue..."
+    until oc get clusterqueue rhoai-main-queue &>/dev/null; do
+        sleep 5
+    done
+    log_success "ClusterQueue 'rhoai-main-queue' created"
+    
+    log_info "Waiting for LocalQueue..."
+    until oc get localqueue private-ai-queue -n private-ai &>/dev/null; do
+        sleep 5
+    done
+    log_success "LocalQueue 'private-ai-queue' created"
+else
+    log_warn "Kueue CRDs not available - skipping queue verification"
+fi
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
 
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "GPU-as-a-Service Infrastructure Deployed"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Kueue Resources:"
+echo "  • ResourceFlavor: nvidia-l4-1gpu (g6.4xlarge)"
+echo "  • ResourceFlavor: nvidia-l4-4gpu (g6.12xlarge)"
+echo "  • ClusterQueue:   rhoai-main-queue"
+echo "  • LocalQueue:     private-ai-queue (namespace: private-ai)"
+echo ""
+echo "GPU Quota (from ClusterQueue):"
+if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
+    oc get clusterqueue rhoai-main-queue -o jsonpath='{range .spec.resourceGroups[*].flavors[*]}  • {.name}: {range .resources[*]}{.name}={.nominalQuota} {end}{"\n"}{end}' 2>/dev/null || echo "  (unable to retrieve)"
+else
+    echo "  (Kueue not yet available)"
+fi
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 log_info "Argo CD Application status:"
 echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
 echo ""
-log_info "Check InferenceServices:"
-echo "  oc get inferenceservice -n rhoai-models"
+log_info "Check Kueue resources:"
+echo "  oc get resourceflavors"
+echo "  oc get clusterqueue rhoai-main-queue -o yaml"
+echo "  oc get localqueue -n private-ai"
+echo ""
+log_info "Monitor GPU utilization:"
+echo "  OpenShift Console → Observe → Dashboards → NVIDIA DCGM Exporter Dashboard"
 echo ""

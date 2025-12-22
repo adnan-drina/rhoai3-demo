@@ -1,12 +1,23 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 03: Private AI
-# Deploy private LLM models using RHOAI 3.0 model serving
+# Step 03: Private AI - GPU as a Service (GPUaaS)
+# Implements dynamic GPU allocation using Kueue integration
 #
-# TODO: Add resources following official RHOAI model serving docs
-# - Namespace for models
-# - ServingRuntime (vLLM)
-# - InferenceService definitions
+# Architecture:
+#   ResourceFlavor → ClusterQueue → LocalQueue → Workloads
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
 
-resources: []
+resources:
+  # 1. Namespace with Kueue labels (sync-wave: 0)
+  - namespace.yaml
+  
+  # 2. ResourceFlavors - Define GPU node types (sync-wave: 1)
+  - resource-flavors.yaml
+  
+  # 3. ClusterQueue - Cluster-wide quota pool (sync-wave: 2)
+  - cluster-queue.yaml
+  
+  # 4. LocalQueue - Project entry point (sync-wave: 3)
+  - local-queue.yaml

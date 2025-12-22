@@ -1,0 +1,14 @@
+# LocalQueue - Project entry point for GPU requests
+# This is what users "see" when creating workloads in the private-ai namespace
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: private-ai-queue
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    kueue.x-k8s.io/default-queue: "true"  # Auto-assign workloads to this queue
+spec:
+  # Point to the cluster-wide quota pool
+  clusterQueue: rhoai-main-queue
+

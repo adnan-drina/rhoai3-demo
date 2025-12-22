@@ -1,0 +1,14 @@
+# Namespace: private-ai
+# GPU-as-a-Service enabled project with Kueue integration
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: private-ai
+  labels:
+    # Enable Kueue workload management for this namespace
+    kueue.x-k8s.io/queue-visibility: "ClusterQueue"
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    openshift.io/display-name: "Private AI - GPU as a Service"
+    openshift.io/description: "GPU-managed project using Kueue for dynamic GPU allocation"
+

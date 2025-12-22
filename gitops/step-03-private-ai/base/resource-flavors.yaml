@@ -1,0 +1,37 @@
+# ResourceFlavors - Define GPU "flavors" available in the cluster
+# These map to physical node types (AWS G6 instances)
+---
+# NVIDIA L4 1GPU Flavor (g6.4xlarge)
+# 16 vCPU, 64GB RAM, 1x NVIDIA L4 (24GB VRAM)
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: nvidia-l4-1gpu
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  nodeLabels:
+    node.kubernetes.io/instance-type: g6.4xlarge
+    node-role.kubernetes.io/gpu: ""
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+---
+# NVIDIA L4 4GPU Flavor (g6.12xlarge)
+# 48 vCPU, 192GB RAM, 4x NVIDIA L4 (96GB total VRAM)
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: nvidia-l4-4gpu
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  nodeLabels:
+    node.kubernetes.io/instance-type: g6.12xlarge
+    node-role.kubernetes.io/gpu: ""
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+

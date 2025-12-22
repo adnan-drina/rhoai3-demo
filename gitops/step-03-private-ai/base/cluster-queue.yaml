@@ -1,0 +1,43 @@
+# ClusterQueue - Cluster-wide GPU quota pool
+# Defines total GPU/CPU/Memory available for RHOAI workloads
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: rhoai-main-queue
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # Allow any namespace with a LocalQueue to use this pool
+  namespaceSelector: {}
+  
+  # Preemption policy - what happens when quota is exceeded
+  preemption:
+    reclaimWithinCohort: Any
+    withinClusterQueue: LowerPriority
+  
+  # Resource groups define quota limits per flavor
+  resourceGroups:
+    # L4 1GPU nodes (g6.4xlarge)
+    - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
+      flavors:
+        - name: nvidia-l4-1gpu
+          resources:
+            - name: "nvidia.com/gpu"
+              nominalQuota: 1      # 1 GPU from g6.4xlarge node
+            - name: "cpu"
+              nominalQuota: "16"   # 16 vCPU total
+            - name: "memory"
+              nominalQuota: "64Gi" # 64GB RAM total
+    
+    # L4 4GPU nodes (g6.12xlarge)
+    - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
+      flavors:
+        - name: nvidia-l4-4gpu
+          resources:
+            - name: "nvidia.com/gpu"
+              nominalQuota: 4       # 4 GPUs from g6.12xlarge node
+            - name: "cpu"
+              nominalQuota: "48"    # 48 vCPU total
+            - name: "memory"
+              nominalQuota: "192Gi" # 192GB RAM total
+
