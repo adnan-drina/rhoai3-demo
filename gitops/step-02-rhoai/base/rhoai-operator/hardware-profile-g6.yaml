@@ -1,35 +1,35 @@
 # HardwareProfile - AWS G6 GPU Nodes (NVIDIA L4)
-# New in RHOAI 3.0 - Technology Preview
-# Replaces legacy Accelerator Profiles for better GPU/resource targeting
+# Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-02-hardware-profile.html
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_accelerators/index#working-with-hardware-profiles
-apiVersion: infrastructure.opendatahub.io/v1
+apiVersion: infrastructure.opendatahub.io/v1alpha1
 kind: HardwareProfile
 metadata:
-  name: aws-g6-gpu
+  name: gpu-profile
   namespace: redhat-ods-applications
   annotations:
     argocd.argoproj.io/sync-wave: "16"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  labels:
-    opendatahub.io/dashboard: "true"
 spec:
-  # Scheduling configuration - use direct node scheduling
-  scheduling:
-    type: Node
-    node:
-      # Node selector to target GPU nodes from step-01-gpu
-      nodeSelector:
-        node-role.kubernetes.io/gpu: ""
-      # Tolerations to schedule on tainted GPU nodes
-      tolerations:
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
-  
-  # Resource identifiers (what resources this profile provides)
   identifiers:
-    - displayName: "NVIDIA L4 GPU"
-      identifier: nvidia.com/gpu
+    # CPU allocation
+    - identifier: cpu
+      displayName: CPU
+      resourceType: CPU
+      minCount: 1
+      maxCount: "8"
+      defaultCount: "1"
+    
+    # Memory allocation
+    - identifier: memory
+      displayName: Memory
+      resourceType: Memory
+      minCount: 1Gi
+      maxCount: 16Gi
+      defaultCount: 12Gi
+    
+    # GPU allocation (NVIDIA L4 on AWS G6 instances)
+    - identifier: nvidia.com/gpu
+      displayName: GPU
       resourceType: Accelerator
       minCount: 1
       maxCount: 4
