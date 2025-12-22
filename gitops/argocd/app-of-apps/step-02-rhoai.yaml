@@ -28,15 +28,34 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+    # DataScienceCluster - operator manages component state
     - group: datasciencecluster.opendatahub.io
       kind: DataScienceCluster
       jqPathExpressions:
         - .spec.components
+    # DSCInitialization - operator manages spec
     - group: dscinitialization.opendatahub.io
       kind: DSCInitialization
       jqPathExpressions:
         - .spec
+    # OdhDashboardConfig - operator manages dashboard settings
     - group: opendatahub.io
       kind: OdhDashboardConfig
       jqPathExpressions:
         - .spec
+    # Auth - operator may modify spec
+    - group: services.platform.opendatahub.io
+      kind: Auth
+      jqPathExpressions:
+        - .spec
+    # HardwareProfile - dashboard may modify spec
+    - group: dashboard.opendatahub.io
+      kind: HardwareProfile
+      jqPathExpressions:
+        - .spec
+    # Subscriptions - OLM manages these
+    - group: operators.coreos.com
+      kind: Subscription
+      jsonPointers:
+        - /metadata/annotations
+        - /spec/startingCSV

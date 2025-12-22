@@ -1,6 +1,7 @@
-# OdhDashboardConfig - Enable GenAI Studio (Playground) in RHOAI 3.0
-# This enables the Agent/GenAI Playground and Model Catalog UI
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/
+# OdhDashboardConfig - RHOAI 3.0 Dashboard Feature Toggles
+# Enables GenAI Studio, Hardware Profiles, and Model Registry
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+# Ref: https://ai-on-openshift.io/tools/rhoai-configuration/
 apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
@@ -11,6 +12,41 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dashboardConfig:
-    # Enable GenAI Studio (Playground + Model Catalog UI)
+    # ═══════════════════════════════════════════════════════════════════
+    # GENERATIVE AI FEATURES
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Enable GenAI Studio (Agent Playground + Model Catalog UI)
+    # Requires: llamastackoperator component in DataScienceCluster
     genAiStudio: true
-
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # MODEL MANAGEMENT
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Enable Model Registry UI
+    modelRegistry: true
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # HARDWARE PROFILES (New in 3.0 - Technology Preview)
+    # Replaces legacy Accelerator Profiles for better GPU/resource targeting
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Enable Hardware Profiles UI (3.0 replacement for Accelerator Profiles)
+    disableHardwareProfiles: false
+    
+    # Disable legacy Accelerator Profiles UI (deprecated in 3.0)
+    disableAcceleratorProfiles: true
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # PIPELINE & SERVING FEATURES
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Enable AI Pipelines UI (formerly Data Science Pipelines)
+    disablePipelines: false
+    
+    # Enable Model Serving UI
+    disableModelServing: false
+    
+    # Enable Distributed Workloads UI
+    disableDistributedWorkloads: false

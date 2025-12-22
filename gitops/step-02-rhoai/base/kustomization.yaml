@@ -1,14 +1,36 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# RHOAI 3.0 Platform Layer
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
+#
+# Key 3.0 Changes:
+#   - datasciencepipelines → aipipelines
+#   - User/Admin groups moved from OdhDashboardConfig → Auth resource
+#   - New: Hardware Profiles (replaces Accelerator Profiles)
+#   - New: GenAI Studio, llamastackoperator, distributedinference
+
 resources:
-  # RHOAI Operator (3.0)
+  # 1. Operator Installation (sync-wave: 0-2)
   - rhoai-operator/namespace.yaml
   - rhoai-operator/operatorgroup.yaml
   - rhoai-operator/subscription.yaml
-  # RHOAI 3.0 requires DSCInitialization before DataScienceCluster
+  
+  # 2. DSCInitialization - Global operator config (sync-wave: 5)
+  # Must be created before DataScienceCluster
   - rhoai-operator/dsci.yaml
+  
+  # 3. DataScienceCluster - Core RHOAI components (sync-wave: 10)
   - rhoai-operator/datasciencecluster.yaml
-  # Enable GenAI Studio (Playground + Model Catalog UI)
+  
+  # 4. Auth - User/Admin group management (sync-wave: 12)
+  # New in 3.0: Replaces group config in OdhDashboardConfig
+  - rhoai-operator/auth.yaml
+  
+  # 5. Dashboard Config - Feature toggles (sync-wave: 15)
+  # Enables: GenAI Studio, Hardware Profiles, Model Registry
   - rhoai-operator/dashboard-config.yaml
-
+  
+  # 6. Hardware Profiles (sync-wave: 16)
+  # New in 3.0: Replaces Accelerator Profiles
+  - rhoai-operator/hardware-profile-g6.yaml

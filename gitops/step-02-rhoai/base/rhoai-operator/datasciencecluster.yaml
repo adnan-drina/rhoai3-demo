@@ -1,6 +1,10 @@
 # DataScienceCluster - RHOAI 3.0
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 # Operator Version: 1.19.0 (fast-3.x channel)
+#
+# Component Naming Changes in 3.0:
+#   - datasciencepipelines → aipipelines
+#   - New: llamastackoperator, distributedinference
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
 metadata:
@@ -10,37 +14,86 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-    # --- Core Components ---
+    # ═══════════════════════════════════════════════════════════════════
+    # CORE PLATFORM COMPONENTS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Dashboard - RHOAI Web UI
     dashboard:
       managementState: Managed
+    
+    # Workbenches - JupyterLab, VS Code, RStudio environments
     workbenches:
       managementState: Managed
     
-    # --- GenAI Components ---
+    # ═══════════════════════════════════════════════════════════════════
+    # GENERATIVE AI STACK (New in 3.0)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # LlamaStack Operator - Enables GenAI Playground and Agentic workflows
     llamastackoperator:
       managementState: Managed
     
-    # --- Model Management ---
-    modelregistry:
+    # Distributed Inference (llm-d) - Multi-node LLM serving
+    # Requires: LeaderWorkerSet + RHCL operators from step-01-gpu
+    distributedinference:
       managementState: Managed
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # MODEL SERVING
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # KServe - Primary model serving platform (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
     
-    # --- Training ---
+    # ModelMesh - Multi-model serving for smaller models
+    modelmeshserving:
+      managementState: Managed
+    
+    # Model Registry - Model versioning and catalog
+    modelregistry:
+      managementState: Managed
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # ML PIPELINES (Renamed in 3.0: datasciencepipelines → aipipelines)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    aipipelines:
+      managementState: Managed
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # DISTRIBUTED WORKLOADS
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Training Operator - Kubernetes-native distributed training
     trainingoperator:
       managementState: Managed
     
-    # --- Distributed Workloads (Requires Chapter 5 prerequisites) ---
-    # Enable after installing CodeFlare SDK / MCAD / InstaScale
+    # Ray - Distributed computing framework
     ray:
-      managementState: Removed
-    kueue:
-      managementState: Removed
+      managementState: Managed
     
-    # --- Optional Components ---
-    aipipelines:
-      managementState: Removed
+    # Kueue - Workload queuing and scheduling
+    kueue:
+      managementState: Managed
+    
+    # CodeFlare - Simplifies distributed computing on Ray
+    codeflare:
+      managementState: Managed
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # AI GOVERNANCE & EXPLAINABILITY
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # TrustyAI - Model explainability, bias detection, drift monitoring
     trustyai:
-      managementState: Removed
+      managementState: Managed
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # OPTIONAL COMPONENTS (Disabled by default)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # Feast Operator - Feature store (requires additional setup)
     feastoperator:
       managementState: Removed
