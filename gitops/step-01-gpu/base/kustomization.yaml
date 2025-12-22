@@ -57,4 +57,5 @@ resources:
   - kueue-operator/namespace.yaml
   - kueue-operator/operatorgroup.yaml
   - kueue-operator/subscription.yaml
+  - kueue-operator/kueue-instance.yaml
 

@@ -1,0 +1,20 @@
+# Kueue Instance - Enables Kueue workload management
+# Creates the core Kueue CRDs (ClusterQueue, LocalQueue, ResourceFlavor)
+apiVersion: kueue.openshift.io/v1
+kind: Kueue
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  config:
+    # Frameworks that Kueue will manage
+    integrations:
+      frameworks:
+        - BatchJob           # Kubernetes Jobs
+        - RayJob             # Ray distributed jobs
+        - RayCluster         # Ray clusters
+        - PyTorchJob         # PyTorch distributed training
+        - Pod                # Standalone pods
+        - LeaderWorkerSet    # llm-d distributed inference
+
