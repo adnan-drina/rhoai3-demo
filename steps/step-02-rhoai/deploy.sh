@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Step 02: Red Hat OpenShift AI - Deploy Script
+# Step 02: Red Hat OpenShift AI 3.0 - Deploy Script
 # =============================================================================
 # Deploys:
-# - RHOAI Operator
-# - DataScienceCluster with core components
+# - RHOAI Operator (fast-3.x channel)
+# - DSCInitialization
+# - DataScienceCluster with 3.0 components
+# - GenAI Studio (Playground) configuration
 # =============================================================================
 set -euo pipefail
 
@@ -17,50 +19,35 @@ STEP_NAME="step-02-rhoai"
 load_env
 check_oc_logged_in
 
-log_step "Step 02: Red Hat OpenShift AI"
-
-# Get Git repo info
-GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
-GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
-
-log_info "Git Repo: $GIT_REPO_URL"
-log_info "Branch: $GIT_REPO_BRANCH"
+log_step "Step 02: Red Hat OpenShift AI 3.0"
 
 # =============================================================================
-# Deploy via Argo CD
+# Prerequisites check
+# =============================================================================
+log_step "Checking prerequisites..."
+
+# Check step-01-gpu was deployed
+if ! oc get applications -n openshift-gitops step-01-gpu &>/dev/null; then
+    log_error "step-01-gpu Argo CD Application not found!"
+    log_info "Please run: ./steps/step-01-gpu/deploy.sh first"
+    exit 1
+fi
+
+# Check Serverless is ready
+if ! oc get knativeserving -n knative-serving knative-serving &>/dev/null; then
+    log_error "KnativeServing not found - required for KServe"
+    log_info "Please ensure step-01-gpu is fully synced"
+    exit 1
+fi
+
+log_success "Prerequisites verified"
+
+# =============================================================================
+# Deploy via Argo CD Application
 # =============================================================================
 log_step "Creating Argo CD Application for RHOAI"
 
-cat <<EOF | oc apply -f -
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: ${STEP_NAME}
-  namespace: openshift-gitops
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: ${GIT_REPO_URL}
-    targetRevision: ${GIT_REPO_BRANCH}
-    path: gitops/step-02-rhoai/base
-  destination:
-    server: https://kubernetes.default.svc
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-EOF
+oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 
 log_success "Argo CD Application '${STEP_NAME}' created"
 
@@ -95,19 +82,41 @@ until oc get crd datascienceclusters.datasciencecluster.opendatahub.io &>/dev/nu
 done
 log_success "DataScienceCluster CRD available"
 
+# Wait for DSC to be ready
+log_info "Waiting for DataScienceCluster to initialize..."
+until oc get datasciencecluster default-dsc &>/dev/null; do
+    sleep 10
+done
+log_success "DataScienceCluster created"
+
 # =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
 
 echo ""
-echo "Components:"
-echo "  - RHOAI Operator (redhat-ods-operator)"
+echo "RHOAI 3.0 Components:"
+echo "  - RHOAI Operator (fast-3.x channel)"
+echo "  - DSCInitialization (default-dsci)"
 echo "  - DataScienceCluster (default-dsc)"
+echo "  - GenAI Studio enabled"
 echo ""
-log_info "Check status:"
+echo "Managed Components:"
+echo "  - Dashboard"
+echo "  - Workbenches"
+echo "  - KServe"
+echo "  - LlamaStackOperator"
+echo "  - ModelRegistry"
+echo "  - TrainingOperator"
+echo ""
+log_info "Check Argo CD Application status:"
+echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
+echo ""
+log_info "Check RHOAI status:"
 echo "  oc get datasciencecluster default-dsc"
+echo "  oc get dscinitializations default-dsci"
 echo "  oc get pods -n redhat-ods-applications"
 echo ""
 log_info "Access Dashboard:"
-echo "  oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}'"
+DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
+echo "  https://${DASHBOARD_URL}"

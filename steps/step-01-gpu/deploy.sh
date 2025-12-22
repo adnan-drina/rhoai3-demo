@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Step 01: GPU Infrastructure - Deploy Script
+# Step 01: GPU Infrastructure & RHOAI Prerequisites - Deploy Script
 # =============================================================================
-# Deploys:
+# Deploys all prerequisites for RHOAI 3.0:
+# - User Workload Monitoring
 # - NFD Operator + Instance
-# - GPU Operator + ClusterPolicy
-# - DCGM Dashboard
+# - GPU Operator + ClusterPolicy + DCGM Dashboard
+# - OpenShift Serverless + KnativeServing
+# - LeaderWorkerSet Operator
+# - Red Hat Connectivity Link (Authorino, Limitador, DNS)
 # - GPU MachineSets (AWS)
 # =============================================================================
 set -euo pipefail
@@ -14,10 +17,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
+STEP_NAME="step-01-gpu"
+
 load_env
 check_oc_logged_in
 
-log_step "Step 01: GPU Infrastructure"
+log_step "Step 01: GPU Infrastructure & RHOAI Prerequisites"
+
+# Get Git repo info
+GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
+GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
+
+log_info "Git Repo: $GIT_REPO_URL"
+log_info "Branch: $GIT_REPO_BRANCH"
 
 # Get cluster infrastructure details
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
@@ -29,53 +41,58 @@ log_info "AMI ID: $AMI_ID"
 log_info "Region: $REGION"
 
 # =============================================================================
-# Deploy Operators
+# Deploy via Argo CD Application
 # =============================================================================
-log_step "Deploying NFD + GPU Operator"
+log_step "Creating Argo CD Application for GPU Infrastructure"
 
-# Apply base manifests (namespaces, operatorgroups, subscriptions)
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/nfd/namespace.yaml"
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/nfd/operatorgroup.yaml"
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/nfd/subscription.yaml"
+oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/gpu-operator/namespace.yaml"
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/gpu-operator/operatorgroup.yaml"
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/gpu-operator/subscription.yaml"
+log_success "Argo CD Application '${STEP_NAME}' created"
 
-# Apply DCGM Dashboard
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/gpu-operator/dcgm-dashboard-configmap.yaml"
-
-log_success "Operator subscriptions created"
-
-# Wait for NFD operator
-log_info "Waiting for NFD operator..."
+# =============================================================================
+# Wait for critical operators
+# =============================================================================
+log_step "Waiting for NFD Operator..."
 until oc get crd nodefeaturediscoveries.nfd.openshift.io &>/dev/null; do
-    sleep 5
+    log_info "Waiting for NFD CRD..."
+    sleep 10
 done
 log_success "NFD CRD available"
 
-# Apply NFD instance
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/nfd/instance.yaml"
-log_success "NFD instance created"
-
-# Wait for GPU operator
-log_info "Waiting for GPU operator..."
+log_step "Waiting for GPU Operator..."
 until oc get crd clusterpolicies.nvidia.com &>/dev/null; do
-    sleep 5
+    log_info "Waiting for GPU Operator CRD..."
+    sleep 10
 done
 log_success "GPU Operator CRD available"
 
-# Apply ClusterPolicy
-oc apply -f "$REPO_ROOT/gitops/step-01-gpu/base/gpu-operator/clusterpolicy.yaml"
-log_success "ClusterPolicy created"
+log_step "Waiting for Serverless Operator..."
+until oc get crd knativeservings.operator.knative.dev &>/dev/null; do
+    log_info "Waiting for Knative CRD..."
+    sleep 10
+done
+log_success "Serverless CRD available"
+
+log_step "Waiting for LeaderWorkerSet Operator..."
+until oc get csv -n openshift-lws-operator 2>/dev/null | grep -q "Succeeded"; do
+    log_info "Waiting for LWS Operator..."
+    sleep 10
+done
+log_success "LeaderWorkerSet Operator ready"
 
 # =============================================================================
-# Deploy MachineSets
+# Deploy MachineSets (cluster-specific, not in GitOps)
 # =============================================================================
 log_step "Deploying GPU MachineSets"
 
 for instance_type in "g6.4xlarge" "g6.12xlarge"; do
     ms_name="${CLUSTER_ID}-gpu-${instance_type//./-}-${REGION}b"
+    
+    # Check if MachineSet already exists
+    if oc get machineset -n openshift-machine-api "$ms_name" &>/dev/null; then
+        log_info "MachineSet $ms_name already exists, skipping..."
+        continue
+    fi
     
     case "$instance_type" in
         "g6.4xlarge")
@@ -117,7 +134,7 @@ spec:
       labels:
         machine.openshift.io/cluster-api-cluster: ${CLUSTER_ID}
         machine.openshift.io/cluster-api-machine-role: gpu-worker
-        machine.openshift.io/cluster-api-machine-type: ${instance_type//./-}
+        machine.openshift.io/cluster-api-machine-type: gpu-worker
         machine.openshift.io/cluster-api-machineset: ${ms_name}
     spec:
       lifecycleHooks: {}
@@ -177,16 +194,30 @@ log_success "GPU MachineSets created"
 log_step "Deployment Complete"
 
 echo ""
-echo "Operators:"
+echo "Operators deployed via GitOps:"
+echo "  - User Workload Monitoring"
 echo "  - NFD Operator (openshift-nfd)"
 echo "  - GPU Operator (nvidia-gpu-operator)"
-echo "  - ClusterPolicy: gpu-cluster-policy"
-echo "  - DCGM Dashboard: Observe → Dashboards"
+echo "  - OpenShift Serverless + KnativeServing"
+echo "  - LeaderWorkerSet (openshift-lws-operator)"
+echo "  - Authorino (openshift-authorino)"
+echo "  - Limitador (openshift-limitador-operator)"
+echo "  - DNS Operator (openshift-dns-operator)"
 echo ""
 echo "MachineSets (replicas=1):"
 echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${REGION}b"
 echo "  - ${CLUSTER_ID}-gpu-g6-12xlarge-${REGION}b"
 echo ""
+log_info "Check Argo CD Application status:"
+echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
+echo ""
 log_info "Check GPU node status:"
 echo "  oc get machines -n openshift-machine-api | grep gpu"
 echo "  oc get nodes -l node-role.kubernetes.io/gpu"
+echo ""
+log_info "Validate all operators:"
+echo "  oc get csv -n openshift-nfd | grep nfd"
+echo "  oc get csv -n nvidia-gpu-operator | grep gpu"
+echo "  oc get csv -n openshift-serverless | grep serverless"
+echo "  oc get knativeserving -n knative-serving"
+echo "  oc get csv -n openshift-lws-operator | grep leader"
