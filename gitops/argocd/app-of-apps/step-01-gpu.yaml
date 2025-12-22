@@ -33,8 +33,9 @@ spec:
       kind: ConfigMap
       namespace: openshift-monitoring
       name: cluster-monitoring-config
-      jqPathExpressions:
-        - .data
+      jsonPointers:
+        - /data
+        - /metadata/annotations
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy
