@@ -31,6 +31,9 @@ spec:
     
     # LM Eval (Language Model Evaluation)
     disableLMEval: false
+    
+    # Distributed Workloads (Kueue queues visible in sidebar)
+    disableDistributedWorkloads: false
   
   # Hardware Profile Order (first is default)
   # default-profile: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Default selection

@@ -1,0 +1,11 @@
+# Namespace for Kueue Operator
+# Required for RHOAI 3.0 Distributed Workloads
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-kueue-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+

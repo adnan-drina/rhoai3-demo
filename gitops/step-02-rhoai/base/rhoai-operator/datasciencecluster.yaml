@@ -55,9 +55,10 @@ spec:
     ray:
       managementState: Managed
     
-    # Kueue - Workload queuing (Removed - auto-managed by DSC when needed)
+    # Kueue - Workload queuing for GPU-as-a-Service
+    # Requires Red Hat Build of Kueue operator installed (step-01-gpu)
     kueue:
-      managementState: Removed
+      managementState: Managed
     
     # ═══════════════════════════════════════════════════════════════════
     # AI GOVERNANCE & ADDITIONAL COMPONENTS

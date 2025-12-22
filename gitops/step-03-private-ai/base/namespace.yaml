@@ -6,6 +6,7 @@ metadata:
   name: private-ai
   labels:
     # Enable Kueue workload management for this namespace
+    kueue.openshift.io/managed: "true"
     kueue.x-k8s.io/queue-visibility: "ClusterQueue"
   annotations:
     argocd.argoproj.io/sync-wave: "3"

@@ -1,0 +1,17 @@
+# Red Hat Build of Kueue Operator Subscription
+# Required for RHOAI 3.0 GPU-as-a-Service / Distributed Workloads
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kueue-operator
+  namespace: openshift-kueue-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: kueue-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+

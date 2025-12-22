@@ -4,7 +4,7 @@ kind: Kustomization
 # Infrastructure and operators required for RHOAI 3.0 GPU workloads, KServe, and llm-d
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 #
-# NOTE: Service Mesh 3 and Kueue are installed automatically via DataScienceCluster CR
+# NOTE: Service Mesh 3 is installed automatically via DataScienceCluster CR
 
 resources:
   # 0. User Workload Monitoring (required for RHOAI observability)
@@ -52,4 +52,9 @@ resources:
   - dns-operator/namespace.yaml
   - dns-operator/operatorgroup.yaml
   - dns-operator/subscription.yaml
+
+  # 8. Red Hat Build of Kueue (required for GPU-as-a-Service / Distributed Workloads)
+  - kueue-operator/namespace.yaml
+  - kueue-operator/operatorgroup.yaml
+  - kueue-operator/subscription.yaml
 

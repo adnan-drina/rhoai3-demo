@@ -1,0 +1,11 @@
+# OperatorGroup for Kueue Operator
+# Cluster-wide installation mode
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kueue-operator
+  namespace: openshift-kueue-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec: {}
+
