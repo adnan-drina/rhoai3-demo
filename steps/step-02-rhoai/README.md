@@ -51,7 +51,8 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 |-----------|-------|---------|
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
-| Kueue | Removed | Auto-managed by DSC when needed |
+| **Kueue** | **Unmanaged** | External standalone operator (step-01-gpu) |
+| **Kueue Component** | Created | Dashboard integration for standalone Kueue |
 
 ### AI Governance & Feature Store
 
@@ -62,19 +63,34 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 
 ---
 
-## Hardware Profiles (GPU Resource Targeting)
+## Hardware Profiles (Global, Queue-Based)
 
-Hardware Profiles are configured for our AWS G6 GPU nodes:
+Hardware Profiles are **global** (in `redhat-ods-applications`) and use **Queue-based scheduling** for Kueue integration.
 
-| Profile | Display Name | Instance Type | vCPU | Memory | GPUs |
-|---------|-------------|---------------|------|--------|------|
-| **default-profile** | NVIDIA L4 1GPU (Default) | g6.4xlarge | 16 (default: 8) | 64GB (default: 32GB) | 1x L4 |
-| nvidia-l4-1gpu | NVIDIA L4 1GPU | g6.4xlarge | 16 (default: 8) | 64GB (default: 32GB) | 1x L4 |
-| nvidia-l4-4gpu | NVIDIA L4 4GPUs | g6.12xlarge | 48 (default: 24) | 192GB (default: 96GB) | 4x L4 |
+| Profile | Display Name | Scheduling | LocalQueue |
+|---------|-------------|------------|------------|
+| **cpu-small** | Small (CPU Only) | Queue | `default` |
+| **default-profile** | NVIDIA L4 1GPU (Default) | Queue | `default` |
+| nvidia-l4-1gpu | NVIDIA L4 1GPU | Queue | `default` |
+| nvidia-l4-4gpu | NVIDIA L4 4GPUs | Queue | `default` |
 
-All profiles include:
-- **Node Selector**: `node-role.kubernetes.io/gpu` + `node.kubernetes.io/instance-type`
-- **Tolerations**: `nvidia.com/gpu:NoSchedule`
+### Queue-Based Scheduling Architecture
+
+```yaml
+spec:
+  scheduling:
+    type: Queue  # NOT Node
+    kueue:
+      localQueueName: default  # Must exist in user projects
+```
+
+**How It Works:**
+1. **Profiles are global** - defined once in `redhat-ods-applications`
+2. **Profiles reference `localQueueName: default`**
+3. **Each user project** needs a `LocalQueue` named `default`
+4. **Kueue handles node selection** via ClusterQueue/ResourceFlavor (step-03)
+
+> **Note**: Profiles with `scheduling.type: Node` won't work in Kueue-managed projects.
 
 ---
 
@@ -91,14 +107,45 @@ All profiles include:
 
 ---
 
-## Auto-installed Dependencies
+## Kueue Integration (RHOAI 3.0 Architecture)
 
-The following components are **automatically managed** by the DataScienceCluster CR:
+RHOAI 3.0 uses a **standalone Kueue operator** (installed in step-01-gpu) instead of an embedded version.
+
+### Configuration
+
+**DataScienceCluster (DSC):**
+```yaml
+spec:
+  components:
+    kueue:
+      managementState: Unmanaged  # External standalone operator
+```
+
+**ODH Kueue Component (for Dashboard integration):**
+```yaml
+apiVersion: components.platform.opendatahub.io/v1alpha1
+kind: Kueue
+metadata:
+  name: default-kueue
+spec:
+  managementState: Unmanaged
+  defaultClusterQueueName: default
+  defaultLocalQueueName: default
+```
+
+**OdhDashboardConfig:**
+```yaml
+spec:
+  dashboardConfig:
+    disableKueue: false  # Enable UI integration
+    disableDistributedWorkloads: false  # Show queues in sidebar
+```
+
+### Auto-installed Dependencies
 
 | Component | Purpose |
 |-----------|---------|
 | OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
-| Kueue | Workload queuing (enabled when needed) |
 
 > **Note**: Service Mesh is configured in DSCInitialization with `serviceMesh.managementState: Managed`.
 
@@ -191,12 +238,14 @@ gitops/step-02-rhoai/
         ├── operatorgroup.yaml              # Operator group
         ├── subscription.yaml               # fast-3.x channel
         ├── dsci.yaml                       # DSCInitialization (Service Mesh: Managed)
-        ├── datasciencecluster.yaml         # Full 3.0 component stack
+        ├── datasciencecluster.yaml         # Full 3.0 component stack (kueue: Unmanaged)
+        ├── kueue-component.yaml            # ODH Kueue for Dashboard integration
         ├── auth.yaml                       # User/Admin groups
-        ├── dashboard-config.yaml           # GenAI Studio + Hardware Profile order
-        ├── hardware-profile-default.yaml   # Default: g6.4xlarge (1x L4)
-        ├── hardware-profile-l4-1gpu.yaml   # NVIDIA L4 1GPU: g6.4xlarge
-        └── hardware-profile-l4-4gpu.yaml   # NVIDIA L4 4GPUs: g6.12xlarge
+        ├── dashboard-config.yaml           # GenAI Studio + disableKueue: false
+        ├── hardware-profile-cpu-small.yaml # CPU only (Queue-based)
+        ├── hardware-profile-default.yaml   # Default L4 1GPU (Queue-based)
+        ├── hardware-profile-l4-1gpu.yaml   # NVIDIA L4 1GPU (Queue-based)
+        └── hardware-profile-l4-4gpu.yaml   # NVIDIA L4 4GPUs (Queue-based)
 ```
 
 ---

@@ -24,6 +24,13 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0. 
 | Limitador Operator | stable | Rate limiting for LLM endpoints |
 | DNS Operator | stable | Endpoint DNS management |
 
+### GPU-as-a-Service (Kueue)
+
+| Component | Version/Channel | Purpose |
+|-----------|-----------------|---------|
+| **Red Hat Build of Kueue** | stable-v1.2 | Workload queuing, quota management |
+| Kueue Instance (`cluster`) | - | Singleton controller with framework integrations |
+
 ---
 
 ## Prerequisites
@@ -308,6 +315,46 @@ oc get crd dnsrecords.dns.kuadrant.io
 
 ---
 
+### 8. Red Hat Build of Kueue Operator
+
+**Purpose:** Provides workload queuing, quota management, and GPU-as-a-Service capabilities. **Required for RHOAI 3.0** to enable Hardware Profiles with Queue-based scheduling.
+
+**Key Configuration:** The Kueue instance (`cluster`) is configured with framework integrations:
+```yaml
+spec:
+  controllerManager:
+    config:
+      integrations:
+        frameworks:
+          - BatchJob           # Standard Kubernetes Jobs
+          - RayJob             # Ray distributed jobs
+          - RayCluster         # Ray clusters
+          - PyTorchJob         # PyTorch Training Operator
+          - Pod                # Standalone pods (Workbenches)
+          - LeaderWorkerSet    # llm-d distributed inference
+```
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu/base/kueue-operator/
+```
+
+**Validation:**
+```bash
+# Check Kueue operator status
+oc get csv -n openshift-kueue-operator | grep kueue
+
+# Check Kueue instance is ready
+oc get kueue cluster
+
+# Verify controller pods
+oc get pods -n openshift-kueue-operator
+```
+
+**Ref:** [RHOAI 3.0 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
+
+---
+
 ## Deploy All Components
 
 Deploy all operators and GPU infrastructure via Argo CD:
@@ -440,6 +487,8 @@ echo "=== LeaderWorkerSet ===" && oc get csv -n openshift-lws-operator | grep le
 echo "=== Authorino ===" && oc get csv -n openshift-authorino | grep authorino
 echo "=== Limitador ===" && oc get csv -n openshift-limitador-operator | grep limitador
 echo "=== DNS Operator ===" && oc get csv -n openshift-dns-operator | grep dns
+echo "=== Kueue Operator ===" && oc get csv -n openshift-kueue-operator | grep kueue
+echo "=== Kueue Instance ===" && oc get kueue cluster
 ```
 
 ---
@@ -481,10 +530,15 @@ gitops/step-01-gpu/
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
 │   │   └── subscription.yaml
-│   └── dns-operator/               # DNS Operator (RHCL)
+│   ├── dns-operator/               # DNS Operator (RHCL)
+│   │   ├── namespace.yaml
+│   │   ├── operatorgroup.yaml
+│   │   └── subscription.yaml
+│   └── kueue-operator/             # Red Hat Build of Kueue
 │       ├── namespace.yaml
 │       ├── operatorgroup.yaml
-│       └── subscription.yaml
+│       ├── subscription.yaml
+│       └── kueue-instance.yaml     # Singleton with framework integrations
 └── overlays/
     └── aws/
         ├── kustomization.yaml

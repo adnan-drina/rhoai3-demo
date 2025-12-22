@@ -116,7 +116,11 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 | **ResourceFlavor** | `nvidia-l4-1gpu` | Targets g6.4xlarge nodes (1x L4) |
 | **ResourceFlavor** | `nvidia-l4-4gpu` | Targets g6.12xlarge nodes (4x L4) |
 | **ClusterQueue** | `rhoai-main-queue` | Cluster-wide GPU quota pool |
-| **LocalQueue** | `private-ai-queue` | Entry point for private-ai namespace |
+| **LocalQueue** | `default` | **Standard name** - matches global HardwareProfiles |
+| **LocalQueue** | `private-ai-queue` | Alternative queue pointing to rhoai-main-queue |
+
+> **Important**: The `default` LocalQueue is **required** for global Hardware Profiles to work.
+> Global profiles reference `localQueueName: default` - this queue must exist in each project.
 
 ### Namespace
 
@@ -269,11 +273,14 @@ gitops/step-03-private-ai/
     │   ├── project-admin.yaml      # ai-admin → admin role
     │   └── project-editor.yaml     # ai-developer → edit role
     │
-    ├── namespace.yaml              # private-ai namespace
-    ├── resource-flavors.yaml       # GPU node flavors
-    ├── cluster-queue.yaml          # Cluster-wide quota
-    └── local-queue.yaml            # Project entry point
+    ├── namespace.yaml              # private-ai namespace with Kueue labels
+    ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
+    ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
+    └── local-queue.yaml            # LocalQueue named 'default' (required!)
 ```
+
+> **Note**: Hardware Profiles are **global** (in step-02-rhoai).
+> Each project only needs a LocalQueue named `default` to use them.
 
 ---
 
@@ -348,30 +355,60 @@ oc get workloads -n private-ai
 
 In RHOAI 3.0, Kueue has transitioned from an embedded component to a **standalone operator**.
 
-### The Three-Part Handshake
+### The Four-Part Handshake
 
-For the Dashboard to recognize Kueue as enabled:
+For the Dashboard to recognize Kueue and enable Hardware Profiles:
 
-1. **Backend**: Red Hat Build of Kueue operator installed with `Kueue` resource named `cluster`
-2. **DSC**: Set `kueue.managementState: Removed` (tells RHOAI not to install legacy embedded Kueue)
-3. **Dashboard**: Set `disableKueue: false` in `OdhDashboardConfig`
+1. **Kueue Operator**: Red Hat Build of Kueue (step-01-gpu) with `Kueue` resource named `cluster`
+2. **DSC**: Set `kueue.managementState: Unmanaged` (recognizes external Kueue)
+3. **ODH Kueue Component**: Created for Dashboard integration
+4. **Dashboard**: Set `disableKueue: false` in `OdhDashboardConfig`
+
+### Hardware Profile Integration
+
+Global Hardware Profiles use Queue-based scheduling:
+
+```yaml
+# Hardware Profile (in redhat-ods-applications)
+spec:
+  scheduling:
+    type: Queue
+    kueue:
+      localQueueName: default  # Must exist in user projects
+```
+
+**Each project needs a LocalQueue named `default`** to use global profiles!
 
 ### Configuration Summary
 
-**DataScienceCluster:**
+**DataScienceCluster (step-02):**
 ```yaml
 spec:
   components:
     kueue:
-      managementState: Removed  # Use standalone operator
+      managementState: Unmanaged  # External standalone operator
 ```
 
-**OdhDashboardConfig:**
+**ODH Kueue Component (step-02):**
 ```yaml
+apiVersion: components.platform.opendatahub.io/v1alpha1
+kind: Kueue
+metadata:
+  name: default-kueue
 spec:
-  dashboardConfig:
-    disableKueue: false  # Enable UI integration
-    disableDistributedWorkloads: false  # Show queues in sidebar
+  managementState: Unmanaged
+  defaultLocalQueueName: default
+```
+
+**LocalQueue (this step):**
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: default  # MUST match localQueueName in profiles
+  namespace: private-ai
+spec:
+  clusterQueue: default  # Or your custom ClusterQueue
 ```
 
 ### Verification Commands
@@ -382,8 +419,11 @@ oc get pods -n openshift-kueue-operator
 # Check Kueue instance
 oc get kueue cluster
 
-# Check LocalQueues in project
+# Check LocalQueues in project (must have 'default')
 oc get localqueue -n private-ai
+
+# Check global HardwareProfiles
+oc get hardwareprofile -n redhat-ods-applications -o custom-columns=NAME:.metadata.name,TYPE:.spec.scheduling.type,QUEUE:.spec.scheduling.kueue.localQueueName
 
 # Check workload admission
 oc get workloads -n private-ai

@@ -1,14 +1,27 @@
-# LocalQueue - Project entry point for GPU requests
-# This is what users "see" when creating workloads in the private-ai namespace
+# LocalQueue 'default' - REQUIRED for global Hardware Profiles
+# Global HardwareProfiles in step-02 use scheduling.kueue.localQueueName: "default"
+# This queue MUST exist in every Kueue-managed project
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: default
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    kueue.x-k8s.io/default-queue: "true"  # Auto-assign workloads to this queue
+spec:
+  # Points to the cluster-wide quota pool created by RHOAI operator
+  clusterQueue: default
+---
+# LocalQueue 'private-ai-queue' - Alternative entry point
+# Can be used for workloads that need different quota allocation
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
   name: private-ai-queue
   namespace: private-ai
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
-    kueue.x-k8s.io/default-queue: "true"  # Auto-assign workloads to this queue
+    argocd.argoproj.io/sync-wave: "20"
 spec:
-  # Point to the cluster-wide quota pool
+  # Point to our custom cluster-wide quota pool
   clusterQueue: rhoai-main-queue
-
