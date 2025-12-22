@@ -1,0 +1,27 @@
+# KnativeServing Instance
+# Required prerequisite for KServe model serving in RHOAI 3.0
+# Even with RawDeployment mode, Knative infrastructure is needed for the serving platform
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#configuring-the-openshift-serverless-operator_install-kserve
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Use ingress from OpenShift routes
+  ingress:
+    istio:
+      enabled: false
+  # High availability configuration
+  high-availability:
+    replicas: 2
+  # Controller configuration for RHOAI
+  config:
+    features:
+      kubernetes.podspec-affinity: enabled
+      kubernetes.podspec-nodeselector: enabled
+      kubernetes.podspec-tolerations: enabled
+

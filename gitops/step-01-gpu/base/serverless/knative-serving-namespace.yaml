@@ -1,0 +1,10 @@
+# Knative Serving Namespace
+# Required for KnativeServing instance
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#configuring-the-openshift-serverless-operator_install-kserve
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: knative-serving
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+

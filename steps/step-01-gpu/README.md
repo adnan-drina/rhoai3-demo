@@ -11,7 +11,7 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0 b
 | User Workload Monitoring | - | Enables metrics scraping from RHOAI user projects |
 | Node Feature Discovery (NFD) | stable (4.20) | Detects hardware features on nodes |
 | NVIDIA GPU Operator | v25.10 | Manages GPU drivers, device plugin, monitoring |
-| OpenShift Serverless | stable-1.37 | Provides Knative Serving for KServe model inference |
+| OpenShift Serverless + KnativeServing | stable-1.37 | Provides Knative Serving infrastructure for KServe |
 | GPU MachineSets | - | AWS g6.4xlarge, g6.12xlarge instances |
 
 ### Distributed Inference (llm-d) Prerequisites
@@ -158,9 +158,15 @@ spec:
 
 ---
 
-### 3. OpenShift Serverless Operator
+### 3. OpenShift Serverless Operator & KnativeServing
 
-**Purpose:** Provides Knative Serving, which is **required for KServe** model serving in RHOAI 3.0. KServe uses Knative to autoscale inference endpoints from zero to many replicas.
+**Purpose:** Provides Knative Serving infrastructure, which is a **prerequisite for KServe** model serving in RHOAI 3.0.
+
+> **Note:** While RHOAI 3.0 uses RawDeployment mode (deprecating Serverless mode), Knative Serving is still required as infrastructure for the serving platform and Inference Gateway.
+
+This step installs:
+1. **OpenShift Serverless Operator** - The operator itself
+2. **KnativeServing Instance** - The Knative Serving control plane in `knative-serving` namespace
 
 **Deployment Command:**
 ```bash
@@ -172,11 +178,16 @@ oc apply -k gitops/step-01-gpu/base/serverless/
 # Check Serverless operator status
 oc get csv -n openshift-serverless | grep serverless
 
-# Check subscription
-oc get subscription serverless-operator -n openshift-serverless
+# Check KnativeServing instance is ready
+oc get knativeserving knative-serving -n knative-serving
+
+# Check Knative Serving pods
+oc get pods -n knative-serving
 ```
 
-**Ref:** [RHOAI 3.0 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
+**Ref:** 
+- [RHOAI 3.0 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
+- [RHOAI 3.0 - Configuring the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#configuring-the-openshift-serverless-operator_install-kserve)
 
 ---
 
@@ -467,7 +478,9 @@ gitops/step-01-gpu/
 │   ├── serverless/                 # OpenShift Serverless (KServe prerequisite)
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
-│   │   └── subscription.yaml
+│   │   ├── subscription.yaml
+│   │   ├── knative-serving-namespace.yaml
+│   │   └── knative-serving.yaml    # KnativeServing instance
 │   ├── leaderworkerset/            # LeaderWorkerSet (llm-d distributed inference)
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml

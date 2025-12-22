@@ -27,6 +27,8 @@ resources:
   - serverless/namespace.yaml
   - serverless/operatorgroup.yaml
   - serverless/subscription.yaml
+  - serverless/knative-serving-namespace.yaml
+  - serverless/knative-serving.yaml
 
   # 4. LeaderWorkerSet (required for llm-d distributed inference)
   - leaderworkerset/namespace.yaml
