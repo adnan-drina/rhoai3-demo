@@ -49,7 +49,7 @@ spec:
       jqPathExpressions:
         - .spec
     # HardwareProfile - dashboard may modify spec
-    - group: dashboard.opendatahub.io
+    - group: infrastructure.opendatahub.io
       kind: HardwareProfile
       jqPathExpressions:
         - .spec

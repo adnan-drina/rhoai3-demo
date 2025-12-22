@@ -2,7 +2,7 @@
 # New in RHOAI 3.0 - Technology Preview
 # Replaces legacy Accelerator Profiles for better GPU/resource targeting
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_accelerators/index#working-with-hardware-profiles
-apiVersion: dashboard.opendatahub.io/v1alpha1
+apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:
   name: aws-g6-gpu
@@ -13,32 +13,24 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
 spec:
-  # Display name in RHOAI Dashboard
-  displayName: "AWS G6 - NVIDIA L4 GPU"
-  
-  # Description shown in the UI
-  description: |
-    AWS G6 instances with NVIDIA L4 GPUs for inference workloads.
-    Configured for nodes created by step-01-gpu MachineSets.
-  
-  # Enable this profile for workbenches and model serving
-  enabled: true
-  
-  # Node selector to target GPU nodes from step-01-gpu
-  nodeSelector:
-    node-role.kubernetes.io/gpu: ""
-  
-  # Tolerations to schedule on tainted GPU nodes
-  tolerations:
-    - key: nvidia.com/gpu
-      operator: Exists
-      effect: NoSchedule
+  # Scheduling configuration - use direct node scheduling
+  scheduling:
+    type: Node
+    node:
+      # Node selector to target GPU nodes from step-01-gpu
+      nodeSelector:
+        node-role.kubernetes.io/gpu: ""
+      # Tolerations to schedule on tainted GPU nodes
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
   
   # Resource identifiers (what resources this profile provides)
   identifiers:
     - displayName: "NVIDIA L4 GPU"
       identifier: nvidia.com/gpu
+      resourceType: Accelerator
       minCount: 1
       maxCount: 4
       defaultCount: 1
-
