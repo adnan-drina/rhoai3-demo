@@ -28,6 +28,13 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+    # Cluster monitoring config - may have additional fields from monitoring operator
+    - group: ""
+      kind: ConfigMap
+      namespace: openshift-monitoring
+      name: cluster-monitoring-config
+      jqPathExpressions:
+        - .data
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy
