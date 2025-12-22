@@ -16,6 +16,20 @@ metadata:
     app.kubernetes.io/part-of: hardwareprofile
     app.opendatahub.io/hardwareprofile: "true"
 spec:
+  # Scheduling configuration - target GPU nodes with tolerations
+  scheduling:
+    type: Node
+    node:
+      # Target GPU nodes created by step-01-gpu MachineSets
+      nodeSelector:
+        node-role.kubernetes.io/gpu: ""
+      # Tolerate GPU taints to schedule on reserved GPU nodes
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+  
+  # Resource identifiers
   identifiers:
     # CPU allocation
     - identifier: cpu
@@ -40,4 +54,3 @@ spec:
       minCount: 1
       maxCount: 4
       defaultCount: 1
-
