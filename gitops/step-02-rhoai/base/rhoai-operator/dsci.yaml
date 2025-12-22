@@ -14,7 +14,9 @@ spec:
     managementState: Managed
     namespace: redhat-ods-monitoring
   serviceMesh:
-    managementState: Removed
+    managementState: Managed
+    controlPlane:
+      name: data-science-smcp
+      namespace: istio-system
   trustedCABundle:
     managementState: Managed
-
