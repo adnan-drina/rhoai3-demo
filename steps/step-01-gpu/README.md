@@ -8,6 +8,7 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0 b
 
 | Component | Version/Channel | Purpose |
 |-----------|-----------------|---------|
+| User Workload Monitoring | - | Enables metrics scraping from RHOAI user projects |
 | Node Feature Discovery (NFD) | stable (4.20) | Detects hardware features on nodes |
 | NVIDIA GPU Operator | v25.10 | Manages GPU drivers, device plugin, monitoring |
 | OpenShift Serverless | stable-1.37 | Provides Knative Serving for KServe model inference |
@@ -40,6 +41,32 @@ Follow [Red Hat's entitlement documentation](https://docs.openshift.com/containe
 ---
 
 ## Component Details
+
+### 0. User Workload Monitoring
+
+**Purpose:** Enables OpenShift Prometheus to scrape metrics from user-defined projects. This is **required for RHOAI 3.0 observability** - Model Servers, Workbenches, and TrustyAI export metrics to user namespaces that need to be collected.
+
+| Setting | Purpose |
+|---------|---------|
+| `enableUserWorkload: true` | Enables Prometheus/Thanos for user namespaces |
+| `enableUserAlertmanagerConfig: true` | Allows project owners to define their own alert routing |
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu/base/monitoring/
+```
+
+**Validation:**
+```bash
+# Check user workload monitoring pods are running
+oc get pods -n openshift-user-workload-monitoring
+
+# Expected: prometheus-user-workload-0, thanos-ruler-user-workload-0
+```
+
+**Ref:** [OCP 4.20 - Enabling monitoring for user-defined projects](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/configuring-the-monitoring-stack#enabling-monitoring-for-user-defined-projects_configuring-the-monitoring-stack)
+
+---
 
 ### 1. Node Feature Discovery (NFD) Operator
 
@@ -255,6 +282,15 @@ The dashboard displays:
 
 ## Verification Checklist
 
+### User Workload Monitoring
+
+```bash
+# Check user workload monitoring pods
+oc get pods -n openshift-user-workload-monitoring
+
+# Expected: prometheus-user-workload-0, thanos-ruler-user-workload-0 in Running state
+```
+
 ### All Operators
 
 ```bash
@@ -306,6 +342,8 @@ oc get servicemonitor -n nvidia-gpu-operator
 gitops/step-01-gpu/
 ├── base/
 │   ├── kustomization.yaml
+│   ├── monitoring/                 # User Workload Monitoring
+│   │   └── cluster-monitoring-config.yaml
 │   ├── nfd/                        # Node Feature Discovery
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
@@ -344,6 +382,7 @@ gitops/step-01-gpu/
 - [RHOAI 3.0 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
 
 ### OpenShift Container Platform 4.20
+- [OCP 4.20 - Enabling Monitoring for User-Defined Projects](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/configuring-the-monitoring-stack#enabling-monitoring-for-user-defined-projects_configuring-the-monitoring-stack)
 - [OCP 4.20 - NVIDIA GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [OCP 4.20 - Controlling Pod Placement (Taints/Tolerations)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling)
 - [OCP 4.20 - Modifying MachineSets](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/modifying-machineset)

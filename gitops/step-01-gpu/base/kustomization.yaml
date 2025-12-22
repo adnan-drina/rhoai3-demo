@@ -1,12 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Operators required for RHOAI 3.0 GPU workloads and KServe model serving
+# Infrastructure and operators required for RHOAI 3.0 GPU workloads and KServe model serving
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 #
 # NOTE: Service Mesh 3 and Kueue are installed automatically via DataScienceCluster CR
 
 resources:
+  # 0. User Workload Monitoring (required for RHOAI observability)
+  - monitoring/cluster-monitoring-config.yaml
+
   # 1. Node Feature Discovery (prerequisite for GPU Operator)
   - nfd/namespace.yaml
   - nfd/operatorgroup.yaml
