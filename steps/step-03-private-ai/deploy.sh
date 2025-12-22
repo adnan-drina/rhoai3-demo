@@ -2,10 +2,10 @@
 # =============================================================================
 # Step 03: Private AI - GPU as a Service
 # =============================================================================
-# Deploys GPU-as-a-Service infrastructure using Kueue:
-# - ResourceFlavors for GPU node types
-# - ClusterQueue for cluster-wide quota
-# - LocalQueue for private-ai namespace
+# Deploys GPU-as-a-Service infrastructure:
+# - Authentication (HTPasswd, OAuth, Groups)
+# - Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
+# - Project RBAC (ai-admin, ai-developer)
 # =============================================================================
 set -euo pipefail
 
@@ -39,12 +39,6 @@ if [[ "$DSC_PHASE" != "Ready" ]]; then
     exit 1
 fi
 
-# Check Kueue CRDs exist (managed by RHOAI)
-if ! oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
-    log_warn "Kueue CRDs not found - they may be installed by RHOAI DSC"
-    log_info "Continuing with deployment..."
-fi
-
 # Check GPU nodes exist
 GPU_NODES=$(oc get nodes -l node-role.kubernetes.io/gpu --no-headers 2>/dev/null | wc -l || echo "0")
 if [[ "$GPU_NODES" -eq 0 ]]; then
@@ -64,9 +58,32 @@ oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "Argo CD Application '${STEP_NAME}' created"
 
 # =============================================================================
-# Wait for resources
+# Wait for authentication resources
 # =============================================================================
-log_step "Waiting for Kueue resources..."
+log_step "Waiting for authentication resources..."
+
+# Wait for HTPasswd secret
+until oc get secret htpass-secret -n openshift-config &>/dev/null; do
+    log_info "Waiting for HTPasswd secret..."
+    sleep 5
+done
+log_success "HTPasswd secret created"
+
+# Wait for OAuth to update (this triggers auth pod restart)
+log_info "Waiting for OAuth configuration to apply..."
+sleep 10
+
+# Wait for groups
+until oc get group rhoai-admins &>/dev/null; do
+    log_info "Waiting for rhoai-admins group..."
+    sleep 5
+done
+log_success "Groups created"
+
+# =============================================================================
+# Wait for namespace and Kueue resources
+# =============================================================================
+log_step "Waiting for project resources..."
 
 # Wait for namespace
 until oc get namespace private-ai &>/dev/null; do
@@ -75,15 +92,15 @@ until oc get namespace private-ai &>/dev/null; do
 done
 log_success "Namespace 'private-ai' created"
 
-# Wait for ClusterQueue (if Kueue is available)
+# Wait for Kueue resources (if CRDs available)
 if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
-    log_info "Waiting for ClusterQueue..."
+    log_info "Waiting for Kueue resources..."
+    
     until oc get clusterqueue rhoai-main-queue &>/dev/null; do
         sleep 5
     done
     log_success "ClusterQueue 'rhoai-main-queue' created"
     
-    log_info "Waiting for LocalQueue..."
     until oc get localqueue private-ai-queue -n private-ai &>/dev/null; do
         sleep 5
     done
@@ -102,29 +119,35 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "GPU-as-a-Service Infrastructure Deployed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+echo "Demo Users:"
+echo "  ┌──────────────┬─────────────┬────────────────┐"
+echo "  │ Username     │ Password    │ Role           │"
+echo "  ├──────────────┼─────────────┼────────────────┤"
+echo "  │ ai-admin     │ redhat123   │ Service Admin  │"
+echo "  │ ai-developer │ redhat123   │ Service User   │"
+echo "  └──────────────┴─────────────┴────────────────┘"
+echo ""
 echo "Kueue Resources:"
 echo "  • ResourceFlavor: nvidia-l4-1gpu (g6.4xlarge)"
 echo "  • ResourceFlavor: nvidia-l4-4gpu (g6.12xlarge)"
 echo "  • ClusterQueue:   rhoai-main-queue"
-echo "  • LocalQueue:     private-ai-queue (namespace: private-ai)"
-echo ""
-echo "GPU Quota (from ClusterQueue):"
-if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
-    oc get clusterqueue rhoai-main-queue -o jsonpath='{range .spec.resourceGroups[*].flavors[*]}  • {.name}: {range .resources[*]}{.name}={.nominalQuota} {end}{"\n"}{end}' 2>/dev/null || echo "  (unable to retrieve)"
-else
-    echo "  (Kueue not yet available)"
-fi
+echo "  • LocalQueue:     private-ai-queue"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-log_info "Argo CD Application status:"
-echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
+log_info "Test login:"
+echo "  oc login -u ai-admin -p redhat123"
+echo "  oc login -u ai-developer -p redhat123"
 echo ""
 log_info "Check Kueue resources:"
 echo "  oc get resourceflavors"
-echo "  oc get clusterqueue rhoai-main-queue -o yaml"
+echo "  oc get clusterqueue rhoai-main-queue"
 echo "  oc get localqueue -n private-ai"
 echo ""
 log_info "Monitor GPU utilization:"
 echo "  OpenShift Console → Observe → Dashboards → NVIDIA DCGM Exporter Dashboard"
+echo ""
+log_info "RHOAI Dashboard:"
+DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
+echo "  https://${DASHBOARD_URL}"
 echo ""

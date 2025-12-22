@@ -3,21 +3,43 @@ kind: Kustomization
 
 # Step 03: Private AI - GPU as a Service (GPUaaS)
 # Implements dynamic GPU allocation using Kueue integration
+# with proper user authentication and RBAC
 #
 # Architecture:
-#   ResourceFlavor → ClusterQueue → LocalQueue → Workloads
+#   Users → Auth → Project RBAC → LocalQueue → ClusterQueue → GPU Nodes
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
 
 resources:
-  # 1. Namespace with Kueue labels (sync-wave: 0)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. Authentication (sync-wave: 0-2)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # HTPasswd secret for demo users
+  - auth/htpasswd-secret.yaml
+  # OAuth identity provider configuration
+  - auth/oauth.yaml
+  # OpenShift Groups for RHOAI personas
+  - auth/groups.yaml
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. Namespace (sync-wave: 3)
+  # ═══════════════════════════════════════════════════════════════════════════
   - namespace.yaml
   
-  # 2. ResourceFlavors - Define GPU node types (sync-wave: 1)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 3. Kueue Resources (sync-wave: 4-5)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ResourceFlavors - Define GPU node types
   - resource-flavors.yaml
-  
-  # 3. ClusterQueue - Cluster-wide quota pool (sync-wave: 2)
+  # ClusterQueue - Cluster-wide quota pool
   - cluster-queue.yaml
-  
-  # 4. LocalQueue - Project entry point (sync-wave: 3)
+  # LocalQueue - Project entry point
   - local-queue.yaml
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. Project RBAC (sync-wave: 5)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ai-admin as project admin
+  - rbac/project-admin.yaml
+  # ai-developer as project editor
+  - rbac/project-editor.yaml

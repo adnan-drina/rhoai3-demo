@@ -8,7 +8,7 @@ kind: ResourceFlavor
 metadata:
   name: nvidia-l4-1gpu
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   nodeLabels:
     node.kubernetes.io/instance-type: g6.4xlarge
@@ -25,7 +25,7 @@ kind: ResourceFlavor
 metadata:
   name: nvidia-l4-4gpu
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   nodeLabels:
     node.kubernetes.io/instance-type: g6.12xlarge

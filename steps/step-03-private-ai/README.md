@@ -1,56 +1,113 @@
 # Step 03: Private AI - GPU as a Service (GPUaaS)
 
-Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using Kueue integration for dynamic GPU allocation and quota enforcement.
+Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using Kueue integration for dynamic GPU allocation, quota enforcement, and proper access control.
 
 ---
 
-## The Service Model
+## Demo Credentials
+
+| Username | Password | Role | RHOAI Persona | Project Access |
+|----------|----------|------|---------------|----------------|
+| `ai-admin` | `redhat123` | Service Admin | RHOAI Admin | `admin` in `private-ai` |
+| `ai-developer` | `redhat123` | Service Consumer | RHOAI User | `edit` in `private-ai` |
+
+> **Note**: Passwords are pre-configured in the HTPasswd secret. For production, generate new hashes.
+
+---
+
+## Access Control Model
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          GPU-as-a-Service Flow                              │
+│                          Access Control Layers                              │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   User Request         Kueue Admission         RHOAI Execution              │
-│   ───────────────────────────────────────────────────────────────────────   │
+│  Layer 1: Authentication (OpenShift)                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  HTPasswd Identity Provider → ai-admin, ai-developer                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│  Layer 2: RHOAI Personas (Auth Resource)                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  rhoai-admins (ai-admin)     │  rhoai-users (ai-developer)          │   │
+│  │  • Manage Hardware Profiles  │  • Create Workbenches                │   │
+│  │  • View ClusterQueue quotas  │  • Use GenAI Playground              │   │
+│  │  • Access Distributed WL     │  • Deploy Models                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│  Layer 3: Project RBAC (private-ai)                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  ai-admin: admin role        │  ai-developer: edit role             │   │
+│  │  • View all workloads        │  • Create own workloads              │   │
+│  │  • Manage LocalQueue         │  • Cannot modify quotas              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│   ┌─────────────┐     ┌─────────────────┐     ┌─────────────────────┐      │
-│   │  User picks │────▶│  Kueue checks   │────▶│  Workload starts    │      │
-│   │  Hardware   │     │  ClusterQueue   │     │  on GPU node        │      │
-│   │  Profile    │     │  quota          │     │                     │      │
-│   └─────────────┘     └─────────────────┘     └─────────────────────┘      │
-│         │                     │                        │                    │
-│         │                     ▼                        │                    │
-│         │              ┌─────────────────┐             │                    │
-│         │              │  If quota full: │             │                    │
-│         │              │  Queue workload │             │                    │
-│         │              │  (Pending)      │             │                    │
-│         │              └─────────────────┘             │                    │
-│         │                     │                        │                    │
-│         │                     ▼                        │                    │
-│         │              ┌─────────────────┐             │                    │
-│         │              │  When GPU freed:│             │                    │
-│         │              │  Auto-admit     │◀────────────┘                    │
-│         │              │  next workload  │                                  │
-│         │              └─────────────────┘                                  │
-│         │                                                                   │
-│         ▼                                                                   │
-│   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │                    NVIDIA DCGM Dashboard                             │  │
-│   │   • GPU Utilization (detect idle/hoarding)                          │  │
-│   │   • Power Usage (training vs. idle)                                  │  │
-│   │   • VRAM Usage (model memory footprint)                              │  │
-│   └─────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**The Flow:**
-1. **Users Request** → Select Hardware Profile in RHOAI Dashboard
-2. **Kueue Admits** → Checks quota, queues if full, admits when available
-3. **RHOAI Executes** → Workload runs on GPU node
+---
+
+## GPU-as-a-Service Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          GPU Request Flow                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   1. USER REQUEST              2. KUEUE ADMISSION           3. EXECUTION   │
+│   ─────────────────────────────────────────────────────────────────────     │
+│                                                                             │
+│   ┌─────────────────┐         ┌─────────────────┐         ┌─────────────┐  │
+│   │  ai-developer   │────────▶│  LocalQueue     │────────▶│  GPU Pod    │  │
+│   │  selects L4     │         │  (private-ai)   │         │  Running    │  │
+│   │  Hardware       │         │                 │         │             │  │
+│   │  Profile        │         │  ┌───────────┐  │         │  ┌───────┐  │  │
+│   │                 │         │  │ Check     │  │         │  │ L4    │  │  │
+│   │  ┌───────────┐  │         │  │ Cluster   │  │         │  │ GPU   │  │  │
+│   │  │ Workbench │  │         │  │ Queue     │  │         │  │       │  │  │
+│   │  │ Create    │  │         │  │ Quota     │  │         │  └───────┘  │  │
+│   │  └───────────┘  │         │  └───────────┘  │         │             │  │
+│   └─────────────────┘         └─────────────────┘         └─────────────┘  │
+│                                       │                                     │
+│                                       ▼                                     │
+│                               ┌─────────────────┐                          │
+│                               │  QUOTA FULL?    │                          │
+│                               │                 │                          │
+│                               │  YES: Queue     │                          │
+│                               │       (Pending) │                          │
+│                               │                 │                          │
+│                               │  NO: Admit      │                          │
+│                               │      (Running)  │                          │
+│                               └─────────────────┘                          │
+│                                       │                                     │
+│   4. MONITORING (ai-admin)            │                                     │
+│   ──────────────────────────          │                                     │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                    NVIDIA DCGM Dashboard                             │  │
+│   │   • GPU Utilization → Detect idle/hoarding                          │  │
+│   │   • Power Usage     → Training vs. idle                              │  │
+│   │   • VRAM Usage      → Model memory footprint                         │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## What Gets Installed
+
+### Authentication & Authorization
+
+| Resource | Name | Purpose |
+|----------|------|---------|
+| **Secret** | `htpass-secret` | HTPasswd file for demo users |
+| **OAuth** | `cluster` | HTPasswd identity provider |
+| **Group** | `rhoai-admins` | Admin group (ai-admin) |
+| **Group** | `rhoai-users` | User group (ai-developer) |
+| **RoleBinding** | `ai-admin-admin` | Project admin access |
+| **RoleBinding** | `ai-developer-edit` | Project edit access |
 
 ### Kueue Resources
 
@@ -69,59 +126,11 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 
 ---
 
-## Architecture
-
-### Layer 1: ResourceFlavors (Infrastructure)
-
-Defines the "flavors" of GPUs available, mapping to physical node types.
-
-```yaml
-# nvidia-l4-1gpu → g6.4xlarge
-nodeLabels:
-  node.kubernetes.io/instance-type: g6.4xlarge
-tolerations:
-  - key: nvidia.com/gpu
-    operator: Exists
-    effect: NoSchedule
-```
-
-### Layer 2: ClusterQueue (Quota)
-
-Cluster-wide resource pool governing total GPU/CPU/Memory allocation.
-
-```yaml
-# rhoai-main-queue
-resourceGroups:
-  - flavors:
-      - name: nvidia-l4-1gpu
-        resources:
-          - name: "nvidia.com/gpu"
-            nominalQuota: 1      # 1 GPU from g6.4xlarge
-      - name: nvidia-l4-4gpu
-        resources:
-          - name: "nvidia.com/gpu"
-            nominalQuota: 4      # 4 GPUs from g6.12xlarge
-```
-
-### Layer 3: LocalQueue (Project Access)
-
-Entry point for the `private-ai` project - what users "see" in the UI.
-
-```yaml
-# private-ai-queue → points to rhoai-main-queue
-spec:
-  clusterQueue: rhoai-main-queue
-```
-
----
-
 ## Prerequisites
 
 - [x] Step 01 completed (GPU infrastructure, MachineSets)
 - [x] Step 02 completed (RHOAI 3.0 with Hardware Profiles)
-- [x] GPU nodes available with labels:
-  - `node-role.kubernetes.io/gpu: ""`
-  - `node.kubernetes.io/instance-type: g6.4xlarge` or `g6.12xlarge`
+- [x] GPU nodes available with labels
 
 ---
 
@@ -132,88 +141,114 @@ spec:
 ```
 
 The script will:
-1. Create Argo CD Application for private-ai
-2. Deploy Kueue ResourceFlavors, ClusterQueue, LocalQueue
-3. Create the `private-ai` namespace with proper labels
+1. Deploy authentication resources (HTPasswd, OAuth, Groups)
+2. Create the `private-ai` namespace with Kueue labels
+3. Deploy Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
+4. Configure RBAC for ai-admin and ai-developer
+
+---
+
+## Demo Walkthrough
+
+### 1. Login as `ai-developer` (Service Consumer)
+
+```bash
+# Login via CLI
+oc login -u ai-developer -p redhat123
+
+# Or use the OpenShift Console
+# Navigate to: https://<console-url>
+```
+
+**In RHOAI Dashboard:**
+1. Go to **Data Science Projects** → **private-ai**
+2. Create a new **Workbench**
+3. Select **Hardware Profile**: "NVIDIA L4 1GPU (Default)"
+4. Click **Create**
+
+**Behind the Scenes:**
+- RHOAI creates a Notebook CR with GPU request
+- Kueue intercepts via `private-ai-queue`
+- ClusterQueue checks quota → Admits or Queues
+
+### 2. Login as `ai-admin` (Service Administrator)
+
+```bash
+# Login via CLI
+oc login -u ai-admin -p redhat123
+```
+
+**In RHOAI Dashboard:**
+1. Go to **Distributed Workloads** in sidebar
+2. View `rhoai-main-queue` status
+3. See workloads: Admitted vs. Pending
+
+**Monitor GPU Usage:**
+1. OpenShift Console → **Observe** → **Dashboards**
+2. Select **NVIDIA DCGM Exporter Dashboard**
+3. Track: GPU Utilization, Power Usage, VRAM
+
+### 3. Test Quota Enforcement
+
+```bash
+# As ai-developer, try to exceed quota
+# Create multiple workbenches requesting GPUs
+
+# As ai-admin, watch the queue
+oc get workloads -n private-ai -w
+
+# Expected output when quota exceeded:
+# NAME                    QUEUE               ADMITTED   AGE
+# notebook-jupyter-abc    private-ai-queue    True       2m
+# notebook-jupyter-xyz    private-ai-queue    False      30s  # QUEUED
+```
 
 ---
 
 ## Verification Checklist
 
-### 1. Namespace Status
+### 1. Authentication
 
 ```bash
-# Verify namespace exists with Kueue labels
-oc get namespace private-ai --show-labels
+# Verify OAuth configuration
+oc get oauth cluster -o yaml
+
+# Test login
+oc login -u ai-admin -p redhat123
+oc login -u ai-developer -p redhat123
 ```
 
-### 2. ResourceFlavors
+### 2. Groups
 
 ```bash
-# List GPU flavors
+# List groups
+oc get groups
+
+# Verify group membership
+oc get group rhoai-admins -o jsonpath='{.users}'
+oc get group rhoai-users -o jsonpath='{.users}'
+```
+
+### 3. Project RBAC
+
+```bash
+# Check rolebindings in private-ai
+oc get rolebindings -n private-ai
+
+# Verify ai-admin has admin role
+oc auth can-i --list -n private-ai --as=ai-admin | grep -E "create|delete"
+
+# Verify ai-developer has edit role
+oc auth can-i --list -n private-ai --as=ai-developer | grep workloads
+```
+
+### 4. Kueue Resources
+
+```bash
+# Check all Kueue resources
 oc get resourceflavors
-
-# Verify flavor details
-oc get resourceflavor nvidia-l4-1gpu -o yaml
-```
-
-### 3. ClusterQueue Status
-
-```bash
-# Check queue status and quota usage
-oc get clusterqueue rhoai-main-queue -o yaml
-
-# View pending/admitted workloads
-oc get clusterqueue rhoai-main-queue -o jsonpath='{.status}'
-```
-
-### 4. LocalQueue Status
-
-```bash
-# Check local queue in private-ai namespace
+oc get clusterqueue rhoai-main-queue
 oc get localqueue -n private-ai
-
-# View queue details
-oc get localqueue private-ai-queue -n private-ai -o yaml
-```
-
-### 5. End-to-End Test
-
-```bash
-# Create a test workbench in private-ai namespace via RHOAI Dashboard
-# Select "NVIDIA L4 1GPU" Hardware Profile
-# Watch the queue admission:
-oc get workloads -n private-ai -w
-```
-
----
-
-## GPU Utilization Monitoring (DCGM Dashboard)
-
-Track GPU usage to detect idle resources and "GPU hoarding."
-
-### Accessing the Dashboard
-
-1. Navigate to **Observe → Dashboards** in OpenShift Console
-2. Select **NVIDIA DCGM Exporter Dashboard**
-
-### Key Metrics to Monitor
-
-| Metric | What It Shows | Demo Use Case |
-|--------|---------------|---------------|
-| **GPU Utilization** | % of GPU compute used | 0% = idle/hoarding |
-| **GPU Power Usage** | Watts consumed | High = training, Low = idle |
-| **Framebuffer Memory** | VRAM usage | Track LLM memory footprint |
-| **SM Occupancy** | Streaming multiprocessor usage | Model inference load |
-
-### Identifying GPU Hoarding
-
-```bash
-# Find pods using GPUs but with low utilization
-# Check DCGM dashboard for:
-# - GPU Utilization = 0% for extended periods
-# - Power Usage = Base power (not training)
-# - Workbench idle but GPU allocated
 ```
 
 ---
@@ -223,80 +258,61 @@ Track GPU usage to detect idle resources and "GPU hoarding."
 ```
 gitops/step-03-private-ai/
 └── base/
-    ├── kustomization.yaml      # Resource list
-    ├── namespace.yaml          # private-ai namespace
-    ├── resource-flavors.yaml   # GPU node flavors (L4 1GPU, L4 4GPU)
-    ├── cluster-queue.yaml      # Cluster-wide quota pool
-    └── local-queue.yaml        # Project entry point
-```
-
----
-
-## How It Works in the RHOAI Dashboard
-
-### Creating a GPU Workbench
-
-1. Go to **Data Science Projects** → **private-ai**
-2. Create a new **Workbench**
-3. Select **Hardware Profile**: "NVIDIA L4 1GPU (Default)"
-4. Click **Create**
-
-### What Happens Behind the Scenes
-
-1. **RHOAI Dashboard** creates a Notebook CR with GPU request
-2. **Kueue** intercepts the workload via the LocalQueue
-3. **ClusterQueue** checks if quota is available:
-   - ✅ **Quota available**: Workload admitted, pod starts
-   - ❌ **Quota full**: Workload queued (Status: `Pending`)
-4. **When GPU freed**: Next queued workload auto-admitted
-
-### Viewing Queue Status
-
-```bash
-# Watch workload admission in real-time
-oc get workloads -n private-ai -w
-
-# Example output:
-# NAME                    QUEUE               ADMITTED   AGE
-# notebook-jupyter-abc    private-ai-queue    True       2m
-# notebook-jupyter-xyz    private-ai-queue    False      30s  # Queued
+    ├── kustomization.yaml
+    │
+    ├── auth/
+    │   ├── htpasswd-secret.yaml    # Demo user credentials
+    │   ├── oauth.yaml              # HTPasswd identity provider
+    │   └── groups.yaml             # rhoai-admins, rhoai-users
+    │
+    ├── rbac/
+    │   ├── project-admin.yaml      # ai-admin → admin role
+    │   └── project-editor.yaml     # ai-developer → edit role
+    │
+    ├── namespace.yaml              # private-ai namespace
+    ├── resource-flavors.yaml       # GPU node flavors
+    ├── cluster-queue.yaml          # Cluster-wide quota
+    └── local-queue.yaml            # Project entry point
 ```
 
 ---
 
 ## Troubleshooting
 
-### Workload Stuck in Pending
+### Login Fails
+
+```bash
+# Check OAuth pods
+oc get pods -n openshift-authentication
+
+# Verify HTPasswd secret
+oc get secret htpass-secret -n openshift-config
+
+# Check OAuth configuration
+oc describe oauth cluster
+```
+
+### User Can't Access Project
+
+```bash
+# Verify rolebinding exists
+oc get rolebinding -n private-ai
+
+# Check user's effective permissions
+oc auth can-i --list -n private-ai --as=ai-developer
+```
+
+### Workload Stuck Pending
 
 ```bash
 # Check ClusterQueue status
-oc get clusterqueue rhoai-main-queue -o jsonpath='{.status.flavorsReservation}'
-
-# Check if quota is exhausted
-oc describe clusterqueue rhoai-main-queue | grep -A 10 "Status"
+oc get clusterqueue rhoai-main-queue -o jsonpath='{.status}'
 
 # Check LocalQueue events
 oc describe localqueue private-ai-queue -n private-ai
-```
 
-### ResourceFlavor Not Matching Nodes
-
-```bash
-# Verify node labels match flavor
-oc get nodes -l node.kubernetes.io/instance-type=g6.4xlarge
-
-# Check if nodes have expected labels
-oc get nodes -l node-role.kubernetes.io/gpu --show-labels
-```
-
-### Kueue CRDs Missing
-
-```bash
-# Verify Kueue is installed (managed by RHOAI DSC)
-oc get crd | grep kueue
-
-# Check Kueue controller pods
-oc get pods -n redhat-ods-applications | grep kueue
+# View pending workloads
+oc get workloads -n private-ai
 ```
 
 ---
@@ -304,21 +320,24 @@ oc get pods -n redhat-ods-applications | grep kueue
 ## Documentation Links
 
 ### Official Red Hat Documentation
+- [RHOAI 3.0 - User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_users/index)
 - [RHOAI 3.0 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
-- [RHOAI 3.0 - Configuring Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_on_data_science_projects/configuring-distributed-workloads_distributed-workloads)
-- [Kueue Documentation](https://kueue.sigs.k8s.io/docs/)
+- [OpenShift - Configuring HTPasswd](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-identity-providers#configuring-htpasswd-identity-provider)
 
 ### GPU Monitoring
 - [NVIDIA DCGM Exporter Dashboard](https://docs.nvidia.com/datacenter/cloud-native/openshift/latest/enable-gpu-monitoring-dashboard.html)
-- [OCP GPU Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/nvidia-gpu-admin-dashboard)
 
 ---
 
 ## Summary
 
-| Concept | Implementation | Benefit |
-|---------|----------------|---------|
-| **Automation** | Hardware Profiles + Kueue | Users select, system allocates |
-| **Enforcement** | ClusterQueue quotas | Prevent over-provisioning |
-| **Fairness** | LocalQueue admission | First-come, first-served |
-| **Visibility** | DCGM Dashboard | Detect idle/hoarding |
+| Role | User | Manages | Consumes |
+|------|------|---------|----------|
+| **Service Admin** | `ai-admin` | Quotas, Hardware Profiles, Monitoring | - |
+| **Service Consumer** | `ai-developer` | - | Workbenches, Models, GPU Resources |
+
+**The Service Model:**
+1. **Admin defines** → ClusterQueue quotas, Hardware Profiles
+2. **Users request** → Select Hardware Profile in Dashboard
+3. **Kueue enforces** → Admits or queues based on quota
+4. **Admin monitors** → DCGM Dashboard for utilization

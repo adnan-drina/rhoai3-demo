@@ -1,0 +1,23 @@
+# OpenShift Groups for RHOAI Personas
+# These groups are referenced by the RHOAI Auth resource
+---
+# Admin Group - Can manage Hardware Profiles, Quotas, GenAI Studio
+apiVersion: user.openshift.io/v1
+kind: Group
+metadata:
+  name: rhoai-admins
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+users:
+  - ai-admin
+---
+# User Group - Can create Workbenches, use GenAI Playground
+apiVersion: user.openshift.io/v1
+kind: Group
+metadata:
+  name: rhoai-users
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+users:
+  - ai-developer
+

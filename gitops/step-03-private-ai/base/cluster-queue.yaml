@@ -5,7 +5,7 @@ kind: ClusterQueue
 metadata:
   name: rhoai-main-queue
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   # Allow any namespace with a LocalQueue to use this pool
   namespaceSelector: {}

@@ -6,7 +6,7 @@ metadata:
   name: private-ai-queue
   namespace: private-ai
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "5"
     kueue.x-k8s.io/default-queue: "true"  # Auto-assign workloads to this queue
 spec:
   # Point to the cluster-wide quota pool

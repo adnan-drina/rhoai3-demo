@@ -1,0 +1,17 @@
+# OAuth Configuration - HTPasswd Identity Provider
+# Enables local user authentication for the demo
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  identityProviders:
+    - name: local-users
+      type: HTPasswd
+      mappingMethod: claim
+      htpasswd:
+        fileData:
+          name: htpass-secret
+
