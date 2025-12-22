@@ -11,11 +11,10 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   # Admin groups - full access to RHOAI Dashboard and settings
-  # Include both rhoai-admins (our group) and rhods-admins (legacy)
+  # system:cluster-admins is the OpenShift built-in admin group
   adminGroups:
     - rhoai-admins
-    - rhods-admins
-    - cluster-admins
+    - system:cluster-admins
   # User groups - can use RHOAI workbenches and model serving
   allowedGroups:
     - rhoai-users
