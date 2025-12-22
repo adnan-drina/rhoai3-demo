@@ -28,9 +28,5 @@ resources:
   - rhoai-operator/auth.yaml
   
   # 5. Dashboard Config - Feature toggles (sync-wave: 15)
-  # Enables: GenAI Studio, Hardware Profiles, Model Registry
+  # Enables: GenAI Studio, Model Registry, etc.
   - rhoai-operator/dashboard-config.yaml
-  
-  # 6. Hardware Profiles (sync-wave: 16)
-  # New in 3.0: Replaces Accelerator Profiles
-  - rhoai-operator/hardware-profile.yaml
