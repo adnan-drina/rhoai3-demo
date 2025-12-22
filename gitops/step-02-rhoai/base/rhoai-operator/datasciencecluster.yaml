@@ -43,10 +43,10 @@ spec:
     
     # ═══════════════════════════════════════════════════════════════════
     # DISTRIBUTED WORKLOADS
+    # Note: distributedinference is NOT a valid DSC v2 component
+    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu)
     # ═══════════════════════════════════════════════════════════════════
-    distributedinference:
-      managementState: Managed
-      
+    
     # Training Operator - Kubernetes-native distributed training
     trainingoperator:
       managementState: Managed
