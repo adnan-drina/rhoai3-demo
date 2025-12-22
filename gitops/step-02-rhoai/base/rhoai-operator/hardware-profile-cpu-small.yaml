@@ -1,5 +1,5 @@
-# HardwareProfile - Small CPU-only profile
-# For workbenches that don't require GPU resources
+# HardwareProfile - Small CPU-only (Global, Queue-based)
+# Works with any Kueue-managed project that has a LocalQueue named "default"
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:
@@ -9,12 +9,17 @@ metadata:
     argocd.argoproj.io/sync-wave: "16"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     opendatahub.io/display-name: "Small (CPU Only)"
-    opendatahub.io/description: "Small workbench for CPU-based development and testing"
+    opendatahub.io/description: "CPU-only for development and testing"
     opendatahub.io/disabled: "false"
   labels:
     app.kubernetes.io/part-of: hardwareprofile
     app.opendatahub.io/hardwareprofile: "true"
 spec:
+  # Queue-based scheduling - requires LocalQueue named "default" in user project
+  scheduling:
+    type: Queue
+    kueue:
+      localQueueName: default
   identifiers:
     - identifier: cpu
       displayName: CPU
@@ -28,4 +33,3 @@ spec:
       minCount: 1Gi
       maxCount: 8Gi
       defaultCount: 4Gi
-
