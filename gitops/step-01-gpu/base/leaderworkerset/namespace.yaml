@@ -1,0 +1,11 @@
+# LeaderWorkerSet Operator Namespace
+# Required for llm-d distributed inference in RHOAI 3.0
+# Manages multi-node GPU groups for large model sharding
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-lws-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+

@@ -1,0 +1,12 @@
+# LeaderWorkerSet OperatorGroup
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: lws-operator
+  namespace: openshift-lws-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  upgradeStrategy: Default
+

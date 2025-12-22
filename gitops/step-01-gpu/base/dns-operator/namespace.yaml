@@ -1,0 +1,11 @@
+# DNS Operator Namespace
+# Part of Red Hat Connectivity Link (RHCL) stack for llm-d Inference Gateway
+# Manages endpoint DNS registration for model serving endpoints
+# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-dns-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+

@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Infrastructure and operators required for RHOAI 3.0 GPU workloads and KServe model serving
+# Infrastructure and operators required for RHOAI 3.0 GPU workloads, KServe, and llm-d
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 #
 # NOTE: Service Mesh 3 and Kueue are installed automatically via DataScienceCluster CR
@@ -28,8 +28,26 @@ resources:
   - serverless/operatorgroup.yaml
   - serverless/subscription.yaml
 
-  # 4. Red Hat Authorino (required for KServe authentication)
+  # 4. LeaderWorkerSet (required for llm-d distributed inference)
+  - leaderworkerset/namespace.yaml
+  - leaderworkerset/operatorgroup.yaml
+  - leaderworkerset/subscription.yaml
+
+  # ── Red Hat Connectivity Link (RHCL) Stack ──
+  # Required for llm-d Inference Gateway (authorization, rate limiting, DNS)
+
+  # 5. Red Hat Authorino (RHCL - authorization for inference endpoints)
   - authorino/namespace.yaml
   - authorino/operatorgroup.yaml
   - authorino/subscription.yaml
+
+  # 6. Limitador Operator (RHCL - rate limiting for inference endpoints)
+  - limitador/namespace.yaml
+  - limitador/operatorgroup.yaml
+  - limitador/subscription.yaml
+
+  # 7. DNS Operator (RHCL - endpoint DNS management)
+  - dns-operator/namespace.yaml
+  - dns-operator/operatorgroup.yaml
+  - dns-operator/subscription.yaml
 

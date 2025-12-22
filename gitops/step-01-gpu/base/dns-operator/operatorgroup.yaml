@@ -1,0 +1,12 @@
+# DNS Operator OperatorGroup
+# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: dns-operator
+  namespace: openshift-dns-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  upgradeStrategy: Default
+

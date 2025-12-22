@@ -12,8 +12,23 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0 b
 | Node Feature Discovery (NFD) | stable (4.20) | Detects hardware features on nodes |
 | NVIDIA GPU Operator | v25.10 | Manages GPU drivers, device plugin, monitoring |
 | OpenShift Serverless | stable-1.37 | Provides Knative Serving for KServe model inference |
-| Red Hat Authorino | stable | Authentication/authorization for KServe endpoints |
 | GPU MachineSets | - | AWS g6.4xlarge, g6.12xlarge instances |
+
+### Distributed Inference (llm-d) Prerequisites
+
+| Component | Version/Channel | Purpose |
+|-----------|-----------------|---------|
+| LeaderWorkerSet (LWS) | stable-v1.0 | Manages multi-node GPU groups for large model sharding |
+
+### Red Hat Connectivity Link (RHCL) Stack
+
+The RHCL operators provide the Inference Gateway for llm-d:
+
+| Component | Version/Channel | Purpose |
+|-----------|-----------------|---------|
+| Red Hat Authorino | stable | Token-level authorization for LLM inference endpoints |
+| Limitador Operator | stable | Rate limiting for inference endpoints |
+| DNS Operator | stable | Endpoint DNS management for model serving |
 
 ---
 
@@ -165,9 +180,38 @@ oc get subscription serverless-operator -n openshift-serverless
 
 ---
 
-### 4. Red Hat Authorino Operator
+### 4. LeaderWorkerSet (LWS) Operator
 
-**Purpose:** Provides authentication and authorization for API endpoints. **Required for KServe** to secure model inference endpoints with token-based authentication.
+**Purpose:** Manages the lifecycle of multi-node GPU sets for large model sharding. **Required for llm-d distributed inference** - orchestrates leader-worker topology for models that span multiple GPUs across nodes.
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu/base/leaderworkerset/
+```
+
+**Validation:**
+```bash
+# Check LWS operator status
+oc get csv -n openshift-lws-operator | grep leader
+
+# Check subscription
+oc get subscription leader-worker-set -n openshift-lws-operator
+
+# Verify CRD is installed
+oc get crd leaderworkersets.leaderworkerset.x-k8s.io
+```
+
+**Ref:** [RHOAI 3.0 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
+
+---
+
+## Red Hat Connectivity Link (RHCL) Stack
+
+The RHCL operators provide the secure Inference Gateway for llm-d. These components work together to provide authorization, rate limiting, and DNS management for LLM endpoints.
+
+### 5. Red Hat Authorino Operator (RHCL)
+
+**Purpose:** Provides token-level authentication and authorization for API endpoints. **Required for the llm-d Inference Gateway** to secure model inference endpoints.
 
 **Deployment Command:**
 ```bash
@@ -181,9 +225,62 @@ oc get csv -n openshift-authorino | grep authorino
 
 # Check subscription
 oc get subscription authorino-operator -n openshift-authorino
+
+# Verify CRD is installed
+oc get crd authorinos.operator.authorino.kuadrant.io
 ```
 
 **Ref:** [RHOAI 3.0 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
+
+---
+
+### 6. Limitador Operator (RHCL)
+
+**Purpose:** Provides rate limiting capabilities for the Inference Gateway. **Required for llm-d** to control request rates to LLM endpoints and prevent overload.
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu/base/limitador/
+```
+
+**Validation:**
+```bash
+# Check Limitador operator status
+oc get csv -n openshift-limitador-operator | grep limitador
+
+# Check subscription
+oc get subscription limitador-operator -n openshift-limitador-operator
+
+# Verify CRD is installed
+oc get crd limitadors.limitador.kuadrant.io
+```
+
+**Ref:** [Red Hat Connectivity Link Documentation](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/)
+
+---
+
+### 7. DNS Operator (RHCL)
+
+**Purpose:** Manages DNS registration for model serving endpoints. **Required for llm-d** Inference Gateway to provide discoverable endpoints for LLM services.
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu/base/dns-operator/
+```
+
+**Validation:**
+```bash
+# Check DNS operator status
+oc get csv -n openshift-dns-operator | grep dns
+
+# Check subscription
+oc get subscription dns-operator -n openshift-dns-operator
+
+# Verify CRD is installed
+oc get crd dnsrecords.dns.kuadrant.io
+```
+
+**Ref:** [Red Hat Connectivity Link Documentation](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/)
 
 ---
 
@@ -298,9 +395,21 @@ oc get pods -n openshift-user-workload-monitoring
 echo "=== NFD ===" && oc get csv -n openshift-nfd | grep nfd
 echo "=== GPU Operator ===" && oc get csv -n nvidia-gpu-operator | grep gpu
 echo "=== Serverless ===" && oc get csv -n openshift-serverless | grep serverless
+echo "=== LeaderWorkerSet ===" && oc get csv -n openshift-lws-operator | grep leader
 echo "=== Authorino ===" && oc get csv -n openshift-authorino | grep authorino
+echo "=== Limitador ===" && oc get csv -n openshift-limitador-operator | grep limitador
+echo "=== DNS Operator ===" && oc get csv -n openshift-dns-operator | grep dns
 # Service Mesh is auto-installed by DataScienceCluster in step-02
 echo "=== Service Mesh (auto) ===" && oc get csv -A | grep servicemesh | head -1
+```
+
+### llm-d CRDs Verification
+
+```bash
+# Verify llm-d related CRDs are installed
+echo "=== LeaderWorkerSet CRD ===" && oc get crd leaderworkersets.leaderworkerset.x-k8s.io
+echo "=== Authorino CRD ===" && oc get crd authorinos.operator.authorino.kuadrant.io
+echo "=== Limitador CRD ===" && oc get crd limitadors.limitador.kuadrant.io
 ```
 
 ### GPU Nodes - Taints and Labels
@@ -359,7 +468,19 @@ gitops/step-01-gpu/
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
 │   │   └── subscription.yaml
-│   └── authorino/                  # Red Hat Authorino
+│   ├── leaderworkerset/            # LeaderWorkerSet (llm-d distributed inference)
+│   │   ├── namespace.yaml
+│   │   ├── operatorgroup.yaml
+│   │   └── subscription.yaml
+│   ├── authorino/                  # Red Hat Authorino (RHCL - authorization)
+│   │   ├── namespace.yaml
+│   │   ├── operatorgroup.yaml
+│   │   └── subscription.yaml
+│   ├── limitador/                  # Limitador (RHCL - rate limiting)
+│   │   ├── namespace.yaml
+│   │   ├── operatorgroup.yaml
+│   │   └── subscription.yaml
+│   └── dns-operator/               # DNS Operator (RHCL - endpoint DNS)
 │       ├── namespace.yaml
 │       ├── operatorgroup.yaml
 │       └── subscription.yaml
@@ -377,9 +498,13 @@ gitops/step-01-gpu/
 
 ### RHOAI 3.0 Documentation
 - [RHOAI 3.0 - Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.0 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
 - [RHOAI 3.0 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
 - [RHOAI 3.0 - Installing the OpenShift Service Mesh Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-service-mesh-operator_install-kserve) *(auto-installed by DSC)*
 - [RHOAI 3.0 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
+
+### Red Hat Connectivity Link (RHCL)
+- [Red Hat Connectivity Link Documentation](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/)
 
 ### OpenShift Container Platform 4.20
 - [OCP 4.20 - Enabling Monitoring for User-Defined Projects](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/configuring-the-monitoring-stack#enabling-monitoring-for-user-defined-projects_configuring-the-monitoring-stack)
