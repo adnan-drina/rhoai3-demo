@@ -4,14 +4,24 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0 b
 
 ## What Gets Installed
 
-| Component | Version/Channel | Purpose | Status |
-|-----------|-----------------|---------|--------|
-| Node Feature Discovery (NFD) | stable (4.20) | Detects hardware features on nodes | ✅ Deployed |
-| NVIDIA GPU Operator | v25.10 | Manages GPU drivers, device plugin, monitoring | ✅ Deployed |
-| OpenShift Serverless | stable-1.37 | Provides Knative Serving for KServe model inference | 🔧 GitOps Ready |
-| OpenShift Service Mesh 3 | stable (3.1) | Service mesh for KServe traffic management | ✅ Deployed |
-| Red Hat Authorino | stable | Authentication/authorization for KServe endpoints | 🔧 GitOps Ready |
-| GPU MachineSets | - | AWS g6.4xlarge, g6.12xlarge instances | ✅ Deployed |
+### Managed by step-01-gpu (GitOps)
+
+| Component | Version/Channel | Purpose |
+|-----------|-----------------|---------|
+| Node Feature Discovery (NFD) | stable (4.20) | Detects hardware features on nodes |
+| NVIDIA GPU Operator | v25.10 | Manages GPU drivers, device plugin, monitoring |
+| OpenShift Serverless | stable-1.37 | Provides Knative Serving for KServe model inference |
+| Red Hat Authorino | stable | Authentication/authorization for KServe endpoints |
+| GPU MachineSets | - | AWS g6.4xlarge, g6.12xlarge instances |
+
+### Auto-installed by DataScienceCluster CR (step-02-rhoai)
+
+| Component | Purpose |
+|-----------|---------|
+| OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
+| Kueue | Workload queuing for distributed training |
+
+> **Note:** Service Mesh 3 and Kueue are automatically installed when the DataScienceCluster CR is created in step-02-rhoai.
 
 ---
 
@@ -137,29 +147,7 @@ oc get subscription serverless-operator -n openshift-serverless
 
 ---
 
-### 4. OpenShift Service Mesh 3 Operator
-
-**Purpose:** Provides Istio-based service mesh capabilities for traffic management, security, and observability. **Required for KServe** when using the RawDeployment mode or advanced traffic routing.
-
-**Deployment Command:**
-```bash
-oc apply -k gitops/step-01-gpu/base/servicemesh/
-```
-
-**Validation:**
-```bash
-# Check Service Mesh operator status
-oc get csv -A | grep servicemesh | head -1
-
-# Check subscription
-oc get subscription servicemeshoperator3 -n openshift-operators
-```
-
-**Ref:** [RHOAI 3.0 - Installing the OpenShift Service Mesh Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-service-mesh-operator_install-kserve)
-
----
-
-### 5. Red Hat Authorino Operator
+### 4. Red Hat Authorino Operator
 
 **Purpose:** Provides authentication and authorization for API endpoints. **Required for KServe** to secure model inference endpoints with token-based authentication.
 
@@ -283,8 +271,9 @@ The dashboard displays:
 echo "=== NFD ===" && oc get csv -n openshift-nfd | grep nfd
 echo "=== GPU Operator ===" && oc get csv -n nvidia-gpu-operator | grep gpu
 echo "=== Serverless ===" && oc get csv -n openshift-serverless | grep serverless
-echo "=== Service Mesh ===" && oc get csv -A | grep servicemesh | head -1
 echo "=== Authorino ===" && oc get csv -n openshift-authorino | grep authorino
+# Service Mesh is auto-installed by DataScienceCluster in step-02
+echo "=== Service Mesh (auto) ===" && oc get csv -A | grep servicemesh | head -1
 ```
 
 ### GPU Nodes - Taints and Labels
@@ -341,8 +330,6 @@ gitops/step-01-gpu/
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
 │   │   └── subscription.yaml
-│   ├── servicemesh/                # OpenShift Service Mesh 3
-│   │   └── subscription.yaml       # Uses global OperatorGroup
 │   └── authorino/                  # Red Hat Authorino
 │       ├── namespace.yaml
 │       ├── operatorgroup.yaml
@@ -362,7 +349,7 @@ gitops/step-01-gpu/
 ### RHOAI 3.0 Documentation
 - [RHOAI 3.0 - Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [RHOAI 3.0 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
-- [RHOAI 3.0 - Installing the OpenShift Service Mesh Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-service-mesh-operator_install-kserve)
+- [RHOAI 3.0 - Installing the OpenShift Service Mesh Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-service-mesh-operator_install-kserve) *(auto-installed by DSC)*
 - [RHOAI 3.0 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
 
 ### OpenShift Container Platform 4.20

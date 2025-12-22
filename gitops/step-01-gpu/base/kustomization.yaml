@@ -1,8 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# All operators required for RHOAI 3.0 GPU workloads and KServe model serving
+# Operators required for RHOAI 3.0 GPU workloads and KServe model serving
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
+#
+# NOTE: Service Mesh 3 and Kueue are installed automatically via DataScienceCluster CR
 
 resources:
   # 1. Node Feature Discovery (prerequisite for GPU Operator)
@@ -23,10 +25,7 @@ resources:
   - serverless/operatorgroup.yaml
   - serverless/subscription.yaml
 
-  # 4. OpenShift Service Mesh 3 (required for KServe)
-  - servicemesh/subscription.yaml
-
-  # 5. Red Hat Authorino (required for KServe authentication)
+  # 4. Red Hat Authorino (required for KServe authentication)
   - authorino/namespace.yaml
   - authorino/operatorgroup.yaml
   - authorino/subscription.yaml

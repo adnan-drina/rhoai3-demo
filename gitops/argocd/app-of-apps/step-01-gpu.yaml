@@ -28,12 +28,6 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    # Subscription fields managed by OLM
-    - group: operators.coreos.com
-      kind: Subscription
-      jqPathExpressions:
-        - .spec.installPlanApproval
-        - .spec.startingCSV
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy
