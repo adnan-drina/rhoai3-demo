@@ -63,3 +63,9 @@ spec:
       kind: NodeFeatureDiscovery
       jqPathExpressions:
         - .spec
+    # KnativeServing fields managed by Serverless operator
+    - group: operator.knative.dev
+      kind: KnativeServing
+      jsonPointers:
+        - /metadata/annotations
+        - /spec
