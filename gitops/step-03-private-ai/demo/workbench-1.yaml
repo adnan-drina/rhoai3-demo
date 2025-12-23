@@ -16,7 +16,8 @@ metadata:
     # RHOAI 3.0: Use inject-auth (NOT inject-oauth - deprecated!)
     notebooks.opendatahub.io/inject-auth: "true"
     opendatahub.io/username: "ai-developer"
-    opendatahub.io/image-display-name: "Jupyter | PyTorch | CUDA | Python 3.11"
+    notebooks.opendatahub.io/last-image-selection: "pytorch:2025.2"
+    opendatahub.io/image-display-name: "Jupyter | PyTorch | CUDA | Python 3.12"
     openshift.io/display-name: "Demo Workbench 1 (GPU)"
     openshift.io/description: "First workbench - should get GPU immediately"
 spec:
@@ -24,7 +25,7 @@ spec:
     spec:
       containers:
         - name: demo-workbench-1
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.1
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2
           imagePullPolicy: Always
           resources:
             limits:
@@ -32,8 +33,8 @@ spec:
               memory: 16Gi
               nvidia.com/gpu: "1"
             requests:
-              cpu: "2"
-              memory: 8Gi
+              cpu: "4"
+              memory: 16Gi
               nvidia.com/gpu: "1"
           ports:
             - containerPort: 8888
@@ -49,7 +50,7 @@ spec:
                 --ServerApp.base_url=/notebook/private-ai/demo-workbench-1
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
-              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.1
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2
           # Probes must use the base_url path
           livenessProbe:
             httpGet:
