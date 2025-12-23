@@ -50,7 +50,9 @@ spec:
       args:
         - --tensor-parallel-size=4
         - --dtype=bfloat16
-        - --max-model-len=16384
+        - --max-model-len=32768
+        - --gpu-memory-utilization=0.9
+        - --trust-remote-code
       resources:
         requests:
           cpu: "16"

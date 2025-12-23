@@ -48,9 +48,12 @@ spec:
       storage:
         key: minio-connection
       args:
-        # Neural Magic FP8 uses compressed-tensors format - auto-detected
-        # No explicit quantization args needed - vLLM reads from model config
-        - --max-model-len=8192
+        # Neural Magic FP8 uses compressed-tensors format - auto-detected by vLLM
+        # Don't pass --quantization=fp8 as it conflicts with compressed-tensors
+        - --max-model-len=16384
+        - --kv-cache-dtype=fp8
+        - --gpu-memory-utilization=0.9
+        - --trust-remote-code
       resources:
         requests:
           cpu: "8"
