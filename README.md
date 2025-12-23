@@ -39,7 +39,8 @@ oc login --token=<your-token> --server=<api-server>
 |------|------|-------------|
 | 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
 | 02 | [RHOAI 3.0](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
-| 03 | LLM Deployment | Model serving with KServe (coming soon) |
+| 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
+| 04 | [Model Registry](steps/step-04-model-registry/README.md) | Model versioning and lifecycle (placeholder) |
 
 ## What Gets Deployed
 
@@ -80,28 +81,37 @@ rhoai3-demo/
 │   ├── argocd/
 │   │   └── app-of-apps/         # Argo CD Application definitions
 │   │       ├── step-01-gpu-and-prereq.yaml
-│   │       └── step-02-rhoai.yaml
+│   │       ├── step-02-rhoai.yaml
+│   │       ├── step-03-private-ai.yaml
+│   │       └── step-04-model-registry.yaml
 │   │
-│   ├── step-01-gpu-and-prereq/
-│   │   └── base/                # Kustomize manifests
-│   │       ├── nfd/
-│   │       ├── gpu-operator/
-│   │       ├── serverless/
-│   │       ├── leaderworkerset/
-│   │       ├── authorino/
-│   │       ├── limitador/
-│   │       └── dns-operator/
+│   ├── step-01-gpu-and-prereq/  # GPU + prerequisites
+│   │   └── base/
 │   │
-│   └── step-02-rhoai/
-│       └── base/                # Kustomize manifests
-│           └── rhoai-operator/
+│   ├── step-02-rhoai/           # RHOAI 3.0 platform
+│   │   └── base/
+│   │
+│   ├── step-03-private-ai/      # GPU-as-a-Service
+│   │   ├── base/
+│   │   └── gpu-as-a-service-demo/
+│   │
+│   └── step-04-model-registry/  # Model Registry (placeholder)
+│       └── base/
 │
 └── steps/
     ├── step-01-gpu-and-prereq/
-    │   ├── deploy.sh            # Deployment script
-    │   └── README.md            # Documentation
+    │   ├── deploy.sh
+    │   └── README.md
     │
-    └── step-02-rhoai/
+    ├── step-02-rhoai/
+    │   ├── deploy.sh
+    │   └── README.md
+    │
+    ├── step-03-private-ai/
+    │   ├── deploy.sh
+    │   └── README.md
+    │
+    └── step-04-model-registry/
         ├── deploy.sh
         └── README.md
 ```
