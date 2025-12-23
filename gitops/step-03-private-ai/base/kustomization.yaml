@@ -2,17 +2,33 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Step 03: Private AI - GPU as a Service (GPUaaS)
-# Implements dynamic GPU allocation using Kueue integration
-# with proper user authentication and RBAC
+# Implements dynamic GPU allocation with Kueue integration,
+# S3 storage via MinIO, and proper user authentication/RBAC
 #
 # Architecture:
-#   Users → Auth → Project RBAC → LocalQueue → ClusterQueue → GPU Nodes
+#   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+#   │    Users    │───▶│    Auth     │───▶│ LocalQueue  │───▶│  GPU Nodes  │
+#   │             │    │   + RBAC    │    │ ClusterQueue│    │             │
+#   └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+#                             │
+#                             ▼
+#                      ┌─────────────┐
+#                      │   MinIO     │
+#                      │  (S3 Data)  │
+#                      └─────────────┘
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Authentication (sync-wave: 0-2)
+  # 1. MinIO Storage Provider (sync-wave: 1-5)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # S3-compatible storage for models, data, and pipelines
+  # Provides the storage backbone for RHOAI workloads
+  - minio/
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. Authentication (sync-wave: 0-2)
   # ═══════════════════════════════════════════════════════════════════════════
   # HTPasswd secret for demo users
   - auth/htpasswd-secret.yaml
@@ -22,22 +38,28 @@ resources:
   # because ArgoCD cannot parse user.openshift.io/v1 Group schema
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. Namespace (sync-wave: 3)
+  # 3. Namespace (sync-wave: 3)
   # ═══════════════════════════════════════════════════════════════════════════
   - namespace.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. Kueue Resources (sync-wave: 4-5)
+  # 4. Data Connection (sync-wave: 6)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # RHOAI-recognized S3 connection that appears in Dashboard dropdowns
+  - data-connection.yaml
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 5. Kueue Resources (sync-wave: 4-5)
   # ═══════════════════════════════════════════════════════════════════════════
   # ResourceFlavors - Define GPU node types
   - resource-flavors.yaml
   # ClusterQueue - Cluster-wide quota pool
   - cluster-queue.yaml
-  # LocalQueue - Project entry point
+  # LocalQueue - Project entry point (named 'default' for HardwareProfile compat)
   - local-queue.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Project RBAC (sync-wave: 5)
+  # 6. Project RBAC (sync-wave: 5)
   # ═══════════════════════════════════════════════════════════════════════════
   # ai-admin as project admin
   - rbac/project-admin.yaml
@@ -45,12 +67,22 @@ resources:
   - rbac/project-editor.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 5. Kueue Admin Access (sync-wave: 10)
+  # 7. Kueue Admin Access (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
   # Grant rhoai-admins ClusterRole for Distributed Workloads dashboard
   - rbac/kueue-admin-access.yaml
 
-# NOTE: Hardware Profiles are GLOBAL (in redhat-ods-applications)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Architecture Notes
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# Hardware Profiles are GLOBAL (in redhat-ods-applications)
 # They reference localQueueName: "default" which must exist in each project.
 # The LocalQueue named "default" is created above in local-queue.yaml.
 # See step-02-rhoai for Hardware Profile definitions.
+#
+# MinIO provides S3-compatible storage that appears in the RHOAI Dashboard
+# as a selectable "Data Connection" for workbenches and model serving.
+#
+# Idle Culling is configured in step-02-rhoai OdhDashboardConfig to
+# automatically stop inactive workbenches and release GPUs.

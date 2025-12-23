@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio-storage
+  labels:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/component: storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    openshift.io/display-name: "MinIO Object Storage"
+    openshift.io/description: "S3-compatible storage for RHOAI workloads"
+

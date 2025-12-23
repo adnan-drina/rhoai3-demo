@@ -1,0 +1,30 @@
+# RHOAI 3.0 Data Connection - S3 Storage
+# This secret automatically appears in the Dashboard as a selectable
+# data source for Workbenches and Model Serving
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#using-connections
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-connection
+  namespace: private-ai
+  labels:
+    # RHOAI 3.0 connection labels - makes this appear in Dashboard dropdowns
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/managed: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    # Connection metadata for Dashboard display
+    opendatahub.io/connection-type: s3
+    openshift.io/display-name: "MinIO Storage"
+    openshift.io/description: "S3-compatible storage for models and data"
+type: Opaque
+stringData:
+  # AWS S3-compatible credentials
+  AWS_ACCESS_KEY_ID: rhoai-access-key
+  AWS_SECRET_ACCESS_KEY: rhoai-secret-key-12345
+  # Bucket and endpoint configuration
+  AWS_S3_BUCKET: rhoai-storage
+  AWS_S3_ENDPOINT: http://minio.minio-storage.svc:9000
+  AWS_DEFAULT_REGION: us-east-1
+

@@ -1,6 +1,42 @@
 # Step 03: Private AI - GPU as a Service (GPUaaS)
 
-Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using Kueue integration for dynamic GPU allocation, quota enforcement, and proper access control.
+Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using Kueue integration for dynamic GPU allocation, quota enforcement, S3 storage via MinIO, and proper access control.
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       Private AI - GPU as a Service                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌───────────────┐       ┌───────────────┐       ┌───────────────┐            │
+│   │   ai-admin    │       │ ai-developer  │       │    MinIO      │            │
+│   │   (Service    │       │   (Service    │       │   (S3 Data)   │            │
+│   │    Governor)  │       │   Consumer)   │       │               │            │
+│   └───────┬───────┘       └───────┬───────┘       └───────┬───────┘            │
+│           │                       │                       │                    │
+│           ▼                       ▼                       ▼                    │
+│   ┌─────────────────────────────────────────────────────────────────────┐      │
+│   │                    RHOAI Dashboard (3.0)                            │      │
+│   │  • Hardware Profiles  • Distributed Workloads  • Data Connections   │      │
+│   └─────────────────────────────────────────────────────────────────────┘      │
+│                                   │                                            │
+│                                   ▼                                            │
+│   ┌─────────────────────────────────────────────────────────────────────┐      │
+│   │                    Kueue (Queue Management)                         │      │
+│   │  LocalQueue (default) ─────▶ ClusterQueue (rhoai-main-queue)       │      │
+│   └─────────────────────────────────────────────────────────────────────┘      │
+│                                   │                                            │
+│                                   ▼                                            │
+│   ┌─────────────────────────────────────────────────────────────────────┐      │
+│   │                    GPU Nodes (g6.4xlarge / g6.12xlarge)             │      │
+│   │  NVIDIA L4 GPUs  •  Automatic Admission  •  Fair Queuing            │      │
+│   └─────────────────────────────────────────────────────────────────────┘      │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -8,10 +44,52 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 
 | Username | Password | Role | RHOAI Persona | Project Access |
 |----------|----------|------|---------------|----------------|
-| `ai-admin` | `redhat123` | Service Admin | RHOAI Admin | `admin` in `private-ai` |
+| `ai-admin` | `redhat123` | Service Governor | RHOAI Admin | `admin` in `private-ai` |
 | `ai-developer` | `redhat123` | Service Consumer | RHOAI User | `edit` in `private-ai` |
 
 > **Note**: Passwords are pre-configured in the HTPasswd secret. For production, generate new hashes.
+
+---
+
+## The Three Service Layers
+
+### Layer 1: S3 Storage (MinIO)
+
+MinIO provides the **storage backbone** for all RHOAI workloads:
+
+| Bucket | Purpose |
+|--------|---------|
+| `rhoai-storage` | Default bucket for workbench data |
+| `models` | Model artifacts and checkpoints |
+| `pipelines` | Pipeline data and outputs |
+
+**Data Connection**: Appears automatically in Dashboard dropdowns for:
+- Workbench data sources
+- Model serving endpoints
+- Pipeline artifacts
+
+### Layer 2: GPU Quota (Kueue)
+
+Kueue provides the **fair-share scheduling** mechanism:
+
+| Component | Name | Purpose |
+|-----------|------|---------|
+| ResourceFlavor | `nvidia-l4-1gpu` | Targets g6.4xlarge (1x L4) |
+| ResourceFlavor | `nvidia-l4-4gpu` | Targets g6.12xlarge (4x L4) |
+| ClusterQueue | `rhoai-main-queue` | Cluster-wide GPU quota |
+| LocalQueue | `default` | Project entry point |
+
+### Layer 3: Platform Governance
+
+Automatic cost control through `OdhDashboardConfig`:
+
+| Setting | Value | Effect |
+|---------|-------|--------|
+| Idle Culling | 1 hour | Auto-stops inactive notebooks |
+| Default PVC | 40Gi | Standardized storage allocation |
+| Kueue UI | Enabled | Queue visibility in Dashboard |
+
+> **Why Idle Culling Matters**: Prevents "zombie" notebooks from hoarding GPUs. After 1 hour of no kernel activity, notebooks are stopped and GPUs released.
 
 ---
 
@@ -89,6 +167,25 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 
 ## What Gets Installed
 
+### MinIO Storage Provider
+
+| Resource | Name | Namespace | Purpose |
+|----------|------|-----------|---------|
+| **Namespace** | `minio-storage` | - | MinIO isolation |
+| **Deployment** | `minio` | `minio-storage` | S3-compatible storage |
+| **Service** | `minio` | `minio-storage` | API (9000) + Console (9001) |
+| **Route** | `minio-console` | `minio-storage` | Admin console access |
+| **Job** | `minio-init` | `minio-storage` | Creates buckets and users |
+| **PVC** | `minio-storage` | `minio-storage` | 10Gi persistent storage |
+
+### RHOAI Data Connection
+
+| Resource | Name | Namespace | Purpose |
+|----------|------|-----------|---------|
+| **Secret** | `minio-connection` | `private-ai` | S3 credentials for workloads |
+
+> **How It Works**: The secret has labels `opendatahub.io/connection-type: s3` and `opendatahub.io/managed: "true"`, which make it appear in Dashboard dropdowns automatically.
+
 ### Authentication & Authorization
 
 | Resource | Name | Purpose | Managed By |
@@ -138,10 +235,69 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 ```
 
 The script will:
-1. Deploy authentication resources (HTPasswd, OAuth, Groups)
-2. Create the `private-ai` namespace with Kueue labels
-3. Deploy Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
-4. Configure RBAC for ai-admin and ai-developer
+1. Deploy MinIO storage provider (namespace, deployment, init job)
+2. Deploy authentication resources (HTPasswd, OAuth, Groups)
+3. Create the `private-ai` namespace with Kueue labels
+4. Create RHOAI Data Connection for MinIO
+5. Deploy Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
+6. Configure RBAC for ai-admin and ai-developer
+
+---
+
+## Validation Commands
+
+### 1. Verify S3 Provider
+
+```bash
+# Check MinIO pods
+oc get pods -n minio-storage
+
+# Expected output:
+# NAME                     READY   STATUS    RESTARTS   AGE
+# minio-xxxx-xxxxx         1/1     Running   0          5m
+
+# Check MinIO init job completed
+oc get job minio-init -n minio-storage
+
+# Get MinIO console URL
+oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}'
+```
+
+### 2. Verify RHOAI Data Connection
+
+```bash
+# Check S3 connection secret
+oc get secret -n private-ai -l opendatahub.io/connection-type=s3
+
+# Expected output:
+# NAME               TYPE     DATA   AGE
+# minio-connection   Opaque   5      2m
+```
+
+### 3. Verify Kueue Status
+
+```bash
+# Check LocalQueue
+oc get localqueue default -n private-ai
+
+# Expected output:
+# NAME      CLUSTERQUEUE      PENDING   ADMITTED   ...
+# default   rhoai-main-queue  0         True       ...
+
+# Check ClusterQueue
+oc get clusterqueue rhoai-main-queue -o yaml | grep -A5 "status:"
+```
+
+### 4. Verify Authentication
+
+```bash
+# Test login
+oc login -u ai-admin -p redhat123
+oc login -u ai-developer -p redhat123
+
+# Verify groups
+oc get groups | grep rhoai
+```
 
 ---
 
@@ -161,9 +317,10 @@ oc login -u ai-developer -p redhat123
 1. Go to **Data Science Projects** → **private-ai**
 2. Create a new **Workbench**
 3. Select **Hardware Profile**: "NVIDIA L4 1GPU"
-4. Click **Create**
+4. Select **Data Connection**: "MinIO Storage" ← **Appears automatically!**
+5. Click **Create**
 
-### 2. Login as `ai-admin` (Service Administrator)
+### 2. Login as `ai-admin` (Service Governor)
 
 ```bash
 # Login via CLI
@@ -179,6 +336,13 @@ oc login -u ai-admin -p redhat123
 1. OpenShift Console → **Observe** → **Dashboards**
 2. Select **NVIDIA DCGM Exporter Dashboard**
 3. Track: GPU Utilization, Power Usage, VRAM
+
+**Access MinIO Console:**
+```bash
+MINIO_URL=$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}')
+echo "https://${MINIO_URL}"
+# Login: minio-admin / minio-secret-123
+```
 
 ### 3. Demo: GPU Queuing Behavior
 
@@ -257,6 +421,7 @@ oc delete -k gitops/step-03-private-ai/demo/
 - ⏳ Fair queuing - first-come-first-served
 - 📊 Quota enforcement - team/project limits respected
 - 🔄 Automatic admission - queued workloads start when resources free up
+- 💤 Idle culling - inactive notebooks auto-stop after 1 hour
 
 ---
 
@@ -360,6 +525,15 @@ gitops/step-03-private-ai/
 ├── base/                           # Auto-deployed by ArgoCD
 │   ├── kustomization.yaml
 │   │
+│   ├── minio/                      # S3 Storage Provider
+│   │   ├── kustomization.yaml
+│   │   ├── namespace.yaml          # minio-storage namespace
+│   │   ├── credentials-secret.yaml # MinIO root + RHOAI credentials
+│   │   ├── pvc.yaml                # 10Gi persistent storage
+│   │   ├── deployment.yaml         # MinIO server pod
+│   │   ├── service.yaml            # API (9000) + Console (9001)
+│   │   └── init-job.yaml           # Creates buckets and users
+│   │
 │   ├── auth/
 │   │   ├── htpasswd-secret.yaml    # Demo user credentials
 │   │   ├── oauth.yaml              # HTPasswd identity provider
@@ -371,16 +545,17 @@ gitops/step-03-private-ai/
 │   │   └── kueue-admin-access.yaml # Kueue ClusterRole binding
 │   │
 │   ├── namespace.yaml              # private-ai namespace with Kueue labels
-│   ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
+│   ├── data-connection.yaml        # MinIO S3 connection for RHOAI
+│   ├── resource-flavors.yaml       # GPU node flavors
 │   ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
-│   └── local-queue.yaml            # LocalQueue named 'default' (required!)
+│   └── local-queue.yaml            # LocalQueue named 'default'
 │
 └── demo/                           # Manual apply for demo (NOT in ArgoCD)
     ├── kustomization.yaml
-    ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
+    ├── configmap-notebooks.yaml    # Sample notebooks
     ├── pvcs.yaml                   # Storage for workbenches
     ├── workbench-1.yaml            # First workbench (gets GPU)
-    └── workbench-2.yaml            # Second workbench (Pending - waiting for GPU)
+    └── workbench-2.yaml            # Second workbench (Pending)
 ```
 
 > **Note**: The `demo/` folder is NOT included in ArgoCD sync.
@@ -388,69 +563,34 @@ gitops/step-03-private-ai/
 
 ---
 
-## Verification Checklist
-
-### 1. Authentication
-
-```bash
-# Verify OAuth configuration
-oc get oauth cluster -o yaml
-
-# Test login
-oc login -u ai-admin -p redhat123
-oc login -u ai-developer -p redhat123
-```
-
-### 2. Groups
-
-```bash
-# List groups
-oc get groups
-
-# Verify group membership
-oc get group rhoai-admins -o jsonpath='{.users}'
-oc get group rhoai-users -o jsonpath='{.users}'
-```
-
-### 3. Project RBAC
-
-```bash
-# Check rolebindings in private-ai
-oc get rolebindings -n private-ai
-
-# Verify ai-admin has admin role
-oc auth can-i --list -n private-ai --as=ai-admin | grep -E "create|delete"
-```
-
-### 4. Kueue Resources
-
-```bash
-# Check all Kueue resources
-oc get resourceflavors
-oc get clusterqueue rhoai-main-queue
-oc get localqueue -n private-ai
-```
-
-### 5. Demo Workbenches
-
-```bash
-# Apply demo
-oc apply -k gitops/step-03-private-ai/demo/
-
-# Check pods (one Running, one Pending)
-oc get pods -n private-ai
-
-# Check workloads
-oc get workloads -n private-ai
-
-# Get workbench URL
-GATEWAY=$(oc get gateway data-science-gateway -n openshift-ingress -o jsonpath='{.spec.listeners[0].hostname}')
-echo "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
-```
-
----
-
 ## Troubleshooting
+
+### MinIO Not Starting
+
+```bash
+# Check MinIO pod status
+oc get pods -n minio-storage
+oc describe pod -n minio-storage -l app=minio
+
+# Check PVC is bound
+oc get pvc -n minio-storage
+
+# Check init job logs
+oc logs job/minio-init -n minio-storage
+```
+
+### Data Connection Not Appearing in Dashboard
+
+```bash
+# Verify secret has correct labels
+oc get secret minio-connection -n private-ai -o yaml | grep -A5 labels
+
+# Required labels:
+# opendatahub.io/dashboard: "true"
+# opendatahub.io/managed: "true"
+# Required annotation:
+# opendatahub.io/connection-type: s3
+```
 
 ### Login Fails
 
@@ -585,11 +725,30 @@ annotations:
   opendatahub.io/hardware-profile-namespace: "redhat-ods-applications"
 ```
 
+### Platform Governance (OdhDashboardConfig)
+
+```yaml
+# Key settings in step-02-rhoai
+spec:
+  notebookController:
+    pvcSize: 40Gi           # Default storage allocation
+  notebookSizes:            # CPU/memory tiers
+    - name: Small
+    - name: Medium
+    - name: Large
+  dashboardConfig:
+    disableKueue: false     # Enable queue UI
+    disableDistributedWorkloads: false
+```
+
 ---
 
 ## Documentation Links
 
 ### Official Red Hat Documentation
+- [RHOAI 3.0 - Managing Resources](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index)
+- [RHOAI 3.0 - Using Connections](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#using-connections)
+- [RHOAI 3.0 - Dashboard Configuration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config)
 - [RHOAI 3.0 - User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_users/index)
 - [RHOAI 3.0 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
 - [OpenShift - Configuring HTPasswd](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-identity-providers#configuring-htpasswd-identity-provider)
@@ -597,17 +756,22 @@ annotations:
 ### GPU Monitoring
 - [NVIDIA DCGM Exporter Dashboard](https://docs.nvidia.com/datacenter/cloud-native/openshift/latest/enable-gpu-monitoring-dashboard.html)
 
+### Reference Implementation
+- [rhoai-genaiops/deploy-lab](https://github.com/rhoai-genaiops/deploy-lab) - MinIO patterns
+
 ---
 
 ## Summary
 
 | Role | User | Manages | Consumes |
 |------|------|---------|----------|
-| **Service Admin** | `ai-admin` | Quotas, Hardware Profiles, Monitoring | - |
-| **Service Consumer** | `ai-developer` | - | Workbenches, Models, GPU Resources |
+| **Service Governor** | `ai-admin` | Quotas, Hardware Profiles, Monitoring | - |
+| **Service Consumer** | `ai-developer` | - | Workbenches, Models, GPU Resources, S3 Storage |
 
-**The Service Model:**
-1. **Admin defines** → ClusterQueue quotas, Hardware Profiles
-2. **Users request** → Select Hardware Profile in Dashboard
-3. **Kueue enforces** → Admits or queues based on quota
-4. **Admin monitors** → DCGM Dashboard for utilization
+**The GPU-as-a-Service Model:**
+1. **Admin provisions** → MinIO storage, ClusterQueue quotas, Hardware Profiles
+2. **Admin configures** → Idle culling, storage limits, queue policies
+3. **Users request** → Select Hardware Profile + Data Connection in Dashboard
+4. **Kueue enforces** → Admits or queues based on quota
+5. **Platform governs** → Auto-stops idle notebooks, releases GPUs
+6. **Admin monitors** → DCGM Dashboard for utilization, MinIO for storage

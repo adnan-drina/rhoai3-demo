@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# MinIO Object Storage for RHOAI
+# Provides S3-compatible storage for:
+# - Model artifacts
+# - Pipeline data
+# - Workbench datasets
+
+resources:
+  - namespace.yaml
+  - credentials-secret.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - init-job.yaml
+

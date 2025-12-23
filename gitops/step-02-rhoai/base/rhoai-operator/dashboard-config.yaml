@@ -1,6 +1,6 @@
 # OdhDashboardConfig - RHOAI 3.0 Dashboard Feature Toggles
 # Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-01-odh-dashboard.html
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config
 apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
@@ -11,6 +11,10 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dashboardConfig:
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Feature Toggles
+    # ═══════════════════════════════════════════════════════════════════════════
+    
     # Tracking / Telemetry
     disableTracking: false
     
@@ -39,7 +43,9 @@ spec:
     # Required for dashboard to recognize external Kueue operator
     disableKueue: false
   
-  # Hardware Profile Order (first is default)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Hardware Profile Order (first is default in dropdown)
+  # ═══════════════════════════════════════════════════════════════════════════
   # cpu-small: CPU-only for development
   # default-profile: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Default GPU selection
   # nvidia-l4-1gpu: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Same as default
@@ -50,8 +56,46 @@ spec:
     - nvidia-l4-1gpu
     - nvidia-l4-4gpu
   
-  # Notebook Controller Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Notebook Controller Configuration (Cost Control)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # These settings prevent GPU waste by:
+  # 1. Automatically stopping idle workbenches (no running code)
+  # 2. Standardizing storage sizes for cost predictability
   notebookController:
     enabled: true
     notebookNamespace: rhods-notebooks
-    pvcSize: 20Gi
+    # Default PVC size for new workbenches
+    pvcSize: 40Gi
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Idle Notebook Culling (GPU Cost Optimization)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CRITICAL for AWS GPU demos: Prevents "zombie" notebooks from hoarding GPUs
+  # After 1 hour of inactivity (no kernel activity), notebooks are stopped
+  # Users can restart them instantly, but GPUs are released back to the pool
+  notebookSizes:
+    - name: Small
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+    - name: Medium
+      resources:
+        requests:
+          cpu: "2"
+          memory: 4Gi
+        limits:
+          cpu: "4"
+          memory: 8Gi
+    - name: Large
+      resources:
+        requests:
+          cpu: "4"
+          memory: 8Gi
+        limits:
+          cpu: "8"
+          memory: 16Gi

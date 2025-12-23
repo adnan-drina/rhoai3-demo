@@ -3,7 +3,9 @@
 # Step 03: Private AI - GPU as a Service
 # =============================================================================
 # Deploys GPU-as-a-Service infrastructure:
+# - MinIO S3 storage provider
 # - Authentication (HTPasswd, OAuth, Groups)
+# - RHOAI Data Connection for MinIO
 # - Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
 # - Project RBAC (ai-admin, ai-developer)
 # - Optional: Demo workbenches for queuing demonstration
@@ -67,6 +69,42 @@ oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "Argo CD Application '${STEP_NAME}' created"
 
 # =============================================================================
+# Wait for MinIO storage provider
+# =============================================================================
+log_step "Waiting for MinIO storage provider..."
+
+# Wait for minio namespace
+until oc get namespace minio-storage &>/dev/null; do
+    log_info "Waiting for minio-storage namespace..."
+    sleep 5
+done
+
+# Wait for MinIO deployment
+log_info "Waiting for MinIO deployment to be ready..."
+until oc get deployment minio -n minio-storage &>/dev/null && \
+      [[ $(oc get deployment minio -n minio-storage -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0") -ge 1 ]]; do
+    sleep 5
+done
+log_success "MinIO deployment ready"
+
+# Wait for init job to complete (with timeout)
+log_info "Waiting for MinIO initialization..."
+TIMEOUT=120
+ELAPSED=0
+while [[ $ELAPSED -lt $TIMEOUT ]]; do
+    JOB_STATUS=$(oc get job minio-init -n minio-storage -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
+    if [[ "$JOB_STATUS" == "1" ]]; then
+        log_success "MinIO initialization complete"
+        break
+    fi
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+done
+if [[ $ELAPSED -ge $TIMEOUT ]]; then
+    log_warn "MinIO init job taking longer than expected - continuing anyway"
+fi
+
+# =============================================================================
 # Wait for authentication resources
 # =============================================================================
 log_step "Waiting for authentication resources..."
@@ -123,6 +161,13 @@ until oc get namespace private-ai &>/dev/null; do
 done
 log_success "Namespace 'private-ai' created"
 
+# Wait for Data Connection
+until oc get secret minio-connection -n private-ai &>/dev/null; do
+    log_info "Waiting for MinIO Data Connection..."
+    sleep 5
+done
+log_success "Data Connection 'minio-connection' created"
+
 # Wait for Kueue resources (if CRDs available)
 if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
     log_info "Waiting for Kueue resources..."
@@ -145,9 +190,10 @@ fi
 # =============================================================================
 log_step "Deployment Complete"
 
-# Get Gateway hostname for URLs
+# Get URLs
 GATEWAY_HOST=$(oc get gateway data-science-gateway -n openshift-ingress -o jsonpath='{.spec.listeners[0].hostname}' 2>/dev/null || echo "loading...")
 DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
+MINIO_URL=$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -155,12 +201,18 @@ echo "GPU-as-a-Service Infrastructure Deployed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Demo Users:"
-echo "  ┌──────────────┬─────────────┬────────────────┐"
-echo "  │ Username     │ Password    │ Role           │"
-echo "  ├──────────────┼─────────────┼────────────────┤"
-echo "  │ ai-admin     │ redhat123   │ Service Admin  │"
-echo "  │ ai-developer │ redhat123   │ Service User   │"
-echo "  └──────────────┴─────────────┴────────────────┘"
+echo "  ┌──────────────┬─────────────┬────────────────────┐"
+echo "  │ Username     │ Password    │ Role               │"
+echo "  ├──────────────┼─────────────┼────────────────────┤"
+echo "  │ ai-admin     │ redhat123   │ Service Governor   │"
+echo "  │ ai-developer │ redhat123   │ Service Consumer   │"
+echo "  └──────────────┴─────────────┴────────────────────┘"
+echo ""
+echo "S3 Storage (MinIO):"
+echo "  • Console:      https://${MINIO_URL}"
+echo "  • Credentials:  minio-admin / minio-secret-123"
+echo "  • Buckets:      rhoai-storage, models, pipelines"
+echo "  • Data Conn:    minio-connection (appears in Dashboard)"
 echo ""
 echo "Kueue Resources:"
 echo "  • ResourceFlavor: nvidia-l4-1gpu (g6.4xlarge)"
@@ -170,14 +222,20 @@ echo "  • LocalQueue:     default (required for Hardware Profiles)"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+log_info "Validation Commands:"
+echo ""
+echo "  # Verify S3 Provider"
+echo "  oc get pods -n minio-storage"
+echo ""
+echo "  # Verify RHOAI Data Connection"
+echo "  oc get secret -n private-ai -l opendatahub.io/connection-type=s3"
+echo ""
+echo "  # Verify Kueue Status"
+echo "  oc get localqueue default -n private-ai"
+echo ""
 log_info "Test login:"
 echo "  oc login -u ai-admin -p redhat123"
 echo "  oc login -u ai-developer -p redhat123"
-echo ""
-log_info "Check Kueue resources:"
-echo "  oc get resourceflavors"
-echo "  oc get clusterqueue rhoai-main-queue"
-echo "  oc get localqueue -n private-ai"
 echo ""
 log_info "RHOAI Dashboard:"
 echo "  https://${DASHBOARD_URL}"

@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: minio-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: minio-credentials
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Waiting for MinIO to be ready ==="
+              until mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+                echo "Waiting for MinIO..."
+                sleep 5
+              done
+              
+              echo "=== Creating bucket: rhoai-storage ==="
+              mc mb --ignore-existing myminio/rhoai-storage
+              
+              echo "=== Creating bucket: models ==="
+              mc mb --ignore-existing myminio/models
+              
+              echo "=== Creating bucket: pipelines ==="
+              mc mb --ignore-existing myminio/pipelines
+              
+              echo "=== Creating service account for RHOAI ==="
+              # Create access key for workloads (using env vars from secret)
+              mc admin user add myminio ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} || true
+              
+              # Grant readwrite access to all buckets
+              mc admin policy attach myminio readwrite --user ${AWS_ACCESS_KEY_ID} || true
+              
+              echo "=== MinIO initialization complete ==="
+              mc admin info myminio
+
