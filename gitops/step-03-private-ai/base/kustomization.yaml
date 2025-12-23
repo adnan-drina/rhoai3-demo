@@ -43,10 +43,12 @@ resources:
   - namespace.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Data Connection (sync-wave: 6)
+  # 4. Data Connection (sync-wave: 5-6)
   # ═══════════════════════════════════════════════════════════════════════════
   # RHOAI-recognized S3 connection that appears in Dashboard dropdowns
   - data-connection.yaml
+  # KServe storage-config secret for model downloads (required by storage-initializer)
+  - storage-config-secret.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
   # 5. Kueue Resources (sync-wave: 4-5)
