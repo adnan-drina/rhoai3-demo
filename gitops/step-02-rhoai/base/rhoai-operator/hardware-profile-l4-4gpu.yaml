@@ -17,19 +17,11 @@ metadata:
     app.opendatahub.io/hardwareprofile: "true"
 spec:
   # Queue-based scheduling - Kueue handles node selection via ResourceFlavors
+  # Note: tolerations must be added to InferenceService directly when using Queue type
   scheduling:
     type: Queue
     kueue:
       localQueueName: default
-    node:
-      # Target GPU nodes
-      nodeSelector:
-        nvidia.com/gpu.product: NVIDIA-L4
-      # Tolerate GPU node taint
-      tolerations:
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
   identifiers:
     - identifier: cpu
       displayName: CPU
