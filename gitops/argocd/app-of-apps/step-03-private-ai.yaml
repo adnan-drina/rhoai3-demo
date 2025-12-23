@@ -13,6 +13,12 @@ spec:
     path: gitops/step-03-private-ai/base
   destination:
     server: https://kubernetes.default.svc
+  # Ignore diff for Group resources - ArgoCD can't parse user.openshift.io/v1 Group
+  ignoreDifferences:
+    - group: user.openshift.io
+      kind: Group
+      jsonPointers:
+        - /users
   syncPolicy:
     automated:
       prune: true
@@ -21,6 +27,7 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
