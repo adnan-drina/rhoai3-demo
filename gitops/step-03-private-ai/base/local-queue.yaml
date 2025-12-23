@@ -1,6 +1,13 @@
 # LocalQueue 'default' - REQUIRED for global Hardware Profiles
-# Global HardwareProfiles in step-02 use scheduling.kueue.localQueueName: "default"
-# This queue MUST exist in every Kueue-managed project
+# ============================================================================
+# RHOAI 3.0 Best Practice: Use standardized 'default' name in each namespace
+# Global HardwareProfiles use scheduling.kueue.localQueueName: "default"
+#
+# This LocalQueue points to our custom ClusterQueue (rhoai-main-queue) which:
+# - Has higher GPU quota (10 GPUs vs 5 in RHOAI default)
+# - Uses custom ResourceFlavors with nodeLabels for proper node targeting
+# - Uses ResourceFlavors with tolerations for GPU node scheduling
+# ============================================================================
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
@@ -8,20 +15,10 @@ metadata:
   namespace: private-ai
   annotations:
     argocd.argoproj.io/sync-wave: "20"
-    kueue.x-k8s.io/default-queue: "true"  # Auto-assign workloads to this queue
+    kueue.x-k8s.io/default-queue: "true"
 spec:
-  # Points to the cluster-wide quota pool created by RHOAI operator
-  clusterQueue: default
----
-# LocalQueue 'private-ai-queue' - Alternative entry point
-# Can be used for workloads that need different quota allocation
-apiVersion: kueue.x-k8s.io/v1beta1
-kind: LocalQueue
-metadata:
-  name: private-ai-queue
-  namespace: private-ai
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
-spec:
-  # Point to our custom cluster-wide quota pool
+  # Points to our custom GPU-as-a-Service ClusterQueue
+  # ResourceFlavors (nvidia-l4-1gpu, nvidia-l4-4gpu) inject:
+  # - nodeLabels → nodeSelector (for instance type targeting)
+  # - tolerations (for GPU node scheduling)
   clusterQueue: rhoai-main-queue

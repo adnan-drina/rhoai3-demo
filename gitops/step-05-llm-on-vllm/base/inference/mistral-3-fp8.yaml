@@ -14,7 +14,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
-    kueue.x-k8s.io/queue-name: private-ai-queue
+    kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"

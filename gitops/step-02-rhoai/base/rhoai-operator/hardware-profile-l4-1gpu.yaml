@@ -2,8 +2,8 @@
 # Global profile with Queue-based scheduling for Kueue integration
 # Node specs: 16 vCPU, 64 GB RAM, 1x NVIDIA L4 GPU
 #
-# Uses private-ai-queue LocalQueue → rhoai-main-queue ClusterQueue
-# → nvidia-l4-1gpu ResourceFlavor (with nodeLabels + tolerations)
+# Uses standardized 'default' LocalQueue name (RHOAI 3.0 best practice)
+# Each namespace defines its own 'default' LocalQueue → ClusterQueue mapping
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:
@@ -19,12 +19,12 @@ metadata:
     app.kubernetes.io/part-of: hardwareprofile
     app.opendatahub.io/hardwareprofile: "true"
 spec:
-  # Queue-based scheduling with custom ResourceFlavor (includes nodeLabels)
-  # nodeSelector and tolerations are injected via ResourceFlavor nvidia-l4-1gpu
+  # Queue-based scheduling - uses 'default' LocalQueue in each namespace
+  # nodeSelector and tolerations are injected via namespace's LocalQueue → ClusterQueue → ResourceFlavor
   scheduling:
     type: Queue
     kueue:
-      localQueueName: private-ai-queue
+      localQueueName: default
   identifiers:
     - identifier: cpu
       displayName: CPU
