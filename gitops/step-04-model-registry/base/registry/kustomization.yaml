@@ -12,3 +12,4 @@ resources:
   - model-registry.yaml
   - internal-service.yaml
   - internal-networkpolicy.yaml
+  - catalog-sources.yaml
