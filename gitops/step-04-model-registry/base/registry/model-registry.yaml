@@ -31,7 +31,7 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   rest:
     port: 8080
-    serviceRoute: disabled  # Use kubeRBACProxy route for authenticated access
+    serviceRoute: enabled  # Enable internal REST API service for seed job
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Kube RBAC Proxy (authentication/authorization)
