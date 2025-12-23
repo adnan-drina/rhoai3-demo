@@ -41,6 +41,7 @@ spec:
             - -c
             - |
               set -e
+              export HOME=/tmp
               echo "╔══════════════════════════════════════════════════════════════╗"
               echo "║  Model Upload: Mistral Small 24B → MinIO                     ║"
               echo "║  Part of RHOAI 3.0 S3 Handshake Pattern                      ║"
