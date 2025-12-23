@@ -258,18 +258,27 @@ oc get workloads -n private-ai
 
 #### Access the Workbenches
 
-After applying, get the workbench URLs:
-```bash
-# Get route URLs
-oc get routes -n private-ai
+RHOAI 3.0 uses **Gateway API with path-based routing**. HTTPRoutes are auto-created by RHOAI.
 
-# Open workbench-1 (the one with GPU)
-open $(oc get route demo-workbench-1 -n private-ai -o jsonpath='{.spec.host}' | xargs -I {} echo "https://{}")
+```bash
+# Get the Gateway hostname
+GATEWAY=$(oc get gateway data-science-gateway -n openshift-ingress \
+  -o jsonpath='{.spec.listeners[0].hostname}')
+
+# Workbench URLs follow this pattern:
+# https://<gateway>/notebook/<namespace>/<workbench-name>/
+
+echo "Workbench 1: https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
+echo "Workbench 2: https://${GATEWAY}/notebook/private-ai/demo-workbench-2/"
+
+# Open workbench-1 in browser
+open "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
 ```
 
-> **Note**: When creating workbenches via `oc apply` (instead of Dashboard), we must:
-> - Create Route resources manually (not auto-generated)
-> - Add NetworkPolicy to allow OpenShift router access
+> **Note**: RHOAI 3.0 automatically creates:
+> - **HTTPRoute** for path-based routing via Gateway API
+> - **OAuth proxy sidecar** for authentication
+> - No manual Routes or NetworkPolicies needed!
 
 #### Demo Cleanup
 
@@ -360,10 +369,9 @@ gitops/step-03-private-ai/
     ├── kustomization.yaml
     ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
     ├── pvcs.yaml                   # Storage for workbenches
-    ├── networkpolicy.yaml          # Allows OpenShift router to reach workbenches
-    ├── routes.yaml                 # HTTPS routes for workbench access
     ├── workbench-1.yaml            # First workbench (gets GPU)
     └── workbench-2.yaml            # Second workbench (gets QUEUED)
+    # Note: HTTPRoutes auto-created by RHOAI via Gateway API
 ```
 
 > **Note**: The `demo/` folder is NOT included in ArgoCD sync.

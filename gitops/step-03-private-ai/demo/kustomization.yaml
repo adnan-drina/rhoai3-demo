@@ -20,9 +20,9 @@ kind: Kustomization
 resources:
   - configmap-notebooks.yaml
   - pvcs.yaml
-  - networkpolicy.yaml
   - workbench-1.yaml
   - workbench-2.yaml
-  - routes.yaml
+# Note: Routes and NetworkPolicies are NOT needed!
+# RHOAI 3.0 auto-creates HTTPRoutes via Gateway API
 
 
