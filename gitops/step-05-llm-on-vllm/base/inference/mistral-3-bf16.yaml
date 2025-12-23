@@ -43,7 +43,9 @@ spec:
           cpu: "8"
           memory: 64Gi
           nvidia.com/gpu: "4"
+          ephemeral-storage: "60Gi"  # Model weights + cache
         limits:
           cpu: "16"
           memory: 128Gi
           nvidia.com/gpu: "4"
+          ephemeral-storage: "100Gi"
