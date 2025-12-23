@@ -1,6 +1,6 @@
 # ODH Kueue Component - Required for Dashboard to recognize Kueue
 # This is the RHOAI component that tells the dashboard Kueue is available.
-# The actual Kueue operator is the standalone Red Hat Build of Kueue (step-01-gpu).
+# The actual Kueue operator is the standalone Red Hat Build of Kueue (step-01-gpu-and-prereq).
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
 apiVersion: components.platform.opendatahub.io/v1alpha1

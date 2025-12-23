@@ -44,7 +44,7 @@ spec:
     # ═══════════════════════════════════════════════════════════════════
     # DISTRIBUTED WORKLOADS
     # Note: distributedinference is NOT a valid DSC v2 component
-    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu)
+    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu-and-prereq)
     # ═══════════════════════════════════════════════════════════════════
     
     # Training Operator - Kubernetes-native distributed training
@@ -57,7 +57,7 @@ spec:
     
     # Kueue - Workload queuing for GPU-as-a-Service
     # Set to Unmanaged because we use standalone Red Hat Build of Kueue operator
-    # (installed in step-01-gpu). Unmanaged tells RHOAI to recognize Kueue exists
+    # (installed in step-01-gpu-and-prereq). Unmanaged tells RHOAI to recognize Kueue exists
     # but not manage its installation.
     kueue:
       managementState: Unmanaged

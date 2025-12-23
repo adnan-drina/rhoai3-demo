@@ -60,9 +60,9 @@ FATAL: failed to install elfutils-libel-devel. RHEL entitlement may be improperl
 
 ### The Solution: Tolerations
 
-Ensure the NFD and GPU Operator have the **tolerations** defined in this GitOps folder. The manifests in `step-01-gpu` include:
+Ensure the NFD and GPU Operator have the **tolerations** defined in this GitOps folder. The manifests in `step-01-gpu-and-prereq` include:
 
-**NFD Instance** (`gitops/step-01-gpu/base/nfd/instance.yaml`):
+**NFD Instance** (`gitops/step-01-gpu-and-prereq/base/nfd/instance.yaml`):
 ```yaml
 spec:
   operand:
@@ -70,7 +70,7 @@ spec:
       - operator: "Exists"  # Allows NFD to run on tainted GPU nodes
 ```
 
-**GPU Operator ClusterPolicy** (`gitops/step-01-gpu/base/gpu-operator/clusterpolicy.yaml`):
+**GPU Operator ClusterPolicy** (`gitops/step-01-gpu-and-prereq/base/gpu-operator/clusterpolicy.yaml`):
 ```yaml
 spec:
   daemonsets:
@@ -97,7 +97,7 @@ spec:
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/monitoring/
+oc apply -k gitops/step-01-gpu-and-prereq/base/monitoring/
 ```
 
 **Validation:**
@@ -131,7 +131,7 @@ spec:
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/nfd/
+oc apply -k gitops/step-01-gpu-and-prereq/base/nfd/
 ```
 
 **Validation:**
@@ -174,7 +174,7 @@ spec:
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/gpu-operator/
+oc apply -k gitops/step-01-gpu-and-prereq/base/gpu-operator/
 ```
 
 **Validation of GPU Readiness:**
@@ -206,7 +206,7 @@ This step installs:
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/serverless/
+oc apply -k gitops/step-01-gpu-and-prereq/base/serverless/
 ```
 
 **Validation:**
@@ -229,7 +229,7 @@ oc get knativeserving knative-serving -n knative-serving
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/leaderworkerset/
+oc apply -k gitops/step-01-gpu-and-prereq/base/leaderworkerset/
 ```
 
 **Validation:**
@@ -255,7 +255,7 @@ The RHCL operators provide the secure **Inference Gateway** for llm-d. These com
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/authorino/
+oc apply -k gitops/step-01-gpu-and-prereq/base/authorino/
 ```
 
 **Validation:**
@@ -277,7 +277,7 @@ oc get crd authorinos.operator.authorino.kuadrant.io
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/limitador/
+oc apply -k gitops/step-01-gpu-and-prereq/base/limitador/
 ```
 
 **Validation:**
@@ -299,7 +299,7 @@ oc get crd limitadors.limitador.kuadrant.io
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/dns-operator/
+oc apply -k gitops/step-01-gpu-and-prereq/base/dns-operator/
 ```
 
 **Validation:**
@@ -336,7 +336,7 @@ spec:
 
 **Deployment Command:**
 ```bash
-oc apply -k gitops/step-01-gpu/base/kueue-operator/
+oc apply -k gitops/step-01-gpu-and-prereq/base/kueue-operator/
 ```
 
 **Validation:**
@@ -360,11 +360,11 @@ oc get pods -n openshift-kueue-operator
 Deploy all operators and GPU infrastructure via Argo CD:
 
 ```bash
-./steps/step-01-gpu/deploy.sh
+./steps/step-01-gpu-and-prereq/deploy.sh
 ```
 
 The script will:
-1. Create Argo CD Application pointing to `gitops/step-01-gpu/base`
+1. Create Argo CD Application pointing to `gitops/step-01-gpu-and-prereq/base`
 2. Wait for critical operators to be ready
 3. Create GPU MachineSets dynamically (templated with your cluster ID)
 
@@ -496,7 +496,7 @@ echo "=== Kueue Instance ===" && oc get kueue cluster
 ## Kustomize Structure
 
 ```
-gitops/step-01-gpu/
+gitops/step-01-gpu-and-prereq/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── monitoring/                 # User Workload Monitoring

@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-01-gpu
+  name: step-01-gpu-and-prereq
   namespace: openshift-gitops
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-01-gpu/base
+    path: gitops/step-01-gpu-and-prereq/base
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:

@@ -28,17 +28,17 @@ log_step "Step 02: Red Hat OpenShift AI 3.0"
 # =============================================================================
 log_step "Checking prerequisites..."
 
-# Check step-01-gpu was deployed
-if ! oc get applications -n openshift-gitops step-01-gpu &>/dev/null; then
-    log_error "step-01-gpu Argo CD Application not found!"
-    log_info "Please run: ./steps/step-01-gpu/deploy.sh first"
+# Check step-01-gpu-and-prereq was deployed
+if ! oc get applications -n openshift-gitops step-01-gpu-and-prereq &>/dev/null; then
+    log_error "step-01-gpu-and-prereq Argo CD Application not found!"
+    log_info "Please run: ./steps/step-01-gpu-and-prereq/deploy.sh first"
     exit 1
 fi
 
 # Check Serverless is ready (required for KServe)
 if ! oc get knativeserving -n knative-serving knative-serving &>/dev/null; then
     log_error "KnativeServing not found - required for KServe"
-    log_info "Please ensure step-01-gpu is fully synced"
+    log_info "Please ensure step-01-gpu-and-prereq is fully synced"
     exit 1
 fi
 

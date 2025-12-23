@@ -51,7 +51,7 @@ Installs the **RHOAI 3.0 Platform Layer**, transitioning from the infrastructure
 |-----------|-------|---------|
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
-| **Kueue** | **Unmanaged** | External standalone operator (step-01-gpu) |
+| **Kueue** | **Unmanaged** | External standalone operator (step-01-gpu-and-prereq) |
 | **Kueue Component** | Created | Dashboard integration for standalone Kueue |
 
 ### AI Governance & Feature Store
@@ -109,7 +109,7 @@ spec:
 
 ## Kueue Integration (RHOAI 3.0 Architecture)
 
-RHOAI 3.0 uses a **standalone Kueue operator** (installed in step-01-gpu) instead of an embedded version.
+RHOAI 3.0 uses a **standalone Kueue operator** (installed in step-01-gpu-and-prereq) instead of an embedded version.
 
 ### Configuration
 
@@ -167,7 +167,7 @@ spec:
 ```
 
 The script will:
-1. Verify step-01-gpu prerequisites (KnativeServing, etc.)
+1. Verify step-01-gpu-and-prereq prerequisites (KnativeServing, etc.)
 2. Create Argo CD Application for RHOAI
 3. Wait for operator installation
 4. Verify DataScienceCluster is ready

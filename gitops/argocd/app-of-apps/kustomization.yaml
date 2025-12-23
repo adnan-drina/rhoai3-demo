@@ -3,6 +3,6 @@ kind: Kustomization
 
 resources:
   # Uncomment to enable via app-of-apps pattern
-  # - step-01-gpu.yaml
+  # - step-01-gpu-and-prereq.yaml
   # - step-02-rhoai.yaml
   # - step-03-private-ai.yaml

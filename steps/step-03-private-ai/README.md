@@ -354,7 +354,7 @@ This demonstrates what happens when demand exceeds GPU quota.
 
 ```bash
 # Step 1: Apply all demo resources at once
-oc apply -k gitops/step-03-private-ai/demo/
+oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 
 # Step 2: Watch the queuing behavior
 oc get workloads -n private-ai -w
@@ -413,7 +413,7 @@ open "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
 
 ```bash
 # Remove demo workbenches
-oc delete -k gitops/step-03-private-ai/demo/
+oc delete -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 ```
 
 **Why This Matters:**
@@ -559,7 +559,7 @@ gitops/step-03-private-ai/
 ```
 
 > **Note**: The `demo/` folder is NOT included in ArgoCD sync.
-> Apply manually with `oc apply -k gitops/step-03-private-ai/demo/` to demonstrate queuing.
+> Apply manually with `oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/` to demonstrate queuing.
 
 ---
 

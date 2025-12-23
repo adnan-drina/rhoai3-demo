@@ -27,7 +27,7 @@ oc login --token=<your-token> --server=<api-server>
 ./scripts/bootstrap.sh
 
 # 5. Deploy Step 1: GPU Infrastructure & Prerequisites
-./steps/step-01-gpu/deploy.sh
+./steps/step-01-gpu-and-prereq/deploy.sh
 
 # 6. Deploy Step 2: RHOAI 3.0
 ./steps/step-02-rhoai/deploy.sh
@@ -37,7 +37,7 @@ oc login --token=<your-token> --server=<api-server>
 
 | Step | Name | Description |
 |------|------|-------------|
-| 01 | [GPU Infrastructure](steps/step-01-gpu/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
+| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
 | 02 | [RHOAI 3.0](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
 | 03 | LLM Deployment | Model serving with KServe (coming soon) |
 
@@ -79,10 +79,10 @@ rhoai3-demo/
 ├── gitops/
 │   ├── argocd/
 │   │   └── app-of-apps/         # Argo CD Application definitions
-│   │       ├── step-01-gpu.yaml
+│   │       ├── step-01-gpu-and-prereq.yaml
 │   │       └── step-02-rhoai.yaml
 │   │
-│   ├── step-01-gpu/
+│   ├── step-01-gpu-and-prereq/
 │   │   └── base/                # Kustomize manifests
 │   │       ├── nfd/
 │   │       ├── gpu-operator/
@@ -97,7 +97,7 @@ rhoai3-demo/
 │           └── rhoai-operator/
 │
 └── steps/
-    ├── step-01-gpu/
+    ├── step-01-gpu-and-prereq/
     │   ├── deploy.sh            # Deployment script
     │   └── README.md            # Documentation
     │
