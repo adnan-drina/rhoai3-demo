@@ -17,44 +17,29 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
     kueue.x-k8s.io/queue-name: default
+    networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     openshift.io/display-name: "Mistral 3 24B BF16 (4-GPU)"
     serving.kserve.io/deploymentMode: RawDeployment
-    serving.kserve.io/autoscalerClass: hpa
-    serving.kserve.io/minScale: "1"
-    serving.kserve.io/maxScale: "1"
 spec:
   predictor:
+    minReplicas: 1
+    maxReplicas: 1
     model:
       modelFormat:
-        name: vllm
+        name: vLLM
       runtime: vllm-runtime
-      storageUri: "s3://models/mistral-3-24b-instruct/"
-      args:
-        - "--model"
-        - "/mnt/models"
-        - "--tensor-parallel-size"
-        - "4"
-        - "--dtype"
-        - "bfloat16"
-        - "--max-model-len"
-        - "8192"
-        - "--gpu-memory-utilization"
-        - "0.9"
-    resources:
-      requests:
-        cpu: "8"
-        memory: "64Gi"
-        nvidia.com/gpu: "4"
-      limits:
-        cpu: "16"
-        memory: "128Gi"
-        nvidia.com/gpu: "4"
-    nodeSelector:
-      nvidia.com/gpu.product: NVIDIA-L4
-    tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-
+      # Use storage.key to reference the Data Connection secret
+      storage:
+        key: minio-connection
+        path: mistral-3-24b-instruct/
+      resources:
+        requests:
+          cpu: "8"
+          memory: 64Gi
+          nvidia.com/gpu: "4"
+        limits:
+          cpu: "16"
+          memory: 128Gi
+          nvidia.com/gpu: "4"
