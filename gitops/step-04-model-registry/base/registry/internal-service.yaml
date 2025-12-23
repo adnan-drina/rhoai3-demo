@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: private-ai-registry-internal
+  namespace: rhoai-model-registries
+  labels:
+    app: private-ai-registry
+    component: model-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    description: |
+      Internal service for cluster-internal API access (port 8080).
+      The primary service (private-ai-registry:8443) remains OAuth-protected.
+      This is used by automation jobs for model registration.
+spec:
+  ports:
+    - name: http-api
+      port: 8080
+      protocol: TCP
+      targetPort: 8080  # Raw REST port, bypassing OAuth proxy
+  selector:
+    # Standard RHOAI 3.0 Model Registry pod selector
+    app: private-ai-registry
+    component: model-registry
+  type: ClusterIP
+

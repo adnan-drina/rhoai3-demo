@@ -37,14 +37,19 @@ resources:
   # ═══════════════════════════════════════════════════════════════════════════
   - rbac/
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. Model Registration Seed Job (sync-wave: 15)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - seed-job.yaml
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# Notes
+# Architecture Notes
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# Model Registration is done via:
-# 1. RHOAI Dashboard: Settings → Model registries → Register model
-# 2. Or using the Model Registry Python SDK in a notebook
+# Service Architecture:
+#   - private-ai-registry:8443          → OAuth-protected (Dashboard, UI, external)
+#   - private-ai-registry-internal:8080 → Internal API (automation, seed jobs)
 #
-# This aligns with the enterprise governance workflow:
-# - ai-admin registers validated models through the Dashboard
-# - ai-developer discovers models in GenAI Studio → AI Available Assets
+# The seed job uses the internal service (8080) to register the
+# May 2025 Validated Granite model. The primary OAuth-protected
+# service (8443) remains the entry point for all user traffic.
