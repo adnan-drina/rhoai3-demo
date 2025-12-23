@@ -1,6 +1,6 @@
 # Demo Workbench 1 - Gets the GPU first
 # This workbench will be ADMITTED immediately if GPU is available
-# RHOAI 3.0: Uses inject-auth for kube-rbac-proxy sidecar (not inject-oauth)
+# Uses nvidia-l4-1gpu Hardware Profile for resource allocation
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -10,16 +10,25 @@ metadata:
     app: demo-workbench-1
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
-    # RHOAI 3.0: Queue name must be 'default' to match global HardwareProfiles
+    opendatahub.io/user: ai-developer
+    # Kueue queue assignment (matches Hardware Profile's localQueueName)
     kueue.x-k8s.io/queue-name: "default"
   annotations:
-    # RHOAI 3.0: Use inject-auth (NOT inject-oauth - deprecated!)
+    # RHOAI 3.0: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
-    opendatahub.io/username: "ai-developer"
+    # Hardware Profile reference (nvidia-l4-1gpu)
+    opendatahub.io/hardware-profile-name: "nvidia-l4-1gpu"
+    opendatahub.io/hardware-profile-namespace: "redhat-ods-applications"
+    # Accelerator tracking
+    opendatahub.io/accelerator-name: ""
+    opendatahub.io/accelerator-profile-namespace: ""
+    # Image selection
     notebooks.opendatahub.io/last-image-selection: "pytorch:2025.2"
     opendatahub.io/image-display-name: "Jupyter | PyTorch | CUDA | Python 3.12"
+    # User and display info
+    opendatahub.io/username: "ai-developer"
     openshift.io/display-name: "Demo Workbench 1 (GPU)"
-    openshift.io/description: "First workbench - should get GPU immediately"
+    openshift.io/description: "First workbench - demonstrates GPU allocation via Kueue"
 spec:
   template:
     spec:
@@ -27,14 +36,15 @@ spec:
         - name: demo-workbench-1
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.2
           imagePullPolicy: Always
+          # Resources from nvidia-l4-1gpu Hardware Profile defaults
           resources:
             limits:
-              cpu: "4"
-              memory: 16Gi
+              cpu: "8"
+              memory: 32Gi
               nvidia.com/gpu: "1"
             requests:
-              cpu: "4"
-              memory: 16Gi
+              cpu: "8"
+              memory: 32Gi
               nvidia.com/gpu: "1"
           ports:
             - containerPort: 8888
