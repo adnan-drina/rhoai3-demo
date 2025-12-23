@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Step 04: Model Registry & Governance
+# Step 04: Enterprise Model Governance
 # =============================================================================
-# Deploys Model Registry infrastructure:
+# Deploys Model Registry infrastructure and registers the May 2025 Validated
+# Granite model. This implements the "Gatekeeper" pattern for enterprise AI.
+#
+# Components:
 # - MariaDB database for metadata storage
-# - ModelRegistry CR instance
+# - ModelRegistry instance (private-ai-registry)
 # - RBAC for ai-admin and ai-developer
-# - Seed job to register demo model
+# - Seed job to register Granite 3.1 FP8 model
+#
+# IMPORTANT: This step only REGISTERS the model metadata.
+# Actual deployment to KServe happens in Step 05.
 # =============================================================================
 set -euo pipefail
 
@@ -19,7 +25,12 @@ STEP_NAME="step-04-model-registry"
 load_env
 check_oc_logged_in
 
-log_step "Step 04: Model Registry & Governance"
+echo ""
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║  Step 04: Enterprise Model Governance                                ║"
+echo "║  Implementing the Gatekeeper Pattern for AI Models                   ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo ""
 
 # =============================================================================
 # Prerequisites check
@@ -36,7 +47,7 @@ fi
 # Check MinIO is available
 if ! oc get pods -n minio-storage -l app=minio --no-headers 2>/dev/null | grep -q Running; then
     log_warn "MinIO not running in minio-storage namespace"
-    log_info "Model Registry requires S3 storage for artifacts"
+    log_info "Model artifacts will be stored in MinIO"
 fi
 
 # Check Model Registry component is enabled in DSC
@@ -62,10 +73,17 @@ log_success "Argo CD Application '${STEP_NAME}' created"
 log_step "Waiting for MariaDB database..."
 
 # Wait for deployment
+TIMEOUT=180
+ELAPSED=0
 until oc get deployment model-registry-db -n private-ai &>/dev/null && \
       [[ $(oc get deployment model-registry-db -n private-ai -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0") -ge 1 ]]; do
-    log_info "Waiting for MariaDB deployment..."
+    if [[ $ELAPSED -ge $TIMEOUT ]]; then
+        log_warn "MariaDB taking longer than expected"
+        break
+    fi
+    log_info "Waiting for MariaDB deployment... (${ELAPSED}s)"
     sleep 10
+    ELAPSED=$((ELAPSED + 10))
 done
 log_success "MariaDB database ready"
 
@@ -75,9 +93,16 @@ log_success "MariaDB database ready"
 log_step "Waiting for Model Registry..."
 
 # Wait for ModelRegistry CR (uses v1beta1 API in rhoai-model-registries namespace)
+TIMEOUT=180
+ELAPSED=0
 until oc get modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries &>/dev/null; do
-    log_info "Waiting for ModelRegistry CR..."
+    if [[ $ELAPSED -ge $TIMEOUT ]]; then
+        log_warn "ModelRegistry CR not found yet"
+        break
+    fi
+    log_info "Waiting for ModelRegistry CR... (${ELAPSED}s)"
     sleep 10
+    ELAPSED=$((ELAPSED + 10))
 done
 
 # Wait for registry pods
@@ -101,16 +126,22 @@ fi
 # =============================================================================
 # Wait for Seed Job
 # =============================================================================
-log_step "Waiting for seed job to complete..."
+log_step "Waiting for model registration job..."
 
 TIMEOUT=300
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
     JOB_STATUS=$(oc get job model-registry-seed -n rhoai-model-registries -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
     if [[ "$JOB_STATUS" == "1" ]]; then
-        log_success "Seed job completed - demo model registered"
+        log_success "Model registration completed"
+        echo ""
+        echo "  Registered: Granite-3.1-8b-Instruct-FP8"
+        echo "  Version:    3.1-May2025-Validated"
+        echo "  Status:     Ready to Deploy"
+        echo ""
         break
     fi
+    log_info "Waiting for model registration... (${ELAPSED}s)"
     sleep 10
     ELAPSED=$((ELAPSED + 10))
 done
@@ -126,45 +157,55 @@ fi
 log_step "Deployment Complete"
 
 DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
-REGISTRY_URL=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Model Registry & Governance Deployed"
+echo "Enterprise Model Governance Deployed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Components:"
 echo "  • MariaDB:        model-registry-db (private-ai namespace)"
 echo "  • ModelRegistry:  private-ai-registry (rhoai-model-registries)"
-echo "  • Demo Model:     Granite-7b-Inference v1.0"
+echo ""
+echo "Registered Model:"
+echo "  • Model:          Granite-3.1-8b-Instruct-FP8"
+echo "  • Version:        3.1-May2025-Validated"
+echo "  • Collection:     Red Hat AI Validated - May 2025"
+echo "  • Hardware:       NVIDIA L4 (FP8 optimized)"
+echo "  • Status:         Ready to Deploy"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 log_info "Validation Commands:"
 echo ""
-echo "  # Check Model Registry (v1beta1 API)"
+echo "  # Check Model Registry"
 echo "  oc get modelregistry.modelregistry.opendatahub.io -n rhoai-model-registries"
 echo ""
 echo "  # Check registry pods"
 echo "  oc get pods -n rhoai-model-registries | grep private-ai-registry"
 echo ""
-echo "  # Check REST API (via authenticated route)"
-echo "  # Access via Dashboard: Settings → Model registries → private-ai-registry"
+echo "  # View seed job logs"
+echo "  oc logs job/model-registry-seed -n rhoai-model-registries"
 echo ""
 log_info "Access Points:"
 echo ""
-echo "  Dashboard:      https://${DASHBOARD_URL}"
-echo "  Registry API:   https://${REGISTRY_URL}"
+echo "  Dashboard: https://${DASHBOARD_URL}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Demo: Model Catalog"
+echo "Next Steps: Discover the Model"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-log_info "1. Login as ai-developer to RHOAI Dashboard"
-log_info "2. Go to GenAI Studio → AI Available Assets"
-log_info "3. Find 'Granite-7b-Inference' model"
-log_info "4. Click Deploy → Select Hardware Profile → Deploy"
+log_info "As ai-admin (Registry View):"
+echo "   1. Login to RHOAI Dashboard"
+echo "   2. Go to Settings → Model registries"
+echo "   3. Click 'private-ai-registry'"
+echo "   4. View Granite-3.1-8b-Instruct-FP8 metadata"
 echo ""
-log_info "Registry Admin (ai-admin):"
-echo "   Settings → Model registries → private-ai-registry"
+log_info "As ai-developer (Catalog View):"
+echo "   1. Login to RHOAI Dashboard"
+echo "   2. Go to GenAI Studio → AI Available Assets"
+echo "   3. Find Granite-3.1-8b-Instruct-FP8"
+echo "   4. Status shows 'Ready to Deploy'"
+echo ""
+log_info "Step 05 will deploy this model to a KServe inference endpoint."
 echo ""

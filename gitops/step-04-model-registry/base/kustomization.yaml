@@ -1,28 +1,29 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 04: Model Registry & Governance
-# Centralized model versioning, metadata management, and lifecycle tracking
+# Step 04: Enterprise Model Governance
+# Implements the "Gatekeeper" pattern for AI model management
+#
+# The Model Registry acts as a Secure Gateway:
+# - Only ai-admin can register models (governance)
+# - Models are vetted and validated before appearing in catalog
+# - Developers discover models via GenAI Studio, not Hugging Face
 #
 # Architecture:
 #   ┌─────────────────┐         ┌─────────────────┐         ┌─────────────┐
-#   │   Workbench     │────────▶│  Model Registry │────────▶│   KServe    │
-#   │  (Train/Export) │         │                 │         │  (Deploy)   │
-#   └─────────────────┘         │  ┌───────────┐  │         └─────────────┘
-#                               │  │  MariaDB  │  │
-#                               │  │ (Metadata)│  │
-#                               │  └───────────┘  │
-#                               └─────────────────┘
-#                                       │
-#                                       ▼
-#                               ┌─────────────────┐
-#                               │     MinIO       │
-#                               │  (Artifacts)    │
-#                               └─────────────────┘
-#
-# Namespaces:
-#   - private-ai: MariaDB database
-#   - rhoai-model-registries: ModelRegistry instance, RBAC
+#   │   ai-admin      │────────▶│  Model Registry │────────▶│  GenAI      │
+#   │  (Gatekeeper)   │         │                 │         │  Studio     │
+#   └─────────────────┘         │  ┌───────────┐  │         │             │
+#                               │  │  MariaDB  │  │         │  ┌───────┐  │
+#                               │  │ (Metadata)│  │         │  │Catalog│  │
+#                               │  └───────────┘  │         │  └───────┘  │
+#                               └─────────────────┘         └─────────────┘
+#                                       │                          │
+#                                       ▼                          ▼
+#                               ┌─────────────────┐         ┌─────────────┐
+#                               │     MinIO       │         │  Step 05:   │
+#                               │  (Artifacts)    │────────▶│  Inference  │
+#                               └─────────────────┘         └─────────────┘
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
 
@@ -30,41 +31,48 @@ resources:
   # ═══════════════════════════════════════════════════════════════════════════
   # 1. Metadata Database in private-ai namespace (sync-wave: 1-2)
   # ═══════════════════════════════════════════════════════════════════════════
-  # MariaDB stores model versions, metadata, and lineage
+  # MariaDB stores model metadata, versions, and governance information
   - database/
   
   # ═══════════════════════════════════════════════════════════════════════════
   # 2. Model Registry Instance in rhoai-model-registries (sync-wave: 3-5)
   # ═══════════════════════════════════════════════════════════════════════════
-  # ModelRegistry CR - operator manages the namespace
+  # ModelRegistry CR - the "Secure Gateway" for model access
   - registry/
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. RBAC in rhoai-model-registries (sync-wave: 10)
+  # 3. Governance RBAC in rhoai-model-registries (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
-  # ai-developer: register/deploy models
-  # ai-admin: full access including archive/delete
+  # ai-admin: Full access - register, archive, delete models
+  # ai-developer: Read-only - discover and deploy from catalog
   - rbac/
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Seed Job (sync-wave: 15)
+  # 4. Model Registration Job (sync-wave: 15)
   # ═══════════════════════════════════════════════════════════════════════════
-  # Pre-populate registry with demo model (Granite-7b-Inference)
+  # Registers the May 2025 Red Hat Validated Granite model
+  # IMPORTANT: This only registers metadata - does NOT deploy to KServe
   - seed-job.yaml
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Notes
+# Notes: Enterprise Model Governance
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# Two namespaces are used:
-# 1. private-ai: MariaDB database (our managed infrastructure)
-# 2. rhoai-model-registries: ModelRegistry instances (operator-managed)
+# The "Gatekeeper" Pattern:
+# - Prevents "Shadow AI" (unauthorized model usage in production)
+# - Ensures only vetted models appear in the catalog
+# - Maintains audit trail for compliance
+#
+# Registered Model:
+# - Name: Granite-3.1-8b-Instruct-FP8
+# - Version: 3.1-May2025-Validated
+# - Collection: Red Hat AI Validated - May 2025
+# - Hardware: NVIDIA L4 (FP8 optimized)
 #
 # Prerequisites:
 # - Step 03 completed (MinIO for artifact storage)
-# - Model Registry component enabled in DSC (done in Step 02)
+# - ModelRegistry component enabled in DSC (Step 02)
 #
-# Dashboard Integration:
-# - ModelRegistry appears in Settings → Model registries
-# - Registered models appear in Model Catalog (AI Available Assets)
-# - "Deploy" button uses Hardware Profiles from Step 02
+# What happens next:
+# - Step 05: Deploy the registered model to KServe
+# - Step 06: Use the model endpoint in AI Agents
