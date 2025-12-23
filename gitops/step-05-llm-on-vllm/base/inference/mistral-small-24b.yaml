@@ -48,8 +48,8 @@ spec:
       storage:
         key: minio-connection
       args:
-        - --quantization=fp8
-        - --kv-cache-dtype=fp8
+        # Neural Magic FP8 uses compressed-tensors format - auto-detected
+        # No explicit quantization args needed - vLLM reads from model config
         - --max-model-len=8192
       resources:
         requests:
