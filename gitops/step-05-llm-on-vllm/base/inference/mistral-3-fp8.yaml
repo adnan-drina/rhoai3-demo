@@ -38,6 +38,11 @@ spec:
       runtime: vllm-runtime
       # Red Hat validated Mistral model via OCI registry
       storageUri: oci://registry.redhat.io/rhelai1/mistral-small-24b-instruct-2501:1.5
+      # vLLM optimization args for single L4 GPU
+      args:
+        - --quantization=fp8           # FP8 quantization for 50% VRAM reduction
+        - --kv-cache-dtype=fp8         # FP8 KV cache for memory efficiency
+        - --max-model-len=8192         # Reasonable context for single GPU
       resources:
         requests:
           cpu: "8"

@@ -38,6 +38,11 @@ spec:
       runtime: vllm-runtime
       # Red Hat validated Mistral model via OCI registry
       storageUri: oci://registry.redhat.io/rhelai1/mistral-small-24b-instruct-2501:1.5
+      # vLLM optimization args for 4-GPU tensor parallelism
+      args:
+        - --tensor-parallel-size=4     # Shard model across 4 GPUs
+        - --dtype=bfloat16             # Full precision for max quality
+        - --max-model-len=16384        # Extended context with 4 GPUs
       resources:
         requests:
           cpu: "8"
