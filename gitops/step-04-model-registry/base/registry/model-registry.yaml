@@ -1,18 +1,22 @@
 # ModelRegistry Custom Resource
 # Centralized model versioning and metadata management
 #
+# IMPORTANT: Registry instances go in the `rhoai-model-registries` namespace,
+# not redhat-ods-applications. The operator manages this namespace.
+#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/enabling_the_model_registry_component/index
-apiVersion: modelregistry.opendatahub.io/v1alpha1
+apiVersion: modelregistry.opendatahub.io/v1beta1
 kind: ModelRegistry
 metadata:
   name: private-ai-registry
-  namespace: redhat-ods-applications
+  namespace: rhoai-model-registries
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    openshift.io/display-name: "Private AI Registry"
+    openshift.io/description: "Model registry for the Private AI project - GPU-as-a-Service demo"
 spec:
   # ═══════════════════════════════════════════════════════════════════════════
-  # gRPC Configuration
+  # gRPC Configuration (internal model metadata API)
   # ═══════════════════════════════════════════════════════════════════════════
   grpc:
     port: 9090
@@ -22,6 +26,14 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   rest:
     port: 8080
+    serviceRoute: disabled  # Use kubeRBACProxy route instead
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Kube RBAC Proxy (authentication/authorization)
+  # ═══════════════════════════════════════════════════════════════════════════
+  kubeRBACProxy:
+    port: 8443
+    routePort: 443
     serviceRoute: enabled
   
   # ═══════════════════════════════════════════════════════════════════════════
@@ -32,15 +44,7 @@ spec:
     port: 3306
     database: model_registry
     username: mlmd
+    skipDBCreation: false
     passwordSecret:
       name: private-ai-registry-db-creds
       key: database-password
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Istio/Service Mesh Configuration
-  # ═══════════════════════════════════════════════════════════════════════════
-  istio:
-    # Disable Istio sidecar injection - using standard OpenShift routing
-    gateway:
-      domain: ""
-

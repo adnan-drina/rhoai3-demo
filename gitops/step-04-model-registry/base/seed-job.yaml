@@ -6,7 +6,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: model-registry-seed
-  namespace: redhat-ods-applications
+  namespace: rhoai-model-registries
   annotations:
     argocd.argoproj.io/sync-wave: "15"
     argocd.argoproj.io/hook: Sync
@@ -38,13 +38,22 @@ spec:
             - |
               # ═══════════════════════════════════════════════════════════════════
               # Wait for Model Registry REST API to be ready
+              # The registry service is accessed via kube-rbac-proxy on port 8443
+              # For internal access, we use the service directly on port 8080
               # ═══════════════════════════════════════════════════════════════════
-              REGISTRY_URL="http://private-ai-registry-rest.redhat-ods-applications.svc:8080"
+              REGISTRY_URL="http://private-ai-registry.rhoai-model-registries.svc:8080"
               
               echo "Waiting for Model Registry at ${REGISTRY_URL}..."
+              TIMEOUT=300
+              ELAPSED=0
               until curl -sf "${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models" > /dev/null 2>&1; do
-                echo "Model Registry is unavailable - sleeping 10s..."
+                if [ $ELAPSED -ge $TIMEOUT ]; then
+                  echo "ERROR: Timeout waiting for Model Registry"
+                  exit 1
+                fi
+                echo "Model Registry is unavailable - sleeping 10s... (${ELAPSED}s/${TIMEOUT}s)"
                 sleep 10
+                ELAPSED=$((ELAPSED + 10))
               done
               echo "Model Registry is ready!"
               
@@ -130,4 +139,3 @@ spec:
               echo "Artifact URI: s3://models/granite-7b/"
               echo ""
               echo "View in Dashboard: Settings → Model registries → private-ai-registry"
-

@@ -74,8 +74,8 @@ log_success "MariaDB database ready"
 # =============================================================================
 log_step "Waiting for Model Registry..."
 
-# Wait for ModelRegistry CR
-until oc get modelregistry private-ai-registry -n redhat-ods-applications &>/dev/null; do
+# Wait for ModelRegistry CR (uses v1beta1 API in rhoai-model-registries namespace)
+until oc get modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries &>/dev/null; do
     log_info "Waiting for ModelRegistry CR..."
     sleep 10
 done
@@ -85,7 +85,7 @@ log_info "Waiting for Model Registry pods..."
 TIMEOUT=180
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    READY=$(oc get pods -n redhat-ods-applications -l app=private-ai-registry --no-headers 2>/dev/null | grep -c Running || echo "0")
+    READY=$(oc get pods -n rhoai-model-registries -l app=private-ai-registry --no-headers 2>/dev/null | grep -c Running || echo "0")
     if [[ "$READY" -ge 1 ]]; then
         log_success "Model Registry pods ready"
         break
@@ -103,10 +103,10 @@ fi
 # =============================================================================
 log_step "Waiting for seed job to complete..."
 
-TIMEOUT=120
+TIMEOUT=300
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    JOB_STATUS=$(oc get job model-registry-seed -n redhat-ods-applications -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
+    JOB_STATUS=$(oc get job model-registry-seed -n rhoai-model-registries -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
     if [[ "$JOB_STATUS" == "1" ]]; then
         log_success "Seed job completed - demo model registered"
         break
@@ -117,7 +117,7 @@ done
 
 if [[ $ELAPSED -ge $TIMEOUT ]]; then
     log_warn "Seed job taking longer than expected"
-    log_info "Check: oc logs job/model-registry-seed -n redhat-ods-applications"
+    log_info "Check: oc logs job/model-registry-seed -n rhoai-model-registries"
 fi
 
 # =============================================================================
@@ -126,7 +126,7 @@ fi
 log_step "Deployment Complete"
 
 DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
-REGISTRY_URL=$(oc get route private-ai-registry-rest -n redhat-ods-applications -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
+REGISTRY_URL=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -135,21 +135,21 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Components:"
 echo "  • MariaDB:        model-registry-db (private-ai namespace)"
-echo "  • ModelRegistry:  private-ai-registry (redhat-ods-applications)"
+echo "  • ModelRegistry:  private-ai-registry (rhoai-model-registries)"
 echo "  • Demo Model:     Granite-7b-Inference v1.0"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 log_info "Validation Commands:"
 echo ""
-echo "  # Check Model Registry"
-echo "  oc get modelregistry -n redhat-ods-applications"
+echo "  # Check Model Registry (v1beta1 API)"
+echo "  oc get modelregistry.modelregistry.opendatahub.io -n rhoai-model-registries"
 echo ""
 echo "  # Check registry pods"
-echo "  oc get pods -n redhat-ods-applications | grep model-registry"
+echo "  oc get pods -n rhoai-model-registries | grep private-ai-registry"
 echo ""
-echo "  # Check REST API"
-echo "  curl -sf https://${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models | jq ."
+echo "  # Check REST API (via authenticated route)"
+echo "  # Access via Dashboard: Settings → Model registries → private-ai-registry"
 echo ""
 log_info "Access Points:"
 echo ""
