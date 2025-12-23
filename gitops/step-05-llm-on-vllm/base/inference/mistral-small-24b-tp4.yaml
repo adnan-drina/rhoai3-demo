@@ -11,7 +11,7 @@
 # Use Case: High-throughput production with tensor parallelism
 #
 # Prerequisites:
-#   1. Model weights uploaded to: s3://rhoai-artifacts/mistral-small-24b/
+#   1. Model weights uploaded to: s3://models/mistral-small-24b/
 #   2. storage-config secret with minio-connection key in private-ai namespace
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
@@ -44,7 +44,7 @@ spec:
         name: vLLM
       runtime: vllm-runtime
       # S3 Storage URI - KServe storage-initializer downloads weights at startup
-      storageUri: s3://rhoai-artifacts/mistral-small-24b/
+      storageUri: s3://models/mistral-small-24b/
       storage:
         key: minio-connection
       args:

@@ -23,8 +23,8 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                      MinIO Storage                               │   │
-│  │  s3://rhoai-artifacts/mistral-small-24b/         (~50GB)        │   │
-│  │  s3://rhoai-artifacts/mistral-small-24b-fp8/     (~25GB)        │   │
+│  │  s3://models/mistral-small-24b/         (~50GB BF16)            │   │
+│  │  s3://models/mistral-small-24b-fp8/     (~25GB FP8)             │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │              KServe Storage Initializer downloads at pod startup        │
@@ -117,11 +117,11 @@ oc logs -f job/upload-mistral-to-minio -n private-ai
 mc alias set minio http://minio.minio-storage.svc:9000 rhoai-access-key rhoai-secret-key-12345
 
 # Upload pre-downloaded model weights
-mc cp -r /path/to/mistral-small-24b/ minio/rhoai-artifacts/mistral-small-24b/
-mc cp -r /path/to/mistral-small-24b-fp8/ minio/rhoai-artifacts/mistral-small-24b-fp8/
+mc cp -r /path/to/mistral-small-24b/ minio/models/mistral-small-24b/
+mc cp -r /path/to/mistral-small-24b-fp8/ minio/models/mistral-small-24b-fp8/
 
 # Verify
-mc ls minio/rhoai-artifacts/
+mc ls minio/models/
 ```
 
 ### 3. Verify storage-config Secret

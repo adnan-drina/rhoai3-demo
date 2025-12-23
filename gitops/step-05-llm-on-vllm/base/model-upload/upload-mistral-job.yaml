@@ -72,7 +72,7 @@ spec:
                   config=Config(signature_version='s3v4')
               )
               
-              bucket = "rhoai-artifacts"
+              bucket = "models"
               prefix = "mistral-small-24b/"
               
               # Ensure bucket exists
@@ -88,7 +88,7 @@ spec:
                       print(f"  Uploading: {key}")
                       s3.upload_file(str(file_path), bucket, key)
               
-              print("Done! Model available at s3://rhoai-artifacts/mistral-small-24b/")
+              print("Done! Model available at s3://models/mistral-small-24b/")
               EOF
           env:
             - name: HF_TOKEN
