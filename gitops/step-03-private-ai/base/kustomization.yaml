@@ -18,8 +18,8 @@ resources:
   - auth/htpasswd-secret.yaml
   # OAuth identity provider configuration
   - auth/oauth.yaml
-  # OpenShift Groups for RHOAI personas
-  - auth/groups.yaml
+  # NOTE: OpenShift Groups (auth/groups.yaml) are created via deploy.sh
+  # because ArgoCD cannot parse user.openshift.io/v1 Group schema
   
   # ═══════════════════════════════════════════════════════════════════════════
   # 2. Namespace (sync-wave: 3)

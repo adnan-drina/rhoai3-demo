@@ -82,12 +82,34 @@ log_success "HTPasswd secret created"
 log_info "Waiting for OAuth configuration to apply..."
 sleep 10
 
-# Wait for groups
-until oc get group rhoai-admins &>/dev/null; do
-    log_info "Waiting for rhoai-admins group..."
-    sleep 5
-done
-log_success "Groups created"
+# =============================================================================
+# Create OpenShift Groups
+# =============================================================================
+# NOTE: Groups are created via script because ArgoCD cannot parse
+# user.openshift.io/v1 Group schema for comparison
+log_step "Creating OpenShift Groups..."
+
+# Create rhoai-admins group
+if ! oc get group rhoai-admins &>/dev/null; then
+    oc adm groups new rhoai-admins ai-admin
+    log_success "Created group 'rhoai-admins' with user 'ai-admin'"
+else
+    # Ensure ai-admin is in the group
+    oc adm groups add-users rhoai-admins ai-admin 2>/dev/null || true
+    log_success "Group 'rhoai-admins' already exists"
+fi
+
+# Create rhoai-users group
+if ! oc get group rhoai-users &>/dev/null; then
+    oc adm groups new rhoai-users ai-developer
+    log_success "Created group 'rhoai-users' with user 'ai-developer'"
+else
+    # Ensure ai-developer is in the group
+    oc adm groups add-users rhoai-users ai-developer 2>/dev/null || true
+    log_success "Group 'rhoai-users' already exists"
+fi
+
+log_success "Groups configured"
 
 # =============================================================================
 # Wait for namespace and Kueue resources
