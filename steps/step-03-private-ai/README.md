@@ -91,14 +91,16 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 
 ### Authentication & Authorization
 
-| Resource | Name | Purpose |
-|----------|------|---------|
-| **Secret** | `htpass-secret` | HTPasswd file for demo users |
-| **OAuth** | `cluster` | HTPasswd identity provider |
-| **Group** | `rhoai-admins` | Admin group (ai-admin) |
-| **Group** | `rhoai-users` | User group (ai-developer) |
-| **RoleBinding** | `ai-admin-admin` | Project admin access |
-| **RoleBinding** | `ai-developer-edit` | Project edit access |
+| Resource | Name | Purpose | Managed By |
+|----------|------|---------|------------|
+| **Secret** | `htpass-secret` | HTPasswd file for demo users | ArgoCD |
+| **OAuth** | `cluster` | HTPasswd identity provider | ArgoCD |
+| **Group** | `rhoai-admins` | Admin group (ai-admin) | `deploy.sh`* |
+| **Group** | `rhoai-users` | User group (ai-developer) | `deploy.sh`* |
+| **RoleBinding** | `ai-admin-admin` | Project admin access | ArgoCD |
+| **RoleBinding** | `ai-developer-edit` | Project edit access | ArgoCD |
+
+> \* **Note**: OpenShift Groups are created via `deploy.sh` instead of ArgoCD because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema for diff calculation.
 
 ### Kueue Resources
 
@@ -361,7 +363,7 @@ gitops/step-03-private-ai/
 │   ├── auth/
 │   │   ├── htpasswd-secret.yaml    # Demo user credentials
 │   │   ├── oauth.yaml              # HTPasswd identity provider
-│   │   └── groups.yaml             # rhoai-admins, rhoai-users
+│   │   └── groups.yaml             # NOT in ArgoCD (created by deploy.sh)
 │   │
 │   ├── rbac/
 │   │   ├── project-admin.yaml      # ai-admin → admin role
@@ -522,6 +524,26 @@ oc get gateway data-science-gateway -n openshift-ingress
 # Correct URL format
 # https://<gateway-hostname>/notebook/<namespace>/<workbench-name>/
 ```
+
+### ArgoCD Sync Error: "unable to resolve parseableType for Group"
+
+ArgoCD cannot parse the `user.openshift.io/v1 Group` schema:
+
+```
+Failed to compare desired state to live state: failed to calculate diff:
+error calculating structured merge diff: unable to resolve parseableType
+for GroupVersionKind: user.openshift.io/v1, Kind=Group
+```
+
+**Solution**: Groups are excluded from ArgoCD and created by `deploy.sh`:
+
+```bash
+# deploy.sh creates groups via CLI
+oc adm groups new rhoai-admins ai-admin
+oc adm groups new rhoai-users ai-developer
+```
+
+This is a known ArgoCD limitation with OpenShift's `user.openshift.io` API.
 
 ---
 
