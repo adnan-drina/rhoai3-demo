@@ -69,18 +69,23 @@ spec:
                 sleep 10
               done
               
-              # Check if model already exists
+              # Check if model already exists (any state - archived or live)
+              # The registry doesn't allow duplicate names, so we check and exit early
               echo ""
               echo "Checking for existing model: ${MODEL_NAME}..."
-              EXISTING=$(curl -sf "${API_BASE}/registered_models" 2>/dev/null | grep -c "${MODEL_NAME}" || echo "0")
+              MODELS_JSON=$(curl -sf "${API_BASE}/registered_models" 2>/dev/null || echo "{}")
               
-              if [ "$EXISTING" != "0" ]; then
-                echo "✓ Model '${MODEL_NAME}' already registered - skipping"
+              if echo "$MODELS_JSON" | grep -q "\"name\":\"${MODEL_NAME}\""; then
+                echo "✓ Model '${MODEL_NAME}' already exists in registry"
+                echo ""
+                echo "  Note: To update metadata, use the Dashboard or PATCH API"
                 echo ""
                 echo "Current registered models:"
-                curl -sf "${API_BASE}/registered_models" 2>/dev/null || true
+                echo "$MODELS_JSON" | grep -E '"name"|"state"|"owner"' | head -20
                 exit 0
               fi
+              
+              echo "  Model not found - proceeding with registration"
               
               echo ""
               echo "Registering model: ${MODEL_NAME}..."
