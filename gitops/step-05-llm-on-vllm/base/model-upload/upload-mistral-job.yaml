@@ -21,6 +21,9 @@ kind: Job
 metadata:
   name: upload-mistral-to-minio
   namespace: private-ai
+  labels:
+    # Use our custom queue with ephemeral-storage quota
+    kueue.x-k8s.io/queue-name: private-ai-queue
   annotations:
     argocd.argoproj.io/hook: Skip
     description: "Downloads Mistral-Small-24B and uploads to MinIO for S3 serving"
