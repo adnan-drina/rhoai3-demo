@@ -3,6 +3,9 @@
 # =============================================================================
 # Downloads Mistral-Small-24B-Instruct from HuggingFace and uploads to MinIO
 # 
+# This job is part of the RHOAI 3.0 S3 Handshake Pattern:
+#   Registry (Metadata) → MinIO (Weights) → KServe (Execution)
+#
 # IMPORTANT: This job requires:
 #   1. HuggingFace token (for gated model access)
 #   2. Significant download time (~30-60 min depending on network)
@@ -11,6 +14,7 @@
 # Usage:
 #   oc create secret generic hf-token -n private-ai --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-job.yaml
+#   oc logs -f job/upload-mistral-to-minio -n private-ai
 # =============================================================================
 apiVersion: batch/v1
 kind: Job
@@ -19,7 +23,7 @@ metadata:
   namespace: private-ai
   annotations:
     argocd.argoproj.io/hook: Skip
-    description: "Downloads Mistral-Small-24B and uploads to MinIO"
+    description: "Downloads Mistral-Small-24B and uploads to MinIO for S3 serving"
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 2
@@ -34,6 +38,11 @@ spec:
             - -c
             - |
               set -e
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  Model Upload: Mistral Small 24B → MinIO                     ║"
+              echo "║  Part of RHOAI 3.0 S3 Handshake Pattern                      ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+              
               echo "=== Installing dependencies ==="
               pip install -q huggingface_hub boto3 tqdm
 
@@ -42,54 +51,109 @@ spec:
               export AWS_SECRET_ACCESS_KEY="${MINIO_SECRET_KEY}"
               export AWS_ENDPOINT_URL="${MINIO_ENDPOINT}"
 
-              echo "=== Downloading model from HuggingFace ==="
-              python3 << 'EOF'
+              python3 << 'PYTHON_SCRIPT'
               import os
+              import sys
               from huggingface_hub import snapshot_download
               import boto3
               from botocore.config import Config
               from pathlib import Path
 
-              # Download model
-              model_id = "mistralai/Mistral-Small-24B-Instruct-2501"
-              local_path = "/tmp/model"
-              
-              print(f"Downloading {model_id}...")
-              snapshot_download(
-                  repo_id=model_id,
-                  local_dir=local_path,
-                  token=os.environ.get("HF_TOKEN"),
-                  ignore_patterns=["*.md", "*.txt"]
-              )
-              
-              # Upload to MinIO
-              print("Uploading to MinIO...")
+              # Configuration
+              BUCKET = "models"
+              S3_ENDPOINT = os.environ['AWS_ENDPOINT_URL']
+              HF_TOKEN = os.environ.get("HF_TOKEN")
+
+              # Models to download
+              MODELS = [
+                  {
+                      "hf_repo": "mistralai/Mistral-Small-24B-Instruct-2501",
+                      "s3_prefix": "mistral-small-24b/",
+                      "description": "BF16 Full Precision (4-GPU)"
+                  },
+                  # Uncomment to also download FP8 variant
+                  # {
+                  #     "hf_repo": "neuralmagic/Mistral-Small-24B-Instruct-2501-FP8-dynamic",
+                  #     "s3_prefix": "mistral-small-24b-fp8/",
+                  #     "description": "FP8 Quantized (1-GPU)"
+                  # }
+              ]
+
+              # Initialize S3 client
               s3 = boto3.client(
                   's3',
-                  endpoint_url=os.environ['AWS_ENDPOINT_URL'],
+                  endpoint_url=S3_ENDPOINT,
                   aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
                   aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
                   config=Config(signature_version='s3v4')
               )
-              
-              bucket = "models"
-              prefix = "mistral-small-24b/"
-              
+
               # Ensure bucket exists
               try:
-                  s3.head_bucket(Bucket=bucket)
+                  s3.head_bucket(Bucket=BUCKET)
+                  print(f"✓ Bucket '{BUCKET}' exists")
               except:
-                  s3.create_bucket(Bucket=bucket)
-              
-              # Upload all files
-              for file_path in Path(local_path).rglob("*"):
-                  if file_path.is_file():
-                      key = prefix + str(file_path.relative_to(local_path))
-                      print(f"  Uploading: {key}")
-                      s3.upload_file(str(file_path), bucket, key)
-              
-              print("Done! Model available at s3://models/mistral-small-24b/")
-              EOF
+                  s3.create_bucket(Bucket=BUCKET)
+                  print(f"✓ Created bucket '{BUCKET}'")
+
+              for model in MODELS:
+                  print(f"\n{'='*60}")
+                  print(f"Processing: {model['hf_repo']}")
+                  print(f"  Description: {model['description']}")
+                  print(f"  Target: s3://{BUCKET}/{model['s3_prefix']}")
+                  print(f"{'='*60}")
+                  
+                  # Check if model already exists in S3
+                  try:
+                      resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=model['s3_prefix'], MaxKeys=1)
+                      if resp.get('KeyCount', 0) > 0:
+                          print(f"✓ Model already exists in S3 - skipping download")
+                          continue
+                  except Exception as e:
+                      print(f"  Note: {e}")
+                  
+                  # Download from HuggingFace
+                  local_path = f"/tmp/model_{model['s3_prefix'].replace('/', '_')}"
+                  print(f"\nDownloading from HuggingFace...")
+                  print(f"  This may take 30-60 minutes for ~50GB models")
+                  
+                  try:
+                      snapshot_download(
+                          repo_id=model['hf_repo'],
+                          local_dir=local_path,
+                          token=HF_TOKEN,
+                          ignore_patterns=["*.md", "*.txt", "*.git*"]
+                      )
+                  except Exception as e:
+                      print(f"❌ Download failed: {e}")
+                      print(f"  Ensure HF_TOKEN secret is set for gated models")
+                      sys.exit(1)
+                  
+                  # Upload to MinIO
+                  print(f"\nUploading to MinIO...")
+                  file_count = 0
+                  for file_path in Path(local_path).rglob("*"):
+                      if file_path.is_file():
+                          key = model['s3_prefix'] + str(file_path.relative_to(local_path))
+                          print(f"  → {key}")
+                          s3.upload_file(str(file_path), BUCKET, key)
+                          file_count += 1
+                  
+                  print(f"✓ Uploaded {file_count} files to s3://{BUCKET}/{model['s3_prefix']}")
+
+              print(f"\n{'='*60}")
+              print("✓ Model Upload Complete!")
+              print("")
+              print("  Models available in MinIO:")
+              for model in MODELS:
+                  print(f"    s3://{BUCKET}/{model['s3_prefix']}")
+              print("")
+              print("  Next Steps:")
+              print("    1. Go to GenAI Studio → AI Available Assets")
+              print("    2. Select the model and click 'Deploy'")
+              print("    3. RHOAI will auto-configure the S3 storage URI")
+              print(f"{'='*60}")
+              PYTHON_SCRIPT
           env:
             - name: HF_TOKEN
               valueFrom:
@@ -118,4 +182,3 @@ spec:
               cpu: "4"
               memory: 16Gi
               ephemeral-storage: 150Gi
-

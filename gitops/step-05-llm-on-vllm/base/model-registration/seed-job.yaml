@@ -1,3 +1,19 @@
+# =============================================================================
+# Step 05: LLM Model Registration - S3 Registry Handshake
+# =============================================================================
+# Registers models with S3 URIs in the Model Registry.
+# The Registry stores the "Blueprint" (metadata + S3 pointer), not the weights.
+#
+# RHOAI 3.0 Handshake Pattern:
+#   Registry (Metadata) → MinIO (Weights) → KServe (Execution)
+#
+# When users click "Deploy" in GenAI Studio, RHOAI:
+#   1. Reads the 'uri' field from the ModelArtifact
+#   2. Auto-fills the storageUri in the InferenceService
+#   3. Uses the Data Connection secret for credentials
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_model_registries/index
+# =============================================================================
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -9,11 +25,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    description: |
-      Registers three LLM variants in the Model Registry:
-      - Mistral 3 BF16 (4-GPU, tensor parallel)
-      - Mistral 3 FP8 (1-GPU, Neural Magic optimized)
-      - Devstral 2 BF16 (4-GPU, coding model)
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 300
@@ -37,14 +48,19 @@ spec:
           env:
             - name: REGISTRY_URL
               value: "http://private-ai-registry-internal.rhoai-model-registries.svc:8080"
+            # S3 Configuration for MinIO
+            - name: S3_ENDPOINT
+              value: "http://minio.minio-storage.svc:9000"
+            - name: S3_BUCKET
+              value: "models"
           command:
             - /bin/sh
             - -c
             - |
               set -e
               echo "╔══════════════════════════════════════════════════════════════╗"
-              echo "║  Step 05: LLM Model Registration - Triple Play               ║"
-              echo "║  Mistral 3 (BF16 + FP8) + Devstral 2 (Coding)                ║"
+              echo "║  Step 05: LLM Model Registration (S3 Handshake)              ║"
+              echo "║  Registry stores metadata → MinIO stores weights             ║"
               echo "╚══════════════════════════════════════════════════════════════╝"
               
               API_BASE="${REGISTRY_URL}/api/model_registry/v1alpha3"
@@ -60,7 +76,7 @@ spec:
               done
               
               # ═══════════════════════════════════════════════════════════════════
-              # Function to register a model
+              # Function to register a model with S3 URI
               # ═══════════════════════════════════════════════════════════════════
               register_model() {
                 local MODEL_NAME="$1"
@@ -68,12 +84,17 @@ spec:
                 local MODEL_TAGS="$3"
                 local VERSION_NAME="$4"
                 local VERSION_META="$5"
-                local ARTIFACT_URI="$6"
+                local S3_PATH="$6"
                 local SOURCE_NAME="$7"
+                local MODEL_FORMAT="$8"
+                
+                # Construct full S3 URI
+                local ARTIFACT_URI="s3://${S3_BUCKET}/${S3_PATH}"
                 
                 echo ""
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                 echo "Registering: ${MODEL_NAME}"
+                echo "  S3 URI: ${ARTIFACT_URI}"
                 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                 
                 if curl -sf "${API_BASE}/registered_models" | grep -q "\"name\":\"${MODEL_NAME}\""; then
@@ -106,65 +127,65 @@ spec:
                 VERSION_ID=$(echo "$VERSION_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
                 echo "  Created ModelVersion ID: ${VERSION_ID}"
                 
-                # Create ModelArtifact
+                # Create ModelArtifact with S3 metadata (Official RHOAI 3.0 format)
+                # This enables the "Deploy from Registry" flow in GenAI Studio
                 curl -sf -X POST "${API_BASE}/model_versions/${VERSION_ID}/artifacts" \
                   -H "Content-Type: application/json" \
                   -d "{
                     \"name\": \"${VERSION_NAME}\",
                     \"uri\": \"${ARTIFACT_URI}\",
                     \"artifactType\": \"model-artifact\",
-                    \"modelSourceClass\": \"redhat_ai_validated_models\",
-                    \"modelSourceKind\": \"catalog\",
-                    \"modelSourceName\": \"${SOURCE_NAME}\"
+                    \"modelFormatName\": \"${MODEL_FORMAT}\",
+                    \"customProperties\": {
+                      \"s3_endpoint\": {\"metadataType\": \"MetadataStringValue\", \"string_value\": \"${S3_ENDPOINT}\"},
+                      \"s3_bucket\": {\"metadataType\": \"MetadataStringValue\", \"string_value\": \"${S3_BUCKET}\"},
+                      \"format\": {\"metadataType\": \"MetadataStringValue\", \"string_value\": \"safetensors\"},
+                      \"source_model\": {\"metadataType\": \"MetadataStringValue\", \"string_value\": \"${SOURCE_NAME}\"}
+                    }
                   }" > /dev/null
                 
-                echo "✓ Registered: ${MODEL_NAME}"
+                echo "✓ Registered: ${MODEL_NAME} → ${ARTIFACT_URI}"
               }
               
               # ═══════════════════════════════════════════════════════════════════
-              # Model 1: Mistral 3 BF16 (4-GPU, Full Precision)
+              # Model 1: Mistral Small 24B BF16 (4-GPU, Full Precision)
               # ═══════════════════════════════════════════════════════════════════
               register_model \
-                "Mistral-3-24B-Instruct-BF16" \
-                "Mistral Small 3 24B Instruct - Full Precision BF16 for 4-GPU tensor parallel deployment" \
+                "Mistral-Small-24B-Instruct-BF16" \
+                "Mistral Small 24B Instruct - Full Precision BF16 for 4-GPU tensor parallel deployment. Requires g6.12xlarge (96GB VRAM)." \
                 '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"text-to-text":{"metadataType":"MetadataStringValue","string_value":""}}' \
-                "v3-BF16-Validated" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
-                "s3://models/mistral-3-24b-instruct/" \
-                "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                "v1.0-BF16" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4 (g6.12xlarge)"},"tensor_parallel":{"metadataType":"MetadataStringValue","string_value":"4"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
+                "mistral-small-24b/" \
+                "mistralai/Mistral-Small-24B-Instruct-2501" \
+                "vLLM"
               
               # ═══════════════════════════════════════════════════════════════════
-              # Model 2: Mistral 3 FP8 (1-GPU, Neural Magic Optimized)
+              # Model 2: Mistral Small 24B FP8 (1-GPU, Neural Magic Optimized)
               # ═══════════════════════════════════════════════════════════════════
               register_model \
-                "Mistral-3-24B-Instruct-FP8" \
-                "Mistral Small 3 24B Instruct - FP8 Quantized by Neural Magic for 1-GPU deployment" \
+                "Mistral-Small-24B-Instruct-FP8" \
+                "Mistral Small 24B Instruct - FP8 Quantized by Neural Magic for cost-efficient 1-GPU deployment. 75% cost savings vs BF16." \
                 '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"fp8":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"neural-magic":{"metadataType":"MetadataStringValue","string_value":""}}' \
-                "v3-FP8-NeuralMagic" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Neural Magic"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8"},"optimized_for":{"metadataType":"MetadataStringValue","string_value":"nvidia-l4"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4"},"vram_usage":{"metadataType":"MetadataStringValue","string_value":"~15GB"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
-                "s3://models/mistral-3-24b-instruct-fp8/" \
-                "neuralmagic/Mistral-Small-3.1-24B-Instruct-2503-FP8-dynamic"
-              
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 3: Devstral 2 BF16 (4-GPU, Coding Model)
-              # ═══════════════════════════════════════════════════════════════════
-              register_model \
-                "Devstral-2-24B-BF16" \
-                "Devstral 2 24B - Code-optimized LLM for software development tasks" \
-                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"coding":{"metadataType":"MetadataStringValue","string_value":""},"text-to-text":{"metadataType":"MetadataStringValue","string_value":""}}' \
-                "v2-BF16-Coding" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"task":{"metadataType":"MetadataStringValue","string_value":"coding"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4"},"max_context":{"metadataType":"MetadataStringValue","string_value":"32768"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
-                "s3://models/devstral-2-24b/" \
-                "mistralai/Devstral-Small-2503"
+                "v1.0-FP8" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Neural Magic"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8"},"optimized_for":{"metadataType":"MetadataStringValue","string_value":"nvidia-l4"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"vram_usage":{"metadataType":"MetadataStringValue","string_value":"~15GB"},"cost_savings":{"metadataType":"MetadataStringValue","string_value":"75% vs BF16"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
+                "mistral-small-24b-fp8/" \
+                "neuralmagic/Mistral-Small-24B-Instruct-2501-FP8-dynamic" \
+                "vLLM"
               
               echo ""
               echo "════════════════════════════════════════════════════════════════"
-              echo "✓ Model Registration Complete - Triple Play"
+              echo "✓ Model Registration Complete"
               echo ""
-              echo "  Models registered:"
-              echo "  1. Mistral-3-24B-Instruct-BF16  (4-GPU, tensor parallel)"
-              echo "  2. Mistral-3-24B-Instruct-FP8   (1-GPU, Neural Magic)"
-              echo "  3. Devstral-2-24B-BF16          (4-GPU, coding)"
+              echo "  RHOAI 3.0 S3 Handshake Pattern:"
+              echo "  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐"
+              echo "  │  Model Registry │ →  │      MinIO      │ →  │     KServe      │"
+              echo "  │   (Metadata)    │    │    (Weights)    │    │   (Execution)   │"
+              echo "  └─────────────────┘    └─────────────────┘    └─────────────────┘"
               echo ""
-              echo "  Ready for deployment in GenAI Studio → AI Available Assets"
+              echo "  Models registered with S3 URIs:"
+              echo "    1. Mistral-Small-24B-Instruct-BF16 → s3://models/mistral-small-24b/"
+              echo "    2. Mistral-Small-24B-Instruct-FP8  → s3://models/mistral-small-24b-fp8/"
+              echo ""
+              echo "  Next: Upload weights to MinIO, then deploy from GenAI Studio"
               echo "════════════════════════════════════════════════════════════════"
