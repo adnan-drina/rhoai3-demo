@@ -1,8 +1,9 @@
 # =============================================================================
 # vLLM ServingRuntime for RHOAI 3.0
 # =============================================================================
-# Aligned with Dashboard-created ServingRuntime (granite-test-2 template)
-# High-performance LLM inference engine with FP8 and tensor parallelism support
+# Optimized for 4-GPU tensor parallelism (g6.12xlarge)
+# - Increased /dev/shm for NCCL inter-GPU communication
+# - Namespace scope for private-ai project visibility
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 # =============================================================================
@@ -15,13 +16,12 @@ metadata:
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    # Dashboard-compatible annotations
-    opendatahub.io/accelerator-name: ""
     opendatahub.io/apiProtocol: REST
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
     opendatahub.io/runtime-version: v0.9.1.0
-    opendatahub.io/serving-runtime-scope: global
-    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime for KServe"
+    # Namespace scope because it lives in 'private-ai' project
+    opendatahub.io/serving-runtime-scope: namespace
+    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime"
     opendatahub.io/template-name: vllm-cuda-runtime
     openshift.io/display-name: "vLLM Runtime (GitOps)"
 spec:
@@ -35,7 +35,7 @@ spec:
       autoSelect: true
   containers:
     - name: kserve-container
-      # RHOAI 3.0 GA vLLM image (same as Dashboard)
+      # RHOAI 3.0 GA vLLM image (pinned SHA for reproducibility)
       image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
       command:
         - python
@@ -58,4 +58,6 @@ spec:
     - name: shm
       emptyDir:
         medium: Memory
-        sizeLimit: 2Gi
+        # Increased to 8Gi to support 4-GPU NCCL communication
+        # 2Gi can cause "Bus Error" or NCCL timeouts with 24B+ models
+        sizeLimit: 8Gi
