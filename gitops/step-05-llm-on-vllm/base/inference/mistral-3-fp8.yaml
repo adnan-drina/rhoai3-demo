@@ -14,7 +14,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
-    kueue.x-k8s.io/queue-name: default
+    kueue.x-k8s.io/queue-name: private-ai-queue
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
@@ -29,10 +29,8 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
-    # NodeSelector ensures pod lands on correct instance type
-    # Tolerations are injected by Kueue via ResourceFlavor
-    nodeSelector:
-      node.kubernetes.io/instance-type: g6.4xlarge
+    # nodeSelector and tolerations are injected by Kueue via ResourceFlavor
+    # HardwareProfile (nvidia-l4-1gpu) → LocalQueue → ClusterQueue → ResourceFlavor
     model:
       modelFormat:
         name: vLLM
