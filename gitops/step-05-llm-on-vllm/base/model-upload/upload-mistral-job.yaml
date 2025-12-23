@@ -3,19 +3,35 @@
 # =============================================================================
 # Downloads Mistral-Small-24B-Instruct from HuggingFace and uploads to MinIO
 # 
-# This job runs in minio-storage namespace (NOT Kueue-managed) to avoid
-# quota constraints. It's a utility job, not a GPU workload.
+# Uses a PVC for model download to avoid ephemeral storage issues.
+# Runs in minio-storage namespace (not Kueue-managed).
 #
 # Usage:
-#   1. Create HF token secret: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
+#   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   2. Apply job: oc apply -f upload-mistral-job.yaml
 #   3. Monitor: oc logs -f job/upload-mistral-to-minio -n minio-storage
 # =============================================================================
+---
+# PVC for model download (survives pod restarts, avoids ephemeral storage issues)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-download-pvc
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/hook: Skip
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: upload-mistral-to-minio
-  namespace: minio-storage  # Not Kueue-managed - avoids quota constraints
+  namespace: minio-storage
   annotations:
     argocd.argoproj.io/hook: Skip
     description: "Downloads Mistral-Small-24B and uploads to MinIO for S3 serving"
@@ -29,6 +45,10 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: model-download-pvc
       containers:
         - name: uploader
           image: python:3.11-slim
@@ -36,6 +56,9 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
           command:
             - /bin/bash
             - -c
@@ -44,7 +67,7 @@ spec:
               export HOME=/tmp
               echo "╔══════════════════════════════════════════════════════════════╗"
               echo "║  Model Upload: Mistral Small 24B → MinIO                     ║"
-              echo "║  Part of RHOAI 3.0 S3 Handshake Pattern                      ║"
+              echo "║  Using PVC for reliable storage                              ║"
               echo "╚══════════════════════════════════════════════════════════════╝"
               
               echo "=== Installing dependencies ==="
@@ -63,6 +86,7 @@ spec:
               BUCKET = "models"
               S3_ENDPOINT = os.environ['MINIO_ENDPOINT']
               HF_TOKEN = os.environ.get("HF_TOKEN")
+              MODEL_DIR = "/models/mistral-small-24b"
 
               # Initialize S3 client
               s3 = boto3.client(
@@ -81,38 +105,42 @@ spec:
                   s3.create_bucket(Bucket=BUCKET)
                   print(f"✓ Created bucket '{BUCKET}'")
 
-              # Check if model already exists
+              # Check if model already exists in MinIO
               try:
                   resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="mistral-small-24b/", MaxKeys=1)
                   if resp.get('KeyCount', 0) > 0:
-                      print("✓ Model already exists in S3 - skipping download")
+                      print("✓ Model already exists in MinIO - skipping")
                       sys.exit(0)
               except Exception as e:
                   print(f"  Note: {e}")
 
-              # Download from HuggingFace
-              print("\nDownloading mistralai/Mistral-Small-24B-Instruct-2501...")
-              print("  This may take 30-60 minutes for ~50GB models")
-              
-              local_path = "/tmp/model"
-              try:
-                  snapshot_download(
-                      repo_id="mistralai/Mistral-Small-24B-Instruct-2501",
-                      local_dir=local_path,
-                      token=HF_TOKEN,
-                      ignore_patterns=["*.md", "*.txt", "*.git*"]
-                  )
-              except Exception as e:
-                  print(f"❌ Download failed: {e}")
-                  print(f"  Ensure HF_TOKEN is set for gated models")
-                  sys.exit(1)
+              # Check if model already downloaded to PVC
+              model_path = Path(MODEL_DIR)
+              if model_path.exists() and any(model_path.iterdir()):
+                  print(f"✓ Model found on PVC at {MODEL_DIR}")
+              else:
+                  # Download from HuggingFace to PVC
+                  print("\nDownloading mistralai/Mistral-Small-24B-Instruct-2501 to PVC...")
+                  print("  This may take 30-60 minutes for ~50GB models")
+                  
+                  try:
+                      snapshot_download(
+                          repo_id="mistralai/Mistral-Small-24B-Instruct-2501",
+                          local_dir=MODEL_DIR,
+                          token=HF_TOKEN,
+                          ignore_patterns=["*.md", "*.txt", "*.git*"]
+                      )
+                  except Exception as e:
+                      print(f"❌ Download failed: {e}")
+                      print(f"  Ensure HF_TOKEN is set for gated models")
+                      sys.exit(1)
 
-              # Upload to MinIO
+              # Upload from PVC to MinIO
               print("\nUploading to MinIO...")
               file_count = 0
-              for file_path in Path(local_path).rglob("*"):
+              for file_path in Path(MODEL_DIR).rglob("*"):
                   if file_path.is_file():
-                      key = "mistral-small-24b/" + str(file_path.relative_to(local_path))
+                      key = "mistral-small-24b/" + str(file_path.relative_to(MODEL_DIR))
                       print(f"  → {key}")
                       s3.upload_file(str(file_path), BUCKET, key)
                       file_count += 1
@@ -129,7 +157,6 @@ spec:
                   name: hf-token
                   key: token
                   optional: true
-            # MinIO credentials (same as minio-credentials secret in this namespace)
             - name: MINIO_ACCESS_KEY
               value: "rhoai-access-key"
             - name: MINIO_SECRET_KEY
@@ -139,7 +166,7 @@ spec:
           resources:
             requests:
               cpu: "2"
-              memory: 8Gi
+              memory: 4Gi
             limits:
               cpu: "4"
-              memory: 16Gi
+              memory: 8Gi
