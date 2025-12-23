@@ -29,13 +29,8 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
-    # GPU node scheduling
-    nodeSelector:
-      nvidia.com/gpu.product: NVIDIA-L4
-    tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
+    # Note: nodeSelector and tolerations are managed by Kueue ResourceFlavors
+    # via the Hardware Profile integration. Do not add them here.
     model:
       modelFormat:
         name: vLLM
