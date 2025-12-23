@@ -6,9 +6,6 @@
 # - Models are vetted and validated before catalog visibility
 # - Developers discover models via GenAI Studio, not Hugging Face
 #
-# IMPORTANT: Registry instances go in the `rhoai-model-registries` namespace.
-# The ModelRegistry operator manages this namespace automatically.
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
 apiVersion: modelregistry.opendatahub.io/v1beta1
 kind: ModelRegistry
@@ -42,14 +39,14 @@ spec:
     serviceRoute: enabled
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # Database Configuration (MariaDB in private-ai namespace)
+  # Database Configuration (MariaDB in same namespace - simplified)
   # ═══════════════════════════════════════════════════════════════════════════
   mysql:
-    host: model-registry-db.private-ai.svc.cluster.local
+    host: model-registry-db.rhoai-model-registries.svc.cluster.local
     port: 3306
     database: model_registry
     username: mlmd
     skipDBCreation: false
     passwordSecret:
-      name: private-ai-registry-db-creds
+      name: model-registry-db-creds
       key: database-password

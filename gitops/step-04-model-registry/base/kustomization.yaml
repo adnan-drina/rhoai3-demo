@@ -4,75 +4,47 @@ kind: Kustomization
 # Step 04: Enterprise Model Governance
 # Implements the "Gatekeeper" pattern for AI model management
 #
-# The Model Registry acts as a Secure Gateway:
-# - Only ai-admin can register models (governance)
-# - Models are vetted and validated before appearing in catalog
-# - Developers discover models via GenAI Studio, not Hugging Face
+# All components in rhoai-model-registries namespace:
+#   ┌─────────────────────────────────────────────────────────────────────────┐
+#   │                    rhoai-model-registries namespace                     │
+#   ├─────────────────────────────────────────────────────────────────────────┤
+#   │                                                                         │
+#   │   ┌─────────────────┐     ┌─────────────────┐                          │
+#   │   │   MariaDB       │◀────│  ModelRegistry  │                          │
+#   │   │   (metadata)    │     │  (API server)   │                          │
+#   │   └─────────────────┘     └─────────────────┘                          │
+#   │                                                                         │
+#   └─────────────────────────────────────────────────────────────────────────┘
 #
-# Architecture:
-#   ┌─────────────────┐         ┌─────────────────┐         ┌─────────────┐
-#   │   ai-admin      │────────▶│  Model Registry │────────▶│  GenAI      │
-#   │  (Gatekeeper)   │         │                 │         │  Studio     │
-#   └─────────────────┘         │  ┌───────────┐  │         │             │
-#                               │  │  MariaDB  │  │         │  ┌───────┐  │
-#                               │  │ (Metadata)│  │         │  │Catalog│  │
-#                               │  └───────────┘  │         │  └───────┘  │
-#                               └─────────────────┘         └─────────────┘
-#                                       │                          │
-#                                       ▼                          ▼
-#                               ┌─────────────────┐         ┌─────────────┐
-#                               │     MinIO       │         │  Step 05:   │
-#                               │  (Artifacts)    │────────▶│  Inference  │
-#                               └─────────────────┘         └─────────────┘
+# Model Registration: Done via RHOAI Dashboard (Settings → Model registries)
+# This is the recommended governance workflow for ai-admin.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Metadata Database in private-ai namespace (sync-wave: 1-2)
+  # 1. Metadata Database (sync-wave: 1-2)
   # ═══════════════════════════════════════════════════════════════════════════
-  # MariaDB stores model metadata, versions, and governance information
   - database/
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. Model Registry Instance in rhoai-model-registries (sync-wave: 3-5)
+  # 2. Model Registry Instance (sync-wave: 5)
   # ═══════════════════════════════════════════════════════════════════════════
-  # ModelRegistry CR - the "Secure Gateway" for model access
   - registry/
   
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. Governance RBAC in rhoai-model-registries (sync-wave: 10)
+  # 3. Governance RBAC (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
-  # ai-admin: Full access - register, archive, delete models
-  # ai-developer: Read-only - discover and deploy from catalog
   - rbac/
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Model Registration Job (sync-wave: 15)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Registers the May 2025 Red Hat Validated Granite model
-  # IMPORTANT: This only registers metadata - does NOT deploy to KServe
-  - seed-job.yaml
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Notes: Enterprise Model Governance
+# Notes
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# The "Gatekeeper" Pattern:
-# - Prevents "Shadow AI" (unauthorized model usage in production)
-# - Ensures only vetted models appear in the catalog
-# - Maintains audit trail for compliance
+# Model Registration is done via:
+# 1. RHOAI Dashboard: Settings → Model registries → Register model
+# 2. Or using the Model Registry Python SDK in a notebook
 #
-# Registered Model:
-# - Name: Granite-3.1-8b-Instruct-FP8
-# - Version: 3.1-May2025-Validated
-# - Collection: Red Hat AI Validated - May 2025
-# - Hardware: NVIDIA L4 (FP8 optimized)
-#
-# Prerequisites:
-# - Step 03 completed (MinIO for artifact storage)
-# - ModelRegistry component enabled in DSC (Step 02)
-#
-# What happens next:
-# - Step 05: Deploy the registered model to KServe
-# - Step 06: Use the model endpoint in AI Agents
+# This aligns with the enterprise governance workflow:
+# - ai-admin registers validated models through the Dashboard
+# - ai-developer discovers models in GenAI Studio → AI Available Assets

@@ -5,5 +5,4 @@ kind: Kustomization
 # Deployed in rhoai-model-registries namespace (operator-managed)
 
 resources:
-  - db-credentials-secret.yaml
   - model-registry.yaml

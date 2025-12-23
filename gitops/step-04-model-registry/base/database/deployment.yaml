@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: model-registry-db
-  namespace: private-ai
+  namespace: rhoai-model-registries
   labels:
     app: model-registry-db
     app.kubernetes.io/name: mariadb
