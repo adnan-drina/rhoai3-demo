@@ -1,39 +1,51 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 05: LLM Inference with vLLM
-# Deploys the Granite 3.1 8B model registered in Step 04 to KServe
+# Step 05: High-Efficiency LLM Inference with vLLM
+# Deploys Mistral-Small-24B in two configurations to demonstrate FP8 efficiency
 #
 # Architecture:
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │                          private-ai namespace                           │
 #   ├─────────────────────────────────────────────────────────────────────────┤
 #   │                                                                         │
-#   │   ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐  │
-#   │   │   Model         │     │   ServingRuntime│     │   InferenceService│ │
-#   │   │   Registry      │────▶│   vLLM          │────▶│   Granite 3.1   │  │
-#   │   │   (Step 04)     │     │                 │     │   FP8           │  │
-#   │   └─────────────────┘     └─────────────────┘     └─────────────────┘  │
-#   │                                                           │             │
-#   │                                                           ▼             │
-#   │                                                   ┌─────────────────┐  │
-#   │                                                   │   NVIDIA L4     │  │
-#   │                                                   │   GPU Node      │  │
-#   │                                                   │   (Kueue)       │  │
-#   │                                                   └─────────────────┘  │
+#   │   Deployment A: Full Precision (BF16)       Deployment B: FP8 Quantized │
+#   │   ════════════════════════════════          ════════════════════════════│
+#   │   ┌─────────────────────────────┐           ┌─────────────────────────┐ │
+#   │   │ mistral-24b-full            │           │ mistral-24b-fp8         │ │
+#   │   │                             │           │                         │ │
+#   │   │ ┌───┐ ┌───┐ ┌───┐ ┌───┐    │           │ ┌───┐                   │ │
+#   │   │ │L4 │ │L4 │ │L4 │ │L4 │    │           │ │L4 │  ~15GB VRAM       │ │
+#   │   │ └───┘ └───┘ └───┘ └───┘    │           │ └───┘                   │ │
+#   │   │ 4x GPU (64GB total)         │           │ 1x GPU (16GB)           │ │
+#   │   │ tensor-parallel-size=4      │           │ --quantization fp8      │ │
+#   │   │ --dtype bfloat16            │           │ --kv-cache-dtype fp8    │ │
+#   │   └─────────────────────────────┘           └─────────────────────────┘ │
+#   │                                                                         │
+#   │   Use Case: Maximum quality      Use Case: Cost-efficient inference    │
 #   │                                                                         │
 #   └─────────────────────────────────────────────────────────────────────────┘
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+# FP8 Advantage on NVIDIA L4:
+#   - Ada Lovelace architecture has native FP8 hardware acceleration
+#   - 50% memory reduction vs BF16
+#   - Near-identical accuracy (Neural Magic optimized kernels)
+#   - Red Hat validated through collaboration with Neural Magic
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. vLLM ServingRuntime (sync-wave: 1)
+  # 1. Model Registration (sync-wave: 1)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - model-registration/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. ServingRuntime (sync-wave: 5)
   # ═══════════════════════════════════════════════════════════════════════════
   - serving-runtime/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. InferenceService for Granite 3.1 (sync-wave: 5)
+  # 3. InferenceServices (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
   - inference/
-

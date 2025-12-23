@@ -1,9 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# vLLM ServingRuntime
-# Provides the inference engine for LLM serving
+# vLLM ServingRuntime for Mistral models
+# Supports both BF16 (tensor parallel) and FP8 (quantized) deployments
 
 resources:
   - vllm-runtime.yaml
-

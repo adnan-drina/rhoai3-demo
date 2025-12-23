@@ -1,35 +1,98 @@
 # =============================================================================
 # vLLM ServingRuntime for RHOAI 3.0
 # =============================================================================
-# This ServingRuntime enables vLLM-based inference for LLMs in the private-ai
-# project. It is optimized for NVIDIA L4 GPUs with FP8 support.
+# High-performance LLM inference engine with support for:
+# - FP8/FP16/BF16 quantization
+# - Tensor parallelism (multi-GPU)
+# - PagedAttention for efficient memory management
+# - Continuous batching for high throughput
+# - OpenAI-compatible API
 #
-# TODO: Implement based on RHOAI 3.0 documentation
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 # =============================================================================
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
-  name: vllm-runtime
+  name: vllm-mistral-runtime
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
-    openshift.io/display-name: "vLLM ServingRuntime for LLMs"
+    argocd.argoproj.io/sync-wave: "5"
+    openshift.io/display-name: "vLLM Runtime for Mistral Models"
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
 spec:
-  # TODO: Configure vLLM runtime
-  # - Container image
-  # - GPU resources
-  # - Model loading configuration
-  # - OpenAI-compatible API
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+  multiModel: false
   supportedModelFormats:
     - name: vllm
       autoSelect: true
   containers:
     - name: kserve-container
-      image: placeholder  # TODO: Use RHOAI vLLM image
+      # RHOAI 3.0 vLLM image with FP8 support
+      image: quay.io/modh/vllm@sha256:TODO_GET_LATEST_SHA
+      command:
+        - python
+        - -m
+        - vllm.entrypoints.openai.api_server
+      args:
+        - "--model"
+        - "/mnt/models"
+        - "--port"
+        - "8080"
+        - "--served-model-name"
+        - "{{.Name}}"
+        # Memory optimization
+        - "--max-model-len"
+        - "8192"
+        - "--gpu-memory-utilization"
+        - "0.9"
+        # Enable chunked prefill for better latency
+        - "--enable-chunked-prefill"
+        - "true"
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+        - name: TRANSFORMERS_CACHE
+          value: /tmp/transformers_cache
       ports:
-        - containerPort: 8000
+        - containerPort: 8080
+          name: http
           protocol: TCP
-
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 120
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      resources:
+        requests:
+          cpu: "4"
+          memory: "16Gi"
+        limits:
+          cpu: "8"
+          memory: "32Gi"
+      volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 16Gi
+    - name: tmp
+      emptyDir: {}

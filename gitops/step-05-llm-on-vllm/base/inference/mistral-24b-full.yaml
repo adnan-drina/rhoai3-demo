@@ -1,0 +1,63 @@
+# =============================================================================
+# InferenceService: Mistral-Small-24B-Instruct (Full Precision BF16)
+# =============================================================================
+# Deploys Mistral 24B using 4x NVIDIA L4 GPUs with tensor parallelism.
+# This configuration prioritizes maximum quality over efficiency.
+#
+# Hardware: 4x NVIDIA L4 (64GB total VRAM)
+# vLLM Args: --tensor-parallel-size 4 --dtype bfloat16
+#
+# Use Case: Production workloads requiring highest accuracy
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mistral-24b-full
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    openshift.io/display-name: "Mistral 24B Full Precision (4-GPU)"
+    serving.kserve.io/deploymentMode: RawDeployment
+    # Enable autoscaling
+    serving.kserve.io/autoscalerClass: hpa
+    serving.kserve.io/minScale: "1"
+    serving.kserve.io/maxScale: "1"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vllm
+      runtime: vllm-mistral-runtime
+      storageUri: "s3://rhoai-artifacts/mistral-small-24b-instruct/"
+      # vLLM-specific arguments for tensor parallelism
+      args:
+        - "--model"
+        - "/mnt/models"
+        - "--tensor-parallel-size"
+        - "4"
+        - "--dtype"
+        - "bfloat16"
+        - "--max-model-len"
+        - "8192"
+        - "--gpu-memory-utilization"
+        - "0.9"
+    # Hardware Profile: 4x NVIDIA L4
+    resources:
+      requests:
+        cpu: "8"
+        memory: "64Gi"
+        nvidia.com/gpu: "4"
+      limits:
+        cpu: "16"
+        memory: "128Gi"
+        nvidia.com/gpu: "4"
+    # Node selector for multi-GPU nodes
+    nodeSelector:
+      nvidia.com/gpu.product: NVIDIA-L4
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+

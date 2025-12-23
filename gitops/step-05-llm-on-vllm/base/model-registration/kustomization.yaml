@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Model Registration for Mistral-Small-24B variants
+# Registers both BF16 and FP8 versions in the Model Registry
+
+resources:
+  - seed-job.yaml
+
