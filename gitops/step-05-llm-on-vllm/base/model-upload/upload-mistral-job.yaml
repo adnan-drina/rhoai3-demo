@@ -33,6 +33,11 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      # Allow scheduling on GPU nodes (have 300GB+ storage)
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: uploader
           image: python:3.11-slim
