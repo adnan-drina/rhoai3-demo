@@ -1,20 +1,62 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 04: Model Registry
-# Implements centralized model versioning and lifecycle management
+# Step 04: Model Registry & Governance
+# Centralized model versioning, metadata management, and lifecycle tracking
 #
 # Architecture:
-#   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-#   │   Models    │───▶│   Model     │───▶│   Model     │
-#   │  (MinIO S3) │    │  Registry   │    │  Serving    │
-#   └─────────────┘    └─────────────┘    └─────────────┘
+#   ┌─────────────────┐         ┌─────────────────┐         ┌─────────────┐
+#   │   Workbench     │────────▶│  Model Registry │────────▶│   KServe    │
+#   │  (Train/Export) │         │                 │         │  (Deploy)   │
+#   └─────────────────┘         │  ┌───────────┐  │         └─────────────┘
+#                               │  │  MariaDB  │  │
+#                               │  │ (Metadata)│  │
+#                               │  └───────────┘  │
+#                               └─────────────────┘
+#                                       │
+#                                       ▼
+#                               ┌─────────────────┐
+#                               │     MinIO       │
+#                               │  (Artifacts)    │
+#                               └─────────────────┘
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
 
 resources:
-  # TODO: Add Model Registry resources
-  # - namespace.yaml
-  # - model-registry.yaml
-  # - model-registry-db.yaml
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. Metadata Database (sync-wave: 1-2)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MariaDB in private-ai namespace for registry metadata storage
+  - database/
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. Model Registry Instance (sync-wave: 3-5)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ModelRegistry CR in redhat-ods-applications (global visibility)
+  - registry/
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 3. RBAC (sync-wave: 10)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ai-developer: register/deploy models
+  # ai-admin: full access including archive/delete
+  - rbac/
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. Seed Job (sync-wave: 15)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Pre-populate registry with demo model (Granite-7b-Inference)
+  - seed-job.yaml
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Notes
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Prerequisites:
+# - Step 03 completed (MinIO for artifact storage)
+# - Model Registry component enabled in DSC (done in Step 02)
+#
+# Dashboard Integration:
+# - ModelRegistry appears in Settings → Model registries
+# - Registered models appear in Model Catalog (AI Available Assets)
+# - "Deploy" button uses Hardware Profiles from Step 02

@@ -1,0 +1,133 @@
+# Seed Registration Job
+# Pre-populates the Model Registry with a demo model for the catalog
+#
+# This ensures when users open the Model Catalog, they see a deployable asset
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-registry-seed
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: model-registry-seed
+    spec:
+      restartPolicy: OnFailure
+      # OpenShift 4.20 restricted-v2 SCC compliance
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: seed
+          image: registry.redhat.io/ubi9/python-311:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/bash
+            - -ce
+            - |
+              # ═══════════════════════════════════════════════════════════════════
+              # Wait for Model Registry REST API to be ready
+              # ═══════════════════════════════════════════════════════════════════
+              REGISTRY_URL="http://private-ai-registry-rest.redhat-ods-applications.svc:8080"
+              
+              echo "Waiting for Model Registry at ${REGISTRY_URL}..."
+              until curl -sf "${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models" > /dev/null 2>&1; do
+                echo "Model Registry is unavailable - sleeping 10s..."
+                sleep 10
+              done
+              echo "Model Registry is ready!"
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Register Demo Model: Granite-7b-Inference
+              # ═══════════════════════════════════════════════════════════════════
+              echo "Registering model: Granite-7b-Inference..."
+              
+              # Check if model already exists
+              EXISTING=$(curl -sf "${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models?name=Granite-7b-Inference" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('items', [])))" 2>/dev/null || echo "0")
+              
+              if [ "$EXISTING" != "0" ]; then
+                echo "Model already exists - skipping registration"
+                exit 0
+              fi
+              
+              # Create Registered Model
+              REGISTERED_MODEL=$(curl -sf -X POST "${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "name": "Granite-7b-Inference",
+                  "description": "IBM Granite 7B model for inference - Demo asset for GPU-as-a-Service",
+                  "owner": "ai-admin",
+                  "customProperties": {
+                    "framework": {"stringValue": "vLLM"},
+                    "format": {"stringValue": "safetensors"},
+                    "task": {"stringValue": "text-generation"}
+                  }
+                }')
+              
+              MODEL_ID=$(echo "$REGISTERED_MODEL" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))")
+              echo "Created model with ID: $MODEL_ID"
+              
+              if [ -z "$MODEL_ID" ]; then
+                echo "ERROR: Failed to create model"
+                exit 1
+              fi
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Create Model Version v1.0
+              # ═══════════════════════════════════════════════════════════════════
+              echo "Creating version v1.0..."
+              
+              MODEL_VERSION=$(curl -sf -X POST "${REGISTRY_URL}/api/model_registry/v1alpha3/model_versions" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"v1.0\",
+                  \"registeredModelId\": \"$MODEL_ID\",
+                  \"description\": \"Initial release - compatible with vLLM serving runtime\",
+                  \"author\": \"ai-admin\",
+                  \"customProperties\": {
+                    \"gpu_required\": {\"stringValue\": \"1\"},
+                    \"min_gpu_memory\": {\"stringValue\": \"16Gi\"}
+                  }
+                }")
+              
+              VERSION_ID=$(echo "$MODEL_VERSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id', ''))")
+              echo "Created version with ID: $VERSION_ID"
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Create Model Artifact (S3 reference)
+              # ═══════════════════════════════════════════════════════════════════
+              echo "Creating artifact reference..."
+              
+              curl -sf -X POST "${REGISTRY_URL}/api/model_registry/v1alpha3/model_artifacts" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"granite-7b-safetensors\",
+                  \"modelVersionId\": \"$VERSION_ID\",
+                  \"description\": \"Model weights in safetensors format\",
+                  \"uri\": \"s3://models/granite-7b/\",
+                  \"artifactType\": \"model-artifact\",
+                  \"customProperties\": {
+                    \"s3_endpoint\": {\"stringValue\": \"http://minio.minio-storage.svc:9000\"},
+                    \"s3_bucket\": {\"stringValue\": \"models\"}
+                  }
+                }"
+              
+              echo ""
+              echo "=== Model Registry Seed Complete ==="
+              echo "Model: Granite-7b-Inference"
+              echo "Version: v1.0"
+              echo "Artifact URI: s3://models/granite-7b/"
+              echo ""
+              echo "View in Dashboard: Settings → Model registries → private-ai-registry"
+

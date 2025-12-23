@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# MariaDB Database for Model Registry Metadata
+# Stores model versions, artifacts references, and lineage data
+
+resources:
+  - credentials-secret.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+

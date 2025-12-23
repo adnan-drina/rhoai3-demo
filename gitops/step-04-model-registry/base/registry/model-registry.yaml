@@ -1,0 +1,46 @@
+# ModelRegistry Custom Resource
+# Centralized model versioning and metadata management
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/enabling_the_model_registry_component/index
+apiVersion: modelregistry.opendatahub.io/v1alpha1
+kind: ModelRegistry
+metadata:
+  name: private-ai-registry
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # gRPC Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  grpc:
+    port: 9090
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # REST API Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  rest:
+    port: 8080
+    serviceRoute: enabled
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Database Configuration (MariaDB in private-ai namespace)
+  # ═══════════════════════════════════════════════════════════════════════════
+  mysql:
+    host: model-registry-db.private-ai.svc.cluster.local
+    port: 3306
+    database: model_registry
+    username: mlmd
+    passwordSecret:
+      name: private-ai-registry-db-creds
+      key: database-password
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Istio/Service Mesh Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  istio:
+    # Disable Istio sidecar injection - using standard OpenShift routing
+    gateway:
+      domain: ""
+

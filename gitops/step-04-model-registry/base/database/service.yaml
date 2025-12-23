@@ -1,0 +1,20 @@
+# MariaDB Service for Model Registry
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-registry-db
+  namespace: private-ai
+  labels:
+    app: model-registry-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app: model-registry-db
+  ports:
+    - name: mariadb
+      port: 3306
+      targetPort: 3306
+      protocol: TCP
+  type: ClusterIP
+
