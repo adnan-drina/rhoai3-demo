@@ -19,7 +19,10 @@ metadata:
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    # Dashboard display annotations
     openshift.io/display-name: "vLLM Runtime for LLMs"
+    opendatahub.io/template-name: "vllm-runtime"
+    opendatahub.io/template-display-name: "vLLM ServingRuntime for KServe"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
     # Enable external route generation
     enable-route: "true"

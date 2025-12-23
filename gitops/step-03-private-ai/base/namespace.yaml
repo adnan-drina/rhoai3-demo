@@ -1,5 +1,6 @@
 # Namespace: private-ai
 # GPU-as-a-Service enabled project with Kueue integration
+# Configured for Single-model serving (KServe/vLLM)
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,12 +8,14 @@ metadata:
   labels:
     # RHOAI Dashboard recognition
     opendatahub.io/dashboard: "true"
-    modelmesh-enabled: "true"
+    # IMPORTANT: Set to "false" to enable Single-model (KServe) platform
+    # "true" would enable Multi-model (ModelMesh) platform
+    modelmesh-enabled: "false"
     # Enable Kueue workload management for this namespace
     kueue.openshift.io/managed: "true"
     kueue.x-k8s.io/queue-visibility: "ClusterQueue"
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Private AI - GPU as a Service"
-    openshift.io/description: "GPU-managed project using Kueue for dynamic GPU allocation"
+    openshift.io/description: "GPU-managed project using Kueue for dynamic GPU allocation and KServe model serving"
 
