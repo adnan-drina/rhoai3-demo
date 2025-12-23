@@ -1,10 +1,22 @@
-# ResourceFlavors - Define GPU "flavors" available in the cluster
-# These map to physical node types (AWS G6 instances)
+# ResourceFlavors - Define node "flavors" available in the cluster
+# These map to physical node types (AWS instances)
 #
 # Kueue uses ResourceFlavors to:
 # 1. Match pods to appropriate nodes via nodeLabels
 # 2. Apply tolerations to pods via tolerations field
 # 3. Understand node taints for admission decisions via nodeTaints
+---
+# Default flavor for non-GPU workloads (standard workers)
+# Used for utility jobs like model uploads, data processing, etc.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: default-worker
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  # No nodeLabels = runs on any worker node
+  nodeLabels: {}
 ---
 # NVIDIA L4 1GPU Flavor (g6.4xlarge)
 # 16 vCPU, 64GB RAM, 1x NVIDIA L4 (24GB VRAM)
@@ -51,4 +63,3 @@ spec:
     - key: nvidia.com/gpu
       value: "true"
       effect: NoSchedule
-

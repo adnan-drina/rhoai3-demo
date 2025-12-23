@@ -1,14 +1,13 @@
-# ClusterQueue - Cluster-wide GPU quota pool
-# Defines total GPU/CPU/Memory available for RHOAI workloads
+# ClusterQueue - Cluster-wide resource quota pool
+# Defines total GPU/CPU/Memory/Storage available for RHOAI workloads
 #
 # Quota Strategy (GPU-as-a-Service Demo):
-#   - 1x g6.4xlarge (1 GPU) = 1 GPU for single-GPU inference
-#   - 1x g6.12xlarge (4 GPUs) = 4 GPUs for tensor-parallel models
-#   - Total: 5 GPUs available for the private-ai project
+#   - Standard workers: CPU/Memory/Storage for utility jobs
+#   - 1x g6.4xlarge (1 GPU): Single-GPU inference
+#   - 1x g6.12xlarge (4 GPUs): Tensor-parallel models
 #
-# IMPORTANT: Both flavors must be in the SAME resourceGroup so Kueue can
-# try both flavors when matching workloads. A 4-GPU request should only
-# match nvidia-l4-4gpu, not fail against nvidia-l4-1gpu first.
+# IMPORTANT: GPU flavors must be in the SAME resourceGroup so Kueue can
+# try both flavors when matching workloads.
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
 metadata:
@@ -29,10 +28,26 @@ spec:
     whenCanBorrow: Borrow
     whenCanPreempt: TryNextFlavor
   
-  # SINGLE resourceGroup with BOTH flavors - critical for heterogeneous GPUs
-  # Kueue will try nvidia-l4-1gpu first, then nvidia-l4-4gpu if request > 1 GPU
   resourceGroups:
-    - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
+    # ═══════════════════════════════════════════════════════════════
+    # Resource Group 1: Non-GPU workloads (utility jobs, uploads, etc.)
+    # ═══════════════════════════════════════════════════════════════
+    - coveredResources: ["cpu", "memory", "ephemeral-storage"]
+      flavors:
+        - name: default-worker
+          resources:
+            - name: "cpu"
+              nominalQuota: "32"     # 32 vCPU for utility jobs
+            - name: "memory"
+              nominalQuota: "64Gi"   # 64GB RAM
+            - name: "ephemeral-storage"
+              nominalQuota: "500Gi"  # Disk for model downloads
+    
+    # ═══════════════════════════════════════════════════════════════
+    # Resource Group 2: GPU workloads (inference, training)
+    # Both flavors in same group for heterogeneous GPU scheduling
+    # ═══════════════════════════════════════════════════════════════
+    - coveredResources: ["nvidia.com/gpu", "cpu", "memory", "ephemeral-storage"]
       flavors:
         # 1-GPU flavor (g6.4xlarge nodes)
         - name: nvidia-l4-1gpu
@@ -43,6 +58,8 @@ spec:
               nominalQuota: "16"    # 16 vCPU
             - name: "memory"
               nominalQuota: "64Gi"  # 64GB RAM
+            - name: "ephemeral-storage"
+              nominalQuota: "200Gi" # Local disk
         # 4-GPU flavor (g6.12xlarge nodes)
         - name: nvidia-l4-4gpu
           resources:
@@ -52,4 +69,5 @@ spec:
               nominalQuota: "48"    # 48 vCPU
             - name: "memory"
               nominalQuota: "192Gi" # 192GB RAM
-
+            - name: "ephemeral-storage"
+              nominalQuota: "500Gi" # Local disk for large models
