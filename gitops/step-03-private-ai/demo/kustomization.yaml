@@ -20,6 +20,9 @@ kind: Kustomization
 resources:
   - configmap-notebooks.yaml
   - pvcs.yaml
+  - networkpolicy.yaml
   - workbench-1.yaml
   - workbench-2.yaml
+  - routes.yaml
+
 
