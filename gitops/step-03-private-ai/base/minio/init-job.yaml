@@ -16,17 +16,32 @@ spec:
         app: minio-init
     spec:
       restartPolicy: OnFailure
+      # OpenShift 4.20 restricted-v2 SCC compliance
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mc
           image: quay.io/minio/mc:latest
+          # OpenShift SCC requirements
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            # mc needs a writable config directory (not /root/.mc)
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
           envFrom:
             - secretRef:
                 name: minio-credentials
           command:
             - /bin/sh
-            - -c
+            - -ce
             - |
-              set -e
+              mkdir -p /tmp/.mc
+              
               echo "=== Waiting for MinIO to be ready ==="
               until mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
                 echo "Waiting for MinIO..."
