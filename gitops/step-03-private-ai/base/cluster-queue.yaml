@@ -2,9 +2,13 @@
 # Defines total GPU/CPU/Memory available for RHOAI workloads
 #
 # Quota Strategy (GPU-as-a-Service Demo):
-#   - 2x g6.4xlarge (1 GPU each) = 2 GPUs for inference workloads
-#   - 2x g6.12xlarge (4 GPUs each) = 8 GPUs for tensor-parallel models
-#   - Total: 10 GPUs available for the private-ai project
+#   - 1x g6.4xlarge (1 GPU) = 1 GPU for single-GPU inference
+#   - 1x g6.12xlarge (4 GPUs) = 4 GPUs for tensor-parallel models
+#   - Total: 5 GPUs available for the private-ai project
+#
+# IMPORTANT: Both flavors must be in the SAME resourceGroup so Kueue can
+# try both flavors when matching workloads. A 4-GPU request should only
+# match nvidia-l4-4gpu, not fail against nvidia-l4-1gpu first.
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
 metadata:
@@ -20,29 +24,32 @@ spec:
     reclaimWithinCohort: Any
     withinClusterQueue: LowerPriority
   
-  # Resource groups define quota limits per flavor
+  # Flavor fungibility - try next flavor if first doesn't fit
+  flavorFungibility:
+    whenCanBorrow: Borrow
+    whenCanPreempt: TryNextFlavor
+  
+  # SINGLE resourceGroup with BOTH flavors - critical for heterogeneous GPUs
+  # Kueue will try nvidia-l4-1gpu first, then nvidia-l4-4gpu if request > 1 GPU
   resourceGroups:
-    # L4 1GPU nodes (g6.4xlarge) - 2 nodes available
     - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
       flavors:
+        # 1-GPU flavor (g6.4xlarge nodes)
         - name: nvidia-l4-1gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 2       # 2 GPUs from 2x g6.4xlarge nodes
+              nominalQuota: 1       # 1 GPU from g6.4xlarge
             - name: "cpu"
-              nominalQuota: "32"    # 32 vCPU total (2x16)
+              nominalQuota: "16"    # 16 vCPU
             - name: "memory"
-              nominalQuota: "128Gi" # 128GB RAM total (2x64)
-    
-    # L4 4GPU nodes (g6.12xlarge) - 2 nodes available
-    - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
-      flavors:
+              nominalQuota: "64Gi"  # 64GB RAM
+        # 4-GPU flavor (g6.12xlarge nodes)
         - name: nvidia-l4-4gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 8        # 8 GPUs from 2x g6.12xlarge nodes
+              nominalQuota: 4       # 4 GPUs from g6.12xlarge
             - name: "cpu"
-              nominalQuota: "96"     # 96 vCPU total (2x48)
+              nominalQuota: "48"    # 48 vCPU
             - name: "memory"
-              nominalQuota: "384Gi"  # 384GB RAM total (2x192)
+              nominalQuota: "192Gi" # 192GB RAM
 
