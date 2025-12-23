@@ -3,11 +3,14 @@ kind: Kustomization
 
 # InferenceServices using Red Hat Validated OCI images
 # All models pulled directly from registry.redhat.io
+#
+# Node Placement Strategy:
+#   - 1-GPU models → g6.4xlarge (via nodeSelector)
+#   - 4-GPU models → g6.12xlarge (via nodeSelector)
+#   - Tolerations injected by Kueue ResourceFlavors
 
 resources:
-  # Mistral Small 24B - 1 GPU deployment
+  # Mistral Small 24B - 1 GPU deployment (g6.4xlarge)
   - mistral-3-fp8.yaml
-  # Mistral Small 24B - 4 GPU tensor parallel deployment
+  # Mistral Small 24B - 4 GPU tensor parallel (g6.12xlarge)
   - mistral-3-bf16.yaml
-  # Granite 7B Lab - Coding model (1 GPU)
-  - devstral-2-bf16.yaml

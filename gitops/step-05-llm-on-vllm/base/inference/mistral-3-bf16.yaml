@@ -29,8 +29,10 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
-    # Note: nodeSelector and tolerations are managed by Kueue ResourceFlavors
-    # via the Hardware Profile integration. Do not add them here.
+    # NodeSelector ensures pod lands on 4-GPU instance
+    # Tolerations are injected by Kueue via ResourceFlavor
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.12xlarge
     model:
       modelFormat:
         name: vLLM
