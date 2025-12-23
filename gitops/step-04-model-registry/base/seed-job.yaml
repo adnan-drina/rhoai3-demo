@@ -47,8 +47,9 @@ spec:
               value: "IBM Granite 3.1 8B Instruct - Red Hat AI Validated (May 2025) - FP8 Dynamic Quantization"
           command:
             - /bin/sh
-            - -ce
+            - -c
             - |
+              set -e
               echo "╔══════════════════════════════════════════════════════════════╗"
               echo "║  Enterprise Model Governance - Model Registration            ║"
               echo "║  May 2025 Red Hat Validated Collection                       ║"
@@ -71,70 +72,47 @@ spec:
               # Check if model already exists
               echo ""
               echo "Checking for existing model: ${MODEL_NAME}..."
-              EXISTING=$(curl -sf "${API_BASE}/registered_models" | grep -c "${MODEL_NAME}" || true)
+              EXISTING=$(curl -sf "${API_BASE}/registered_models" 2>/dev/null | grep -c "${MODEL_NAME}" || echo "0")
               
-              if [ "$EXISTING" -gt 0 ]; then
+              if [ "$EXISTING" != "0" ]; then
                 echo "✓ Model '${MODEL_NAME}' already registered - skipping"
                 echo ""
                 echo "Current registered models:"
-                curl -sf "${API_BASE}/registered_models" | head -100
+                curl -sf "${API_BASE}/registered_models" 2>/dev/null || true
                 exit 0
               fi
               
               echo ""
               echo "Registering model: ${MODEL_NAME}..."
               
-              # Step 1: Create RegisteredModel
+              # Step 1: Create RegisteredModel (simple JSON, no customProperties)
               echo "  [1/3] Creating RegisteredModel..."
               REGISTERED_MODEL=$(curl -sf -X POST "${API_BASE}/registered_models" \
                 -H "Content-Type: application/json" \
-                -d "{
-                  \"name\": \"${MODEL_NAME}\",
-                  \"description\": \"${MODEL_DESCRIPTION}\",
-                  \"customProperties\": {
-                    \"validated_by\": {\"stringValue\": \"Red Hat AI\"},
-                    \"collection\": {\"stringValue\": \"May-2025-Validated\"},
-                    \"quantization\": {\"stringValue\": \"FP8-dynamic\"}
-                  }
-                }")
+                -d "{\"name\": \"${MODEL_NAME}\", \"description\": \"${MODEL_DESCRIPTION}\"}" 2>&1)
               
-              REGISTERED_MODEL_ID=$(echo "$REGISTERED_MODEL" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              echo "  Response: $REGISTERED_MODEL"
+              REGISTERED_MODEL_ID=$(echo "$REGISTERED_MODEL" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
               echo "  ✓ Created RegisteredModel ID: ${REGISTERED_MODEL_ID}"
               
               # Step 2: Create ModelVersion
               echo "  [2/3] Creating ModelVersion..."
               MODEL_VERSION_RESP=$(curl -sf -X POST "${API_BASE}/model_versions" \
                 -H "Content-Type: application/json" \
-                -d "{
-                  \"name\": \"${MODEL_VERSION}\",
-                  \"description\": \"Production-ready version validated for NVIDIA L4 GPUs\",
-                  \"registeredModelId\": \"${REGISTERED_MODEL_ID}\",
-                  \"customProperties\": {
-                    \"hardware_target\": {\"stringValue\": \"nvidia-l4\"},
-                    \"validation_date\": {\"stringValue\": \"2025-05\"}
-                  }
-                }")
+                -d "{\"name\": \"${MODEL_VERSION}\", \"description\": \"Production-ready version validated for NVIDIA L4 GPUs\", \"registeredModelId\": \"${REGISTERED_MODEL_ID}\"}" 2>&1)
               
-              MODEL_VERSION_ID=$(echo "$MODEL_VERSION_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              echo "  Response: $MODEL_VERSION_RESP"
+              MODEL_VERSION_ID=$(echo "$MODEL_VERSION_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
               echo "  ✓ Created ModelVersion ID: ${MODEL_VERSION_ID}"
               
               # Step 3: Create ModelArtifact
               echo "  [3/3] Creating ModelArtifact..."
               ARTIFACT_RESP=$(curl -sf -X POST "${API_BASE}/model_versions/${MODEL_VERSION_ID}/artifacts" \
                 -H "Content-Type: application/json" \
-                -d "{
-                  \"name\": \"${MODEL_NAME}-weights\",
-                  \"uri\": \"${MODEL_URI}\",
-                  \"artifactType\": \"model-artifact\",
-                  \"modelFormatName\": \"safetensors\",
-                  \"modelFormatVersion\": \"1.0\",
-                  \"customProperties\": {
-                    \"storage_type\": {\"stringValue\": \"s3\"},
-                    \"bucket\": {\"stringValue\": \"rhoai-artifacts\"}
-                  }
-                }")
+                -d "{\"name\": \"${MODEL_NAME}-weights\", \"uri\": \"${MODEL_URI}\", \"artifactType\": \"model-artifact\", \"modelFormatName\": \"safetensors\", \"modelFormatVersion\": \"1.0\"}" 2>&1)
               
-              ARTIFACT_ID=$(echo "$ARTIFACT_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              echo "  Response: $ARTIFACT_RESP"
+              ARTIFACT_ID=$(echo "$ARTIFACT_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
               echo "  ✓ Created ModelArtifact ID: ${ARTIFACT_ID}"
               
               echo ""
