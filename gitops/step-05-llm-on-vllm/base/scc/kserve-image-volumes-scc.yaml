@@ -1,0 +1,50 @@
+# =============================================================================
+# SecurityContextConstraint: kserve-image-volumes
+# =============================================================================
+# Allows KServe pods to mount OCI images as volumes for large LLM weights.
+# This is the RHOAI 3.0 / OpenShift 4.20 recommended approach for 94GB+ models.
+#
+# Based on restricted-v2 but with 'image' volume type added.
+# =============================================================================
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: kserve-image-volumes
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    kubernetes.io/description: |
+      Allows KServe pods to mount OCI images as volumes for large LLM weights.
+      This bypasses CRI-O extraction issues with 94GB+ model images by mounting
+      layers directly from the registry cache.
+# Security settings (based on restricted-v2)
+allowPrivilegedContainer: false
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: false
+defaultAddCapabilities: null
+requiredDropCapabilities:
+  - ALL
+# CRITICAL: The 'image' volume type enables OCI Image Volumes
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - ephemeral
+  - persistentVolumeClaim
+  - projected
+  - secret
+  - image  # OpenShift 4.20 OCI Image Volume support
+fsGroup:
+  type: MustRunAs
+runAsUser:
+  type: MustRunAsNonRoot
+seLinuxContext:
+  type: MustRunAs
+seccompProfiles:
+  - runtime/default
+supplementalGroups:
+  type: RunAsAny
+

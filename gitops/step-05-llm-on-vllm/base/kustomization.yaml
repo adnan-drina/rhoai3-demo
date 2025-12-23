@@ -36,7 +36,14 @@ kind: Kustomization
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Model Registration (sync-wave: 1)
+  # 0. Security Context Constraint for OCI Image Volumes (sync-wave: 1-2)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Enables mounting 94GB+ model images directly from OCI registry
+  # Bypasses CRI-O extraction issues with large AI model images
+  - scc/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. Model Registration (sync-wave: 3)
   # ═══════════════════════════════════════════════════════════════════════════
   - model-registration/
 
@@ -46,6 +53,8 @@ resources:
   - serving-runtime/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. InferenceServices (sync-wave: 10)
+  # 3. InferenceServices with OCI Image Volumes (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
+  # Uses OpenShift 4.20 OCI Image Volume feature to mount model weights
+  # directly from registry, avoiding 24-minute extraction time
   - inference/

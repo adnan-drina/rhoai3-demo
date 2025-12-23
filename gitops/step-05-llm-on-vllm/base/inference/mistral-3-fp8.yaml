@@ -1,8 +1,8 @@
 # =============================================================================
-# InferenceService: Mistral Small 24B Instruct (1-GPU)
+# InferenceService: Mistral Small 24B Instruct (1-GPU) with OCI Image Volume
 # =============================================================================
-# Deploys Mistral Small 24B using Red Hat validated OCI image.
-# Uses 1x NVIDIA L4 GPU - the model fits in 24GB VRAM.
+# Uses OpenShift 4.20 OCI Image Volume feature to mount the 94GB model
+# directly from the registry, bypassing CRI-O extraction issues.
 #
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
 # Use Case: Cost-efficient inference for production workloads
@@ -18,39 +18,64 @@ metadata:
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    # Hardware Profile integration
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    # Display name for Dashboard
-    openshift.io/display-name: "Mistral Small 24B (1-GPU)"
-    # Deployment mode
+    openshift.io/display-name: "Mistral Small 24B (1-GPU FP8)"
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
-    # nodeSelector and tolerations are injected by Kueue via ResourceFlavor
-    # HardwareProfile (nvidia-l4-1gpu) → LocalQueue → ClusterQueue → ResourceFlavor
-    model:
-      modelFormat:
-        name: vLLM
-      name: ""
-      runtime: vllm-runtime
-      # Red Hat validated Mistral model via OCI registry
-      storageUri: oci://registry.redhat.io/rhelai1/mistral-small-24b-instruct-2501:1.5
-      # vLLM optimization args for single L4 GPU
-      args:
-        - --quantization=fp8           # FP8 quantization for 50% VRAM reduction
-        - --kv-cache-dtype=fp8         # FP8 KV cache for memory efficiency
-        - --max-model-len=8192         # Reasonable context for single GPU
-      resources:
-        requests:
-          cpu: "8"
-          memory: 32Gi
-          nvidia.com/gpu: "1"
-          ephemeral-storage: "60Gi"  # Model weights + cache
-        limits:
-          cpu: "16"
-          memory: 60Gi
-          nvidia.com/gpu: "1"
-          ephemeral-storage: "100Gi"
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.4xlarge
+    containers:
+      - name: kserve-container
+        # Thin vLLM runtime image (~3GB, not the 94GB model)
+        image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
+        command:
+          - python
+          - -m
+          - vllm.entrypoints.openai.api_server
+        args:
+          - --port=8080
+          - --model=/mnt/models
+          - --served-model-name=mistral-small-24b
+          - --quantization=fp8
+          - --kv-cache-dtype=fp8
+          - --max-model-len=8192
+        env:
+          - name: HF_HOME
+            value: /tmp/hf_home
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+        resources:
+          requests:
+            cpu: "8"
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "16"
+            memory: 60Gi
+            nvidia.com/gpu: "1"
+        volumeMounts:
+          - mountPath: /dev/shm
+            name: shm
+          - mountPath: /mnt/models
+            name: model-weights
+            readOnly: true
+    volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      # OCI Image Volume - OpenShift 4.20 feature
+      # Mounts the 94GB model directly from registry without CRI-O extraction
+      - name: model-weights
+        image:
+          reference: registry.redhat.io/rhelai1/mistral-small-24b-instruct-2501:1.5
+          pullPolicy: Always  # Force fresh pull to bypass corrupted cache
