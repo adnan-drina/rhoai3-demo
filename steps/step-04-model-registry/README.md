@@ -97,13 +97,14 @@ Model Registry provides the **governance layer** for ML models:
 | **Deployment** | `model-registry-db` | MariaDB 10.11 |
 | **Service** | `model-registry-db` | Port 3306 |
 
-### Model Registry (redhat-ods-applications namespace)
+### Model Registry (rhoai-model-registries namespace)
+
+> **Note**: The `rhoai-model-registries` namespace is managed by the ModelRegistry operator. All registry instances are deployed there automatically.
 
 | Resource | Name | Purpose |
 |----------|------|---------|
 | **Secret** | `private-ai-registry-db-creds` | DB connection |
-| **Secret** | `private-ai-registry-s3-creds` | S3 connection |
-| **ModelRegistry** | `private-ai-registry` | Registry instance |
+| **ModelRegistry** | `private-ai-registry` | Registry instance (v1beta1 API) |
 | **Job** | `model-registry-seed` | Pre-populate demo model |
 
 ### RBAC
@@ -142,18 +143,18 @@ The script will:
 ### 1. Check Model Registry
 
 ```bash
-# Verify ModelRegistry CR
-oc get modelregistry -n redhat-ods-applications
+# Verify ModelRegistry CR (uses v1beta1 API)
+oc get modelregistry.modelregistry.opendatahub.io -n rhoai-model-registries
 
 # Expected output:
 # NAME                  AGE
 # private-ai-registry   5m
 
 # Check registry pods
-oc get pods -n redhat-ods-applications | grep model-registry
+oc get pods -n rhoai-model-registries | grep private-ai-registry
 
-# Check REST API route
-oc get route -n redhat-ods-applications | grep private-ai-registry
+# Check HTTPS route (authenticated via kube-rbac-proxy)
+oc get route -n rhoai-model-registries | grep private-ai-registry
 ```
 
 ### 2. Check Database
@@ -171,22 +172,20 @@ oc exec -n private-ai deployment/model-registry-db -- \
 
 ```bash
 # Verify seed job completed
-oc get job model-registry-seed -n redhat-ods-applications
+oc get job model-registry-seed -n rhoai-model-registries
 
 # Check logs
-oc logs job/model-registry-seed -n redhat-ods-applications
+oc logs job/model-registry-seed -n rhoai-model-registries
 ```
 
-### 4. Query Registry API
+### 4. Access Registry via Dashboard
 
-```bash
-# Get REST API endpoint
-REGISTRY_URL=$(oc get route private-ai-registry-rest \
-  -n redhat-ods-applications -o jsonpath='{.spec.host}')
+The Model Registry uses kube-rbac-proxy for authentication, so direct API access requires OpenShift tokens.
 
-# List registered models
-curl -sf "https://${REGISTRY_URL}/api/model_registry/v1alpha3/registered_models" | jq .
-```
+**Recommended**: Access via RHOAI Dashboard:
+1. Go to **Settings** → **Model registries**
+2. Click **private-ai-registry**
+3. View registered models and versions
 
 ---
 
@@ -328,8 +327,8 @@ gitops/step-04-model-registry/
 # Check operator logs
 oc logs -n redhat-ods-operator -l app=rhods-operator --tail=50
 
-# Check ModelRegistry status
-oc describe modelregistry private-ai-registry -n redhat-ods-applications
+# Check ModelRegistry status (v1beta1 API)
+oc describe modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries
 ```
 
 ### Database Connection Failed
@@ -348,10 +347,10 @@ oc get secret private-ai-registry-db-creds -n redhat-ods-applications -o yaml
 
 ```bash
 # Check job logs
-oc logs job/model-registry-seed -n redhat-ods-applications
+oc logs job/model-registry-seed -n rhoai-model-registries
 
 # Re-run seed job
-oc delete job model-registry-seed -n redhat-ods-applications
+oc delete job model-registry-seed -n rhoai-model-registries
 oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
 ```
 
@@ -359,10 +358,10 @@ oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
 
 ```bash
 # Verify role bindings
-oc get rolebindings -n redhat-ods-applications | grep registry
+oc get rolebindings -n rhoai-model-registries | grep registry
 
 # Check user permissions
-oc auth can-i get modelregistries -n redhat-ods-applications --as=ai-developer
+oc auth can-i get modelregistries -n rhoai-model-registries --as=ai-developer
 ```
 
 ---
