@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 05: LLM Inference with vLLM
+# Deploys the Granite 3.1 8B model registered in Step 04 to KServe
+#
+# Architecture:
+#   ┌─────────────────────────────────────────────────────────────────────────┐
+#   │                          private-ai namespace                           │
+#   ├─────────────────────────────────────────────────────────────────────────┤
+#   │                                                                         │
+#   │   ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐  │
+#   │   │   Model         │     │   ServingRuntime│     │   InferenceService│ │
+#   │   │   Registry      │────▶│   vLLM          │────▶│   Granite 3.1   │  │
+#   │   │   (Step 04)     │     │                 │     │   FP8           │  │
+#   │   └─────────────────┘     └─────────────────┘     └─────────────────┘  │
+#   │                                                           │             │
+#   │                                                           ▼             │
+#   │                                                   ┌─────────────────┐  │
+#   │                                                   │   NVIDIA L4     │  │
+#   │                                                   │   GPU Node      │  │
+#   │                                                   │   (Kueue)       │  │
+#   │                                                   └─────────────────┘  │
+#   │                                                                         │
+#   └─────────────────────────────────────────────────────────────────────────┘
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+
+resources:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. vLLM ServingRuntime (sync-wave: 1)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - serving-runtime/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. InferenceService for Granite 3.1 (sync-wave: 5)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - inference/
+

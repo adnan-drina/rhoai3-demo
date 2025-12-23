@@ -1,0 +1,33 @@
+# =============================================================================
+# InferenceService: Granite 3.1 8B Instruct FP8
+# =============================================================================
+# Deploys the model registered in Step 04 to a KServe inference endpoint.
+# Uses the vLLM ServingRuntime with NVIDIA L4 GPU (Kueue-managed).
+#
+# TODO: Implement based on RHOAI 3.0 documentation
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-3-1-8b-instruct
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    openshift.io/display-name: "Granite 3.1 8B Instruct FP8"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  # TODO: Configure InferenceService
+  # - Model URI from registry (s3://rhoai-artifacts/granite-3.1-8b-instruct-FP8-dynamic/)
+  # - ServingRuntime reference
+  # - GPU resources (1x NVIDIA L4)
+  # - Hardware profile integration
+  predictor:
+    model:
+      modelFormat:
+        name: vllm
+      runtime: vllm-runtime
+      # storageUri: TODO - from Model Registry
+

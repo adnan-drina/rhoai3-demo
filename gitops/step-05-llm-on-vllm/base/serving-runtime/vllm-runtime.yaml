@@ -1,0 +1,35 @@
+# =============================================================================
+# vLLM ServingRuntime for RHOAI 3.0
+# =============================================================================
+# This ServingRuntime enables vLLM-based inference for LLMs in the private-ai
+# project. It is optimized for NVIDIA L4 GPUs with FP8 support.
+#
+# TODO: Implement based on RHOAI 3.0 documentation
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+# =============================================================================
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: vllm-runtime
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    openshift.io/display-name: "vLLM ServingRuntime for LLMs"
+spec:
+  # TODO: Configure vLLM runtime
+  # - Container image
+  # - GPU resources
+  # - Model loading configuration
+  # - OpenAI-compatible API
+  supportedModelFormats:
+    - name: vllm
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: placeholder  # TODO: Use RHOAI vLLM image
+      ports:
+        - containerPort: 8000
+          protocol: TCP
+
