@@ -32,7 +32,7 @@ spec:
     prometheus.io/path: "/metrics"
   multiModel: false
   supportedModelFormats:
-    - name: vllm
+    - name: vLLM
       autoSelect: true
   containers:
     - name: kserve-container
