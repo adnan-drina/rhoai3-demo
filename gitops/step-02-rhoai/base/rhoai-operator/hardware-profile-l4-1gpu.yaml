@@ -21,6 +21,15 @@ spec:
     type: Queue
     kueue:
       localQueueName: default
+    node:
+      # Target GPU nodes
+      nodeSelector:
+        nvidia.com/gpu.product: NVIDIA-L4
+      # Tolerate GPU node taint
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
   identifiers:
     - identifier: cpu
       displayName: CPU

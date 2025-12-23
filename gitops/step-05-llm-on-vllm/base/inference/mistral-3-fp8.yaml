@@ -36,6 +36,13 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
+    # GPU node scheduling
+    nodeSelector:
+      nvidia.com/gpu.product: NVIDIA-L4
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
     model:
       modelFormat:
         name: vLLM
