@@ -1,16 +1,18 @@
 # =============================================================================
-# InferenceService: Devstral 2 24B (Coding Model)
+# InferenceService: Granite 7B Lab (Coding Model)
 # =============================================================================
-# Deploys Devstral 2 - a code-optimized LLM for software development tasks.
-# Configuration aligned with RHOAI 3.0 Dashboard-deployed models.
+# Deploys IBM Granite 7B Lab model using Red Hat validated OCI image.
+# This is a code-optimized model for software development tasks.
 #
-# Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
 # Use Case: Code generation, code review, technical documentation
+#
+# Note: Using Granite 7B as Red Hat validated alternative to Devstral
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: devstral-2-bf16
+  name: granite-7b-lab
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
@@ -19,10 +21,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     # Hardware Profile integration
-    opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
+    opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     # Display name for Dashboard
-    openshift.io/display-name: "Devstral 2 24B BF16 (4-GPU, Coding)"
+    openshift.io/display-name: "Granite 7B Lab (Coding)"
     # Deployment mode
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
@@ -41,16 +43,14 @@ spec:
         name: vLLM
       name: ""
       runtime: vllm-runtime
-      # S3 storage reference via Data Connection
-      storage:
-        key: minio-connection
-        path: devstral-2-24b/
+      # Red Hat validated Granite model via OCI registry (same as granite-test-2)
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-7b-redhat-lab:1.4.0
       resources:
         requests:
           cpu: "8"
-          memory: 64Gi
-          nvidia.com/gpu: "4"
+          memory: 32Gi
+          nvidia.com/gpu: "1"
         limits:
           cpu: "16"
-          memory: 128Gi
-          nvidia.com/gpu: "4"
+          memory: 60Gi
+          nvidia.com/gpu: "1"

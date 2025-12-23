@@ -1,23 +1,16 @@
 # =============================================================================
-# InferenceService: Mistral 3 24B Instruct FP8 (Quantized)
+# InferenceService: Mistral Small 24B Instruct (1-GPU)
 # =============================================================================
-# Deploys Mistral Small 3 FP8-quantized using 1x NVIDIA L4 GPU.
-# Neural Magic optimized weights for Ada Lovelace FP8 acceleration.
-# Configuration aligned with RHOAI 3.0 Dashboard-deployed models.
+# Deploys Mistral Small 24B using Red Hat validated OCI image.
+# Uses 1x NVIDIA L4 GPU - the model fits in 24GB VRAM.
 #
-# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM, ~15GB used)
-# Key Benefits:
-# - 50% memory reduction vs BF16
-# - Native FP8 hardware acceleration on L4
-# - Near-identical accuracy (Neural Magic kernels)
-# - 4x cost reduction (1 GPU vs 4 GPUs)
-#
-# Use Case: Cost-efficient inference for most production workloads
+# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+# Use Case: Cost-efficient inference for production workloads
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: mistral-3-fp8
+  name: mistral-small-24b
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
@@ -29,7 +22,7 @@ metadata:
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     # Display name for Dashboard
-    openshift.io/display-name: "Mistral 3 24B FP8 (1-GPU, Optimized)"
+    openshift.io/display-name: "Mistral Small 24B (1-GPU)"
     # Deployment mode
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
@@ -48,10 +41,8 @@ spec:
         name: vLLM
       name: ""
       runtime: vllm-runtime
-      # S3 storage reference via Data Connection
-      storage:
-        key: minio-connection
-        path: mistral-3-24b-instruct-fp8/
+      # Red Hat validated Mistral model via OCI registry
+      storageUri: oci://registry.redhat.io/rhelai1/mistral-small-24b-instruct-2501:1.5
       resources:
         requests:
           cpu: "8"
