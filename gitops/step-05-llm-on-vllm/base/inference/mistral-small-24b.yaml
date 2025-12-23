@@ -49,11 +49,16 @@ spec:
         key: minio-connection
       args:
         # Neural Magic FP8 uses compressed-tensors format - auto-detected by vLLM
-        # Don't pass --quantization=fp8 as it conflicts with compressed-tensors
         - --max-model-len=16384
         - --kv-cache-dtype=fp8
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
+      env:
+        # Force stable V0 engine - V1 has compatibility issues with 580.x driver
+        - name: VLLM_USE_V1
+          value: "0"
+        - name: LD_LIBRARY_PATH
+          value: /usr/local/nvidia/lib64
       resources:
         requests:
           cpu: "8"
