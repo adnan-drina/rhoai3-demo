@@ -54,11 +54,9 @@ spec:
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:
-        # RHOAI 3.0 GA stable configuration for 580.x driver compatibility
+        # RHOAI 3.0 GA: V1 engine with XFORMERS for 580.x driver compatibility
         - name: VLLM_USE_V1
-          value: "0"
-        - name: VLLM_ENGINE_SOURCE
-          value: "v0"
+          value: "1"
         - name: VLLM_ATTENTION_BACKEND
           value: "XFORMERS"
         - name: VLLM_NO_HW_METRICS
