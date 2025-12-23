@@ -29,7 +29,7 @@ metadata:
     # User and display info
     opendatahub.io/username: "ai-admin"
     openshift.io/display-name: "Demo Workbench 2 (Queued)"
-    openshift.io/description: "Second workbench - demonstrates Kueue queuing when GPU unavailable"
+    openshift.io/description: "GPU-as-a-Service Demo - demonstrates Kueue queuing when GPU unavailable"
 spec:
   template:
     spec:
@@ -89,6 +89,15 @@ spec:
               mountPath: /dev/shm
           workingDir: /opt/app-root/src
       enableServiceLinks: false
+      # Tolerate GPU node taints
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      # Target g6.4xlarge nodes (single L4 GPU)
+      nodeSelector:
+        node.kubernetes.io/instance-type: g6.4xlarge
       volumes:
         - name: workbench-data
           persistentVolumeClaim:
