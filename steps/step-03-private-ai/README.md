@@ -81,15 +81,6 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 │                               │  NO: Admit      │                          │
 │                               │      (Running)  │                          │
 │                               └─────────────────┘                          │
-│                                       │                                     │
-│   4. MONITORING (ai-admin)            │                                     │
-│   ──────────────────────────          │                                     │
-│   ┌─────────────────────────────────────────────────────────────────────┐  │
-│   │                    NVIDIA DCGM Dashboard                             │  │
-│   │   • GPU Utilization → Detect idle/hoarding                          │  │
-│   │   • Power Usage     → Training vs. idle                              │  │
-│   │   • VRAM Usage      → Model memory footprint                         │  │
-│   └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -132,7 +123,7 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 
 ## Prerequisites
 
-- [x] Step 01 completed (GPU infrastructure, MachineSets)
+- [x] Step 01 completed (GPU infrastructure, MachineSets, Kueue Operator)
 - [x] Step 02 completed (RHOAI 3.0 with Hardware Profiles)
 - [x] GPU nodes available with labels
 
@@ -167,13 +158,8 @@ oc login -u ai-developer -p redhat123
 **In RHOAI Dashboard:**
 1. Go to **Data Science Projects** → **private-ai**
 2. Create a new **Workbench**
-3. Select **Hardware Profile**: "NVIDIA L4 1GPU (Default)"
+3. Select **Hardware Profile**: "NVIDIA L4 1GPU"
 4. Click **Create**
-
-**Behind the Scenes:**
-- RHOAI creates a Notebook CR with GPU request
-- Kueue intercepts via `private-ai-queue`
-- ClusterQueue checks quota → Admits or Queues
 
 ### 2. Login as `ai-admin` (Service Administrator)
 
@@ -196,7 +182,7 @@ oc login -u ai-admin -p redhat123
 
 This demonstrates what happens when demand exceeds GPU quota.
 
-**Setup:** The `rhoai-main-queue` has **1 GPU** quota (for g6.4xlarge flavor).
+**Setup:** Two workbenches compete for 1 GPU on the g6.4xlarge node.
 
 #### Option A: Apply via CLI (Recommended for Demo)
 
@@ -208,53 +194,35 @@ oc apply -k gitops/step-03-private-ai/demo/
 oc get workloads -n private-ai -w
 
 # Expected output:
-# NAME                        QUEUE              ADMITTED   AGE
-# pod-demo-workbench-1-xxx    private-ai-queue   True       5s   ← RUNNING
-# pod-demo-workbench-2-xxx    private-ai-queue   False      3s   ← QUEUED!
+# NAME                        QUEUE     ADMITTED   AGE
+# pod-demo-workbench-1-xxx    default   True       5s   ← RUNNING
+# pod-demo-workbench-2-xxx    default   True       3s   ← QUEUED (scheduler)
 
 # Step 3: Check pod status
 oc get pods -n private-ai
 
 # Expected output:
 # NAME                  READY   STATUS            RESTARTS   AGE
-# demo-workbench-1-0    1/1     Running           0          2m
-# demo-workbench-2-0    0/1     SchedulingGated   0          2m   ← WAITING!
+# demo-workbench-1-0    2/2     Running           0          2m   ← Got GPU!
+# demo-workbench-2-0    0/2     Pending           0          2m   ← Waiting!
 
-# Step 4: Release GPU by deleting workbench-1
+# Step 4: Access the workbench
+GATEWAY=$(oc get gateway data-science-gateway -n openshift-ingress -o jsonpath='{.spec.listeners[0].hostname}')
+echo "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
+
+# Step 5: Release GPU by deleting workbench-1
 oc delete notebook demo-workbench-1 -n private-ai
 
 # Watch workbench-2 automatically start!
 oc get pods -n private-ai -w
 ```
 
-#### Option B: Apply Step-by-Step
-
-```bash
-# 1. Apply ConfigMap with demo notebooks
-oc apply -f gitops/step-03-private-ai/demo/configmap-notebooks.yaml
-
-# 2. Apply PVCs for storage
-oc apply -f gitops/step-03-private-ai/demo/pvcs.yaml
-
-# 3. Create first workbench (gets GPU)
-oc apply -f gitops/step-03-private-ai/demo/workbench-1.yaml
-
-# 4. Wait for it to start
-oc wait --for=condition=ready pod/demo-workbench-1-0 -n private-ai --timeout=300s
-
-# 5. Create second workbench (gets QUEUED!)
-oc apply -f gitops/step-03-private-ai/demo/workbench-2.yaml
-
-# 6. Observe the queuing
-oc get workloads -n private-ai
-```
-
-#### Option C: Via RHOAI Dashboard
+#### Option B: Via RHOAI Dashboard
 
 1. Login as `ai-developer` to RHOAI Dashboard
 2. Go to **Data Science Projects** → **private-ai**
 3. Create workbench: `demo-workbench-1` with **NVIDIA L4 1GPU** → ✅ **Running**
-4. Create workbench: `demo-workbench-2` with **NVIDIA L4 1GPU** → ⏳ **Queued**
+4. Create workbench: `demo-workbench-2` with **NVIDIA L4 1GPU** → ⏳ **Pending**
 
 #### Access the Workbenches
 
@@ -275,11 +243,6 @@ echo "Workbench 2: https://${GATEWAY}/notebook/private-ai/demo-workbench-2/"
 open "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
 ```
 
-> **Note**: RHOAI 3.0 automatically creates:
-> - **HTTPRoute** for path-based routing via Gateway API
-> - **OAuth proxy sidecar** for authentication
-> - No manual Routes or NetworkPolicies needed!
-
 #### Demo Cleanup
 
 ```bash
@@ -292,6 +255,134 @@ oc delete -k gitops/step-03-private-ai/demo/
 - ⏳ Fair queuing - first-come-first-served
 - 📊 Quota enforcement - team/project limits respected
 - 🔄 Automatic admission - queued workloads start when resources free up
+
+---
+
+## Workbench Configuration (RHOAI 3.0)
+
+When creating workbenches via GitOps (not Dashboard), the following configurations are **required**:
+
+### Key Annotations
+
+| Annotation | Value | Purpose |
+|------------|-------|---------|
+| `notebooks.opendatahub.io/inject-auth` | `"true"` | Injects kube-rbac-proxy sidecar for authentication |
+| `opendatahub.io/hardware-profile-name` | `"nvidia-l4-1gpu"` | References Hardware Profile |
+| `opendatahub.io/hardware-profile-namespace` | `"redhat-ods-applications"` | Hardware Profile location |
+| `notebooks.opendatahub.io/last-image-selection` | `"pytorch:2025.2"` | Image selection |
+| `notebooks.opendatahub.io/last-image-version-git-commit-selection` | `"8e73cac"` | **Prevents "deprecated" warning** |
+| `opendatahub.io/image-display-name` | `"Jupyter \| PyTorch \| CUDA \| Python 3.12"` | Display name in Dashboard |
+| `opendatahub.io/workbench-image-namespace` | `""` | Image namespace tracking |
+
+> **Important**: The `last-image-version-git-commit-selection` must match the ImageStream's `notebook-build-commit` annotation to avoid "Notebook image deprecated" warning.
+
+### Required Labels
+
+| Label | Value | Purpose |
+|-------|-------|---------|
+| `opendatahub.io/dashboard` | `"true"` | Shows in Dashboard |
+| `opendatahub.io/odh-managed` | `"true"` | RHOAI manages lifecycle |
+| `kueue.x-k8s.io/queue-name` | `"default"` | Kueue queue assignment |
+
+### Tolerations for GPU Nodes
+
+GPU nodes have taints that must be tolerated:
+
+```yaml
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+```
+
+### Node Selector
+
+Target specific GPU instance types:
+
+```yaml
+nodeSelector:
+  node.kubernetes.io/instance-type: g6.4xlarge  # Single L4 GPU
+```
+
+### Path-Based Routing (Gateway API)
+
+RHOAI 3.0 uses Gateway API instead of individual Routes:
+
+```yaml
+env:
+  - name: NOTEBOOK_ARGS
+    value: |-
+      --ServerApp.port=8888
+      --ServerApp.token=''
+      --ServerApp.password=''
+      --ServerApp.base_url=/notebook/private-ai/demo-workbench-1
+      --ServerApp.quit_button=False
+```
+
+Probes must use the base_url path:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /notebook/private-ai/demo-workbench-1/api
+    port: notebook-port
+readinessProbe:
+  httpGet:
+    path: /notebook/private-ai/demo-workbench-1/api
+    port: notebook-port
+```
+
+### Authentication Sidecar
+
+RHOAI 3.0 uses `kube-rbac-proxy` instead of OAuth proxy:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Pod: demo-workbench-1-0                                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Container 1: demo-workbench-1 (Jupyter on port 8888)          │
+│  Container 2: kube-rbac-proxy (Auth on port 8443)              │
+└─────────────────────────────────────────────────────────────────┘
+                              ↑
+                    HTTPRoute points here
+                    (port 8443 via Gateway API)
+```
+
+---
+
+## Kustomize Structure
+
+```
+gitops/step-03-private-ai/
+├── base/                           # Auto-deployed by ArgoCD
+│   ├── kustomization.yaml
+│   │
+│   ├── auth/
+│   │   ├── htpasswd-secret.yaml    # Demo user credentials
+│   │   ├── oauth.yaml              # HTPasswd identity provider
+│   │   └── groups.yaml             # rhoai-admins, rhoai-users
+│   │
+│   ├── rbac/
+│   │   ├── project-admin.yaml      # ai-admin → admin role
+│   │   ├── project-editor.yaml     # ai-developer → edit role
+│   │   └── kueue-admin-access.yaml # Kueue ClusterRole binding
+│   │
+│   ├── namespace.yaml              # private-ai namespace with Kueue labels
+│   ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
+│   ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
+│   └── local-queue.yaml            # LocalQueue named 'default' (required!)
+│
+└── demo/                           # Manual apply for demo (NOT in ArgoCD)
+    ├── kustomization.yaml
+    ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
+    ├── pvcs.yaml                   # Storage for workbenches
+    ├── workbench-1.yaml            # First workbench (gets GPU)
+    └── workbench-2.yaml            # Second workbench (Pending - waiting for GPU)
+```
+
+> **Note**: The `demo/` folder is NOT included in ArgoCD sync.
+> Apply manually with `oc apply -k gitops/step-03-private-ai/demo/` to demonstrate queuing.
 
 ---
 
@@ -327,9 +418,6 @@ oc get rolebindings -n private-ai
 
 # Verify ai-admin has admin role
 oc auth can-i --list -n private-ai --as=ai-admin | grep -E "create|delete"
-
-# Verify ai-developer has edit role
-oc auth can-i --list -n private-ai --as=ai-developer | grep workloads
 ```
 
 ### 4. Kueue Resources
@@ -341,44 +429,22 @@ oc get clusterqueue rhoai-main-queue
 oc get localqueue -n private-ai
 ```
 
----
+### 5. Demo Workbenches
 
-## Kustomize Structure
+```bash
+# Apply demo
+oc apply -k gitops/step-03-private-ai/demo/
 
+# Check pods (one Running, one Pending)
+oc get pods -n private-ai
+
+# Check workloads
+oc get workloads -n private-ai
+
+# Get workbench URL
+GATEWAY=$(oc get gateway data-science-gateway -n openshift-ingress -o jsonpath='{.spec.listeners[0].hostname}')
+echo "https://${GATEWAY}/notebook/private-ai/demo-workbench-1/"
 ```
-gitops/step-03-private-ai/
-├── base/                           # Auto-deployed by ArgoCD
-│   ├── kustomization.yaml
-│   │
-│   ├── auth/
-│   │   ├── htpasswd-secret.yaml    # Demo user credentials
-│   │   ├── oauth.yaml              # HTPasswd identity provider
-│   │   └── groups.yaml             # rhoai-admins, rhoai-users
-│   │
-│   ├── rbac/
-│   │   ├── project-admin.yaml      # ai-admin → admin role
-│   │   ├── project-editor.yaml     # ai-developer → edit role
-│   │   └── kueue-admin-access.yaml # Kueue ClusterRole binding
-│   │
-│   ├── namespace.yaml              # private-ai namespace with Kueue labels
-│   ├── resource-flavors.yaml       # GPU node flavors (g6.4xlarge, g6.12xlarge)
-│   ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
-│   └── local-queue.yaml            # LocalQueue named 'default' (required!)
-│
-└── demo/                           # Manual apply for demo (NOT in ArgoCD)
-    ├── kustomization.yaml
-    ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
-    ├── pvcs.yaml                   # Storage for workbenches
-    ├── workbench-1.yaml            # First workbench (gets GPU)
-    └── workbench-2.yaml            # Second workbench (gets QUEUED)
-    # Note: HTTPRoutes auto-created by RHOAI via Gateway API
-```
-
-> **Note**: The `demo/` folder is NOT included in ArgoCD sync.
-> Apply manually with `oc apply -k gitops/step-03-private-ai/demo/` to demonstrate queuing.
-
-> **Note**: Hardware Profiles are **global** (in step-02-rhoai).
-> Each project only needs a LocalQueue named `default` to use them.
 
 ---
 
@@ -407,17 +473,94 @@ oc get rolebinding -n private-ai
 oc auth can-i --list -n private-ai --as=ai-developer
 ```
 
-### Workload Stuck Pending
+### Workbench FailedScheduling (Untolerated Taint)
+
+GPU nodes have taints. Workbenches need tolerations:
 
 ```bash
-# Check ClusterQueue status
-oc get clusterqueue rhoai-main-queue -o jsonpath='{.status}'
+# Check GPU node taints
+oc get nodes -l nvidia.com/gpu.present=true -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
 
-# Check LocalQueue events
-oc describe localqueue private-ai-queue -n private-ai
+# Verify workbench has tolerations
+oc get notebook demo-workbench-1 -n private-ai -o jsonpath='{.spec.template.spec.tolerations}'
+```
 
-# View pending workloads
-oc get workloads -n private-ai
+**Fix:** Add tolerations to workbench spec:
+```yaml
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+```
+
+### "Notebook image deprecated" Warning
+
+The Dashboard checks `last-image-version-git-commit-selection` annotation:
+
+```bash
+# Get ImageStream git commit
+oc get imagestream pytorch -n redhat-ods-applications -o json | \
+  jq '.spec.tags[] | select(.name == "2025.2") | .annotations["opendatahub.io/notebook-build-commit"]'
+
+# Patch workbench with correct commit
+oc patch notebook demo-workbench-1 -n private-ai --type=merge -p \
+  '{"metadata":{"annotations":{"notebooks.opendatahub.io/last-image-version-git-commit-selection":"8e73cac"}}}'
+```
+
+### Workbench Route Not Working
+
+RHOAI 3.0 uses Gateway API, not Routes:
+
+```bash
+# Check HTTPRoute exists
+oc get httproute -n redhat-ods-applications | grep demo-workbench
+
+# Check Gateway
+oc get gateway data-science-gateway -n openshift-ingress
+
+# Correct URL format
+# https://<gateway-hostname>/notebook/<namespace>/<workbench-name>/
+```
+
+---
+
+## RHOAI 3.0 Architecture Notes
+
+### Gateway API (Path-Based Routing)
+
+RHOAI 3.0 replaced individual Routes with Gateway API:
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Gateway** | `data-science-gateway` in `openshift-ingress` | Shared ingress point |
+| **HTTPRoute** | `nb-<namespace>-<name>` in `redhat-ods-applications` | Path-based routing |
+| **URL Format** | `https://<gateway>/notebook/<ns>/<name>/` | Standardized access |
+
+### Authentication (kube-rbac-proxy)
+
+RHOAI 3.0 replaced OAuth proxy with kube-rbac-proxy:
+
+| Annotation | Old (2.x) | New (3.0) |
+|------------|-----------|-----------|
+| Auth trigger | `inject-oauth: "true"` | `inject-auth: "true"` |
+| Sidecar | oauth-proxy | kube-rbac-proxy |
+| HTTPRoute target | port 8888 | port 8443 |
+
+### Hardware Profile Integration
+
+```yaml
+# Hardware Profile (in redhat-ods-applications)
+spec:
+  scheduling:
+    type: Queue
+    kueue:
+      localQueueName: default  # Must exist in user projects
+
+# Workbench references profile via annotations
+annotations:
+  opendatahub.io/hardware-profile-name: "nvidia-l4-1gpu"
+  opendatahub.io/hardware-profile-namespace: "redhat-ods-applications"
 ```
 
 ---
@@ -446,83 +589,3 @@ oc get workloads -n private-ai
 2. **Users request** → Select Hardware Profile in Dashboard
 3. **Kueue enforces** → Admits or queues based on quota
 4. **Admin monitors** → DCGM Dashboard for utilization
-
----
-
-## RHOAI 3.0 Kueue Architecture
-
-In RHOAI 3.0, Kueue has transitioned from an embedded component to a **standalone operator**.
-
-### The Four-Part Handshake
-
-For the Dashboard to recognize Kueue and enable Hardware Profiles:
-
-1. **Kueue Operator**: Red Hat Build of Kueue (step-01-gpu) with `Kueue` resource named `cluster`
-2. **DSC**: Set `kueue.managementState: Unmanaged` (recognizes external Kueue)
-3. **ODH Kueue Component**: Created for Dashboard integration
-4. **Dashboard**: Set `disableKueue: false` in `OdhDashboardConfig`
-
-### Hardware Profile Integration
-
-Global Hardware Profiles use Queue-based scheduling:
-
-```yaml
-# Hardware Profile (in redhat-ods-applications)
-spec:
-  scheduling:
-    type: Queue
-    kueue:
-      localQueueName: default  # Must exist in user projects
-```
-
-**Each project needs a LocalQueue named `default`** to use global profiles!
-
-### Configuration Summary
-
-**DataScienceCluster (step-02):**
-```yaml
-spec:
-  components:
-    kueue:
-      managementState: Unmanaged  # External standalone operator
-```
-
-**ODH Kueue Component (step-02):**
-```yaml
-apiVersion: components.platform.opendatahub.io/v1alpha1
-kind: Kueue
-metadata:
-  name: default-kueue
-spec:
-  managementState: Unmanaged
-  defaultLocalQueueName: default
-```
-
-**LocalQueue (this step):**
-```yaml
-apiVersion: kueue.x-k8s.io/v1beta1
-kind: LocalQueue
-metadata:
-  name: default  # MUST match localQueueName in profiles
-  namespace: private-ai
-spec:
-  clusterQueue: default  # Or your custom ClusterQueue
-```
-
-### Verification Commands
-```bash
-# Check Kueue operator
-oc get pods -n openshift-kueue-operator
-
-# Check Kueue instance
-oc get kueue cluster
-
-# Check LocalQueues in project (must have 'default')
-oc get localqueue -n private-ai
-
-# Check global HardwareProfiles
-oc get hardwareprofile -n redhat-ods-applications -o custom-columns=NAME:.metadata.name,TYPE:.spec.scheduling.type,QUEUE:.spec.scheduling.kueue.localQueueName
-
-# Check workload admission
-oc get workloads -n private-ai
-```

@@ -6,6 +6,7 @@
 # - Authentication (HTPasswd, OAuth, Groups)
 # - Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
 # - Project RBAC (ai-admin, ai-developer)
+# - Optional: Demo workbenches for queuing demonstration
 # =============================================================================
 set -euo pipefail
 
@@ -39,11 +40,19 @@ if [[ "$DSC_PHASE" != "Ready" ]]; then
     exit 1
 fi
 
+# Check Kueue operator is installed
+if ! oc get pods -n openshift-kueue-operator --no-headers 2>/dev/null | grep -q Running; then
+    log_warn "Kueue operator pods not running in openshift-kueue-operator namespace"
+    log_info "Make sure Step 01 deployed the Kueue operator"
+fi
+
 # Check GPU nodes exist
-GPU_NODES=$(oc get nodes -l node-role.kubernetes.io/gpu --no-headers 2>/dev/null | wc -l || echo "0")
+GPU_NODES=$(oc get nodes -l nvidia.com/gpu.present=true --no-headers 2>/dev/null | wc -l || echo "0")
 if [[ "$GPU_NODES" -eq 0 ]]; then
-    log_warn "No GPU nodes found with label 'node-role.kubernetes.io/gpu'"
-    log_info "Kueue ResourceFlavors won't match any nodes until GPU nodes are available"
+    log_warn "No GPU nodes found with label 'nvidia.com/gpu.present=true'"
+    log_info "Workbenches will remain Pending until GPU nodes are available"
+else
+    log_success "Found $GPU_NODES GPU node(s)"
 fi
 
 log_success "Prerequisites verified"
@@ -101,10 +110,10 @@ if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
     done
     log_success "ClusterQueue 'rhoai-main-queue' created"
     
-    until oc get localqueue private-ai-queue -n private-ai &>/dev/null; do
+    until oc get localqueue default -n private-ai &>/dev/null; do
         sleep 5
     done
-    log_success "LocalQueue 'private-ai-queue' created"
+    log_success "LocalQueue 'default' created"
 else
     log_warn "Kueue CRDs not available - skipping queue verification"
 fi
@@ -113,6 +122,10 @@ fi
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
+
+# Get Gateway hostname for URLs
+GATEWAY_HOST=$(oc get gateway data-science-gateway -n openshift-ingress -o jsonpath='{.spec.listeners[0].hostname}' 2>/dev/null || echo "loading...")
+DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -131,7 +144,7 @@ echo "Kueue Resources:"
 echo "  • ResourceFlavor: nvidia-l4-1gpu (g6.4xlarge)"
 echo "  • ResourceFlavor: nvidia-l4-4gpu (g6.12xlarge)"
 echo "  • ClusterQueue:   rhoai-main-queue"
-echo "  • LocalQueue:     private-ai-queue"
+echo "  • LocalQueue:     default (required for Hardware Profiles)"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -144,10 +157,27 @@ echo "  oc get resourceflavors"
 echo "  oc get clusterqueue rhoai-main-queue"
 echo "  oc get localqueue -n private-ai"
 echo ""
+log_info "RHOAI Dashboard:"
+echo "  https://${DASHBOARD_URL}"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Demo: GPU Queuing Demonstration"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+log_info "Apply demo workbenches (2 notebooks competing for 1 GPU):"
+echo "  oc apply -k gitops/step-03-private-ai/demo/"
+echo ""
+log_info "Watch the queuing behavior:"
+echo "  oc get pods -n private-ai -w"
+echo "  oc get workloads -n private-ai"
+echo ""
+log_info "Access workbenches via Gateway API:"
+echo "  https://${GATEWAY_HOST}/notebook/private-ai/demo-workbench-1/"
+echo "  https://${GATEWAY_HOST}/notebook/private-ai/demo-workbench-2/"
+echo ""
 log_info "Monitor GPU utilization:"
 echo "  OpenShift Console → Observe → Dashboards → NVIDIA DCGM Exporter Dashboard"
 echo ""
-log_info "RHOAI Dashboard:"
-DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
-echo "  https://${DASHBOARD_URL}"
+log_info "Cleanup demo workbenches:"
+echo "  oc delete -k gitops/step-03-private-ai/demo/"
 echo ""
