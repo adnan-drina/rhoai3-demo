@@ -22,7 +22,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
-    kueue.x-k8s.io/queue-name: private-ai-local-queue
+    kueue.x-k8s.io/queue-name: default
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     openshift.io/display-name: "Mistral 3 24B FP8 (1-GPU, Optimized)"
