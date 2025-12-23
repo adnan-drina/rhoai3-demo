@@ -256,6 +256,21 @@ oc get workloads -n private-ai
 3. Create workbench: `demo-workbench-1` with **NVIDIA L4 1GPU** → ✅ **Running**
 4. Create workbench: `demo-workbench-2` with **NVIDIA L4 1GPU** → ⏳ **Queued**
 
+#### Access the Workbenches
+
+After applying, get the workbench URLs:
+```bash
+# Get route URLs
+oc get routes -n private-ai
+
+# Open workbench-1 (the one with GPU)
+open $(oc get route demo-workbench-1 -n private-ai -o jsonpath='{.spec.host}' | xargs -I {} echo "https://{}")
+```
+
+> **Note**: When creating workbenches via `oc apply` (instead of Dashboard), we must:
+> - Create Route resources manually (not auto-generated)
+> - Add NetworkPolicy to allow OpenShift router access
+
 #### Demo Cleanup
 
 ```bash
@@ -345,6 +360,8 @@ gitops/step-03-private-ai/
     ├── kustomization.yaml
     ├── configmap-notebooks.yaml    # Sample notebooks (gpu-test.py, gpu-demo.ipynb)
     ├── pvcs.yaml                   # Storage for workbenches
+    ├── networkpolicy.yaml          # Allows OpenShift router to reach workbenches
+    ├── routes.yaml                 # HTTPS routes for workbench access
     ├── workbench-1.yaml            # First workbench (gets GPU)
     └── workbench-2.yaml            # Second workbench (gets QUEUED)
 ```
