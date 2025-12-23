@@ -12,4 +12,5 @@ resources:
   - model-registry.yaml
   - internal-service.yaml
   - internal-networkpolicy.yaml
-  - catalog-sources.yaml
+  # Note: Model Catalog uses operator-managed default sources
+  # Models are pre-bundled under "Red Hat AI" and "Red Hat AI validated" labels
