@@ -1,0 +1,121 @@
+# =============================================================================
+# Model Upload Job: Mistral Small 24B to MinIO
+# =============================================================================
+# Downloads Mistral-Small-24B-Instruct from HuggingFace and uploads to MinIO
+# 
+# IMPORTANT: This job requires:
+#   1. HuggingFace token (for gated model access)
+#   2. Significant download time (~30-60 min depending on network)
+#   3. 100GB+ ephemeral storage on the node
+#
+# Usage:
+#   oc create secret generic hf-token -n private-ai --from-literal=token=hf_xxx
+#   oc apply -f upload-mistral-job.yaml
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upload-mistral-to-minio
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: Skip
+    description: "Downloads Mistral-Small-24B and uploads to MinIO"
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: uploader
+          image: python:3.11-slim
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "=== Installing dependencies ==="
+              pip install -q huggingface_hub boto3 tqdm
+
+              echo "=== Setting up MinIO connection ==="
+              export AWS_ACCESS_KEY_ID="${MINIO_ACCESS_KEY}"
+              export AWS_SECRET_ACCESS_KEY="${MINIO_SECRET_KEY}"
+              export AWS_ENDPOINT_URL="${MINIO_ENDPOINT}"
+
+              echo "=== Downloading model from HuggingFace ==="
+              python3 << 'EOF'
+              import os
+              from huggingface_hub import snapshot_download
+              import boto3
+              from botocore.config import Config
+              from pathlib import Path
+
+              # Download model
+              model_id = "mistralai/Mistral-Small-24B-Instruct-2501"
+              local_path = "/tmp/model"
+              
+              print(f"Downloading {model_id}...")
+              snapshot_download(
+                  repo_id=model_id,
+                  local_dir=local_path,
+                  token=os.environ.get("HF_TOKEN"),
+                  ignore_patterns=["*.md", "*.txt"]
+              )
+              
+              # Upload to MinIO
+              print("Uploading to MinIO...")
+              s3 = boto3.client(
+                  's3',
+                  endpoint_url=os.environ['AWS_ENDPOINT_URL'],
+                  aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                  aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+                  config=Config(signature_version='s3v4')
+              )
+              
+              bucket = "rhoai-artifacts"
+              prefix = "mistral-small-24b/"
+              
+              # Ensure bucket exists
+              try:
+                  s3.head_bucket(Bucket=bucket)
+              except:
+                  s3.create_bucket(Bucket=bucket)
+              
+              # Upload all files
+              for file_path in Path(local_path).rglob("*"):
+                  if file_path.is_file():
+                      key = prefix + str(file_path.relative_to(local_path))
+                      print(f"  Uploading: {key}")
+                      s3.upload_file(str(file_path), bucket, key)
+              
+              print("Done! Model available at s3://rhoai-artifacts/mistral-small-24b/")
+              EOF
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+                  optional: true
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-connection
+                  key: AWS_ACCESS_KEY_ID
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-connection
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: MINIO_ENDPOINT
+              value: "http://minio.minio-storage.svc:9000"
+          resources:
+            requests:
+              cpu: "2"
+              memory: 8Gi
+              ephemeral-storage: 120Gi
+            limits:
+              cpu: "4"
+              memory: 16Gi
+              ephemeral-storage: 150Gi
+

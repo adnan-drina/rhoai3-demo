@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Model Upload Helper Jobs
+# Downloads models from HuggingFace and uploads to MinIO
+#
+# NOTE: These jobs are optional and NOT applied by default
+# Run manually: oc apply -k gitops/step-05-llm-on-vllm/base/model-upload/
+
+resources:
+  - upload-mistral-job.yaml
+

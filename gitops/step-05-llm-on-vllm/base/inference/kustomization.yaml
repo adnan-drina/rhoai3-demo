@@ -1,16 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# InferenceServices using Red Hat Validated OCI images
-# All models pulled directly from registry.redhat.io
+# InferenceServices using RHOAI 3.0 Official S3 Storage Approach
+# Model weights are stored in MinIO and downloaded by KServe storage-initializer
+#
+# Prerequisites:
+#   1. MinIO deployed (Step-03)
+#   2. Model weights uploaded to rhoai-artifacts bucket
+#   3. storage-config secret in private-ai namespace
 #
 # Node Placement Strategy:
 #   - 1-GPU models → g6.4xlarge (via nodeSelector)
 #   - 4-GPU models → g6.12xlarge (via nodeSelector)
-#   - Tolerations injected by Kueue ResourceFlavors
 
 resources:
-  # Mistral Small 24B - 1 GPU deployment (g6.4xlarge)
-  - mistral-3-fp8.yaml
-  # Mistral Small 24B - 4 GPU tensor parallel (g6.12xlarge)
-  - mistral-3-bf16.yaml
+  # Mistral Small 24B - 1 GPU deployment with FP8 quantization
+  - mistral-small-24b.yaml
+  # Mistral Small 24B - 4 GPU tensor parallel with BF16
+  - mistral-small-24b-tp4.yaml

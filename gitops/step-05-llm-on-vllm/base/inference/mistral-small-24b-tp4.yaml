@@ -1,0 +1,63 @@
+# =============================================================================
+# InferenceService: Mistral Small 24B Instruct (4-GPU BF16)
+# =============================================================================
+# RHOAI 3.0 OFFICIAL APPROACH: S3 Storage + KServe Storage Initializer
+#
+# The model weights are downloaded from MinIO (S3) at pod startup by the
+# storage-initializer init container. This avoids CRI-O extraction issues
+# with large OCI images.
+#
+# Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+# Use Case: High-throughput production with tensor parallelism
+#
+# Prerequisites:
+#   1. Model weights uploaded to: s3://rhoai-artifacts/mistral-small-24b/
+#   2. storage-config secret with minio-connection key in private-ai namespace
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mistral-small-24b-tp4
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: default
+    networking.kserve.io/visibility: exposed
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    openshift.io/display-name: "Mistral Small 24B TP4 (4-GPU BF16)"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.12xlarge
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime
+      # S3 Storage URI - KServe storage-initializer downloads weights at startup
+      storageUri: s3://rhoai-artifacts/mistral-small-24b/
+      storage:
+        key: minio-connection
+      args:
+        - --tensor-parallel-size=4
+        - --dtype=bfloat16
+        - --max-model-len=16384
+      resources:
+        requests:
+          cpu: "16"
+          memory: 64Gi
+          nvidia.com/gpu: "4"
+        limits:
+          cpu: "32"
+          memory: 128Gi
+          nvidia.com/gpu: "4"
+

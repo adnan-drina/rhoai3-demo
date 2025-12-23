@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Step 05: High-Efficiency LLM Inference with vLLM
-# Deploys Mistral-Small-24B in two configurations to demonstrate FP8 efficiency
+# Deploys Mistral-Small-24B using RHOAI 3.0 OFFICIAL S3 Storage Approach
 #
 # Architecture:
 #   ┌─────────────────────────────────────────────────────────────────────────┐
@@ -12,12 +12,12 @@ kind: Kustomization
 #   │   Deployment A: Full Precision (BF16)       Deployment B: FP8 Quantized │
 #   │   ════════════════════════════════          ════════════════════════════│
 #   │   ┌─────────────────────────────┐           ┌─────────────────────────┐ │
-#   │   │ mistral-24b-full            │           │ mistral-24b-fp8         │ │
+#   │   │ mistral-small-24b-tp4       │           │ mistral-small-24b       │ │
 #   │   │                             │           │                         │ │
 #   │   │ ┌───┐ ┌───┐ ┌───┐ ┌───┐    │           │ ┌───┐                   │ │
 #   │   │ │L4 │ │L4 │ │L4 │ │L4 │    │           │ │L4 │  ~15GB VRAM       │ │
 #   │   │ └───┘ └───┘ └───┘ └───┘    │           │ └───┘                   │ │
-#   │   │ 4x GPU (64GB total)         │           │ 1x GPU (16GB)           │ │
+#   │   │ 4x GPU (96GB total)         │           │ 1x GPU (24GB)           │ │
 #   │   │ tensor-parallel-size=4      │           │ --quantization fp8      │ │
 #   │   │ --dtype bfloat16            │           │ --kv-cache-dtype fp8    │ │
 #   │   └─────────────────────────────┘           └─────────────────────────┘ │
@@ -26,24 +26,27 @@ kind: Kustomization
 #   │                                                                         │
 #   └─────────────────────────────────────────────────────────────────────────┘
 #
+# Storage Strategy (OFFICIAL Red Hat Approach):
+#   - Model weights stored in MinIO (S3-compatible)
+#   - KServe storage-initializer downloads weights at pod startup
+#   - Avoids CRI-O image extraction issues with 90GB+ model images
+#
 # FP8 Advantage on NVIDIA L4:
 #   - Ada Lovelace architecture has native FP8 hardware acceleration
 #   - 50% memory reduction vs BF16
 #   - Near-identical accuracy (Neural Magic optimized kernels)
 #   - Red Hat validated through collaboration with Neural Magic
 #
+# Prerequisites:
+#   1. Step-03 deployed (MinIO storage)
+#   2. Model weights uploaded to rhoai-artifacts bucket
+#   3. storage-config secret in private-ai namespace
+#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 0. Security Context Constraint for OCI Image Volumes (sync-wave: 1-2)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Enables mounting 94GB+ model images directly from OCI registry
-  # Bypasses CRI-O extraction issues with large AI model images
-  - scc/
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Model Registration (sync-wave: 3)
+  # 1. Model Registration in Registry (sync-wave: 3)
   # ═══════════════════════════════════════════════════════════════════════════
   - model-registration/
 
@@ -53,8 +56,7 @@ resources:
   - serving-runtime/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. InferenceServices with OCI Image Volumes (sync-wave: 10)
+  # 3. InferenceServices with S3 Storage (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
-  # Uses OpenShift 4.20 OCI Image Volume feature to mount model weights
-  # directly from registry, avoiding 24-minute extraction time
+  # Model weights downloaded from MinIO by KServe storage-initializer
   - inference/

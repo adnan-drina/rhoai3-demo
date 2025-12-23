@@ -1,18 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# Step 05: LLM Serving - Triple Play
+# Step 05: LLM Serving with vLLM (Official S3 Storage Approach)
 # =============================================================================
-# Deploys three LLMs using vLLM:
-#   1. Mistral 3 24B BF16 (4-GPU, tensor parallel)
-#   2. Mistral 3 24B FP8 (1-GPU, Neural Magic optimized)
-#   3. Devstral 2 24B BF16 (4-GPU, coding model)
+# Deploys Mistral Small 24B in two configurations:
+#   1. mistral-small-24b-tp4 (4-GPU, BF16, tensor parallel)
+#   2. mistral-small-24b     (1-GPU, FP8, Neural Magic optimized)
+#
+# Storage: Models downloaded from MinIO (S3) by KServe storage-initializer
 # =============================================================================
 
 set -e
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║  Step 05: LLM Serving - Triple Play                                  ║"
-echo "║  Mistral 3 (BF16 + FP8) + Devstral 2 (Coding)                       ║"
+echo "║  Step 05: LLM Serving with vLLM                                      ║"
+echo "║  Official S3 Storage Approach (RHOAI 3.0 Recommended)                ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -33,35 +34,61 @@ if ! oc get namespace private-ai &>/dev/null; then
 fi
 echo "✓ Namespace 'private-ai' exists"
 
-# Check for Model Registry
-if ! oc get modelregistry private-ai-registry -n rhoai-model-registries &>/dev/null; then
-  echo "❌ Error: Model Registry not found. Run Step-04 first."
+# Check for MinIO
+if ! oc get deployment minio -n minio-storage &>/dev/null; then
+  echo "❌ Error: MinIO not found. Run Step-03 first."
   exit 1
 fi
-echo "✓ Model Registry 'private-ai-registry' exists"
+echo "✓ MinIO storage available"
 
-# Check for LocalQueue
-if ! oc get localqueue private-ai-local-queue -n private-ai &>/dev/null; then
-  echo "⚠️  Warning: LocalQueue 'private-ai-local-queue' not found"
+# Check for storage-config secret
+if ! oc get secret storage-config -n private-ai &>/dev/null; then
+  echo "❌ Error: storage-config secret not found in private-ai namespace."
+  echo "  This secret is required for KServe to access MinIO."
+  exit 1
+fi
+echo "✓ storage-config secret exists"
+
+# Check for Model Registry (optional)
+if oc get modelregistry private-ai-registry -n rhoai-model-registries &>/dev/null; then
+  echo "✓ Model Registry 'private-ai-registry' exists"
+else
+  echo "⚠️  Warning: Model Registry not found (optional for serving)"
 fi
 
 echo ""
 
 # =============================================================================
-# Infrastructure Scaling Reminder
+# Storage Check - Model Weights in MinIO
 # =============================================================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Infrastructure Requirements (9 GPUs Total)"
+echo "Model Storage Check (MinIO)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Required model locations in MinIO:"
+echo "    s3://rhoai-artifacts/mistral-small-24b/      (for 4-GPU BF16)"
+echo "    s3://rhoai-artifacts/mistral-small-24b-fp8/  (for 1-GPU FP8)"
+echo ""
+echo "  To upload models, use the helper job:"
+echo "    oc create secret generic hf-token -n private-ai --from-literal=token=hf_xxx"
+echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-mistral-job.yaml"
+echo ""
+
+# =============================================================================
+# Infrastructure Scaling
+# =============================================================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Infrastructure Requirements (5 GPUs Total)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  Required MachineSets:"
-echo "    - 2x g6.12xlarge (4-GPU each) → Mistral BF16 + Devstral"
-echo "    - 1x g6.4xlarge  (1-GPU)      → Mistral FP8"
+echo "    - 1x g6.12xlarge (4-GPU) → mistral-small-24b-tp4"
+echo "    - 1x g6.4xlarge  (1-GPU) → mistral-small-24b (FP8)"
 echo ""
 echo "  Scale commands:"
 echo "    CLUSTER_ID=\$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')"
-echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-12xlarge -n openshift-machine-api --replicas=2"
-echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-4xlarge -n openshift-machine-api --replicas=1"
+echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-12xlarge-us-east-2b -n openshift-machine-api --replicas=1"
+echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-4xlarge-us-east-2b -n openshift-machine-api --replicas=1"
 echo ""
 
 # Check current GPU node count
@@ -84,9 +111,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Deploying Step-05 Resources"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Delete old InferenceServices if they exist
+# Delete old resources if they exist (from previous OCI approach)
 echo "Cleaning up old resources..."
-oc delete inferenceservice mistral-24b-fp8 mistral-24b-full -n private-ai --ignore-not-found=true 2>/dev/null || true
+oc delete inferenceservice mistral-3-bf16 mistral-3-fp8 mistral-24b-fp8 mistral-24b-full -n private-ai --ignore-not-found=true 2>/dev/null || true
 oc delete servingruntime vllm-mistral-runtime -n private-ai --ignore-not-found=true 2>/dev/null || true
 
 # Apply Kustomize
@@ -97,25 +124,11 @@ echo ""
 echo "✓ Resources applied"
 
 # =============================================================================
-# Wait for Model Registration
+# Check ServingRuntime
 # =============================================================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Waiting for Model Registration Job"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-oc wait --for=condition=complete job/llm-model-registration -n rhoai-model-registries --timeout=120s 2>/dev/null || true
-
-echo ""
-echo "Registration job logs:"
-oc logs job/llm-model-registration -n rhoai-model-registries --tail=20 2>/dev/null || echo "(Job may still be running)"
-
-# =============================================================================
-# Wait for ServingRuntime
-# =============================================================================
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Checking ServingRuntime"
+echo "ServingRuntime Status"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 oc get servingruntime -n private-ai
@@ -132,9 +145,10 @@ oc get inferenceservice -n private-ai
 
 echo ""
 echo "Note: InferenceServices will show READY=True once:"
-echo "  1. GPU nodes are available and ready"
-echo "  2. Model weights are uploaded to MinIO (s3://models/)"
-echo "  3. Pods are scheduled and healthy"
+echo "  1. GPU nodes are available and scheduled"
+echo "  2. Model weights exist in MinIO (s3://rhoai-artifacts/...)"
+echo "  3. KServe storage-initializer downloads weights successfully"
+echo "  4. vLLM loads the model into GPU memory"
 
 # =============================================================================
 # Summary
@@ -144,18 +158,18 @@ echo "╔═══════════════════════�
 echo "║  Step 05 Deployment Complete                                         ║"
 echo "╠══════════════════════════════════════════════════════════════════════╣"
 echo "║                                                                      ║"
-echo "║  Models Deployed:                                                    ║"
-echo "║    1. mistral-3-bf16    → 4-GPU, Full Precision                     ║"
-echo "║    2. mistral-3-fp8     → 1-GPU, Neural Magic FP8                   ║"
-echo "║    3. devstral-2-bf16   → 4-GPU, Coding Model                       ║"
+echo "║  Storage: S3/MinIO (Official RHOAI 3.0 Approach)                    ║"
+echo "║                                                                      ║"
+echo "║  Models:                                                            ║"
+echo "║    1. mistral-small-24b-tp4 → 4-GPU, BF16, High-throughput          ║"
+echo "║    2. mistral-small-24b     → 1-GPU, FP8, Cost-efficient            ║"
 echo "║                                                                      ║"
 echo "║  Endpoints (when ready):                                             ║"
-echo "║    • http://mistral-3-bf16-predictor.private-ai.svc.cluster.local   ║"
-echo "║    • http://mistral-3-fp8-predictor.private-ai.svc.cluster.local    ║"
-echo "║    • http://devstral-2-bf16-predictor.private-ai.svc.cluster.local  ║"
+echo "║    • http://mistral-small-24b-tp4.private-ai.svc.cluster.local      ║"
+echo "║    • http://mistral-small-24b.private-ai.svc.cluster.local          ║"
 echo "║                                                                      ║"
-echo "║  Validation:                                                         ║"
-echo "║    oc get inferenceservice -n private-ai                            ║"
+echo "║  Watch startup:                                                      ║"
 echo "║    oc get pods -n private-ai -l serving.kserve.io/inferenceservice  ║"
+echo "║    oc logs -n private-ai <pod> -c storage-initializer               ║"
 echo "║                                                                      ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"

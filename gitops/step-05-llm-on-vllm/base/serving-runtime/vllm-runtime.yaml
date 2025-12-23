@@ -1,13 +1,14 @@
 # =============================================================================
-# vLLM ServingRuntime for RHOAI 3.0 with OCI Image Volumes
+# vLLM ServingRuntime for RHOAI 3.0 (Standard S3 Storage Approach)
 # =============================================================================
-# Uses OpenShift 4.20 OCI Image Volume feature to bypass CRI-O extraction
-# issues with 94GB+ model images.
+# This is the OFFICIAL Red Hat recommended approach for serving large LLMs.
+# 
+# Key Features:
+# - "Thin" runtime image (~3GB vLLM engine only)
+# - Model weights downloaded via KServe Storage Initializer from S3/MinIO
+# - Avoids CRI-O image extraction issues with 90GB+ images
 #
-# The model weights are mounted directly from the OCI registry as a volume,
-# avoiding the "image not known" error from overlay storage.
-#
-# Ref: https://docs.openshift.com/container-platform/4.20/storage/container_storage_interface/oci-image-volume.html
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 # =============================================================================
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
@@ -22,9 +23,9 @@ metadata:
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
     opendatahub.io/runtime-version: v0.9.1.0
     opendatahub.io/serving-runtime-scope: namespace
-    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime (OCI Volume)"
+    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime"
     opendatahub.io/template-name: vllm-cuda-runtime
-    openshift.io/display-name: "vLLM Runtime (OCI Image Volume)"
+    openshift.io/display-name: "vLLM Runtime for S3 Storage"
 spec:
   annotations:
     opendatahub.io/kserve-runtime: vllm
@@ -36,7 +37,7 @@ spec:
       autoSelect: true
   containers:
     - name: kserve-container
-      # Thin vLLM runtime image (not the 94GB model image)
+      # Thin vLLM runtime image (~3GB) - model weights loaded from S3
       image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
       command:
         - python
@@ -55,17 +56,8 @@ spec:
       volumeMounts:
         - mountPath: /dev/shm
           name: shm
-        - mountPath: /mnt/models
-          name: model-weights
-          readOnly: true
   volumes:
     - name: shm
       emptyDir:
         medium: Memory
         sizeLimit: 8Gi
-    # OCI Image Volume - mounts model directly from registry
-    # This bypasses CRI-O extraction and composefs issues
-    - name: model-weights
-      image:
-        reference: "{{.Labels.modelImageRef}}"
-        pullPolicy: IfNotPresent

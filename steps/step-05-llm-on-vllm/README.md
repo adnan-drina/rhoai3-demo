@@ -1,6 +1,18 @@
-# Step 05: LLM Serving - Triple Play
+# Step 05: LLM Serving with vLLM (Official S3 Storage Approach)
 
-Deploy three production-grade LLMs using vLLM on RHOAI 3.0, demonstrating different quantization strategies and hardware configurations.
+Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official Red Hat recommended S3 storage pattern**.
+
+## Why S3 Storage? (Not OCI Images)
+
+| Aspect | OCI Monolithic Image | **S3 Storage (Official)** |
+|--------|---------------------|---------------------------|
+| **Image Size** | 94GB+ per model | 3GB runtime only |
+| **Pull Time** | 20-45 minutes | Seconds (streaming) |
+| **CRI-O Issues** | Image ID failures | None |
+| **Disk Usage** | 188GB (overlay+cache) | Model size only |
+| **Scalability** | Limited | Production-ready |
+
+> **Red Hat Recommendation:** "For Large Language Models, use S3-compatible storage. This allows the KServe storage-initializer to download weights directly to the node's ephemeral storage, avoiding container runtime issues with massive images."
 
 ## Architecture Overview
 
@@ -9,27 +21,25 @@ Deploy three production-grade LLMs using vLLM on RHOAI 3.0, demonstrating differ
 │                     AWS OCP 4.20 Cluster                                │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐             │
-│  │   g6.12xlarge Node 1    │  │   g6.12xlarge Node 2    │             │
-│  │   (4x NVIDIA L4)        │  │   (4x NVIDIA L4)        │             │
-│  │                         │  │                         │             │
-│  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │             │
-│  │  │ mistral-3-bf16    │  │  │  │ devstral-2-bf16   │  │             │
-│  │  │ tensor-parallel=4 │  │  │  │ tensor-parallel=4 │  │             │
-│  │  │ Full Precision    │  │  │  │ Coding Model      │  │             │
-│  │  └───────────────────┘  │  │  └───────────────────┘  │             │
-│  └─────────────────────────┘  └─────────────────────────┘             │
-│                                                                         │
-│  ┌─────────────────────────┐                                          │
-│  │   g6.4xlarge Node       │                                          │
-│  │   (1x NVIDIA L4)        │                                          │
-│  │                         │                                          │
-│  │  ┌───────────────────┐  │                                          │
-│  │  │ mistral-3-fp8     │  │  ← 4x cost reduction vs BF16!           │
-│  │  │ FP8 Quantized     │  │                                          │
-│  │  │ Neural Magic      │  │                                          │
-│  │  └───────────────────┘  │                                          │
-│  └─────────────────────────┘                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                      MinIO Storage                               │   │
+│  │  s3://rhoai-artifacts/mistral-small-24b/         (~50GB)        │   │
+│  │  s3://rhoai-artifacts/mistral-small-24b-fp8/     (~25GB)        │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                          │
+│              KServe Storage Initializer downloads at pod startup        │
+│                              ▼                                          │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐              │
+│  │   g6.12xlarge Node      │  │   g6.4xlarge Node       │              │
+│  │   (4x NVIDIA L4)        │  │   (1x NVIDIA L4)        │              │
+│  │                         │  │                         │              │
+│  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
+│  │  │ mistral-small-24b │  │  │  │ mistral-small-24b │  │              │
+│  │  │     -tp4          │  │  │  │     (FP8)         │  │              │
+│  │  │ tensor-parallel=4 │  │  │  │ --quantization fp8│  │              │
+│  │  │ --dtype bfloat16  │  │  │  │ 4x cost savings!  │  │              │
+│  │  └───────────────────┘  │  │  └───────────────────┘  │              │
+│  └─────────────────────────┘  └─────────────────────────┘              │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -38,15 +48,14 @@ Deploy three production-grade LLMs using vLLM on RHOAI 3.0, demonstrating differ
 
 | Model | Quantization | Hardware | GPUs | VRAM | Use Case |
 |-------|-------------|----------|------|------|----------|
-| **Mistral 3 24B** | BF16 (Full) | g6.12xlarge | 4 | ~48GB | Production (Quality) |
-| **Mistral 3 24B** | FP8 | g6.4xlarge | 1 | ~15GB | Production (Efficiency) |
-| **Devstral 2 24B** | BF16 (Full) | g6.12xlarge | 4 | ~48GB | Code Generation |
+| **mistral-small-24b-tp4** | BF16 (Full) | g6.12xlarge | 4 | ~48GB | High-throughput |
+| **mistral-small-24b** | FP8 | g6.4xlarge | 1 | ~15GB | Cost-efficient |
 
 ## Key Demo Points
 
 ### 1. FP8 Quantization Advantage
 
-The **Mistral 3 FP8** deployment demonstrates:
+The **FP8 deployment** demonstrates:
 - **4x GPU cost reduction** (1 GPU vs 4 GPUs)
 - **Native L4 hardware acceleration** (Ada Lovelace FP8 tensor cores)
 - **Near-identical accuracy** (Neural Magic optimized kernels)
@@ -56,62 +65,70 @@ The **Mistral 3 FP8** deployment demonstrates:
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Cost Comparison                            │
 ├─────────────────────────────────────────────────────────────────┤
-│  Mistral 3 BF16:  4x L4 GPUs  →  ~$4.00/hour  →  ~$2,900/month │
-│  Mistral 3 FP8:   1x L4 GPU   →  ~$1.00/hour  →  ~$730/month   │
+│  Mistral BF16:  4x L4 GPUs  →  ~$4.00/hour  →  ~$2,900/month   │
+│  Mistral FP8:   1x L4 GPU   →  ~$1.00/hour  →  ~$730/month     │
 │                                                                 │
 │  Savings: 75% cost reduction with Neural Magic FP8!            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Red Hat AI Validated Story
+### 2. S3 Storage Pattern
 
-All models are from the **Red Hat AI Validated Collection**:
-- Pre-tested on RHOAI 3.0
-- Optimized vLLM configurations
-- Neural Magic FP8 quantization included
-- Support coverage by Red Hat
-
-### 3. Coding Model (Devstral)
-
-Devstral 2 is purpose-built for software development:
-- Extended 32K context window for large codebases
-- Optimized for code generation, review, and documentation
-- Compatible with IDE integrations (Continue, Cursor, etc.)
+The official RHOAI approach:
+1. **Thin Runtime Image** (~3GB): Just the vLLM engine
+2. **Model in S3**: Weights stored in MinIO/S3
+3. **Storage Initializer**: Downloads weights at pod startup
+4. **Ephemeral Cache**: Uses node-local storage, not overlay
 
 ## Prerequisites
 
 ### 1. Scale AWS MachineSets
 
-Before deploying, ensure sufficient GPU nodes:
-
 ```bash
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
 
-# Scale for triple-play deployment (9 GPUs total)
-oc scale machineset ${CLUSTER_ID}-gpu-g6-12xlarge -n openshift-machine-api --replicas=2
-oc scale machineset ${CLUSTER_ID}-gpu-g6-4xlarge -n openshift-machine-api --replicas=1
+# Scale for dual deployment (5 GPUs total: 4 + 1)
+oc scale machineset ${CLUSTER_ID}-gpu-g6-12xlarge-us-east-2b -n openshift-machine-api --replicas=1
+oc scale machineset ${CLUSTER_ID}-gpu-g6-4xlarge-us-east-2b -n openshift-machine-api --replicas=1
 
 # Verify nodes are ready (3-5 minutes)
 oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4
 ```
 
-### 2. Verify Kueue Quota
+### 2. Upload Model Weights to MinIO
 
-Ensure ClusterQueue has sufficient GPU quota (minimum 9 GPUs):
+**Option A: Use the helper job (recommended for demo)**
 
 ```bash
-oc get clusterqueue rhoai-cluster-queue -o jsonpath='{.spec.resourceGroups[*].flavors[*].resources}' | jq
+# Create HuggingFace token secret (for gated model access)
+oc create secret generic hf-token -n private-ai --from-literal=token=hf_xxxYOURTOKENxxx
+
+# Run upload job
+oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-job.yaml
+
+# Monitor progress (~30-60 minutes)
+oc logs -f job/upload-mistral-to-minio -n private-ai
 ```
 
-### 3. Upload Model Weights to MinIO
-
-Models must be available in S3 storage:
+**Option B: Manual upload with mc client**
 
 ```bash
-# Example: Download and upload Mistral 3
-mc cp -r models/mistral-3-24b-instruct/ minio/models/mistral-3-24b-instruct/
-mc cp -r models/mistral-3-24b-instruct-fp8/ minio/models/mistral-3-24b-instruct-fp8/
-mc cp -r models/devstral-2-24b/ minio/models/devstral-2-24b/
+# Configure mc (MinIO client)
+mc alias set minio http://minio.minio-storage.svc:9000 rhoai-access-key rhoai-secret-key-12345
+
+# Upload pre-downloaded model weights
+mc cp -r /path/to/mistral-small-24b/ minio/rhoai-artifacts/mistral-small-24b/
+mc cp -r /path/to/mistral-small-24b-fp8/ minio/rhoai-artifacts/mistral-small-24b-fp8/
+
+# Verify
+mc ls minio/rhoai-artifacts/
+```
+
+### 3. Verify storage-config Secret
+
+```bash
+# Check secret exists with MinIO credentials
+oc get secret storage-config -n private-ai -o jsonpath='{.data.minio-connection}' | base64 -d | jq
 ```
 
 ## Deployment
@@ -126,7 +143,7 @@ Or apply manually:
 # Apply Kustomize
 oc apply -k gitops/step-05-llm-on-vllm/base/
 
-# Watch deployment
+# Watch deployment (storage-initializer downloads first, then model loads)
 oc get inferenceservice -n private-ai -w
 ```
 
@@ -138,70 +155,50 @@ oc get inferenceservice -n private-ai -w
 oc get inferenceservice -n private-ai
 
 # Expected output:
-NAME               URL                                                            READY
-mistral-3-bf16     http://mistral-3-bf16-predictor.private-ai.svc.cluster.local   True
-mistral-3-fp8      http://mistral-3-fp8-predictor.private-ai.svc.cluster.local    True
-devstral-2-bf16    http://devstral-2-bf16-predictor.private-ai.svc.cluster.local  True
+NAME                   URL                                                               READY
+mistral-small-24b      http://mistral-small-24b.private-ai.svc.cluster.local             True
+mistral-small-24b-tp4  http://mistral-small-24b-tp4.private-ai.svc.cluster.local         True
 ```
 
-### 2. Get External URLs
+### 2. Test Mistral (4-GPU BF16)
 
 ```bash
-# Get routes (OpenAI-compatible endpoints)
-oc get route -n private-ai
+MISTRAL_TP4="http://mistral-small-24b-tp4.private-ai.svc.cluster.local"
 
-# Or via HTTPRoute (Gateway API)
-oc get httproute -n private-ai
-```
-
-### 3. Test Mistral 3 (General Purpose)
-
-```bash
-# Internal URL
-MISTRAL_BF16="http://mistral-3-bf16-predictor.private-ai.svc.cluster.local"
-
-# Test query
-curl -s "${MISTRAL_BF16}/v1/chat/completions" \
+curl -s "${MISTRAL_TP4}/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "mistral-3-bf16",
+    "model": "mistral-small-24b-tp4",
     "messages": [{"role": "user", "content": "What is new in Red Hat OpenShift AI 3.0?"}],
     "max_tokens": 200
   }' | jq .
 ```
 
-### 4. Test Mistral 3 FP8 (Same Quality, Lower Cost)
+### 3. Test Mistral FP8 (1-GPU, Same Quality)
 
 ```bash
-MISTRAL_FP8="http://mistral-3-fp8-predictor.private-ai.svc.cluster.local"
+MISTRAL_FP8="http://mistral-small-24b.private-ai.svc.cluster.local"
 
 curl -s "${MISTRAL_FP8}/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "mistral-3-fp8",
+    "model": "mistral-small-24b",
     "messages": [{"role": "user", "content": "Explain Kubernetes GPU scheduling in 3 sentences."}],
     "max_tokens": 150
   }' | jq .
 ```
 
-### 5. Test Devstral 2 (Coding)
+## Monitoring
+
+### Pod Startup (Watch Storage Initializer)
 
 ```bash
-DEVSTRAL="http://devstral-2-bf16-predictor.private-ai.svc.cluster.local"
+# Watch pod progress
+oc get pods -n private-ai -l serving.kserve.io/inferenceservice -w
 
-curl -s "${DEVSTRAL}/v1/chat/completions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "devstral-2-bf16",
-    "messages": [
-      {"role": "system", "content": "You are a Kubernetes expert. Write clean, production-ready YAML."},
-      {"role": "user", "content": "Write a Kueue ClusterQueue with 4 GPUs quota for NVIDIA L4 nodes."}
-    ],
-    "max_tokens": 500
-  }' | jq -r '.choices[0].message.content'
+# Storage initializer logs (downloading from S3)
+oc logs -n private-ai -l serving.kserve.io/inferenceservice=mistral-small-24b -c storage-initializer
 ```
-
-## Monitoring
 
 ### GPU Utilization
 
@@ -210,54 +207,57 @@ curl -s "${DEVSTRAL}/v1/chat/completions" \
 oc exec -n nvidia-gpu-operator $(oc get pod -n nvidia-gpu-operator -l app=nvidia-dcgm-exporter -o name | head -1) -- dcgmi dmon -d 1
 ```
 
-### Kueue Workload Status
-
-```bash
-# Check admitted workloads
-oc get workload -n private-ai
-
-# Check local queue status
-oc get localqueue -n private-ai
-```
-
-### InferenceService Logs
-
-```bash
-# Mistral 3 BF16 logs
-oc logs -n private-ai -l serving.kserve.io/inferenceservice=mistral-3-bf16 -f
-
-# Mistral 3 FP8 logs
-oc logs -n private-ai -l serving.kserve.io/inferenceservice=mistral-3-fp8 -f
-
-# Devstral 2 logs
-oc logs -n private-ai -l serving.kserve.io/inferenceservice=devstral-2-bf16 -f
-```
-
 ## Troubleshooting
 
-### InferenceService Stuck in "Not Ready"
+### Storage Initializer Stuck
 
 ```bash
-# Check pod status
-oc get pods -n private-ai -l serving.kserve.io/inferenceservice=mistral-3-bf16
-
-# Check events
-oc get events -n private-ai --sort-by='.lastTimestamp'
+# Check init container logs
+oc logs -n private-ai <pod-name> -c storage-initializer
 
 # Common issues:
-# 1. Insufficient GPU quota → Scale MachineSets
-# 2. Model not in S3 → Upload weights to MinIO
-# 3. Image pull error → Check registry credentials
+# 1. "Access Denied" → Check storage-config secret
+# 2. "No such bucket" → Ensure model is uploaded to MinIO
+# 3. "Connection refused" → Check MinIO service is running
+```
+
+### Model Loading Slow
+
+```bash
+# Check node ephemeral storage
+oc describe node <gpu-node> | grep -A5 "Allocated resources"
+
+# Ensure node has enough ephemeral storage (100GB+)
+# Model download to /mnt/models can be 50GB+
 ```
 
 ### Kueue Workload Pending
 
 ```bash
-# Check workload status
-oc describe workload -n private-ai
+# Check GPU quota
+oc get clusterqueue rhoai-main-queue -o yaml | grep -A10 nominalQuota
 
-# Check ClusterQueue capacity
-oc get clusterqueue -o yaml
+# Ensure quota >= 5 GPUs (4 + 1)
+```
+
+## GitOps Structure
+
+```
+gitops/step-05-llm-on-vllm/base/
+├── kustomization.yaml
+├── model-registration/
+│   ├── kustomization.yaml
+│   └── seed-job.yaml              # Register models in Registry
+├── serving-runtime/
+│   ├── kustomization.yaml
+│   └── vllm-runtime.yaml          # Thin vLLM runtime (~3GB)
+├── inference/
+│   ├── kustomization.yaml
+│   ├── mistral-small-24b.yaml     # 1-GPU, FP8, S3 storage
+│   └── mistral-small-24b-tp4.yaml # 4-GPU, BF16, S3 storage
+└── model-upload/                   # Optional: Helper for demo
+    ├── kustomization.yaml
+    └── upload-mistral-job.yaml     # Downloads from HF, uploads to MinIO
 ```
 
 ## API Reference
@@ -270,25 +270,12 @@ All endpoints are OpenAI-compatible:
 | `GET /v1/models` | List available models |
 | `POST /v1/chat/completions` | Chat completions API |
 | `POST /v1/completions` | Text completions API |
-| `POST /v1/embeddings` | Embeddings (if supported) |
 
-## GitOps Structure
+## Official Documentation
 
-```
-gitops/step-05-llm-on-vllm/base/
-├── kustomization.yaml
-├── model-registration/
-│   ├── kustomization.yaml
-│   └── seed-job.yaml          # Register 3 models in Registry
-├── serving-runtime/
-│   ├── kustomization.yaml
-│   └── vllm-runtime.yaml      # vLLM ServingRuntime
-└── inference/
-    ├── kustomization.yaml
-    ├── mistral-3-bf16.yaml    # 4-GPU, BF16
-    ├── mistral-3-fp8.yaml     # 1-GPU, FP8
-    └── devstral-2-bf16.yaml   # 4-GPU, Coding
-```
+- [RHOAI 3.0 Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index)
+- [KServe Storage Configuration](https://kserve.github.io/website/latest/modelserving/storage/)
+- [vLLM Serving Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#supported-model-serving-runtimes_serving)
 
 ## Next Steps
 
