@@ -6,10 +6,12 @@ metadata:
   namespace: private-ai
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    # Skip health check - PVC uses WaitForFirstConsumer
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
-
+  storageClassName: gp3-csi
