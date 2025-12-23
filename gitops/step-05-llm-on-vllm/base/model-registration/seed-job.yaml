@@ -1,25 +1,26 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: mistral-model-registration
+  name: llm-model-registration
   namespace: rhoai-model-registries
   labels:
-    app: mistral-model-registration
+    app: llm-model-registration
   annotations:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     description: |
-      Registers Mistral-Small-24B variants in the Model Registry.
-      - BF16 version for 4-GPU deployment
-      - FP8 version for 1-GPU deployment (Neural Magic optimized)
+      Registers three LLM variants in the Model Registry:
+      - Mistral 3 BF16 (4-GPU, tensor parallel)
+      - Mistral 3 FP8 (1-GPU, Neural Magic optimized)
+      - Devstral 2 BF16 (4-GPU, coding model)
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 300
   template:
     metadata:
       labels:
-        app: mistral-model-registration
+        app: llm-model-registration
     spec:
       restartPolicy: OnFailure
       securityContext:
@@ -42,8 +43,8 @@ spec:
             - |
               set -e
               echo "╔══════════════════════════════════════════════════════════════╗"
-              echo "║  Step 05: Mistral Model Registration                         ║"
-              echo "║  BF16 (4-GPU) and FP8 (1-GPU) Variants                       ║"
+              echo "║  Step 05: LLM Model Registration - Triple Play               ║"
+              echo "║  Mistral 3 (BF16 + FP8) + Devstral 2 (Coding)                ║"
               echo "╚══════════════════════════════════════════════════════════════╝"
               
               API_BASE="${REGISTRY_URL}/api/model_registry/v1alpha3"
@@ -59,140 +60,111 @@ spec:
               done
               
               # ═══════════════════════════════════════════════════════════════════
-              # Register Model 1: Mistral-Small-24B-Instruct-BF16
+              # Function to register a model
               # ═══════════════════════════════════════════════════════════════════
-              MODEL1_NAME="Mistral-Small-24B-Instruct-BF16"
-              echo ""
-              echo "Checking for existing model: ${MODEL1_NAME}..."
-              if curl -sf "${API_BASE}/registered_models" | grep -q "${MODEL1_NAME}"; then
-                echo "✓ Model '${MODEL1_NAME}' already exists"
-              else
-                echo "Registering: ${MODEL1_NAME}..."
+              register_model() {
+                local MODEL_NAME="$1"
+                local MODEL_DESC="$2"
+                local MODEL_TAGS="$3"
+                local VERSION_NAME="$4"
+                local VERSION_META="$5"
+                local ARTIFACT_URI="$6"
+                local SOURCE_NAME="$7"
+                
+                echo ""
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo "Registering: ${MODEL_NAME}"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                
+                if curl -sf "${API_BASE}/registered_models" | grep -q "\"name\":\"${MODEL_NAME}\""; then
+                  echo "✓ Model '${MODEL_NAME}' already exists - skipping"
+                  return 0
+                fi
                 
                 # Create RegisteredModel
-                MODEL1_RESP=$(curl -sf -X POST "${API_BASE}/registered_models" \
+                MODEL_RESP=$(curl -sf -X POST "${API_BASE}/registered_models" \
                   -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "Mistral-Small-24B-Instruct-BF16",
-                    "description": "Mistral Small 24B Instruct - Full Precision BF16 for 4-GPU deployment",
-                    "owner": "ai-admin",
-                    "customProperties": {
-                      "mistral": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "validated": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "vllm": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "text-to-text": {"metadataType": "MetadataStringValue", "string_value": ""}
-                    }
-                  }')
-                MODEL1_ID=$(echo "$MODEL1_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
-                echo "  Created RegisteredModel ID: ${MODEL1_ID}"
+                  -d "{
+                    \"name\": \"${MODEL_NAME}\",
+                    \"description\": \"${MODEL_DESC}\",
+                    \"owner\": \"ai-admin\",
+                    \"customProperties\": ${MODEL_TAGS}
+                  }")
+                MODEL_ID=$(echo "$MODEL_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
+                echo "  Created RegisteredModel ID: ${MODEL_ID}"
                 
                 # Create ModelVersion
-                VERSION1_RESP=$(curl -sf -X POST "${API_BASE}/model_versions" \
+                VERSION_RESP=$(curl -sf -X POST "${API_BASE}/model_versions" \
                   -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "v3-Validated",
-                    "description": "Full precision version for maximum quality",
-                    "author": "ai-admin",
-                    "registeredModelId": "'"${MODEL1_ID}"'",
-                    "customProperties": {
-                      "License": {"metadataType": "MetadataStringValue", "string_value": "https://mistral.ai/licenses/"},
-                      "Provider": {"metadataType": "MetadataStringValue", "string_value": "Mistral AI"},
-                      "precision": {"metadataType": "MetadataStringValue", "string_value": "bfloat16"},
-                      "gpu_requirement": {"metadataType": "MetadataStringValue", "string_value": "4x NVIDIA L4"},
-                      "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.0"}
-                    }
-                  }')
-                VERSION1_ID=$(echo "$VERSION1_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
-                echo "  Created ModelVersion ID: ${VERSION1_ID}"
+                  -d "{
+                    \"name\": \"${VERSION_NAME}\",
+                    \"description\": \"Production-ready version for RHOAI 3.0\",
+                    \"author\": \"ai-admin\",
+                    \"registeredModelId\": \"${MODEL_ID}\",
+                    \"customProperties\": ${VERSION_META}
+                  }")
+                VERSION_ID=$(echo "$VERSION_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
+                echo "  Created ModelVersion ID: ${VERSION_ID}"
                 
                 # Create ModelArtifact
-                curl -sf -X POST "${API_BASE}/model_versions/${VERSION1_ID}/artifacts" \
+                curl -sf -X POST "${API_BASE}/model_versions/${VERSION_ID}/artifacts" \
                   -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "v3-Validated",
-                    "uri": "s3://rhoai-artifacts/mistral-small-24b-instruct/",
-                    "artifactType": "model-artifact",
-                    "modelSourceClass": "redhat_ai_validated_models",
-                    "modelSourceKind": "catalog",
-                    "modelSourceName": "mistralai/Mistral-Small-Instruct-24B"
-                  }' > /dev/null
+                  -d "{
+                    \"name\": \"${VERSION_NAME}\",
+                    \"uri\": \"${ARTIFACT_URI}\",
+                    \"artifactType\": \"model-artifact\",
+                    \"modelSourceClass\": \"redhat_ai_validated_models\",
+                    \"modelSourceKind\": \"catalog\",
+                    \"modelSourceName\": \"${SOURCE_NAME}\"
+                  }" > /dev/null
                 
-                echo "✓ Registered: ${MODEL1_NAME}"
-              fi
+                echo "✓ Registered: ${MODEL_NAME}"
+              }
               
               # ═══════════════════════════════════════════════════════════════════
-              # Register Model 2: Mistral-Small-24B-Instruct-FP8
+              # Model 1: Mistral 3 BF16 (4-GPU, Full Precision)
               # ═══════════════════════════════════════════════════════════════════
-              MODEL2_NAME="Mistral-Small-24B-Instruct-FP8"
-              echo ""
-              echo "Checking for existing model: ${MODEL2_NAME}..."
-              if curl -sf "${API_BASE}/registered_models" | grep -q "${MODEL2_NAME}"; then
-                echo "✓ Model '${MODEL2_NAME}' already exists"
-              else
-                echo "Registering: ${MODEL2_NAME}..."
-                
-                # Create RegisteredModel
-                MODEL2_RESP=$(curl -sf -X POST "${API_BASE}/registered_models" \
-                  -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "Mistral-Small-24B-Instruct-FP8",
-                    "description": "Mistral Small 24B Instruct - FP8 Quantized by Neural Magic for 1-GPU deployment",
-                    "owner": "ai-admin",
-                    "customProperties": {
-                      "mistral": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "fp8": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "validated": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "vllm": {"metadataType": "MetadataStringValue", "string_value": ""},
-                      "neural-magic": {"metadataType": "MetadataStringValue", "string_value": ""}
-                    }
-                  }')
-                MODEL2_ID=$(echo "$MODEL2_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
-                echo "  Created RegisteredModel ID: ${MODEL2_ID}"
-                
-                # Create ModelVersion
-                VERSION2_RESP=$(curl -sf -X POST "${API_BASE}/model_versions" \
-                  -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "v3-FP8-NeuralMagic",
-                    "description": "FP8 quantized version optimized for NVIDIA L4 (Ada Lovelace)",
-                    "author": "ai-admin",
-                    "registeredModelId": "'"${MODEL2_ID}"'",
-                    "customProperties": {
-                      "License": {"metadataType": "MetadataStringValue", "string_value": "https://mistral.ai/licenses/"},
-                      "Provider": {"metadataType": "MetadataStringValue", "string_value": "Neural Magic"},
-                      "quantization": {"metadataType": "MetadataStringValue", "string_value": "fp8"},
-                      "optimized_for": {"metadataType": "MetadataStringValue", "string_value": "nvidia-l4"},
-                      "gpu_requirement": {"metadataType": "MetadataStringValue", "string_value": "1x NVIDIA L4"},
-                      "vram_usage": {"metadataType": "MetadataStringValue", "string_value": "~15GB"},
-                      "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.0"}
-                    }
-                  }')
-                VERSION2_ID=$(echo "$VERSION2_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
-                echo "  Created ModelVersion ID: ${VERSION2_ID}"
-                
-                # Create ModelArtifact
-                curl -sf -X POST "${API_BASE}/model_versions/${VERSION2_ID}/artifacts" \
-                  -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "v3-FP8-NeuralMagic",
-                    "uri": "s3://rhoai-artifacts/mistral-small-24b-instruct-fp8/",
-                    "artifactType": "model-artifact",
-                    "modelSourceClass": "redhat_ai_validated_models",
-                    "modelSourceKind": "catalog",
-                    "modelSourceName": "neuralmagic/Mistral-Small-Instruct-24B-FP8"
-                  }' > /dev/null
-                
-                echo "✓ Registered: ${MODEL2_NAME}"
-              fi
+              register_model \
+                "Mistral-3-24B-Instruct-BF16" \
+                "Mistral Small 3 24B Instruct - Full Precision BF16 for 4-GPU tensor parallel deployment" \
+                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"text-to-text":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v3-BF16-Validated" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
+                "s3://models/mistral-3-24b-instruct/" \
+                "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Model 2: Mistral 3 FP8 (1-GPU, Neural Magic Optimized)
+              # ═══════════════════════════════════════════════════════════════════
+              register_model \
+                "Mistral-3-24B-Instruct-FP8" \
+                "Mistral Small 3 24B Instruct - FP8 Quantized by Neural Magic for 1-GPU deployment" \
+                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"fp8":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"neural-magic":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v3-FP8-NeuralMagic" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Neural Magic"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8"},"optimized_for":{"metadataType":"MetadataStringValue","string_value":"nvidia-l4"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4"},"vram_usage":{"metadataType":"MetadataStringValue","string_value":"~15GB"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
+                "s3://models/mistral-3-24b-instruct-fp8/" \
+                "neuralmagic/Mistral-Small-3.1-24B-Instruct-2503-FP8-dynamic"
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Model 3: Devstral 2 BF16 (4-GPU, Coding Model)
+              # ═══════════════════════════════════════════════════════════════════
+              register_model \
+                "Devstral-2-24B-BF16" \
+                "Devstral 2 24B - Code-optimized LLM for software development tasks" \
+                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"coding":{"metadataType":"MetadataStringValue","string_value":""},"text-to-text":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v2-BF16-Coding" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"https://mistral.ai/licenses/"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"task":{"metadataType":"MetadataStringValue","string_value":"coding"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4"},"max_context":{"metadataType":"MetadataStringValue","string_value":"32768"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0"}}' \
+                "s3://models/devstral-2-24b/" \
+                "mistralai/Devstral-Small-2503"
               
               echo ""
               echo "════════════════════════════════════════════════════════════════"
-              echo "✓ Model Registration Complete"
+              echo "✓ Model Registration Complete - Triple Play"
               echo ""
               echo "  Models registered:"
-              echo "  1. Mistral-Small-24B-Instruct-BF16 (4-GPU, tensor parallel)"
-              echo "  2. Mistral-Small-24B-Instruct-FP8  (1-GPU, Neural Magic)"
+              echo "  1. Mistral-3-24B-Instruct-BF16  (4-GPU, tensor parallel)"
+              echo "  2. Mistral-3-24B-Instruct-FP8   (1-GPU, Neural Magic)"
+              echo "  3. Devstral-2-24B-BF16          (4-GPU, coding)"
               echo ""
               echo "  Ready for deployment in GenAI Studio → AI Available Assets"
               echo "════════════════════════════════════════════════════════════════"
-

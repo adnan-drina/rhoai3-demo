@@ -1,0 +1,61 @@
+# =============================================================================
+# InferenceService: Devstral 2 24B (Coding Model)
+# =============================================================================
+# Deploys Devstral 2 - a code-optimized LLM for software development tasks.
+# Uses 4x NVIDIA L4 GPUs with extended context window for code generation.
+#
+# Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+# vLLM Args: --tensor-parallel-size 4 --dtype bfloat16 --max-model-len 32768
+#
+# Use Case: Code generation, code review, technical documentation
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: devstral-2-bf16
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: private-ai-local-queue
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    openshift.io/display-name: "Devstral 2 24B BF16 (4-GPU, Coding)"
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/autoscalerClass: hpa
+    serving.kserve.io/minScale: "1"
+    serving.kserve.io/maxScale: "1"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vllm
+      runtime: vllm-runtime
+      storageUri: "s3://models/devstral-2-24b/"
+      args:
+        - "--model"
+        - "/mnt/models"
+        - "--tensor-parallel-size"
+        - "4"
+        - "--dtype"
+        - "bfloat16"
+        # Extended context for code generation
+        - "--max-model-len"
+        - "32768"
+        - "--gpu-memory-utilization"
+        - "0.9"
+    resources:
+      requests:
+        cpu: "8"
+        memory: "64Gi"
+        nvidia.com/gpu: "4"
+      limits:
+        cpu: "16"
+        memory: "128Gi"
+        nvidia.com/gpu: "4"
+    nodeSelector:
+      nvidia.com/gpu.product: NVIDIA-L4
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+

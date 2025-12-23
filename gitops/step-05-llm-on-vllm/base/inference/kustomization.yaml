@@ -1,11 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# InferenceServices for Mistral-Small-24B
-# Two deployments demonstrating FP8 efficiency on NVIDIA L4
+# InferenceServices - Triple Play
+# Three LLM deployments demonstrating different configurations
 
 resources:
-  # Full precision (BF16) - 4 GPUs with tensor parallelism
-  - mistral-24b-full.yaml
-  # FP8 quantized - 1 GPU (Neural Magic optimized)
-  - mistral-24b-fp8.yaml
+  # Mistral 3 BF16 - Full precision, 4 GPUs with tensor parallelism
+  - mistral-3-bf16.yaml
+  # Mistral 3 FP8 - Quantized, 1 GPU (Neural Magic optimized)
+  - mistral-3-fp8.yaml
+  # Devstral 2 BF16 - Coding model, 4 GPUs with extended context
+  - devstral-2-bf16.yaml

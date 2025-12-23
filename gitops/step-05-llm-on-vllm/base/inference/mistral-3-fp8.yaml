@@ -1,10 +1,10 @@
 # =============================================================================
-# InferenceService: Mistral-Small-24B-Instruct-FP8 (Quantized)
+# InferenceService: Mistral 3 24B Instruct FP8 (Quantized)
 # =============================================================================
-# Deploys Mistral 24B FP8-quantized using 1x NVIDIA L4 GPU.
+# Deploys Mistral Small 3 FP8-quantized using 1x NVIDIA L4 GPU.
 # Neural Magic optimized weights for Ada Lovelace FP8 acceleration.
 #
-# Hardware: 1x NVIDIA L4 (16GB VRAM, ~15GB used)
+# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM, ~15GB used)
 # vLLM Args: --quantization fp8 --kv-cache-dtype fp8
 #
 # Key Benefits:
@@ -18,16 +18,15 @@
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: mistral-24b-fp8
+  name: mistral-3-fp8
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
     kueue.x-k8s.io/queue-name: private-ai-local-queue
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    openshift.io/display-name: "Mistral 24B FP8 (1-GPU, Optimized)"
+    openshift.io/display-name: "Mistral 3 24B FP8 (1-GPU, Optimized)"
     serving.kserve.io/deploymentMode: RawDeployment
-    # Enable autoscaling
     serving.kserve.io/autoscalerClass: hpa
     serving.kserve.io/minScale: "1"
     serving.kserve.io/maxScale: "3"
@@ -36,9 +35,8 @@ spec:
     model:
       modelFormat:
         name: vllm
-      runtime: vllm-mistral-runtime
-      storageUri: "s3://rhoai-artifacts/mistral-small-24b-instruct-fp8/"
-      # vLLM-specific arguments for FP8 quantization
+      runtime: vllm-runtime
+      storageUri: "s3://models/mistral-3-24b-instruct-fp8/"
       args:
         - "--model"
         - "/mnt/models"
@@ -50,10 +48,6 @@ spec:
         - "8192"
         - "--gpu-memory-utilization"
         - "0.9"
-        # Enable FP8 optimizations
-        - "--enforce-eager"
-        - "false"
-    # Hardware Profile: 1x NVIDIA L4
     resources:
       requests:
         cpu: "4"
@@ -63,7 +57,6 @@ spec:
         cpu: "8"
         memory: "64Gi"
         nvidia.com/gpu: "1"
-    # Node selector for L4 GPU nodes
     nodeSelector:
       nvidia.com/gpu.product: NVIDIA-L4
     tolerations:

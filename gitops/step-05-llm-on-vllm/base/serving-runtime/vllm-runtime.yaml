@@ -13,14 +13,16 @@
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
-  name: vllm-mistral-runtime
+  name: vllm-runtime
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    openshift.io/display-name: "vLLM Runtime for Mistral Models"
+    openshift.io/display-name: "vLLM Runtime for LLMs"
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    # Enable external route generation
+    enable-route: "true"
 spec:
   annotations:
     prometheus.io/port: "8080"
@@ -31,8 +33,8 @@ spec:
       autoSelect: true
   containers:
     - name: kserve-container
-      # RHOAI 3.0 vLLM image with FP8 support
-      image: quay.io/modh/vllm@sha256:TODO_GET_LATEST_SHA
+      # RHOAI 3.0 vLLM image with FP8 and tensor parallelism support
+      image: registry.redhat.io/rhoai/vllm-openai-rhel9:1.5
       command:
         - python
         - -m
@@ -45,18 +47,21 @@ spec:
         - "--served-model-name"
         - "{{.Name}}"
         # Memory optimization
-        - "--max-model-len"
-        - "8192"
         - "--gpu-memory-utilization"
         - "0.9"
         # Enable chunked prefill for better latency
         - "--enable-chunked-prefill"
         - "true"
+        # Trust remote code for custom models
+        - "--trust-remote-code"
       env:
         - name: HF_HOME
           value: /tmp/hf_home
         - name: TRANSFORMERS_CACHE
           value: /tmp/transformers_cache
+        # Disable CUDA graphs for better compatibility
+        - name: VLLM_DISABLE_CUDA_GRAPHS
+          value: "false"
       ports:
         - containerPort: 8080
           name: http
@@ -65,25 +70,25 @@ spec:
         httpGet:
           path: /health
           port: http
-        initialDelaySeconds: 120
+        initialDelaySeconds: 180
         periodSeconds: 30
         timeoutSeconds: 10
-        failureThreshold: 3
+        failureThreshold: 5
       readinessProbe:
         httpGet:
           path: /health
           port: http
-        initialDelaySeconds: 60
+        initialDelaySeconds: 120
         periodSeconds: 10
         timeoutSeconds: 5
-        failureThreshold: 3
+        failureThreshold: 5
       resources:
         requests:
           cpu: "4"
           memory: "16Gi"
         limits:
-          cpu: "8"
-          memory: "32Gi"
+          cpu: "16"
+          memory: "64Gi"
       volumeMounts:
         - name: shm
           mountPath: /dev/shm
@@ -93,6 +98,6 @@ spec:
     - name: shm
       emptyDir:
         medium: Memory
-        sizeLimit: 16Gi
+        sizeLimit: 32Gi
     - name: tmp
       emptyDir: {}

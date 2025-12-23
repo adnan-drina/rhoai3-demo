@@ -1,196 +1,161 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # =============================================================================
-# Step 05: High-Efficiency LLM Inference with vLLM
+# Step 05: LLM Serving - Triple Play
 # =============================================================================
-# Deploys Mistral-Small-24B in two configurations:
-# - Full precision (BF16) on 4x NVIDIA L4 GPUs
-# - FP8 quantized on 1x NVIDIA L4 GPU (Neural Magic optimized)
-#
-# This demonstrates the cost-efficiency of FP8 quantization on Ada Lovelace.
+# Deploys three LLMs using vLLM:
+#   1. Mistral 3 24B BF16 (4-GPU, tensor parallel)
+#   2. Mistral 3 24B FP8 (1-GPU, Neural Magic optimized)
+#   3. Devstral 2 24B BF16 (4-GPU, coding model)
 # =============================================================================
-set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-source "$REPO_ROOT/scripts/lib.sh"
+set -e
 
-STEP_NAME="step-05-llm-on-vllm"
-
-load_env
-check_oc_logged_in
-
-echo ""
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║  Step 05: High-Efficiency LLM Inference                              ║"
-echo "║  Mistral-24B with FP8 Quantization on NVIDIA L4                      ║"
+echo "║  Step 05: LLM Serving - Triple Play                                  ║"
+echo "║  Mistral 3 (BF16 + FP8) + Devstral 2 (Coding)                       ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# =============================================================================
-# Prerequisites check
-# =============================================================================
-log_step "Checking prerequisites..."
-
-# Check step-04 was deployed
-if ! oc get applications -n openshift-gitops step-04-model-registry &>/dev/null; then
-    log_error "step-04-model-registry Argo CD Application not found!"
-    log_info "Please run: ./steps/step-04-model-registry/deploy.sh first"
-    exit 1
-fi
-
-# Check Model Registry is available
-if ! oc get modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries &>/dev/null; then
-    log_error "Model Registry 'private-ai-registry' not found!"
-    exit 1
-fi
-
-# Check MinIO has model artifacts
-if ! oc get pods -n minio-storage -l app=minio --no-headers 2>/dev/null | grep -q Running; then
-    log_warn "MinIO not running - model artifacts may not be available"
-fi
-
-# Check GPU nodes available
-GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l || echo "0")
-if [[ "$GPU_NODES" -lt 1 ]]; then
-    log_warn "No NVIDIA L4 GPU nodes found - inference will be pending"
-else
-    log_info "Found ${GPU_NODES} NVIDIA L4 GPU node(s)"
-fi
-
-log_success "Prerequisites verified"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GITOPS_DIR="${SCRIPT_DIR}/../../gitops/step-05-llm-on-vllm/base"
 
 # =============================================================================
-# Deploy via Argo CD Application
+# Pre-flight Checks
 # =============================================================================
-log_step "Creating Argo CD Application for LLM Inference"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Pre-flight Checks"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
+# Check for private-ai namespace
+if ! oc get namespace private-ai &>/dev/null; then
+  echo "❌ Error: 'private-ai' namespace does not exist. Run Step-03 first."
+  exit 1
+fi
+echo "✓ Namespace 'private-ai' exists"
 
-log_success "Argo CD Application '${STEP_NAME}' created"
+# Check for Model Registry
+if ! oc get modelregistry private-ai-registry -n rhoai-model-registries &>/dev/null; then
+  echo "❌ Error: Model Registry not found. Run Step-04 first."
+  exit 1
+fi
+echo "✓ Model Registry 'private-ai-registry' exists"
+
+# Check for LocalQueue
+if ! oc get localqueue private-ai-local-queue -n private-ai &>/dev/null; then
+  echo "⚠️  Warning: LocalQueue 'private-ai-local-queue' not found"
+fi
+
+echo ""
+
+# =============================================================================
+# Infrastructure Scaling Reminder
+# =============================================================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Infrastructure Requirements (9 GPUs Total)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Required MachineSets:"
+echo "    - 2x g6.12xlarge (4-GPU each) → Mistral BF16 + Devstral"
+echo "    - 1x g6.4xlarge  (1-GPU)      → Mistral FP8"
+echo ""
+echo "  Scale commands:"
+echo "    CLUSTER_ID=\$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')"
+echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-12xlarge -n openshift-machine-api --replicas=2"
+echo "    oc scale machineset \${CLUSTER_ID}-gpu-g6-4xlarge -n openshift-machine-api --replicas=1"
+echo ""
+
+# Check current GPU node count
+GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l)
+echo "  Current GPU nodes: ${GPU_NODES}"
+echo ""
+
+read -p "Continue with deployment? (y/n) " -n 1 -r
+echo ""
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  echo "Deployment cancelled."
+  exit 0
+fi
+
+# =============================================================================
+# Deploy Step 05 Resources
+# =============================================================================
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Deploying Step-05 Resources"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Delete old InferenceServices if they exist
+echo "Cleaning up old resources..."
+oc delete inferenceservice mistral-24b-fp8 mistral-24b-full -n private-ai --ignore-not-found=true 2>/dev/null || true
+oc delete servingruntime vllm-mistral-runtime -n private-ai --ignore-not-found=true 2>/dev/null || true
+
+# Apply Kustomize
+echo "Applying Kustomize manifests..."
+oc apply -k "${GITOPS_DIR}"
+
+echo ""
+echo "✓ Resources applied"
 
 # =============================================================================
 # Wait for Model Registration
 # =============================================================================
-log_step "Waiting for Mistral model registration..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Waiting for Model Registration Job"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-TIMEOUT=180
-ELAPSED=0
-while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    JOB_STATUS=$(oc get job mistral-model-registration -n rhoai-model-registries -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
-    if [[ "$JOB_STATUS" == "1" ]]; then
-        log_success "Mistral models registered"
-        break
-    fi
-    log_info "Waiting for model registration... (${ELAPSED}s)"
-    sleep 10
-    ELAPSED=$((ELAPSED + 10))
-done
+oc wait --for=condition=complete job/llm-model-registration -n rhoai-model-registries --timeout=120s 2>/dev/null || true
 
-if [[ $ELAPSED -ge $TIMEOUT ]]; then
-    log_warn "Model registration taking longer than expected"
-    log_info "Check: oc logs job/mistral-model-registration -n rhoai-model-registries"
-fi
+echo ""
+echo "Registration job logs:"
+oc logs job/llm-model-registration -n rhoai-model-registries --tail=20 2>/dev/null || echo "(Job may still be running)"
 
 # =============================================================================
 # Wait for ServingRuntime
 # =============================================================================
-log_step "Waiting for vLLM ServingRuntime..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Checking ServingRuntime"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-TIMEOUT=60
-ELAPSED=0
-until oc get servingruntime vllm-mistral-runtime -n private-ai &>/dev/null; do
-    if [[ $ELAPSED -ge $TIMEOUT ]]; then
-        log_warn "ServingRuntime not found yet"
-        break
-    fi
-    sleep 5
-    ELAPSED=$((ELAPSED + 5))
-done
-log_success "vLLM ServingRuntime ready"
+oc get servingruntime -n private-ai
 
 # =============================================================================
-# Wait for InferenceServices
+# Check InferenceServices
 # =============================================================================
-log_step "Waiting for InferenceServices..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "InferenceService Status"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Wait for FP8 deployment (primary demo)
-log_info "Waiting for mistral-24b-fp8 (FP8 quantized, 1-GPU)..."
-TIMEOUT=600
-ELAPSED=0
-while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    READY=$(oc get inferenceservice mistral-24b-fp8 -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-    if [[ "$READY" == "True" ]]; then
-        log_success "mistral-24b-fp8 is ready"
-        break
-    fi
-    log_info "Waiting for model to load... (${ELAPSED}s) - this may take several minutes"
-    sleep 30
-    ELAPSED=$((ELAPSED + 30))
-done
+oc get inferenceservice -n private-ai
 
-# Check BF16 deployment (optional, requires 4 GPUs)
-log_info "Checking mistral-24b-full (BF16, 4-GPU)..."
-FULL_READY=$(oc get inferenceservice mistral-24b-full -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
-if [[ "$FULL_READY" == "True" ]]; then
-    log_success "mistral-24b-full is ready"
-else
-    log_warn "mistral-24b-full not ready (requires 4 GPUs)"
-fi
+echo ""
+echo "Note: InferenceServices will show READY=True once:"
+echo "  1. GPU nodes are available and ready"
+echo "  2. Model weights are uploaded to MinIO (s3://models/)"
+echo "  3. Pods are scheduled and healthy"
 
 # =============================================================================
 # Summary
 # =============================================================================
-log_step "Deployment Complete"
-
-DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
-FP8_URL=$(oc get route mistral-24b-fp8 -n private-ai -o jsonpath='{.spec.host}' 2>/dev/null || echo 'pending...')
-FULL_URL=$(oc get route mistral-24b-full -n private-ai -o jsonpath='{.spec.host}' 2>/dev/null || echo 'pending...')
-
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "High-Efficiency LLM Inference Deployed"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Deployments:"
-echo ""
-echo "  ┌─────────────────────────────────────────────────────────────────────┐"
-echo "  │ mistral-24b-fp8 (RECOMMENDED)                                       │"
-echo "  │   Precision: FP8 (Neural Magic optimized)                           │"
-echo "  │   GPUs:      1x NVIDIA L4 (~15GB VRAM)                              │"
-echo "  │   Cost:      ~\$1.00/hr on AWS                                       │"
-echo "  │   URL:       https://${FP8_URL}"
-echo "  └─────────────────────────────────────────────────────────────────────┘"
-echo ""
-echo "  ┌─────────────────────────────────────────────────────────────────────┐"
-echo "  │ mistral-24b-full                                                    │"
-echo "  │   Precision: BF16 (full precision)                                  │"
-echo "  │   GPUs:      4x NVIDIA L4 (tensor parallel)                         │"
-echo "  │   Cost:      ~\$4.00/hr on AWS                                       │"
-echo "  │   URL:       https://${FULL_URL}"
-echo "  └─────────────────────────────────────────────────────────────────────┘"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-log_info "Test the FP8 endpoint:"
-echo ""
-echo "  curl -X POST \"https://${FP8_URL}/v1/chat/completions\" \\"
-echo "    -H \"Content-Type: application/json\" \\"
-echo "    -d '{\"model\": \"mistral-24b-fp8\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]}'"
-echo ""
-log_info "Validation Commands:"
-echo ""
-echo "  # Check InferenceServices"
-echo "  oc get inferenceservice -n private-ai"
-echo ""
-echo "  # Check GPU usage"
-echo "  oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide"
-echo ""
-echo "  # Check registered models"
-echo "  oc logs job/mistral-model-registration -n rhoai-model-registries"
-echo ""
-log_info "Dashboard: https://${DASHBOARD_URL}"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Key Insight: FP8 delivers 4x cost reduction with near-identical accuracy"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║  Step 05 Deployment Complete                                         ║"
+echo "╠══════════════════════════════════════════════════════════════════════╣"
+echo "║                                                                      ║"
+echo "║  Models Deployed:                                                    ║"
+echo "║    1. mistral-3-bf16    → 4-GPU, Full Precision                     ║"
+echo "║    2. mistral-3-fp8     → 1-GPU, Neural Magic FP8                   ║"
+echo "║    3. devstral-2-bf16   → 4-GPU, Coding Model                       ║"
+echo "║                                                                      ║"
+echo "║  Endpoints (when ready):                                             ║"
+echo "║    • http://mistral-3-bf16-predictor.private-ai.svc.cluster.local   ║"
+echo "║    • http://mistral-3-fp8-predictor.private-ai.svc.cluster.local    ║"
+echo "║    • http://devstral-2-bf16-predictor.private-ai.svc.cluster.local  ║"
+echo "║                                                                      ║"
+echo "║  Validation:                                                         ║"
+echo "║    oc get inferenceservice -n private-ai                            ║"
+echo "║    oc get pods -n private-ai -l serving.kserve.io/inferenceservice  ║"
+echo "║                                                                      ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
