@@ -1,5 +1,10 @@
 # ClusterQueue - Cluster-wide GPU quota pool
 # Defines total GPU/CPU/Memory available for RHOAI workloads
+#
+# Quota Strategy (GPU-as-a-Service Demo):
+#   - 2x g6.4xlarge (1 GPU each) = 2 GPUs for inference workloads
+#   - 2x g6.12xlarge (4 GPUs each) = 8 GPUs for tensor-parallel models
+#   - Total: 10 GPUs available for the private-ai project
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
 metadata:
@@ -17,27 +22,27 @@ spec:
   
   # Resource groups define quota limits per flavor
   resourceGroups:
-    # L4 1GPU nodes (g6.4xlarge)
+    # L4 1GPU nodes (g6.4xlarge) - 2 nodes available
     - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
       flavors:
         - name: nvidia-l4-1gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 1      # 1 GPU from g6.4xlarge node
+              nominalQuota: 2       # 2 GPUs from 2x g6.4xlarge nodes
             - name: "cpu"
-              nominalQuota: "16"   # 16 vCPU total
+              nominalQuota: "32"    # 32 vCPU total (2x16)
             - name: "memory"
-              nominalQuota: "64Gi" # 64GB RAM total
+              nominalQuota: "128Gi" # 128GB RAM total (2x64)
     
-    # L4 4GPU nodes (g6.12xlarge)
+    # L4 4GPU nodes (g6.12xlarge) - 2 nodes available
     - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
       flavors:
         - name: nvidia-l4-4gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 4       # 4 GPUs from g6.12xlarge node
+              nominalQuota: 8        # 8 GPUs from 2x g6.12xlarge nodes
             - name: "cpu"
-              nominalQuota: "48"    # 48 vCPU total
+              nominalQuota: "96"     # 96 vCPU total (2x48)
             - name: "memory"
-              nominalQuota: "192Gi" # 192GB RAM total
+              nominalQuota: "384Gi"  # 384GB RAM total (2x192)
 
