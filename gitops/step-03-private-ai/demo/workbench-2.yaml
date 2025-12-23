@@ -1,6 +1,7 @@
 # Demo Workbench 2 - Gets QUEUED (no GPU available)
 # This workbench will be QUEUED because workbench-1 already has the GPU
 # It will automatically start when workbench-1 is deleted
+# RHOAI 3.0: Uses inject-auth for kube-rbac-proxy sidecar (not inject-oauth)
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -9,11 +10,14 @@ metadata:
   labels:
     app: demo-workbench-2
     opendatahub.io/dashboard: "true"
-    # Same queue as workbench-1 - competing for same GPU quota
-    kueue.x-k8s.io/queue-name: "private-ai-queue"
+    opendatahub.io/odh-managed: "true"
+    # RHOAI 3.0: Queue name must be 'default' to match global HardwareProfiles
+    kueue.x-k8s.io/queue-name: "default"
   annotations:
-    notebooks.opendatahub.io/inject-oauth: "true"
+    # RHOAI 3.0: Use inject-auth (NOT inject-oauth - deprecated!)
+    notebooks.opendatahub.io/inject-auth: "true"
     opendatahub.io/username: "ai-admin"
+    opendatahub.io/image-display-name: "Jupyter | PyTorch | CUDA | Python 3.11"
     openshift.io/display-name: "Demo Workbench 2 (Queued)"
     openshift.io/description: "Second workbench - will be QUEUED until GPU is released"
 spec:
@@ -22,6 +26,7 @@ spec:
       containers:
         - name: demo-workbench-2
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.1
+          imagePullPolicy: Always
           resources:
             limits:
               cpu: "4"
@@ -35,22 +40,44 @@ spec:
             - containerPort: 8888
               name: notebook-port
               protocol: TCP
+          env:
+            # RHOAI 3.0: MUST set base_url for path-based routing via Gateway API
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/private-ai/demo-workbench-2
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/pytorch:2025.1
+          # Probes must use the base_url path
+          livenessProbe:
+            httpGet:
+              path: /notebook/private-ai/demo-workbench-2/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /notebook/private-ai/demo-workbench-2/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
           volumeMounts:
             - name: workbench-data
               mountPath: /opt/app-root/src
             - name: demo-notebooks
               mountPath: /opt/app-root/src/demo
               readOnly: true
-          env:
-            - name: NOTEBOOK_ARGS
-              value: "--NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*'"
-      # Target g6.4xlarge nodes (single L4 GPU)
-      nodeSelector:
-        node.kubernetes.io/instance-type: g6.4xlarge
-      tolerations:
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
+            - name: shm
+              mountPath: /dev/shm
+          workingDir: /opt/app-root/src
+      enableServiceLinks: false
       volumes:
         - name: workbench-data
           persistentVolumeClaim:
@@ -58,5 +85,6 @@ spec:
         - name: demo-notebooks
           configMap:
             name: gpu-demo-notebooks
-
-
+        - name: shm
+          emptyDir:
+            medium: Memory
