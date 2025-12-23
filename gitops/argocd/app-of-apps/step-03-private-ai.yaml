@@ -15,6 +15,7 @@ spec:
     server: https://kubernetes.default.svc
   # NOTE: OpenShift Groups are created via deploy.sh (not GitOps)
   # because ArgoCD cannot parse user.openshift.io/v1 Group schema
+  # NOTE: PVC uses WaitForFirstConsumer, treated as Progressing until pod starts
   syncPolicy:
     automated:
       prune: true
@@ -23,6 +24,7 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+      - PrunePropagationPolicy=foreground
     retry:
       limit: 5
       backoff:

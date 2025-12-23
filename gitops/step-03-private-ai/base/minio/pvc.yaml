@@ -4,7 +4,8 @@ metadata:
   name: minio-storage
   namespace: minio-storage
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    # Same sync-wave as Deployment - PVC uses WaitForFirstConsumer binding mode
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   accessModes:
     - ReadWriteOnce
