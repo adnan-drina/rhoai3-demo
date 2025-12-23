@@ -1,12 +1,8 @@
 # =============================================================================
 # vLLM ServingRuntime for RHOAI 3.0
 # =============================================================================
-# High-performance LLM inference engine with support for:
-# - FP8/FP16/BF16 quantization
-# - Tensor parallelism (multi-GPU)
-# - PagedAttention for efficient memory management
-# - Continuous batching for high throughput
-# - OpenAI-compatible API
+# Aligned with Dashboard-created ServingRuntime (granite-test-2 template)
+# High-performance LLM inference engine with FP8 and tensor parallelism support
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 # =============================================================================
@@ -19,88 +15,47 @@ metadata:
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    # Dashboard display annotations
-    openshift.io/display-name: "vLLM Runtime for LLMs"
-    opendatahub.io/template-name: "vllm-runtime"
-    opendatahub.io/template-display-name: "vLLM ServingRuntime for KServe"
+    # Dashboard-compatible annotations
+    opendatahub.io/accelerator-name: ""
+    opendatahub.io/apiProtocol: REST
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-    # Enable external route generation
-    enable-route: "true"
+    opendatahub.io/runtime-version: v0.9.1.0
+    opendatahub.io/serving-runtime-scope: global
+    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime for KServe"
+    opendatahub.io/template-name: vllm-cuda-runtime
+    openshift.io/display-name: "vLLM Runtime (GitOps)"
 spec:
   annotations:
+    opendatahub.io/kserve-runtime: vllm
+    prometheus.io/path: /metrics
     prometheus.io/port: "8080"
-    prometheus.io/path: "/metrics"
   multiModel: false
   supportedModelFormats:
     - name: vLLM
       autoSelect: true
   containers:
     - name: kserve-container
-      # RHOAI 3.0 vLLM image with FP8 and tensor parallelism support
-      image: registry.redhat.io/rhoai/vllm-openai-rhel9:1.5
+      # RHOAI 3.0 GA vLLM image (same as Dashboard)
+      image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
       command:
         - python
         - -m
         - vllm.entrypoints.openai.api_server
       args:
-        - "--model"
-        - "/mnt/models"
-        - "--port"
-        - "8080"
-        - "--served-model-name"
-        - "{{.Name}}"
-        # Memory optimization
-        - "--gpu-memory-utilization"
-        - "0.9"
-        # Enable chunked prefill for better latency
-        - "--enable-chunked-prefill"
-        - "true"
-        # Trust remote code for custom models
-        - "--trust-remote-code"
+        - --port=8080
+        - --model=/mnt/models
+        - --served-model-name={{.Name}}
       env:
         - name: HF_HOME
           value: /tmp/hf_home
-        - name: TRANSFORMERS_CACHE
-          value: /tmp/transformers_cache
-        # Disable CUDA graphs for better compatibility
-        - name: VLLM_DISABLE_CUDA_GRAPHS
-          value: "false"
       ports:
         - containerPort: 8080
-          name: http
           protocol: TCP
-      livenessProbe:
-        httpGet:
-          path: /health
-          port: http
-        initialDelaySeconds: 180
-        periodSeconds: 30
-        timeoutSeconds: 10
-        failureThreshold: 5
-      readinessProbe:
-        httpGet:
-          path: /health
-          port: http
-        initialDelaySeconds: 120
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 5
-      resources:
-        requests:
-          cpu: "4"
-          memory: "16Gi"
-        limits:
-          cpu: "16"
-          memory: "64Gi"
       volumeMounts:
-        - name: shm
-          mountPath: /dev/shm
-        - name: tmp
-          mountPath: /tmp
+        - mountPath: /dev/shm
+          name: shm
   volumes:
     - name: shm
       emptyDir:
         medium: Memory
-        sizeLimit: 32Gi
-    - name: tmp
-      emptyDir: {}
+        sizeLimit: 2Gi

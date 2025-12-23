@@ -2,11 +2,9 @@
 # InferenceService: Devstral 2 24B (Coding Model)
 # =============================================================================
 # Deploys Devstral 2 - a code-optimized LLM for software development tasks.
-# Uses 4x NVIDIA L4 GPUs with extended context window for code generation.
+# Configuration aligned with RHOAI 3.0 Dashboard-deployed models.
 #
 # Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
-# vLLM Args: --tensor-parallel-size 4 --dtype bfloat16 --max-model-len 32768
-#
 # Use Case: Code generation, code review, technical documentation
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
@@ -20,7 +18,12 @@ metadata:
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
+    # Hardware Profile integration
+    opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    # Display name for Dashboard
     openshift.io/display-name: "Devstral 2 24B BF16 (4-GPU, Coding)"
+    # Deployment mode
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
@@ -29,8 +32,9 @@ spec:
     model:
       modelFormat:
         name: vLLM
+      name: ""
       runtime: vllm-runtime
-      # Use storage.key to reference the Data Connection secret
+      # S3 storage reference via Data Connection
       storage:
         key: minio-connection
         path: devstral-2-24b/

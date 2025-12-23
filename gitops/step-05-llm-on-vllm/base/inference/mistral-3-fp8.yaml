@@ -3,10 +3,9 @@
 # =============================================================================
 # Deploys Mistral Small 3 FP8-quantized using 1x NVIDIA L4 GPU.
 # Neural Magic optimized weights for Ada Lovelace FP8 acceleration.
+# Configuration aligned with RHOAI 3.0 Dashboard-deployed models.
 #
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM, ~15GB used)
-# vLLM Args: --quantization fp8 --kv-cache-dtype fp8
-#
 # Key Benefits:
 # - 50% memory reduction vs BF16
 # - Native FP8 hardware acceleration on L4
@@ -26,26 +25,32 @@ metadata:
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
+    # Hardware Profile integration
+    opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    # Display name for Dashboard
     openshift.io/display-name: "Mistral 3 24B FP8 (1-GPU, Optimized)"
+    # Deployment mode
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
     minReplicas: 1
-    maxReplicas: 3
+    maxReplicas: 1
     model:
       modelFormat:
         name: vLLM
+      name: ""
       runtime: vllm-runtime
-      # Use storage.key to reference the Data Connection secret
+      # S3 storage reference via Data Connection
       storage:
         key: minio-connection
         path: mistral-3-24b-instruct-fp8/
       resources:
         requests:
-          cpu: "4"
+          cpu: "8"
           memory: 32Gi
           nvidia.com/gpu: "1"
         limits:
-          cpu: "8"
-          memory: 64Gi
+          cpu: "16"
+          memory: 60Gi
           nvidia.com/gpu: "1"
