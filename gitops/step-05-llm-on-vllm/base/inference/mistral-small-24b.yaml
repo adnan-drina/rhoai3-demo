@@ -48,17 +48,19 @@ spec:
       storage:
         key: minio-connection
       args:
-        # Neural Magic FP8 uses compressed-tensors format - auto-detected by vLLM
+        # FP8 Quantized - optimized for single L4 (24GB VRAM)
+        # max-model-len=8192 is validated stable for 24B FP8 on L4 with V1 engine
+        - --served-model-name=mistral-small-24b
+        - --quantization=fp8
+        - --kv-cache-dtype=fp8
         - --max-model-len=8192
-        - --kv-cache-dtype=auto
-        - --gpu-memory-utilization=0.9
+        - --gpu-memory-utilization=0.85
         - --trust-remote-code
       env:
-        # RHOAI 3.0 GA: V1 engine with XFORMERS for 580.x driver compatibility
+        # RHOAI 3.0 GA: V1 engine required (assertion enforced by image)
+        # Driver 570.195.03 provides CUDA 12.x compatibility
         - name: VLLM_USE_V1
           value: "1"
-        - name: VLLM_ATTENTION_BACKEND
-          value: "XFORMERS"
         - name: VLLM_NO_HW_METRICS
           value: "1"
         - name: LD_LIBRARY_PATH

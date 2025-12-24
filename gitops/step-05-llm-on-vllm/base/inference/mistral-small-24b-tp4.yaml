@@ -48,17 +48,18 @@ spec:
       storage:
         key: minio-connection
       args:
+        # BF16 Full Precision - optimized for 4x L4 (96GB total VRAM)
+        - --served-model-name=mistral-small-24b-tp4
         - --tensor-parallel-size=4
         - --dtype=bfloat16
         - --max-model-len=32768
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:
-        # RHOAI 3.0 GA: V1 engine with XFORMERS for 580.x driver compatibility
+        # RHOAI 3.0 GA: V1 engine required (assertion enforced by image)
+        # Driver 570.195.03 provides CUDA 12.x compatibility
         - name: VLLM_USE_V1
           value: "1"
-        - name: VLLM_ATTENTION_BACKEND
-          value: "XFORMERS"
         - name: VLLM_NO_HW_METRICS
           value: "1"
         - name: LD_LIBRARY_PATH
