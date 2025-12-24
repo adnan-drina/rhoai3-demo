@@ -1,20 +1,45 @@
 # =============================================================================
-# GPU Switchboard Workbench
+# GPU Switchboard Workbench - RHOAI 3.0 GA Aligned
 # =============================================================================
 # Pre-configured workbench for the GPU-as-a-Service demo.
-# Aligned with RHOAI 3.0 Dashboard-created notebook pattern.
 #
-# Features:
-#   - No GPU required (CPU-only for admin tasks)
-#   - Pre-loaded with GPU-Switchboard.ipynb via ConfigMap
-#   - Uses cpu-small HardwareProfile
+# RHOAI 3.0 Alignment:
+#   - OAuth: Uses inject-oauth annotation for OAuth proxy sidecar
+#   - Resources: Delegated to Hardware Profile Controller (cpu-small)
+#   - Kueue: Relies on namespace-level kueue.openshift.io/managed label
+#   - RBAC: Explicit permissions for InferenceService management
+#
+# The Hardware Profile Controller will inject CPU/memory resources automatically.
+# This demonstrates the "Platform-as-a-Service" philosophy of RHOAI 3.0.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_accelerators/index#working-with-hardware-profiles
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_in_your_data_science_ide/index#creating-a-workbench_ide
 # =============================================================================
+
+# -----------------------------------------------------------------------------
+# ServiceAccount: Workbench Identity
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gpu-switchboard
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+# -----------------------------------------------------------------------------
+# PVC: Workbench Storage
+# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: gpu-switchboard-storage
   namespace: private-ai
   labels:
+    app: gpu-switchboard
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -27,6 +52,12 @@ spec:
       storage: 20Gi
   storageClassName: gp3-csi
 ---
+# -----------------------------------------------------------------------------
+# Notebook: GPU Switchboard
+# -----------------------------------------------------------------------------
+# Resources are DELEGATED to the Hardware Profile Controller.
+# The controller injects cpu-small specs (cpu: 2/4, memory: 4Gi/8Gi).
+# -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -34,26 +65,22 @@ metadata:
   namespace: private-ai
   labels:
     app: gpu-switchboard
-    kueue.x-k8s.io/queue-name: default
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
-    opendatahub.io/user: ai-3aadmin
+    # NOTE: Removed kueue.x-k8s.io/queue-name - using namespace-level Kueue management
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    notebooks.opendatahub.io/inject-auth: "true"
-    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
-    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
-    notebooks.opendatahub.io/last-size-selection: ""
-    opendatahub.io/accelerator-name: ""
-    opendatahub.io/accelerator-profile-namespace: ""
-    opendatahub.io/connections: ""
+    # RHOAI 3.0: Correct OAuth annotation for sidecar injection
+    notebooks.opendatahub.io/inject-oauth: "true"
+    # Hardware Profile: Delegates resource management to the platform
     opendatahub.io/hardware-profile-name: cpu-small
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    # UI Metadata
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
     opendatahub.io/username: ai-admin
-    opendatahub.io/workbench-image-namespace: ""
-    openshift.io/description: "Interactive notebook for GPU-as-a-Service demo - control 5 models with toggle switches"
+    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
     openshift.io/display-name: "GPU Switchboard"
+    openshift.io/description: "Interactive notebook for GPU-as-a-Service demo - control 5 models with toggle switches"
 spec:
   template:
     spec:
@@ -68,12 +95,13 @@ spec:
             - name: NOTEBOOK_ARGS
               value: |-
                 --ServerApp.port=8888
-                            --ServerApp.token=''
-                            --ServerApp.password=''
-                            --ServerApp.base_url=/notebook/private-ai/gpu-switchboard
-                            --ServerApp.quit_button=False
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/private-ai/gpu-switchboard
+                --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+            # SSL/TLS certificates for internal services
             - name: PIP_CERT
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: REQUESTS_CA_BUNDLE
@@ -82,21 +110,14 @@ spec:
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: PIPELINES_SSL_SA_CERTS
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: KF_PIPELINES_SSL_SA_CERTS
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: GIT_SSL_CAINFO
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
           ports:
             - containerPort: 8888
               name: notebook-port
               protocol: TCP
-          resources:
-            requests:
-              cpu: "2"
-              memory: 4Gi
-            limits:
-              cpu: "4"
-              memory: 8Gi
+          # RHOAI 3.0: Resources DELEGATED to Hardware Profile Controller
+          # The cpu-small profile will inject: cpu: 2/4, memory: 4Gi/8Gi
+          # This demonstrates the "Platform-as-a-Service" architecture
+          resources: {}
           livenessProbe:
             httpGet:
               path: /notebook/private-ai/gpu-switchboard/api
@@ -155,19 +176,25 @@ spec:
             name: gpu-switchboard-notebook
 ---
 # =============================================================================
-# RBAC: Allow workbench to manage InferenceServices and view Kueue resources
+# RBAC: GPU Switchboard Controller Permissions
 # =============================================================================
+# Allows the workbench to manage InferenceServices and view Kueue resources.
+#
+# Required for the notebook's `oc patch` commands to toggle models ON/OFF.
+# =============================================================================
+
+# Role: InferenceService management in private-ai namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: gpu-switchboard-model-admin
+  name: gpu-switchboard-controller
   namespace: private-ai
   labels:
     app: gpu-switchboard
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 rules:
-  # InferenceService management (get, list, patch)
+  # InferenceService management (get, list, patch, update)
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices"]
     verbs: ["get", "list", "watch", "patch", "update"]
@@ -183,7 +210,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: gpu-switchboard-model-admin
+  name: gpu-switchboard-controller
   namespace: private-ai
   labels:
     app: gpu-switchboard
@@ -192,13 +219,13 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: gpu-switchboard-model-admin
+  name: gpu-switchboard-controller
 subjects:
   - kind: ServiceAccount
     name: gpu-switchboard
     namespace: private-ai
 ---
-# ClusterRole for viewing ClusterQueues (cluster-scoped resource)
+# ClusterRole: View ClusterQueues (cluster-scoped resource)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
