@@ -1,20 +1,35 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# InferenceServices using RHOAI 3.0 Official S3 Storage Approach
-# Model weights are stored in MinIO and downloaded by KServe storage-initializer
+# =============================================================================
+# GPU-as-a-Service Demo: "Resource Handover" Configuration
+# =============================================================================
 #
-# Prerequisites:
-#   1. MinIO deployed (Step-03)
-#   2. Model weights uploaded to rhoai-artifacts bucket
-#   3. storage-config secret in private-ai namespace
+# This configuration demonstrates RHOAI 3.0's dynamic GPU allocation via Kueue.
 #
-# Node Placement Strategy:
-#   - 1-GPU models → g6.4xlarge (via nodeSelector)
-#   - 4-GPU models → g6.12xlarge (via nodeSelector)
+# BASELINE STATE (Full Quota Saturation):
+#   - mistral-3-bf16 (4 GPUs) + mistral-3-int4 (1 GPU) = 5/5 GPUs
+#   - devstral-2 is at minReplicas: 0 (waiting to be activated)
+#
+# DEMO FLOW:
+#   1. Start: All 5 GPUs are consumed by the two Mistral models
+#   2. Action: Use GPU Switchboard to enable Devstral-2
+#   3. Observe: Kueue holds Devstral-2 in PENDING (4+1+4 > 5)
+#   4. Resolution: Disable mistral-3-bf16 via Switchboard
+#   5. Climax: Devstral-2 INSTANTLY starts as 4 GPUs become available
+#
+# Storage Strategy:
+#   - BF16 models (>20GB): S3/MinIO storage
+#   - INT4 models (<20GB): OCI ModelCar from registry.redhat.io
+#
+# =============================================================================
 
 resources:
-  # Mistral Small 24B - 1 GPU deployment with FP8 quantization
-  - mistral-small-24b.yaml
-  # Mistral Small 24B - 4 GPU tensor parallel with BF16
-  - mistral-small-24b-tp4.yaml
+  # Primary Load: 4-GPU BF16 (minReplicas: 1)
+  - mistral-3-bf16.yaml
+  
+  # Secondary Load: 1-GPU INT4 (minReplicas: 1)
+  - mistral-3-int4.yaml
+  
+  # Queued Asset: 4-GPU Agentic (minReplicas: 0)
+  - devstral-2.yaml

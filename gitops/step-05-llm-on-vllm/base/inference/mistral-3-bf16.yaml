@@ -1,0 +1,81 @@
+# =============================================================================
+# InferenceService: Mistral-3 BF16 (4-GPU Primary Load)
+# =============================================================================
+# The PRIMARY production model in the "Resource Handover" demo.
+#
+# Model: Mistral Small 24B Instruct - Full Precision BF16
+# Storage: s3://models/mistral-small-24b/ (MinIO)
+# Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+#
+# Demo Role: This model consumes 4/5 of the cluster's GPU quota.
+# When combined with mistral-3-int4 (1 GPU), the cluster is at 100% capacity.
+#
+# NOTE: Uses S3 storage because OCI ModelCar (48GB) exceeds CRI-O overlay limits.
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mistral-3-bf16
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: default
+    networking.kserve.io/visibility: exposed
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    openshift.io/display-name: "Mistral-3 BF16 (4-GPU)"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    # PRIMARY LOAD: Always running in baseline state
+    minReplicas: 1
+    maxReplicas: 1
+    # Tolerations: Required for GPU node taints
+    # Note: RHOAI 3.0 HardwareProfile with Queue scheduling doesn't inject these
+    # Kueue ResourceFlavor has nodeTaints configured for admission decisions
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.12xlarge
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime
+      # S3 Storage - KServe storage-initializer downloads weights at startup
+      storageUri: s3://models/mistral-small-24b/
+      storage:
+        key: minio-connection
+      args:
+        - --served-model-name=mistral-3-bf16
+        - --tensor-parallel-size=4
+        - --dtype=bfloat16
+        - --max-model-len=32768
+        - --gpu-memory-utilization=0.9
+        - --trust-remote-code
+        - --tool-call-parser=mistral
+        - --enable-auto-tool-choice
+      env:
+        # RHOAI 3.0 GA: V1 engine required
+        # Driver 570.195.03 provides CUDA 12.x compatibility
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: VLLM_NO_HW_METRICS
+          value: "1"
+        - name: LD_LIBRARY_PATH
+          value: /usr/local/nvidia/lib64
+      resources:
+        requests:
+          cpu: "16"
+          memory: 64Gi
+          nvidia.com/gpu: "4"
+          ephemeral-storage: 100Gi
+        limits:
+          cpu: "32"
+          memory: 128Gi
+          nvidia.com/gpu: "4"
+          ephemeral-storage: 100Gi
+
