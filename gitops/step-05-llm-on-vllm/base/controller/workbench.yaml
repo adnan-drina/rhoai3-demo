@@ -61,19 +61,22 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
-# Service: Aligned with RHOAI 3.0 Native Ingress Controller
+# Service: Cooperative GitOps with RHOAI 3.0 Notebook Controller
 # -----------------------------------------------------------------------------
-# RHOAI 3.0 Port Alignment:
-#   The Notebook Controller auto-generates HTTPRoutes targeting port 8888.
-#   This Service exposes port 8888 to match the controller's expectations,
-#   enabling Istio to create the required Envoy cluster.
+# RHOAI 3.0 Managed Ingress Pattern:
+#   The Notebook Controller creates HTTPRoutes targeting port 8888, but its
+#   default Service uses port 80. This causes "cluster_not_found" errors.
 #
-#   Traffic flow: Gateway → HTTPRoute → Service:8888 → Pod:8888
+#   Solution: Provide a GitOps-managed Service that satisfies all parties:
+#   - Port 8888 (matches controller's HTTPRoute)
+#   - Label 'notebook-name' (allows controller adoption)
+#   - Port name 'http-' prefix (Envoy protocol detection)
+#   - Selector 'notebook-name' (matches pod labels)
 #
-# Key Requirements:
-#   1. Port 8888 (matches controller HTTPRoute)
-#   2. Port name prefix 'http-' (Envoy protocol detection)
-#   3. Label 'notebook-name' (controller service discovery)
+#   Traffic flow: Gateway → HTTPRoute(8888) → Service(8888) → Pod(8888)
+#
+# This is the "Cooperative GitOps" model - we align with controller expectations
+# rather than fighting the reconciliation loop.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0
 # -----------------------------------------------------------------------------
@@ -94,7 +97,8 @@ spec:
       protocol: TCP
       targetPort: 8888             # Pod port
   selector:
-    statefulset: gpu-switchboard
+    # Use notebook-name for controller adoption (per RHOAI 3.0 guidelines)
+    notebook-name: gpu-switchboard
   type: ClusterIP
 ---
 # -----------------------------------------------------------------------------
