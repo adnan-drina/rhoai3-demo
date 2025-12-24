@@ -147,33 +147,35 @@ echo ""
 echo "✓ Resources applied"
 
 # =============================================================================
-# Fix Workbench Service Port (RHOAI 3.0 Workaround)
+# Verify Workbench Service Configuration
 # =============================================================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Fixing Workbench Service Port (RHOAI 3.0 Native Ingress)"
+echo "Workbench Service Configuration (RHOAI 3.0 Native Ingress)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  The Notebook Controller creates a Service with port 80, but generates"
-echo "  HTTPRoutes targeting port 8888. This causes 'cluster_not_found' errors."
+echo "  RHOAI 3.0 requires Service port 8888 to match the controller's HTTPRoute."
+echo "  Our GitOps manifest defines the Service at sync-wave 8, before the Notebook"
+echo "  at sync-wave 10. This ensures proper port alignment."
 echo ""
-echo "  Fix: Remove ownerReferences and patch Service to port 8888."
+echo "  Expected: Service port 8888, name 'http-gpu-switchboard'"
 echo ""
 
-# Wait for the Notebook controller to create the Service
+# Wait for ArgoCD to apply resources
 sleep 5
 
-# Check if gpu-switchboard Service exists
+# Verify Service configuration
 if oc get svc gpu-switchboard -n private-ai &>/dev/null; then
-  # Remove ownerReferences to prevent controller reconciliation
-  oc patch svc gpu-switchboard -n private-ai --type='json' \
-    -p='[{"op": "remove", "path": "/metadata/ownerReferences"}]' 2>/dev/null || true
+  SVC_PORT=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].port}')
+  SVC_NAME=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].name}')
   
-  # Patch to port 8888
-  oc patch svc gpu-switchboard -n private-ai --type='merge' \
-    -p='{"spec":{"ports":[{"name":"http-gpu-switchboard","port":8888,"protocol":"TCP","targetPort":8888}]}}'
-  
-  echo "✓ Service patched to port 8888"
+  if [[ "$SVC_PORT" == "8888" ]] && [[ "$SVC_NAME" == "http-gpu-switchboard" ]]; then
+    echo "✓ Service correctly configured: port ${SVC_PORT}, name '${SVC_NAME}'"
+  else
+    echo "⚠️  Service misconfigured: port ${SVC_PORT}, name '${SVC_NAME}'"
+    echo "   Expected: port 8888, name 'http-gpu-switchboard'"
+    echo "   Run: oc apply -k ${GITOPS_DIR}/controller/ to fix"
+  fi
 else
   echo "⚠️  gpu-switchboard Service not found yet (workbench may still be creating)"
 fi
