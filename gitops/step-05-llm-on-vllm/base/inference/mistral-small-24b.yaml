@@ -1,17 +1,20 @@
 # =============================================================================
-# InferenceService: Mistral Small 24B Instruct (1-GPU FP8)
+# InferenceService: Mistral Small 24B Instruct (1-GPU AWQ 4-bit)
 # =============================================================================
 # RHOAI 3.0 OFFICIAL APPROACH: S3 Storage + KServe Storage Initializer
 #
-# The model weights are downloaded from MinIO (S3) at pod startup by the
-# storage-initializer init container. This avoids CRI-O extraction issues
-# with large OCI images.
+# AWQ (Activation-aware Weight Quantization) is the recommended quantization
+# for fitting 24B models on a single NVIDIA L4 (24GB VRAM):
+#   - 4-bit weights: ~13.5GB (vs 21.5GB FP8, 48GB BF16)
+#   - Leaves ~8.5GB for KV cache = 8k context window
+#   - Higher accuracy than GPTQ
+#   - Native vLLM kernel support
 #
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
-# Use Case: Cost-efficient inference with FP8 quantization
+# Use Case: Cost-efficient 1-GPU inference with 75% cost savings vs 4-GPU BF16
 #
 # Prerequisites:
-#   1. Model weights uploaded to: s3://models/mistral-small-24b-fp8/
+#   1. Model weights uploaded to: s3://models/mistral-small-24b-awq/
 #   2. storage-config secret with minio-connection key in private-ai namespace
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
@@ -27,7 +30,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    openshift.io/display-name: "Mistral Small 24B (1-GPU FP8)"
+    openshift.io/display-name: "Mistral Small 24B (1-GPU AWQ)"
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
@@ -44,17 +47,16 @@ spec:
         name: vLLM
       runtime: vllm-runtime
       # S3 Storage URI - KServe storage-initializer downloads weights at startup
-      storageUri: s3://models/mistral-small-24b-fp8/
+      storageUri: s3://models/mistral-small-24b-awq/
       storage:
         key: minio-connection
       args:
-        # FP8 Quantized - optimized for single L4 (24GB VRAM)
-        # NOTE: 24B FP8 model uses ~21.5GB VRAM for weights alone
-        # Reduced context to 4096 and memory to 0.95 for minimal KV cache
+        # AWQ 4-bit Quantized - optimized for single L4 (24GB VRAM)
+        # Model weights: ~13.5GB | KV Cache: ~8.5GB | Context: 8192 tokens
         - --served-model-name=mistral-small-24b
-        - --max-model-len=4096
-        - --gpu-memory-utilization=0.95
-        - --enforce-eager
+        - --quantization=awq
+        - --max-model-len=8192
+        - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:
         # RHOAI 3.0 GA: V1 engine required (assertion enforced by image)
@@ -74,4 +76,3 @@ spec:
           cpu: "16"
           memory: 60Gi
           nvidia.com/gpu: "1"
-

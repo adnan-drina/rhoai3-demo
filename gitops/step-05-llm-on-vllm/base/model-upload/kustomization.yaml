@@ -14,5 +14,6 @@ kind: Kustomization
 # Apply manually when needed
 
 resources:
-  - upload-mistral-bf16.yaml   # Mistral Small 24B BF16 (100Gi PVC)
-  - upload-mistral-fp8.yaml    # Mistral Small 24B FP8 (60Gi PVC)
+  - upload-mistral-bf16.yaml   # Mistral Small 24B BF16 (100Gi PVC) - 4-GPU
+  - upload-mistral-awq.yaml    # Mistral Small 24B AWQ (40Gi PVC) - 1-GPU (RECOMMENDED)
+  # - upload-mistral-fp8.yaml  # FP8 too large for single L4 (OOM)

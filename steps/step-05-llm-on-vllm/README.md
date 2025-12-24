@@ -24,7 +24,7 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                      MinIO Storage                               │   │
 │  │  s3://models/mistral-small-24b/         (~50GB BF16)            │   │
-│  │  s3://models/mistral-small-24b-fp8/     (~25GB FP8)             │   │
+│  │  s3://models/mistral-small-24b-awq/     (~13.5GB AWQ 4-bit)     │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │              KServe Storage Initializer downloads at pod startup        │
@@ -35,8 +35,8 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 │  │                         │  │                         │              │
 │  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
 │  │  │ mistral-small-24b │  │  │  │ mistral-small-24b │  │              │
-│  │  │     -tp4          │  │  │  │     (FP8)         │  │              │
-│  │  │ tensor-parallel=4 │  │  │  │ --quantization fp8│  │              │
+│  │  │     -tp4          │  │  │  │     (AWQ 4-bit)   │  │              │
+│  │  │ tensor-parallel=4 │  │  │  │ --quantization awq│  │              │
 │  │  │ --dtype bfloat16  │  │  │  │ 4x cost savings!  │  │              │
 │  │  └───────────────────┘  │  │  └───────────────────┘  │              │
 │  └─────────────────────────┘  └─────────────────────────┘              │
@@ -44,33 +44,58 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Model Comparison
+
+| Model | Variant | Hardware | VRAM (Weights) | Context | Status |
+|-------|---------|----------|----------------|---------|--------|
+| **Mistral 24B** | BF16 | 4x L4 (TP4) | ~48GB | 32k | ✅ Working |
+| **Mistral 24B** | FP8 | 1x L4 | ~22GB | ❌ OOM | ⛔ Too large |
+| **Mistral 24B** | **AWQ 4-bit** | 1x L4 | **~13.5GB** | 8k | 🏆 **Recommended** |
+| Granite 8B | FP8 | 1x L4 | ~8.5GB | 16k+ | ⚡ Alt option |
+
+> **Why AWQ?** FP8 (1 byte/param × 24B = 24GB) exceeds L4 capacity. AWQ (0.5 bytes/param × 24B = 13.5GB) leaves 8.5GB for KV cache = 8k context.
+
 ## Models Deployed
 
 | Model | Quantization | Hardware | GPUs | VRAM | Use Case |
 |-------|-------------|----------|------|------|----------|
 | **mistral-small-24b-tp4** | BF16 (Full) | g6.12xlarge | 4 | ~48GB | High-throughput |
-| **mistral-small-24b** | FP8 | g6.4xlarge | 1 | ~15GB | Cost-efficient |
+| **mistral-small-24b** | AWQ 4-bit | g6.4xlarge | 1 | ~13.5GB | Cost-efficient |
 
 ## Key Demo Points
 
-### 1. FP8 Quantization Advantage
+### 1. AWQ 4-bit Quantization Advantage
 
-The **FP8 deployment** demonstrates:
+The **AWQ deployment** demonstrates:
 - **4x GPU cost reduction** (1 GPU vs 4 GPUs)
-- **Native L4 hardware acceleration** (Ada Lovelace FP8 tensor cores)
-- **Near-identical accuracy** (Neural Magic optimized kernels)
+- **High accuracy** (AWQ > GPTQ for 4-bit)
+- **Native vLLM kernel support** (Neural Magic optimized)
 - **Same API, same prompts** - transparent to applications
+- **Fits on L4** where FP8 does not (21.5GB > 24GB limit)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Cost Comparison                            │
 ├─────────────────────────────────────────────────────────────────┤
 │  Mistral BF16:  4x L4 GPUs  →  ~$4.00/hour  →  ~$2,900/month   │
-│  Mistral FP8:   1x L4 GPU   →  ~$1.00/hour  →  ~$730/month     │
+│  Mistral AWQ:   1x L4 GPU   →  ~$1.00/hour  →  ~$730/month     │
 │                                                                 │
-│  Savings: 75% cost reduction with Neural Magic FP8!            │
+│  Savings: 75% cost reduction with Neural Magic AWQ!            │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### 2. Why Not FP8?
+
+A 24B parameter model in FP8 requires exactly **24GB** of memory:
+- 24 billion parameters × 1 byte = 24GB
+- NVIDIA L4 has 24GB VRAM
+- Driver/kernel overhead: ~1.2GB
+- **Result:** No room for KV cache → OOM
+
+AWQ (4-bit) uses **0.5 bytes per parameter**:
+- 24B × 0.5 bytes = 12GB weights + quantization overhead = ~13.5GB
+- Remaining for KV cache: ~8.5GB
+- **Supports 8k context window**
 
 ### 2. S3 Storage Pattern
 
@@ -174,12 +199,12 @@ curl -s "${MISTRAL_TP4}/v1/chat/completions" \
   }' | jq .
 ```
 
-### 3. Test Mistral FP8 (1-GPU, Same Quality)
+### 3. Test Mistral AWQ (1-GPU, Same Quality)
 
 ```bash
-MISTRAL_FP8="http://mistral-small-24b.private-ai.svc.cluster.local"
+MISTRAL_AWQ="http://mistral-small-24b.private-ai.svc.cluster.local"
 
-curl -s "${MISTRAL_FP8}/v1/chat/completions" \
+curl -s "${MISTRAL_AWQ}/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "mistral-small-24b",
@@ -253,11 +278,12 @@ gitops/step-05-llm-on-vllm/base/
 │   └── vllm-runtime.yaml          # Thin vLLM runtime (~3GB)
 ├── inference/
 │   ├── kustomization.yaml
-│   ├── mistral-small-24b.yaml     # 1-GPU, FP8, S3 storage
+│   ├── mistral-small-24b.yaml     # 1-GPU, AWQ 4-bit, S3 storage
 │   └── mistral-small-24b-tp4.yaml # 4-GPU, BF16, S3 storage
 └── model-upload/                   # Optional: Helper for demo
     ├── kustomization.yaml
-    └── upload-mistral-job.yaml     # Downloads from HF, uploads to MinIO
+    ├── upload-mistral-bf16.yaml   # BF16 model for 4-GPU (~50GB)
+    └── upload-mistral-awq.yaml    # AWQ model for 1-GPU (~13.5GB)
 ```
 
 ## API Reference
