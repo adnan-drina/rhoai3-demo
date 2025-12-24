@@ -4,11 +4,18 @@
 # Pre-configured workbench for the GPU-as-a-Service demo.
 #
 # RHOAI 3.0 Alignment:
-#   - OAuth: Uses inject-oauth annotation for OAuth proxy sidecar
+#   - OAuth: Uses inject-oauth annotation (centralized at Gateway level)
 #   - Resources: Delegated to Hardware Profile Controller (cpu-small)
 #   - Kueue: Relies on namespace-level kueue.openshift.io/managed label
 #   - RBAC: Explicit permissions for InferenceService management
 #   - Git-Sync: Uses init container to pull notebooks from Git (not ConfigMap)
+#   - Ingress: Native Ingress Controller with port 8888 alignment
+#
+# Native Ingress Pattern:
+#   In RHOAI 3.0, we utilize the Native Ingress Controller. The Service is
+#   aligned to port 8888 to match the platform's automated HTTPRoute generation.
+#   This eliminates routing conflicts, satisfies Service Mesh port-naming
+#   requirements, and ensures the 'Open' button in the RHOAI Dashboard works.
 #
 # The Hardware Profile Controller will inject CPU/memory resources automatically.
 # This demonstrates the "Platform-as-a-Service" philosophy of RHOAI 3.0.
@@ -54,50 +61,41 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
-# HTTPRoute: Gateway API routing fix for Istio/Service Mesh
+# Service: Aligned with RHOAI 3.0 Native Ingress Controller
 # -----------------------------------------------------------------------------
-# RHOAI 3.0 Known Issue (KCS #7023344):
-#   The Notebook Controller creates an HTTPRoute targeting port 8888 (container port),
-#   but Istio/Envoy only discovers Services (not container ports).
-#   
-#   Service: gpu-switchboard port 80 → targetPort 8888
-#   Envoy Cluster: outbound|80||gpu-switchboard ✅
-#   Controller HTTPRoute: backendRef port 8888 ❌ (cluster_not_found)
+# RHOAI 3.0 Port Alignment:
+#   The Notebook Controller auto-generates HTTPRoutes targeting port 8888.
+#   This Service exposes port 8888 to match the controller's expectations,
+#   enabling Istio to create the required Envoy cluster.
 #
-# Fix: Create a custom HTTPRoute targeting port 80 (the Service port).
-#   - Do NOT use notebook-name/notebook-namespace labels (triggers controller reconciliation)
-#   - Target port 80 which Istio has discovered
-#   - Traffic flows: Gateway → Service:80 → Pod:8888
+#   Traffic flow: Gateway → HTTPRoute → Service:8888 → Pod:8888
 #
-# Ref: https://access.redhat.com/solutions/7023344
+# Key Requirements:
+#   1. Port 8888 (matches controller HTTPRoute)
+#   2. Port name prefix 'http-' (Envoy protocol detection)
+#   3. Label 'notebook-name' (controller service discovery)
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0
 # -----------------------------------------------------------------------------
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
+apiVersion: v1
+kind: Service
 metadata:
-  name: workbench-gpu-route
-  namespace: redhat-ods-applications
+  name: gpu-switchboard
+  namespace: private-ai
   labels:
-    app: gpu-switchboard-route
+    app: gpu-switchboard
+    notebook-name: gpu-switchboard
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 spec:
-  parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: data-science-gateway
-      namespace: openshift-ingress
-  rules:
-    - backendRefs:
-        - group: ""
-          kind: Service
-          name: gpu-switchboard
-          namespace: private-ai
-          port: 80  # Service port (NOT container port 8888)
-          weight: 1
-      matches:
-        - path:
-            type: PathPrefix
-            value: /notebook/private-ai/gpu-switchboard
+  ports:
+    - name: http-gpu-switchboard  # Protocol prefix 'http-' required for Envoy
+      port: 8888                   # Match controller's HTTPRoute target
+      protocol: TCP
+      targetPort: 8888             # Pod port
+  selector:
+    statefulset: gpu-switchboard
+  type: ClusterIP
 ---
 # -----------------------------------------------------------------------------
 # Notebook: GPU Switchboard
