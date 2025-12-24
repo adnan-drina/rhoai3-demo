@@ -1,19 +1,33 @@
 #!/bin/bash
 # =============================================================================
-# Step 05: LLM Serving with vLLM (Official S3 Storage Approach)
+# Step 05: GPU-as-a-Service Demo
 # =============================================================================
-# Deploys Mistral Small 24B in two configurations:
-#   1. mistral-small-24b-tp4 (4-GPU, BF16, tensor parallel)
-#   2. mistral-small-24b     (1-GPU, FP8, Neural Magic optimized)
+# Deploys 5 Red Hat Validated models with Kueue-managed GPU allocation:
 #
-# Storage: Models downloaded from MinIO (S3) by KServe storage-initializer
+#   Active (minReplicas: 1):
+#     1. mistral-3-bf16     (4-GPU, S3, BF16 full precision)
+#     2. mistral-3-int4     (1-GPU, OCI ModelCar, INT4 W4A16)
+#
+#   Queued (minReplicas: 0):
+#     3. devstral-2         (4-GPU, S3, Agentic tool-calling)
+#     4. gpt-oss-20b        (4-GPU, S3, High-reasoning)
+#     5. granite-8b-agent   (1-GPU, S3, RAG/Tool-call)
+#
+# GPU Switchboard Workbench:
+#     Pre-configured Jupyter notebook for interactive demo control.
+#
+# RHOAI 3.0 Patterns Used:
+#   - Native Ingress Controller (port 8888 alignment)
+#   - Hardware Profile delegation (cpu-small for workbench)
+#   - Kueue quota management (5 GPU limit)
+#   - OAuth integration (inject-oauth annotation)
 # =============================================================================
 
 set -e
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║  Step 05: LLM Serving with vLLM                                      ║"
-echo "║  Official S3 Storage Approach (RHOAI 3.0 Recommended)                ║"
+echo "║  Step 05: GPU-as-a-Service Demo                                      ║"
+echo "║  5 Red Hat Validated Models with Kueue Quota Management              ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -41,13 +55,20 @@ if ! oc get deployment minio -n minio-storage &>/dev/null; then
 fi
 echo "✓ MinIO storage available"
 
-# Check for storage-config secret
-if ! oc get secret storage-config -n private-ai &>/dev/null; then
-  echo "❌ Error: storage-config secret not found in private-ai namespace."
+# Check for minio-connection secret
+if ! oc get secret minio-connection -n private-ai &>/dev/null; then
+  echo "❌ Error: minio-connection secret not found in private-ai namespace."
   echo "  This secret is required for KServe to access MinIO."
   exit 1
 fi
-echo "✓ storage-config secret exists"
+echo "✓ minio-connection secret exists"
+
+# Check for Kueue ClusterQueue
+if oc get clusterqueue rhoai-main-queue &>/dev/null; then
+  echo "✓ Kueue ClusterQueue 'rhoai-main-queue' exists"
+else
+  echo "⚠️  Warning: Kueue ClusterQueue not found (required for quota management)"
+fi
 
 # Check for Model Registry (optional)
 if oc get modelregistry private-ai-registry -n rhoai-model-registries &>/dev/null; then
@@ -59,31 +80,15 @@ fi
 echo ""
 
 # =============================================================================
-# Storage Check - Model Weights in MinIO
-# =============================================================================
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Model Storage Check (MinIO)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  Required model locations in MinIO:"
-echo "    s3://models/mistral-small-24b/      (for 4-GPU BF16)"
-echo "    s3://models/mistral-small-24b-fp8/  (for 1-GPU FP8)"
-echo ""
-echo "  To upload models, use the helper job:"
-echo "    oc create secret generic hf-token -n private-ai --from-literal=token=hf_xxx"
-echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-mistral-job.yaml"
-echo ""
-
-# =============================================================================
-# Infrastructure Scaling
+# Infrastructure Requirements
 # =============================================================================
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Infrastructure Requirements (5 GPUs Total)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  Required MachineSets:"
-echo "    - 1x g6.12xlarge (4-GPU) → mistral-small-24b-tp4"
-echo "    - 1x g6.4xlarge  (1-GPU) → mistral-small-24b (FP8)"
+echo "    - 1x g6.12xlarge (4-GPU) → BF16 models (mistral-3-bf16, devstral-2, gpt-oss-20b)"
+echo "    - 1x g6.4xlarge  (1-GPU) → INT4/FP8 models (mistral-3-int4, granite-8b-agent)"
 echo ""
 echo "  Scale commands:"
 echo "    CLUSTER_ID=\$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')"
@@ -94,6 +99,29 @@ echo ""
 # Check current GPU node count
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l)
 echo "  Current GPU nodes: ${GPU_NODES}"
+echo ""
+
+# =============================================================================
+# Model Storage Status
+# =============================================================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Model Storage Status"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  S3 Models (MinIO):"
+echo "    s3://models/mistral-small-24b/           → mistral-3-bf16, devstral-2"
+echo "    s3://models/gpt-oss-20b/                 → gpt-oss-20b"
+echo "    s3://models/granite-3.1-8b-instruct-fp8/ → granite-8b-agent"
+echo ""
+echo "  OCI ModelCar (Red Hat Registry):"
+echo "    registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5"
+echo "    → mistral-3-int4 (~13.5GB INT4 W4A16)"
+echo ""
+echo "  To upload S3 models:"
+echo "    oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx"
+echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-mistral-bf16.yaml"
+echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-gpt-oss-20b.yaml"
+echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-granite-8b.yaml"
 echo ""
 
 read -p "Continue with deployment? (y/n) " -n 1 -r
@@ -111,17 +139,44 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Deploying Step-05 Resources"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Delete old resources if they exist (from previous OCI approach)
-echo "Cleaning up old resources..."
-oc delete inferenceservice mistral-3-bf16 mistral-3-fp8 mistral-24b-fp8 mistral-24b-full -n private-ai --ignore-not-found=true 2>/dev/null || true
-oc delete servingruntime vllm-mistral-runtime -n private-ai --ignore-not-found=true 2>/dev/null || true
-
 # Apply Kustomize
 echo "Applying Kustomize manifests..."
 oc apply -k "${GITOPS_DIR}"
 
 echo ""
 echo "✓ Resources applied"
+
+# =============================================================================
+# Fix Workbench Service Port (RHOAI 3.0 Workaround)
+# =============================================================================
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Fixing Workbench Service Port (RHOAI 3.0 Native Ingress)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  The Notebook Controller creates a Service with port 80, but generates"
+echo "  HTTPRoutes targeting port 8888. This causes 'cluster_not_found' errors."
+echo ""
+echo "  Fix: Remove ownerReferences and patch Service to port 8888."
+echo ""
+
+# Wait for the Notebook controller to create the Service
+sleep 5
+
+# Check if gpu-switchboard Service exists
+if oc get svc gpu-switchboard -n private-ai &>/dev/null; then
+  # Remove ownerReferences to prevent controller reconciliation
+  oc patch svc gpu-switchboard -n private-ai --type='json' \
+    -p='[{"op": "remove", "path": "/metadata/ownerReferences"}]' 2>/dev/null || true
+  
+  # Patch to port 8888
+  oc patch svc gpu-switchboard -n private-ai --type='merge' \
+    -p='{"spec":{"ports":[{"name":"http-gpu-switchboard","port":8888,"protocol":"TCP","targetPort":8888}]}}'
+  
+  echo "✓ Service patched to port 8888"
+else
+  echo "⚠️  gpu-switchboard Service not found yet (workbench may still be creating)"
+fi
 
 # =============================================================================
 # Check ServingRuntime
@@ -143,12 +198,16 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 oc get inferenceservice -n private-ai
 
+# =============================================================================
+# Check Workbench
+# =============================================================================
 echo ""
-echo "Note: InferenceServices will show READY=True once:"
-echo "  1. GPU nodes are available and scheduled"
-echo "  2. Model weights exist in MinIO (s3://rhoai-artifacts/...)"
-echo "  3. KServe storage-initializer downloads weights successfully"
-echo "  4. vLLM loads the model into GPU memory"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "GPU Switchboard Workbench"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+oc get notebook -n private-ai gpu-switchboard 2>/dev/null || echo "Workbench not found"
+oc get pod -n private-ai -l statefulset=gpu-switchboard
 
 # =============================================================================
 # Summary
@@ -158,18 +217,23 @@ echo "╔═══════════════════════�
 echo "║  Step 05 Deployment Complete                                         ║"
 echo "╠══════════════════════════════════════════════════════════════════════╣"
 echo "║                                                                      ║"
-echo "║  Storage: S3/MinIO (Official RHOAI 3.0 Approach)                    ║"
+echo "║  Enterprise Model Portfolio (5 Models, 14 GPUs potential):          ║"
 echo "║                                                                      ║"
-echo "║  Models:                                                            ║"
-echo "║    1. mistral-small-24b-tp4 → 4-GPU, BF16, High-throughput          ║"
-echo "║    2. mistral-small-24b     → 1-GPU, FP8, Cost-efficient            ║"
+echo "║    Active (minReplicas: 1):                                         ║"
+echo "║      • mistral-3-bf16     (4-GPU) BF16 full precision               ║"
+echo "║      • mistral-3-int4     (1-GPU) INT4 W4A16 quantized              ║"
 echo "║                                                                      ║"
-echo "║  Endpoints (when ready):                                             ║"
-echo "║    • http://mistral-small-24b-tp4.private-ai.svc.cluster.local      ║"
-echo "║    • http://mistral-small-24b.private-ai.svc.cluster.local          ║"
+echo "║    Queued (minReplicas: 0):                                         ║"
+echo "║      • devstral-2         (4-GPU) Agentic tool-calling              ║"
+echo "║      • gpt-oss-20b        (4-GPU) High-reasoning                    ║"
+echo "║      • granite-8b-agent   (1-GPU) RAG/Tool-call                     ║"
 echo "║                                                                      ║"
-echo "║  Watch startup:                                                      ║"
-echo "║    oc get pods -n private-ai -l serving.kserve.io/inferenceservice  ║"
-echo "║    oc logs -n private-ai <pod> -c storage-initializer               ║"
+echo "║  GPU Switchboard Workbench:                                         ║"
+echo "║    URL: https://data-science-gateway.apps.<cluster>/notebook/       ║"
+echo "║         private-ai/gpu-switchboard                                  ║"
+echo "║                                                                      ║"
+echo "║  Watch status:                                                       ║"
+echo "║    oc get inferenceservice -n private-ai -w                         ║"
+echo "║    oc get workload -n private-ai -w                                 ║"
 echo "║                                                                      ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"

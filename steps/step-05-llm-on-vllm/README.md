@@ -280,6 +280,99 @@ oc describe workload -n private-ai <workload-name>
 
 See [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740) for driver downgrade instructions.
 
+### Workbench: "cluster_not_found" or 500 Errors
+
+**Root Cause:** RHOAI 3.0 Notebook Controller creates HTTPRoutes targeting port 8888, but the controller-managed Service exposes port 80. This port mismatch causes Istio to fail with `cluster_not_found`.
+
+**Solution:** Create a GitOps-managed Service with port 8888:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-switchboard
+  namespace: private-ai
+  labels:
+    notebook-name: gpu-switchboard  # Required for controller discovery
+spec:
+  ports:
+    - name: http-gpu-switchboard    # 'http-' prefix required for Envoy
+      port: 8888                     # Must match HTTPRoute target
+      targetPort: 8888
+  selector:
+    statefulset: gpu-switchboard
+```
+
+### Workbench: "Connection Timeout" Errors
+
+**Root Cause:** The Notebook Controller creates NetworkPolicies that only allow traffic from `redhat-ods-applications` namespace, but the Gateway (Envoy) runs in `openshift-ingress`.
+
+**Solution:** Add a NetworkPolicy allowing Gateway ingress:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gpu-switchboard-gateway-ingress
+  namespace: private-ai
+spec:
+  podSelector:
+    matchLabels:
+      notebook-name: gpu-switchboard
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-ingress
+      ports:
+        - port: 8888
+```
+
+## GPU Switchboard Workbench
+
+The GPU Switchboard is a pre-configured Jupyter workbench that provides an interactive demo interface for controlling all 5 models.
+
+### Accessing the Workbench
+
+**URL:** `https://data-science-gateway.apps.<cluster>/notebook/private-ai/gpu-switchboard`
+
+Or via RHOAI Dashboard:
+1. Navigate to **Data Science Projects** → **private-ai**
+2. Open the **gpu-switchboard** workbench
+3. Run the `GPU-Switchboard.ipynb` notebook
+
+### RHOAI 3.0 Native Ingress Pattern
+
+The workbench uses RHOAI 3.0's Native Ingress Controller pattern:
+
+```
+Browser → Gateway → HTTPRoute(8888) → Service(8888) → Pod(8888) → Jupyter
+                ↓
+           OAuth Redirect (302)
+                ↓
+           OpenShift Login
+```
+
+**Key Configuration Points:**
+
+| Component | Configuration | Why |
+|-----------|---------------|-----|
+| **Service Port** | 8888 | Matches controller-generated HTTPRoute |
+| **Port Name** | `http-gpu-switchboard` | `http-` prefix required for Envoy protocol detection |
+| **NetworkPolicy** | Allow `openshift-ingress` | Gateway namespace must reach workbench |
+| **OAuth** | `inject-oauth: "true"` annotation | Centralized auth at Gateway level |
+
+### Workbench GitOps Components
+
+The workbench manifest (`workbench.yaml`) includes:
+
+1. **ServiceAccount** - Identity for RBAC
+2. **PVC** - 20Gi storage for notebooks
+3. **Service** - Port 8888 aligned with controller HTTPRoute
+4. **NetworkPolicy** - Allow Gateway ingress
+5. **Notebook CR** - With Hardware Profile delegation
+6. **RBAC** - Permissions to manage InferenceServices
+
 ## GitOps Structure
 
 ```
@@ -302,6 +395,7 @@ gitops/step-05-llm-on-vllm/base/
 │   ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
 │   └── upload-granite-8b.yaml         # Granite (~8GB)
 └── controller/
+    ├── workbench.yaml                 # GPU Switchboard workbench
     └── GPU-Switchboard.ipynb          # Interactive 5-model switchboard
 ```
 
