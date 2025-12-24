@@ -1,21 +1,17 @@
 # =============================================================================
-# InferenceService: Mistral Small 24B Instruct (1-GPU AWQ 4-bit)
+# InferenceService: Mistral Small 24B Instruct (1-GPU INT4 W4A16)
 # =============================================================================
-# RHOAI 3.0 OFFICIAL APPROACH: S3 Storage + KServe Storage Initializer
+# RED HAT VALIDATED MODELCAR - Neural Magic INT4 Quantization
 #
-# AWQ (Activation-aware Weight Quantization) is the recommended quantization
-# for fitting 24B models on a single NVIDIA L4 (24GB VRAM):
-#   - 4-bit weights: ~13.5GB (vs 21.5GB FP8, 48GB BF16)
-#   - Leaves ~8.5GB for KV cache = 8k context window
-#   - Higher accuracy than GPTQ
-#   - Native vLLM kernel support
+# Model: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
+# Quantization: INT4 weights, FP16 activations (W4A16)
+#   - 4-bit weights: ~13.5GB (75% reduction from BF16)
+#   - Leaves ~8.5GB for KV cache = 4k-8k context window
+#   - 98.9% accuracy recovery vs full precision
+#   - Red Hat validated for RHOAI 3.0
 #
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
 # Use Case: Cost-efficient 1-GPU inference with 75% cost savings vs 4-GPU BF16
-#
-# Prerequisites:
-#   1. Model weights uploaded to: s3://models/mistral-small-24b-awq/
-#   2. storage-config secret with minio-connection key in private-ai namespace
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
@@ -30,7 +26,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    openshift.io/display-name: "Mistral Small 24B (1-GPU AWQ)"
+    openshift.io/display-name: "Mistral Small 24B (1-GPU INT4)"
     serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
@@ -46,16 +42,13 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # S3 Storage URI - KServe storage-initializer downloads weights at startup
-      storageUri: s3://models/mistral-small-24b-awq/
-      storage:
-        key: minio-connection
+      # Red Hat Validated ModelCar - OCI Image with INT4 weights
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
       args:
-        # AWQ 4-bit Quantized - optimized for single L4 (24GB VRAM)
-        # Model weights: ~13.5GB | KV Cache: ~8.5GB | Context: 8192 tokens
+        # INT4 W4A16 Quantized - Neural Magic optimized for single L4 (24GB VRAM)
+        # Model weights: ~13.5GB | KV Cache: ~8.5GB | Context: 4096 tokens
         - --served-model-name=mistral-small-24b
-        - --quantization=awq
-        - --max-model-len=8192
+        - --max-model-len=4096
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:

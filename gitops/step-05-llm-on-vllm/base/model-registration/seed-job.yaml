@@ -161,42 +161,45 @@ spec:
                 "vLLM"
               
               # ═══════════════════════════════════════════════════════════════════
-              # Model 2: Mistral Small 24B AWQ (1-GPU, 4-bit Quantized)
+              # Model 2: Mistral Small 24B INT4 W4A16 (1-GPU, Red Hat Validated)
               # ═══════════════════════════════════════════════════════════════════
-              # AWQ is the recommended quantization for fitting 24B models on single L4
-              # - 4-bit weights: ~13.5GB (vs 21.5GB FP8, 48GB BF16)
-              # - Higher accuracy than GPTQ
-              # - Native vLLM kernel support
+              # Red Hat Validated ModelCar - Neural Magic INT4 quantization
+              # - 4-bit weights: ~13.5GB (75% reduction from BF16)
+              # - 98.9% accuracy recovery vs full precision
+              # - Native vLLM support via compressed-tensors
               register_model \
-                "Mistral-Small-24B-Instruct-AWQ" \
-                "Mistral Small 24B Instruct - AWQ 4-bit quantized for single L4 deployment. Fits in 24GB VRAM with 8k context." \
-                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"awq":{"metadataType":"MetadataStringValue","string_value":""},"4bit":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"neural-magic":{"metadataType":"MetadataStringValue","string_value":""}}' \
-                "v1.0-AWQ" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Neural Magic"},"quantization":{"metadataType":"MetadataStringValue","string_value":"awq"},"bits":{"metadataType":"MetadataStringValue","string_value":"4"},"optimized_for":{"metadataType":"MetadataStringValue","string_value":"nvidia-l4"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"vram_usage":{"metadataType":"MetadataStringValue","string_value":"~13.5GB"},"context_length":{"metadataType":"MetadataStringValue","string_value":"8192"},"cost_savings":{"metadataType":"MetadataStringValue","string_value":"75% vs BF16"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
-                "mistral-small-24b-awq/" \
-                "neuralmagic/Mistral-Small-Instruct-2412-AWQ" \
+                "Mistral-Small-24B-Instruct-INT4" \
+                "Mistral Small 24B Instruct - INT4 W4A16 quantized by Neural Magic. Red Hat Validated ModelCar for single L4 deployment." \
+                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"int4":{"metadataType":"MetadataStringValue","string_value":""},"w4a16":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"neural-magic":{"metadataType":"MetadataStringValue","string_value":""},"modelcar":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v1.5-INT4-W4A16" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Neural Magic / Red Hat"},"quantization":{"metadataType":"MetadataStringValue","string_value":"int4-w4a16"},"bits":{"metadataType":"MetadataStringValue","string_value":"4"},"accuracy_recovery":{"metadataType":"MetadataStringValue","string_value":"98.9%"},"optimized_for":{"metadataType":"MetadataStringValue","string_value":"nvidia-l4"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"vram_usage":{"metadataType":"MetadataStringValue","string_value":"~13.5GB"},"context_length":{"metadataType":"MetadataStringValue","string_value":"4096"},"cost_savings":{"metadataType":"MetadataStringValue","string_value":"75% vs BF16"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
+                "oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5" \
+                "neuralmagic/Mistral-Small-24B-Instruct-2501-quantized.w4a16" \
                 "vLLM"
               
               echo ""
               echo "════════════════════════════════════════════════════════════════"
               echo "✓ Model Registration Complete"
               echo ""
-              echo "  RHOAI 3.0 S3 Handshake Pattern:"
+              echo "  RHOAI 3.0 Deployment Patterns:"
               echo "  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐"
-              echo "  │  Model Registry │ →  │      MinIO      │ →  │     KServe      │"
-              echo "  │   (Metadata)    │    │    (Weights)    │    │   (Execution)   │"
+              echo "  │  Model Registry │ →  │  OCI / MinIO    │ →  │     KServe      │"
+              echo "  │   (Metadata)    │    │   (Weights)     │    │   (Execution)   │"
               echo "  └─────────────────┘    └─────────────────┘    └─────────────────┘"
               echo ""
-              echo "  Models registered with S3 URIs:"
+              echo "  Models Registered:"
               echo "    1. Mistral-Small-24B-Instruct-BF16 → s3://models/mistral-small-24b/"
               echo "       └── 4-GPU (g6.12xlarge) | BF16 | 48GB VRAM | 32k context"
-              echo "    2. Mistral-Small-24B-Instruct-AWQ  → s3://models/mistral-small-24b-awq/"
-              echo "       └── 1-GPU (g6.4xlarge)  | AWQ 4-bit | 13.5GB | 8k context"
               echo ""
-              echo "  Why AWQ for 1-GPU?"
+              echo "    2. Mistral-Small-24B-Instruct-INT4 → Red Hat ModelCar (OCI)"
+              echo "       └── 1-GPU (g6.4xlarge) | INT4 W4A16 | 13.5GB | 4k context"
+              echo "       └── registry.redhat.io/rhelai1/modelcar-mistral-small-24b-..."
+              echo ""
+              echo "  Why INT4 for 1-GPU?"
               echo "    • FP8 (21.5GB) exceeds L4 capacity for any usable context"
-              echo "    • AWQ (13.5GB) leaves 8.5GB for KV cache = 8k tokens"
-              echo "    • Native vLLM kernel support, higher accuracy than GPTQ"
+              echo "    • INT4 (13.5GB) leaves 8.5GB for KV cache"
+              echo "    • 98.9% accuracy recovery (Neural Magic validated)"
+              echo "    • Red Hat Validated ModelCar - no S3 upload needed"
               echo ""
-              echo "  Next: Upload weights to MinIO, then deploy from GenAI Studio"
+              echo "  Deploy from GenAI Studio or apply InferenceService manifests"
               echo "════════════════════════════════════════════════════════════════"

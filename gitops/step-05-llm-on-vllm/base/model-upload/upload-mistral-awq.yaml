@@ -67,7 +67,7 @@ spec:
               set -e
               export HOME=/tmp
               MODEL_NAME="Mistral-Small-24B-AWQ"
-              HF_REPO="neuralmagic/Mistral-Small-Instruct-2412-AWQ"
+              HF_REPO="casperhansen/mistral-small-24b-instruct-2501-awq"
               S3_PREFIX="mistral-small-24b-awq"
               
               echo "╔══════════════════════════════════════════════════════════════╗"

@@ -21,22 +21,21 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 │                     AWS OCP 4.20 Cluster                                │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                      MinIO Storage                               │   │
-│  │  s3://models/mistral-small-24b/         (~50GB BF16)            │   │
-│  │  s3://models/mistral-small-24b-awq/     (~13.5GB AWQ 4-bit)     │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                              │                                          │
-│              KServe Storage Initializer downloads at pod startup        │
-│                              ▼                                          │
+│  ┌──────────────────────────────┐  ┌────────────────────────────────┐  │
+│  │       MinIO Storage          │  │     Red Hat Registry (OCI)     │  │
+│  │  s3://models/mistral-24b/    │  │  registry.redhat.io/rhelai1/   │  │
+│  │       (~50GB BF16)           │  │  modelcar-mistral-...-w4a16    │  │
+│  └──────────────────────────────┘  └────────────────────────────────┘  │
+│              │                                    │                     │
+│              ▼                                    ▼                     │
 │  ┌─────────────────────────┐  ┌─────────────────────────┐              │
 │  │   g6.12xlarge Node      │  │   g6.4xlarge Node       │              │
 │  │   (4x NVIDIA L4)        │  │   (1x NVIDIA L4)        │              │
 │  │                         │  │                         │              │
 │  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
 │  │  │ mistral-small-24b │  │  │  │ mistral-small-24b │  │              │
-│  │  │     -tp4          │  │  │  │     (AWQ 4-bit)   │  │              │
-│  │  │ tensor-parallel=4 │  │  │  │ --quantization awq│  │              │
+│  │  │     -tp4          │  │  │  │   (INT4 W4A16)    │  │              │
+│  │  │ tensor-parallel=4 │  │  │  │ Red Hat ModelCar  │  │              │
 │  │  │ --dtype bfloat16  │  │  │  │ 4x cost savings!  │  │              │
 │  │  └───────────────────┘  │  │  └───────────────────┘  │              │
 │  └─────────────────────────┘  └─────────────────────────┘              │
@@ -50,26 +49,28 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 |-------|---------|----------|----------------|---------|--------|
 | **Mistral 24B** | BF16 | 4x L4 (TP4) | ~48GB | 32k | ✅ Working |
 | **Mistral 24B** | FP8 | 1x L4 | ~22GB | ❌ OOM | ⛔ Too large |
-| **Mistral 24B** | **AWQ 4-bit** | 1x L4 | **~13.5GB** | 8k | 🏆 **Recommended** |
+| **Mistral 24B** | **INT4 W4A16** | 1x L4 | **~13.5GB** | 4k | 🏆 **Red Hat Validated** |
 | Granite 8B | FP8 | 1x L4 | ~8.5GB | 16k+ | ⚡ Alt option |
 
-> **Why AWQ?** FP8 (1 byte/param × 24B = 24GB) exceeds L4 capacity. AWQ (0.5 bytes/param × 24B = 13.5GB) leaves 8.5GB for KV cache = 8k context.
+> **Why INT4?** FP8 (1 byte/param × 24B = 24GB) exceeds L4 capacity. INT4 W4A16 (0.5 bytes/param × 24B = 13.5GB) leaves 8.5GB for KV cache.
+> 
+> **Red Hat Validated:** `registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5` - 98.9% accuracy recovery
 
 ## Models Deployed
 
 | Model | Quantization | Hardware | GPUs | VRAM | Use Case |
 |-------|-------------|----------|------|------|----------|
 | **mistral-small-24b-tp4** | BF16 (Full) | g6.12xlarge | 4 | ~48GB | High-throughput |
-| **mistral-small-24b** | AWQ 4-bit | g6.4xlarge | 1 | ~13.5GB | Cost-efficient |
+| **mistral-small-24b** | INT4 W4A16 | g6.4xlarge | 1 | ~13.5GB | Cost-efficient |
 
 ## Key Demo Points
 
-### 1. AWQ 4-bit Quantization Advantage
+### 1. INT4 W4A16 Quantization (Red Hat Validated)
 
-The **AWQ deployment** demonstrates:
+The **INT4 deployment** demonstrates:
 - **4x GPU cost reduction** (1 GPU vs 4 GPUs)
-- **High accuracy** (AWQ > GPTQ for 4-bit)
-- **Native vLLM kernel support** (Neural Magic optimized)
+- **98.9% accuracy recovery** (Neural Magic validated)
+- **Red Hat ModelCar** - pre-built, validated OCI image
 - **Same API, same prompts** - transparent to applications
 - **Fits on L4** where FP8 does not (21.5GB > 24GB limit)
 
@@ -78,9 +79,9 @@ The **AWQ deployment** demonstrates:
 │                      Cost Comparison                            │
 ├─────────────────────────────────────────────────────────────────┤
 │  Mistral BF16:  4x L4 GPUs  →  ~$4.00/hour  →  ~$2,900/month   │
-│  Mistral AWQ:   1x L4 GPU   →  ~$1.00/hour  →  ~$730/month     │
+│  Mistral INT4:  1x L4 GPU   →  ~$1.00/hour  →  ~$730/month     │
 │                                                                 │
-│  Savings: 75% cost reduction with Neural Magic AWQ!            │
+│  Savings: 75% cost reduction with Neural Magic INT4!           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -92,10 +93,24 @@ A 24B parameter model in FP8 requires exactly **24GB** of memory:
 - Driver/kernel overhead: ~1.2GB
 - **Result:** No room for KV cache → OOM
 
-AWQ (4-bit) uses **0.5 bytes per parameter**:
+INT4 W4A16 uses **0.5 bytes per parameter**:
 - 24B × 0.5 bytes = 12GB weights + quantization overhead = ~13.5GB
 - Remaining for KV cache: ~8.5GB
-- **Supports 8k context window**
+- **Supports 4k context window**
+
+### 3. Red Hat Validated ModelCar
+
+The 1-GPU model uses a **Red Hat Validated ModelCar**:
+
+```
+oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
+```
+
+Benefits:
+- Pre-built, tested OCI image
+- No S3 upload required
+- Validated for RHOAI 3.0
+- 98.9% accuracy vs full precision
 
 ### 2. S3 Storage Pattern
 
