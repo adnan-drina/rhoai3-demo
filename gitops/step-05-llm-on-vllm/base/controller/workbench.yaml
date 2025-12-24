@@ -8,6 +8,7 @@
 #   - Resources: Delegated to Hardware Profile Controller (cpu-small)
 #   - Kueue: Relies on namespace-level kueue.openshift.io/managed label
 #   - RBAC: Explicit permissions for InferenceService management
+#   - Git-Sync: Uses init container to pull notebooks from Git (not ConfigMap)
 #
 # The Hardware Profile Controller will inject CPU/memory resources automatically.
 # This demonstrates the "Platform-as-a-Service" philosophy of RHOAI 3.0.
@@ -57,6 +58,10 @@ spec:
 # -----------------------------------------------------------------------------
 # Resources are DELEGATED to the Hardware Profile Controller.
 # The controller injects cpu-small specs (cpu: 2/4, memory: 4Gi/8Gi).
+#
+# Git-Sync Pattern:
+#   An init container clones the demo repository into the PVC before Jupyter
+#   starts. This is cleaner than storing JSON notebooks in ConfigMaps.
 # -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
 kind: Notebook
@@ -67,7 +72,6 @@ metadata:
     app: gpu-switchboard
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
-    # NOTE: Removed kueue.x-k8s.io/queue-name - using namespace-level Kueue management
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     # RHOAI 3.0: Correct OAuth annotation for sidecar injection
@@ -87,6 +91,63 @@ spec:
     spec:
       enableServiceLinks: false
       serviceAccountName: gpu-switchboard
+      # =========================================================================
+      # Git-Sync Init Container
+      # =========================================================================
+      # Clones the demo repository into the workspace PVC before Jupyter starts.
+      # This is the recommended RHOAI 3.0 pattern for pre-loading notebooks.
+      #
+      # Benefits over ConfigMap:
+      #   - No 1MB size limit
+      #   - Version-controlled in Git (single source of truth)
+      #   - Users can save changes that persist across restarts
+      #   - Clean YAML without embedded JSON
+      # =========================================================================
+      initContainers:
+        - name: git-sync
+          image: alpine/git:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              REPO_URL="https://github.com/adnan-drina/rhoai3-demo.git"
+              WORKSPACE="/opt/app-root/src"
+              NOTEBOOKS_SRC="gitops/step-05-llm-on-vllm/base/controller"
+              
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  Git-Sync: Loading GPU Switchboard Notebook                  ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+              
+              # Only sync if the notebook doesn't exist (preserves user changes)
+              if [ ! -f "$WORKSPACE/GPU-Switchboard.ipynb" ]; then
+                echo "→ Cloning repository..."
+                git clone --depth 1 --single-branch "$REPO_URL" /tmp/repo
+                
+                echo "→ Copying notebooks to workspace..."
+                cp /tmp/repo/$NOTEBOOKS_SRC/*.ipynb "$WORKSPACE/" 2>/dev/null || true
+                
+                echo "→ Copying any additional demo files..."
+                cp -r /tmp/repo/$NOTEBOOKS_SRC/data "$WORKSPACE/" 2>/dev/null || true
+                
+                rm -rf /tmp/repo
+                echo "✓ Notebooks synced successfully!"
+              else
+                echo "✓ Notebooks already exist - skipping sync (preserving user changes)"
+              fi
+              
+              ls -la "$WORKSPACE/"
+          volumeMounts:
+            - name: gpu-switchboard-storage
+              mountPath: /opt/app-root/src
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: gpu-switchboard
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
@@ -150,10 +211,6 @@ spec:
               readOnly: true
             - name: runtime-images
               mountPath: /opt/app-root/pipeline-runtimes/
-            # Pre-loaded notebook from ConfigMap
-            - name: gpu-switchboard-notebook
-              mountPath: /opt/app-root/src/GPU-Switchboard.ipynb
-              subPath: GPU-Switchboard.ipynb
       volumes:
         - name: gpu-switchboard-storage
           persistentVolumeClaim:
@@ -172,9 +229,6 @@ spec:
           configMap:
             name: pipeline-runtime-images
             optional: true
-        - name: gpu-switchboard-notebook
-          configMap:
-            name: gpu-switchboard-notebook
 ---
 # =============================================================================
 # RBAC: GPU Switchboard Controller Permissions
