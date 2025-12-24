@@ -153,3 +153,78 @@ spec:
         - name: gpu-switchboard-notebook
           configMap:
             name: gpu-switchboard-notebook
+---
+# =============================================================================
+# RBAC: Allow workbench to manage InferenceServices and view Kueue resources
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gpu-switchboard-model-admin
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  # InferenceService management (get, list, patch)
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  # Pod status (for checking if model is running)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Kueue workloads (for queue status)
+  - apiGroups: ["kueue.x-k8s.io"]
+    resources: ["workloads", "localqueues"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gpu-switchboard-model-admin
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gpu-switchboard-model-admin
+subjects:
+  - kind: ServiceAccount
+    name: gpu-switchboard
+    namespace: private-ai
+---
+# ClusterRole for viewing ClusterQueues (cluster-scoped resource)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kueue-clusterqueue-viewer
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kueue.x-k8s.io"]
+    resources: ["clusterqueues", "resourceflavors"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gpu-switchboard-kueue-viewer
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kueue-clusterqueue-viewer
+subjects:
+  - kind: ServiceAccount
+    name: gpu-switchboard
+    namespace: private-ai
