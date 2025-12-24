@@ -200,33 +200,54 @@ oc apply -k gitops/step-05-llm-on-vllm/base/
 
 ## Running the Demo
 
-### Option 1: GPU Switchboard Notebook
+### CLI-as-SOP Pattern
+
+This demo uses a **"CLI-First Guide"** approach, demonstrating Platform Engineering reality:
+the notebook serves as the **Standard Operating Procedure (SOP)**, using native `oc` commands.
+
+This makes it clear to the audience that RHOAI is **standard Kubernetes/OpenShift** under the hood.
+
+### Option 1: GPU Orchestrator Notebook (Recommended)
 
 1. Open the RHOAI Dashboard
 2. Navigate to **Data Science Projects** → **private-ai**
-3. Launch a workbench with the `GPU-Switchboard.ipynb` notebook
-4. Follow the interactive toggles to demonstrate the handover
+3. Launch the **gpu-switchboard** workbench
+4. Open `GPU-Orchestrator.ipynb`
+5. Follow the step-by-step CLI commands with explanations
 
-### Option 2: CLI Commands
+The notebook covers three scenarios:
+- **Scenario 1:** Resource Conflict (request more GPUs than available)
+- **Scenario 2:** Dynamic Handover (release GPUs to unblock queue)
+- **Scenario 3:** Efficiency Portfolio (trade 1 big model for specialists)
+
+### Option 2: Direct CLI Commands
 
 ```bash
-# Step 1: Verify baseline (5/5 GPUs used)
+# Step 0: Verify baseline (5/5 GPUs used)
 oc get inferenceservice -n private-ai
-oc get pods -n private-ai | grep -E "mistral|devstral"
+oc get workloads -n private-ai
 
-# Step 2: Enable Devstral-2 (will be PENDING)
-oc patch inferenceservice devstral-2 -n private-ai \
-  --type=merge -p '{"spec":{"predictor":{"minReplicas":1}}}'
+# Step 1: Scale up Devstral-2 (will be PENDING - over quota)
+oc scale inferenceservice devstral-2 -n private-ai --replicas=1
+oc get workloads -n private-ai  # Shows PENDING
 
-# Watch it get queued
-oc get workload -n private-ai -w
+# Step 2: Scale down BF16 to trigger handover
+oc scale inferenceservice mistral-3-bf16 -n private-ai --replicas=0
+# Watch Devstral-2 start INSTANTLY!
+oc get pods -n private-ai -l serving.kserve.io/inferenceservice
 
-# Step 3: Disable BF16 to trigger handover
-oc patch inferenceservice mistral-3-bf16 -n private-ai \
-  --type=merge -p '{"spec":{"predictor":{"minReplicas":0}}}'
+# Step 3: Reset to baseline
+oc scale inferenceservice mistral-3-bf16 -n private-ai --replicas=1
+oc scale inferenceservice devstral-2 -n private-ai --replicas=0
+```
 
-# Watch Devstral-2 start instantly!
-oc get pods -n private-ai -w
+### Why `oc scale` Works
+
+KServe implements the Kubernetes **scale subresource**, allowing standard commands:
+```bash
+# These are equivalent:
+oc scale inferenceservice devstral-2 --replicas=1
+oc patch inferenceservice devstral-2 --type=merge -p '{"spec":{"predictor":{"minReplicas":1}}}'
 ```
 
 ## Validation
@@ -328,9 +349,18 @@ spec:
         - port: 8888
 ```
 
-## GPU Switchboard Workbench
+## GPU Orchestrator Workbench
 
-The GPU Switchboard is a pre-configured Jupyter workbench that provides an interactive demo interface for controlling all 5 models.
+The GPU Orchestrator is a pre-configured Jupyter workbench that provides a **CLI-First SOP** for demonstrating GPU quota management.
+
+### Why CLI-First?
+
+| Approach | Benefit |
+|----------|---------|
+| **Transparency** | Shows OpenShift AI uses standard Kubernetes commands |
+| **Realism** | This is how real Platform Engineers manage model capacity |
+| **Simplicity** | No widget debugging—`oc scale` just works |
+| **Portability** | Commands work in any terminal, not just Jupyter |
 
 ### Accessing the Workbench
 
@@ -339,7 +369,7 @@ The GPU Switchboard is a pre-configured Jupyter workbench that provides an inter
 Or via RHOAI Dashboard:
 1. Navigate to **Data Science Projects** → **private-ai**
 2. Open the **gpu-switchboard** workbench
-3. Run the `GPU-Switchboard.ipynb` notebook
+3. Run the `GPU-Orchestrator.ipynb` notebook
 
 ### RHOAI 3.0 Native Ingress Pattern
 
@@ -395,8 +425,8 @@ gitops/step-05-llm-on-vllm/base/
 │   ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
 │   └── upload-granite-8b.yaml         # Granite (~8GB)
 └── controller/
-    ├── workbench.yaml                 # GPU Switchboard workbench
-    └── GPU-Switchboard.ipynb          # Interactive 5-model switchboard
+    ├── workbench.yaml                 # GPU Orchestrator workbench
+    └── GPU-Orchestrator.ipynb         # CLI-First SOP notebook
 ```
 
 ## Key RHOAI 3.0 Design Patterns

@@ -160,11 +160,11 @@ spec:
               NOTEBOOKS_SRC="gitops/step-05-llm-on-vllm/base/controller"
               
               echo "╔══════════════════════════════════════════════════════════════╗"
-              echo "║  Git-Sync: Loading GPU Switchboard Notebook                  ║"
+              echo "║  Git-Sync: Loading GPU Orchestrator Notebook                 ║"
               echo "╚══════════════════════════════════════════════════════════════╝"
               
               # Only sync if the notebook doesn't exist (preserves user changes)
-              if [ ! -f "$WORKSPACE/GPU-Switchboard.ipynb" ]; then
+              if [ ! -f "$WORKSPACE/GPU-Orchestrator.ipynb" ]; then
                 echo "→ Cloning repository..."
                 git clone --depth 1 --single-branch "$REPO_URL" /tmp/repo
                 
