@@ -60,3 +60,9 @@ resources:
   # ═══════════════════════════════════════════════════════════════════════════
   # Model weights downloaded from MinIO by KServe storage-initializer
   - inference/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. GPU Switchboard Workbench (sync-wave: 10)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Pre-loaded notebook for GPU-as-a-Service demo
+  - controller/
