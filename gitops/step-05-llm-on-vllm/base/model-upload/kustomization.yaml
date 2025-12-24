@@ -1,19 +1,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Model Upload Jobs - DEPRECATED
 # =============================================================================
-# We now use Red Hat Validated ModelCar images directly from registry.redhat.io
-# No S3/MinIO upload required!
+# Model Upload Jobs - Enterprise Portfolio
+# =============================================================================
+# These jobs download Red Hat Validated models from HuggingFace and upload
+# to MinIO for KServe storage-initializer to stream at pod startup.
 #
-# ModelCar Images Used:
-#   - BF16: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501:1.5
-#   - INT4: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
+# S3 Storage Strategy (Official RHOAI 3.0 Recommendation):
+#   - Avoids CRI-O overlay extraction failures for large images
+#   - KServe storage-initializer streams directly to ephemeral storage
+#   - 300GB EBS nodes can handle 50GB+ model weights
 #
-# These jobs are kept for reference if custom models are needed.
+# Usage:
+#   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
+#   2. Apply jobs manually (not auto-applied by ArgoCD due to hook: Skip)
+#   3. Monitor: oc logs -f job/<job-name> -n minio-storage
+#
+# NOTE: These are NOT auto-applied by ArgoCD (hook: Skip)
+# Apply manually when you want to expand the model portfolio.
 # =============================================================================
 
 resources: []
-  # - upload-mistral-bf16.yaml   # Not needed - using Red Hat OCI ModelCar
-  # - upload-mistral-awq.yaml    # Not needed - using Red Hat OCI ModelCar
-  # - upload-mistral-fp8.yaml    # FP8 too large for single L4 (OOM)
+  # Active models (already uploaded or using OCI ModelCar):
+  # - upload-mistral-bf16.yaml     # Already in MinIO from previous upload
+  
+  # Extended Portfolio (apply manually to add to demo):
+  # - upload-gpt-oss-20b.yaml      # RedHatAI/gpt-oss-20b (~44GB BF16)
+  # - upload-granite-8b.yaml       # RedHatAI/granite-3.1-8b-instruct-FP8-dynamic (~8GB)

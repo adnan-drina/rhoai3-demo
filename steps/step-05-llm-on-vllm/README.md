@@ -1,6 +1,6 @@
 # Step 05: GPU-as-a-Service Demo
 
-**"The Dynamic Resource Handover"** - Demonstrating RHOAI 3.0's intelligent GPU allocation with Kueue.
+**"Enterprise Model Portfolio"** - Demonstrating RHOAI 3.0's intelligent GPU allocation with Kueue and 5 Red Hat Validated models.
 
 ## The Business Story
 
@@ -9,50 +9,62 @@ In enterprise environments, GPU resources are expensive and shared. Teams can't 
 1. **Fair Allocation**: Quotas prevent any single team from monopolizing resources
 2. **Dynamic Handover**: When one workload finishes, another automatically starts
 3. **Predictable Queuing**: Developers know exactly when their job will run
+4. **Model Portfolio**: Multiple specialized models available on-demand
 
 ## Demo Overview
 
-### The Setup: Full Quota Saturation
+### Enterprise Model Portfolio (5 Red Hat Validated Models)
 
-Our cluster has **5 GPUs** with a **5 GPU quota**:
+Our cluster has **5 GPUs** with a **5 GPU quota**, but access to **14 GPUs worth of models**:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    BASELINE STATE                           │
-├─────────────────────────────────────────────────────────────┤
-│  mistral-3-bf16  │ 4 GPUs │ 🟢 ON  │ g6.12xlarge           │
-│  mistral-3-int4  │ 1 GPU  │ 🟢 ON  │ g6.4xlarge            │
-│  devstral-2      │ 4 GPUs │ ⚫ OFF │ g6.12xlarge (waiting) │
-├─────────────────────────────────────────────────────────────┤
-│  GPU Usage: ████████████████████ 5/5 (100%)                 │
-└─────────────────────────────────────────────────────────────┘
-```
+| Model | GPUs | Status | Provider | Use Case |
+|-------|------|--------|----------|----------|
+| **mistral-3-bf16** | 4 | ✅ Active | Mistral AI | Primary Production |
+| **mistral-3-int4** | 1 | ✅ Active | Neural Magic | Cost-efficient (75% savings) |
+| **devstral-2** | 4 | ⏸️ Queued | Mistral AI | Agentic Tool-calling |
+| **gpt-oss-20b** | 4 | ⏸️ Queued | RedHatAI | High-reasoning (Oct 2025) |
+| **granite-8b-agent** | 1 | ⏸️ Queued | IBM/Red Hat | RAG/Tool-call (May 2025) |
 
-### The Demo Flow
+**Total Potential:** 14 GPUs | **Quota Limit:** 5 GPUs
+
+### Demo Scenarios
 
 ```
-Step 1: BASELINE
-─────────────────
-BF16 (4) + INT4 (1) = 5 GPUs
-Devstral-2 = OFF (waiting)
+═══════════════════════════════════════════════════════════════
+SCENARIO 1: RESOURCE HANDOVER
+───────────────────────────────────────────────────────────────
+Story: "Switch from general-purpose Mistral to specialized Devstral"
 
+Before: BF16 (4) + INT4 (1) = 5 GPUs
+Action: Enable Devstral → PENDING ⏳ (over quota)
+Fix:    Disable BF16 → Devstral INSTANTLY starts! ⚡
+After:  Devstral (4) + INT4 (1) = 5 GPUs
 
-Step 2: ATTEMPT TO START DEVSTRAL-2
-───────────────────────────────────
-Developer enables Devstral-2 → PENDING ⏳
-Kueue says: "4 + 1 + 4 = 9 > 5 (over quota)"
+═══════════════════════════════════════════════════════════════
+SCENARIO 2: EFFICIENCY STORY
+───────────────────────────────────────────────────────────────
+Story: "Trade 1x 4-GPU model for 4x 1-GPU specialists"
 
+Before: BF16 (4) + INT4 (1) = 5 GPUs (2 models)
+After:  Granite (1) + GPT-OSS (1) + INT4 (1) + ... = 4+ specialists
 
-Step 3: THE HANDOVER
-────────────────────
-Admin disables BF16 → 4 GPUs freed
-Devstral-2 INSTANTLY starts! ⚡
-New state: INT4 (1) + Devstral (4) = 5 GPUs
+Message: "Same 5 GPUs, 4x more specialized workloads!"
 
+═══════════════════════════════════════════════════════════════
+SCENARIO 3: PRIORITY QUEUE
+───────────────────────────────────────────────────────────────
+Story: "Kueue ensures fair access - no GPU hoarding"
 
-THE MESSAGE:
-"This is GPU-as-a-Service. The platform ensures fair access 
-and prevents any team from hoarding resources."
+Action: Enable ALL 5 models (14 GPUs requested)
+Result: Only 5 GPUs admitted, rest queued
+Watch:  Disable one → Another AUTO-STARTS
+
+═══════════════════════════════════════════════════════════════
+THE KEY MESSAGE:
+"This is GPU-as-a-Service. Model Registry provides governance,
+Kueue provides resource arbitration. Organizations access a wide
+range of Red Hat Validated models while controlling AWS GPU costs."
+═══════════════════════════════════════════════════════════════
 ```
 
 ## Architecture
@@ -91,13 +103,41 @@ and prevents any team from hoarding resources."
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Models
+## Model Portfolio
 
-| Name | GPUs | Hardware | Storage | minReplicas | Role |
-|------|------|----------|---------|-------------|------|
-| **mistral-3-bf16** | 4 | g6.12xlarge | S3 | 1 | Primary Load |
-| **mistral-3-int4** | 1 | g6.4xlarge | OCI | 1 | Secondary Load |
-| **devstral-2** | 4 | g6.12xlarge | S3 | 0 | Queued Asset |
+### Active Models (Baseline Saturation)
+
+| Name | GPUs | Hardware | Storage | Provider | Description |
+|------|------|----------|---------|----------|-------------|
+| **mistral-3-bf16** | 4 | g6.12xlarge | S3 | Mistral AI | Primary 24B full precision |
+| **mistral-3-int4** | 1 | g6.4xlarge | OCI | Neural Magic | 75% cost savings (INT4 W4A16) |
+
+### Queued Models (Ready for Activation)
+
+| Name | GPUs | Hardware | Storage | Provider | Description |
+|------|------|----------|---------|----------|-------------|
+| **devstral-2** | 4 | g6.12xlarge | S3 | Mistral AI | Agentic tool-calling |
+| **gpt-oss-20b** | 4 | g6.12xlarge | S3 | RedHatAI | High-reasoning (Oct 2025) |
+| **granite-8b-agent** | 1 | g6.4xlarge | S3 | IBM/Red Hat | RAG & tool-call (May 2025) |
+
+### Model Highlights
+
+#### 🏆 Granite 3.1 8B Agent: "Small but Mighty"
+
+The flagship model for **agentic workflows**:
+- **Tool-calling**: Native support via `--chat-template=granite`
+- **Function-calling**: `--enable-auto-tool-choice` for Agent Playground
+- **RAG-ready**: 16k context for long retrieval contexts
+- **Efficient**: FP8 quantization fits on single L4 (~8GB VRAM)
+
+> *"Granite 3.1 models are designed for high-performance agentic workflows, featuring native support for tool-calling and enhanced RAG capabilities."*
+
+#### 🧠 GPT-OSS-20B: "The Reasoning Lead"
+
+Enterprise-vetted reasoning model (October 2025 Collection):
+- **Complex reasoning**: Multi-step instruction following
+- **OpenAI-alternative**: Same API, enterprise-supported
+- **Full precision**: BF16 on 4-GPU for maximum quality
 
 ### Storage Strategy
 
@@ -121,17 +161,22 @@ oc scale machineset ${CLUSTER_ID}-gpu-g6-4xlarge-us-east-2b -n openshift-machine
 oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4
 ```
 
-### 2. Upload BF16 Model to MinIO
+### 2. Upload Models to MinIO
 
 ```bash
 # Create HuggingFace token secret
 oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxxYOURTOKENxxx
 
-# Run upload job
+# Upload Mistral BF16 (required for baseline)
 oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-bf16.yaml
+oc logs -f job/upload-mistral-bf16 -n minio-storage  # ~30-60 min
 
-# Monitor (~30-60 minutes for 50GB)
-oc logs -f job/upload-mistral-bf16 -n minio-storage
+# Optional: Upload extended portfolio models
+oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-gpt-oss-20b.yaml
+oc logs -f job/upload-gpt-oss-20b -n minio-storage  # ~30 min
+
+oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-granite-8b.yaml
+oc logs -f job/upload-granite-8b -n minio-storage  # ~10 min
 ```
 
 ### 3. Verify Kueue Quota
@@ -241,18 +286,23 @@ See [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740) for driver
 gitops/step-05-llm-on-vllm/base/
 ├── kustomization.yaml
 ├── serving-runtime/
-│   └── vllm-runtime.yaml          # Thin vLLM runtime
+│   └── vllm-runtime.yaml              # Thin vLLM runtime
 ├── inference/
 │   ├── kustomization.yaml
-│   ├── mistral-3-bf16.yaml        # 4-GPU, S3, minReplicas: 1
-│   ├── mistral-3-int4.yaml        # 1-GPU, OCI, minReplicas: 1
-│   └── devstral-2.yaml            # 4-GPU, S3, minReplicas: 0
+│   ├── mistral-3-bf16.yaml            # 4-GPU, S3, minReplicas: 1 (Active)
+│   ├── mistral-3-int4.yaml            # 1-GPU, OCI, minReplicas: 1 (Active)
+│   ├── devstral-2.yaml                # 4-GPU, S3, minReplicas: 0 (Queued)
+│   ├── gpt-oss-20b.yaml               # 4-GPU, S3, minReplicas: 0 (Queued)
+│   └── granite-8b-agent.yaml          # 1-GPU, S3, minReplicas: 0 (Queued)
 ├── model-registration/
-│   └── seed-job.yaml              # Register models in Registry
+│   └── seed-job.yaml                  # Register 5 models in Registry
 ├── model-upload/
-│   └── upload-mistral-bf16.yaml   # Upload BF16 weights to MinIO
+│   ├── kustomization.yaml
+│   ├── upload-mistral-bf16.yaml       # Mistral BF16 (~48GB)
+│   ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
+│   └── upload-granite-8b.yaml         # Granite (~8GB)
 └── controller/
-    └── GPU-Switchboard.ipynb      # Interactive demo notebook
+    └── GPU-Switchboard.ipynb          # Interactive 5-model switchboard
 ```
 
 ## Key RHOAI 3.0 Design Patterns

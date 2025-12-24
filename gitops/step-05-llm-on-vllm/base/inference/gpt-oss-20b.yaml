@@ -1,0 +1,79 @@
+# =============================================================================
+# InferenceService: GPT-OSS-20B (4-GPU BF16)
+# =============================================================================
+# Red Hat Validated Model (October 2025 Collection)
+#
+# Model: RedHatAI/gpt-oss-20b
+# Precision: BF16 (Full) - 20B parameters, ~44GB VRAM
+# Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+#
+# Use Case: High-reasoning OpenAI-alternative for complex instruction following.
+# Enterprise-vetted model for sophisticated reasoning and multi-step tasks.
+#
+# Demo Role: "Queued Asset" - Shows the Efficiency Story:
+#   "Trade one 4-GPU general model for a suite of 4x 1-GPU specialists"
+#
+# Note: Uses S3 storage to avoid OCI overlay limits.
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: gpt-oss-20b
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: default
+    networking.kserve.io/visibility: exposed
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    openshift.io/display-name: "GPT-OSS-20B (4-GPU BF16)"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    # QUEUED ASSET: Starts at 0 replicas
+    # Toggle via GPU Switchboard to demonstrate Efficiency Story
+    minReplicas: 0
+    maxReplicas: 1
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.12xlarge
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime
+      # S3 Storage - KServe storage-initializer downloads weights at startup
+      storageUri: s3://models/gpt-oss-20b/
+      storage:
+        key: minio-connection
+      args:
+        # BF16 Full Precision on 4x L4 (96GB total VRAM)
+        # 20B model = ~44GB, leaving 50GB+ for KV cache
+        - --served-model-name=gpt-oss-20b
+        - --tensor-parallel-size=4
+        - --dtype=bfloat16
+        - --max-model-len=8192
+        - --gpu-memory-utilization=0.9
+        - --trust-remote-code
+      env:
+        # RHOAI 3.0 GA: V1 engine required
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: VLLM_NO_HW_METRICS
+          value: "1"
+        - name: LD_LIBRARY_PATH
+          value: /usr/local/nvidia/lib64
+      resources:
+        requests:
+          cpu: "16"
+          memory: 64Gi
+          nvidia.com/gpu: "4"
+        limits:
+          cpu: "32"
+          memory: 128Gi
+          nvidia.com/gpu: "4"
+

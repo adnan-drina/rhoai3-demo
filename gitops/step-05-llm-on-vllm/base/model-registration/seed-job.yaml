@@ -1,17 +1,21 @@
 # =============================================================================
-# Step 05: LLM Model Registration - GPU-as-a-Service Demo
+# Step 05: Enterprise Model Portfolio Registration
 # =============================================================================
-# Registers the three models for the "Dynamic Resource Handover" demo.
+# Registers the complete model portfolio for the GPU-as-a-Service demo.
 #
-# Models:
+# ACTIVE MODELS (minReplicas: 1):
 #   1. Mistral-3-BF16    → 4-GPU, S3 storage (primary load)
 #   2. Mistral-3-INT4    → 1-GPU, OCI ModelCar (secondary load)
-#   3. Devstral-2        → 4-GPU, S3 storage (queued asset)
 #
-# Demo Flow:
-#   - Start: BF16 (4) + INT4 (1) = 5/5 GPUs (100% saturated)
-#   - Action: Enable Devstral-2 → PENDING in Kueue queue
-#   - Resolution: Disable BF16 → Devstral-2 INSTANTLY starts
+# QUEUED MODELS (minReplicas: 0):
+#   3. Devstral-2        → 4-GPU, S3 storage (agentic)
+#   4. GPT-OSS-20B       → 4-GPU, S3 storage (high-reasoning)
+#   5. Granite-8B-Agent  → 1-GPU, S3 storage (tool-calling)
+#
+# Demo Scenarios:
+#   1. Resource Handover: Swap BF16 for Devstral
+#   2. Efficiency Story: Trade 1x 4-GPU for 4x 1-GPU specialists
+#   3. Model Portfolio: Show all 5 Red Hat Validated models
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_model_registries/index
 # =============================================================================
@@ -187,22 +191,54 @@ spec:
                 "mistralai/Mistral-Small-24B-Instruct-2501" \
                 "vLLM"
               
+              # ═══════════════════════════════════════════════════════════════════
+              # Model 4: GPT-OSS-20B (4-GPU, High-Reasoning) - October 2025 Collection
+              # ═══════════════════════════════════════════════════════════════════
+              register_model \
+                "GPT-OSS-20B" \
+                "GPT-OSS-20B - Red Hat Validated enterprise reasoning model (October 2025). OpenAI-alternative for complex instruction following." \
+                '{"gpt-oss":{"metadataType":"MetadataStringValue","string_value":""},"redhat-validated":{"metadataType":"MetadataStringValue","string_value":""},"oct-2025":{"metadataType":"MetadataStringValue","string_value":""},"reasoning":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v1.0-BF16-Oct2025" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"RedHatAI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"collection":{"metadataType":"MetadataStringValue","string_value":"October 2025"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4 (g6.12xlarge)"},"tensor_parallel":{"metadataType":"MetadataStringValue","string_value":"4"},"context_length":{"metadataType":"MetadataStringValue","string_value":"8192"},"demo_role":{"metadataType":"MetadataStringValue","string_value":"High-Reasoning"}}' \
+                "gpt-oss-20b/" \
+                "RedHatAI/gpt-oss-20b" \
+                "vLLM"
+              
+              # ═══════════════════════════════════════════════════════════════════
+              # Model 5: Granite-3.1-8B-Agent (1-GPU, Tool-Calling) - May 2025 Collection
+              # ═══════════════════════════════════════════════════════════════════
+              register_model \
+                "Granite-3.1-8B-Agent" \
+                "Granite 3.1 8B Instruct FP8 - The Agentic Core. Red Hat flagship for tool-calling, function-calling, and RAG workflows." \
+                '{"granite":{"metadataType":"MetadataStringValue","string_value":""},"redhat-validated":{"metadataType":"MetadataStringValue","string_value":""},"may-2025":{"metadataType":"MetadataStringValue","string_value":""},"agentic":{"metadataType":"MetadataStringValue","string_value":""},"fp8":{"metadataType":"MetadataStringValue","string_value":""},"tool-calling":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v3.1-FP8-May2025" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"IBM / Red Hat"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8-dynamic"},"collection":{"metadataType":"MetadataStringValue","string_value":"May 2025"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"context_length":{"metadataType":"MetadataStringValue","string_value":"16384"},"features":{"metadataType":"MetadataStringValue","string_value":"tool-calling,rag,agentic"},"demo_role":{"metadataType":"MetadataStringValue","string_value":"Small but Mighty"}}' \
+                "granite-3.1-8b-instruct-fp8/" \
+                "RedHatAI/granite-3.1-8b-instruct-FP8-dynamic" \
+                "vLLM"
+              
               echo ""
               echo "════════════════════════════════════════════════════════════════"
-              echo "✓ GPU-as-a-Service Demo Models Registered"
+              echo "✓ Enterprise Model Portfolio Registered (5 Models)"
               echo ""
-              echo "  📊 Baseline State (100% Saturation):"
+              echo "  📊 ACTIVE (5/5 GPUs saturated):"
               echo "  ┌─────────────────────────────────────────────────────────────┐"
-              echo "  │  mistral-3-bf16  │ 4 GPUs │ ON  │ Primary Load              │"
-              echo "  │  mistral-3-int4  │ 1 GPU  │ ON  │ Secondary Load            │"
-              echo "  │  devstral-2      │ 4 GPUs │ OFF │ Queued Asset              │"
-              echo "  ├─────────────────────────────────────────────────────────────┤"
-              echo "  │  Total: 5/5 GPUs used (100%)                                │"
+              echo "  │  mistral-3-bf16   │ 4 GPUs │ 🟢 ON  │ Primary Load          │"
+              echo "  │  mistral-3-int4   │ 1 GPU  │ 🟢 ON  │ Secondary Load        │"
               echo "  └─────────────────────────────────────────────────────────────┘"
               echo ""
-              echo "  🎬 Demo Flow:"
-              echo "    1. Enable Devstral-2 → PENDING (over quota)"
-              echo "    2. Disable mistral-3-bf16 → Devstral-2 STARTS instantly"
+              echo "  📋 QUEUED (Ready to activate):"
+              echo "  ┌─────────────────────────────────────────────────────────────┐"
+              echo "  │  devstral-2       │ 4 GPUs │ ⏸️ OFF │ Agentic               │"
+              echo "  │  gpt-oss-20b      │ 4 GPUs │ ⏸️ OFF │ High-Reasoning        │"
+              echo "  │  granite-8b-agent │ 1 GPU  │ ⏸️ OFF │ Tool-Calling          │"
+              echo "  └─────────────────────────────────────────────────────────────┘"
               echo ""
+              echo "  🎬 Demo Scenarios:"
+              echo "    1. Resource Handover: Swap mistral-3-bf16 → devstral-2"
+              echo "    2. Efficiency Story: 1x 4-GPU → 4x 1-GPU specialists"
+              echo "    3. Model Portfolio: Show all 5 Red Hat Validated models"
+              echo ""
+              echo "  Total Potential: 14 GPUs | Quota Limit: 5 GPUs"
               echo "  Use the GPU-Switchboard.ipynb notebook to run the demo!"
               echo "════════════════════════════════════════════════════════════════"

@@ -1,0 +1,83 @@
+# =============================================================================
+# InferenceService: Granite-3.1-8B-Agent (1-GPU FP8)
+# =============================================================================
+# Red Hat Validated Model (May 2025 Collection)
+#
+# Model: RedHatAI/granite-3.1-8b-instruct-FP8-dynamic
+# Precision: FP8 Dynamic - 8B parameters, ~8GB VRAM
+# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+#
+# Use Case: The Agentic Core - Tool-calling, Function-calling, and RAG.
+# "Small but Mighty" - optimized for multi-step reasoning and API orchestration.
+#
+# Features:
+#   - Native tool-calling support via --chat-template=granite
+#   - Auto tool choice for Agent Playground integration
+#   - 16k context window for long RAG contexts
+#
+# Demo Role: "Queued Asset" - Key model for Step 06 (Agent Playground)
+# =============================================================================
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-8b-agent
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: default
+    networking.kserve.io/visibility: exposed
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    openshift.io/display-name: "Granite-3.1-8B Agent (1-GPU FP8)"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    # QUEUED ASSET: Starts at 0 replicas
+    # Toggle via GPU Switchboard for Agentic demo
+    minReplicas: 0
+    maxReplicas: 1
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.4xlarge
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime
+      # S3 Storage - FP8 model (~8GB) could use OCI, but S3 for consistency
+      storageUri: s3://models/granite-3.1-8b-instruct-fp8/
+      storage:
+        key: minio-connection
+      args:
+        # FP8 Dynamic Quantization - fits easily on single L4 (24GB)
+        # 8B model = ~8GB, leaving 16GB for KV cache (16k+ context)
+        - --served-model-name=granite-8b-agent
+        - --quantization=fp8
+        - --max-model-len=16384
+        - --gpu-memory-utilization=0.9
+        - --trust-remote-code
+        # Agentic features - REQUIRED for tool-calling
+        - --chat-template=granite
+        - --enable-auto-tool-choice
+      env:
+        # RHOAI 3.0 GA: V1 engine required
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: VLLM_NO_HW_METRICS
+          value: "1"
+        - name: LD_LIBRARY_PATH
+          value: /usr/local/nvidia/lib64
+      resources:
+        requests:
+          cpu: "8"
+          memory: 32Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "16"
+          memory: 60Gi
+          nvidia.com/gpu: "1"
+

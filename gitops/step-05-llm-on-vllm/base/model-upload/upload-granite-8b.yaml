@@ -1,0 +1,147 @@
+# =============================================================================
+# Model Upload Job: Granite-3.1-8B-Instruct-FP8
+# =============================================================================
+# Downloads RedHatAI/granite-3.1-8b-instruct-FP8-dynamic from HuggingFace
+# and uploads to MinIO.
+#
+# Model: RedHatAI/granite-3.1-8b-instruct-FP8-dynamic (May 2025 Collection)
+# Size: ~8GB (FP8 Dynamic)
+# Target: s3://models/granite-3.1-8b-instruct-fp8/
+#
+# Usage:
+#   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
+#   2. Apply job: oc apply -f upload-granite-8b.yaml
+#   3. Monitor: oc logs -f job/upload-granite-8b -n minio-storage
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: granite-8b-pvc
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/hook: Skip
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp3-csi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upload-granite-8b
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/hook: Skip
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: granite-8b-pvc
+      containers:
+        - name: uploader
+          image: python:3.11-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              export HOME=/tmp
+              MODEL_NAME="Granite-3.1-8B-Instruct-FP8"
+              HF_REPO="RedHatAI/granite-3.1-8b-instruct-FP8-dynamic"
+              S3_PREFIX="granite-3.1-8b-instruct-fp8"
+              MODEL_DIR="/models/granite-3.1-8b-instruct-fp8"
+              
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  Model Upload: ${MODEL_NAME}                                 ║"
+              echo "║  HuggingFace: ${HF_REPO}                                     ║"
+              echo "║  Target: s3://models/${S3_PREFIX}/                           ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+              
+              pip install --user -q huggingface_hub boto3
+              export PATH="$HOME/.local/bin:$PATH"
+
+              python3 << PYTHON_SCRIPT
+              import os, sys
+              from huggingface_hub import snapshot_download
+              import boto3
+              from botocore.config import Config
+              from pathlib import Path
+
+              BUCKET = "models"
+              S3_PREFIX = "${S3_PREFIX}"
+              MODEL_DIR = "${MODEL_DIR}"
+              HF_REPO = "${HF_REPO}"
+
+              s3 = boto3.client('s3',
+                  endpoint_url=os.environ['MINIO_ENDPOINT'],
+                  aws_access_key_id=os.environ['MINIO_ACCESS_KEY'],
+                  aws_secret_access_key=os.environ['MINIO_SECRET_KEY'],
+                  config=Config(signature_version='s3v4'))
+
+              # Check if already in MinIO
+              try:
+                  resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"{S3_PREFIX}/", MaxKeys=5)
+                  if resp.get('KeyCount', 0) >= 5:
+                      print(f"✓ Model already in MinIO - skipping")
+                      sys.exit(0)
+              except: pass
+
+              # Download from HuggingFace
+              model_path = Path(MODEL_DIR)
+              if not model_path.exists() or not any(model_path.glob("*.safetensors")):
+                  print(f"Downloading {HF_REPO}...")
+                  snapshot_download(repo_id=HF_REPO, local_dir=MODEL_DIR,
+                      token=os.environ.get("HF_TOKEN"),
+                      ignore_patterns=["*.md", "*.txt", "*.git*"])
+              else:
+                  print(f"✓ Model found on PVC")
+
+              # Upload to MinIO
+              print("Uploading to MinIO...")
+              for f in Path(MODEL_DIR).rglob("*"):
+                  if f.is_file():
+                      key = f"{S3_PREFIX}/{f.relative_to(MODEL_DIR)}"
+                      print(f"  → {key}")
+                      s3.upload_file(str(f), BUCKET, key)
+              print(f"✓ Done: s3://{BUCKET}/{S3_PREFIX}/")
+              PYTHON_SCRIPT
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+                  optional: true
+            - name: MINIO_ACCESS_KEY
+              value: "rhoai-access-key"
+            - name: MINIO_SECRET_KEY
+              value: "rhoai-secret-key-12345"
+            - name: MINIO_ENDPOINT
+              value: "http://minio:9000"
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+

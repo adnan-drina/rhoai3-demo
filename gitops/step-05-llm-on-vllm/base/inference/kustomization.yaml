@@ -2,34 +2,63 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # =============================================================================
-# GPU-as-a-Service Demo: "Resource Handover" Configuration
+# GPU-as-a-Service Demo: Enterprise Model Portfolio
 # =============================================================================
 #
 # This configuration demonstrates RHOAI 3.0's dynamic GPU allocation via Kueue.
 #
 # BASELINE STATE (Full Quota Saturation):
 #   - mistral-3-bf16 (4 GPUs) + mistral-3-int4 (1 GPU) = 5/5 GPUs
-#   - devstral-2 is at minReplicas: 0 (waiting to be activated)
+#   - All other models at minReplicas: 0 (queued, ready to activate)
 #
-# DEMO FLOW:
-#   1. Start: All 5 GPUs are consumed by the two Mistral models
-#   2. Action: Use GPU Switchboard to enable Devstral-2
-#   3. Observe: Kueue holds Devstral-2 in PENDING (4+1+4 > 5)
-#   4. Resolution: Disable mistral-3-bf16 via Switchboard
-#   5. Climax: Devstral-2 INSTANTLY starts as 4 GPUs become available
+# DEMO SCENARIOS:
 #
-# Storage Strategy:
-#   - BF16 models (>20GB): S3/MinIO storage
-#   - INT4 models (<20GB): OCI ModelCar from registry.redhat.io
+# 1. "Resource Handover" - Swap BF16 for Devstral-2
+#    Before: mistral-3-bf16 (4) + mistral-3-int4 (1) = 5 GPUs
+#    After:  devstral-2 (4) + mistral-3-int4 (1) = 5 GPUs
+#
+# 2. "Efficiency Story" - Trade 1x 4-GPU for 4x 1-GPU Specialists
+#    Before: mistral-3-bf16 (4) + mistral-3-int4 (1) = 5 GPUs
+#    After:  mistral-3-int4 (1) + granite-8b (1) + [room for 3 more] = specialists
+#
+# 3. "Model Portfolio" - Show all 5 Red Hat Validated models
+#    Total potential: 14 GPUs requested (4+1+4+4+1)
+#    Kueue enforces: Only 5 GPUs admitted at any time
+#
+# MODEL PORTFOLIO:
+# ┌─────────────────────┬──────┬─────────┬───────────────────────────────────┐
+# │ Model               │ GPUs │ Status  │ Use Case                          │
+# ├─────────────────────┼──────┼─────────┼───────────────────────────────────┤
+# │ mistral-3-bf16      │ 4    │ Active  │ High-throughput Production        │
+# │ mistral-3-int4      │ 1    │ Active  │ Cost-efficient (75% savings)      │
+# │ devstral-2          │ 4    │ Queued  │ Agentic Tool-calling              │
+# │ gpt-oss-20b         │ 4    │ Queued  │ High-reasoning OpenAI-alternative │
+# │ granite-8b-agent    │ 1    │ Queued  │ Small but Mighty - RAG/Tool-call  │
+# └─────────────────────┴──────┴─────────┴───────────────────────────────────┘
 #
 # =============================================================================
 
 resources:
-  # Primary Load: 4-GPU BF16 (minReplicas: 1)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ACTIVE MODELS (minReplicas: 1) - Baseline Saturation
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  # Primary Load: 4-GPU BF16 Full Precision
   - mistral-3-bf16.yaml
   
-  # Secondary Load: 1-GPU INT4 (minReplicas: 1)
+  # Secondary Load: 1-GPU INT4 Quantized (Red Hat ModelCar)
   - mistral-3-int4.yaml
   
-  # Queued Asset: 4-GPU Agentic (minReplicas: 0)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # QUEUED MODELS (minReplicas: 0) - Ready for Demo Activation
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  # Agentic Model: 4-GPU BF16 (same base as Mistral, tool-calling optimized)
   - devstral-2.yaml
+  
+  # High-Reasoning: 4-GPU BF16 (Red Hat Validated, Oct 2025)
+  - gpt-oss-20b.yaml
+  
+  # The Agentic Core: 1-GPU FP8 (Red Hat Validated, May 2025)
+  # Key for Step 06: Agent Playground
+  - granite-8b-agent.yaml
