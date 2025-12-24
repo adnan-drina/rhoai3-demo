@@ -551,6 +551,9 @@ gitops/step-01-gpu-and-prereq/
 
 ## References
 
+### Red Hat Knowledge Base
+- [NVIDIA GPU driver 580.105.08 compatibility issue with RHOAI 2.25.0 and 3.0](https://access.redhat.com/solutions/7134740) - **Critical for vLLM deployments**
+
 ### RHOAI 3.0 Documentation
 - [RHOAI 3.0 - Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [RHOAI 3.0 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
@@ -574,6 +577,62 @@ gitops/step-01-gpu-and-prereq/
 ---
 
 ## Troubleshooting
+
+### ⚠️ CUDA 13.0 Driver Compatibility Issue (RHOAI 3.0)
+
+**Red Hat Knowledge Base:** [NVIDIA GPU driver 580.105.08 compatibility issue with RHOAI 2.25.0 and 3.0](https://access.redhat.com/solutions/7134740)
+
+#### Symptom
+
+When deploying models with vLLM ServingRuntime, you see:
+
+```
+RuntimeError: Unexpected error from cudaGetDeviceCount(). 
+Did you run some cuda functions before calling NumCudaDevices() that might have already set an error? 
+Error 803: system has unsupported display driver / cuda driver combination
+```
+
+#### Root Cause
+
+| Component | Version | CUDA |
+|-----------|---------|------|
+| GPU Operator 25.10.1 (Dec 4, 2025) | Driver **580.105.08** | **13.0** |
+| RHOAI 3.0 vLLM Image | v0.11.0+rhai1 | **12.8** |
+
+The `cuda-compat` package in the vLLM container causes the CUDA 12.8 runtime to conflict with the CUDA 13.0 host driver.
+
+#### Resolution (Applied in This Demo)
+
+1. **Subscription set to Manual** to prevent auto-upgrade:
+   ```yaml
+   # gitops/step-01-gpu-and-prereq/base/gpu-operator/subscription.yaml
+   spec:
+     installPlanApproval: Manual
+   ```
+
+2. **Driver pinned to 570.195.03** (CUDA 12.4 compatible):
+   ```yaml
+   # gitops/step-01-gpu-and-prereq/base/gpu-operator/clusterpolicy.yaml
+   spec:
+     driver:
+       repository: nvcr.io/nvidia
+       image: driver
+       version: "570.195.03"
+   ```
+
+#### Verification
+
+```bash
+# Check driver version on GPU nodes
+for pod in $(oc get pods -n nvidia-gpu-operator -o name | grep nvidia-driver-daemonset); do
+  node=$(oc get $pod -n nvidia-gpu-operator -o jsonpath='{.spec.nodeName}')
+  version=$(oc exec -n nvidia-gpu-operator $pod -c nvidia-driver-ctr -- nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1)
+  echo "$node: Driver $version"
+done
+# Expected: 570.195.03 on all GPU nodes
+```
+
+---
 
 ### "RHEL entitlement" Error (DTK Fallback)
 
