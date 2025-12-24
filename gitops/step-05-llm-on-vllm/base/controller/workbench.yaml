@@ -335,6 +335,10 @@ rules:
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices"]
     verbs: ["get", "list", "watch", "patch", "update"]
+  # Scale subresource (required for 'oc scale' command)
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices/scale"]
+    verbs: ["get", "patch", "update"]
   # Pod status (for checking if model is running)
   - apiGroups: [""]
     resources: ["pods"]
