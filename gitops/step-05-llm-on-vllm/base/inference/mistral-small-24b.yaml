@@ -49,12 +49,12 @@ spec:
         key: minio-connection
       args:
         # FP8 Quantized - optimized for single L4 (24GB VRAM)
-        # max-model-len=8192 is validated stable for 24B FP8 on L4 with V1 engine
+        # NOTE: 24B FP8 model uses ~21.5GB VRAM for weights alone
+        # Reduced context to 4096 and memory to 0.95 for minimal KV cache
         - --served-model-name=mistral-small-24b
-        - --quantization=fp8
-        - --kv-cache-dtype=fp8
-        - --max-model-len=8192
-        - --gpu-memory-utilization=0.85
+        - --max-model-len=4096
+        - --gpu-memory-utilization=0.95
+        - --enforce-eager
         - --trust-remote-code
       env:
         # RHOAI 3.0 GA: V1 engine required (assertion enforced by image)
