@@ -72,10 +72,8 @@ spec:
           cpu: "16"
           memory: 64Gi
           nvidia.com/gpu: "4"
-          ephemeral-storage: 100Gi
         limits:
           cpu: "32"
           memory: 128Gi
           nvidia.com/gpu: "4"
-          ephemeral-storage: 100Gi
 
