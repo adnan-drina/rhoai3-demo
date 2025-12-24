@@ -1,6 +1,32 @@
-# Step 05: LLM Serving with vLLM (Red Hat Validated ModelCars)
+# Step 05: LLM Serving with vLLM
 
-Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated ModelCar images**.
+Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated ModelCar images** and **S3 storage**.
+
+## Storage Strategy: OCI vs S3
+
+### ⚠️ OCI Image Size Limitation
+
+**Critical Discovery:** OCI ModelCar images larger than ~20GB can cause CRI-O overlay filesystem failures:
+
+```
+Error: unpacking failed: write /models/model-00009-of-00010.safetensors: no space left on device
+```
+
+This occurs because CRI-O's overlay filesystem has limited capacity for extracting large container layers, even when the node has sufficient disk space.
+
+### Recommended Approach
+
+| Model Size | Storage Method | Example |
+|------------|---------------|---------|
+| **< 20GB** | OCI ModelCar ✅ | INT4 quantized (~13.5GB) |
+| **> 20GB** | S3/MinIO ✅ | BF16 full precision (~48GB) |
+
+### Our Deployment
+
+| Model | Size | Storage | Source |
+|-------|------|---------|--------|
+| **mistral-small-24b** (INT4) | ~13.5GB | **OCI** | `registry.redhat.io/rhelai1/modelcar-mistral-...-quantized-w4a16:1.5` |
+| **mistral-small-24b-tp4** (BF16) | ~48GB | **S3** | `s3://models/mistral-small-24b/` (MinIO) |
 
 ## Why Red Hat ModelCars?
 
@@ -8,11 +34,10 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated Mo
 |--------|------------------|----------------------|
 | **Validation** | DIY testing | Red Hat tested |
 | **Support** | Community | Red Hat supported |
-| **Image Size** | Variable | Optimized |
 | **Compatibility** | Unknown | RHOAI 3.0 certified |
-| **Updates** | Manual | Red Hat managed |
+| **Size Limit** | ~20GB max | ~20GB max |
 
-> **Red Hat Recommendation:** "Use Red Hat Validated ModelCar images from registry.redhat.io for production deployments. These images are tested, optimized, and supported for RHOAI 3.0."
+> **Red Hat Recommendation:** Use ModelCar images for quantized models (<20GB). For full-precision models (>20GB), use S3/MinIO storage with the KServe storage-initializer.
 
 ## Architecture Overview
 
@@ -21,13 +46,14 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated Mo
 │                     AWS OCP 4.20 Cluster                                │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                  Red Hat Registry (OCI ModelCars)                │   │
-│  │  registry.redhat.io/rhelai1/modelcar-mistral-small-24b-...:1.5  │   │
-│  │  • BF16 Full Precision (~48GB)  • INT4 W4A16 Quantized (~13.5GB)│   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                              │                                          │
-│                              ▼                                          │
+│  ┌──────────────────────────┐  ┌────────────────────────────────────┐  │
+│  │     MinIO (S3 Storage)   │  │    Red Hat Registry (OCI)          │  │
+│  │  s3://models/mistral-24b │  │  registry.redhat.io/rhelai1/       │  │
+│  │      (~48GB BF16)        │  │  modelcar-...-quantized-w4a16:1.5  │  │
+│  │  For models > 20GB       │  │  (~13.5GB INT4) For models < 20GB  │  │
+│  └──────────────────────────┘  └────────────────────────────────────┘  │
+│              │                                    │                     │
+│              ▼                                    ▼                     │
 │  ┌─────────────────────────┐  ┌─────────────────────────┐              │
 │  │   g6.12xlarge Node      │  │   g6.4xlarge Node       │              │
 │  │   (4x NVIDIA L4)        │  │   (1x NVIDIA L4)        │              │
@@ -35,7 +61,7 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated Mo
 │  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
 │  │  │ mistral-small-24b │  │  │  │ mistral-small-24b │  │              │
 │  │  │     -tp4 (BF16)   │  │  │  │   (INT4 W4A16)    │  │              │
-│  │  │ tensor-parallel=4 │  │  │  │ Red Hat ModelCar  │  │              │
+│  │  │ S3 → Storage Init │  │  │  │ OCI ModelCar      │  │              │
 │  │  │ 32k context, 96GB │  │  │  │ 4k context, 24GB  │  │              │
 │  │  └───────────────────┘  │  │  └───────────────────┘  │              │
 │  └─────────────────────────┘  └─────────────────────────┘              │
@@ -112,13 +138,19 @@ Benefits:
 - Validated for RHOAI 3.0
 - 98.9% accuracy vs full precision
 
-### 2. S3 Storage Pattern
+### 4. Dual Storage Patterns
 
-The official RHOAI approach:
-1. **Thin Runtime Image** (~3GB): Just the vLLM engine
-2. **Model in S3**: Weights stored in MinIO/S3
-3. **Storage Initializer**: Downloads weights at pod startup
-4. **Ephemeral Cache**: Uses node-local storage, not overlay
+We use both patterns based on model size:
+
+**OCI ModelCar (for < 20GB models):**
+- Pre-built container image with model weights
+- Direct pod startup, no init container
+- Used for: INT4 quantized (~13.5GB)
+
+**S3 Storage (for > 20GB models):**
+- Thin runtime image (~3GB)
+- Storage-initializer downloads weights at startup
+- Used for: BF16 full precision (~48GB)
 
 ## Prerequisites
 
@@ -249,6 +281,31 @@ oc exec -n nvidia-gpu-operator $(oc get pod -n nvidia-gpu-operator -l app=nvidia
 
 ## Troubleshooting
 
+### OCI Image Pull Fails: "No Space Left on Device"
+
+**Symptom:**
+```
+Error: unpacking failed: write /models/model-00009-of-00010.safetensors: no space left on device
+```
+
+**Cause:** OCI ModelCar image exceeds CRI-O overlay filesystem limits (~20GB).
+
+**Solution:** Use S3/MinIO storage instead of OCI for models > 20GB:
+
+```yaml
+# Instead of:
+storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-...:1.5
+
+# Use:
+storageUri: s3://models/mistral-small-24b/
+storage:
+  key: minio-connection
+```
+
+**Prevention:**
+- Use OCI ModelCar only for quantized models < 20GB (INT4, FP8)
+- Use S3 storage for full-precision models > 20GB (BF16, FP32)
+
 ### Storage Initializer Stuck
 
 ```bash
@@ -280,6 +337,26 @@ oc get clusterqueue rhoai-main-queue -o yaml | grep -A10 nominalQuota
 # Ensure quota >= 5 GPUs (4 + 1)
 ```
 
+### CUDA Driver Error 803
+
+**Symptom:**
+```
+RuntimeError: Unexpected error from cudaGetDeviceCount()... Error 803: system has unsupported display driver / cuda driver combination
+```
+
+**Cause:** NVIDIA driver 580.x (CUDA 13.0) is incompatible with RHOAI 3.0's vLLM image (CUDA 12.x).
+
+**Solution:** Downgrade GPU driver to 570.195.03 per [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740):
+
+```yaml
+# In ClusterPolicy:
+spec:
+  driver:
+    repository: nvcr.io/nvidia
+    image: driver
+    version: "570.195.03"
+```
+
 ## GitOps Structure
 
 ```
@@ -293,13 +370,19 @@ gitops/step-05-llm-on-vllm/base/
 │   └── vllm-runtime.yaml          # Thin vLLM runtime (~3GB)
 ├── inference/
 │   ├── kustomization.yaml
-│   ├── mistral-small-24b.yaml     # 1-GPU, AWQ 4-bit, S3 storage
+│   ├── mistral-small-24b.yaml     # 1-GPU, INT4 W4A16, OCI ModelCar
 │   └── mistral-small-24b-tp4.yaml # 4-GPU, BF16, S3 storage
-└── model-upload/                   # Optional: Helper for demo
+└── model-upload/                   # For S3-based models only
     ├── kustomization.yaml
-    ├── upload-mistral-bf16.yaml   # BF16 model for 4-GPU (~50GB)
-    └── upload-mistral-awq.yaml    # AWQ model for 1-GPU (~13.5GB)
+    └── upload-mistral-bf16.yaml   # BF16 model for 4-GPU (~50GB)
 ```
+
+### Storage Strategy by Model Size
+
+| Model | Size | Storage | InferenceService Config |
+|-------|------|---------|------------------------|
+| INT4 (quantized) | ~13.5GB | OCI | `storageUri: oci://registry.redhat.io/...` |
+| BF16 (full) | ~48GB | S3 | `storageUri: s3://models/...` + `storage.key` |
 
 ## API Reference
 
