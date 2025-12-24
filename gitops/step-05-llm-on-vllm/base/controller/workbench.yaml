@@ -75,10 +75,11 @@ metadata:
     # Hardware Profile: Delegates resource management to the platform
     opendatahub.io/hardware-profile-name: cpu-small
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    # UI Metadata
+    # UI Metadata - Required to avoid "Deprecated" warning
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
     opendatahub.io/username: ai-admin
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
     openshift.io/display-name: "GPU Switchboard"
     openshift.io/description: "Interactive notebook for GPU-as-a-Service demo - control 5 models with toggle switches"
 spec:
