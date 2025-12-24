@@ -54,6 +54,70 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
+# Service: Expose port 8888 for Gateway API routing
+# -----------------------------------------------------------------------------
+# The Notebook Controller creates a service on port 80, but the HTTPRoute
+# targets port 8888. Istio/Envoy needs a service exposing 8888 directly.
+# This is a RHOAI 3.0 Gateway API quirk - the controller-created service
+# only has port 80, but the HTTPRoute points to 8888.
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-switchboard-8888
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  ports:
+    - name: notebook
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+  selector:
+    statefulset: gpu-switchboard
+  type: ClusterIP
+---
+# -----------------------------------------------------------------------------
+# HTTPRoute: Custom route for Gateway API
+# -----------------------------------------------------------------------------
+# The Notebook Controller creates an HTTPRoute that targets port 8888,
+# but Istio only discovers services, not container ports. We need to
+# create a custom HTTPRoute that points to our gpu-switchboard-8888 service.
+# -----------------------------------------------------------------------------
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gpu-switchboard-custom
+  namespace: redhat-ods-applications
+  labels:
+    app: gpu-switchboard
+    notebook-name: gpu-switchboard
+    notebook-namespace: private-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: data-science-gateway
+      namespace: openshift-ingress
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: gpu-switchboard-8888
+          namespace: private-ai
+          port: 8888
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /notebook/private-ai/gpu-switchboard
+---
+# -----------------------------------------------------------------------------
 # Notebook: GPU Switchboard
 # -----------------------------------------------------------------------------
 # Resources are DELEGATED to the Hardware Profile Controller.
