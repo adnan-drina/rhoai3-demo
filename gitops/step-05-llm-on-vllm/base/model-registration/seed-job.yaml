@@ -150,13 +150,17 @@ spec:
               # ═══════════════════════════════════════════════════════════════════
               # Model 1: Mistral Small 24B BF16 (4-GPU, Full Precision)
               # ═══════════════════════════════════════════════════════════════════
+              # Red Hat Validated ModelCar - Full precision for maximum quality
+              # - 24B parameters, BF16 precision
+              # - State-of-the-art reasoning and function calling
+              # - 32k context window
               register_model \
                 "Mistral-Small-24B-Instruct-BF16" \
-                "Mistral Small 24B Instruct - Full Precision BF16 for 4-GPU tensor parallel deployment. Requires g6.12xlarge (96GB VRAM)." \
-                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"text-to-text":{"metadataType":"MetadataStringValue","string_value":""}}' \
-                "v1.0-BF16" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4 (g6.12xlarge)"},"tensor_parallel":{"metadataType":"MetadataStringValue","string_value":"4"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
-                "mistral-small-24b/" \
+                "Mistral Small 24B Instruct - Red Hat Validated ModelCar. Full Precision BF16 for 4-GPU tensor parallel deployment." \
+                '{"mistral":{"metadataType":"MetadataStringValue","string_value":""},"bf16":{"metadataType":"MetadataStringValue","string_value":""},"validated":{"metadataType":"MetadataStringValue","string_value":""},"vllm":{"metadataType":"MetadataStringValue","string_value":""},"modelcar":{"metadataType":"MetadataStringValue","string_value":""},"agentic":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "v1.5-BF16" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"Mistral AI / Red Hat"},"precision":{"metadataType":"MetadataStringValue","string_value":"bfloat16"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"4x NVIDIA L4 (g6.12xlarge)"},"tensor_parallel":{"metadataType":"MetadataStringValue","string_value":"4"},"context_length":{"metadataType":"MetadataStringValue","string_value":"32768"},"features":{"metadataType":"MetadataStringValue","string_value":"function-calling,multilingual"},"validated_on":{"metadataType":"MetadataStringValue","string_value":"RHOAI 3.0 GA"}}' \
+                "oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501:1.5" \
                 "mistralai/Mistral-Small-24B-Instruct-2501" \
                 "vLLM"
               
@@ -181,25 +185,29 @@ spec:
               echo "════════════════════════════════════════════════════════════════"
               echo "✓ Model Registration Complete"
               echo ""
-              echo "  RHOAI 3.0 Deployment Patterns:"
+              echo "  Red Hat Validated ModelCar Pattern:"
               echo "  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐"
-              echo "  │  Model Registry │ →  │  OCI / MinIO    │ →  │     KServe      │"
-              echo "  │   (Metadata)    │    │   (Weights)     │    │   (Execution)   │"
+              echo "  │  Model Registry │ →  │  Red Hat OCI    │ →  │     KServe      │"
+              echo "  │   (Metadata)    │    │   (ModelCar)    │    │   (Execution)   │"
               echo "  └─────────────────┘    └─────────────────┘    └─────────────────┘"
               echo ""
-              echo "  Models Registered:"
-              echo "    1. Mistral-Small-24B-Instruct-BF16 → s3://models/mistral-small-24b/"
+              echo "  Models Registered (Both Red Hat Validated ModelCars):"
+              echo ""
+              echo "    1. Mistral-Small-24B-Instruct-BF16"
               echo "       └── 4-GPU (g6.12xlarge) | BF16 | 48GB VRAM | 32k context"
+              echo "       └── registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501:1.5"
+              echo "       └── Features: function-calling, multilingual, agentic"
               echo ""
-              echo "    2. Mistral-Small-24B-Instruct-INT4 → Red Hat ModelCar (OCI)"
+              echo "    2. Mistral-Small-24B-Instruct-INT4"
               echo "       └── 1-GPU (g6.4xlarge) | INT4 W4A16 | 13.5GB | 4k context"
-              echo "       └── registry.redhat.io/rhelai1/modelcar-mistral-small-24b-..."
+              echo "       └── registry.redhat.io/rhelai1/modelcar-mistral-small-24b-...-quantized-w4a16:1.5"
+              echo "       └── 98.9% accuracy, 75% cost savings"
               echo ""
-              echo "  Why INT4 for 1-GPU?"
-              echo "    • FP8 (21.5GB) exceeds L4 capacity for any usable context"
-              echo "    • INT4 (13.5GB) leaves 8.5GB for KV cache"
-              echo "    • 98.9% accuracy recovery (Neural Magic validated)"
-              echo "    • Red Hat Validated ModelCar - no S3 upload needed"
+              echo "  Benefits of Red Hat ModelCars:"
+              echo "    • Pre-built, validated OCI images"
+              echo "    • No S3/MinIO upload required"
+              echo "    • Tested for RHOAI 3.0 compatibility"
+              echo "    • Supported by Red Hat"
               echo ""
               echo "  Deploy from GenAI Studio or apply InferenceService manifests"
               echo "════════════════════════════════════════════════════════════════"

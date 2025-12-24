@@ -1,18 +1,18 @@
-# Step 05: LLM Serving with vLLM (Official S3 Storage Approach)
+# Step 05: LLM Serving with vLLM (Red Hat Validated ModelCars)
 
-Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official Red Hat recommended S3 storage pattern**.
+Deploy production-grade LLMs using vLLM on RHOAI 3.0 with **Red Hat Validated ModelCar images**.
 
-## Why S3 Storage? (Not OCI Images)
+## Why Red Hat ModelCars?
 
-| Aspect | OCI Monolithic Image | **S3 Storage (Official)** |
-|--------|---------------------|---------------------------|
-| **Image Size** | 94GB+ per model | 3GB runtime only |
-| **Pull Time** | 20-45 minutes | Seconds (streaming) |
-| **CRI-O Issues** | Image ID failures | None |
-| **Disk Usage** | 188GB (overlay+cache) | Model size only |
-| **Scalability** | Limited | Production-ready |
+| Aspect | Custom OCI Build | **Red Hat ModelCar** |
+|--------|------------------|----------------------|
+| **Validation** | DIY testing | Red Hat tested |
+| **Support** | Community | Red Hat supported |
+| **Image Size** | Variable | Optimized |
+| **Compatibility** | Unknown | RHOAI 3.0 certified |
+| **Updates** | Manual | Red Hat managed |
 
-> **Red Hat Recommendation:** "For Large Language Models, use S3-compatible storage. This allows the KServe storage-initializer to download weights directly to the node's ephemeral storage, avoiding container runtime issues with massive images."
+> **Red Hat Recommendation:** "Use Red Hat Validated ModelCar images from registry.redhat.io for production deployments. These images are tested, optimized, and supported for RHOAI 3.0."
 
 ## Architecture Overview
 
@@ -21,22 +21,22 @@ Deploy production-grade LLMs using vLLM on RHOAI 3.0, following the **official R
 │                     AWS OCP 4.20 Cluster                                │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌──────────────────────────────┐  ┌────────────────────────────────┐  │
-│  │       MinIO Storage          │  │     Red Hat Registry (OCI)     │  │
-│  │  s3://models/mistral-24b/    │  │  registry.redhat.io/rhelai1/   │  │
-│  │       (~50GB BF16)           │  │  modelcar-mistral-...-w4a16    │  │
-│  └──────────────────────────────┘  └────────────────────────────────┘  │
-│              │                                    │                     │
-│              ▼                                    ▼                     │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                  Red Hat Registry (OCI ModelCars)                │   │
+│  │  registry.redhat.io/rhelai1/modelcar-mistral-small-24b-...:1.5  │   │
+│  │  • BF16 Full Precision (~48GB)  • INT4 W4A16 Quantized (~13.5GB)│   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                          │
+│                              ▼                                          │
 │  ┌─────────────────────────┐  ┌─────────────────────────┐              │
 │  │   g6.12xlarge Node      │  │   g6.4xlarge Node       │              │
 │  │   (4x NVIDIA L4)        │  │   (1x NVIDIA L4)        │              │
 │  │                         │  │                         │              │
 │  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
 │  │  │ mistral-small-24b │  │  │  │ mistral-small-24b │  │              │
-│  │  │     -tp4          │  │  │  │   (INT4 W4A16)    │  │              │
+│  │  │     -tp4 (BF16)   │  │  │  │   (INT4 W4A16)    │  │              │
 │  │  │ tensor-parallel=4 │  │  │  │ Red Hat ModelCar  │  │              │
-│  │  │ --dtype bfloat16  │  │  │  │ 4x cost savings!  │  │              │
+│  │  │ 32k context, 96GB │  │  │  │ 4k context, 24GB  │  │              │
 │  │  └───────────────────┘  │  │  └───────────────────┘  │              │
 │  └─────────────────────────┘  └─────────────────────────┘              │
 │                                                                         │

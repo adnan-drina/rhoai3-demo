@@ -1,18 +1,17 @@
 # =============================================================================
 # InferenceService: Mistral Small 24B Instruct (4-GPU BF16)
 # =============================================================================
-# RHOAI 3.0 OFFICIAL APPROACH: S3 Storage + KServe Storage Initializer
+# RED HAT VALIDATED MODELCAR - Full Precision BF16
 #
-# The model weights are downloaded from MinIO (S3) at pod startup by the
-# storage-initializer init container. This avoids CRI-O extraction issues
-# with large OCI images.
+# Model: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501:1.5
+# Precision: BF16 (Full) - 24B parameters, ~48GB VRAM
+#   - State-of-the-art conversational and reasoning capabilities
+#   - Multilingual: English, French, German, Spanish, Italian, Chinese, etc.
+#   - Agent-Centric: Native function calling and JSON outputting
+#   - 32k context window
 #
 # Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
 # Use Case: High-throughput production with tensor parallelism
-#
-# Prerequisites:
-#   1. Model weights uploaded to: s3://models/mistral-small-24b/
-#   2. storage-config secret with minio-connection key in private-ai namespace
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
@@ -43,18 +42,20 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # S3 Storage URI - KServe storage-initializer downloads weights at startup
-      storageUri: s3://models/mistral-small-24b/
-      storage:
-        key: minio-connection
+      # Red Hat Validated ModelCar - OCI Image with BF16 weights
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501:1.5
       args:
         # BF16 Full Precision - optimized for 4x L4 (96GB total VRAM)
+        # Tensor Parallel across 4 GPUs for maximum throughput
         - --served-model-name=mistral-small-24b-tp4
         - --tensor-parallel-size=4
         - --dtype=bfloat16
         - --max-model-len=32768
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
+        # Agentic features - function calling and tool use
+        - --tool-call-parser=mistral
+        - --enable-auto-tool-choice
       env:
         # RHOAI 3.0 GA: V1 engine required (assertion enforced by image)
         # Driver 570.195.03 provides CUDA 12.x compatibility
@@ -73,4 +74,3 @@ spec:
           cpu: "32"
           memory: 128Gi
           nvidia.com/gpu: "4"
-
