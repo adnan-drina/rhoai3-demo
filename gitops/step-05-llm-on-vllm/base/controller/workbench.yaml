@@ -539,14 +539,21 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 rules:
-  # InferenceService management
+  # Deployments (RawDeployment mode - the primary way to scale InferenceServices)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch", "update"]
+  # InferenceService management (for metadata/status queries)
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices"]
     verbs: ["get", "list", "watch", "patch", "update"]
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices/scale"]
     verbs: ["get", "patch", "update"]
-  # Knative services (ksvc)
+  # Knative services (ksvc) - not used in RawDeployment mode
   - apiGroups: ["serving.knative.dev"]
     resources: ["services"]
     verbs: ["get", "list", "watch", "patch", "update"]
