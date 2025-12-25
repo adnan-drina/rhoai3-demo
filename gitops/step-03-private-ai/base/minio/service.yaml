@@ -23,6 +23,7 @@ spec:
   type: ClusterIP
 ---
 # Route for MinIO Console (admin access)
+# Note: ServerSideApply=false required due to ArgoCD structured merge diff bug with Routes
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -32,6 +33,7 @@ metadata:
     app: minio
   annotations:
     argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: ServerSideApply=false
 spec:
   to:
     kind: Service
