@@ -190,3 +190,41 @@ spec:
           requests:
             storage: 5Gi
 
+
+# Post-init fix for OpenShift OAuth compatibility
+# OpenShift OAuth doesn't provide a standard OIDC 'sub' claim,
+# so oauth_id may be NULL for OpenShift users
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-oauth-fix
+  namespace: litemaas
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: fix-schema
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql "$DATABASE_URL" -c '\q' 2>/dev/null; do
+                echo "Waiting for database..."
+                sleep 2
+              done
+              echo "Making oauth_id nullable for OpenShift OAuth compatibility..."
+              psql "$DATABASE_URL" -c "ALTER TABLE users ALTER COLUMN oauth_id DROP NOT NULL;" 2>/dev/null || true
+              echo "Done!"
+          env:
+            - name: DATABASE_URL
+              value: postgresql://litemaas_admin:LiteMaaS2024SecurePass@postgres:5432/litemaas_db
