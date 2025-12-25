@@ -19,6 +19,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -27,6 +28,10 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Mistral-3 BF16 (4-GPU)"
     serving.kserve.io/deploymentMode: RawDeployment
+    # AI Asset / Playground metadata
+    opendatahub.io/model-type: generative
+    opendatahub.io/genai-use-case: "enterprise chat assistant"
+    security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
     # PRIMARY LOAD: Always running in baseline state

@@ -58,8 +58,16 @@ spec:
         # Max tokens sent to vLLM (must be < model's --max-model-len)
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        # API token for vLLM authentication (not enforced in this demo)
+        # API tokens for vLLM authentication (not enforced in this demo)
         - name: VLLM_API_TOKEN_1
+          value: fake
+        - name: VLLM_API_TOKEN_2
+          value: fake
+        - name: VLLM_API_TOKEN_3
+          value: fake
+        - name: VLLM_API_TOKEN_4
+          value: fake
+        - name: VLLM_API_TOKEN_5
           value: fake
         # Config directory for LlamaStack
         - name: LLAMA_STACK_CONFIG_DIR
@@ -80,13 +88,13 @@ spec:
 # LlamaStack Configuration (run.yaml)
 # =============================================================================
 # This ConfigMap contains the LlamaStack run.yaml that defines:
-#   - Inference providers (vLLM endpoints)
+#   - Inference providers (vLLM endpoints for all 5 models)
 #   - Vector I/O providers (Milvus for RAG)
 #   - Tool runtimes (RAG, MCP)
 #   - Model registrations
 #
-# The Dashboard will update this ConfigMap when models are added/removed
-# from the Playground configuration.
+# All 5 models are registered even if not running (minReplicas: 0).
+# LlamaStack will return errors for unavailable models, which is expected.
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -101,7 +109,7 @@ metadata:
     argocd.argoproj.io/sync-options: Replace=true
 data:
   run.yaml: |
-    # Llama Stack Configuration
+    # Llama Stack Configuration - All 5 Models
     version: "2"
     image_name: rh
     apis:
@@ -115,26 +123,68 @@ data:
     - vector_io
     providers:
       inference:
-      # Embedding model for RAG
+      # ═══════════════════════════════════════════════════════════════════════════
+      # Embedding Model (for RAG)
+      # ═══════════════════════════════════════════════════════════════════════════
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
-      # vLLM Inference Provider 1: Mistral-3 INT4 (1-GPU)
-      - provider_id: vllm-inference-1
+      
+      # ═══════════════════════════════════════════════════════════════════════════
+      # vLLM Provider 1: Mistral-3 INT4 (1-GPU) - Efficient Chat
+      # ═══════════════════════════════════════════════════════════════════════════
+      - provider_id: vllm-mistral-int4
         provider_type: remote::vllm
         config:
           api_token: ${env.VLLM_API_TOKEN_1:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
           tls_verify: ${env.VLLM_TLS_VERIFY:=true}
           url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
-      # vLLM Inference Provider 2: Devstral-2 (4-GPU Agentic)
-      - provider_id: vllm-inference-2
+      
+      # ═══════════════════════════════════════════════════════════════════════════
+      # vLLM Provider 2: Mistral-3 BF16 (4-GPU) - Full Precision
+      # ═══════════════════════════════════════════════════════════════════════════
+      - provider_id: vllm-mistral-bf16
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          api_token: ${env.VLLM_API_TOKEN_2:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
+      
+      # ═══════════════════════════════════════════════════════════════════════════
+      # vLLM Provider 3: Devstral-2 (4-GPU) - Agentic Coding
+      # ═══════════════════════════════════════════════════════════════════════════
+      - provider_id: vllm-devstral
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_3:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
           tls_verify: ${env.VLLM_TLS_VERIFY:=true}
           url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
+      
+      # ═══════════════════════════════════════════════════════════════════════════
+      # vLLM Provider 4: GPT-OSS-20B (4-GPU) - Complex Reasoning
+      # ═══════════════════════════════════════════════════════════════════════════
+      - provider_id: vllm-gpt-oss
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_4:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
+      
+      # ═══════════════════════════════════════════════════════════════════════════
+      # vLLM Provider 5: Granite-8B Agent (1-GPU) - Tool Calling
+      # ═══════════════════════════════════════════════════════════════════════════
+      - provider_id: vllm-granite-agent
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_5:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+      
       vector_io:
       - provider_id: milvus
         provider_type: inline::milvus
@@ -189,6 +239,10 @@ data:
     metadata_store:
       type: sqlite
       db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Model Registrations (All 5 Models)
+    # ═══════════════════════════════════════════════════════════════════════════
     models:
     # Embedding model for RAG
     - provider_id: sentence-transformers
@@ -197,20 +251,57 @@ data:
       model_type: embedding
       metadata:
         embedding_dimension: 768
-    # LLM Model 1: Mistral-3 INT4 (1-GPU)
-    - provider_id: vllm-inference-1
+    
+    # LLM 1: Mistral-3 INT4 (1-GPU) - Efficient Chat
+    - provider_id: vllm-mistral-int4
       model_id: mistral-3-int4
       model_type: llm
       metadata:
-        description: "Mistral Small 24B INT4 quantized - efficient inference on 1 GPU"
-        display_name: Mistral-3 INT4 (1-GPU)
-    # LLM Model 2: Devstral-2 (4-GPU Agentic)
-    - provider_id: vllm-inference-2
+        description: "Mistral Small 24B INT4 - Efficient 1-GPU inference"
+        display_name: "Mistral-3 INT4 (1-GPU)"
+        gpu_count: 1
+        use_case: chat assistant
+    
+    # LLM 2: Mistral-3 BF16 (4-GPU) - Full Precision
+    - provider_id: vllm-mistral-bf16
+      model_id: mistral-3-bf16
+      model_type: llm
+      metadata:
+        description: "Mistral Small 24B BF16 - Full precision enterprise chat"
+        display_name: "Mistral-3 BF16 (4-GPU)"
+        gpu_count: 4
+        use_case: enterprise chat assistant
+    
+    # LLM 3: Devstral-2 (4-GPU) - Agentic Coding
+    - provider_id: vllm-devstral
       model_id: devstral-2
       model_type: llm
       metadata:
-        description: "Devstral-2 with tool calling - optimized for agentic workloads"
-        display_name: Devstral-2 (4-GPU Agentic)
+        description: "Devstral-2 - Optimized for agentic coding and tool use"
+        display_name: "Devstral-2 (4-GPU Agentic)"
+        gpu_count: 4
+        use_case: agentic coding assistant
+    
+    # LLM 4: GPT-OSS-20B (4-GPU) - Complex Reasoning
+    - provider_id: vllm-gpt-oss
+      model_id: gpt-oss-20b
+      model_type: llm
+      metadata:
+        description: "GPT-OSS-20B - High-reasoning OpenAI alternative"
+        display_name: "GPT-OSS-20B (4-GPU BF16)"
+        gpu_count: 4
+        use_case: complex reasoning
+    
+    # LLM 5: Granite-8B Agent (1-GPU) - Tool Calling
+    - provider_id: vllm-granite-agent
+      model_id: granite-8b-agent
+      model_type: llm
+      metadata:
+        description: "Granite 3.1 8B - Small but mighty tool-calling specialist"
+        display_name: "Granite-3.1-8B Agent (1-GPU FP8)"
+        gpu_count: 1
+        use_case: agentic tool-calling
+    
     shields: []
     vector_dbs: []
     datasets: []

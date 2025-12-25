@@ -22,6 +22,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -30,6 +31,10 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "GPT-OSS-20B (4-GPU BF16)"
     serving.kserve.io/deploymentMode: RawDeployment
+    # AI Asset / Playground metadata
+    opendatahub.io/model-type: generative
+    opendatahub.io/genai-use-case: "complex reasoning"
+    security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
     # QUEUED ASSET: Starts at 0 replicas
