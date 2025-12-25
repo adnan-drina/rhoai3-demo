@@ -15,7 +15,7 @@ metadata:
   name: mistral-bf16-pvc
   namespace: minio-storage
   annotations:
-    argocd.argoproj.io/hook: Skip
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -29,7 +29,9 @@ metadata:
   name: upload-mistral-bf16
   namespace: minio-storage
   annotations:
-    argocd.argoproj.io/hook: Skip
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 3

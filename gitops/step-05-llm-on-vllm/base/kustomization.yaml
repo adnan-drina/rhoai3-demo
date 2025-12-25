@@ -46,23 +46,29 @@ kind: Kustomization
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Model Registration in Registry (sync-wave: 3)
+  # 1. Model Upload Jobs (sync-wave: 1) - Downloads models to MinIO
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Jobs run in minio-storage namespace, download from HuggingFace to MinIO
+  - model-upload/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. Model Registration in Registry (sync-wave: 3)
   # ═══════════════════════════════════════════════════════════════════════════
   - model-registration/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. ServingRuntime (sync-wave: 5)
+  # 3. ServingRuntime (sync-wave: 5)
   # ═══════════════════════════════════════════════════════════════════════════
   - serving-runtime/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 3. InferenceServices with S3 Storage (sync-wave: 10)
+  # 4. InferenceServices with S3 Storage (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
   # Model weights downloaded from MinIO by KServe storage-initializer
   - inference/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 4. GPU Switchboard Workbench (sync-wave: 10)
+  # 5. GPU Switchboard Workbench (sync-wave: 10)
   # ═══════════════════════════════════════════════════════════════════════════
   # Pre-loaded notebook for GPU-as-a-Service demo
   - controller/

@@ -12,19 +12,19 @@ kind: Kustomization
 #   - KServe storage-initializer streams directly to ephemeral storage
 #   - 300GB EBS nodes can handle 50GB+ model weights
 #
-# Usage:
-#   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
-#   2. Apply jobs manually (not auto-applied by ArgoCD due to hook: Skip)
-#   3. Monitor: oc logs -f job/<job-name> -n minio-storage
+# ArgoCD Sync Behavior:
+#   - Jobs use sync-wave: 1 to run BEFORE InferenceServices
+#   - Jobs are idempotent - they skip if model already exists in MinIO
+#   - PVCs persist to avoid re-downloading on subsequent syncs
 #
-# NOTE: These are NOT auto-applied by ArgoCD (hook: Skip)
-# Apply manually when you want to expand the model portfolio.
+# Prerequisites:
+#   - HF token (optional for public models): 
+#     oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 # =============================================================================
 
-resources: []
-  # Active models (already uploaded or using OCI ModelCar):
-  # - upload-mistral-bf16.yaml     # Already in MinIO from previous upload
+resources:
+  # BF16 Models (Full Precision, Multi-GPU)
+  - upload-mistral-bf16.yaml      # Mistral-Small-24B BF16 (~48GB, 4-GPU)
   
-  # Extended Portfolio (apply manually to add to demo):
-  # - upload-gpt-oss-20b.yaml      # RedHatAI/gpt-oss-20b (~44GB BF16)
-  # - upload-granite-8b.yaml       # RedHatAI/granite-3.1-8b-instruct-FP8-dynamic (~8GB)
+  # FP8 Models (Quantized, Single-GPU)
+  - upload-granite-8b.yaml        # Granite-3.1-8B-Instruct-FP8 (~8GB, 1-GPU)
