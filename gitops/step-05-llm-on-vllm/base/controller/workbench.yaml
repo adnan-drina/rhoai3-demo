@@ -92,13 +92,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "8"
 spec:
   ports:
-    - name: http-gpu-switchboard  # Protocol prefix 'http-' required for Envoy
-      port: 8888                   # Match controller's HTTPRoute target
+    - name: http-gpu-switchboard  # Protocol prefix 'http-' required for Envoy L7
+      port: 8888                   # MUST be 8888 to match controller's HTTPRoute
       protocol: TCP
       targetPort: 8888             # Pod port
   selector:
-    # Use notebook-name for controller adoption (per RHOAI 3.0 guidelines)
-    notebook-name: gpu-switchboard
+    # Match the StatefulSet pod labels created by Notebook Controller
+    statefulset: gpu-switchboard
   type: ClusterIP
 ---
 # -----------------------------------------------------------------------------
