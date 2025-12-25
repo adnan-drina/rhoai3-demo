@@ -1,4 +1,6 @@
 # LiteLLM Secret
+# Note: No LITELLM_MASTER_KEY - allows unauthenticated internal access
+# External access is protected by LiteMaaS backend
 apiVersion: v1
 kind: Secret
 metadata:
@@ -11,7 +13,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  LITELLM_MASTER_KEY: sk-1b4f0a05549af06f80db6cd51b37fd01
   UI_USERNAME: admin
   UI_PASSWORD: LiteMaaS2024!
 ---
@@ -73,8 +74,9 @@ data:
       request_timeout: 300
       num_retries: 2
     
-    general_settings:
-      master_key: sk-1b4f0a05549af06f80db6cd51b37fd01
+    # Note: Removed master_key to allow internal cluster access without auth
+    # External access still goes through LiteMaaS backend which handles auth
+    general_settings: {}
 ---
 # LiteLLM Service
 apiVersion: v1
