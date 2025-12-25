@@ -339,6 +339,10 @@ rules:
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices/scale"]
     verbs: ["get", "patch", "update"]
+  # Knative services (for listing serving services)
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
   # Pod status (for checking if model is running)
   - apiGroups: [""]
     resources: ["pods"]
