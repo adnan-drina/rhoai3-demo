@@ -349,8 +349,115 @@ oc delete application step-06-private-ai-playground-maas -n openshift-gitops
 - [RHOAI 3.0 Configuring a Playground for Your Project](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/experimenting_with_models_in_the_gen_ai_playground/index#configuring-a-playground-for-your-project_rhoai-user)
 - [RHOAI 3.0 Support Matrix](https://access.redhat.com/articles/7019198)
 
+---
+
+## Future Enhancement: Models-as-a-Service (MaaS)
+
+> **Status:** Developer Preview (DP) as of RHOAI 3.0  
+> **Target:** Implement when MaaS reaches Technology Preview (TP)
+
+### What is MaaS?
+
+Models-as-a-Service provides a **unified API gateway** for all deployed models with:
+- **Centralized endpoint**: `https://maas.apps.cluster.../llm/{model}/v1/...`
+- **API Key authentication** via Authorino
+- **Rate limiting** via Limitador (per-user, per-tier)
+- **Usage tracking** for billing/chargeback
+- **Tiered access** (free, premium, enterprise)
+
+### Current State vs MaaS
+
+| Feature | Current (Step-05/06) | With MaaS |
+|---------|---------------------|-----------|
+| **Endpoint** | Per-model URLs | Unified `/llm/{model}/` |
+| **Auth** | None (internal) | API Keys |
+| **Rate Limits** | None | Configurable tiers |
+| **Billing** | None | Token tracking |
+| **Runtime** | vLLM | LLM-D (Distributed) |
+
+### Why Not Now?
+
+1. **Developer Preview** - Not production-ready, API may change
+2. **Missing dependency** - Requires **Red Hat Connectivity Link 1.2** operator
+3. **Runtime migration** - Requires LLM-D, not compatible with current vLLM deployments
+4. **Demo scope** - Our focus is Kueue GPU scheduling, not API management
+
+### Prerequisites for MaaS (When TP Available)
+
+| Component | Required Version | Purpose |
+|-----------|------------------|---------|
+| OpenShift | ≥ 4.19.9 | Cluster platform |
+| RHOAI Operator | 3.x | AI platform |
+| **Connectivity Link** | 1.2+ | Gateway policies, rate limiting |
+| **Kuadrant Operator** | Latest | Unified API management |
+| **LLM-D Runtime** | Latest | Distributed inference (not vLLM) |
+
+### Placeholder GitOps Structure
+
+```
+gitops/step-06-private-ai-playground-maas/
+├── base/
+│   ├── kustomization.yaml          # Excludes maas/ for now
+│   ├── playground/                 # ✅ Active
+│   │   └── llamastack.yaml
+│   └── maas/                       # ⏸️ Placeholder (not applied)
+│       ├── inference-gateway.yaml  # InferenceGateway CR (when CRD available)
+│       ├── api-key-secret.yaml     # Demo API keys
+│       └── gateway-api-alternative.yaml  # Manual Gateway+HTTPRoute option
+```
+
+### Implementation Steps (Future)
+
+When MaaS reaches Technology Preview:
+
+```bash
+# 1. Install Connectivity Link Operator
+oc apply -f connectivity-link-subscription.yaml
+
+# 2. Deploy MaaS infrastructure (official script)
+curl -sSLo deploy-rhoai-stable.sh \
+  https://raw.githubusercontent.com/opendatahub-io/maas-billing/refs/tags/0.0.1/deployment/scripts/deploy-rhoai-stable.sh
+MAAS_REF="0.0.1" ./deploy-rhoai-stable.sh
+
+# 3. Verify maas-default-gateway
+oc get gateway maas-default-gateway -n openshift-ingress
+
+# 4. Migrate models to LLM-D runtime
+# (Re-deploy InferenceServices with Distributed Inference Server)
+
+# 5. Enroll models in MaaS
+oc label inferenceservice <model> -n private-ai maas.opendatahub.io/enabled=true
+```
+
+### Current Access Pattern (Without MaaS)
+
+Direct InferenceService URLs work for development/demo:
+
+```bash
+# List available model endpoints
+oc get inferenceservice -n private-ai -o custom-columns="MODEL:.metadata.name,URL:.status.url"
+
+# Call model directly (no auth required for internal access)
+curl -k https://mistral-3-int4-private-ai.apps.cluster.../v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### Official References
+
+- [Introducing Models-as-a-Service in OpenShift AI](https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai) (Developer Preview announcement)
+- [MaaS Community Documentation](https://opendatahub-io.github.io/models-as-a-service/latest/)
+- [MaaS GitHub Repository](https://github.com/opendatahub-io/maas-billing)
+- [RHOAI 3.0 Support Matrix](https://access.redhat.com/articles/7019198) - Check MaaS support status
+
+---
+
 ## Next Steps
 
 - **RAG Integration**: Upload documents to Playground for context-aware responses
-- **MCP Servers**: Configure tool-calling capabilities
+- **MCP Servers**: Configure tool-calling capabilities  
 - **Step 07**: Production RAG Pipeline with LangChain
+- **MaaS**: Implement when it reaches Technology Preview

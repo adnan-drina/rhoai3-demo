@@ -1,80 +1,91 @@
-# =============================================================================
-# InferenceGateway CR - Model-as-a-Service Unified Endpoint
-# =============================================================================
-# The InferenceGateway creates a single, unified ingress point for all models.
-# It aggregates deployed InferenceServices into one OpenAI-compatible endpoint.
+# ═══════════════════════════════════════════════════════════════════════════════
+# InferenceGateway CR - PLACEHOLDER (MaaS Developer Preview)
+# ═══════════════════════════════════════════════════════════════════════════════
 #
-# STATUS: Developer Preview (DP) in RHOAI 3.0
-# Ref: https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai
-# Ref: https://opendatahub-io.github.io/models-as-a-service/latest/
+# Status: Developer Preview (DP) - NOT AVAILABLE in RHOAI 3.0 GA
+# Action: Implement when MaaS reaches Technology Preview (TP)
 #
-# ⚠️ IMPORTANT: Verify CRD exists before applying:
+# The InferenceGateway CRD (maas.opendatahub.io/v1alpha1) is NOT present in
+# RHOAI 3.0 GA clusters. This file is a placeholder documenting the expected
+# configuration for when MaaS becomes available.
+#
+# Current Verification (should return empty):
 #   oc get crd | grep -iE "inferencegateway|maas"
 #   oc api-resources | grep -i maas
 #
-# If InferenceGateway CRD doesn't exist, see alternative:
-#   gateway-api-alternative.yaml (uses standard Gateway API)
+# MaaS Infrastructure Requirements:
+#   1. Red Hat Connectivity Link 1.2 operator
+#   2. Kuadrant operator (ties Authorino + Limitador together)
+#   3. LLM-D runtime (Distributed Inference Server, not vLLM)
+#   4. MaaS deployment script from opendatahub-io/maas-billing
 #
-# =============================================================================
-apiVersion: maas.opendatahub.io/v1alpha1
-kind: InferenceGateway
-metadata:
-  name: enterprise-gateway
-  namespace: private-ai
-  labels:
-    app.kubernetes.io/name: inference-gateway
-    app.kubernetes.io/part-of: private-ai-platform
-    app.kubernetes.io/component: maas-gateway
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # TODO: Verify actual spec fields with `oc explain inferencegateway.spec`
-  # The fields below are based on ODH MaaS documentation and may need
-  # adjustment based on the actual RHOAI 3.0 CRD schema.
-  # ═══════════════════════════════════════════════════════════════════════════
-  
-  # Authentication - uses Authorino for API key validation
-  # Authorino operator installed in step-01-gpu-and-prereq
-  auth:
-    type: authorino
-    # config:
-    #   namespace: openshift-authorino
-    #   # API key secret reference
-    #   apiKeySecretRef:
-    #     name: maas-api-keys
-    #     namespace: private-ai
-
-  # Rate Limiting - uses Limitador for request throttling
-  # Limitador operator installed in step-01-gpu-and-prereq
-  rateLimit:
-    type: limitador
-    # config:
-    #   namespace: openshift-limitador-operator
-    #   limits:
-    #     - conditions: ["descriptors[0].value == 'default'"]
-    #       maxValue: 100
-    #       seconds: 60
-
-  # Model discovery - automatic enrollment via labels
-  # InferenceServices with label maas.opendatahub.io/enabled: "true" are included
-  modelDiscovery:
-    enabled: true
-    selector:
-      matchLabels:
-        maas.opendatahub.io/enabled: "true"
-  
-  # Explicit model list (alternative to label-based discovery)
-  # models:
-  #   - name: mistral-3-bf16
-  #     namespace: private-ai
-  #   - name: mistral-3-int4
-  #     namespace: private-ai
-  #   - name: devstral-2
-  #     namespace: private-ai
-  #   - name: gpt-oss-20b
-  #     namespace: private-ai
-  #   - name: granite-8b-agent
-  #     namespace: private-ai
-
+# References:
+#   - Blog: https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai
+#   - Docs: https://opendatahub-io.github.io/models-as-a-service/latest/
+#   - Repo: https://github.com/opendatahub-io/maas-billing
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# PLACEHOLDER MANIFEST - DO NOT APPLY
+# Uncomment and update when MaaS reaches TP
+#
+# ---
+# apiVersion: maas.opendatahub.io/v1alpha1   # Verify with: oc explain inferencegateway
+# kind: InferenceGateway
+# metadata:
+#   name: enterprise-gateway
+#   namespace: private-ai
+#   labels:
+#     app.kubernetes.io/name: inference-gateway
+#     app.kubernetes.io/part-of: private-ai-platform
+#     app.kubernetes.io/component: maas-gateway
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "10"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+# spec:
+#   # ═══════════════════════════════════════════════════════════════════════════
+#   # Verify actual spec fields with: oc explain inferencegateway.spec
+#   # ═══════════════════════════════════════════════════════════════════════════
+#   
+#   # Authentication - API key validation via Authorino
+#   auth:
+#     type: authorino
+#     config:
+#       apiKeySecretRef:
+#         name: maas-api-keys
+#         namespace: private-ai
+#
+#   # Rate Limiting - Request throttling via Limitador
+#   rateLimit:
+#     type: limitador
+#     config:
+#       limits:
+#         - tier: free
+#           requests: 5
+#           tokens: 100
+#           period: 60s
+#         - tier: premium
+#           requests: 100
+#           tokens: 10000
+#           period: 60s
+#
+#   # Model discovery - Auto-enroll InferenceServices by label
+#   modelDiscovery:
+#     enabled: true
+#     selector:
+#       matchLabels:
+#         maas.opendatahub.io/enabled: "true"
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# ALTERNATIVE: Manual Gateway API Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# If InferenceGateway CRD is not available but you need a unified endpoint,
+# you can manually configure:
+#   1. Gateway (Kubernetes Gateway API)
+#   2. HTTPRoute per model
+#   3. AuthPolicy (Authorino)
+#   4. RateLimitPolicy (Limitador)
+#
+# See: gateway-api-alternative.yaml for this approach
+#

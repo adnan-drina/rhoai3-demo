@@ -1,17 +1,36 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Model-as-a-Service (MaaS) Components
-# Provides unified API gateway for all InferenceServices
+# ═══════════════════════════════════════════════════════════════════════════════
+# Model-as-a-Service (MaaS) - PLACEHOLDER FOR FUTURE IMPLEMENTATION
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Status: Developer Preview (DP) as of RHOAI 3.0
+# Action: Implement when MaaS reaches Technology Preview (TP)
+#
+# Current Blockers:
+#   1. InferenceGateway CRD not available in RHOAI 3.0 GA
+#   2. Requires Red Hat Connectivity Link 1.2 operator (not installed)
+#   3. Requires LLM-D runtime (we use vLLM runtime)
+#
+# References:
+#   - Blog: https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai
+#   - Docs: https://opendatahub-io.github.io/models-as-a-service/latest/
+#   - Repo: https://github.com/opendatahub-io/maas-billing
+#
+# When MaaS reaches TP, uncomment resources below and update inference-gateway.yaml
+# with correct CRD schema (verify with: oc explain inferencegateway)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 
-resources:
-  - api-key-secret.yaml
-  - inference-gateway.yaml
-  # Uncomment if InferenceGateway CRD doesn't exist:
-  # - gateway-api-alternative.yaml
+# Placeholder - do not apply until MaaS is available
+resources: []
 
-# Strategic merge patches to add MaaS labels to existing InferenceServices
-# These patches add maas.opendatahub.io/enabled: "true" to Step-05 models
-patches:
-  - path: model-enrollment-patch.yaml
+# Future resources (uncomment when MaaS reaches TP):
+#   - api-key-secret.yaml        # Demo API keys for tier-based access
+#   - inference-gateway.yaml     # InferenceGateway CR (unified /llm/{model}/ endpoint)
+#   - gateway-api-alternative.yaml  # Manual Gateway+HTTPRoute (if InferenceGateway unavailable)
 
+# Future patches (add MaaS labels to Step-05 InferenceServices):
+# patches:
+#   - path: model-enrollment-patch.yaml
