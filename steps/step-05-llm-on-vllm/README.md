@@ -255,27 +255,33 @@ oc get inferenceservice -n private-ai
 oc get workloads -n private-ai
 
 # Step 1: Scale up Devstral-2 (will be PENDING - over quota)
-oc scale inferenceservice devstral-2 -n private-ai --replicas=1
+oc scale deployment devstral-2-predictor -n private-ai --replicas=1
 oc get workloads -n private-ai  # Shows PENDING
 
 # Step 2: Scale down BF16 to trigger handover
-oc scale inferenceservice mistral-3-bf16 -n private-ai --replicas=0
+oc scale deployment mistral-3-bf16-predictor -n private-ai --replicas=0
 # Watch Devstral-2 start INSTANTLY!
 oc get pods -n private-ai -l serving.kserve.io/inferenceservice
 
 # Step 3: Reset to baseline
-oc scale inferenceservice mistral-3-bf16 -n private-ai --replicas=1
-oc scale inferenceservice devstral-2 -n private-ai --replicas=0
+oc scale deployment mistral-3-bf16-predictor -n private-ai --replicas=1
+oc scale deployment devstral-2-predictor -n private-ai --replicas=0
 ```
 
-### Why `oc scale` Works
+### Why Scale Deployments (Not InferenceServices)
 
-KServe implements the Kubernetes **scale subresource**, allowing standard commands:
-```bash
-# These are equivalent:
-oc scale inferenceservice devstral-2 --replicas=1
-oc patch inferenceservice devstral-2 --type=merge -p '{"spec":{"predictor":{"minReplicas":1}}}'
-```
+RHOAI 3.0 uses **RawDeployment mode** by default (not Knative Serving). This means:
+- Each InferenceService creates a Deployment named `{name}-predictor`
+- `oc scale inferenceservice` doesn't work (scale subresource not implemented)
+- `oc scale deployment {name}-predictor` is immediate and reliable
+
+| InferenceService | Deployment | GPUs |
+|------------------|------------|------|
+| mistral-3-bf16 | mistral-3-bf16-predictor | 4 |
+| mistral-3-int4 | mistral-3-int4-predictor | 1 |
+| devstral-2 | devstral-2-predictor | 4 |
+| granite-8b-agent | granite-8b-agent-predictor | 1 |
+| gpt-oss-20b | gpt-oss-20b-predictor | 4 |
 
 ## Validation
 
@@ -328,63 +334,38 @@ oc describe workload -n private-ai <workload-name>
 
 See [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740) for driver downgrade instructions.
 
-### Workbench: "cluster_not_found" or 500 Errors
+### Workbench: Route Access Issues
 
-**Root Cause:** RHOAI 3.0 Notebook Controller creates HTTPRoutes targeting port 8888, but the controller-managed Service exposes port 80. This port mismatch causes Istio to fail with `cluster_not_found`.
+**Root Cause:** Using the wrong annotation for RHOAI 3.0 workbenches.
 
-**Solution:** Create a GitOps-managed Service with port 8888:
+| Annotation | Effect | Use Case |
+|------------|--------|----------|
+| `inject-auth: "true"` | Controller injects `kube-rbac-proxy` sidecar | ✅ **RHOAI 3.0 (use this)** |
+| `inject-oauth: "true"` | OLD pattern, requires manual oauth-proxy sidecar | ❌ RHOAI 2.x (deprecated) |
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: gpu-switchboard
-  namespace: private-ai
-  labels:
-    notebook-name: gpu-switchboard  # Required for controller discovery
-spec:
-  ports:
-    - name: http-gpu-switchboard    # 'http-' prefix required for Envoy
-      port: 8888                     # Must match HTTPRoute target
-      targetPort: 8888
-  selector:
-    statefulset: gpu-switchboard
-```
-
-### Workbench: "Connection Timeout" Errors
-
-**Root Cause:** The Notebook Controller creates NetworkPolicies that only allow traffic from `redhat-ods-applications` namespace, but the Gateway (Envoy) runs in `openshift-ingress`. Additionally, if you have an oauth-proxy sidecar, the NetworkPolicy must allow **both** ports:
-
-| Port | Path | Purpose |
-|------|------|---------|
-| **8888** | Gateway API (Dashboard URL) | Direct to notebook container |
-| **8443** | Custom Route (oauth-proxy) | Through oauth-proxy sidecar |
-
-**Solution:** Add a NetworkPolicy allowing Gateway ingress on **both ports**:
+**Solution:** Use `notebooks.opendatahub.io/inject-auth: "true"` and let the controller manage:
 
 ```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+apiVersion: kubeflow.org/v1
+kind: Notebook
 metadata:
-  name: gpu-switchboard-gateway-ingress
-  namespace: private-ai
+  annotations:
+    # CRITICAL: Use inject-auth for RHOAI 3.0
+    notebooks.opendatahub.io/inject-auth: "true"
 spec:
-  podSelector:
-    matchLabels:
-      notebook-name: gpu-switchboard
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: openshift-ingress
-      ports:
-        - port: 8888    # Gateway API path
-          protocol: TCP
-        - port: 8443    # oauth-proxy path (if using sidecar)
-          protocol: TCP
+  template:
+    spec:
+      containers:
+        - name: my-workbench
+          # Only define the notebook container
+          # The kube-rbac-proxy sidecar is AUTO-INJECTED
 ```
 
-> **Key Insight:** If your NetworkPolicy only allows port 8443 (for oauth-proxy) but the Gateway connects to port 8888 (notebook directly), you'll get "connection timeout" errors on the Dashboard URL.
+The controller automatically creates:
+- `{name}-kube-rbac-proxy` Service (port 8443)
+- HTTPRoute targeting the kube-rbac-proxy Service
+- TLS certificates and ConfigMap
+- NetworkPolicies for proper ingress
 
 ## GPU Orchestrator Workbench
 
@@ -410,20 +391,20 @@ Or via RHOAI Dashboard:
 
 ### RHOAI 3.0 Native Ingress Pattern
 
-The workbench uses RHOAI 3.0's Native Ingress Controller pattern with Gateway API:
+The workbench uses RHOAI 3.0's controller-managed authentication with `kube-rbac-proxy`:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Dashboard URL (Gateway API Path)                                       │
 │  https://data-science-gateway.apps.../notebook/private-ai/gpu-switchboard/
 │                                                                         │
-│  Browser → Gateway → kube-auth-proxy (OAuth) → HTTPRoute                │
-│                                                    ↓                    │
-│                                              Service:8888               │
-│                                                    ↓                    │
-│                                           NetworkPolicy ✓               │
-│                                                    ↓                    │
-│                                              Pod:8888 (Jupyter)         │
+│  Browser → Gateway → HTTPRoute                                          │
+│                          ↓                                              │
+│                   {name}-kube-rbac-proxy Service:8443                   │
+│                          ↓                                              │
+│                   Pod [kube-rbac-proxy:8443 → notebook:8888]            │
+│                          ↑                                              │
+│               (kube-rbac-proxy sidecar AUTO-INJECTED by controller)     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -431,31 +412,41 @@ The workbench uses RHOAI 3.0's Native Ingress Controller pattern with Gateway AP
 
 | Component | Configuration | Why |
 |-----------|---------------|-----|
-| **Service Port** | 8888 | Matches controller-generated HTTPRoute |
-| **Port Name** | `http-gpu-switchboard` | `http-` prefix required for Envoy protocol detection |
-| **NetworkPolicy** | Allow `openshift-ingress` on **port 8888** | Gateway namespace must reach notebook container |
-| **OAuth** | `inject-oauth: "true"` annotation | Centralized auth at Gateway level |
+| **Annotation** | `inject-auth: "true"` | Triggers controller to inject kube-rbac-proxy |
+| **Sidecar** | kube-rbac-proxy (auto-injected) | Handles OpenShift authentication |
+| **HTTPRoute Target** | `{name}-kube-rbac-proxy:8443` | Created automatically by controller |
+| **Main Service** | `{name}:80` → 8888 | Controller-managed, used internally |
 
-### Common Configuration Mistakes
+### GitOps vs Dashboard Workbenches
 
-| Symptom | Root Cause | Fix |
-|---------|------------|-----|
-| **503 Service Unavailable** | HTTPRoute targets 8888, Service exposes 80 | Patch Service to port 8888 |
-| **Connection Timeout** | NetworkPolicy blocks Gateway | Allow port 8888 from `openshift-ingress` |
-| **cluster_not_found** | Service selector doesn't match pod labels | Use `statefulset: gpu-switchboard` selector |
+| Aspect | Dashboard-Created | GitOps-Created (Our Pattern) |
+|--------|-------------------|------------------------------|
+| **Annotation** | `inject-auth: "true"` | `inject-auth: "true"` |
+| **Auth Sidecar** | Auto-injected | Auto-injected |
+| **Services** | Auto-created | Auto-created (controller-managed) |
+| **HTTPRoute** | Auto-created | Auto-created (controller-managed) |
+| **Init Container** | None | Git-sync (for pre-loaded notebooks) |
+| **RBAC** | None | Custom Role for InferenceService management |
 
-> **Lesson Learned:** The Notebook Controller creates HTTPRoute targeting port 8888, but creates Service exposing port 80. A PostSync hook patches the Service to align ports. The NetworkPolicy must also allow port 8888 for the Gateway API path.
+> **Key Insight:** Using `inject-auth: "true"` instead of `inject-oauth: "true"` is critical for RHOAI 3.0. The controller handles all routing, authentication, and TLS automatically.
 
 ### Workbench GitOps Components
 
-The workbench manifest (`workbench.yaml`) includes:
+The workbench manifest (`workbench.yaml`) includes only what GitOps needs to add:
 
-1. **ServiceAccount** - Identity for RBAC
-2. **PVC** - 20Gi storage for notebooks
-3. **Service** - Port 8888 aligned with controller HTTPRoute
-4. **NetworkPolicy** - Allow Gateway ingress
-5. **Notebook CR** - With Hardware Profile delegation
-6. **RBAC** - Permissions to manage InferenceServices
+| Component | Purpose | Controller-Managed? |
+|-----------|---------|---------------------|
+| **ServiceAccount** | Identity for RBAC | ❌ GitOps |
+| **PVC** | 20Gi storage for notebooks | ❌ GitOps |
+| **Notebook CR** | With `inject-auth: "true"` and git-sync init container | ❌ GitOps |
+| **RBAC** | Permissions to manage InferenceServices | ❌ GitOps |
+| **Service** | `{name}:80` → 8888 | ✅ Controller |
+| **kube-rbac-proxy Service** | `{name}-kube-rbac-proxy:8443` | ✅ Controller |
+| **HTTPRoute** | Routes to kube-rbac-proxy | ✅ Controller |
+| **NetworkPolicy** | Ingress rules | ✅ Controller |
+| **TLS Secrets** | Serving certificates | ✅ Controller |
+
+> **Design Philosophy:** Let the controller manage everything except what GitOps must customize (pre-loaded notebooks via git-sync, custom RBAC for InferenceService management).
 
 ## GitOps Structure
 
