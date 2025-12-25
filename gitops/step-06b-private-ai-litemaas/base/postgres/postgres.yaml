@@ -228,3 +228,46 @@ spec:
           env:
             - name: DATABASE_URL
               value: postgresql://litemaas_admin:LiteMaaS2024SecurePass@postgres:5432/litemaas_db
+---
+# Model Registration Job - registers models in backend database
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-register-models
+  namespace: litemaas
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: register-models
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql "$DATABASE_URL" -c '\q' 2>/dev/null; do
+                echo "Waiting for database..."
+                sleep 2
+              done
+              echo "Registering models in backend database..."
+              psql "$DATABASE_URL" -c "
+              INSERT INTO models (id, name, provider, description, category, context_length, input_cost_per_token, output_cost_per_token, supports_function_calling, supports_streaming, availability, api_base) VALUES
+              ('mistral-3-int4', 'Mistral-3 INT4', 'vLLM', 'Mistral-3 INT4 quantized model (1-GPU)', 'chat', 16384, 0, 0, false, true, 'available', 'http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1'),
+              ('granite-8b-agent', 'Granite-8B Agent', 'vLLM', 'Granite-3.1-8B Agent for tool calling', 'agent', 16384, 0, 0, true, true, 'available', 'http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1'),
+              ('mistral-3-bf16', 'Mistral-3 BF16', 'vLLM', 'Mistral-3 BF16 full precision (4-GPU)', 'chat', 32768, 0, 0, false, true, 'available', 'http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1'),
+              ('devstral-2', 'Devstral-2', 'vLLM', 'Devstral-2 agentic coding assistant (4-GPU)', 'coding', 131072, 0, 0, true, true, 'available', 'http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1'),
+              ('gpt-oss-20b', 'GPT-OSS-20B', 'vLLM', 'GPT-OSS-20B for complex reasoning (4-GPU)', 'reasoning', 32768, 0, 0, false, true, 'available', 'http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1')
+              ON CONFLICT (id) DO NOTHING;
+              "
+              echo "Models registered!"
+          env:
+            - name: DATABASE_URL
+              value: postgresql://litemaas_admin:LiteMaaS2024SecurePass@postgres:5432/litemaas_db
