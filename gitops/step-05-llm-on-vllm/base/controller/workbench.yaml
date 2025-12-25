@@ -483,7 +483,11 @@ spec:
             defaultMode: 420
 ---
 # =============================================================================
-# NetworkPolicy: Allow Ingress to OAuth-Proxy
+# NetworkPolicy: Allow Ingress from Gateway and Router
+# =============================================================================
+# CRITICAL: Must allow BOTH ports:
+#   - Port 8888: Gateway API path (data-science-gateway → notebook directly)
+#   - Port 8443: Custom Route path (Route → oauth-proxy sidecar)
 # =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -501,13 +505,15 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Allow from OpenShift Router (for Route)
+    # Allow from OpenShift Router and Gateway (both ports)
     - from:
         - namespaceSelector:
             matchLabels:
               network.openshift.io/policy-group: ingress
       ports:
         - port: 8443
+          protocol: TCP
+        - port: 8888
           protocol: TCP
     # Allow from openshift-ingress namespace (Gateway)
     - from:
@@ -516,6 +522,8 @@ spec:
               kubernetes.io/metadata.name: openshift-ingress
       ports:
         - port: 8443
+          protocol: TCP
+        - port: 8888
           protocol: TCP
 ---
 # =============================================================================
