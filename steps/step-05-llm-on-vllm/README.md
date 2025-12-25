@@ -188,15 +188,42 @@ oc get clusterqueue rhoai-main-queue -o yaml | grep -A20 "resourceGroups"
 
 ## Deployment
 
+### A) One-shot (recommended)
+
 ```bash
 ./steps/step-05-llm-on-vllm/deploy.sh
 ```
 
-Or apply manually:
+### B) Step-by-step (exact commands)
+
+For manual deployment or debugging:
 
 ```bash
+# 1. Validate manifests (dry-run)
+kustomize build gitops/step-05-llm-on-vllm/base | oc apply --dry-run=server -f -
+
+# 2. Apply Argo CD Application (or apply directly)
+oc apply -f gitops/argocd/app-of-apps/step-05-llm-on-vllm.yaml
+
+# Or apply directly without ArgoCD:
 oc apply -k gitops/step-05-llm-on-vllm/base/
+
+# 3. Wait for ServingRuntime to be created
+until oc get servingruntime vllm-runtime -n private-ai &>/dev/null; do sleep 5; done
+
+# 4. Wait for InferenceServices to be created
+oc get inferenceservice -n private-ai -w
+
+# 5. Check which InferenceServices are admitted by Kueue
+oc get workloads -n private-ai
+
+# 6. Wait for active models to be ready (this may take 5-10 minutes for model download)
+oc get inferenceservice -n private-ai -o custom-columns=NAME:.metadata.name,READY:.status.conditions[0].status,URL:.status.url
 ```
+
+> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
+
+---
 
 ## Running the Demo
 
@@ -438,6 +465,50 @@ gitops/step-05-llm-on-vllm/base/
 ### KServe Replica Management
 
 > *"Setting minReplicas to 1 ensures immediate availability, while minReplicas 0 allows for cost-optimization. Managing these fields via API allows for higher-level orchestration of inference capacity."*
+
+---
+
+## Rollback / Cleanup
+
+### Remove LLM Deployments
+
+```bash
+# 1. Scale down all InferenceServices (releases GPUs immediately)
+oc scale inferenceservice --all -n private-ai --replicas=0
+
+# 2. Delete InferenceServices
+oc delete inferenceservice --all -n private-ai
+
+# 3. Delete ServingRuntime
+oc delete servingruntime vllm-runtime -n private-ai
+
+# 4. Delete GPU Orchestrator workbench (if deployed)
+oc delete notebook gpu-switchboard -n private-ai
+
+# 5. Delete Argo CD Application
+oc delete application step-05-llm-on-vllm -n openshift-gitops
+```
+
+### Remove Model Artifacts from MinIO
+
+```bash
+# Connect to MinIO and delete model files
+MINIO_POD=$(oc get pod -n minio-storage -l app=minio -o jsonpath='{.items[0].metadata.name}')
+oc exec -n minio-storage $MINIO_POD -- mc rm -r --force local/models/
+```
+
+### GitOps Revert (alternative)
+
+```bash
+# Remove from Git and let Argo CD prune
+git revert <commit-with-step-05>
+git push
+
+# Or delete Argo CD Application with cascade
+oc delete application step-05-llm-on-vllm -n openshift-gitops --cascade=foreground
+```
+
+---
 
 ## Official Documentation
 

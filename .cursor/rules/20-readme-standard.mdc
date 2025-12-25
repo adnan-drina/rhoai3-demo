@@ -1,0 +1,48 @@
+---
+description: Use whenever creating/updating a README for a demo step. Enforce step-by-step reproducibility and official references.
+globs: **/README.md,**/README.mdx
+alwaysApply: false
+---
+
+# README Requirements for Demo Steps
+
+Each demo step README must include:
+
+## 1) Goal
+- What the step demonstrates and why it matters to RHOAI on OpenShift.
+
+## 2) Prerequisites
+- Cluster assumptions (RHOCP 4.20, RHOAI 3.0)
+- Required CLIs / access
+- Namespaces, operators, or dependencies
+
+## 3) Architecture / What gets deployed
+- Bullet list of resources/components created in this step.
+- Where manifests live under `gitops/`.
+
+## 4) Reproduce (two paths)
+### A) One-shot
+- `./deploy.sh <step>` (or equivalent)
+- Expected output / what to watch for
+
+### B) Step-by-step (exact commands)
+- Explicit `oc` commands in order
+- Include `--insecure-skip-tls-verify=true` where needed for self-signed clusters
+
+## 5) Validate
+- Clear checks that confirm success:
+  - `oc get ...`
+  - `oc describe ...`
+  - logs, routes, health endpoints, etc.
+- Prefer deterministic checks; avoid "it should look fine".
+
+## 6) Rollback / Cleanup (if safe)
+- How to delete resources (GitOps revert, `oc delete -k`, etc.)
+
+## 7) References (required)
+- Link to the *official* RHOAI 3.0 and/or RHOCP 4.20 documentation sections used.
+- If a manifest field/value is derived from docs, reference it here.
+
+## Style rules
+- Use copy-pastable commands.
+- Mention any expected delays and what to wait for (pods ready, CR reconciled, etc.).

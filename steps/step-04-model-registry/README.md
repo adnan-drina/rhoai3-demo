@@ -185,6 +185,8 @@ All resources in `rhoai-model-registries` namespace:
 
 ## Deploy
 
+### A) One-shot (recommended)
+
 ```bash
 ./steps/step-04-model-registry/deploy.sh
 ```
@@ -195,6 +197,42 @@ The script will:
 3. Create internal service for API access
 4. Configure RBAC for ai-admin and ai-developer
 5. Register the Granite 3.1 FP8 model (metadata only)
+
+### B) Step-by-step (exact commands)
+
+For manual deployment or debugging:
+
+```bash
+# 1. Validate manifests (dry-run)
+kustomize build gitops/step-04-model-registry/base | oc apply --dry-run=server -f -
+
+# 2. Apply Argo CD Application
+oc apply -f gitops/argocd/app-of-apps/step-04-model-registry.yaml
+
+# 3. Wait for namespace
+until oc get namespace rhoai-model-registries &>/dev/null; do sleep 5; done
+
+# 4. Wait for MariaDB deployment
+oc rollout status deployment/model-registry-db -n rhoai-model-registries --timeout=120s
+
+# 5. Wait for ModelRegistry to be available
+until oc get modelregistry.modelregistry.opendatahub.io private-ai-registry \
+      -n rhoai-model-registries -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null | grep -q True; do
+    echo "Waiting for ModelRegistry to become available..."
+    sleep 10
+done
+echo "ModelRegistry is available"
+
+# 6. Wait for seed job to complete
+oc wait --for=condition=complete job/model-registry-seed -n rhoai-model-registries --timeout=120s
+
+# 7. Verify model was registered
+oc run test-api --rm -i --restart=Never \
+  --image=curlimages/curl -n rhoai-model-registries -- \
+  curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models
+```
+
+> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
 
 ---
 
@@ -366,6 +404,36 @@ oc get networkpolicy -n rhoai-model-registries
 # Test from debug pod
 oc run debug --rm -i --restart=Never --image=curlimages/curl -n rhoai-model-registries -- \
   curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models
+```
+
+---
+
+## Rollback / Cleanup
+
+### Remove Model Registry Infrastructure
+
+> **⚠️ Warning**: This will delete all registered models, versions, and metadata. The Model Catalog (pre-bundled models) is not affected.
+
+```bash
+# 1. Delete Argo CD Application (cascades to managed resources)
+oc delete application step-04-model-registry -n openshift-gitops
+
+# 2. Wait for resources to be removed
+oc get pods -n rhoai-model-registries -w
+
+# 3. Optional: Delete namespace manually if not cleaned up
+oc delete namespace rhoai-model-registries
+```
+
+### GitOps Revert (alternative)
+
+```bash
+# Remove from Git and let Argo CD prune
+git revert <commit-with-step-04>
+git push
+
+# Or delete Argo CD Application with cascade
+oc delete application step-04-model-registry -n openshift-gitops --cascade=foreground
 ```
 
 ---

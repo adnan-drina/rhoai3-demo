@@ -162,6 +162,8 @@ spec:
 
 ## Deploy
 
+### A) One-shot (recommended)
+
 ```bash
 ./steps/step-02-rhoai/deploy.sh
 ```
@@ -171,6 +173,40 @@ The script will:
 2. Create Argo CD Application for RHOAI
 3. Wait for operator installation
 4. Verify DataScienceCluster is ready
+
+### B) Step-by-step (exact commands)
+
+For manual deployment or debugging:
+
+```bash
+# 1. Validate manifests (dry-run)
+kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server -f -
+
+# 2. Apply Argo CD Application
+oc apply -f gitops/argocd/app-of-apps/step-02-rhoai.yaml
+
+# 3. Wait for RHOAI operator namespace
+until oc get namespace redhat-ods-operator &>/dev/null; do sleep 5; done
+
+# 4. Wait for operator CSV to succeed (2-5 minutes)
+oc get csv -n redhat-ods-operator -w
+# Wait until STATUS shows "Succeeded"
+
+# 5. Wait for DSCInitialization CRD
+until oc get crd dscinitializations.dscinitialization.opendatahub.io &>/dev/null; do sleep 5; done
+
+# 6. Wait for DataScienceCluster to be created
+until oc get datasciencecluster default-dsc &>/dev/null; do sleep 10; done
+
+# 7. Wait for DataScienceCluster to become Ready (5-10 minutes)
+oc get datasciencecluster default-dsc -w
+# Wait until PHASE shows "Ready"
+
+# 8. Verify Hardware Profiles are available
+oc get hardwareprofiles -n redhat-ods-applications
+```
+
+> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
 
 ---
 
@@ -292,6 +328,46 @@ oc logs -n redhat-ods-operator -l name=rhods-operator --tail=100
    ```bash
    oc get nodes -l node-role.kubernetes.io/gpu -o custom-columns=NAME:.metadata.name,INSTANCE:.metadata.labels."node\.kubernetes\.io/instance-type"
    ```
+
+---
+
+## Rollback / Cleanup
+
+> **⚠️ Warning**: Removing RHOAI will delete all workbenches, pipelines, model deployments, and associated data in RHOAI-managed namespaces. Back up any critical data before proceeding.
+
+### Remove RHOAI 3.0 Platform
+
+```bash
+# 1. Delete DataScienceCluster first (allows graceful component cleanup)
+oc delete datasciencecluster default-dsc
+
+# 2. Wait for components to be removed (watch pods disappear)
+oc get pods -n redhat-ods-applications -w
+
+# 3. Delete DSCInitialization
+oc delete dscinitializations default-dsci
+
+# 4. Delete Argo CD Application (removes remaining resources)
+oc delete application step-02-rhoai -n openshift-gitops
+
+# 5. Optional: Delete operator subscription
+oc delete subscription rhods-operator -n redhat-ods-operator
+oc delete csv -n redhat-ods-operator -l operators.coreos.com/rhods-operator.redhat-ods-operator
+
+# 6. Optional: Delete namespace
+oc delete namespace redhat-ods-operator
+```
+
+### GitOps Revert (alternative)
+
+```bash
+# Remove from Git and let Argo CD prune
+git revert <commit-with-step-02>
+git push
+
+# Or delete Argo CD Application with cascade
+oc delete application step-02-rhoai -n openshift-gitops --cascade=foreground
+```
 
 ---
 

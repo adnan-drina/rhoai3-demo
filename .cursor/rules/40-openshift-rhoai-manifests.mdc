@@ -1,0 +1,24 @@
+---
+description: Use for OpenShift/RHOAI manifests. Ensure CRDs/operators match RHOAI 3.0 and RHOCP 4.20 and include verification steps.
+globs: gitops/**/*.yaml,gitops/**/*.yml,manifests/**/*.yaml,manifests/**/*.yml,**/*.openshift*.yaml,**/*rhoai*.yaml
+alwaysApply: false
+---
+
+# OpenShift + RHOAI Manifest Rules
+
+## Doc-validated schemas only
+- If editing/creating CRs (Operators, CRDs, custom resources), verify the schema first:
+  - `oc explain <kind>`
+  - `oc get crd <name> -o yaml` (to confirm versions/fields)
+- Do not "guess" fields based on other versions or upstream projects.
+
+## Version alignment
+- Ensure all manifests align with:
+  - RHOCP 4.20 behaviors/APIs
+  - RHOAI 3.0 operator/CR APIs
+- If the cluster exposes different API versions than expected, call it out and adapt the manifest accordingly.
+
+## Every step must include validation
+When adding a manifest, also provide:
+- How to confirm the operator reconciled it (events/status conditions)
+- The minimal `oc` commands to verify it works

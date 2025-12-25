@@ -71,6 +71,109 @@ type: Opaque
 stringData:
   cookie_secret: "R3B1U3dpdGNoYm9hcmRDb29raWVTZWNyZXQ="
 ---
+# =============================================================================
+# PostSync Hook: Fix Controller Service Port Mismatch (Gateway API Bug)
+# =============================================================================
+# RHOAI 3.0 BUG: The Notebook Controller creates HTTPRoutes targeting port 8888,
+# but its Service reconciler creates Services exposing port 80.
+#
+# This causes the Gateway API URL (shown in Dashboard) to fail after OAuth.
+# The Gateway tries Service:8888 but Service only exposes 80.
+#
+# FIX: Patch the controller-managed Service to expose port 8888 after every sync.
+# This makes BOTH URLs work:
+#   - Dashboard URL (Gateway API): https://data-science-gateway.../notebook/...
+#   - Custom Route URL: https://gpu-switchboard-private-ai.../notebook/...
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-patcher
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: service-patcher
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: service-patcher
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: service-patcher
+subjects:
+  - kind: ServiceAccount
+    name: service-patcher
+    namespace: private-ai
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-gpu-switchboard-service
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      serviceAccountName: service-patcher
+      restartPolicy: OnFailure
+      containers:
+        - name: patcher
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "╔═══════════════════════════════════════════════════════════════╗"
+              echo "║  RHOAI 3.0 Gateway API Fix: Patching Service to port 8888     ║"
+              echo "╚═══════════════════════════════════════════════════════════════╝"
+              
+              # Wait for controller-managed Service to exist
+              for i in {1..30}; do
+                if oc get svc gpu-switchboard -n private-ai &>/dev/null; then
+                  break
+                fi
+                echo "Waiting for Service... ($i/30)"
+                sleep 2
+              done
+              
+              # Patch Service to expose port 8888 (matching HTTPRoute target)
+              oc patch svc gpu-switchboard -n private-ai --type=json -p='[
+                {"op": "replace", "path": "/spec/ports/0/port", "value": 8888},
+                {"op": "replace", "path": "/spec/ports/0/name", "value": "http-notebook"}
+              ]'
+              
+              # Verify
+              PORT=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].port}')
+              if [ "$PORT" == "8888" ]; then
+                echo "✅ Service patched: port 80 → 8888"
+                echo "✅ Dashboard URL will now work!"
+              else
+                echo "❌ Failed to patch Service (port: $PORT)"
+                exit 1
+              fi
+---
 # -----------------------------------------------------------------------------
 # Service: GPU Switchboard OAuth (SEPARATE from controller-managed Service)
 # -----------------------------------------------------------------------------

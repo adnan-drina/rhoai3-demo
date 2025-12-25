@@ -230,6 +230,8 @@ Automatic cost control through `OdhDashboardConfig`:
 
 ## Deploy
 
+### A) One-shot (recommended)
+
 ```bash
 ./steps/step-03-private-ai/deploy.sh
 ```
@@ -241,6 +243,42 @@ The script will:
 4. Create RHOAI Data Connection for MinIO
 5. Deploy Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
 6. Configure RBAC for ai-admin and ai-developer
+
+### B) Step-by-step (exact commands)
+
+For manual deployment or debugging:
+
+```bash
+# 1. Validate manifests (dry-run)
+kustomize build gitops/step-03-private-ai/base | oc apply --dry-run=server -f -
+
+# 2. Apply Argo CD Application
+oc apply -f gitops/argocd/app-of-apps/step-03-private-ai.yaml
+
+# 3. Wait for MinIO namespace and deployment
+until oc get namespace minio-storage &>/dev/null; do sleep 5; done
+oc rollout status deployment/minio -n minio-storage --timeout=120s
+
+# 4. Wait for MinIO init job
+oc wait --for=condition=complete job/minio-init -n minio-storage --timeout=120s
+
+# 5. Wait for authentication resources
+until oc get secret htpass-secret -n openshift-config &>/dev/null; do sleep 5; done
+
+# 6. Create OpenShift Groups (cannot be managed by ArgoCD)
+oc adm groups new rhoai-admins ai-admin 2>/dev/null || oc adm groups add-users rhoai-admins ai-admin
+oc adm groups new rhoai-users ai-developer 2>/dev/null || oc adm groups add-users rhoai-users ai-developer
+
+# 7. Wait for private-ai namespace and resources
+until oc get namespace private-ai &>/dev/null; do sleep 5; done
+until oc get secret minio-connection -n private-ai &>/dev/null; do sleep 5; done
+
+# 8. Verify Kueue resources
+oc get clusterqueue rhoai-main-queue
+oc get localqueue default -n private-ai
+```
+
+> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
 
 ---
 
@@ -739,6 +777,41 @@ spec:
   dashboardConfig:
     disableKueue: false     # Enable queue UI
     disableDistributedWorkloads: false
+```
+
+---
+
+## Rollback / Cleanup
+
+### Remove GPU-as-a-Service Infrastructure
+
+> **⚠️ Warning**: This will remove the private-ai project, all workbenches, MinIO storage, and user authentication. Back up any critical data before proceeding.
+
+```bash
+# 1. Delete Argo CD Application (cascades to managed resources)
+oc delete application step-03-private-ai -n openshift-gitops
+
+# 2. Delete OpenShift Groups (created by deploy.sh, not ArgoCD)
+oc delete group rhoai-admins
+oc delete group rhoai-users
+
+# 3. Remove HTPasswd from OAuth (if no other users depend on it)
+# Edit oauth/cluster and remove the htpasswd identity provider
+
+# 4. Optional: Delete namespaces manually if not cleaned up
+oc delete namespace private-ai
+oc delete namespace minio-storage
+```
+
+### GitOps Revert (alternative)
+
+```bash
+# Remove from Git and let Argo CD prune
+git revert <commit-with-step-03>
+git push
+
+# Or delete Argo CD Application with cascade
+oc delete application step-03-private-ai -n openshift-gitops --cascade=foreground
 ```
 
 ---
