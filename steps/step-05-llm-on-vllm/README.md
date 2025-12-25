@@ -353,9 +353,14 @@ spec:
 
 ### Workbench: "Connection Timeout" Errors
 
-**Root Cause:** The Notebook Controller creates NetworkPolicies that only allow traffic from `redhat-ods-applications` namespace, but the Gateway (Envoy) runs in `openshift-ingress`.
+**Root Cause:** The Notebook Controller creates NetworkPolicies that only allow traffic from `redhat-ods-applications` namespace, but the Gateway (Envoy) runs in `openshift-ingress`. Additionally, if you have an oauth-proxy sidecar, the NetworkPolicy must allow **both** ports:
 
-**Solution:** Add a NetworkPolicy allowing Gateway ingress:
+| Port | Path | Purpose |
+|------|------|---------|
+| **8888** | Gateway API (Dashboard URL) | Direct to notebook container |
+| **8443** | Custom Route (oauth-proxy) | Through oauth-proxy sidecar |
+
+**Solution:** Add a NetworkPolicy allowing Gateway ingress on **both ports**:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -373,8 +378,13 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: openshift-ingress
       ports:
-        - port: 8888
+        - port: 8888    # Gateway API path
+          protocol: TCP
+        - port: 8443    # oauth-proxy path (if using sidecar)
+          protocol: TCP
 ```
+
+> **Key Insight:** If your NetworkPolicy only allows port 8443 (for oauth-proxy) but the Gateway connects to port 8888 (notebook directly), you'll get "connection timeout" errors on the Dashboard URL.
 
 ## GPU Orchestrator Workbench
 
@@ -400,14 +410,21 @@ Or via RHOAI Dashboard:
 
 ### RHOAI 3.0 Native Ingress Pattern
 
-The workbench uses RHOAI 3.0's Native Ingress Controller pattern:
+The workbench uses RHOAI 3.0's Native Ingress Controller pattern with Gateway API:
 
 ```
-Browser → Gateway → HTTPRoute(8888) → Service(8888) → Pod(8888) → Jupyter
-                ↓
-           OAuth Redirect (302)
-                ↓
-           OpenShift Login
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Dashboard URL (Gateway API Path)                                       │
+│  https://data-science-gateway.apps.../notebook/private-ai/gpu-switchboard/
+│                                                                         │
+│  Browser → Gateway → kube-auth-proxy (OAuth) → HTTPRoute                │
+│                                                    ↓                    │
+│                                              Service:8888               │
+│                                                    ↓                    │
+│                                           NetworkPolicy ✓               │
+│                                                    ↓                    │
+│                                              Pod:8888 (Jupyter)         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Key Configuration Points:**
@@ -416,8 +433,18 @@ Browser → Gateway → HTTPRoute(8888) → Service(8888) → Pod(8888) → Jupy
 |-----------|---------------|-----|
 | **Service Port** | 8888 | Matches controller-generated HTTPRoute |
 | **Port Name** | `http-gpu-switchboard` | `http-` prefix required for Envoy protocol detection |
-| **NetworkPolicy** | Allow `openshift-ingress` | Gateway namespace must reach workbench |
+| **NetworkPolicy** | Allow `openshift-ingress` on **port 8888** | Gateway namespace must reach notebook container |
 | **OAuth** | `inject-oauth: "true"` annotation | Centralized auth at Gateway level |
+
+### Common Configuration Mistakes
+
+| Symptom | Root Cause | Fix |
+|---------|------------|-----|
+| **503 Service Unavailable** | HTTPRoute targets 8888, Service exposes 80 | Patch Service to port 8888 |
+| **Connection Timeout** | NetworkPolicy blocks Gateway | Allow port 8888 from `openshift-ingress` |
+| **cluster_not_found** | Service selector doesn't match pod labels | Use `statefulset: gpu-switchboard` selector |
+
+> **Lesson Learned:** The Notebook Controller creates HTTPRoute targeting port 8888, but creates Service exposing port 80. A PostSync hook patches the Service to align ports. The NetworkPolicy must also allow port 8888 for the Gateway API path.
 
 ### Workbench GitOps Components
 
