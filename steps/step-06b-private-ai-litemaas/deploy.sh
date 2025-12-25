@@ -25,7 +25,7 @@ NC='\033[0m' # No Color
 
 NAMESPACE="litemaas"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GITOPS_DIR="${SCRIPT_DIR}/../../gitops/step-06b-litemaas"
+GITOPS_DIR="${SCRIPT_DIR}/../../gitops/step-06b-private-ai-litemaas"
 
 # =============================================================================
 # Helper Functions
