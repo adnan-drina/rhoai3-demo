@@ -1,0 +1,164 @@
+# Frontend ConfigMap (nginx config)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: litemaas
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  default.conf: |
+    # Frontend nginx configuration
+    # Serves static files and proxies API requests to backend
+    
+    server {
+        listen 8080;
+        server_name _;
+        root /opt/app-root/src;
+        index index.html;
+        
+        # SPA routing - serve index.html for all routes
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        
+        # API proxy to backend
+        # OAuth callback URL: <base-url>/api/auth/callback
+        location /api/ {
+            proxy_pass http://backend:8080/api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_buffering off;
+            
+            # Longer timeouts for LLM requests
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+        
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+        
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "OK\n";
+            add_header Content-Type text/plain;
+        }
+    }
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: litemaas
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: frontend
+  type: ClusterIP
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: litemaas
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/part-of: litemaas
+    spec:
+      containers:
+        - name: frontend
+          image: quay.io/rh-aiservices-bu/litemaas-frontend:0.1.2
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /opt/app-root/etc/nginx.d/default.conf
+              subPath: default.conf
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: frontend-config
+---
+# Frontend Route (main LiteMaaS UI)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: litemaas
+  namespace: litemaas
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  host: litemaas-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: frontend
+    weight: 100
+

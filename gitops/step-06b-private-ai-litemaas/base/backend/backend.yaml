@@ -1,0 +1,135 @@
+# Backend Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secret
+  namespace: litemaas
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+type: Opaque
+stringData:
+  # Database Configuration
+  DATABASE_URL: postgresql://litemaas_admin:vbTpwhedatJZLH63j/s+1FcMEENeDglj@postgres:5432/litemaas_db?sslmode=disable
+  
+  # CORS Configuration
+  CORS_ORIGIN: https://litemaas-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com
+  
+  # JWT Configuration
+  JWT_SECRET: FegG1/Tw32MB28h6K6MpZCuxBcfqBl8NZ2hHy+i+vkuuseSCvl+fPSxgsfQgdjLsPbe4D7aBLxrIu+Wb3M1C7g==
+  
+  # OAuth Configuration
+  OAUTH_CLIENT_ID: litemaas-oauth-client
+  OAUTH_CLIENT_SECRET: 277e639bb4ebed8e0e5dd9517dc947cf
+  OAUTH_ISSUER: https://oauth-openshift.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com
+  OAUTH_CALLBACK_URL: https://litemaas-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com/api/auth/callback
+  
+  # Admin Configuration
+  ADMIN_API_KEYS: ltm_admin_3553f32ef869038dd82bc9166c8177bc
+  
+  # LiteLLM Integration
+  LITELLM_API_KEY: sk-1b4f0a05549af06f80db6cd51b37fd01
+  LITELLM_API_BASE: http://litellm:4000
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: litemaas
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: backend
+  type: ClusterIP
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: litemaas
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/part-of: litemaas
+    spec:
+      containers:
+        - name: backend
+          image: quay.io/rh-aiservices-bu/litemaas-backend:0.1.2
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - secretRef:
+                name: backend-secret
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "8080"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+# Backend API Route (for direct API access)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: litemaas-api
+  namespace: litemaas
+  labels:
+    app: backend
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  host: litemaas-api-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: backend
+    weight: 100
+

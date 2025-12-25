@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# LiteMaaS - Model as a Service Platform
+# Experimental deployment for API key management and LLM subscriptions
+# See: https://github.com/rh-aiservices-bu/litemaas
+
+namespace: litemaas
+
+resources:
+  - namespace/
+  - postgres/
+  - litellm/
+  - backend/
+  - frontend/
+
+# Common labels for all resources
+commonLabels:
+  app.kubernetes.io/part-of: litemaas
+  demo.rhoai.io/step: "06b"
+  demo.rhoai.io/experimental: "true"
+
