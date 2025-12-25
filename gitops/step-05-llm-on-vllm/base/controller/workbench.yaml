@@ -72,37 +72,50 @@ stringData:
   cookie_secret: "R3B1U3dpdGNoYm9hcmRDb29raWVTZWNyZXQ="
 ---
 # -----------------------------------------------------------------------------
-# Service: GPU Switchboard (Targets OAuth-Proxy on 8443)
+# Service: GPU Switchboard OAuth (SEPARATE from controller-managed Service)
 # -----------------------------------------------------------------------------
-# Per RHOAI 3.0 documentation, the Service targets the oauth-proxy container
-# which terminates TLS and handles authentication.
+# IMPORTANT: The Notebook Controller automatically creates and manages a Service
+# named "gpu-switchboard" that targets port 8888. We CANNOT override this.
+#
+# SOLUTION: Create a SEPARATE Service with a different name that targets the
+# oauth-proxy sidecar on port 8443. The Route uses this Service.
+#
+# This is the only persistent solution because:
+#   - Controller-managed Service: "gpu-switchboard" -> port 80/8888 (notebook)
+#   - GitOps-managed Service: "gpu-switchboard-oauth" -> port 8443 (oauth-proxy)
+# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
-  name: gpu-switchboard
+  name: gpu-switchboard-oauth
   namespace: private-ai
   labels:
     app: gpu-switchboard
-    notebook-name: gpu-switchboard
   annotations:
     argocd.argoproj.io/sync-wave: "8"
-    # OpenShift serving certificate annotation - auto-generates TLS secret
-    service.beta.openshift.io/serving-cert-secret-name: gpu-switchboard-tls
+    # OpenShift serving certificate - generates TLS secret for THIS service name
+    service.beta.openshift.io/serving-cert-secret-name: gpu-switchboard-oauth-tls
 spec:
   ports:
     - name: oauth-proxy
       port: 8443
       protocol: TCP
-      targetPort: oauth-proxy
+      targetPort: 8443
   selector:
     statefulset: gpu-switchboard
   type: ClusterIP
 ---
 # -----------------------------------------------------------------------------
-# Route: GPU Switchboard (TLS Passthrough to OAuth-Proxy)
+# Route: GPU Switchboard (via OAuth-Proxy Service)
 # -----------------------------------------------------------------------------
-# Uses passthrough TLS because oauth-proxy terminates TLS itself.
-# This bypasses the Gateway API port mismatch bug entirely.
+# Uses reencrypt TLS:
+#   - Router terminates external TLS
+#   - Re-encrypts to oauth-proxy (which has OpenShift-generated TLS cert)
+#   - oauth-proxy handles OpenShift OAuth and proxies to Jupyter
+#
+# This Route uses the SEPARATE "gpu-switchboard-oauth" Service that the
+# Notebook Controller does NOT manage.
+# -----------------------------------------------------------------------------
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -115,7 +128,7 @@ metadata:
 spec:
   to:
     kind: Service
-    name: gpu-switchboard
+    name: gpu-switchboard-oauth
     weight: 100
   port:
     targetPort: oauth-proxy
@@ -363,7 +376,7 @@ spec:
             defaultMode: 420
         - name: tls-certificates
           secret:
-            secretName: gpu-switchboard-tls
+            secretName: gpu-switchboard-oauth-tls
             defaultMode: 420
 ---
 # =============================================================================
