@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# LiteMaaS Namespace - Isolated Experimental Environment
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ EXPERIMENTAL: This namespace contains LiteMaaS PoC components.
+# Not for production use. See README for cleanup instructions.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: litemaas
+  labels:
+    app.kubernetes.io/name: litemaas
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: experimental-maas
+    # Mark as experimental for easy identification
+    demo.rhoai.io/experimental: "true"
+    demo.rhoai.io/step: "06b"
+  annotations:
+    openshift.io/display-name: "LiteMaaS (Experimental MaaS)"
+    openshift.io/description: "Experimental Model-as-a-Service platform using LiteMaaS + LiteLLM"
+    # Cleanup annotation
+    demo.rhoai.io/cleanup-command: "oc delete namespace litemaas"
+
