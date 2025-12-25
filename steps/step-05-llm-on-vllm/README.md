@@ -334,6 +334,31 @@ oc describe workload -n private-ai <workload-name>
 
 See [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740) for driver downgrade instructions.
 
+### Granite Model: Chat Template or Quantization Errors
+
+**Symptom 1:** `ValueError: The supplied chat template string (granite) appears path-like, but doesn't exist!`
+
+**Root Cause:** vLLM doesn't have a built-in template named "granite". The Granite model has its template in `tokenizer_config.json`.
+
+**Fix:** Remove `--chat-template=granite` from the InferenceService args.
+
+**Symptom 2:** `Quantization method specified in the model config (compressed-tensors) does not match the quantization method specified in the 'quantization' argument (fp8)`
+
+**Root Cause:** The `RedHatAI/granite-3.1-8b-instruct-FP8-dynamic` model uses `compressed-tensors` format, not the generic `fp8` format.
+
+**Fix:** Remove `--quantization=fp8` - vLLM auto-detects the quantization from the model config.
+
+**Working Granite Args:**
+```yaml
+args:
+  - --served-model-name=granite-8b-agent
+  - --max-model-len=16384
+  - --gpu-memory-utilization=0.9
+  - --trust-remote-code
+  - --enable-auto-tool-choice
+  - --tool-call-parser=granite
+```
+
 ### Workbench: Route Access Issues
 
 **Root Cause:** Using the wrong annotation for RHOAI 3.0 workbenches.
