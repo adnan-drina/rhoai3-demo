@@ -1,0 +1,89 @@
+# =============================================================================
+# Gateway API Alternative - If InferenceGateway CRD Doesn't Exist
+# =============================================================================
+# This file provides an alternative using standard Kubernetes Gateway API.
+# Use this if the maas.opendatahub.io InferenceGateway CRD is not available.
+#
+# The Gateway API pattern uses:
+#   - Gateway: Creates the ingress point
+#   - HTTPRoute: Routes requests to InferenceService backends
+#
+# Prerequisites:
+#   - Gateway API CRDs installed (usually via Istio or Envoy Gateway)
+#   - GatewayClass configured (istio or envoy)
+#
+# Verification:
+#   oc get gatewayclass
+#   oc get crd gateways.gateway.networking.k8s.io
+#
+# =============================================================================
+# 
+# UNCOMMENT AND APPLY IF INFERENCEGATEWAY CRD IS NOT AVAILABLE
+#
+# ---
+# apiVersion: gateway.networking.k8s.io/v1
+# kind: Gateway
+# metadata:
+#   name: maas-gateway
+#   namespace: private-ai
+#   labels:
+#     app.kubernetes.io/name: maas-gateway
+#     app.kubernetes.io/part-of: private-ai-platform
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "10"
+# spec:
+#   # Use the GatewayClass available on your cluster
+#   # Check with: oc get gatewayclass
+#   gatewayClassName: istio  # or 'envoy' depending on cluster config
+#   listeners:
+#     - name: https
+#       port: 443
+#       protocol: HTTPS
+#       hostname: "maas.apps.${CLUSTER_DOMAIN}"
+#       tls:
+#         mode: Terminate
+#         certificateRefs:
+#           - name: maas-tls-cert
+#             kind: Secret
+#     - name: http
+#       port: 80
+#       protocol: HTTP
+#       hostname: "maas.apps.${CLUSTER_DOMAIN}"
+# ---
+# # Aggregate route for all models - proxies to individual InferenceServices
+# apiVersion: gateway.networking.k8s.io/v1
+# kind: HTTPRoute
+# metadata:
+#   name: maas-models-route
+#   namespace: private-ai
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "11"
+# spec:
+#   parentRefs:
+#     - name: maas-gateway
+#       namespace: private-ai
+#   hostnames:
+#     - "maas.apps.${CLUSTER_DOMAIN}"
+#   rules:
+#     # OpenAI-compatible /v1/models endpoint
+#     - matches:
+#         - path:
+#             type: PathPrefix
+#             value: /v1/models
+#       backendRefs:
+#         # This would need a controller that aggregates model info
+#         # Or a custom service that queries all InferenceServices
+#         - name: model-aggregator
+#           port: 8080
+#     
+#     # Per-model routing based on request body (requires Envoy filter)
+#     # Alternative: Use path-based routing like /v1/models/{model-name}/...
+#     - matches:
+#         - path:
+#             type: PathPrefix
+#             value: /v1/chat/completions
+#       backendRefs:
+#         # Default backend - could be load balanced across models
+#         - name: mistral-3-bf16-predictor
+#           port: 8080
+

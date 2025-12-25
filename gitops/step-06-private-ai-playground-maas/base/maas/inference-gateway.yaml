@@ -1,0 +1,80 @@
+# =============================================================================
+# InferenceGateway CR - Model-as-a-Service Unified Endpoint
+# =============================================================================
+# The InferenceGateway creates a single, unified ingress point for all models.
+# It aggregates deployed InferenceServices into one OpenAI-compatible endpoint.
+#
+# STATUS: Developer Preview (DP) in RHOAI 3.0
+# Ref: https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai
+# Ref: https://opendatahub-io.github.io/models-as-a-service/latest/
+#
+# ⚠️ IMPORTANT: Verify CRD exists before applying:
+#   oc get crd | grep -iE "inferencegateway|maas"
+#   oc api-resources | grep -i maas
+#
+# If InferenceGateway CRD doesn't exist, see alternative:
+#   gateway-api-alternative.yaml (uses standard Gateway API)
+#
+# =============================================================================
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: InferenceGateway
+metadata:
+  name: enterprise-gateway
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: inference-gateway
+    app.kubernetes.io/part-of: private-ai-platform
+    app.kubernetes.io/component: maas-gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # TODO: Verify actual spec fields with `oc explain inferencegateway.spec`
+  # The fields below are based on ODH MaaS documentation and may need
+  # adjustment based on the actual RHOAI 3.0 CRD schema.
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  # Authentication - uses Authorino for API key validation
+  # Authorino operator installed in step-01-gpu-and-prereq
+  auth:
+    type: authorino
+    # config:
+    #   namespace: openshift-authorino
+    #   # API key secret reference
+    #   apiKeySecretRef:
+    #     name: maas-api-keys
+    #     namespace: private-ai
+
+  # Rate Limiting - uses Limitador for request throttling
+  # Limitador operator installed in step-01-gpu-and-prereq
+  rateLimit:
+    type: limitador
+    # config:
+    #   namespace: openshift-limitador-operator
+    #   limits:
+    #     - conditions: ["descriptors[0].value == 'default'"]
+    #       maxValue: 100
+    #       seconds: 60
+
+  # Model discovery - automatic enrollment via labels
+  # InferenceServices with label maas.opendatahub.io/enabled: "true" are included
+  modelDiscovery:
+    enabled: true
+    selector:
+      matchLabels:
+        maas.opendatahub.io/enabled: "true"
+  
+  # Explicit model list (alternative to label-based discovery)
+  # models:
+  #   - name: mistral-3-bf16
+  #     namespace: private-ai
+  #   - name: mistral-3-int4
+  #     namespace: private-ai
+  #   - name: devstral-2
+  #     namespace: private-ai
+  #   - name: gpt-oss-20b
+  #     namespace: private-ai
+  #   - name: granite-8b-agent
+  #     namespace: private-ai
+

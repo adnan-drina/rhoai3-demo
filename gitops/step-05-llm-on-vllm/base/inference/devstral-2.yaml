@@ -28,6 +28,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"  # Makes model available in AI Asset Endpoints for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -36,6 +37,10 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Devstral-2 (4-GPU Agentic)"
     serving.kserve.io/deploymentMode: RawDeployment
+    # AI Asset / Playground metadata
+    opendatahub.io/model-type: generative
+    opendatahub.io/genai-use-case: "agentic coding assistant"
+    security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
     # QUEUED ASSET: Starts at 0 replicas

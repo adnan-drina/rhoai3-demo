@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Model-as-a-Service (MaaS) Components
+# Provides unified API gateway for all InferenceServices
+
+resources:
+  - api-key-secret.yaml
+  - inference-gateway.yaml
+  # Uncomment if InferenceGateway CRD doesn't exist:
+  # - gateway-api-alternative.yaml
+
+# Strategic merge patches to add MaaS labels to existing InferenceServices
+# These patches add maas.opendatahub.io/enabled: "true" to Step-05 models
+patches:
+  - path: model-enrollment-patch.yaml
+

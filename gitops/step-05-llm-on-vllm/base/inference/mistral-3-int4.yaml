@@ -21,6 +21,7 @@ metadata:
   namespace: private-ai
   labels:
     opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"  # Makes model available in AI Asset Endpoints for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -29,6 +30,10 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Mistral-3 INT4 (1-GPU)"
     serving.kserve.io/deploymentMode: RawDeployment
+    # AI Asset / Playground metadata
+    opendatahub.io/model-type: generative
+    opendatahub.io/genai-use-case: "chat assistant"
+    security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
     # SECONDARY LOAD: Always running in baseline state
@@ -50,7 +55,8 @@ spec:
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
       args:
         - --served-model-name=mistral-3-int4
-        - --max-model-len=4096
+        # 16K context for Playground compatibility (LlamaStack sends max_tokens=4096)
+        - --max-model-len=16384
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:

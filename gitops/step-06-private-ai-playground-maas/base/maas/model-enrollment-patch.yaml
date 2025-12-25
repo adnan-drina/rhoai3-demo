@@ -1,0 +1,55 @@
+# =============================================================================
+# Model Enrollment Patches - Enable MaaS Discovery on InferenceServices
+# =============================================================================
+# These patches add the maas.opendatahub.io/enabled label to existing
+# InferenceServices deployed in Step-05, enabling automatic discovery
+# by the InferenceGateway.
+#
+# Apply via Kustomize strategic merge or JSON patch.
+# =============================================================================
+---
+# Patch: mistral-3-bf16 (4-GPU Primary)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mistral-3-bf16
+  namespace: private-ai
+  labels:
+    maas.opendatahub.io/enabled: "true"
+---
+# Patch: mistral-3-int4 (1-GPU Cost-Efficient)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mistral-3-int4
+  namespace: private-ai
+  labels:
+    maas.opendatahub.io/enabled: "true"
+---
+# Patch: devstral-2 (4-GPU Agentic)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: devstral-2
+  namespace: private-ai
+  labels:
+    maas.opendatahub.io/enabled: "true"
+---
+# Patch: gpt-oss-20b (4-GPU Reasoning)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: gpt-oss-20b
+  namespace: private-ai
+  labels:
+    maas.opendatahub.io/enabled: "true"
+---
+# Patch: granite-8b-agent (1-GPU RAG/Tool-call)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-8b-agent
+  namespace: private-ai
+  labels:
+    maas.opendatahub.io/enabled: "true"
+
