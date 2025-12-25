@@ -1,0 +1,201 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# LiteLLM Proxy - Unified Model Gateway
+# ═══════════════════════════════════════════════════════════════════════════════
+# Proxies requests to InferenceServices in the private-ai namespace.
+# Provides OpenAI-compatible API endpoint for all models.
+#
+# Ref: https://docs.litellm.ai/docs/
+# ═══════════════════════════════════════════════════════════════════════════════
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: litemaas
+  labels:
+    app.kubernetes.io/name: litellm
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  config.yaml: |
+    # LiteLLM Configuration
+    # Routes requests to our InferenceServices in private-ai namespace
+    
+    model_list:
+      # ═══════════════════════════════════════════════════════════════════════
+      # 1-GPU Models (Always available)
+      # ═══════════════════════════════════════════════════════════════════════
+      - model_name: mistral-3-int4
+        litellm_params:
+          model: openai/RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16
+          api_base: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
+          api_key: fake  # vLLM doesn't require auth internally
+        model_info:
+          description: "Mistral Small 24B INT4 (1-GPU) - Fast, efficient"
+          max_tokens: 16384
+          input_cost_per_token: 0.0001
+          output_cost_per_token: 0.0003
+      
+      - model_name: granite-8b-agent
+        litellm_params:
+          model: openai/RedHatAI/granite-3.1-8b-instruct-FP8-dynamic
+          api_base: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+          api_key: fake
+        model_info:
+          description: "Granite 8B Agent (1-GPU FP8) - Tool calling specialist"
+          max_tokens: 8192
+          input_cost_per_token: 0.00005
+          output_cost_per_token: 0.00015
+      
+      # ═══════════════════════════════════════════════════════════════════════
+      # 4-GPU Models (Kueue managed - may be pending)
+      # ═══════════════════════════════════════════════════════════════════════
+      - model_name: mistral-3-bf16
+        litellm_params:
+          model: openai/mistralai/Mistral-Small-24B-Instruct-2501
+          api_base: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
+          api_key: fake
+        model_info:
+          description: "Mistral Small 24B BF16 (4-GPU) - Full precision, highest quality"
+          max_tokens: 32768
+          input_cost_per_token: 0.0004
+          output_cost_per_token: 0.0012
+      
+      - model_name: devstral-2
+        litellm_params:
+          model: openai/mistralai/Devstral-Small-2505
+          api_base: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
+          api_key: fake
+        model_info:
+          description: "Devstral Small (4-GPU) - Agentic coding specialist"
+          max_tokens: 32768
+          input_cost_per_token: 0.0004
+          output_cost_per_token: 0.0012
+      
+      - model_name: gpt-oss-20b
+        litellm_params:
+          model: openai/RedHatAI/gpt-oss-20b
+          api_base: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
+          api_key: fake
+        model_info:
+          description: "GPT-OSS 20B (4-GPU BF16) - Complex reasoning"
+          max_tokens: 16384
+          input_cost_per_token: 0.0003
+          output_cost_per_token: 0.0009
+    
+    # General settings
+    general_settings:
+      master_key: sk-litemaas-demo-key-2024
+      
+    litellm_settings:
+      # Enable detailed logging for demo
+      set_verbose: true
+      # Timeout for model responses (seconds)
+      request_timeout: 300
+      # Retry on failures
+      num_retries: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: litemaas
+  labels:
+    app.kubernetes.io/name: litellm
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: litellm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: litellm
+        app.kubernetes.io/part-of: litemaas
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-latest
+          ports:
+            - containerPort: 4000
+              name: http
+          args:
+            - --config
+            - /app/config.yaml
+            - --port
+            - "4000"
+          env:
+            - name: LITELLM_MASTER_KEY
+              value: sk-litemaas-demo-key-2024
+            - name: LITELLM_LOG
+              value: "DEBUG"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: litellm-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: litemaas
+  labels:
+    app.kubernetes.io/name: litellm
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  ports:
+    - port: 4000
+      targetPort: 4000
+      name: http
+  selector:
+    app.kubernetes.io/name: litellm
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: litellm
+  namespace: litemaas
+  labels:
+    app.kubernetes.io/name: litellm
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: litellm
+  port:
+    targetPort: http
+

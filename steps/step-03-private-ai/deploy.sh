@@ -87,6 +87,11 @@ until oc get deployment minio -n minio-storage &>/dev/null && \
 done
 log_success "MinIO deployment ready"
 
+# Apply MinIO Route manually (excluded from ArgoCD due to structured merge diff bug)
+log_info "Applying MinIO Route (excluded from ArgoCD)..."
+oc apply -f "$REPO_ROOT/gitops/step-03-private-ai/base/minio/route.yaml"
+log_success "MinIO Route created"
+
 # Wait for init job to complete (with timeout)
 log_info "Waiting for MinIO initialization..."
 TIMEOUT=120

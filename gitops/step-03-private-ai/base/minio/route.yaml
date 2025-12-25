@@ -1,0 +1,26 @@
+# Route for MinIO Console (admin access)
+# 
+# WARNING: This file is NOT managed by ArgoCD due to a known bug with
+# structured merge diff calculation for OpenShift Routes.
+# See: https://github.com/argoproj/argo-cd/issues/8397
+#
+# Apply manually after ArgoCD syncs the rest of step-03:
+#   oc apply -f gitops/step-03-private-ai/base/minio/route.yaml
+#
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio-console
+  namespace: minio-storage
+  labels:
+    app: minio
+spec:
+  to:
+    kind: Service
+    name: minio
+  port:
+    targetPort: console
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+

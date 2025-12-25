@@ -21,28 +21,6 @@ spec:
       targetPort: 9001
       protocol: TCP
   type: ClusterIP
----
-# Route for MinIO Console (admin access)
-# Note: ServerSideApply=false required due to ArgoCD structured merge diff bug with Routes
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: minio-console
-  namespace: minio-storage
-  labels:
-    app: minio
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-    # Bypass structured merge diff bug with OpenShift Routes
-    argocd.argoproj.io/sync-options: Replace=true,ServerSideApply=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
-spec:
-  to:
-    kind: Service
-    name: minio
-  port:
-    targetPort: console
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
+# NOTE: Route is in route.yaml but NOT managed by ArgoCD due to structured merge diff bug.
+# Apply manually: oc apply -f gitops/step-03-private-ai/base/minio/route.yaml
 

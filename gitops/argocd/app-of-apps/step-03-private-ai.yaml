@@ -15,6 +15,8 @@ spec:
     server: https://kubernetes.default.svc
   # NOTE: OpenShift Groups are created via deploy.sh (not GitOps)
   # because ArgoCD cannot parse user.openshift.io/v1 Group schema
+  # NOTE: MinIO Route is applied via deploy.sh (not GitOps)
+  # due to ArgoCD structured merge diff bug with Routes
   # NOTE: PVC uses WaitForFirstConsumer, treated as Progressing until pod starts
   syncPolicy:
     automated:
@@ -25,22 +27,14 @@ spec:
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
       - PrunePropagationPolicy=foreground
-      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  # Ignore differences that cause structured merge diff errors
+  # Ignore differences managed by operators
   ignoreDifferences:
-    # Routes have known issues with ArgoCD structured merge diff calculation
-    # when using ServerSideApply. Use jqPathExpressions to ignore all fields.
-    - group: route.openshift.io
-      kind: Route
-      jqPathExpressions:
-        - .spec
-        - .status
     # Namespaces may have additional annotations/labels from OLM/operators
     - group: ""
       kind: Namespace
