@@ -17,9 +17,10 @@ metadata:
 type: Opaque
 stringData:
   # Demo credentials - change for any real deployment
-  POSTGRES_USER: litemaas
-  POSTGRES_PASSWORD: litemaas-demo-2024
-  POSTGRES_DB: litemaas
+  # Red Hat PostgreSQL container uses POSTGRESQL_* prefix
+  POSTGRESQL_USER: litemaas
+  POSTGRESQL_PASSWORD: litemaas-demo-2024
+  POSTGRESQL_DATABASE: litemaas
   DATABASE_URL: postgresql://litemaas:litemaas-demo-2024@postgres:5432/litemaas
 ---
 apiVersion: v1
@@ -85,7 +86,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+                - pg_isready -U $POSTGRESQL_USER -d $POSTGRESQL_DATABASE
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
@@ -93,7 +94,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+                - pg_isready -U $POSTGRESQL_USER -d $POSTGRESQL_DATABASE
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
