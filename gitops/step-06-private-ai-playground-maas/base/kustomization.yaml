@@ -1,71 +1,53 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 06: Private AI Playground & Model-as-a-Service (MaaS)
-# Establishes the high-level consumption layer of the AI platform
+# Step 06: GenAI Playground
+# Deploys the LlamaStack backend for the GenAI Studio Playground UI.
 #
 # Architecture:
 #   ┌─────────────────────────────────────────────────────────────────────────┐
-#   │                     Enterprise AI Platform                              │
-#   ├─────────────────────────────────────────────────────────────────────────┤
-#   │                                                                         │
-#   │   ┌─────────────────────────────────────────────────────────────────┐  │
-#   │   │                  GenAI Studio (Playground UI)                    │  │
-#   │   │   - Prompt engineering sandbox                                   │  │
-#   │   │   - Model comparison                                            │  │
-#   │   │   - Session management                                          │  │
-#   │   └─────────────────────────────────────────────────────────────────┘  │
-#   │                              │                                          │
-#   │                              ▼                                          │
-#   │   ┌─────────────────────────────────────────────────────────────────┐  │
-#   │   │                    LlamaStack Backend                            │  │
-#   │   │   - Orchestrates Playground actions                             │  │
-#   │   │   - Translates UI to vLLM API calls                            │  │
-#   │   │   - Manages conversation state                                  │  │
-#   │   └─────────────────────────────────────────────────────────────────┘  │
-#   │                                                                         │
-#   │   ═══════════════════════════════════════════════════════════════════  │
-#   │                                                                         │
-#   │   ┌─────────────────────────────────────────────────────────────────┐  │
-#   │   │             MaaS Gateway (Unified API Endpoint)                  │  │
-#   │   │   URL: https://maas.apps.<cluster>/v1/...                       │  │
-#   │   │                                                                  │  │
-#   │   │   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │  │
-#   │   │   │  Authorino   │  │  Limitador   │  │    Router    │          │  │
-#   │   │   │  (AuthZ)     │──│ (Rate Limit) │──│  (Model Sel) │          │  │
-#   │   │   └──────────────┘  └──────────────┘  └──────────────┘          │  │
-#   │   └─────────────────────────────────────────────────────────────────┘  │
-#   │                              │                                          │
-#   │                              ▼                                          │
-#   │   ┌─────────────────────────────────────────────────────────────────┐  │
-#   │   │                   InferenceServices (Step-05)                    │  │
-#   │   │   mistral-3-bf16 │ mistral-3-int4 │ devstral-2 │ gpt-oss-20b   │  │
-#   │   └─────────────────────────────────────────────────────────────────┘  │
-#   │                                                                         │
+#   │                          RHOAI Dashboard                                 │
+#   │   ┌──────────────────────────────────────────────────────────────────┐  │
+#   │   │                   GenAI Studio > Playground                       │  │
+#   │   │   - Select model from dropdown (5 models available)              │  │
+#   │   │   - Test prompts interactively                                   │  │
+#   │   │   - Compare model responses                                      │  │
+#   │   └──────────────────────────────────────────────────────────────────┘  │
+#   │                                    │                                     │
+#   │                                    ▼                                     │
+#   │   ┌──────────────────────────────────────────────────────────────────┐  │
+#   │   │                    LlamaStackDistribution                         │  │
+#   │   │              (lsd-genai-playground - port 8321)                  │  │
+#   │   │                                                                   │  │
+#   │   │   5 vLLM Providers → 5 InferenceServices (Step-05)               │  │
+#   │   └──────────────────────────────────────────────────────────────────┘  │
 #   └─────────────────────────────────────────────────────────────────────────┘
 #
-# Components:
-#   1. playground/ - LlamaStack backend for GenAI Studio
-#   2. maas/       - InferenceGateway + auth/rate-limiting
-#
 # Prerequisites:
-#   - Step-05 InferenceServices deployed
+#   - Step-05 InferenceServices deployed with AI Asset labels
 #   - genAiStudio: true in OdhDashboardConfig (step-02)
-#   - modelAsService: true in OdhDashboardConfig (step-02)
 #   - llamastackoperator: Managed in DataScienceCluster (step-02)
-#   - Authorino + Limitador operators installed (step-01)
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/experimenting_with_models_in_the_gen_ai_playground/index
-# Ref: https://opendatahub-io.github.io/models-as-a-service/latest/
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Playground Backend (LlamaStack) - sync-wave: 5
+  # Playground Backend (LlamaStack) - sync-wave: 4-5
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Deploys:
+  #   - LlamaStackDistribution CR
+  #   - llama-stack-config ConfigMap (5 model providers)
   # ═══════════════════════════════════════════════════════════════════════════
   - playground/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # 2. Model-as-a-Service Gateway - sync-wave: 10
+  # Model-as-a-Service (MaaS) - NOT AVAILABLE in RHOAI 3.0
   # ═══════════════════════════════════════════════════════════════════════════
-  - maas/
-
+  # The InferenceGateway CRD is not available in RHOAI 3.0.
+  # MaaS is in Developer Preview and may be available in future versions.
+  #
+  # For now, use direct InferenceService URLs for API access:
+  #   curl https://mistral-3-int4-private-ai.apps.<cluster>/v1/chat/completions
+  #
+  # Uncomment when InferenceGateway CRD becomes available:
+  # - maas/

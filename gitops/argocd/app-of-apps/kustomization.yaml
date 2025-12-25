@@ -6,3 +6,6 @@ resources:
   # - step-01-gpu-and-prereq.yaml
   # - step-02-rhoai.yaml
   # - step-03-private-ai.yaml
+  # - step-04-model-registry.yaml
+  # - step-05-llm-on-vllm.yaml
+  # - step-06-private-ai-playground-maas.yaml
