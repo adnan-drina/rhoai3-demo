@@ -115,25 +115,6 @@ spec:
     app: postgres
   type: ClusterIP
 ---
-# PostgreSQL PVC
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-data
-  namespace: litemaas
-  labels:
-    app: postgres
-    app.kubernetes.io/part-of: litemaas
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: gp3-csi
----
 # PostgreSQL StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet
