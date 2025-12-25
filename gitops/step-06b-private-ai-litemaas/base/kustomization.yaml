@@ -14,9 +14,5 @@ resources:
   - backend/
   - frontend/
 
-# Common labels for all resources
-commonLabels:
-  app.kubernetes.io/part-of: litemaas
-  demo.rhoai.io/step: "06b"
-  demo.rhoai.io/experimental: "true"
+# Note: Don't use commonLabels as it affects selectors and breaks Service->Pod matching
 
