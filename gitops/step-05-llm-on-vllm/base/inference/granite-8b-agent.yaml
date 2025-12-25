@@ -11,8 +11,8 @@
 # "Small but Mighty" - optimized for multi-step reasoning and API orchestration.
 #
 # Features:
-#   - Native tool-calling support via --chat-template=granite
-#   - Auto tool choice for Agent Playground integration
+#   - Native tool-calling support (built-in chat template in tokenizer_config.json)
+#   - Auto tool choice via --tool-call-parser=granite for Agent Playground
 #   - 16k context window for long RAG contexts
 #
 # Demo Role: "Queued Asset" - Key model for Step 06 (Agent Playground)
@@ -53,16 +53,16 @@ spec:
       storage:
         key: minio-connection
       args:
-        # FP8 Dynamic Quantization - fits easily on single L4 (24GB)
+        # FP8 Dynamic (compressed-tensors format, auto-detected by vLLM)
         # 8B model = ~8GB, leaving 16GB for KV cache (16k+ context)
         - --served-model-name=granite-8b-agent
-        - --quantization=fp8
+        # Note: --quantization removed - model uses compressed-tensors, auto-detected
         - --max-model-len=16384
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
         # Agentic features - REQUIRED for tool-calling
-        - --chat-template=granite
         - --enable-auto-tool-choice
+        - --tool-call-parser=granite
       env:
         # RHOAI 3.0 GA: V1 engine required
         - name: VLLM_USE_V1
