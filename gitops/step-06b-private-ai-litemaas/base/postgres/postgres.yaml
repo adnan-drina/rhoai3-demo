@@ -31,7 +31,8 @@ metadata:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/part-of: litemaas
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # Same wave as Deployment - PVC uses WaitForFirstConsumer, needs pod to bind
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   accessModes:
     - ReadWriteOnce
