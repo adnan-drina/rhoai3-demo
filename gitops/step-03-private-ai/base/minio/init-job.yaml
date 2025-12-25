@@ -52,17 +52,18 @@ spec:
               # 1. Wait for MinIO service to be reachable (AWS can take 30-60s)
               # ═══════════════════════════════════════════════════════════════════
               echo "Waiting for MinIO at http://minio.minio-storage.svc:9000..."
-              until curl -sf http://minio.minio-storage.svc:9000/minio/health/live; do
+              # Use mc alias with retry instead of curl (mc image doesn't include curl)
+              until mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
                 echo "MinIO is unavailable - sleeping 5s..."
                 sleep 5
               done
               echo "MinIO is ready!"
               
               # ═══════════════════════════════════════════════════════════════════
-              # 2. Configure the mc alias
+              # 2. Verify the mc alias (already set in wait loop above)
               # ═══════════════════════════════════════════════════════════════════
-              echo "Configuring MinIO alias..."
-              mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+              echo "Verifying MinIO connection..."
+              mc admin info myminio >/dev/null
               
               # ═══════════════════════════════════════════════════════════════════
               # 3. Create buckets for RHOAI workloads
