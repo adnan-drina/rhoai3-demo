@@ -17,8 +17,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: gpt-oss-20b-pvc
   namespace: minio-storage
+  labels:
+    opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/hook: Skip
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -32,8 +34,12 @@ kind: Job
 metadata:
   name: upload-gpt-oss-20b
   namespace: minio-storage
+  labels:
+    opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/hook: Skip
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 3

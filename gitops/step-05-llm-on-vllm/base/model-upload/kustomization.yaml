@@ -25,6 +25,7 @@ kind: Kustomization
 resources:
   # BF16 Models (Full Precision, Multi-GPU)
   - upload-mistral-bf16.yaml      # Mistral-Small-24B BF16 (~48GB, 4-GPU)
+  - upload-gpt-oss-20b.yaml       # GPT-OSS-20B BF16 (~44GB, 4-GPU)
   
   # FP8 Models (Quantized, Single-GPU)
   - upload-granite-8b.yaml        # Granite-3.1-8B-Instruct-FP8 (~8GB, 1-GPU)
