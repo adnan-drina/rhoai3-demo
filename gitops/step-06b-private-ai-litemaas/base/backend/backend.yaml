@@ -31,7 +31,8 @@ stringData:
   
   # LiteLLM Integration
   LITELLM_API_KEY: sk-1b4f0a05549af06f80db6cd51b37fd01
-  LITELLM_API_URL: http://litellm:4000
+  # Public URL - used by frontend chatbot playground (must be accessible from browser)
+  LITELLM_API_URL: https://litellm-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com
 ---
 # Backend Service
 apiVersion: v1
