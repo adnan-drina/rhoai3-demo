@@ -13,7 +13,8 @@ type: Opaque
 stringData:
   # Red Hat PostgreSQL uses POSTGRESQL_* prefix
   POSTGRESQL_USER: litemaas_admin
-  POSTGRESQL_PASSWORD: vbTpwhedatJZLH63j/s+1FcMEENeDglj
+  # URL-safe password (no special chars that break postgresql:// URLs)
+  POSTGRESQL_PASSWORD: LiteMaaS2024SecurePass
   POSTGRESQL_DATABASE: litemaas_db
 ---
 # PostgreSQL Init ConfigMap (database schema)

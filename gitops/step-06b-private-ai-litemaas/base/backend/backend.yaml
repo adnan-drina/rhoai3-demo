@@ -12,7 +12,7 @@ metadata:
 type: Opaque
 stringData:
   # Database Configuration
-  DATABASE_URL: postgresql://litemaas_admin:vbTpwhedatJZLH63j/s+1FcMEENeDglj@postgres:5432/litemaas_db?sslmode=disable
+  DATABASE_URL: postgresql://litemaas_admin:LiteMaaS2024SecurePass@postgres:5432/litemaas_db?sslmode=disable
   
   # CORS Configuration
   CORS_ORIGIN: https://litemaas-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com

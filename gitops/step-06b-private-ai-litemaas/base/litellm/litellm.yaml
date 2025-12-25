@@ -1,6 +1,6 @@
 # LiteLLM Secret
-# Note: No LITELLM_MASTER_KEY - allows unauthenticated internal access
-# External access is protected by LiteMaaS backend
+# Based on official LiteMaaS deployment
+# Ref: https://github.com/rh-aiservices-bu/litemaas/tree/main/deployment/openshift
 apiVersion: v1
 kind: Secret
 metadata:
@@ -13,10 +13,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  UI_USERNAME: admin
-  UI_PASSWORD: LiteMaaS2024!
+  # Password must match postgres-secret POSTGRESQL_PASSWORD
+  database-url: postgresql://litemaas_admin:LiteMaaS2024SecurePass@postgres:5432/litemaas_db
+  master-key: sk-1b4f0a05549af06f80db6cd51b37fd01
+  ui-username: admin
+  ui-password: LiteMaaS2024!
 ---
-# LiteLLM Config
+# LiteLLM Config - models will be stored in DB via STORE_MODEL_IN_DB
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,55 +31,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 data:
-  config.yaml: |
-    # LiteLLM Proxy Configuration for LiteMaaS
-    # Routes requests to vLLM models in private-ai namespace
-    
-    model_list:
-      # Mistral-3 INT4 - Primary chat model (always running)
-      - model_name: mistral-3-int4
-        litellm_params:
-          model: openai/mistral-3-int4
-          api_base: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
-          api_key: "none"
-          
-      # Granite-8B Agent - Agentic tool-calling model
-      - model_name: granite-8b-agent
-        litellm_params:
-          model: openai/granite-8b-agent
-          api_base: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-          api_key: "none"
-          
-      # Mistral-3 BF16 - High-quality enterprise model (4-GPU)
-      - model_name: mistral-3-bf16
-        litellm_params:
-          model: openai/mistral-3-bf16
-          api_base: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
-          api_key: "none"
-          
-      # Devstral-2 - Agentic coding assistant (4-GPU)
-      - model_name: devstral-2
-        litellm_params:
-          model: openai/devstral-2
-          api_base: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
-          api_key: "none"
-          
-      # GPT-OSS-20B - Complex reasoning (4-GPU)
-      - model_name: gpt-oss-20b
-        litellm_params:
-          model: openai/gpt-oss-20b
-          api_base: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
-          api_key: "none"
-    
-    litellm_settings:
-      drop_params: true
-      set_verbose: true
-      request_timeout: 300
-      num_retries: 2
-    
-    # Note: Removed master_key to allow internal cluster access without auth
-    # External access still goes through LiteMaaS backend which handles auth
-    general_settings: {}
+  # Models are stored in the database, not in a config file
+  # This ConfigMap is kept for any future static config needs
+  placeholder: "Models are managed via STORE_MODEL_IN_DB=True"
 ---
 # LiteLLM Service
 apiVersion: v1
@@ -100,6 +57,7 @@ spec:
   type: ClusterIP
 ---
 # LiteLLM Deployment
+# Based on official LiteMaaS deployment pattern
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -121,24 +79,60 @@ spec:
         app: litellm
         app.kubernetes.io/part-of: litemaas
     spec:
+      initContainers:
+        # Wait for database to be ready before starting LiteLLM
+        - name: wait-for-database
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql "$DATABASE_URL" -c '\q' 2>/dev/null; do
+                echo "Waiting for database..."
+                sleep 2
+              done
+              echo "Database is ready!"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: database-url
       containers:
         - name: litellm
-          image: ghcr.io/berriai/litellm:main-v1.56.4
-          args:
-            - --config
-            - /app/config.yaml
-            - --port
-            - "4000"
+          # Official LiteMaaS uses litellm-non_root image with database support
+          image: ghcr.io/berriai/litellm-non_root:main-v1.74.7-stable
           ports:
             - containerPort: 4000
               name: http
-          envFrom:
-            - secretRef:
-                name: litellm-secret
-          volumeMounts:
-            - name: config
-              mountPath: /app/config.yaml
-              subPath: config.yaml
+          env:
+            # Database Configuration
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: database-url
+            # LiteLLM Configuration
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: master-key
+            - name: UI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: ui-username
+            - name: UI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: ui-password
+            # Store models in database for dynamic management
+            - name: STORE_MODEL_IN_DB
+              value: "True"
+            - name: LITELLM_MODE
+              value: "PRODUCTION"
           resources:
             requests:
               cpu: 200m
@@ -148,20 +142,20 @@ spec:
               memory: 1Gi
           livenessProbe:
             httpGet:
-              path: /health/liveliness
+              path: /health/liveness
               port: 4000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health/readiness
               port: 4000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: litellm-config
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
 ---
 # LiteLLM Route
 apiVersion: route.openshift.io/v1
@@ -185,4 +179,3 @@ spec:
     kind: Service
     name: litellm
     weight: 100
-
