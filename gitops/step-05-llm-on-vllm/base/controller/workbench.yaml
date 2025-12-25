@@ -61,45 +61,106 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
-# Service: Cooperative GitOps with RHOAI 3.0 Notebook Controller
+# Service Port Fix: PostSync Hook for RHOAI 3.0 Port Mismatch
 # -----------------------------------------------------------------------------
-# RHOAI 3.0 Managed Ingress Pattern:
+# RHOAI 3.0 BUG WORKAROUND:
 #   The Notebook Controller creates HTTPRoutes targeting port 8888, but its
-#   default Service uses port 80. This causes "cluster_not_found" errors.
+#   Service reconciler defaults to port 80. This causes 503 errors.
 #
-#   Solution: Provide a GitOps-managed Service that satisfies all parties:
-#   - Port 8888 (matches controller's HTTPRoute)
-#   - Label 'notebook-name' (allows controller adoption)
-#   - Port name 'http-' prefix (Envoy protocol detection)
-#   - Selector 'notebook-name' (matches pod labels)
+#   The controller continuously overwrites any GitOps-managed Service back to
+#   port 80, making declarative management impossible.
 #
-#   Traffic flow: Gateway → HTTPRoute(8888) → Service(8888) → Pod(8888)
-#
-# This is the "Cooperative GitOps" model - we align with controller expectations
-# rather than fighting the reconciliation loop.
+#   SOLUTION: Use an ArgoCD PostSync hook to patch the Service AFTER every sync.
+#   This runs after the controller's reconciliation and ensures port 8888.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0
 # -----------------------------------------------------------------------------
 apiVersion: v1
-kind: Service
+kind: ServiceAccount
 metadata:
-  name: gpu-switchboard
+  name: service-patcher
   namespace: private-ai
-  labels:
-    app: gpu-switchboard
-    notebook-name: gpu-switchboard
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: service-patcher
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: service-patcher
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: service-patcher
+subjects:
+  - kind: ServiceAccount
+    name: service-patcher
+    namespace: private-ai
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-gpu-switchboard-service
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
-  ports:
-    - name: http-gpu-switchboard  # Protocol prefix 'http-' required for Envoy L7
-      port: 8888                   # MUST be 8888 to match controller's HTTPRoute
-      protocol: TCP
-      targetPort: 8888             # Pod port
-  selector:
-    # Match the StatefulSet pod labels created by Notebook Controller
-    statefulset: gpu-switchboard
-  type: ClusterIP
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      serviceAccountName: service-patcher
+      restartPolicy: OnFailure
+      containers:
+        - name: patcher
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "=== RHOAI 3.0 Service Port Fix ==="
+              echo "Patching gpu-switchboard Service to port 8888..."
+              
+              # Wait for Service to exist
+              for i in {1..30}; do
+                if oc get svc gpu-switchboard -n private-ai &>/dev/null; then
+                  break
+                fi
+                echo "Waiting for Service... ($i/30)"
+                sleep 2
+              done
+              
+              # Patch Service to port 8888
+              oc patch svc gpu-switchboard -n private-ai --type=json -p='[
+                {"op": "replace", "path": "/spec/ports/0/port", "value": 8888},
+                {"op": "replace", "path": "/spec/ports/0/name", "value": "http-gpu-switchboard"}
+              ]'
+              
+              # Verify
+              PORT=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].port}')
+              if [ "$PORT" == "8888" ]; then
+                echo "✅ Service patched successfully (port: $PORT)"
+              else
+                echo "❌ Failed to patch Service (port: $PORT)"
+                exit 1
+              fi
 ---
 # -----------------------------------------------------------------------------
 # Notebook: GPU Switchboard
