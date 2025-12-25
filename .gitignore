@@ -37,3 +37,6 @@ __pycache__/
 .venv/
 venv/
 
+
+# Old notebook file (replaced by GPU-Orchestrator.ipynb)
+gitops/step-05-llm-on-vllm/base/controller/GPU-Switchboard.ipynb
