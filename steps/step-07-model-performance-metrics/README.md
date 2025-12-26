@@ -299,40 +299,54 @@ oc run results-viewer --rm -it --restart=Never \
   -n private-ai
 ```
 
-## vLLM-Playground (Interactive UI)
+## vLLM-Playground (Benchmark Testing UI)
 
 > **⚠️ Community Tool Disclaimer:** [vLLM-Playground](https://github.com/micytao/vllm-playground) is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
 
-Based on official deployment: [OpenShift QUICK_START](https://github.com/micytao/vllm-playground/blob/main/openshift/QUICK_START.md)
+Based on: [Option 3 - Kubernetes Job Pattern](https://github.com/micytao/vllm-playground/blob/main/openshift/README.md#option-3-kubernetes-job-pattern-good-middle-ground)
 
-### Architecture
+### Architecture (Simplified for Benchmarking)
 
 ```
-┌──────────────────┐
-│   Web UI Pod     │  ← quay.io/rh_ee_micyang/vllm-playground:0.3
-│   (FastAPI)      │
-└────────┬─────────┘
-         │ Kubernetes API (create/delete pods)
-         ↓
-┌──────────────────┐
-│  vLLM Pod        │  ← vllm/vllm-openai:v0.11.0 (GPU)
-│  (Dynamic)       │  ← Created when user clicks "Start Server"
-└──────────────────┘
+┌─────────────────┐  Run Benchmark   ┌──────────────────┐
+│  vLLM-Playground│─────────────────>│  GuideLLM Job    │
+│  (Web UI)       │                  │  (Runs to        │
+│                 │<─────────────────│   Completion)    │
+│  View Results   │    Results       └────────┬─────────┘
+└─────────────────┘                           │
+                                              ▼
+                                 ┌──────────────────────────────┐
+                                 │ Existing InferenceServices   │
+                                 │ • mistral-3-int4 (1-GPU $)   │
+                                 │ • mistral-3-bf16 (4-GPU $$$$)│
+                                 │ • devstral-2                 │
+                                 │ • granite-8b-agent           │
+                                 │ • gpt-oss-20b                │
+                                 └──────────────────────────────┘
 ```
 
-**Key features:**
-- Auto-detects GPU availability in cluster
-- Creates/manages its own vLLM pods on demand
-- Users can load any model from HuggingFace
-- Built-in GuideLLM benchmarking support
+**Key insight**: vLLM-Playground runs benchmarks against our **existing InferenceServices** - no new vLLM pods needed!
 
-### Purpose
+### Tool Responsibilities
 
-While GuideLLM gives us hard data, vLLM-Playground provides the **"Vibe Check"**:
-- Interactive model loading and testing
-- Real-time chat with models
-- Side-by-side comparison capability
-- Perfect for stakeholder presentations
+| Use Case | Tool |
+|----------|------|
+| **Model experimentation** | RHOAI GenAI Playground (Step 06) |
+| **API access to models** | LiteMaaS (Step 06B) |
+| **Benchmark testing** | vLLM-Playground + GuideLLM ← This |
+| **Result visualization** | Grafana Dashboard |
+
+### Pre-configured Model Endpoints
+
+The playground is configured with our existing InferenceServices:
+
+| Model | Endpoint | GPUs |
+|-------|----------|------|
+| `mistral-3-int4` | `http://mistral-3-int4-predictor.private-ai.svc:80/v1` | 1 |
+| `mistral-3-bf16` | `http://mistral-3-bf16-predictor.private-ai.svc:80/v1` | 4 |
+| `devstral-2` | `http://devstral-2-predictor.private-ai.svc:80/v1` | 4 |
+| `granite-8b-agent` | `http://granite-8b-agent-predictor.private-ai.svc:80/v1` | 1 |
+| `gpt-oss-20b` | `http://gpt-oss-20b-predictor.private-ai.svc:80/v1` | 4 |
 
 ### Access
 
@@ -346,45 +360,47 @@ echo "https://${PLAYGROUND_URL}"
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| ServiceAccount | `vllm-playground-sa` | Identity for pod management |
-| Role | `vllm-pod-manager` | Pod/service CRUD in namespace |
-| ClusterRole | `vllm-playground-node-reader` | GPU detection via node info |
-| ConfigMap | `vllm-playground-config-gpu` | vLLM image, namespace config |
+| ServiceAccount | `vllm-playground-sa` | Identity for Job management |
+| Role | `vllm-benchmark-manager` | Job CRUD, pod/service read |
+| ClusterRole | `vllm-playground-node-reader` | GPU detection for UI |
+| ConfigMap | `vllm-playground-config` | Model endpoints, settings |
 | Deployment | `vllm-playground` | The Web UI |
-| Service | `vllm-playground` | Internal service |
-| Route | `vllm-playground` | External HTTPS access |
+| Service/Route | `vllm-playground` | External access |
 
-### Demo Scenario
+### Demo Scenario (Benchmarking)
 
 1. Open the vLLM-Playground URL
-2. Click **"Start Server"** with a model (e.g., `mistralai/Mistral-7B-Instruct-v0.2`)
-3. Wait for the vLLM pod to start (check logs in UI)
-4. Chat with the model interactively
-5. Run GuideLLM benchmarks from the UI
-6. Click **"Stop Server"** when done
+2. Go to the **Benchmarks** or **GuideLLM** tab
+3. Select an existing model endpoint (e.g., `mistral-3-int4`)
+4. Configure benchmark parameters:
+   - Rate: 0.1 → 3.0 req/s
+   - Distribution: Poisson
+   - Duration: 30-60 seconds
+5. Click **Run Benchmark**
+6. View results in the UI or Grafana
 
 ### Troubleshooting
 
-**Pod not starting?**
+**Can't run benchmarks?**
 ```bash
 # Check vLLM-Playground logs
 oc logs -f deployment/vllm-playground -n private-ai
 
-# Check if it can create pods
-oc auth can-i create pods -n private-ai --as=system:serviceaccount:private-ai:vllm-playground-sa
+# Check if it can create Jobs
+oc auth can-i create jobs -n private-ai --as=system:serviceaccount:private-ai:vllm-playground-sa
+
+# Check if InferenceService is ready
+oc get inferenceservice -n private-ai
 ```
 
-**GPU not detected?**
+**Results not showing?**
 ```bash
-# Check node GPU availability
-oc get nodes -o custom-columns=NAME:.metadata.name,GPU:.status.capacity.nvidia\.com/gpu
+# Check benchmark results PVC
+oc get pvc guidellm-results -n private-ai
+
+# List results files
+oc exec deployment/vllm-playground -n private-ai -- ls -la /app/results/
 ```
-
-### Alternatives
-
-For testing **existing InferenceServices** (mistral-3-int4, etc.):
-- **RHOAI GenAI Playground** (Step 06) - built into RHOAI Dashboard
-- **LiteMaaS Chatbot** (Step 06B) - if deployed
 
 ## vLLM Metrics Reference
 
