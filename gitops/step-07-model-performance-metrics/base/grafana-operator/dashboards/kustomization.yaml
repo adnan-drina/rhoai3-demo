@@ -12,16 +12,21 @@ kind: Kustomization
 #   - Can reference external URLs (auto-updated)
 #
 # Dashboard Sources:
-#   - Official vLLM dashboards from GitHub (auto-updated)
-#   - Custom dashboards embedded as JSON
+#   - Official upstream dashboards from GitHub (auto-updated)
+#   - RHOAI community dashboards (rh-aiservices-bu)
+#   - Custom dashboards for this demo
 # ============================================================================
 
 resources:
-  # Official vLLM Project Dashboards (from GitHub)
-  - vllm-performance-statistics.yaml
-  - vllm-query-statistics.yaml
+  # Official Upstream Dashboards (from GitHub URLs - auto-updated)
+  - vllm-performance-statistics.yaml    # Official vLLM: E2E Latency, TTFT, TPOT
+  - vllm-query-statistics.yaml          # Official vLLM: Request/Token Statistics
+  - dcgm-gpu-metrics.yaml               # Official NVIDIA DCGM Exporter Dashboard
   
-  # Custom Dashboards (embedded JSON)
-  - dcgm-gpu-metrics.yaml
-  - mistral-roi-comparison.yaml
+  # RHOAI Community Dashboards (from rh-aiservices-bu/rhoai-uwm)
+  - rhoai-nvidia-vllm-combined.yaml     # Combined GPU + vLLM view (NVIDIA)
+  - rhoai-vllm-model-metrics.yaml       # vLLM model metrics with histograms
+  
+  # Custom Dashboards for this Demo
+  - mistral-roi-comparison.yaml         # Mistral BF16 vs INT4 comparison
 
