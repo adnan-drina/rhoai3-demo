@@ -1,0 +1,22 @@
+# GuideLLM Benchmark Pipeline
+# ============================================================================
+# Self-service benchmark pipelines for LLM performance testing.
+#
+# Provides pre-configured PipelineRuns for each model:
+#   - mistral-3-bf16 (4-GPU)
+#   - mistral-3-int4 (1-GPU)
+#   - granite-8b-agent (1-GPU)
+#   - devstral-2 (4-GPU)
+#   - gpt-oss-20b (4-GPU)
+#
+# Inspired by: https://github.com/rh-aiservices-bu/guidellm-pipeline
+# ============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - pvc.yaml
+  - task.yaml
+  - pipeline.yaml
+  - pipelineruns/
+

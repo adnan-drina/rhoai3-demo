@@ -3,23 +3,24 @@ kind: Kustomization
 
 # GuideLLM Benchmark Automation
 # ============================================================================
-# Automated stress testing for vLLM models using GuideLLM.
+# Automated stress testing for vLLM models using GuideLLM v0.5.0 (stable).
 #
 # Components:
 #   - PVC: Persistent storage for benchmark results
-#   - ConfigMap: Benchmark scripts (sweep + single model)
 #   - CronJob: Daily automated benchmarks at 2:00 AM UTC
 #
 # The job-template.yaml is for reference only (not applied by default).
-# Use it as a template for on-demand benchmarks.
+# Use it as a template for on-demand benchmarks:
+#   oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M) -n private-ai
 #
-# Ref: https://github.com/neuralmagic/guidellm
+# Image: ghcr.io/vllm-project/guidellm:stable
+# Ref: https://github.com/vllm-project/guidellm
 # Ref: https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference
 # ============================================================================
 
 resources:
   - pvc.yaml
-  - configmap.yaml
   - cronjob.yaml
-  # job-template.yaml is NOT included - it's a template for manual use
+  # configmap.yaml - not deployed (scripts are inlined in cronjob.yaml)
+  # job-template.yaml - not deployed (template for manual use)
 

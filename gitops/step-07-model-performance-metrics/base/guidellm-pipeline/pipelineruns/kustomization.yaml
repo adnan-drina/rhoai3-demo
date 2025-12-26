@@ -1,0 +1,26 @@
+# GuideLLM PipelineRun Templates
+# ============================================================================
+# Pre-configured PipelineRun templates for each model.
+#
+# These are NOT auto-deployed - they are reference templates.
+# Users can create runs via:
+#   oc create -f <pipelinerun>.yaml
+# Or via OpenShift Console > Pipelines > Start
+#
+# Models:
+#   - mistral-3-bf16 (4-GPU, Full precision)
+#   - mistral-3-int4 (1-GPU, INT4 quantized)
+#   - granite-8b-agent (1-GPU, Agent model)
+#   - devstral-2 (4-GPU, Coding model)
+#   - gpt-oss-20b (4-GPU, OSS foundation model)
+# ============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Note: PipelineRuns are templates - not deployed automatically
+# They are available for users to trigger manually
+resources: []
+
+# The YAML files in this directory serve as templates/examples
+# for users to create PipelineRuns on-demand
+

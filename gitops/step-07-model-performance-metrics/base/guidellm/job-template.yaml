@@ -2,21 +2,14 @@
 # ============================================================================
 # Template for running ad-hoc benchmarks on specific models.
 #
-# Uses the official GuideLLM container image from:
+# Uses the official GuideLLM container image (stable release v0.5.0):
 # https://github.com/vllm-project/guidellm/pkgs/container/guidellm
 #
-# Usage (replace placeholders):
-#   1. Copy this file
-#   2. Replace MODEL_NAME with target model (e.g., mistral-3-int4)
-#   3. Replace SCENARIO with test type (quick-chat, summarization, code-gen)
-#   4. Apply: oc apply -f job.yaml
+# Usage:
+#   Create a job from the CronJob template:
+#   oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M) -n private-ai
 #
-# Or use kubectl create:
-#   oc create job benchmark-mistral-int4 \
-#     --from=cronjob/guidellm-daily \
-#     -n private-ai
-#
-# Then override the command if needed.
+#   Or apply this template directly after customizing MODEL_NAME.
 # ============================================================================
 apiVersion: batch/v1
 kind: Job
@@ -41,27 +34,79 @@ spec:
         fsGroup: 0
       containers:
         - name: guidellm
-          # Official GuideLLM container image (stable release)
+          # Official GuideLLM container image (stable release v0.5.0)
           # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
           image: ghcr.io/vllm-project/guidellm:stable
           env:
-            # Override these for specific benchmarks
+            # Set HOME to writable directory for cache
+            - name: HOME
+              value: /tmp
+            # GuideLLM Configuration
             - name: MODEL_NAME
               value: "mistral-3-int4"
-            - name: SCENARIO
-              value: "quick-chat"
+            - name: GUIDELLM_PROFILE
+              value: "sweep"
+            - name: GUIDELLM_MAX_SECONDS
+              value: "60"
+            - name: GUIDELLM_MAX_REQUESTS
+              value: "50"
           command:
             - /bin/bash
             - -c
             - |
-              echo "Running single model benchmark..."
-              /scripts/single-model-benchmark.sh "${MODEL_NAME}" "${SCENARIO}"
+              TARGET="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080/v1"
+              
+              echo "GuideLLM Single Model Benchmark"
+              echo "================================"
+              echo "Model: ${MODEL_NAME}"
+              echo "Target: ${TARGET}"
+              echo "Profile: ${GUIDELLM_PROFILE}"
+              echo ""
+              
+              # Check if target is reachable
+              if ! curl -s --connect-timeout 10 "${TARGET}/models" >/dev/null 2>&1; then
+                echo "ERROR: Model ${MODEL_NAME} is not reachable at ${TARGET}"
+                exit 1
+              fi
+              echo "✓ Target is reachable"
+              
+              # Create sample prompts (no network needed)
+              cat > /tmp/prompts.json << 'EOF'
+              [
+                {"prompt": "What is the capital of France?"},
+                {"prompt": "Explain quantum computing in simple terms."},
+                {"prompt": "Write a short poem about the ocean."},
+                {"prompt": "What are the benefits of exercise?"},
+                {"prompt": "How does photosynthesis work?"},
+                {"prompt": "Describe the process of making bread."},
+                {"prompt": "What is machine learning?"},
+                {"prompt": "Tell me about the solar system."},
+                {"prompt": "What causes rain?"},
+                {"prompt": "Explain the theory of relativity."}
+              ]
+              EOF
+              echo "✓ Sample prompts created"
+              
+              # Run benchmark
+              guidellm benchmark run \
+                --target "${TARGET}" \
+                --data /tmp/prompts.json \
+                --profile "${GUIDELLM_PROFILE}" \
+                --max-seconds "${GUIDELLM_MAX_SECONDS}" \
+                --max-requests "${GUIDELLM_MAX_REQUESTS}" \
+                --output-dir /results \
+                --outputs "${MODEL_NAME}-$(date +%Y%m%d_%H%M%S).json" \
+                --disable-console-interactive \
+                2>&1 || echo "Benchmark exited with code $?"
+              
+              echo ""
+              echo "Benchmark complete. Results in /results"
+              ls -la /results 2>/dev/null | tail -10 || true
           volumeMounts:
-            - name: scripts
-              mountPath: /scripts
-              readOnly: true
             - name: results
               mountPath: /results
+            - name: cache
+              mountPath: /tmp/.cache
           resources:
             requests:
               cpu: 500m
@@ -70,11 +115,9 @@ spec:
               cpu: "2"
               memory: 2Gi
       volumes:
-        - name: scripts
-          configMap:
-            name: guidellm-scripts
-            defaultMode: 0555
         - name: results
           persistentVolumeClaim:
             claimName: guidellm-results
+        - name: cache
+          emptyDir: {}
 

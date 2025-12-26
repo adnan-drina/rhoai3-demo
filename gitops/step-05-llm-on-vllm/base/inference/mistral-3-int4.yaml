@@ -39,6 +39,11 @@ spec:
     # SECONDARY LOAD: Always running in baseline state
     minReplicas: 1
     maxReplicas: 1
+    # Deployment Strategy: Recreate prevents Kueue deadlock
+    # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods
+    # hold GPU quota, causing a deadlock. Recreate terminates old pods first.
+    deploymentStrategy:
+      type: Recreate
     # Tolerations: Required for GPU node taints
     tolerations:
       - key: nvidia.com/gpu

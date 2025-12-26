@@ -67,13 +67,15 @@ This step demonstrates the **Economics of Precision**:
 
 | Component | Description | Official/Community |
 |-----------|-------------|-------------------|
+| **OpenShift Pipelines Operator** | Red Hat Tekton for CI/CD pipelines (v1.20.2) | Red Hat Official |
 | **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
 | **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
 | **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | - |
 | **GrafanaDashboard CRs** | Official vLLM + custom dashboards (auto-updated from GitHub) | - |
 | **ServiceAccount** | `grafana-sa` with `cluster-monitoring-view` permissions | - |
 | **GuideLLM CronJob** | Daily Poisson stress tests at 2:00 AM UTC | Community (OSS) |
-| **GuideLLM Scripts** | ROI comparison, efficiency analysis | - |
+| **GuideLLM Pipeline** | Tekton Pipeline for self-service benchmarks | Community (OSS) |
+| **PipelineRun Templates** | Pre-configured runs for each model | - |
 
 > **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.0. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
@@ -211,6 +213,75 @@ After running the efficiency comparison, analyze:
 3. **Efficiency Delta**: `BF16_breakpoint / INT4_breakpoint`
 4. **Cost Analysis**: If INT4 breaks at 2 req/s and BF16 at 6 req/s, can 4x INT4 instances (4 × 2 = 8 req/s) outperform 1x BF16 at lower cost?
 
+## Self-Service Benchmarking with OpenShift Pipelines
+
+This step deploys [Red Hat OpenShift Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20) (Tekton) for self-service benchmark execution. Each model has a pre-configured PipelineRun template.
+
+### Available Pipeline Runs
+
+| Model | GPU Config | PipelineRun Template |
+|-------|------------|---------------------|
+| `mistral-3-bf16` | 4 x L4 | `pipelineruns/mistral-3-bf16.yaml` |
+| `mistral-3-int4` | 1 x L4 | `pipelineruns/mistral-3-int4.yaml` |
+| `granite-8b-agent` | 1 x L4 | `pipelineruns/granite-8b-agent.yaml` |
+| `devstral-2` | 4 x L4 | `pipelineruns/devstral-2.yaml` |
+| `gpt-oss-20b` | 4 x L4 | `pipelineruns/gpt-oss-20b.yaml` |
+
+Reference: [rh-aiservices-bu/guidellm-pipeline](https://github.com/rh-aiservices-bu/guidellm-pipeline)
+
+### Run Benchmark via Pipeline
+
+**Option 1: Using Templates (Recommended)**
+
+```bash
+# Benchmark Mistral-3 INT4 (1-GPU)
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-int4.yaml
+
+# Benchmark Mistral-3 BF16 (4-GPU)
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-bf16.yaml
+
+# Watch pipeline progress
+tkn pipelinerun logs -f -n private-ai
+```
+
+**Option 2: Using Tekton CLI**
+
+```bash
+# Install tkn CLI (if not installed)
+# brew install tektoncd-cli  # macOS
+
+# Run benchmark with custom parameters
+tkn pipeline start guidellm-benchmark -n private-ai \
+  --param model-name=mistral-3-int4 \
+  --param profile=sweep \
+  --param max-seconds=60 \
+  --param max-requests=50 \
+  --workspace name=results,claimName=guidellm-pipeline-results
+```
+
+**Option 3: OpenShift Console**
+
+1. Navigate to **Pipelines → Pipelines** in `private-ai` namespace
+2. Click on **guidellm-benchmark** pipeline
+3. Click **Start** and fill in parameters
+4. Monitor execution in **PipelineRuns** tab
+
+### View Pipeline Results
+
+```bash
+# List completed runs
+tkn pipelinerun list -n private-ai
+
+# View specific run logs
+tkn pipelinerun logs <run-name> -n private-ai
+
+# Access results PVC
+oc run results-viewer --rm -it --restart=Never \
+  --image=registry.access.redhat.com/ubi9/ubi-minimal \
+  --overrides='{"spec":{"containers":[{"name":"viewer","image":"registry.access.redhat.com/ubi9/ubi-minimal","command":["sh","-c","ls -la /results/*"],"volumeMounts":[{"name":"results","mountPath":"/results"}]}],"volumes":[{"name":"results","persistentVolumeClaim":{"claimName":"guidellm-pipeline-results"}}]}}' \
+  -n private-ai
+```
+
 ## GuideLLM Benchmarking
 
 [GuideLLM](https://github.com/neuralmagic/guidellm) is an open-source tool from Neural Magic for evaluating LLM deployments by simulating real-world inference workloads.
@@ -337,6 +408,9 @@ rate(vllm:generation_tokens_total{namespace="private-ai"}[1m])
 gitops/step-07-model-performance-metrics/
 ├── base/
 │   ├── kustomization.yaml
+│   ├── pipelines-operator/                # Red Hat OpenShift Pipelines (Tekton)
+│   │   ├── kustomization.yaml
+│   │   └── subscription.yaml              # latest channel, v1.20.2
 │   ├── grafana-operator/
 │   │   ├── kustomization.yaml
 │   │   ├── operator/                      # Grafana Operator from OperatorHub
@@ -353,13 +427,24 @@ gitops/step-07-model-performance-metrics/
 │   │       ├── vllm-performance-statistics.yaml  # Official (from GitHub URL)
 │   │       ├── vllm-query-statistics.yaml        # Official (from GitHub URL)
 │   │       ├── dcgm-gpu-metrics.yaml             # Custom (embedded JSON)
-│   │       └── mistral-roi-comparison.yaml       # Custom (embedded JSON)
-│   └── guidellm/
+│   │       └── mistral-roi-comparison.yaml       # Custom (BF16 vs INT4)
+│   ├── guidellm/                          # Automated benchmarking (CronJob)
+│   │   ├── kustomization.yaml
+│   │   ├── pvc.yaml                       # Results storage
+│   │   ├── cronjob.yaml                   # Daily scheduled benchmarks
+│   │   └── job-template.yaml              # On-demand template
+│   └── guidellm-pipeline/                 # Self-service pipelines (Tekton)
 │       ├── kustomization.yaml
-│       ├── pvc.yaml               # Results storage
-│       ├── configmap.yaml         # Poisson benchmark scripts
-│       ├── cronjob.yaml           # Daily scheduled benchmarks
-│       └── job-template.yaml      # On-demand template
+│       ├── pvc.yaml                       # Pipeline results storage
+│       ├── task.yaml                      # GuideLLM Tekton Task
+│       ├── pipeline.yaml                  # GuideLLM Benchmark Pipeline
+│       └── pipelineruns/                  # Pre-configured templates
+│           ├── kustomization.yaml
+│           ├── mistral-3-bf16.yaml        # 4-GPU full precision
+│           ├── mistral-3-int4.yaml        # 1-GPU quantized
+│           ├── granite-8b-agent.yaml      # 1-GPU agent model
+│           ├── devstral-2.yaml            # 4-GPU coding model
+│           └── gpt-oss-20b.yaml           # 4-GPU foundation model
 └── kustomization.yaml
 ```
 
@@ -448,6 +533,7 @@ Direct PromQL queries in OpenShift Console:
 ### Red Hat Official
 - [RHOAI 3.0 Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index)
 - [OpenShift User Workload Monitoring (4.20)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/enabling-monitoring-for-user-defined-projects)
+- [Red Hat OpenShift Pipelines 1.20](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20)
 - [GuideLLM - Evaluate LLM Deployments (Red Hat Developers)](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference)
 - [How to Deploy and Benchmark vLLM with GuideLLM (Red Hat Developers)](https://developers.redhat.com/articles/2025/12/24/how-deploy-and-benchmark-vllm-guidellm-kubernetes)
 
@@ -456,8 +542,10 @@ Direct PromQL queries in OpenShift Console:
 - [vLLM Grafana Dashboards (GitHub)](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana)
 - [Grafana Operator (GitHub)](https://github.com/grafana/grafana-operator)
 - [Grafana Operator Documentation](https://grafana.github.io/grafana-operator/docs/)
+- [redhat-cop/gitops-catalog - OpenShift Pipelines](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-pipelines-operator)
 - [redhat-cop/gitops-catalog - Grafana Operator](https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator)
 - [GuideLLM GitHub Repository](https://github.com/neuralmagic/guidellm)
+- [GuideLLM Pipeline (rh-aiservices-bu)](https://github.com/rh-aiservices-bu/guidellm-pipeline)
 - [AI on OpenShift - KServe UWM Dashboard](https://ai-on-openshift.io/odh-rhoai/kserve-uwm-dashboard-metrics/)
 - [RHOAI GenAIOps Patterns](https://github.com/rhoai-genaiops)
 

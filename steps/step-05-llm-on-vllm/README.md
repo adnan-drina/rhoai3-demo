@@ -325,6 +325,50 @@ oc describe workload -n private-ai <workload-name>
 # 3. Missing tolerations → Check ResourceFlavor has tolerations
 ```
 
+### Kueue + Rolling Update Deadlock (SchedulingGated Pods)
+
+**Symptom:** Two predictor pods for the same model - one Running, one `SchedulingGated`:
+
+```
+mistral-3-int4-predictor-58595d486-67n5x    0/2     SchedulingGated   0          5m
+mistral-3-int4-predictor-7b686578fb-rq7tk   2/2     Running           0          4h
+```
+
+**Root Cause:** When an annotation changes (e.g., ArgoCD tracking label), Kubernetes triggers a rolling update. With `RollingUpdate` strategy:
+1. New pod is created to replace the old one
+2. Kueue gates the new pod because GPU quota is full (old pod still holds it)
+3. Old pod can't terminate until new pod is ready
+4. **Deadlock**: Neither pod can progress
+
+**Solution (GitOps):** All InferenceServices use `deploymentStrategy.type: Recreate`:
+
+```yaml
+spec:
+  predictor:
+    deploymentStrategy:
+      type: Recreate    # Terminates old pod BEFORE creating new one
+```
+
+This is already configured in all InferenceService manifests. With `Recreate`:
+1. Old pod terminates first (releasing GPU quota)
+2. New pod is created
+3. Kueue admits the new pod (quota now available)
+
+**Manual Fix (if deadlock already occurred):**
+
+```bash
+# 1. Force delete the SchedulingGated pod
+oc delete pod <schedulinggated-pod> -n private-ai --force --grace-period=0
+
+# 2. Scale down the stale ReplicaSet
+oc get rs -n private-ai | grep <model>-predictor
+oc scale rs/<stale-replicaset> -n private-ai --replicas=0
+```
+
+> **Design Decision (RHOAI 3.0):** We use `Recreate` strategy for all GPU-intensive InferenceServices
+> to prevent Kueue admission deadlocks. This causes brief unavailability during updates but
+> ensures deterministic behavior in quota-constrained environments.
+
 ### OCI Image Pull Fails: "No Space Left"
 
 ```bash
@@ -437,6 +481,25 @@ gitops/step-05-llm-on-vllm/base/
 ### KServe Replica Management
 
 > *"Setting minReplicas to 1 ensures immediate availability, while minReplicas 0 allows for cost-optimization. Managing these fields via API allows for higher-level orchestration of inference capacity."*
+
+### Deployment Strategy: Recreate (GPU Quota Safety)
+
+All InferenceServices in this demo use `deploymentStrategy.type: Recreate`:
+
+```yaml
+spec:
+  predictor:
+    deploymentStrategy:
+      type: Recreate
+```
+
+**Why?** In GPU-constrained environments managed by Kueue, the default `RollingUpdate` strategy causes deadlocks:
+- New pods can't start (Kueue gates them due to quota)
+- Old pods can't terminate (waiting for new pods to be ready)
+
+**Trade-off:** Brief unavailability during updates vs. deterministic quota-safe updates.
+
+> **Best Practice:** Use `Recreate` for all GPU-intensive workloads in Kueue-managed namespaces.
 
 ---
 

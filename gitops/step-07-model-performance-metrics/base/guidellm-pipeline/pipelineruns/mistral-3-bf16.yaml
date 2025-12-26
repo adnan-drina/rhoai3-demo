@@ -1,0 +1,48 @@
+# GuideLLM Benchmark - Mistral-3 BF16 (4-GPU)
+# ============================================================================
+# Full-precision Mistral-3 model benchmark.
+#
+# Model: mistral-3-bf16
+# GPUs: 4 x NVIDIA L4 (Tensor Parallelism)
+# Precision: BF16 (full precision)
+#
+# Usage:
+#   oc create -f mistral-3-bf16.yaml
+#   # or
+#   tkn pipeline start guidellm-benchmark \
+#     --param model-name=mistral-3-bf16 \
+#     --workspace name=results,claimName=guidellm-pipeline-results
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: benchmark-mistral-3-bf16-
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    model: mistral-3-bf16
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  pipelineRef:
+    name: guidellm-benchmark
+  
+  params:
+    - name: model-name
+      value: "mistral-3-bf16"
+    - name: profile
+      value: "sweep"
+    - name: max-seconds
+      value: "60"
+    - name: max-requests
+      value: "50"
+  
+  workspaces:
+    - name: results
+      persistentVolumeClaim:
+        claimName: guidellm-pipeline-results
+  
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        fsGroup: 0
+

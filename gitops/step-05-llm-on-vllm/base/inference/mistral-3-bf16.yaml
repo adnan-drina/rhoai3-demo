@@ -37,6 +37,11 @@ spec:
     # PRIMARY LOAD: Always running in baseline state
     minReplicas: 1
     maxReplicas: 1
+    # Deployment Strategy: Recreate prevents Kueue deadlock
+    # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods
+    # hold GPU quota, causing a deadlock. Recreate terminates old pods first.
+    deploymentStrategy:
+      type: Recreate
     # Tolerations: Required for GPU node taints
     # Note: RHOAI 3.0 HardwareProfile with Queue scheduling doesn't inject these
     # Kueue ResourceFlavor has nodeTaints configured for admission decisions

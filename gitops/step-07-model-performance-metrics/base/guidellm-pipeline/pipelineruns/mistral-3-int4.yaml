@@ -1,0 +1,50 @@
+# GuideLLM Benchmark - Mistral-3 INT4 (1-GPU)
+# ============================================================================
+# INT4 quantized Mistral-3 model benchmark.
+#
+# Model: mistral-3-int4
+# GPUs: 1 x NVIDIA L4
+# Precision: INT4 (quantized)
+#
+# Compare with mistral-3-bf16 to measure ROI of quantization.
+#
+# Usage:
+#   oc create -f mistral-3-int4.yaml
+#   # or
+#   tkn pipeline start guidellm-benchmark \
+#     --param model-name=mistral-3-int4 \
+#     --workspace name=results,claimName=guidellm-pipeline-results
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: benchmark-mistral-3-int4-
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    model: mistral-3-int4
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  pipelineRef:
+    name: guidellm-benchmark
+  
+  params:
+    - name: model-name
+      value: "mistral-3-int4"
+    - name: profile
+      value: "sweep"
+    - name: max-seconds
+      value: "60"
+    - name: max-requests
+      value: "50"
+  
+  workspaces:
+    - name: results
+      persistentVolumeClaim:
+        claimName: guidellm-pipeline-results
+  
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        fsGroup: 0
+

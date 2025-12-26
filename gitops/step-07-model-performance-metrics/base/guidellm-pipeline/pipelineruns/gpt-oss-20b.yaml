@@ -1,0 +1,48 @@
+# GuideLLM Benchmark - GPT-OSS-20B (4-GPU)
+# ============================================================================
+# Open source foundation model benchmark.
+#
+# Model: gpt-oss-20b
+# GPUs: 4 x NVIDIA L4 (Tensor Parallelism)
+# Precision: BF16
+#
+# Usage:
+#   oc create -f gpt-oss-20b.yaml
+#   # or
+#   tkn pipeline start guidellm-benchmark \
+#     --param model-name=gpt-oss-20b \
+#     --workspace name=results,claimName=guidellm-pipeline-results
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: benchmark-gpt-oss-20b-
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    model: gpt-oss-20b
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  pipelineRef:
+    name: guidellm-benchmark
+  
+  params:
+    - name: model-name
+      value: "gpt-oss-20b"
+    - name: profile
+      value: "sweep"
+    - name: max-seconds
+      value: "60"
+    - name: max-requests
+      value: "50"
+  
+  workspaces:
+    - name: results
+      persistentVolumeClaim:
+        claimName: guidellm-pipeline-results
+  
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        fsGroup: 0
+

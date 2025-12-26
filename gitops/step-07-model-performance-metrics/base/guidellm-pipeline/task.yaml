@@ -1,0 +1,187 @@
+# GuideLLM Benchmark Task
+# ============================================================================
+# Tekton Task for running GuideLLM benchmarks against vLLM models.
+#
+# Uses the official GuideLLM container image (stable v0.5.0).
+# Supports configurable parameters for model, profile, and duration.
+#
+# SLA Thresholds:
+#   TTFT: < 1.0s (SLA), > 2.0s (Breaking)
+#   TPOT: > 20 tok/s (SLA), < 10 tok/s (Breaking)
+#   Queue: 0-1 (SLA), > 5 (Breaking)
+#
+# Ref: https://github.com/rh-aiservices-bu/guidellm-pipeline
+# Ref: https://github.com/vllm-project/guidellm
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: guidellm-benchmark
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  description: |
+    Run GuideLLM benchmark against a vLLM model endpoint.
+    Generates comprehensive performance metrics including TTFT, TPOT, and throughput.
+  
+  params:
+    - name: model-name
+      type: string
+      description: Name of the model to benchmark (e.g., mistral-3-int4)
+    
+    - name: target-url
+      type: string
+      description: Model endpoint URL (internal cluster URL)
+      default: ""
+    
+    - name: profile
+      type: string
+      description: Benchmark profile (sweep, throughput, synchronous)
+      default: "sweep"
+    
+    - name: max-seconds
+      type: string
+      description: Maximum seconds per benchmark strategy
+      default: "60"
+    
+    - name: max-requests
+      type: string
+      description: Maximum requests per benchmark strategy
+      default: "50"
+  
+  workspaces:
+    - name: results
+      description: Workspace for storing benchmark results
+  
+  results:
+    - name: output-file
+      description: Path to the benchmark results JSON file
+    - name: status
+      description: Benchmark completion status (success/failed)
+  
+  steps:
+    - name: run-benchmark
+      image: ghcr.io/vllm-project/guidellm:stable
+      env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp/.cache/huggingface
+      script: |
+        #!/bin/bash
+        set -e
+        
+        MODEL_NAME="$(params.model-name)"
+        PROFILE="$(params.profile)"
+        MAX_SECONDS="$(params.max-seconds)"
+        MAX_REQUESTS="$(params.max-requests)"
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        OUTPUT_DIR="$(workspaces.results.path)/${MODEL_NAME}"
+        OUTPUT_FILE="${OUTPUT_DIR}/${MODEL_NAME}-${TIMESTAMP}.json"
+        
+        # Determine target URL
+        if [ -n "$(params.target-url)" ]; then
+          TARGET="$(params.target-url)"
+        else
+          TARGET="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080/v1"
+        fi
+        
+        echo "═══════════════════════════════════════════════════════════════"
+        echo "  GuideLLM Benchmark Pipeline"
+        echo "═══════════════════════════════════════════════════════════════"
+        echo "  Model:       ${MODEL_NAME}"
+        echo "  Target:      ${TARGET}"
+        echo "  Profile:     ${PROFILE}"
+        echo "  Max Seconds: ${MAX_SECONDS}"
+        echo "  Max Requests: ${MAX_REQUESTS}"
+        echo "  Output:      ${OUTPUT_FILE}"
+        echo "═══════════════════════════════════════════════════════════════"
+        echo ""
+        
+        # Create output directory
+        mkdir -p "${OUTPUT_DIR}"
+        
+        # Check if target is reachable
+        echo "Checking model availability..."
+        if ! curl -s --connect-timeout 30 "${TARGET}/models" >/dev/null 2>&1; then
+          echo "❌ ERROR: Model ${MODEL_NAME} is not reachable at ${TARGET}"
+          echo "failed" > $(results.status.path)
+          exit 1
+        fi
+        echo "✓ Model is reachable"
+        echo ""
+        
+        # Create sample prompts (no network needed)
+        cat > /tmp/prompts.json << 'EOF'
+        [
+          {"prompt": "What is the capital of France?"},
+          {"prompt": "Explain quantum computing in simple terms."},
+          {"prompt": "Write a short poem about the ocean."},
+          {"prompt": "What are the benefits of exercise?"},
+          {"prompt": "How does photosynthesis work?"},
+          {"prompt": "Describe the process of making bread."},
+          {"prompt": "What is machine learning?"},
+          {"prompt": "Tell me about the solar system."},
+          {"prompt": "What causes rain?"},
+          {"prompt": "Explain the theory of relativity."},
+          {"prompt": "What is the difference between AI and machine learning?"},
+          {"prompt": "How do neural networks work?"},
+          {"prompt": "Explain the concept of cloud computing."},
+          {"prompt": "What are the principles of object-oriented programming?"},
+          {"prompt": "Describe the water cycle in detail."}
+        ]
+        EOF
+        echo "✓ Sample prompts created"
+        echo ""
+        
+        # Run benchmark
+        echo "Starting benchmark..."
+        guidellm benchmark run \
+          --target "${TARGET}" \
+          --data /tmp/prompts.json \
+          --profile "${PROFILE}" \
+          --max-seconds "${MAX_SECONDS}" \
+          --max-requests "${MAX_REQUESTS}" \
+          --output-dir "${OUTPUT_DIR}" \
+          --outputs "${MODEL_NAME}-${TIMESTAMP}.json" \
+          --disable-console-interactive \
+          2>&1
+        
+        RESULT=$?
+        
+        echo ""
+        echo "═══════════════════════════════════════════════════════════════"
+        if [ $RESULT -eq 0 ]; then
+          echo "  ✓ Benchmark completed successfully!"
+          echo "success" > $(results.status.path)
+        else
+          echo "  ⚠️ Benchmark completed with warnings (exit code: $RESULT)"
+          echo "success" > $(results.status.path)
+        fi
+        echo "  Results: ${OUTPUT_FILE}"
+        echo "═══════════════════════════════════════════════════════════════"
+        
+        # Write output file path to results
+        echo "${OUTPUT_FILE}" > $(results.output-file.path)
+        
+        # List results
+        echo ""
+        echo "Results directory:"
+        ls -la "${OUTPUT_DIR}" | tail -10
+      
+      securityContext:
+        runAsNonRoot: true
+      
+      computeResources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+

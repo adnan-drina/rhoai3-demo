@@ -1,0 +1,50 @@
+# GuideLLM Benchmark - Devstral-2 (4-GPU)
+# ============================================================================
+# Mistral Devstral coding model benchmark.
+#
+# Model: devstral-2
+# GPUs: 4 x NVIDIA L4 (Tensor Parallelism)
+# Precision: BF16
+#
+# Optimized for code generation and completion tasks.
+#
+# Usage:
+#   oc create -f devstral-2.yaml
+#   # or
+#   tkn pipeline start guidellm-benchmark \
+#     --param model-name=devstral-2 \
+#     --workspace name=results,claimName=guidellm-pipeline-results
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: benchmark-devstral-2-
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    model: devstral-2
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  pipelineRef:
+    name: guidellm-benchmark
+  
+  params:
+    - name: model-name
+      value: "devstral-2"
+    - name: profile
+      value: "sweep"
+    - name: max-seconds
+      value: "60"
+    - name: max-requests
+      value: "50"
+  
+  workspaces:
+    - name: results
+      persistentVolumeClaim:
+        claimName: guidellm-pipeline-results
+  
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        fsGroup: 0
+

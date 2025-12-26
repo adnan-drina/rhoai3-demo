@@ -45,7 +45,7 @@ spec:
           # If running in a restricted environment, consider pre-downloading data
           containers:
             - name: guidellm
-              # Official GuideLLM container image (stable release)
+              # Official GuideLLM container image (stable release v0.5.0)
               # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
               image: ghcr.io/vllm-project/guidellm:stable
               env:
@@ -55,22 +55,86 @@ spec:
                 # Set HuggingFace cache directory
                 - name: HF_HOME
                   value: /tmp/.cache/huggingface
-                # Set output directory for GuideLLM
+                # GuideLLM Configuration via environment variables
+                - name: GUIDELLM_TARGET
+                  value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+                - name: GUIDELLM_PROFILE
+                  value: "sweep"
+                - name: GUIDELLM_MAX_SECONDS
+                  value: "60"
+                - name: GUIDELLM_MAX_REQUESTS
+                  value: "50"
                 - name: GUIDELLM_OUTPUT_DIR
                   value: /results
               command:
                 - /bin/bash
                 - -c
                 - |
-                  echo "GuideLLM version:"
-                  guidellm --version || echo "Version check not supported"
+                  echo "═══════════════════════════════════════════════════════════════"
+                  echo "  GuideLLM v0.5.0 - Multi-Model Benchmark"
+                  echo "  Profile: ${GUIDELLM_PROFILE}"
+                  echo "  Max Seconds: ${GUIDELLM_MAX_SECONDS} per model"
+                  echo "═══════════════════════════════════════════════════════════════"
+                  echo ""
                   
-                  echo "Running benchmark sweep..."
-                  /scripts/benchmark-sweep.sh
+                  # Create sample prompts (no network needed)
+                  cat > /tmp/prompts.json << 'EOF'
+                  [
+                    {"prompt": "What is the capital of France?"},
+                    {"prompt": "Explain quantum computing in simple terms."},
+                    {"prompt": "Write a short poem about the ocean."},
+                    {"prompt": "What are the benefits of exercise?"},
+                    {"prompt": "How does photosynthesis work?"},
+                    {"prompt": "Describe the process of making bread."},
+                    {"prompt": "What is machine learning?"},
+                    {"prompt": "Tell me about the solar system."},
+                    {"prompt": "What causes rain?"},
+                    {"prompt": "Explain the theory of relativity."}
+                  ]
+                  EOF
+                  echo "✓ Sample prompts created"
+                  echo ""
+                  
+                  # Models to test (BF16 first for ROI comparison)
+                  MODELS="mistral-3-bf16 mistral-3-int4"
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  
+                  for MODEL in ${MODELS}; do
+                    TARGET="http://${MODEL}-predictor.private-ai.svc.cluster.local:8080/v1"
+                    
+                    echo "───────────────────────────────────────────────────────────────"
+                    echo "  Testing: ${MODEL}"
+                    echo "  Target: ${TARGET}"
+                    echo "───────────────────────────────────────────────────────────────"
+                    
+                    # Check if target is reachable
+                    if ! curl -s --connect-timeout 10 "${TARGET}/models" >/dev/null 2>&1; then
+                      echo "  ⚠️  Model ${MODEL} is not reachable, skipping"
+                      continue
+                    fi
+                    echo "  ✓ Target is reachable"
+                    
+                    # Run benchmark
+                    guidellm benchmark run \
+                      --target "${TARGET}" \
+                      --data /tmp/prompts.json \
+                      --profile "${GUIDELLM_PROFILE}" \
+                      --max-seconds "${GUIDELLM_MAX_SECONDS}" \
+                      --max-requests "${GUIDELLM_MAX_REQUESTS}" \
+                      --output-dir "${GUIDELLM_OUTPUT_DIR}" \
+                      --outputs "${MODEL}-${TIMESTAMP}.json" \
+                      --disable-console-interactive \
+                      2>&1 || echo "  ⚠️  Benchmark for ${MODEL} exited with code $?"
+                    
+                    echo "  ✓ Completed ${MODEL}"
+                    echo ""
+                  done
+                  
+                  echo "═══════════════════════════════════════════════════════════════"
+                  echo "  All benchmarks complete"
+                  echo "═══════════════════════════════════════════════════════════════"
+                  ls -la "${GUIDELLM_OUTPUT_DIR}" 2>/dev/null | tail -10 || true
               volumeMounts:
-                - name: scripts
-                  mountPath: /scripts
-                  readOnly: true
                 - name: results
                   mountPath: /results
                 - name: cache
@@ -83,10 +147,6 @@ spec:
                   cpu: "2"
                   memory: 2Gi
           volumes:
-            - name: scripts
-              configMap:
-                name: guidellm-scripts
-                defaultMode: 0555  # Read + Execute for all
             - name: results
               persistentVolumeClaim:
                 claimName: guidellm-results

@@ -1,11 +1,14 @@
-# Mistral ROI Comparison Dashboard
+# Mistral 3 (BF16 vs INT4) Dashboard
 # ============================================================================
-# "The ROI of Quantization" - Side-by-side comparison:
+# Side-by-side comparison with SLA thresholds and breaking point detection:
 #   - Mistral-3-BF16 (4 GPUs, full precision)
 #   - Mistral-3-INT4 (1 GPU, quantized)
 #
-# Business Question: 
-#   At what load does the 1-GPU model saturate compared to 4-GPU?
+# SLA Thresholds:
+#   TTFT:       < 500ms (Excellent) | < 1.0s (SLA) | > 2.0s (Breaking)
+#   TPOT:       > 50 tok/s (Excellent) | > 20 tok/s (SLA) | < 10 tok/s (Breaking)
+#   KV Cache:   < 70% (Excellent) | < 85% (SLA) | > 95% (Breaking)
+#   Queue:      0 (Excellent) | 0-1 (SLA) | > 5 (Breaking)
 # ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -35,10 +38,10 @@ spec:
       "liveNow": true,
       "panels": [
         {
-          "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+          "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
           "id": 200,
           "options": {
-            "content": "# 📊 The ROI of Quantization\n\n| Model | GPUs | Cost | Strategy |\n|-------|------|------|----------|\n| **Mistral-3-BF16** | 4 | $$$$ | High concurrency |\n| **Mistral-3-INT4** | 1 | $ | Cost-optimized |",
+            "content": "## Mistral 3: BF16 vs INT4 Comparison\n\n| Model | GPUs | Cost | SLA Targets | Breaking Point |\n|-------|------|------|-------------|----------------|\n| **BF16** | 4 | $$$$ | TTFT < 1.0s, TPOT > 20 tok/s | Queue > 0 under load |\n| **INT4** | 1 | $ | TTFT < 1.0s, TPOT > 20 tok/s | Queue > 0 under load |",
             "mode": "markdown"
           },
           "title": "",
@@ -47,146 +50,329 @@ spec:
         },
         {
           "collapsed": false,
-          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 2},
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3},
           "id": 100,
-          "title": "🎯 Head-to-Head",
+          "title": "🚦 SLA Status - BF16 (4-GPU)",
           "type": "row"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Time To First Token - SLA: < 1.0s, Breaking: > 2.0s",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 5},
-                  {"color": "red", "value": 10}
-                ]
-              }
+              "decimals": 0,
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 500}, {"color": "orange", "value": 1000}, {"color": "red", "value": 2000}]},
+              "unit": "ms"
             }
           },
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 3},
-          "id": 1,
-          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4},
+          "id": 10,
+          "options": {"colorMode": "background", "graphMode": "none", "textMode": "value"},
           "targets": [
-            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
-            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[5m])) by (le)) * 1000", "legendFormat": "p95 TTFT", "refId": "A"}
           ],
-          "title": "Requests Running",
+          "title": "TTFT (p95)",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Throughput (Output Tokens/sec) - SLA: > 20, Breaking: < 10",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
-              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}
+              "decimals": 1,
+              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "orange", "value": 10}, {"color": "yellow", "value": 20}, {"color": "green", "value": 50}]},
+              "unit": "short"
             }
           },
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 3},
-          "id": 2,
-          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4},
+          "id": 11,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
           "targets": [
-            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
-            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "Tok/sec", "refId": "A"}
           ],
-          "title": "⚠️ Requests Waiting",
+          "title": "TPOT (Tok/sec)",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "KV Cache Usage - SLA: < 85%, Breaking: > 95%",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
               "max": 1, "min": 0,
-              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.95}]},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.70}, {"color": "orange", "value": 0.85}, {"color": "red", "value": 0.95}]},
               "unit": "percentunit"
             }
           },
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 3},
-          "id": 3,
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4},
+          "id": 12,
           "options": {"orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"]}},
           "targets": [
-            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16", "refId": "A"},
-            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4", "refId": "B"}
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "KV Cache", "refId": "A"}
           ],
-          "title": "KV Cache Usage",
+          "title": "KV Cache",
           "type": "gauge"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Queue Depth - SLA: 0-1, Breaking: > 5 (system saturated)",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
-              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 10}, {"color": "green", "value": 20}]},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "orange", "value": 2}, {"color": "red", "value": 5}]},
               "unit": "short"
             }
           },
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 3},
-          "id": 4,
-          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 4},
+          "id": 13,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
           "targets": [
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "Waiting", "refId": "A"}
           ],
-          "title": "Throughput (Tok/sec)",
+          "title": "⚠️ Queue Depth",
           "type": "stat"
         },
         {
           "collapsed": false,
-          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7},
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 8},
           "id": 101,
-          "title": "📈 Trends",
+          "title": "🚦 SLA Status - INT4 (1-GPU)",
           "type": "row"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-          "id": 5,
+          "description": "Time To First Token - SLA: < 1.0s, Breaking: > 2.0s",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "decimals": 0,
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 500}, {"color": "orange", "value": 1000}, {"color": "red", "value": 2000}]},
+              "unit": "ms"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 9},
+          "id": 20,
+          "options": {"colorMode": "background", "graphMode": "none", "textMode": "value"},
+          "targets": [
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[5m])) by (le)) * 1000", "legendFormat": "p95 TTFT", "refId": "A"}
+          ],
+          "title": "TTFT (p95)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Throughput (Output Tokens/sec) - SLA: > 20, Breaking: < 10",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "decimals": 1,
+              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "orange", "value": 10}, {"color": "yellow", "value": 20}, {"color": "green", "value": 50}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 9},
+          "id": 21,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
+          "targets": [
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "Tok/sec", "refId": "A"}
+          ],
+          "title": "TPOT (Tok/sec)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "KV Cache Usage - SLA: < 85%, Breaking: > 95%",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "max": 1, "min": 0,
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.70}, {"color": "orange", "value": 0.85}, {"color": "red", "value": 0.95}]},
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 9},
+          "id": 22,
+          "options": {"orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "KV Cache", "refId": "A"}
+          ],
+          "title": "KV Cache",
+          "type": "gauge"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Queue Depth - SLA: 0-1, Breaking: > 5 (system saturated)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "orange", "value": 2}, {"color": "red", "value": 5}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 9},
+          "id": 23,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
+          "targets": [
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "Waiting", "refId": "A"}
+          ],
+          "title": "⚠️ Queue Depth",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+          "id": 102,
+          "title": "📊 Latency Comparison (TTFT)",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Time To First Token - Side by side comparison with SLA threshold line at 1.0s",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "thresholdsStyle": {"mode": "line"}},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1000}]},
+              "unit": "ms"
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "SLA (1.0s)"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}, {"id": "custom.lineStyle", "value": {"dash": [10, 10], "fill": "dash"}}, {"id": "custom.fillOpacity", "value": 0}]}
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+          "id": 30,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
           "targets": [
-            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Running", "refId": "A"},
-            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Running", "refId": "B"},
-            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Waiting", "refId": "C"},
-            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Waiting", "refId": "D"}
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[5m])) by (le)) * 1000", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[5m])) by (le)) * 1000", "legendFormat": "INT4 (1-GPU)", "refId": "B"},
+            {"expr": "1000", "legendFormat": "SLA (1.0s)", "refId": "C"}
           ],
-          "title": "Request Queue Comparison",
+          "title": "TTFT (p95) - Breaking Point: > 1.0s",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2}, "max": 1, "min": 0, "unit": "percentunit"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-          "id": 6,
+          "description": "Time Per Output Token - Side by side comparison with SLA threshold line at 50ms",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "thresholdsStyle": {"mode": "line"}},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 50}]},
+              "unit": "ms"
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "SLA (50ms)"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}, {"id": "custom.lineStyle", "value": {"dash": [10, 10], "fill": "dash"}}, {"id": "custom.fillOpacity", "value": 0}]}
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+          "id": 31,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[5m])) by (le)) * 1000", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[5m])) by (le)) * 1000", "legendFormat": "INT4 (1-GPU)", "refId": "B"},
+            {"expr": "50", "legendFormat": "SLA (50ms)", "refId": "C"}
+          ],
+          "title": "TPOT (p95) - Slow if > 50ms (< 20 tok/s)",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 22},
+          "id": 103,
+          "title": "📈 Throughput & Queue",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Generation throughput with SLA threshold at 20 tok/s",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "thresholdsStyle": {"mode": "line"}},
+              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 20}]},
+              "unit": "short"
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "SLA (20 tok/s)"}, "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}, {"id": "custom.lineStyle", "value": {"dash": [10, 10], "fill": "dash"}}, {"id": "custom.fillOpacity", "value": 0}]}
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 23},
+          "id": 40,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "INT4 (1-GPU)", "refId": "B"},
+            {"expr": "20", "legendFormat": "SLA (20 tok/s)", "refId": "C"}
+          ],
+          "title": "Generation Throughput - SLA: > 20 tok/s",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Queue depth - Breaking point when > 0 under steady load",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2, "thresholdsStyle": {"mode": "area"}},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 23},
+          "id": 41,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Running", "refId": "A"},
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Running", "refId": "B"},
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Waiting ⚠️", "refId": "C"},
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Waiting ⚠️", "refId": "D"}
+          ],
+          "title": "Request Queue - Breaking: Waiting > 0",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 31},
+          "id": 104,
+          "title": "💾 Memory & Efficiency",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "KV Cache with SLA threshold at 85%",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2, "thresholdsStyle": {"mode": "line+area"}},
+              "max": 1, "min": 0,
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.70}, {"color": "orange", "value": 0.85}, {"color": "red", "value": 0.95}]},
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "id": 50,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
           "targets": [
             {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
             {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
           ],
-          "title": "KV Cache Memory Pressure",
+          "title": "KV Cache Usage - Breaking: > 95%",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-          "id": 7,
-          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
-          "targets": [
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
-          ],
-          "title": "Generation Throughput",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "description": "Efficiency = Tokens per GPU (normalized by GPU count)",
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-          "id": 8,
+          "description": "Efficiency = Tokens per GPU (normalized by GPU count). Higher is better.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "id": 51,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
           "targets": [
             {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m]) / 4", "legendFormat": "BF16 (per GPU, 4 total)", "refId": "A"},
@@ -198,11 +384,11 @@ spec:
       ],
       "refresh": "5s",
       "schemaVersion": 39,
-      "tags": ["mistral", "roi", "quantization", "comparison"],
-      "time": {"from": "now-15m", "to": "now"},
+      "tags": ["mistral", "comparison", "sla"],
+      "time": {"from": "now-30m", "to": "now"},
       "timezone": "browser",
-      "title": "Mistral ROI Comparison (BF16 vs INT4)",
-      "uid": "mistral-roi-comparison",
-      "version": 1
+      "title": "Mistral 3 (BF16 vs INT4)",
+      "uid": "mistral-bf16-vs-int4",
+      "version": 2
     }
 

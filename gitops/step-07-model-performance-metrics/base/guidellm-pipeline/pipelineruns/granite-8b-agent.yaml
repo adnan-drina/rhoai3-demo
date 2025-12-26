@@ -1,0 +1,48 @@
+# GuideLLM Benchmark - Granite-8B Agent (1-GPU)
+# ============================================================================
+# IBM Granite agent model benchmark.
+#
+# Model: granite-8b-agent
+# GPUs: 1 x NVIDIA L4
+# Precision: Quantized (auto-detected)
+#
+# Usage:
+#   oc create -f granite-8b-agent.yaml
+#   # or
+#   tkn pipeline start guidellm-benchmark \
+#     --param model-name=granite-8b-agent \
+#     --workspace name=results,claimName=guidellm-pipeline-results
+# ============================================================================
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: benchmark-granite-8b-agent-
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    model: granite-8b-agent
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  pipelineRef:
+    name: guidellm-benchmark
+  
+  params:
+    - name: model-name
+      value: "granite-8b-agent"
+    - name: profile
+      value: "sweep"
+    - name: max-seconds
+      value: "60"
+    - name: max-requests
+      value: "50"
+  
+  workspaces:
+    - name: results
+      persistentVolumeClaim:
+        claimName: guidellm-pipeline-results
+  
+  taskRunTemplate:
+    podTemplate:
+      securityContext:
+        fsGroup: 0
+

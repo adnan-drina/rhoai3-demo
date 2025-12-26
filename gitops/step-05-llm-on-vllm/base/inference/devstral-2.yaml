@@ -47,6 +47,11 @@ spec:
     # Toggle to 1 via GPU Switchboard to demonstrate queueing
     minReplicas: 0
     maxReplicas: 1
+    # Deployment Strategy: Recreate prevents Kueue deadlock
+    # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods
+    # hold GPU quota, causing a deadlock. Recreate terminates old pods first.
+    deploymentStrategy:
+      type: Recreate
     # Tolerations: Required for GPU node taints
     tolerations:
       - key: nvidia.com/gpu

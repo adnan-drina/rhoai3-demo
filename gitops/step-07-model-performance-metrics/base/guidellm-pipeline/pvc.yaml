@@ -1,0 +1,23 @@
+# GuideLLM Pipeline Results PVC
+# ============================================================================
+# Persistent storage for benchmark results from pipeline runs.
+# Results are organized by model and timestamp.
+# ============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: guidellm-pipeline-results
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp3-csi
+
