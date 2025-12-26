@@ -1,24 +1,146 @@
 # vLLM-Playground: Interactive Demo UI
 # ============================================================================
+# Based on: https://github.com/micytao/vllm-playground
+# OpenShift Deployment: https://github.com/micytao/vllm-playground/tree/main/openshift
+#
 # ⚠️ COMMUNITY TOOLING DISCLAIMER:
-# This is a community-driven visualization tool and is NOT an officially
-# supported component of Red Hat OpenShift AI 3.0 or the vLLM project.
+# This is a community-driven tool and is NOT an officially supported
+# component of Red Hat OpenShift AI 3.0 or the vLLM project.
 #
-# Source: https://github.com/micytao/vllm-playground
-# License: Apache-2.0
+# Architecture:
+#   Web UI Pod (FastAPI) → dynamically creates → vLLM Pods
+#   The playground manages its own vLLM instances via Kubernetes API.
 #
-# Purpose:
-#   - Side-by-side model comparison (e.g., INT4 vs BF16)
-#   - Real-time "vibe check" for latency differences
-#   - Interactive demo for stakeholder presentations
+# Features:
+#   - Auto-detects GPU availability in cluster
+#   - Creates/manages vLLM pods on demand
+#   - Side-by-side model comparison
+#   - GuideLLM benchmarking integration
 #
-# NOTE: The default image requires Quay.io authentication.
-#       Set replicas: 1 and configure a pull secret if you want to enable this.
-#       Alternative: Use OpenWebUI or another public LLM chat interface.
-#
-# The playground connects to your InferenceService endpoints and provides
-# a chat interface for qualitative performance comparison.
+# Ref: https://github.com/micytao/vllm-playground/blob/main/openshift/QUICK_START.md
 # ============================================================================
+
+# --- ServiceAccount ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vllm-playground-sa
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+# --- Role for pod/service management in namespace ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vllm-pod-manager
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+---
+# --- RoleBinding ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vllm-pod-manager-binding
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: vllm-playground-sa
+    namespace: private-ai
+roleRef:
+  kind: Role
+  name: vllm-pod-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+# --- ClusterRole for node reading (GPU detection) ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vllm-playground-node-reader
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+---
+# --- ClusterRoleBinding for node reading ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vllm-playground-node-reader-binding
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: vllm-playground-sa
+    namespace: private-ai
+roleRef:
+  kind: ClusterRole
+  name: vllm-playground-node-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# --- ConfigMap for GPU mode ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm-playground-config-gpu
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+data:
+  # Kubernetes namespace where vLLM pods will be created
+  KUBERNETES_NAMESPACE: "private-ai"
+  
+  # GPU vLLM image - Official community vLLM image with CUDA support
+  # Publicly accessible from Docker Hub (no authentication needed)
+  VLLM_IMAGE: "vllm/vllm-openai:v0.11.0"
+  
+  # Web UI port
+  WEBUI_PORT: "7860"
+  
+  # Model cache persistence
+  # Set to "true" to use PVC for persistent model caching
+  USE_PERSISTENT_CACHE: "false"
+  
+  # PVC name for model cache (only used if USE_PERSISTENT_CACHE=true)
+  # MODEL_CACHE_PVC: "vllm-model-cache"
+---
+# --- GPU Deployment (default) ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,14 +148,13 @@ metadata:
   namespace: private-ai
   labels:
     app: vllm-playground
+    mode: gpu
     app.kubernetes.io/part-of: step-07-model-performance-metrics
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
-    description: "Community tool for interactive vLLM testing"
+    argocd.argoproj.io/sync-wave: "12"
+    description: "vLLM Playground - Interactive model testing UI (Community Tool)"
 spec:
-  # ⚠️ Disabled by default - image requires authentication
-  # Enable manually: oc scale deployment/vllm-playground -n private-ai --replicas=1
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: vllm-playground
@@ -41,46 +162,61 @@ spec:
     metadata:
       labels:
         app: vllm-playground
+        mode: gpu
         app.kubernetes.io/part-of: step-07-model-performance-metrics
     spec:
+      serviceAccountName: vllm-playground-sa
       containers:
-        - name: playground
-          # Using the official vllm-playground image
-          image: quay.io/rh_ee_micyang/vllm-playground-webui:latest
+        - name: webui
+          # Official vLLM-Playground image (publicly accessible)
+          image: quay.io/rh_ee_micyang/vllm-playground:0.3
+          imagePullPolicy: Always
           ports:
             - containerPort: 7860
               name: http
               protocol: TCP
           env:
-            # Default to internal model endpoints
-            - name: VLLM_API_BASE
-              value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:80/v1"
-            # Enable both CPU and GPU mode detection
-            - name: ENABLE_GPU_MODE
-              value: "true"
-            # Demo mode settings
-            - name: DEMO_MODE
-              value: "true"
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: vllm-playground-config-gpu
+                  key: KUBERNETES_NAMESPACE
+            - name: VLLM_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: vllm-playground-config-gpu
+                  key: VLLM_IMAGE
+            - name: USE_PERSISTENT_CACHE
+              valueFrom:
+                configMapKeyRef:
+                  name: vllm-playground-config-gpu
+                  key: USE_PERSISTENT_CACHE
+                  optional: true
+            - name: WEBUI_PORT
+              value: "7860"
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
-            limits:
-              cpu: "1"
+              cpu: 500m
               memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
           livenessProbe:
             httpGet:
               path: /
               port: 7860
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: 7860
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 5
+            timeoutSeconds: 3
 ---
+# --- Service ---
 apiVersion: v1
 kind: Service
 metadata:
@@ -90,7 +226,7 @@ metadata:
     app: vllm-playground
     app.kubernetes.io/part-of: step-07-model-performance-metrics
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-wave: "12"
 spec:
   ports:
     - name: http
@@ -101,6 +237,7 @@ spec:
     app: vllm-playground
   type: ClusterIP
 ---
+# --- Route ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -110,7 +247,7 @@ metadata:
     app: vllm-playground
     app.kubernetes.io/part-of: step-07-model-performance-metrics
   annotations:
-    argocd.argoproj.io/sync-wave: "11"
+    argocd.argoproj.io/sync-wave: "13"
 spec:
   to:
     kind: Service
@@ -122,4 +259,3 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
   wildcardPolicy: None
-

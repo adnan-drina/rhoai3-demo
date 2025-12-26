@@ -299,44 +299,92 @@ oc run results-viewer --rm -it --restart=Never \
   -n private-ai
 ```
 
-## vLLM-Playground (Interactive UI) - Optional
+## vLLM-Playground (Interactive UI)
 
 > **⚠️ Community Tool Disclaimer:** [vLLM-Playground](https://github.com/micytao/vllm-playground) is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
 
-> **⚠️ Image Access:** The default image (`quay.io/rh_ee_micyang/vllm-playground-webui`) requires Quay.io authentication. The deployment is **disabled by default** (replicas: 0).
+Based on official deployment: [OpenShift QUICK_START](https://github.com/micytao/vllm-playground/blob/main/openshift/QUICK_START.md)
+
+### Architecture
+
+```
+┌──────────────────┐
+│   Web UI Pod     │  ← quay.io/rh_ee_micyang/vllm-playground:0.3
+│   (FastAPI)      │
+└────────┬─────────┘
+         │ Kubernetes API (create/delete pods)
+         ↓
+┌──────────────────┐
+│  vLLM Pod        │  ← vllm/vllm-openai:v0.11.0 (GPU)
+│  (Dynamic)       │  ← Created when user clicks "Start Server"
+└──────────────────┘
+```
+
+**Key features:**
+- Auto-detects GPU availability in cluster
+- Creates/manages its own vLLM pods on demand
+- Users can load any model from HuggingFace
+- Built-in GuideLLM benchmarking support
 
 ### Purpose
 
 While GuideLLM gives us hard data, vLLM-Playground provides the **"Vibe Check"**:
-- Side-by-side chat windows comparing INT4 vs BF16
-- See latency differences in real-time
+- Interactive model loading and testing
+- Real-time chat with models
+- Side-by-side comparison capability
 - Perfect for stakeholder presentations
 
-### Enabling (requires image access)
+### Access
 
 ```bash
-# If you have access to the image or a pull secret configured:
-oc scale deployment/vllm-playground -n private-ai --replicas=1
-
-# Get URL once running:
+# Get URL
 PLAYGROUND_URL=$(oc get route vllm-playground -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${PLAYGROUND_URL}"
 ```
 
+### Components Deployed
+
+| Resource | Name | Purpose |
+|----------|------|---------|
+| ServiceAccount | `vllm-playground-sa` | Identity for pod management |
+| Role | `vllm-pod-manager` | Pod/service CRUD in namespace |
+| ClusterRole | `vllm-playground-node-reader` | GPU detection via node info |
+| ConfigMap | `vllm-playground-config-gpu` | vLLM image, namespace config |
+| Deployment | `vllm-playground` | The Web UI |
+| Service | `vllm-playground` | Internal service |
+| Route | `vllm-playground` | External HTTPS access |
+
+### Demo Scenario
+
+1. Open the vLLM-Playground URL
+2. Click **"Start Server"** with a model (e.g., `mistralai/Mistral-7B-Instruct-v0.2`)
+3. Wait for the vLLM pod to start (check logs in UI)
+4. Chat with the model interactively
+5. Run GuideLLM benchmarks from the UI
+6. Click **"Stop Server"** when done
+
+### Troubleshooting
+
+**Pod not starting?**
+```bash
+# Check vLLM-Playground logs
+oc logs -f deployment/vllm-playground -n private-ai
+
+# Check if it can create pods
+oc auth can-i create pods -n private-ai --as=system:serviceaccount:private-ai:vllm-playground-sa
+```
+
+**GPU not detected?**
+```bash
+# Check node GPU availability
+oc get nodes -o custom-columns=NAME:.metadata.name,GPU:.status.capacity.nvidia\.com/gpu
+```
+
 ### Alternatives
 
-For interactive model testing without vLLM-Playground:
+For testing **existing InferenceServices** (mistral-3-int4, etc.):
 - **RHOAI GenAI Playground** (Step 06) - built into RHOAI Dashboard
 - **LiteMaaS Chatbot** (Step 06B) - if deployed
-- **OpenWebUI** - open-source alternative (can be deployed separately)
-
-### Demo Scenario (if enabled)
-
-1. Open two browser tabs pointing to the playground
-2. Configure one tab to use `mistral-3-int4` endpoint
-3. Configure the other to use `mistral-3-bf16` endpoint
-4. Ask the same question in both
-5. Observe the latency difference visually
 
 ## vLLM Metrics Reference
 
