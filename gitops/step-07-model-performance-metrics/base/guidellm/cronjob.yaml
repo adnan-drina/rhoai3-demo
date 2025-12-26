@@ -3,7 +3,7 @@
 # Daily benchmark to find model breaking points under increasing load.
 #
 # Strategy: Constant rate with incrementally increasing concurrency
-#   - Runs at 5, 10, 15, 20 concurrent requests
+#   - Runs at 30, 40, 50 concurrent requests (high load)
 #   - Each concurrency level runs for 120 seconds
 #   - Identifies where TTFT degrades and queue depth increases
 #
@@ -60,11 +60,11 @@ spec:
                 - name: GUIDELLM_PROFILE
                   value: constant
                 - name: GUIDELLM_RATES
-                  value: "5,10,15,20"
+                  value: "30,40,50"
                 - name: GUIDELLM_MAX_SECONDS
                   value: "120"
                 - name: GUIDELLM_MAX_REQUESTS
-                  value: "200"
+                  value: "300"
               command:
                 - /bin/bash
                 - -c
