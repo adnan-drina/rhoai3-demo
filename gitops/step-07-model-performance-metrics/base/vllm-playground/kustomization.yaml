@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# vLLM-Playground: Interactive Demo UI
+# ============================================================================
+# ⚠️ COMMUNITY TOOLING - NOT AN OFFICIAL RED HAT PRODUCT
+#
+# This is an OPTIONAL component for interactive demonstrations.
+# It provides a chat interface for side-by-side model comparison.
+#
+# Source: https://github.com/micytao/vllm-playground
+# License: Apache-2.0
+#
+# Use Cases:
+#   - Live demos showing INT4 vs BF16 latency differences
+#   - Stakeholder presentations with real-time interaction
+#   - "Vibe Check" - qualitative feel for model responsiveness
+# ============================================================================
+
+resources:
+  - deployment.yaml
+

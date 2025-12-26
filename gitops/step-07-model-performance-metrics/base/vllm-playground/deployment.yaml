@@ -1,0 +1,119 @@
+# vLLM-Playground: Interactive Demo UI
+# ============================================================================
+# ⚠️ COMMUNITY TOOLING DISCLAIMER:
+# This is a community-driven visualization tool and is NOT an officially
+# supported component of Red Hat OpenShift AI 3.0 or the vLLM project.
+#
+# Source: https://github.com/micytao/vllm-playground
+# License: Apache-2.0
+#
+# Purpose:
+#   - Side-by-side model comparison (e.g., INT4 vs BF16)
+#   - Real-time "vibe check" for latency differences
+#   - Interactive demo for stakeholder presentations
+#
+# The playground connects to your InferenceService endpoints and provides
+# a chat interface for qualitative performance comparison.
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-playground
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    description: "Community tool for interactive vLLM testing"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-playground
+  template:
+    metadata:
+      labels:
+        app: vllm-playground
+        app.kubernetes.io/part-of: step-07-model-performance-metrics
+    spec:
+      containers:
+        - name: playground
+          # Using the official vllm-playground image
+          image: quay.io/rh_ee_micyang/vllm-playground-webui:latest
+          ports:
+            - containerPort: 7860
+              name: http
+              protocol: TCP
+          env:
+            # Default to internal model endpoints
+            - name: VLLM_API_BASE
+              value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:80/v1"
+            # Enable both CPU and GPU mode detection
+            - name: ENABLE_GPU_MODE
+              value: "true"
+            # Demo mode settings
+            - name: DEMO_MODE
+              value: "true"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-playground
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  ports:
+    - name: http
+      port: 7860
+      targetPort: 7860
+      protocol: TCP
+  selector:
+    app: vllm-playground
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vllm-playground
+  namespace: private-ai
+  labels:
+    app: vllm-playground
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  to:
+    kind: Service
+    name: vllm-playground
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+

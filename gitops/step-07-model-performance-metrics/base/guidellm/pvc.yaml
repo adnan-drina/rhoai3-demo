@@ -1,0 +1,22 @@
+# GuideLLM Results Storage
+# ============================================================================
+# Persistent storage for benchmark results.
+# Results are stored as JSON files for historical comparison.
+# ============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: guidellm-results
+  namespace: private-ai
+  labels:
+    app: guidellm
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+

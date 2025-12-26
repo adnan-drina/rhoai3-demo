@@ -1,0 +1,616 @@
+# vLLM Model Performance Dashboard
+# ============================================================================
+# Comprehensive dashboard for monitoring vLLM model server performance.
+#
+# Panels:
+#   - Request Status (Running vs Waiting)
+#   - KV Cache Usage (Memory Pressure)
+#   - Time To First Token (TTFT)
+#   - Generation Throughput
+#   - Model Comparison Table
+#
+# Variables:
+#   - $model: Select one or more models to display
+#
+# Note: vLLM metrics use `:` separator (e.g., vllm:num_requests_running)
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: private-ai
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  vllm-overview.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": true,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "panels": [],
+          "title": "🚦 System Status",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 5 },
+                  { "color": "red", "value": 10 }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "sum(vllm:num_requests_running{namespace=\"private-ai\", model_name=~\"$model\"})",
+              "legendFormat": "Running",
+              "refId": "A"
+            }
+          ],
+          "title": "Requests Running",
+          "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "sum(vllm:num_requests_waiting{namespace=\"private-ai\", model_name=~\"$model\"})",
+              "legendFormat": "Waiting",
+              "refId": "A"
+            }
+          ],
+          "title": "⚠️ Requests Queued",
+          "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 0.7 },
+                  { "color": "orange", "value": 0.85 },
+                  { "color": "red", "value": 0.95 }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+          "id": 3,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "avg(vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=~\"$model\"})",
+              "legendFormat": "KV Cache",
+              "refId": "A"
+            }
+          ],
+          "title": "KV Cache Usage",
+          "type": "gauge"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "sum(rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=~\"$model\"}[1m]))",
+              "legendFormat": "Tokens/sec",
+              "refId": "A"
+            }
+          ],
+          "title": "Generation Throughput",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+          "id": 101,
+          "panels": [],
+          "title": "📈 Performance Trends",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Requests",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+              "unit": "none"
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byRegexp", "options": ".*Waiting.*" },
+                "properties": [
+                  { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+                ]
+              }
+            ]
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+          "id": 5,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "legendFormat": "{{ model_name }} Running",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "legendFormat": "{{ model_name }} Waiting",
+              "refId": "B"
+            }
+          ],
+          "title": "Request Queue Status",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Usage %",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 30,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "line+area" }
+              },
+              "mappings": [],
+              "max": 1,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.85 },
+                  { "color": "red", "value": 0.95 }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+          "id": 6,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "legendFormat": "{{ model_name }}",
+              "refId": "A"
+            }
+          ],
+          "title": "KV Cache Memory Pressure",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Tokens/sec",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+          "id": 7,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=~\"$model\"}[1m])",
+              "legendFormat": "{{ model_name }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Generation Throughput (Tokens/sec)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Requests/sec",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "gradientMode": "opacity",
+                "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": { "type": "linear" },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": { "group": "A", "mode": "none" },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "mappings": [],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+          "id": 8,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "sum by (model_name) (rate(vllm:request_success_total{namespace=\"private-ai\", model_name=~\"$model\"}[5m]))",
+              "legendFormat": "{{ model_name }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Request Rate",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+          "id": 102,
+          "panels": [],
+          "title": "🔬 Model Comparison",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "custom": {
+                "align": "auto",
+                "cellOptions": { "type": "auto" },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "KV Cache %" },
+                "properties": [
+                  { "id": "unit", "value": "percentunit" },
+                  { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+                  { "id": "max", "value": 1 },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.7 }, { "color": "red", "value": 0.9 }] } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Tokens/sec" },
+                "properties": [
+                  { "id": "unit", "value": "short" },
+                  { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+                  { "id": "max", "value": 1000 }
+                ]
+              }
+            ]
+          },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 23 },
+          "id": 9,
+          "options": {
+            "cellHeight": "sm",
+            "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+            "showHeader": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "refId": "Running"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "refId": "Waiting"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=~\"$model\"}",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "refId": "KVCache"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+              "expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=~\"$model\"}[1m])",
+              "format": "table",
+              "instant": true,
+              "legendFormat": "__auto",
+              "refId": "Throughput"
+            }
+          ],
+          "title": "Model Performance Summary",
+          "transformations": [
+            { "id": "seriesToColumns", "options": { "byField": "model_name" } },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 2": true,
+                  "Time 3": true,
+                  "Time 4": true,
+                  "__name__": true,
+                  "__name__ 1": true,
+                  "__name__ 2": true,
+                  "__name__ 3": true,
+                  "__name__ 4": true,
+                  "container": true,
+                  "container 1": true,
+                  "container 2": true,
+                  "container 3": true,
+                  "container 4": true,
+                  "endpoint": true,
+                  "endpoint 1": true,
+                  "endpoint 2": true,
+                  "endpoint 3": true,
+                  "endpoint 4": true,
+                  "engine": true,
+                  "engine 1": true,
+                  "engine 2": true,
+                  "engine 3": true,
+                  "engine 4": true,
+                  "instance": true,
+                  "instance 1": true,
+                  "instance 2": true,
+                  "instance 3": true,
+                  "instance 4": true,
+                  "job": true,
+                  "job 1": true,
+                  "job 2": true,
+                  "job 3": true,
+                  "job 4": true,
+                  "namespace": true,
+                  "namespace 1": true,
+                  "namespace 2": true,
+                  "namespace 3": true,
+                  "namespace 4": true,
+                  "pod": true,
+                  "pod 1": true,
+                  "pod 2": true,
+                  "pod 3": true,
+                  "pod 4": true,
+                  "service": true,
+                  "service 1": true,
+                  "service 2": true,
+                  "service 3": true,
+                  "service 4": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Value #KVCache": "KV Cache %",
+                  "Value #Running": "Running",
+                  "Value #Throughput": "Tokens/sec",
+                  "Value #Waiting": "Waiting",
+                  "model_name": "Model"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 39,
+      "tags": ["vllm", "rhoai", "gpu", "llm"],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": { "selected": true, "text": "All", "value": "$__all" },
+            "datasource": { "type": "prometheus", "uid": "Prometheus-UWM" },
+            "definition": "label_values(vllm:num_requests_running{namespace=\"private-ai\"}, model_name)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Model",
+            "multi": true,
+            "name": "model",
+            "options": [],
+            "query": { "query": "label_values(vllm:num_requests_running{namespace=\"private-ai\"}, model_name)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": { "from": "now-15m", "to": "now" },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "vLLM Model Performance",
+      "uid": "vllm-overview",
+      "version": 1,
+      "weekStart": ""
+    }
+

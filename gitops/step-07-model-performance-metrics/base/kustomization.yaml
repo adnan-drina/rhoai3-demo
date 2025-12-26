@@ -1,0 +1,61 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 07: Model Performance Metrics - "The ROI of Quantization"
+# ============================================================================
+# Demonstrates why Inference Efficiency is the most important metric for
+# enterprise AI deployments.
+#
+# The Narrative:
+#   - Baseline: Mistral-3-BF16 sharded across 4 GPUs ($$$$)
+#   - Competitor: Mistral-3-INT4 running on 1 GPU ($)
+#   - Goal: Find the "Efficiency Delta" - where does each model saturate?
+#
+# Components:
+#   1. Grafana Dashboard (grafana/)
+#      - Connected to OpenShift User Workload Monitoring
+#      - Pre-configured vLLM performance dashboards
+#      - Model comparison with KV Cache and TTFT metrics
+#
+#   2. Dashboards (dashboards/)
+#      - vLLM Overview: Queue status, KV cache, throughput
+#      - Model Comparison: Side-by-side performance table
+#
+#   3. GuideLLM Benchmarking (guidellm/)
+#      - Poisson distribution for realistic human traffic simulation
+#      - Rate sweep from 0.1 to 5.0 req/s
+#      - ROI comparison scripts (INT4 vs BF16)
+#
+#   4. vLLM-Playground (vllm-playground/) [OPTIONAL - Community Tool]
+#      - Interactive chat UI for real-time "vibe check"
+#      - Side-by-side model comparison during presentations
+#      - ⚠️ NOT an official Red Hat product
+#
+# SLA Targets:
+#   - TTFT: < 500ms (excellent), < 1.0s (acceptable)
+#   - TPOT: > 20 tokens/sec
+#   - KV Cache: < 85% (warning at 95%)
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index
+# Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
+# Ref: https://github.com/neuralmagic/guidellm
+# Ref: https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference
+# ============================================================================
+
+resources:
+  # Grafana deployment with UWM integration
+  - grafana/
+  
+  # Dashboard ConfigMaps
+  - dashboards/
+  
+  # GuideLLM automated benchmarking with Poisson distribution
+  - guidellm/
+  
+  # vLLM-Playground: Interactive demo UI (Community Tool)
+  # ⚠️ DISCLAIMER: Not an official Red Hat product
+  - vllm-playground/
+
+commonLabels:
+  app.kubernetes.io/part-of: rhoai3-demo
+  app.kubernetes.io/component: observability

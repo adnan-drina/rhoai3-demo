@@ -1,7 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - base/grafana
-  - base/guidellm
+# Step 07: Model Performance Metrics
+# ============================================================================
+# Deploys Grafana dashboard with vLLM performance visualization.
+#
+# Components:
+#   - Grafana 10.x with anonymous access
+#   - ServiceAccount with cluster-monitoring-view for Thanos Querier access
+#   - Pre-configured vLLM metrics dashboard
+#   - Route for external HTTPS access
+#
+# Prerequisites:
+#   - Step 01: User Workload Monitoring enabled
+#   - Step 05: vLLM InferenceServices deployed (auto-creates ServiceMonitors)
+# ============================================================================
 
+resources:
+  - base/

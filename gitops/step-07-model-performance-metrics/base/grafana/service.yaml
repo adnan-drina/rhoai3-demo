@@ -1,3 +1,5 @@
+# Grafana Service
+# ============================================================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,11 +7,16 @@ metadata:
   namespace: private-ai
   labels:
     app: grafana
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   ports:
-    - port: 3000
+    - name: http
+      port: 3000
       targetPort: 3000
       protocol: TCP
   selector:
     app: grafana
+  type: ClusterIP
 

@@ -1,0 +1,75 @@
+# GuideLLM On-Demand Benchmark Job Template
+# ============================================================================
+# Template for running ad-hoc benchmarks on specific models.
+#
+# Usage (replace placeholders):
+#   1. Copy this file
+#   2. Replace MODEL_NAME with target model (e.g., mistral-3-int4)
+#   3. Replace SCENARIO with test type (quick-chat, summarization, code-gen)
+#   4. Apply: oc apply -f job.yaml
+#
+# Or use kubectl create:
+#   oc create job benchmark-mistral-int4 \
+#     --from=cronjob/guidellm-daily \
+#     -n private-ai
+#
+# Then override the command if needed.
+# ============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guidellm-benchmark-TIMESTAMP
+  namespace: private-ai
+  labels:
+    app: guidellm
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 1800  # 30 min max
+  template:
+    metadata:
+      labels:
+        app: guidellm
+        job-type: on-demand
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: guidellm
+          image: python:3.11-slim
+          env:
+            # Override these for specific benchmarks
+            - name: MODEL_NAME
+              value: "mistral-3-int4"
+            - name: SCENARIO
+              value: "quick-chat"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Installing GuideLLM..."
+              pip install --quiet guidellm
+              
+              echo "Running single model benchmark..."
+              chmod +x /scripts/single-model-benchmark.sh
+              /scripts/single-model-benchmark.sh "${MODEL_NAME}" "${SCENARIO}"
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+      volumes:
+        - name: scripts
+          configMap:
+            name: guidellm-scripts
+            defaultMode: 0755
+        - name: results
+          persistentVolumeClaim:
+            claimName: guidellm-results
+

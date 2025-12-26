@@ -1,0 +1,72 @@
+# GuideLLM Scheduled Benchmark CronJob
+# ============================================================================
+# Runs automated benchmark sweeps on a schedule.
+# Default: Daily at 2:00 AM UTC
+#
+# Uses a Python 3.11 image with guidellm installed at runtime.
+# Results are persisted to the guidellm-results PVC.
+#
+# To trigger manually:
+#   oc create job --from=cronjob/guidellm-daily manual-benchmark -n private-ai
+# ============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: guidellm-daily
+  namespace: private-ai
+  labels:
+    app: guidellm
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  # Run daily at 2:00 AM UTC
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600  # 1 hour max
+      template:
+        metadata:
+          labels:
+            app: guidellm
+            job-type: scheduled
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: guidellm
+              image: python:3.11-slim
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Installing GuideLLM..."
+                  pip install --quiet guidellm
+                  
+                  echo "Running benchmark sweep..."
+                  chmod +x /scripts/benchmark-sweep.sh
+                  /scripts/benchmark-sweep.sh
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: results
+                  mountPath: /results
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 512Mi
+                limits:
+                  cpu: "2"
+                  memory: 1Gi
+          volumes:
+            - name: scripts
+              configMap:
+                name: guidellm-scripts
+                defaultMode: 0755
+            - name: results
+              persistentVolumeClaim:
+                claimName: guidellm-results
+

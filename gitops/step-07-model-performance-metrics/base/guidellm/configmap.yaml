@@ -1,0 +1,363 @@
+# GuideLLM Benchmark Configuration
+# ============================================================================
+# Contains benchmark scripts for finding model "breaking points" using
+# Poisson distribution to simulate realistic human traffic patterns.
+#
+# The "ROI of Quantization" Narrative:
+#   - Compare BF16 (4-GPU $$$$) vs INT4 (1-GPU $)
+#   - Find the "Efficiency Delta" - where does each model saturate?
+#   - Calculate: How many 1-GPU specialists = one 4-GPU powerhouse?
+#
+# Methodology: Poisson Stress Test
+#   - Uses Poisson arrival process (natural human variability)
+#   - Rate sweep from 0.1 to 5.0 requests/second
+#   - SLA Targets: TTFT < 1.0s (acceptable), < 500ms (excellent)
+#
+# Ref: https://github.com/neuralmagic/guidellm
+# Ref: https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guidellm-scripts
+  namespace: private-ai
+  labels:
+    app: guidellm
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  benchmark-sweep.sh: |
+    #!/bin/bash
+    # GuideLLM Benchmark Sweep Script
+    # ============================================================================
+    # Uses Poisson distribution for realistic human traffic simulation.
+    # Sweeps request rates from 0.1 to 5.0 req/s to find saturation points.
+    #
+    # The "ROI of Quantization" Test:
+    #   - INT4 (1-GPU): Lower cost, earlier saturation
+    #   - BF16 (4-GPU): Higher cost, more headroom
+    #   - Goal: Find the "Efficiency Delta"
+    # ============================================================================
+    
+    set -e
+    
+    RESULTS_DIR="/results"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    
+    # SLA Thresholds
+    TTFT_TARGET_EXCELLENT="0.5"  # 500ms
+    TTFT_TARGET_ACCEPTABLE="1.0" # 1 second
+    TPOT_TARGET="20"             # 20 tokens/sec
+    
+    # Models to benchmark (internal ClusterIP URLs)
+    MODELS=""
+    
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo "  GuideLLM Poisson Stress Test"
+    echo "  The 'ROI of Quantization' Benchmark"
+    echo "  Started: $(date)"
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "  📊 SLA Targets:"
+    echo "     TTFT (Excellent): < ${TTFT_TARGET_EXCELLENT}s"
+    echo "     TTFT (Acceptable): < ${TTFT_TARGET_ACCEPTABLE}s"
+    echo "     TPOT: > ${TPOT_TARGET} tokens/sec"
+    echo ""
+    
+    # Discover available models
+    echo "▶ Discovering models..."
+    
+    # Priority order: Compare INT4 vs BF16 first (the main story)
+    for model in mistral-3-int4 mistral-3-bf16 granite-8b-agent devstral-2 gpt-oss-20b; do
+      URL="http://${model}-predictor.private-ai.svc.cluster.local:80"
+      if curl -s --connect-timeout 5 "${URL}/v1/models" >/dev/null 2>&1; then
+        echo "  ✓ ${model} is available"
+        MODELS="${MODELS} ${model}"
+      else
+        echo "  ⚠️  ${model} is not responding (skipping)"
+      fi
+    done
+    
+    if [ -z "${MODELS}" ]; then
+      echo ""
+      echo "❌ No models available for benchmarking"
+      exit 1
+    fi
+    
+    # Poisson Rate Sweep Configuration
+    # Simulates realistic human arrival patterns
+    RATE_MIN="0.1"
+    RATE_MAX="3.0"
+    RATE_STEPS="6"
+    
+    echo ""
+    echo "▶ Running Poisson Stress Tests..."
+    echo "  Rate Sweep: ${RATE_MIN} → ${RATE_MAX} req/s (${RATE_STEPS} steps)"
+    echo "  Distribution: Poisson (human behavior simulation)"
+    
+    for model in ${MODELS}; do
+      MODEL_URL="http://${model}-predictor.private-ai.svc.cluster.local:80"
+      MODEL_RESULTS_DIR="${RESULTS_DIR}/${TIMESTAMP}/${model}"
+      mkdir -p "${MODEL_RESULTS_DIR}"
+      
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "  Benchmarking: ${model}"
+      echo "  URL: ${MODEL_URL}"
+      echo "  Strategy: Find the 'Breaking Point' (TTFT > ${TTFT_TARGET_ACCEPTABLE}s)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Scenario 1: Chat Responsiveness (TTFT focus)
+      # This is what users "feel" - the time to first token
+      echo ""
+      echo "  💬 Scenario 1: Chat Responsiveness (TTFT Focus)"
+      echo "     Simulates: Interactive chat with short exchanges"
+      guidellm benchmark \
+        --target "${MODEL_URL}/v1" \
+        --model "${model}" \
+        --rate-type poisson \
+        --rate ${RATE_MIN} ${RATE_MAX} \
+        --rate-steps ${RATE_STEPS} \
+        --max-seconds 30 \
+        --data "prompt_tokens=64,output_tokens=32" \
+        --output-path "${MODEL_RESULTS_DIR}/chat-responsiveness.json" \
+        2>&1 || echo "  ⚠️  Chat benchmark failed"
+      
+      # Scenario 2: Document Processing (KV Cache Stress)
+      # Long inputs stress the KV cache - the memory wall
+      echo ""
+      echo "  📄 Scenario 2: Document Processing (KV Cache Stress)"
+      echo "     Simulates: Summarization, long document Q&A"
+      guidellm benchmark \
+        --target "${MODEL_URL}/v1" \
+        --model "${model}" \
+        --rate-type poisson \
+        --rate ${RATE_MIN} ${RATE_MAX} \
+        --rate-steps ${RATE_STEPS} \
+        --max-seconds 30 \
+        --data "prompt_tokens=512,output_tokens=128" \
+        --output-path "${MODEL_RESULTS_DIR}/document-processing.json" \
+        2>&1 || echo "  ⚠️  Document processing benchmark failed"
+      
+      # Scenario 3: Code Generation (TPOT Focus)
+      # Long outputs test generation throughput
+      echo ""
+      echo "  💻 Scenario 3: Code Generation (TPOT Focus)"
+      echo "     Simulates: Code completion, long-form generation"
+      guidellm benchmark \
+        --target "${MODEL_URL}/v1" \
+        --model "${model}" \
+        --rate-type poisson \
+        --rate ${RATE_MIN} ${RATE_MAX} \
+        --rate-steps ${RATE_STEPS} \
+        --max-seconds 30 \
+        --data "prompt_tokens=128,output_tokens=256" \
+        --output-path "${MODEL_RESULTS_DIR}/code-generation.json" \
+        2>&1 || echo "  ⚠️  Code generation benchmark failed"
+      
+      echo ""
+      echo "  ✓ Completed all scenarios for ${model}"
+    done
+    
+    # Summary with Efficiency Analysis
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo "  Benchmark Sweep Complete!"
+    echo "  Results saved to: ${RESULTS_DIR}/${TIMESTAMP}/"
+    echo "  Finished: $(date)"
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "▶ Results Summary:"
+    find "${RESULTS_DIR}/${TIMESTAMP}" -name "*.json" -exec echo "  - {}" \;
+    echo ""
+    echo "▶ Next Steps:"
+    echo "  1. View results in Grafana dashboard"
+    echo "  2. Compare TTFT curves: INT4 vs BF16"
+    echo "  3. Find the 'Knee of the Curve' (saturation point)"
+    echo "  4. Calculate: Tokens-per-GPU efficiency"
+    
+  efficiency-comparison.sh: |
+    #!/bin/bash
+    # ROI of Quantization: Direct INT4 vs BF16 Comparison
+    # ============================================================================
+    # Runs identical workloads on both models to measure the "Efficiency Delta"
+    # 
+    # The Question: At what point does the 1-GPU model saturate,
+    # and how many 1-GPU specialists can we run for the cost of one 4-GPU?
+    # ============================================================================
+    
+    set -e
+    
+    RESULTS_DIR="/results"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    COMPARISON_DIR="${RESULTS_DIR}/${TIMESTAMP}/efficiency-comparison"
+    mkdir -p "${COMPARISON_DIR}"
+    
+    INT4_URL="http://mistral-3-int4-predictor.private-ai.svc.cluster.local:80"
+    BF16_URL="http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:80"
+    
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo "  ROI of Quantization: INT4 vs BF16"
+    echo "  The 'Efficiency Delta' Analysis"
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "  🎯 Goal: Find the break-even point"
+    echo "     INT4 (1-GPU):  \$   - Lower cost, earlier saturation"
+    echo "     BF16 (4-GPU):  \$\$\$\$ - Higher cost, more headroom"
+    echo ""
+    
+    # Check model availability
+    INT4_AVAILABLE=false
+    BF16_AVAILABLE=false
+    
+    if curl -s --connect-timeout 5 "${INT4_URL}/v1/models" >/dev/null 2>&1; then
+      echo "  ✓ mistral-3-int4 is available"
+      INT4_AVAILABLE=true
+    else
+      echo "  ❌ mistral-3-int4 is not available"
+    fi
+    
+    if curl -s --connect-timeout 5 "${BF16_URL}/v1/models" >/dev/null 2>&1; then
+      echo "  ✓ mistral-3-bf16 is available"
+      BF16_AVAILABLE=true
+    else
+      echo "  ❌ mistral-3-bf16 is not available"
+    fi
+    
+    if [ "$INT4_AVAILABLE" = false ] || [ "$BF16_AVAILABLE" = false ]; then
+      echo ""
+      echo "⚠️  Both models must be running for comparison"
+      exit 1
+    fi
+    
+    # Run identical workloads with Poisson distribution
+    echo ""
+    echo "▶ Running identical Poisson stress tests..."
+    
+    # Chat workload (most common use case)
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Scenario: Interactive Chat (the 'Vibe Check')"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    echo ""
+    echo "  Testing INT4 (1-GPU)..."
+    guidellm benchmark \
+      --target "${INT4_URL}/v1" \
+      --model "mistral-3-int4" \
+      --rate-type poisson \
+      --rate 0.1 5.0 \
+      --rate-steps 10 \
+      --max-seconds 45 \
+      --data "prompt_tokens=64,output_tokens=64" \
+      --output-path "${COMPARISON_DIR}/int4-chat.json" \
+      2>&1 || echo "  ⚠️  INT4 benchmark failed"
+    
+    echo ""
+    echo "  Testing BF16 (4-GPU)..."
+    guidellm benchmark \
+      --target "${BF16_URL}/v1" \
+      --model "mistral-3-bf16" \
+      --rate-type poisson \
+      --rate 0.1 5.0 \
+      --rate-steps 10 \
+      --max-seconds 45 \
+      --data "prompt_tokens=64,output_tokens=64" \
+      --output-path "${COMPARISON_DIR}/bf16-chat.json" \
+      2>&1 || echo "  ⚠️  BF16 benchmark failed"
+    
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo "  Efficiency Comparison Complete!"
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "▶ Results:"
+    echo "  INT4: ${COMPARISON_DIR}/int4-chat.json"
+    echo "  BF16: ${COMPARISON_DIR}/bf16-chat.json"
+    echo ""
+    echo "▶ Analysis Questions:"
+    echo "  1. At what req/s does INT4's TTFT exceed 1.0s? (Break Point)"
+    echo "  2. At what req/s does BF16's TTFT exceed 1.0s? (Break Point)"
+    echo "  3. Efficiency Delta = BF16_breakpoint / INT4_breakpoint"
+    echo "  4. Cost Analysis: Can we run 4x INT4 instances for the same $ as 1x BF16?"
+    
+  single-model-benchmark.sh: |
+    #!/bin/bash
+    # Single model benchmark script with Poisson distribution
+    # Usage: single-model-benchmark.sh <model-name> [scenario] [max-rate]
+    
+    set -e
+    
+    MODEL_NAME="${1:-mistral-3-int4}"
+    SCENARIO="${2:-chat}"
+    MAX_RATE="${3:-3.0}"
+    RESULTS_DIR="/results"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    
+    MODEL_URL="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:80"
+    OUTPUT_FILE="${RESULTS_DIR}/${TIMESTAMP}_${MODEL_NAME}_${SCENARIO}.json"
+    
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    echo "  GuideLLM Single Model Benchmark"
+    echo "  Model: ${MODEL_NAME}"
+    echo "  Scenario: ${SCENARIO}"
+    echo "  Distribution: Poisson (human traffic simulation)"
+    echo "  Rate Sweep: 0.1 → ${MAX_RATE} req/s"
+    echo "═══════════════════════════════════════════════════════════════════════════"
+    
+    # Check model availability
+    if ! curl -s --connect-timeout 10 "${MODEL_URL}/v1/models" >/dev/null 2>&1; then
+      echo "❌ Model ${MODEL_NAME} is not responding"
+      exit 1
+    fi
+    echo "  ✓ Model is available"
+    
+    # Set scenario parameters
+    case "${SCENARIO}" in
+      chat)
+        PROMPT_TOKENS=64
+        OUTPUT_TOKENS=64
+        DESCRIPTION="Interactive chat"
+        ;;
+      summarization)
+        PROMPT_TOKENS=512
+        OUTPUT_TOKENS=128
+        DESCRIPTION="Document summarization"
+        ;;
+      code-gen)
+        PROMPT_TOKENS=128
+        OUTPUT_TOKENS=256
+        DESCRIPTION="Code generation"
+        ;;
+      stress)
+        PROMPT_TOKENS=256
+        OUTPUT_TOKENS=256
+        DESCRIPTION="Stress test (high I/O)"
+        ;;
+      *)
+        echo "Unknown scenario: ${SCENARIO}"
+        echo "Available: chat, summarization, code-gen, stress"
+        exit 1
+        ;;
+    esac
+    
+    echo ""
+    echo "▶ Running ${DESCRIPTION}..."
+    echo "  Prompt tokens: ${PROMPT_TOKENS}"
+    echo "  Output tokens: ${OUTPUT_TOKENS}"
+    
+    guidellm benchmark \
+      --target "${MODEL_URL}/v1" \
+      --model "${MODEL_NAME}" \
+      --rate-type poisson \
+      --rate 0.1 ${MAX_RATE} \
+      --rate-steps 6 \
+      --max-seconds 60 \
+      --data "prompt_tokens=${PROMPT_TOKENS},output_tokens=${OUTPUT_TOKENS}" \
+      --output-path "${OUTPUT_FILE}"
+    
+    echo ""
+    echo "✓ Benchmark complete!"
+    echo "  Results: ${OUTPUT_FILE}"
+

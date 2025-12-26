@@ -1,11 +1,23 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Grafana Deployment for vLLM Model Metrics
+# ============================================================================
+# Deploys a standalone Grafana instance connected to OpenShift User Workload
+# Monitoring for vLLM performance visualization.
+#
+# Components:
+#   - ServiceAccount with cluster-monitoring-view access
+#   - Grafana Deployment with token injection init container
+#   - ConfigMaps for datasource and dashboard provisioning
+#   - Service and Route for external access
+# ============================================================================
+
 resources:
+  - rbac.yaml
+  - datasource.yaml
+  - dashboard-provisioner.yaml
   - deployment.yaml
   - service.yaml
   - route.yaml
-  - servicemonitor.yaml
-  - datasource-cm.yaml
-  - local-prometheus.yaml
-  - dashboards/kustomization.yaml
+
