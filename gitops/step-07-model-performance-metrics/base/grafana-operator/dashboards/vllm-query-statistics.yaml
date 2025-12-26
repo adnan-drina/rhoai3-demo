@@ -1,0 +1,38 @@
+# Official vLLM Query Statistics Dashboard
+# ============================================================================
+# Source: https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana
+#
+# This is the OFFICIAL vLLM project dashboard for query/request statistics.
+#
+# Panels include:
+#   - Request Rate over time
+#   - Successful Requests
+#   - Latency percentiles (P50, P90, P99)
+#   - Input/Output Token Size Distribution
+#   - Tokens per Second
+#
+# Ref: https://github.com/vllm-project/vllm/blob/main/examples/online_serving/dashboards/grafana/query_statistics.json
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: vllm-query-statistics
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  
+  # Reference the official vLLM dashboard from GitHub
+  url: "https://raw.githubusercontent.com/vllm-project/vllm/main/examples/online_serving/dashboards/grafana/query_statistics.json"
+  
+  resyncPeriod: 5m
+

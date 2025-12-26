@@ -67,15 +67,28 @@ This step demonstrates the **Economics of Precision**:
 
 | Component | Description | Official/Community |
 |-----------|-------------|-------------------|
-| **Grafana** | Visualization dashboard with anonymous access | Community (OSS) |
+| **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
+| **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
+| **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | - |
+| **GrafanaDashboard CRs** | Official vLLM + custom dashboards (auto-updated from GitHub) | - |
 | **ServiceAccount** | `grafana-sa` with `cluster-monitoring-view` permissions | - |
-| **Dashboard ConfigMaps** | Pre-configured vLLM metrics dashboard | - |
 | **GuideLLM CronJob** | Daily Poisson stress tests at 2:00 AM UTC | Community (OSS) |
 | **GuideLLM Scripts** | ROI comparison, efficiency analysis | - |
 
-> **⚠️ Community Tooling Disclaimer:** GuideLLM is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
+> **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.0. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
 > **Note:** For interactive benchmark UI, see [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) (future enhancement).
+
+### Grafana Operator Benefits
+
+The [Grafana Operator](https://github.com/grafana/grafana-operator) provides Kubernetes-native management of Grafana:
+
+- **GrafanaDashboard CRs**: Dashboards as code, auto-synced without restart
+- **External URL References**: Official vLLM dashboards auto-updated from GitHub
+- **GitOps Friendly**: Full ArgoCD integration with declarative resources
+- **Multi-Instance Support**: Can manage multiple Grafana deployments
+
+Reference: [redhat-cop/gitops-catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator)
 
 ## Prerequisites
 
@@ -324,44 +337,69 @@ rate(vllm:generation_tokens_total{namespace="private-ai"}[1m])
 gitops/step-07-model-performance-metrics/
 ├── base/
 │   ├── kustomization.yaml
-│   ├── grafana/
+│   ├── grafana-operator/
 │   │   ├── kustomization.yaml
-│   │   ├── rbac.yaml              # ServiceAccount + ClusterRoleBinding
-│   │   ├── datasource.yaml        # Prometheus UWM datasource
-│   │   ├── dashboard-provisioner.yaml
-│   │   ├── deployment.yaml        # Grafana with token injection
-│   │   ├── service.yaml
-│   │   └── route.yaml
-│   ├── dashboards/
-│   │   ├── kustomization.yaml
-│   │   └── vllm-overview.yaml     # vLLM metrics dashboard
-│   ├── guidellm/
-│   │   ├── kustomization.yaml
-│   │   ├── pvc.yaml               # Results storage
-│   │   ├── configmap.yaml         # Poisson benchmark scripts
-│   │   ├── cronjob.yaml           # Daily scheduled benchmarks
-│   │   └── job-template.yaml      # On-demand template
+│   │   ├── operator/                      # Grafana Operator from OperatorHub
+│   │   │   ├── kustomization.yaml
+│   │   │   ├── namespace.yaml             # grafana-operator namespace
+│   │   │   ├── operatorgroup.yaml         # AllNamespaces mode
+│   │   │   └── subscription.yaml          # community-operators, v5 channel
+│   │   ├── instance/                      # Grafana instance in private-ai
+│   │   │   ├── kustomization.yaml
+│   │   │   ├── grafana.yaml               # Grafana CR (anonymous access)
+│   │   │   └── datasource.yaml            # GrafanaDatasource + RBAC
+│   │   └── dashboards/                    # GrafanaDashboard CRs
+│   │       ├── kustomization.yaml
+│   │       ├── vllm-performance-statistics.yaml  # Official (from GitHub URL)
+│   │       ├── vllm-query-statistics.yaml        # Official (from GitHub URL)
+│   │       ├── dcgm-gpu-metrics.yaml             # Custom (embedded JSON)
+│   │       └── mistral-roi-comparison.yaml       # Custom (embedded JSON)
+│   └── guidellm/
+│       ├── kustomization.yaml
+│       ├── pvc.yaml               # Results storage
+│       ├── configmap.yaml         # Poisson benchmark scripts
+│       ├── cronjob.yaml           # Daily scheduled benchmarks
+│       └── job-template.yaml      # On-demand template
 └── kustomization.yaml
 ```
+
+### Dashboards (GrafanaDashboard CRs)
+
+| Dashboard | Source | Features |
+|-----------|--------|----------|
+| **vLLM Performance Statistics** | Official vLLM GitHub (URL) | E2E Latency, TTFT, ITL, TPS (auto-updated) |
+| **vLLM Query Statistics** | Official vLLM GitHub (URL) | Request Rate, Success/Error, Token Distribution |
+| **NVIDIA DCGM GPU Metrics** | Custom (embedded) | Temperature, Power, Utilization, Memory |
+| **Mistral ROI Comparison** | Custom (embedded) | BF16 vs INT4 head-to-head, Efficiency curves |
 
 ## Validation
 
 ```bash
-# 1. Verify Grafana is running
-oc get pods -n private-ai -l app=grafana
+# 1. Verify Grafana Operator is installed
+oc get csv -n grafana-operator | grep grafana
+# Expected: grafana-operator.v5.x.x ... Succeeded
 
-# 2. Verify Route is accessible
-curl -k -s -o /dev/null -w "%{http_code}" https://$(oc get route grafana -n private-ai -o jsonpath='{.spec.host}')/api/health
+# 2. Verify Grafana instance is ready
+oc get grafana -n private-ai
+# Expected: grafana ... 5m ago
+
+# 3. Verify GrafanaDashboards are synced
+oc get grafanadashboards -n private-ai
+# Expected: 4 dashboards (vllm-performance-statistics, vllm-query-statistics, dcgm-gpu-metrics, mistral-roi-comparison)
+
+# 4. Verify GrafanaDatasource is ready
+oc get grafanadatasource -n private-ai
+# Expected: prometheus-uwm
+
+# 5. Verify Grafana Route is accessible
+curl -k -s -o /dev/null -w "%{http_code}" https://$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')/api/health
 # Expected: 200
 
-# 3. Verify GuideLLM CronJob exists
+# 6. Verify GuideLLM CronJob exists
 oc get cronjob guidellm-daily -n private-ai
 
-# 4. Verify GuideLLM PVC is bound
+# 7. Verify GuideLLM PVC is bound
 oc get pvc guidellm-results -n private-ai
-
-# 5. Verify all Routes
-oc get routes -n private-ai | grep grafana
 ```
 
 ## Troubleshooting
@@ -415,8 +453,11 @@ Direct PromQL queries in OpenShift Console:
 
 ### Community / Open Source
 - [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html)
+- [vLLM Grafana Dashboards (GitHub)](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana)
+- [Grafana Operator (GitHub)](https://github.com/grafana/grafana-operator)
+- [Grafana Operator Documentation](https://grafana.github.io/grafana-operator/docs/)
+- [redhat-cop/gitops-catalog - Grafana Operator](https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator)
 - [GuideLLM GitHub Repository](https://github.com/neuralmagic/guidellm)
-- [Grafana Dashboard Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
 - [AI on OpenShift - KServe UWM Dashboard](https://ai-on-openshift.io/odh-rhoai/kserve-uwm-dashboard-metrics/)
 - [RHOAI GenAIOps Patterns](https://github.com/rhoai-genaiops)
 

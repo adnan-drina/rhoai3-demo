@@ -1,0 +1,85 @@
+# Grafana Datasource CR - OpenShift User Workload Monitoring
+# ============================================================================
+# Connects Grafana to OpenShift's Thanos Querier for vLLM metrics.
+#
+# Authentication: ServiceAccount token from the operator-managed SA
+# The Grafana Operator creates a SA named "grafana-sa" for this instance.
+# We just need to bind it to cluster-monitoring-view for UWM access.
+#
+# Ref: https://grafana.github.io/grafana-operator/docs/datasources/
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus-uwm
+  namespace: private-ai
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  
+  datasource:
+    name: Prometheus-UWM
+    type: prometheus
+    access: proxy
+    url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+    isDefault: true
+    editable: false
+    jsonData:
+      httpHeaderName1: Authorization
+      timeInterval: "5s"
+      tlsSkipVerify: true
+    secureJsonData:
+      httpHeaderValue1: "Bearer ${token}"
+  
+  # Use ServiceAccount token for authentication to OpenShift Monitoring
+  # The SA is created by the operator, we reference the auto-created token secret
+  valuesFrom:
+    - targetPath: "secureJsonData.httpHeaderValue1"
+      valueFrom:
+        secretKeyRef:
+          name: grafana-sa-token
+          key: token
+---
+# Secret to hold the ServiceAccount token (for the operator-managed SA)
+# The SA is created by the Grafana Operator, we create this token secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-sa-token
+  namespace: private-ai
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: rhoai3-demo
+  annotations:
+    # References the SA created by the operator
+    kubernetes.io/service-account.name: grafana-sa
+    argocd.argoproj.io/sync-wave: "10"
+type: kubernetes.io/service-account-token
+---
+# ClusterRoleBinding for accessing User Workload Monitoring
+# Binds the operator-created SA to cluster-monitoring-view
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-cluster-monitoring-view
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: rhoai3-demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+  - kind: ServiceAccount
+    name: grafana-sa
+    namespace: private-ai

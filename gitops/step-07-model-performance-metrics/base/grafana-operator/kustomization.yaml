@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Grafana Operator Stack
+# ============================================================================
+# Complete Grafana deployment using the Grafana Operator:
+#
+#   1. operator/   - Grafana Operator subscription from OperatorHub
+#   2. instance/   - Grafana instance CR + Prometheus datasource
+#   3. dashboards/ - GrafanaDashboard CRs (vLLM, DCGM, Mistral ROI)
+#
+# Benefits:
+#   - Kubernetes-native dashboard management
+#   - Auto-sync dashboards without Grafana restart
+#   - GitOps-friendly with ArgoCD
+#   - Official vLLM dashboards auto-updated from GitHub
+#
+# Ref: https://github.com/grafana/grafana-operator
+# Ref: https://grafana.github.io/grafana-operator/docs/
+# Ref: https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator
+# ============================================================================
+
+resources:
+  # 1. Install Grafana Operator from OperatorHub
+  - operator/
+  
+  # 2. Deploy Grafana instance in private-ai namespace
+  - instance/
+  
+  # 3. Deploy dashboards as GrafanaDashboard CRs
+  - dashboards/
+

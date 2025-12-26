@@ -12,19 +12,23 @@ kind: Kustomization
 #   - Goal: Find the "Efficiency Delta" - where does each model saturate?
 #
 # Components:
-#   1. Grafana Dashboard (grafana/)
-#      - Connected to OpenShift User Workload Monitoring
-#      - Pre-configured vLLM performance dashboards
-#      - Model comparison with KV Cache and TTFT metrics
+#   1. Grafana Operator (grafana-operator/)
+#      - Installs community Grafana Operator from OperatorHub
+#      - Deploys Grafana instance in private-ai namespace
+#      - Official vLLM Performance Statistics dashboard (auto-updated from GitHub)
+#      - DCGM GPU Metrics dashboard
+#      - Mistral ROI Comparison dashboard
 #
-#   2. Dashboards (dashboards/)
-#      - vLLM Overview: Queue status, KV cache, throughput
-#      - Model Comparison: Side-by-side performance table
-#
-#   3. GuideLLM Benchmarking (guidellm/)
+#   2. GuideLLM Benchmarking (guidellm/)
 #      - Poisson distribution for realistic human traffic simulation
 #      - Rate sweep from 0.1 to 5.0 req/s
 #      - ROI comparison scripts (INT4 vs BF16)
+#
+# Dashboards (managed by Grafana Operator):
+#   - vLLM Performance Statistics (official from vLLM GitHub)
+#   - vLLM Query Statistics (official from vLLM GitHub)
+#   - NVIDIA DCGM GPU Metrics
+#   - Mistral ROI Comparison (BF16 vs INT4)
 #
 # SLA Targets:
 #   - TTFT: < 500ms (excellent), < 1.0s (acceptable)
@@ -36,15 +40,13 @@ kind: Kustomization
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index
 # Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
 # Ref: https://github.com/neuralmagic/guidellm
-# Ref: https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference
+# Ref: https://github.com/grafana/grafana-operator
+# Ref: https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator
 # ============================================================================
 
 resources:
-  # Grafana deployment with UWM integration
-  - grafana/
-  
-  # Dashboard ConfigMaps
-  - dashboards/
+  # Grafana Operator: Operator + Instance + Dashboards as CRs
+  - grafana-operator/
   
   # GuideLLM automated benchmarking with Poisson distribution
   - guidellm/

@@ -1,0 +1,208 @@
+# Mistral ROI Comparison Dashboard
+# ============================================================================
+# "The ROI of Quantization" - Side-by-side comparison:
+#   - Mistral-3-BF16 (4 GPUs, full precision)
+#   - Mistral-3-INT4 (1 GPU, quantized)
+#
+# Business Question: 
+#   At what load does the 1-GPU model saturate compared to 4-GPU?
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: mistral-roi-comparison
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  
+  resyncPeriod: 5m
+  
+  json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "graphTooltip": 1,
+      "liveNow": true,
+      "panels": [
+        {
+          "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+          "id": 200,
+          "options": {
+            "content": "# 📊 The ROI of Quantization\n\n| Model | GPUs | Cost | Strategy |\n|-------|------|------|----------|\n| **Mistral-3-BF16** | 4 | $$$$ | High concurrency |\n| **Mistral-3-INT4** | 1 | $ | Cost-optimized |",
+            "mode": "markdown"
+          },
+          "title": "",
+          "transparent": true,
+          "type": "text"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 2},
+          "id": 100,
+          "title": "🎯 Head-to-Head",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 5},
+                  {"color": "red", "value": 10}
+                ]
+              }
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 3},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "targets": [
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+          ],
+          "title": "Requests Running",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 3},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "targets": [
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+          ],
+          "title": "⚠️ Requests Waiting",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "max": 1, "min": 0,
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.95}]},
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 3},
+          "id": 3,
+          "options": {"orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16", "refId": "A"},
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4", "refId": "B"}
+          ],
+          "title": "KV Cache Usage",
+          "type": "gauge"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 10}, {"color": "green", "value": 20}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 3},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "area", "textMode": "value_and_name"},
+          "targets": [
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+          ],
+          "title": "Throughput (Tok/sec)",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7},
+          "id": 101,
+          "title": "📈 Trends",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Running", "refId": "A"},
+            {"expr": "vllm:num_requests_running{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Running", "refId": "B"},
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 Waiting", "refId": "C"},
+            {"expr": "vllm:num_requests_waiting{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 Waiting", "refId": "D"}
+          ],
+          "title": "Request Queue Comparison",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2}, "max": 1, "min": 0, "unit": "percentunit"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "vllm:kv_cache_usage_perc{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+          ],
+          "title": "KV Cache Memory Pressure",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 7,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "BF16 (4-GPU)", "refId": "A"},
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "INT4 (1-GPU)", "refId": "B"}
+          ],
+          "title": "Generation Throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
+          "description": "Efficiency = Tokens per GPU (normalized by GPU count)",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 8,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+          "targets": [
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m]) / 4", "legendFormat": "BF16 (per GPU, 4 total)", "refId": "A"},
+            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m]) / 1", "legendFormat": "INT4 (per GPU, 1 total)", "refId": "B"}
+          ],
+          "title": "💡 Efficiency: Tokens per GPU",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 39,
+      "tags": ["mistral", "roi", "quantization", "comparison"],
+      "time": {"from": "now-15m", "to": "now"},
+      "timezone": "browser",
+      "title": "Mistral ROI Comparison (BF16 vs INT4)",
+      "uid": "mistral-roi-comparison",
+      "version": 1
+    }
+

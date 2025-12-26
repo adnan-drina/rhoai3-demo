@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Grafana Operator Installation
+# ============================================================================
+# Installs the Grafana Operator from OperatorHub (community-operators).
+#
+# After installation, the operator provides these CRDs:
+#   - Grafana: Manages Grafana instances
+#   - GrafanaDashboard: Manages dashboards declaratively
+#   - GrafanaDatasource: Manages data sources declaratively
+#   - GrafanaFolder: Manages dashboard folders
+#
+# Ref: https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator
+# ============================================================================
+
+resources:
+  - namespace.yaml
+  - operatorgroup.yaml
+  - subscription.yaml
+

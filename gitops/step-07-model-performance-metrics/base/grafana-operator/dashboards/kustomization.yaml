@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Grafana Dashboards (GrafanaDashboard CRs)
+# ============================================================================
+# Declarative dashboards managed by Grafana Operator.
+#
+# Benefits over ConfigMap provisioning:
+#   - Auto-sync without Grafana restart
+#   - Kubernetes-native resource management
+#   - GitOps-friendly with ArgoCD
+#   - Can reference external URLs (auto-updated)
+#
+# Dashboard Sources:
+#   - Official vLLM dashboards from GitHub (auto-updated)
+#   - Custom dashboards embedded as JSON
+# ============================================================================
+
+resources:
+  # Official vLLM Project Dashboards (from GitHub)
+  - vllm-performance-statistics.yaml
+  - vllm-query-statistics.yaml
+  
+  # Custom Dashboards (embedded JSON)
+  - dcgm-gpu-metrics.yaml
+  - mistral-roi-comparison.yaml
+

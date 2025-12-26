@@ -1,0 +1,38 @@
+# Official vLLM Performance Statistics Dashboard
+# ============================================================================
+# Source: https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana
+#
+# This is the OFFICIAL vLLM project dashboard for monitoring performance.
+#
+# Panels include:
+#   - E2E Latency (P50, P90, P99, Avg) over time
+#   - TTFT - Time To First Token (P50, P90, P99, Avg)
+#   - ITL - Inter-Token Latency / Time Per Output Token (P50, P90, P99, Avg)
+#   - TPS - Tokens Per Second (Prompt + Generation)
+#
+# Ref: https://github.com/vllm-project/vllm/blob/main/examples/online_serving/dashboards/grafana/performance_statistics.json
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: vllm-performance-statistics
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  
+  # Reference the official vLLM dashboard from GitHub
+  url: "https://raw.githubusercontent.com/vllm-project/vllm/main/examples/online_serving/dashboards/grafana/performance_statistics.json"
+  
+  # Resync every 5 minutes to pick up any upstream updates
+  resyncPeriod: 5m
+

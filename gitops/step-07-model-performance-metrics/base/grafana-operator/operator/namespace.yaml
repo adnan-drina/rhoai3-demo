@@ -1,0 +1,15 @@
+# Grafana Operator Namespace
+# ============================================================================
+# The Grafana Operator will be installed in a dedicated namespace.
+# This allows cluster-wide or namespace-scoped installations.
+# ============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grafana-operator
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+

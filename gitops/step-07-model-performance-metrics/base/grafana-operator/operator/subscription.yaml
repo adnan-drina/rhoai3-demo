@@ -1,0 +1,31 @@
+# Grafana Operator Subscription
+# ============================================================================
+# Community Operator from OperatorHub
+# Channel: v5
+# Version: 5.21.2+ (latest in channel)
+#
+# ⚠️ COMMUNITY OPERATOR DISCLAIMER:
+# This is a community-provided Operator. Community Operators have not been
+# vetted or verified by Red Hat. Red Hat provides no support for community
+# Operators.
+#
+# Ref: https://github.com/grafana/grafana-operator
+# Ref: https://grafana.github.io/grafana-operator/docs/
+# ============================================================================
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: grafana-operator
+  namespace: grafana-operator
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  channel: v5
+  installPlanApproval: Automatic
+  name: grafana-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+

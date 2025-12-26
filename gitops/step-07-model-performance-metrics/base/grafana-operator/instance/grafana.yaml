@@ -1,0 +1,76 @@
+# Grafana Instance CR
+# ============================================================================
+# Managed by Grafana Operator - deploys Grafana in private-ai namespace
+#
+# Configuration:
+#   - Anonymous access enabled (for demo simplicity)
+#   - No login required
+#   - OpenShift Route with edge TLS termination
+#
+# Ref: https://grafana.github.io/grafana-operator/docs/grafana/
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  # Instance selector - dashboards with matching labels will be synced
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  
+  # Route configuration for OpenShift
+  route:
+    spec:
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+  
+  # Deployment customization
+  deployment:
+    spec:
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - name: grafana
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+  
+  # Grafana configuration
+  config:
+    log:
+      mode: "console"
+      level: "info"
+    
+    # Anonymous access for demo (no login required)
+    auth.anonymous:
+      enabled: "true"
+      org_role: "Admin"
+    
+    auth:
+      disable_login_form: "true"
+      disable_signout_menu: "true"
+    
+    # Server settings
+    server:
+      root_url: "%(protocol)s://%(domain)s/"
+    
+    # Security (allow embedding in iframes if needed)
+    security:
+      allow_embedding: "true"
+

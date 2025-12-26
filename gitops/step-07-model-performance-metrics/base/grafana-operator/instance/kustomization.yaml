@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Grafana Instance for RHOAI Demo
+# ============================================================================
+# Deploys a Grafana instance in private-ai namespace with:
+#   - Anonymous access (no login for demo)
+#   - OpenShift Route with TLS
+#   - Prometheus datasource connected to User Workload Monitoring
+#
+# The Grafana Operator will manage this instance and sync dashboards
+# that have the label: dashboards: "grafana"
+# ============================================================================
+
+resources:
+  - grafana.yaml
+  - datasource.yaml
+
