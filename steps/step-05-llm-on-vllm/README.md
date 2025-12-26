@@ -96,7 +96,7 @@ range of Red Hat Validated models while controlling AWS GPU costs."
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                        Kueue Controller                          │   │
-│  │  ClusterQueue: default (RHOAI-managed, GPU quota pool)          │   │
+│  │  ClusterQueue: rhoai-main-queue (5 GPUs quota)                  │   │
 │  │  ResourceFlavors: nvidia-l4-1gpu, nvidia-l4-4gpu                │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
@@ -182,8 +182,8 @@ oc logs -f job/upload-granite-8b -n minio-storage  # ~10 min
 ### 3. Verify Kueue Quota
 
 ```bash
-# ClusterQueue should show GPU nominalQuota (RHOAI-managed)
-oc get clusterqueue default -o yaml | grep -A20 "resourceGroups"
+# ClusterQueue should show nominalQuota: 5 for nvidia.com/gpu
+oc get clusterqueue rhoai-main-queue -o yaml | grep -A20 "resourceGroups"
 ```
 
 ## Deployment
@@ -307,8 +307,8 @@ curl -s -k https://mistral-3-int4-private-ai.apps.<cluster>/v1/chat/completions 
 # Workloads in the queue
 oc get workload -n private-ai
 
-# ClusterQueue admission status (RHOAI-managed)
-oc describe clusterqueue default
+# ClusterQueue admission status
+oc describe clusterqueue rhoai-main-queue
 ```
 
 ## Troubleshooting

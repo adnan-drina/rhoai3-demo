@@ -1,174 +1,127 @@
-# Plan: Step 07 - Model Performance Metrics
+# Plan: Step 07 - Model Performance Metrics (Saturation & Sizing)
 
-## 1. Introduction & Objectives
+## 1. Conceptual Foundation (Platform-to-Business)
 
-This step focuses on **Observability** and **Benchmarking** for LLMs running on RHOAI 3.0. We will move beyond simple deployment ("it runs") to production-grade monitoring ("how well does it run?").
+This step transforms raw monitoring into a **Strategic Sizing Tool**. We are implementing a **"Stress Test" methodology** to answer the most critical question in GenAI Ops: *"Exactly how many concurrent users can I support on this AWS instance before the user experience degrades?"*
+
+Instead of static graphs, we introduce **Performance Limit Testing**. This mimics the "breaking point" analysis used in traditional performance engineering but specialized for LLM architectures (KV Cache and Compute bounds).
 
 **Primary Goals:**
-1.  **Enable Observability**: Implement comprehensive monitoring for LLM inference (vLLM) and infrastructure (GPUs).
-2.  **Understand Performance**: Explain and visualize key metrics like Time To First Token (TTFT) and Token generation capability.
-3.  **Evaluate Optimization**: Quantify the impact of model quantization (Mistral 3 24B FP vs INT4).
-4.  **Standardize Benchmarking**: Introduce **GuideLLM** as the tool for capacity planning and performance testing.
-5.  **Performance Bottlenecks**: Identify limitations in the current single-replica setup (e.g., KV cache exhaustion, queue latency) and establish the case for the next demo step: **LLM-d and Distributed Inference**.
+1.  **Define Performance Limits**: Determine the "Breaking Point" (Concurrency vs. Latency) for our models.
+2.  **Quantify "Economic Throughput"**: Measure Tokens-per-second-per-GPU to demonstrate the ROI of quantization.
+3.  **Establish Enterprise SLAs**: Set clear thresholds for TTFT, TPOT, and Success Rate based on community standards (Mistral AI, HuggingFace).
 
 ---
 
-## 2. Metrics Strategy
+## 2. Layered Architecture Analysis
 
-We will adhere to the "USE Method" (Utilization, Saturation, Errors) adapted for LLMs.
-
-### 2.1 Essential LLM Metrics (vLLM)
-RHOAI 3.0's vLLM runtime exposes metrics at `/metrics`. We must scrape these to track:
-
-| Metric | Description | Why it matters |
-|--------|-------------|----------------|
-| **Time To First Token (TTFT)** | Latency from request to first visible output. | Critical for user perceived latency (chatbots). |
-| **Time Per Output Token (TPOT)** | Time to generate subsequent tokens. | Determines "reading speed" for the user. |
-| **Request Throughput** | Requests served per second. | System capacity sizing. |
-| **KV Cache Usage** | GPU memory used for context handling. | Saturation indicator; high usage = upcoming queueing. |
-| **Queue Length** | Pending requests. | Immediate saturation signal. |
-
-**Source**: [vLLM Metrics Documentation](https://docs.vllm.ai/en/latest/serving/metrics.html)
-
-### 2.2 Infrastructure Metrics (NVIDIA DCGM)
-We will leverage the **NVIDIA DCGM Exporter** (already installed by the GPU Operator in Step 01) to track:
-- GPU Utilization (%)
-- GPU Memory Used (Framebuffer)
-- GPU Temperature & Power Draw
-
-**Source**: [Red Hat OpenShift AI - Monitoring GPU Health](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.13/html/monitoring_data_science_models/monitoring-gpu-health)
+| Layer | Component | Metric Strategy | Why it matters |
+| :--- | :--- | :--- | :--- |
+| **Layer 1: Infrastructure** | **NVIDIA DCGM** | Power Draw (Watts), Framebuffer Memory | Correlate energy cost (4-GPU vs 1-GPU) to model output. |
+| **Layer 2: Platform** | **OpenShift Monitoring** | `ServiceMonitor` | Ingest vLLM metrics into the user-workload Prometheus stack. |
+| **Layer 3: Application** | **vLLM Runtime** | TTFT, TPOT, Queue Length, KV Cache Usage | The primary signals for User Experience and System Saturation. |
+| **Layer 4: Testing** | **GuideLLM** | Synthetic Load (Stress Test) | Generate consistent traffic to find the "Breaking Point". |
 
 ---
 
-## 3. Implementation Plan
+## 3. Metrics Strategy & SLAs
 
-### 3.1 Observability Stack
-We will use the **OpenShift User Workload Monitoring** stack (enabled in Step 01) to scrape metrics, but we may deploy a user-managed **Grafana** instance for advanced dashboarding if the built-in Console Dashboards are insufficient for custom queries (e.g., comparing two models).
+We define the following "Enterprise SLAs" for this demo, derived from **Mistral AI**, **HuggingFace**, and **vLLM** best practices.
 
-**Tasks:**
-1.  **ServiceMonitor**: Define a `ServiceMonitor` to scrape the vLLM pods.
-    *   *Note*: vLLM pods in Step 05 already expose port `8080` with `prometheus.io/scrape` annotations, but a `ServiceMonitor` is the OCP-native way to ingest this into the user-workload Prometheus.
-2.  **Grafana Deployment**: Deploy a lightweight Grafana instance in the `private-ai` namespace (or reuse RHOAI dashboard if possible, but a custom Grafana is usually required for custom dashbaords).
-    *   *Decision*: We will deploy a dedicated Grafana instance using the community operator or a simple Deployment to have full control over dashboards.
+### 3.1 The "Breaking Point" Definition
+The system is considered "broken" (saturated) when **TTFT > 2.0s** OR **Queue Length > 0** consistently.
 
-### 3.2 Dashboards
-We will provision three Grafana dashboards via ConfigMaps (GitOps):
+### 3.2 Key Performance Indicators (KPIs)
 
-1.  **Infrastructure (NVIDIA DCGM)**:
-    *   Based on the official NVIDIA DCGM dashboard.
-    *   Focus: "Are my GPUs healthy and utilized?"
-2.  **LLM Performance (vLLM Official)**:
-    *   Based on the official vLLM Grafana dashboard.
-    *   Focus: "Is the model responsive?"
-3.  **Model Comparison (Mistral 3 Showcase)**:
-    *   **Custom Dashboard**: Side-by-side view of `mistral-3-bf16` vs `mistral-3-int4`.
-    *   Panels:
-        *   Latency (TTFT) Comparison.
-        *   Throughput Comparison.
-        *   GPU Memory Footprint Comparison (~45GB vs ~14GB).
+| Metric | Target (Excellent) | Acceptable (SLA) | Degraded (Break Point) | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **TTFT** | < 200ms | < 800ms | > 2.0s | **Time To First Token**. Critical for chat "flow". |
+| **TPOT** | > 50 tok/s | > 20 tok/s | < 10 tok/s | **Time Per Output Token**. Reading speed. |
+| **KV Cache** | < 70% | 70-90% | > 95% | Memory pressure. >95% means queueing is imminent. |
+| **Success** | 100% | 99% | < 95% | Error rate (HTTP 500/429). |
 
-### 3.3 Benchmarking with GuideLLM
-We will introduce **GuideLLM** (by Neural Magic) to automate performance testing.
-
-**Why GuideLLM?**
-*   It helps determine the "optimal" concurrency for a given hardware/model.
-*   It generates traffic simulation (Poisson arrival, etc.) rather than just static requests.
-*   *Note*: Neural Magic is a Red Hat partner and GuideLLM is becoming a standard tool for sizing RHOAI deployments.
-
-**Tasks:**
-1.  Create a `Job` or `Pod` definition for GuideLLM.
-2.  Define a "Benchmark Suite" script that:
-    *   Runs a baseline test against `mistral-3-bf16`.
-    *   Runs a baseline test against `mistral-3-int4`.
-    *   Exports results for analysis.
-
-**Ref**: [GuideLLM GitHub Repository](https://github.com/neuralmagic/guidellm)
+**Ref**: [HuggingFace LLM Performance Optimization Guide](https://huggingface.co/docs/transformers/llm_tutorial_optimization)
 
 ---
 
-## 4. Impact of Quantization (Hypothesis to Verify)
+## 4. Implementation Plan
 
-We expect to demonstrate:
-*   **Memory**: Significant reduction (approx 50-60% less VRAM for INT4 vs BF16).
-*   **Throughput**: Higher maximum batch size possible on INT4 due to KV cache headroom.
-*   **Latency**: Potential improvement in memory-bound scenarios, though compute-bound kernels (AWQ/Marlin) vary.
+### 4.1 Wave 1: Observability Stack
+*   **Deploy `ServiceMonitor`**: Enable Prometheus scraping of vLLM `/metrics`.
+*   **Deploy User-Managed Grafana**: A dedicated instance in `private-ai` for custom A/B comparison dashboards.
 
----
+### 4.2 Wave 2: The "GuideLLM-Sweep" Job
+We will implement an **Incremental Load Sweep** job using GuideLLM.
 
-## 5. Analyzing Performance Bottlenecks
+*   **Logic**:
+    1.  **Baseline**: 1 concurrent user (Ideal Latency).
+    2.  **Increment**: Double concurrency (2, 4, 8, 16...) until saturation.
+    3.  **Workload Shapes**:
+        *   *Scenario A (Support)*: Short Input / Short Output (Focus: TTFT).
+        *   *Scenario B (Summary)*: Long Input / Short Output (Focus: KV Cache).
+        *   *Scenario C (Coding)*: Short Input / Long Output (Focus: TPOT).
+*   **Connectivity**: Run inside `private-ai` namespace (ClusterIP) to measure *Model Performance* excluding external Ingress latency.
+*   **Persistence**: Mount `gpu-switchboard-storage` PVC to save results.
 
-As we benchmark the single-replica models (Step 05 architecture), we will explicitly look for these bottlenecks to motivate **Step 08 (LLM-d & Distributed Inference)**:
-
-### 5.1 The "KV Cache" Wall
-*   **Symptom**: `vllm:gpu_cache_usage_perc` hits 100% despite GPU Compute Utilization being < 50%.
-*   **Effect**: New requests are queued (`vllm:num_requests_waiting` > 0). TTFT spikes massively for queued requests.
-*   **Conclusion**: Single GPU memory is the bottleneck for **concurrency**, not compute.
-*   **Solution**: **Tensor Parallelism (Distributed Inference)** to pool memory from multiple GPUs, allowing larger batch sizes and KV caches.
-
-### 5.2 The "Compute" Wall
-*   **Symptom**: GPU Compute Utilization is > 95%, but Token Generation (TPOT) slows down linearly with batch size.
-*   **Effect**: The model generates text slowly for everyone.
-*   **Conclusion**: The model is too large or the batch is too big for a single GPU's FP capability.
-*   **Solution**: **Sharding (LLM-d)** to distribute matrix multiplications across GPUs.
-
-### 5.3 The "Latency" Floor
-*   **Symptom**: Even with 1 user, TTFT is high for large models (e.g., Llama 3 70B on 1 GPU).
-*   **Effect**: Bad user experience despite low utilization.
-*   **Conclusion**: Serial processing time is too high.
-*   **Solution**: **Tensor Parallelism** to parallelize the single-request computation.
+### 4.3 Wave 3: The "Sizing & Saturation" Dashboard
+A custom Grafana dashboard titled **"Mistral Scale Comparison"**:
+1.  **Breaking Point Chart**: Line graph (X=Concurrency, Y=TTFT) comparing 4-GPU BF16 vs. 1-GPU INT4.
+2.  **Efficiency Gauge**: Calculated **Tokens-per-second-per-GPU** (Economic Throughput).
+3.  **KV Cache Wall**: Visualizing `vllm_gpu_cache_usage_perc` to show memory-bound saturation.
+4.  **Power Usage**: Real-time Watts (DCGM) to contrast energy footprint (~800W vs ~150W).
 
 ---
 
-## 6. References & Resources
+## 5. Design Decisions (Explicit)
 
-*   **RHOAI 3.0 Documentation**: [Monitoring Data Science Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index)
-*   **OCP 4.20 Monitoring**: [Enabling monitoring for user-defined projects](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/enabling-monitoring-for-user-defined-projects)
-*   **vLLM Metrics**: [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html)
-*   **GuideLLM**: [Neural Magic GuideLLM](https://github.com/neuralmagic/guidellm)
+### Decision 1: Internal "ClusterIP" Testing
+*   **Context**: We need to isolate the model engine performance.
+*   **Decision**: Run GuideLLM inside the cluster targeting the Service ClusterIP directly.
+*   **Reason**: Bypassing the Ingress/Router eliminates network variable jitter, giving us pure "Engine Capacity" metrics.
 
-## 7. Design Decisions (Confirmed)
+### Decision 2: Standalone Grafana
+*   **Context**: The default Console Dashboards are excellent for single metrics but poor for complex A/B math (e.g., "Diff between Model A and Model B").
+*   **Decision**: Deploy a lightweight Grafana instance.
+*   **Reason**: Required for the "Comparison Dashboard" to overlay two different data sources (Prometheus queries) on the same chart.
 
-1.  **Grafana Strategy**: **Hybrid Approach**.
-    *   We will demonstrate the **Built-in RHOCP/RHOAI Console Dashboards** first to show out-of-the-box value.
-    *   We will then deploy **User-Managed Grafana** for the advanced/custom dashboards (Comparison View), which will be the primary focus of the demo.
+### Decision 3: Quantization Narrative
+*   **Context**: INT4 is often seen as "lower quality."
+*   **Decision**: Frame INT4 as **"High Economic Throughput."**
+*   **Reason**: We will demonstrate that while it may saturate earlier on *total* concurrency, it handles significantly more users *per dollar* (per GPU) than the BF16 model.
 
-2.  **Load Generation (GuideLLM)**: **CronJob + Manual Job**.
-    *   We will implement a `CronJob` scheduled for midnight daily.
-    *   We will provide a `Job` template for manual execution (GitOps-able).
+---
 
-## 8. Appendix: Benchmark as a Service (Deep Dive & Architecture Analysis)
+## 6. Implementation Checklist / Coding Hand-off
 
-We analyzed advanced patterns for "Benchmark as a Service" using **Red Hat OpenShift Pipelines (Tekton)**, referenced from `rh-aiservices-bu/guidellm-pipeline` and `rhoai-genaiops`.
+### Task 1: Grafana & Prometheus
+- [ ] Create `gitops/step-07-model-performance-metrics/base/grafana/`
+- [ ] Define `Deployment` (grafana), `Service`, and `Route`.
+- [ ] Define `ServiceMonitor` for vLLM pods (match label `opendatahub.io/dashboard: "true"` or similar).
 
-### 8.1 The "Benchmark as a Service" Pattern
-In a production GenAIOps platform, benchmarking should not just be a "check once" activity, but a continuous pipeline triggered by:
-*   **Model Updates**: New model version pushed to registry.
-*   **Runtime Updates**: Change in vLLM version or config.
-*   **Schedule**: Daily regression testing.
+### Task 2: Dashboards (ConfigMaps)
+- [ ] `dashboard-dcgm.json` (Infrastructure).
+- [ ] `dashboard-vllm-global.json` (Official vLLM).
+- [ ] `dashboard-mistral-comparison.json` (Custom A/B view).
 
-**Architecture Reference (`rh-aiservices-bu/guidellm-pipeline`):**
-1.  **Tekton Task**: Wraps the GuideLLM Docker image.
-    *   *Inputs*: Model Endpoint, Rate Limit, Duration, Shape (Poisson/Static).
-    *   *Outputs*: Results JSON/CSV stored in a PVC or Object Store.
-2.  **Tekton Pipeline**:
-    *   Step 1: Provision ephemeral Environment (optional).
-    *   Step 2: Run GuideLLM Task.
-    *   Step 3: Parse results and push to a Metrics Store (Prometheus pushgateway) or create a Report (S3).
-3.  **Visualization**:
-    *   **GuideLLM Workbench**: A Streamlit app (from the repo) that reads the artifacts and presents a UI for "What-if" analysis (e.g., "What if I double my request rate?").
+### Task 3: GuideLLM Job
+- [ ] Create `gitops/step-07-model-performance-metrics/base/guidellm/`
+- [ ] Define `Job` `guidellm-sweep`.
+- [ ] Script the `entrypoint.sh` to run the sweep:
+    ```bash
+    # Pseudo-code for agent
+    for concurrency in 1 2 4 8 16 32; do
+       guidellm --target http://mistral-3-bf16:8080 --concurrency $concurrency ...
+       guidellm --target http://mistral-3-int4:8080 --concurrency $concurrency ...
+    done
+    ```
 
-### 8.2 Comparison: Job (Demo) vs. Pipeline (Prod)
+---
 
-| Feature | Kubernetes Job / CronJob (Our Demo) | Tekton Pipeline (Advanced) |
-| :--- | :--- | :--- |
-| **Triggering** | Time-based (Cron) or Manual (kubectl) | Event-based (Git commit, Image push, Webhook) |
-| **Artifacts** | Logs (ephemeral), requires sidecar to push results | First-class `Workspaces` (PVC/S3) for reports |
-| **Parametrization** | Hardcoded in YAML or ConfigMap | Dynamic params (UI/CLI/Trigger) per run |
-| **Visual History** | Hard to see history of runs in Console | Native "PipelineRuns" view in OCP Console |
-| **Complexity** | Low (Single YAML) | Medium (Tasks, Pipelines, Triggers, SA) |
-
-### 8.3 Design Decision for Demo
-We will stick to the **CronJob/Job** approach for **Step 07** to keep the dependency list low (no need to install OpenShift Pipelines Operator yet). However, we will structure the `Job` command to mimic the Tekton Task logic, making it easy to "lift and shift" into a Pipeline later if we decide to add a "GenAIOps CI/CD" step.
+## 7. References & Resources
+*   **vLLM Metrics**: [https://docs.vllm.ai/en/latest/serving/metrics.html](https://docs.vllm.ai/en/latest/serving/metrics.html)
+*   **GuideLLM**: [https://github.com/neuralmagic/guidellm](https://github.com/neuralmagic/guidellm)
+*   **HuggingFace Performance Guide**: [https://huggingface.co/docs/transformers/llm_tutorial_optimization](https://huggingface.co/docs/transformers/llm_tutorial_optimization)
+*   **RHOAI Monitoring**: [https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index)
 
 ---
 *Drafted by Cursor Agent for RHOAI 3.0 Demo Project*

@@ -26,7 +26,7 @@ Transforms RHOAI from a "static" platform to a **GPU-as-a-Service** model using 
 │                                   ▼                                            │
 │   ┌─────────────────────────────────────────────────────────────────────┐      │
 │   │                    Kueue (Queue Management)                         │      │
-│   │  LocalQueue (default) ─────▶ ClusterQueue (default) [RHOAI-managed]│      │
+│   │  LocalQueue (default) ─────▶ ClusterQueue (rhoai-main-queue)       │      │
 │   └─────────────────────────────────────────────────────────────────────┘      │
 │                                   │                                            │
 │                                   ▼                                            │
@@ -76,8 +76,8 @@ Kueue provides the **fair-share scheduling** mechanism:
 |-----------|------|---------|
 | ResourceFlavor | `nvidia-l4-1gpu` | Targets g6.4xlarge (1x L4) |
 | ResourceFlavor | `nvidia-l4-4gpu` | Targets g6.12xlarge (4x L4) |
-| ClusterQueue | `default` | RHOAI-managed GPU quota pool |
-| LocalQueue | `default` | RHOAI-managed (auto-created in DSProjects) |
+| ClusterQueue | `rhoai-main-queue` | Custom GPU quota pool (5 GPUs) |
+| LocalQueue | `default` | Standard name → maps to `rhoai-main-queue` |
 
 ### Layer 3: Platform Governance
 
@@ -205,10 +205,10 @@ Automatic cost control through `OdhDashboardConfig`:
 |----------|------|---------|
 | **ResourceFlavor** | `nvidia-l4-1gpu` | Targets g6.4xlarge nodes (1x L4) |
 | **ResourceFlavor** | `nvidia-l4-4gpu` | Targets g6.12xlarge nodes (4x L4) |
-| **ClusterQueue** | `default` | RHOAI-managed GPU quota pool |
-| **LocalQueue** | `default` | **RHOAI-managed** - auto-created in each DSProject |
+| **ClusterQueue** | `rhoai-main-queue` | Custom GPU quota pool (5 GPUs) |
+| **LocalQueue** | `default` | Standard name → maps to `rhoai-main-queue` |
 
-> **Important (RHOAI 3.0)**: The LocalQueue named `default` is **automatically created and managed** by the RHOAI controller in each Data Science Project namespace. It points to the `default` ClusterQueue. Custom `clusterQueue` assignments will be overwritten by the controller.
+> **Standardized Queue Strategy**: The LocalQueue named `default` is the standard name that Hardware Profiles expect. It acts as a **logical redirector** to your custom ClusterQueue (`rhoai-main-queue`). This mapping is configured via `DataScienceCluster.spec.components.kueue.defaultClusterQueueName: rhoai-main-queue`.
 > Global profiles reference `localQueueName: default` - this queue must exist in each project.
 
 ### Namespace
@@ -272,8 +272,8 @@ oc adm groups new rhoai-users ai-developer 2>/dev/null || oc adm groups add-user
 until oc get namespace private-ai &>/dev/null; do sleep 5; done
 until oc get secret minio-connection -n private-ai &>/dev/null; do sleep 5; done
 
-# 8. Verify Kueue resources (RHOAI-managed)
-oc get clusterqueue default
+# 8. Verify Kueue resources
+oc get clusterqueue rhoai-main-queue
 oc get localqueue default -n private-ai
 ```
 
@@ -318,11 +318,11 @@ oc get secret -n private-ai -l opendatahub.io/connection-type=s3
 oc get localqueue default -n private-ai
 
 # Expected output:
-# NAME      CLUSTERQUEUE   PENDING   ADMITTED   ...
-# default   default        0         True       ...
+# NAME      CLUSTERQUEUE       PENDING   ADMITTED   ...
+# default   rhoai-main-queue   0         True       ...
 
-# Check ClusterQueue (RHOAI-managed)
-oc get clusterqueue default -o yaml | grep -A5 "status:"
+# Check ClusterQueue
+oc get clusterqueue rhoai-main-queue -o yaml | grep -A5 "status:"
 ```
 
 ### 4. Verify Authentication
@@ -366,7 +366,7 @@ oc login -u ai-admin -p redhat123
 
 **In RHOAI Dashboard:**
 1. Go to **Distributed Workloads** in sidebar
-2. View `default` ClusterQueue status (RHOAI-managed)
+2. View `rhoai-main-queue` ClusterQueue status
 3. See workloads: Admitted vs. Pending
 
 **Monitor GPU Usage:**

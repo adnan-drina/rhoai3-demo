@@ -1,33 +1,27 @@
-# LocalQueue 'default' - RHOAI 3.0 Controller-Managed
+# LocalQueue 'default' - Standardized Queue Strategy
 # ============================================================================
-# IMPORTANT: In RHOAI 3.0, the LocalQueue named 'default' is AUTOMATICALLY
-# created and managed by the RHOAI controller based on DSCInitialization
-# and DataScienceCluster settings.
+# RHOAI 3.0 Best Practice: "Local Mapping to Global Pool"
 #
-# Configuration Source:
+# The LocalQueue named 'default' acts as a logical redirector to your
+# high-governance global resource pool (rhoai-main-queue).
+#
+# Why this naming convention:
+# 1. Hardware Profile Portability: Global Hardware Profiles look for
+#    LocalQueue named 'default' - this makes them usable in ANY namespace
+# 2. Dashboard Integration: RHOAI Dashboard expects 'default' queue
+# 3. Automation: OdhDashboardConfig uses defaultLocalQueueName: "default"
+#
+# Configuration:
 #   DataScienceCluster.spec.components.kueue:
-#     defaultClusterQueueName: default
-#     defaultLocalQueueName: default
+#     defaultClusterQueueName: rhoai-main-queue  # Your custom global pool
+#     defaultLocalQueueName: default              # Standardized name
 #     managementState: Unmanaged
 #
-# This means:
-#   1. RHOAI creates a LocalQueue named 'default' in every DSProject namespace
-#   2. The LocalQueue points to the 'default' ClusterQueue (RHOAI-managed)
-#   3. Custom clusterQueue assignments are OVERWRITTEN by the controller
-#
-# Best Practice for RHOAI 3.0:
-#   - Use the RHOAI-managed 'default' ClusterQueue
-#   - Ensure HardwareProfiles use localQueueName: "default"
-#   - InferenceServices use kueue.x-k8s.io/queue-name: "default"
-#
-# The 'default' ClusterQueue includes GPU ResourceFlavors with proper
-# node targeting and tolerations for GPU scheduling.
+# This ensures:
+#   - LocalQueue 'default' → ClusterQueue 'rhoai-main-queue'
+#   - Your 5-GPU quota and AWS G6 ResourceFlavors are used
+#   - Hardware Profiles work in any namespace with this pattern
 # ============================================================================
-#
-# NOTE: This file is kept for documentation purposes but will be overwritten
-# by the RHOAI controller. The actual LocalQueue configuration comes from
-# the DataScienceCluster CR in redhat-ods-applications namespace.
-#
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
@@ -38,6 +32,5 @@ metadata:
     argocd.argoproj.io/sync-options: Replace=true
     kueue.x-k8s.io/default-queue: "true"
 spec:
-  # RHOAI controller will override this to 'default'
-  clusterQueue: default
+  clusterQueue: rhoai-main-queue
   stopPolicy: None
