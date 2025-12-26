@@ -7,7 +7,6 @@
 #   - Grafana with OpenShift User Workload Monitoring integration
 #   - vLLM performance dashboards
 #   - GuideLLM benchmarking with Poisson distribution
-#   - vLLM-Playground for interactive demos (Community Tool)
 #
 # Prerequisites:
 #   - Step 01: User Workload Monitoring enabled
@@ -44,11 +43,6 @@ echo -e "${BLUE}═════════════════════�
 if [ "$1" == "--cleanup" ]; then
     echo ""
     echo -e "${YELLOW}▶ Cleaning up Step 07 resources...${NC}"
-    
-    # vLLM-Playground resources
-    oc delete deployment vllm-playground -n ${NAMESPACE} --ignore-not-found
-    oc delete service vllm-playground -n ${NAMESPACE} --ignore-not-found
-    oc delete route vllm-playground -n ${NAMESPACE} --ignore-not-found
     
     # Grafana resources
     oc delete deployment grafana -n ${NAMESPACE} --ignore-not-found
@@ -229,9 +223,6 @@ echo -e "${YELLOW}▶ Waiting for deployments...${NC}"
 echo "  Grafana..."
 oc rollout status deployment/grafana -n ${NAMESPACE} --timeout=120s 2>/dev/null || echo "  (still starting...)"
 
-echo "  vLLM-Playground..."
-oc rollout status deployment/vllm-playground -n ${NAMESPACE} --timeout=120s 2>/dev/null || echo "  (still starting...)"
-
 # --- Validation ---
 echo ""
 echo -e "${YELLOW}▶ Validation...${NC}"
@@ -242,14 +233,6 @@ if [ -n "${GRAFANA_URL}" ]; then
     echo -e "${GREEN}  ✓ Grafana Route: https://${GRAFANA_URL}${NC}"
 else
     echo -e "${YELLOW}  ⚠️  Grafana Route not found${NC}"
-fi
-
-# Get vLLM-Playground URL
-PLAYGROUND_URL=$(oc get route vllm-playground -n ${NAMESPACE} -o jsonpath='{.spec.host}' 2>/dev/null)
-if [ -n "${PLAYGROUND_URL}" ]; then
-    echo -e "${GREEN}  ✓ vLLM-Playground Route: https://${PLAYGROUND_URL} ${YELLOW}(⚠️ Community Tool)${NC}"
-else
-    echo -e "${YELLOW}  ⚠️  vLLM-Playground Route not found${NC}"
 fi
 
 # Check health endpoint
@@ -299,12 +282,11 @@ echo -e "${CYAN}  🎯 The 'ROI of Quantization' Demo:${NC}"
 echo ""
 echo -e "  ${GREEN}Access URLs:${NC}"
 echo "     Grafana Dashboard:   https://${GRAFANA_URL}"
-echo "     vLLM-Playground:     https://${PLAYGROUND_URL} (⚠️ Community Tool)"
 echo ""
 echo -e "  ${GREEN}Demo Flow:${NC}"
 echo "     1. Open Grafana - view vLLM performance metrics"
-echo "     2. Open vLLM-Playground - interactive model comparison"
-echo "     3. Run ROI benchmark: ./deploy.sh --benchmark"
+echo "     2. Run ROI benchmark: ./deploy.sh --benchmark"
+echo "     3. Observe saturation points in Grafana"
 echo ""
 echo -e "  ${GREEN}Quick Commands:${NC}"
 echo "     # Run ROI efficiency comparison"

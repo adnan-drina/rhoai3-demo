@@ -26,15 +26,12 @@ kind: Kustomization
 #      - Rate sweep from 0.1 to 5.0 req/s
 #      - ROI comparison scripts (INT4 vs BF16)
 #
-#   4. vLLM-Playground (vllm-playground/) [OPTIONAL - Community Tool]
-#      - Interactive chat UI for real-time "vibe check"
-#      - Side-by-side model comparison during presentations
-#      - ⚠️ NOT an official Red Hat product
-#
 # SLA Targets:
 #   - TTFT: < 500ms (excellent), < 1.0s (acceptable)
 #   - TPOT: > 20 tokens/sec
 #   - KV Cache: < 85% (warning at 95%)
+#
+# For interactive benchmark UI, see Step 07B (vLLM-Playground - future).
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index
 # Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
@@ -51,10 +48,6 @@ resources:
   
   # GuideLLM automated benchmarking with Poisson distribution
   - guidellm/
-  
-  # vLLM-Playground: Interactive demo UI (Community Tool)
-  # ⚠️ DISCLAIMER: Not an official Red Hat product
-  - vllm-playground/
 
 commonLabels:
   app.kubernetes.io/part-of: rhoai3-demo

@@ -30,13 +30,13 @@ This step demonstrates the **Economics of Precision**:
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                    Visualization Layer                                   │ │
-│  │  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐   │ │
-│  │  │  Grafana Dashboard │  │ vLLM-Playground   │  │ OpenShift Console │   │ │
-│  │  │  (KV Cache, TTFT)  │  │ (Interactive)     │  │ (DCGM GPU Metrics)│   │ │
-│  │  └─────────┬─────────┘  └─────────┬─────────┘  └─────────┬─────────┘   │ │
-│  └────────────┼──────────────────────┼──────────────────────┼─────────────┘ │
-│               │                      │                      │               │
-│               ▼                      │                      ▼               │
+│  │  ┌───────────────────────────────┐      ┌───────────────────────────┐   │ │
+│  │  │     Grafana Dashboard         │      │     OpenShift Console     │   │ │
+│  │  │  (KV Cache, TTFT, Throughput) │      │    (DCGM GPU Metrics)     │   │ │
+│  │  └─────────────┬─────────────────┘      └─────────────┬─────────────┘   │ │
+│  └────────────────┼──────────────────────────────────────┼─────────────────┘ │
+│                   │                                      │                   │
+│                   ▼                                      ▼                   │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │              OpenShift User Workload Monitoring                          │ │
 │  │                     (Thanos Querier + Prometheus)                        │ │
@@ -72,9 +72,10 @@ This step demonstrates the **Economics of Precision**:
 | **Dashboard ConfigMaps** | Pre-configured vLLM metrics dashboard | - |
 | **GuideLLM CronJob** | Daily Poisson stress tests at 2:00 AM UTC | Community (OSS) |
 | **GuideLLM Scripts** | ROI comparison, efficiency analysis | - |
-| **vLLM-Playground** | Interactive chat UI for demos | ⚠️ Community |
 
-> **⚠️ Community Tooling Disclaimer:** vLLM-Playground and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.0.
+> **⚠️ Community Tooling Disclaimer:** GuideLLM is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
+
+> **Note:** For interactive benchmark UI, see [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) (future enhancement).
 
 ## Prerequisites
 
@@ -134,17 +135,7 @@ echo "https://${GRAFANA_URL}"
 
 **No login required** (anonymous access enabled). Default dashboard: **vLLM Model Performance**
 
-### Step 2: Access vLLM-Playground (Interactive Demo)
-
-```bash
-# Get Playground URL
-PLAYGROUND_URL=$(oc get route vllm-playground -n private-ai -o jsonpath='{.spec.host}')
-echo "https://${PLAYGROUND_URL}"
-```
-
-Use this for live demos to show the "vibe check" - the qualitative feel of latency differences.
-
-### Step 3: Run the Efficiency Comparison
+### Step 2: Run the Efficiency Comparison
 
 ```bash
 # Trigger the ROI comparison benchmark
@@ -299,109 +290,6 @@ oc run results-viewer --rm -it --restart=Never \
   -n private-ai
 ```
 
-## vLLM-Playground (Benchmark Testing UI)
-
-> **⚠️ Community Tool Disclaimer:** [vLLM-Playground](https://github.com/micytao/vllm-playground) is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
-
-Based on: [Option 3 - Kubernetes Job Pattern](https://github.com/micytao/vllm-playground/blob/main/openshift/README.md#option-3-kubernetes-job-pattern-good-middle-ground)
-
-### Architecture (Simplified for Benchmarking)
-
-```
-┌─────────────────┐  Run Benchmark   ┌──────────────────┐
-│  vLLM-Playground│─────────────────>│  GuideLLM Job    │
-│  (Web UI)       │                  │  (Runs to        │
-│                 │<─────────────────│   Completion)    │
-│  View Results   │    Results       └────────┬─────────┘
-└─────────────────┘                           │
-                                              ▼
-                                 ┌──────────────────────────────┐
-                                 │ Existing InferenceServices   │
-                                 │ • mistral-3-int4 (1-GPU $)   │
-                                 │ • mistral-3-bf16 (4-GPU $$$$)│
-                                 │ • devstral-2                 │
-                                 │ • granite-8b-agent           │
-                                 │ • gpt-oss-20b                │
-                                 └──────────────────────────────┘
-```
-
-**Key insight**: vLLM-Playground runs benchmarks against our **existing InferenceServices** - no new vLLM pods needed!
-
-### Tool Responsibilities
-
-| Use Case | Tool |
-|----------|------|
-| **Model experimentation** | RHOAI GenAI Playground (Step 06) |
-| **API access to models** | LiteMaaS (Step 06B) |
-| **Benchmark testing** | vLLM-Playground + GuideLLM ← This |
-| **Result visualization** | Grafana Dashboard |
-
-### Pre-configured Model Endpoints
-
-The playground is configured with our existing InferenceServices:
-
-| Model | Endpoint | GPUs |
-|-------|----------|------|
-| `mistral-3-int4` | `http://mistral-3-int4-predictor.private-ai.svc:80/v1` | 1 |
-| `mistral-3-bf16` | `http://mistral-3-bf16-predictor.private-ai.svc:80/v1` | 4 |
-| `devstral-2` | `http://devstral-2-predictor.private-ai.svc:80/v1` | 4 |
-| `granite-8b-agent` | `http://granite-8b-agent-predictor.private-ai.svc:80/v1` | 1 |
-| `gpt-oss-20b` | `http://gpt-oss-20b-predictor.private-ai.svc:80/v1` | 4 |
-
-### Access
-
-```bash
-# Get URL
-PLAYGROUND_URL=$(oc get route vllm-playground -n private-ai -o jsonpath='{.spec.host}')
-echo "https://${PLAYGROUND_URL}"
-```
-
-### Components Deployed
-
-| Resource | Name | Purpose |
-|----------|------|---------|
-| ServiceAccount | `vllm-playground-sa` | Identity for Job management |
-| Role | `vllm-benchmark-manager` | Job CRUD, pod/service read |
-| ClusterRole | `vllm-playground-node-reader` | GPU detection for UI |
-| ConfigMap | `vllm-playground-config` | Model endpoints, settings |
-| Deployment | `vllm-playground` | The Web UI |
-| Service/Route | `vllm-playground` | External access |
-
-### Demo Scenario (Benchmarking)
-
-1. Open the vLLM-Playground URL
-2. Go to the **Benchmarks** or **GuideLLM** tab
-3. Select an existing model endpoint (e.g., `mistral-3-int4`)
-4. Configure benchmark parameters:
-   - Rate: 0.1 → 3.0 req/s
-   - Distribution: Poisson
-   - Duration: 30-60 seconds
-5. Click **Run Benchmark**
-6. View results in the UI or Grafana
-
-### Troubleshooting
-
-**Can't run benchmarks?**
-```bash
-# Check vLLM-Playground logs
-oc logs -f deployment/vllm-playground -n private-ai
-
-# Check if it can create Jobs
-oc auth can-i create jobs -n private-ai --as=system:serviceaccount:private-ai:vllm-playground-sa
-
-# Check if InferenceService is ready
-oc get inferenceservice -n private-ai
-```
-
-**Results not showing?**
-```bash
-# Check benchmark results PVC
-oc get pvc guidellm-results -n private-ai
-
-# List results files
-oc exec deployment/vllm-playground -n private-ai -- ls -la /app/results/
-```
-
 ## vLLM Metrics Reference
 
 > **Important**: vLLM metrics use `:` separator, not `_` (e.g., `vllm:num_requests_running`)
@@ -453,9 +341,6 @@ gitops/step-07-model-performance-metrics/
 │   │   ├── configmap.yaml         # Poisson benchmark scripts
 │   │   ├── cronjob.yaml           # Daily scheduled benchmarks
 │   │   └── job-template.yaml      # On-demand template
-│   └── vllm-playground/           # ⚠️ Community tool
-│       ├── kustomization.yaml
-│       └── deployment.yaml        # Interactive UI
 └── kustomization.yaml
 ```
 
@@ -475,11 +360,8 @@ oc get cronjob guidellm-daily -n private-ai
 # 4. Verify GuideLLM PVC is bound
 oc get pvc guidellm-results -n private-ai
 
-# 5. Verify vLLM-Playground is running
-oc get pods -n private-ai -l app=vllm-playground
-
-# 6. Verify all Routes
-oc get routes -n private-ai | grep -E "grafana|vllm-playground"
+# 5. Verify all Routes
+oc get routes -n private-ai | grep grafana
 ```
 
 ## Troubleshooting
@@ -505,18 +387,6 @@ oc logs job/<job-name> -n private-ai
 # Verify Prometheus targets
 oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
   curl -s 'localhost:9090/api/v1/targets' | jq '.data.activeTargets[] | select(.labels.job | contains("metrics")) | {job: .labels.job, health: .health}'
-```
-
-### vLLM-Playground Not Connecting
-
-**Symptom:** Chat shows connection errors
-
-```bash
-# Check pod logs
-oc logs -n private-ai deployment/vllm-playground
-
-# Verify internal connectivity
-oc exec deployment/vllm-playground -n private-ai -- curl -s http://mistral-3-int4-predictor.private-ai.svc.cluster.local:80/v1/models
 ```
 
 ## Additional Monitoring
@@ -546,7 +416,9 @@ Direct PromQL queries in OpenShift Console:
 ### Community / Open Source
 - [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html)
 - [GuideLLM GitHub Repository](https://github.com/neuralmagic/guidellm)
-- [vLLM-Playground GitHub](https://github.com/micytao/vllm-playground) ⚠️ Community Tool
 - [Grafana Dashboard Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
 - [AI on OpenShift - KServe UWM Dashboard](https://ai-on-openshift.io/odh-rhoai/kserve-uwm-dashboard-metrics/)
 - [RHOAI GenAIOps Patterns](https://github.com/rhoai-genaiops)
+
+### Related Steps
+- [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) - Interactive benchmark UI (future)

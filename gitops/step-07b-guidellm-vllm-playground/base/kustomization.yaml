@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 07B: GuideLLM + vLLM-Playground (Future Enhancement)
+# ============================================================================
+# ⚠️ WORK IN PROGRESS - NOT READY FOR DEPLOYMENT
+#
+# This step will deploy a custom vLLM-Playground configured for:
+#   - Option 3: Kubernetes Job Pattern (benchmarks only)
+#   - Connecting to existing InferenceServices (not creating new vLLM pods)
+#   - Integrated GuideLLM benchmarking UI
+#
+# Current Status:
+#   - Community image doesn't support Option 3 out of the box
+#   - Custom image build required
+#   - Parked for future implementation
+#
+# Design Preferences:
+#   - Benchmark testing against existing InferenceServices
+#   - GuideLLM Job execution from UI
+#   - Result visualization and analysis
+#   - NO model experimentation (use RHOAI GenAI Playground for that)
+#
+# Ref: https://github.com/micytao/vllm-playground
+# Ref: https://github.com/micytao/vllm-playground/blob/main/openshift/README.md
+# ============================================================================
+
+resources:
+  - vllm-playground/
+
+# Disabled by default - uncomment when custom image is ready
+# commonLabels:
+#   app.kubernetes.io/part-of: rhoai3-demo
+#   app.kubernetes.io/component: benchmarking
+

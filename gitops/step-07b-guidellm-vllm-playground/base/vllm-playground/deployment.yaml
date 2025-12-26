@@ -1,24 +1,29 @@
 # vLLM-Playground: Benchmark Testing UI
 # ============================================================================
-# Simplified deployment for benchmark testing and result analysis only.
+# ⚠️ WORK IN PROGRESS - REQUIRES CUSTOM IMAGE BUILD
+#
+# This deployment is DISABLED by default. The community vLLM-Playground image
+# uses Option 2 (Dynamic Pod Management) which creates new vLLM pods.
+#
+# Our desired architecture: Option 3 - Kubernetes Job Pattern
+# This requires building a custom image that:
+#   1. Creates GuideLLM Jobs (not vLLM pods)
+#   2. Targets existing InferenceService endpoints
+#   3. Provides result visualization
+#
 # Based on: https://github.com/micytao/vllm-playground
-# Architecture: Option 3 - Kubernetes Job Pattern (for benchmarks)
+# Architecture: https://github.com/micytao/vllm-playground/blob/main/openshift/README.md
 #
 # ⚠️ COMMUNITY TOOLING DISCLAIMER:
 # This is a community-driven tool and is NOT an officially supported
 # component of Red Hat OpenShift AI 3.0 or the vLLM project.
 #
-# Purpose:
-#   - Run GuideLLM benchmarks against existing InferenceServices
-#   - Visualize and analyze benchmark results
-#   - NOT for model experimentation (use RHOAI GenAI Playground for that)
-#
-# Our existing models (benchmarked via GuideLLM):
-#   - mistral-3-int4:  http://mistral-3-int4-predictor.private-ai.svc:80/v1
-#   - mistral-3-bf16:  http://mistral-3-bf16-predictor.private-ai.svc:80/v1
-#   - devstral-2:      http://devstral-2-predictor.private-ai.svc:80/v1
+# Target endpoints (once custom image is ready):
+#   - mistral-3-int4:   http://mistral-3-int4-predictor.private-ai.svc:80/v1
+#   - mistral-3-bf16:   http://mistral-3-bf16-predictor.private-ai.svc:80/v1
+#   - devstral-2:       http://devstral-2-predictor.private-ai.svc:80/v1
 #   - granite-8b-agent: http://granite-8b-agent-predictor.private-ai.svc:80/v1
-#   - gpt-oss-20b:     http://gpt-oss-20b-predictor.private-ai.svc:80/v1
+#   - gpt-oss-20b:      http://gpt-oss-20b-predictor.private-ai.svc:80/v1
 #
 # Ref: https://github.com/micytao/vllm-playground/blob/main/openshift/README.md
 # ============================================================================
@@ -166,7 +171,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "12"
     description: "vLLM Playground - Benchmark testing and analysis UI"
 spec:
-  replicas: 1
+  # ⚠️ DISABLED - Set to 1 when custom image is ready
+  replicas: 0
   selector:
     matchLabels:
       app: vllm-playground
