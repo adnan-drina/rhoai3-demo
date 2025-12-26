@@ -240,5 +240,4 @@ spec:
               echo "    3. Model Portfolio: Show all 5 Red Hat Validated models"
               echo ""
               echo "  Total Potential: 14 GPUs | Quota Limit: 5 GPUs"
-              echo "  Use the GPU-Switchboard.ipynb notebook to run the demo!"
               echo "════════════════════════════════════════════════════════════════"

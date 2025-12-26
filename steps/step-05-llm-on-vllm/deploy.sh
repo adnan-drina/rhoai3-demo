@@ -13,14 +13,10 @@
 #     4. gpt-oss-20b        (4-GPU, S3, High-reasoning)
 #     5. granite-8b-agent   (1-GPU, S3, RAG/Tool-call)
 #
-# GPU Switchboard Workbench:
-#     Pre-configured Jupyter notebook for interactive demo control.
-#
 # RHOAI 3.0 Patterns Used:
-#   - Native Ingress Controller (port 8888 alignment)
-#   - Hardware Profile delegation (cpu-small for workbench)
 #   - Kueue quota management (5 GPU limit)
-#   - OAuth integration (inject-oauth annotation)
+#   - KServe with S3 and OCI storage
+#   - Model Registry integration
 # =============================================================================
 
 set -e
@@ -147,40 +143,6 @@ echo ""
 echo "✓ Resources applied"
 
 # =============================================================================
-# Verify Workbench Service Configuration
-# =============================================================================
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Workbench Service Configuration (RHOAI 3.0 Native Ingress)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  RHOAI 3.0 requires Service port 8888 to match the controller's HTTPRoute."
-echo "  Our GitOps manifest defines the Service at sync-wave 8, before the Notebook"
-echo "  at sync-wave 10. This ensures proper port alignment."
-echo ""
-echo "  Expected: Service port 8888, name 'http-gpu-switchboard'"
-echo ""
-
-# Wait for ArgoCD to apply resources
-sleep 5
-
-# Verify Service configuration
-if oc get svc gpu-switchboard -n private-ai &>/dev/null; then
-  SVC_PORT=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].port}')
-  SVC_NAME=$(oc get svc gpu-switchboard -n private-ai -o jsonpath='{.spec.ports[0].name}')
-  
-  if [[ "$SVC_PORT" == "8888" ]] && [[ "$SVC_NAME" == "http-gpu-switchboard" ]]; then
-    echo "✓ Service correctly configured: port ${SVC_PORT}, name '${SVC_NAME}'"
-  else
-    echo "⚠️  Service misconfigured: port ${SVC_PORT}, name '${SVC_NAME}'"
-    echo "   Expected: port 8888, name 'http-gpu-switchboard'"
-    echo "   Run: oc apply -k ${GITOPS_DIR}/controller/ to fix"
-  fi
-else
-  echo "⚠️  gpu-switchboard Service not found yet (workbench may still be creating)"
-fi
-
-# =============================================================================
 # Check ServingRuntime
 # =============================================================================
 echo ""
@@ -201,17 +163,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 oc get inferenceservice -n private-ai
 
 # =============================================================================
-# Check Workbench
-# =============================================================================
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "GPU Switchboard Workbench"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-oc get notebook -n private-ai gpu-switchboard 2>/dev/null || echo "Workbench not found"
-oc get pod -n private-ai -l statefulset=gpu-switchboard
-
-# =============================================================================
 # Summary
 # =============================================================================
 echo ""
@@ -229,10 +180,6 @@ echo "║    Queued (minReplicas: 0):                                         �
 echo "║      • devstral-2         (4-GPU) Agentic tool-calling              ║"
 echo "║      • gpt-oss-20b        (4-GPU) High-reasoning                    ║"
 echo "║      • granite-8b-agent   (1-GPU) RAG/Tool-call                     ║"
-echo "║                                                                      ║"
-echo "║  GPU Switchboard Workbench:                                         ║"
-echo "║    URL: https://data-science-gateway.apps.<cluster>/notebook/       ║"
-echo "║         private-ai/gpu-switchboard                                  ║"
 echo "║                                                                      ║"
 echo "║  Watch status:                                                       ║"
 echo "║    oc get inferenceservice -n private-ai -w                         ║"

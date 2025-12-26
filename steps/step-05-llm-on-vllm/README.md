@@ -238,14 +238,16 @@ This makes it clear to the audience that RHOAI is **standard Kubernetes/OpenShif
 
 1. Open the RHOAI Dashboard
 2. Navigate to **Data Science Projects** → **private-ai**
-3. Launch the **gpu-switchboard** workbench
-4. Open `GPU-Orchestrator.ipynb`
+3. Create a new workbench (or use an existing one)
+4. Upload and open `GPU-Orchestrator.ipynb`
 5. Follow the step-by-step CLI commands with explanations
 
 The notebook covers three scenarios:
 - **Scenario 1:** Resource Conflict (request more GPUs than available)
 - **Scenario 2:** Dynamic Handover (release GPUs to unblock queue)
 - **Scenario 3:** Efficiency Portfolio (trade 1 big model for specialists)
+
+> **Note:** The GPU-Orchestrator notebook is available as a reference SOP. Create your own workbench via the RHOAI Dashboard for interactive exploration.
 
 ### Option 2: Direct CLI Commands
 
@@ -392,11 +394,7 @@ The controller automatically creates:
 - TLS certificates and ConfigMap
 - NetworkPolicies for proper ingress
 
-## GPU Orchestrator Workbench
-
-The GPU Orchestrator is a pre-configured Jupyter workbench that provides a **CLI-First SOP** for demonstrating GPU quota management.
-
-### Why CLI-First?
+## Why CLI-First Demo?
 
 | Approach | Benefit |
 |----------|---------|
@@ -405,73 +403,7 @@ The GPU Orchestrator is a pre-configured Jupyter workbench that provides a **CLI
 | **Simplicity** | No widget debugging—`oc scale` just works |
 | **Portability** | Commands work in any terminal, not just Jupyter |
 
-### Accessing the Workbench
-
-**URL:** `https://data-science-gateway.apps.<cluster>/notebook/private-ai/gpu-switchboard`
-
-Or via RHOAI Dashboard:
-1. Navigate to **Data Science Projects** → **private-ai**
-2. Open the **gpu-switchboard** workbench
-3. Run the `GPU-Orchestrator.ipynb` notebook
-
-### RHOAI 3.0 Native Ingress Pattern
-
-The workbench uses RHOAI 3.0's controller-managed authentication with `kube-rbac-proxy`:
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Dashboard URL (Gateway API Path)                                       │
-│  https://data-science-gateway.apps.../notebook/private-ai/gpu-switchboard/
-│                                                                         │
-│  Browser → Gateway → HTTPRoute                                          │
-│                          ↓                                              │
-│                   {name}-kube-rbac-proxy Service:8443                   │
-│                          ↓                                              │
-│                   Pod [kube-rbac-proxy:8443 → notebook:8888]            │
-│                          ↑                                              │
-│               (kube-rbac-proxy sidecar AUTO-INJECTED by controller)     │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-**Key Configuration Points:**
-
-| Component | Configuration | Why |
-|-----------|---------------|-----|
-| **Annotation** | `inject-auth: "true"` | Triggers controller to inject kube-rbac-proxy |
-| **Sidecar** | kube-rbac-proxy (auto-injected) | Handles OpenShift authentication |
-| **HTTPRoute Target** | `{name}-kube-rbac-proxy:8443` | Created automatically by controller |
-| **Main Service** | `{name}:80` → 8888 | Controller-managed, used internally |
-
-### GitOps vs Dashboard Workbenches
-
-| Aspect | Dashboard-Created | GitOps-Created (Our Pattern) |
-|--------|-------------------|------------------------------|
-| **Annotation** | `inject-auth: "true"` | `inject-auth: "true"` |
-| **Auth Sidecar** | Auto-injected | Auto-injected |
-| **Services** | Auto-created | Auto-created (controller-managed) |
-| **HTTPRoute** | Auto-created | Auto-created (controller-managed) |
-| **Init Container** | None | Git-sync (for pre-loaded notebooks) |
-| **RBAC** | None | Custom Role for InferenceService management |
-
-> **Key Insight:** Using `inject-auth: "true"` instead of `inject-oauth: "true"` is critical for RHOAI 3.0. The controller handles all routing, authentication, and TLS automatically.
-
-### Workbench GitOps Components
-
-The workbench manifest (`workbench.yaml`) includes only what GitOps needs to add:
-
-| Component | Purpose | Controller-Managed? |
-|-----------|---------|---------------------|
-| **ServiceAccount** | Identity for RBAC | ❌ GitOps |
-| **PVC** | 20Gi storage for notebooks | ❌ GitOps |
-| **Notebook CR** | With `inject-auth: "true"` and git-sync init container | ❌ GitOps |
-| **RBAC** | Permissions to manage InferenceServices | ❌ GitOps |
-| **Service** | `{name}:80` → 8888 | ✅ Controller |
-| **kube-rbac-proxy Service** | `{name}-kube-rbac-proxy:8443` | ✅ Controller |
-| **HTTPRoute** | Routes to kube-rbac-proxy | ✅ Controller |
-| **NetworkPolicy** | Ingress rules | ✅ Controller |
-| **TLS Secrets** | Serving certificates | ✅ Controller |
-
-> **Design Philosophy:** Let the controller manage everything except what GitOps must customize (pre-loaded notebooks via git-sync, custom RBAC for InferenceService management).
+> **Tip:** Create a workbench via the RHOAI Dashboard if you prefer a notebook-based SOP experience.
 
 ## GitOps Structure
 
@@ -489,14 +421,11 @@ gitops/step-05-llm-on-vllm/base/
 │   └── granite-8b-agent.yaml          # 1-GPU, S3, minReplicas: 0 (Queued)
 ├── model-registration/
 │   └── seed-job.yaml                  # Register 5 models in Registry
-├── model-upload/
-│   ├── kustomization.yaml
-│   ├── upload-mistral-bf16.yaml       # Mistral BF16 (~48GB)
-│   ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
-│   └── upload-granite-8b.yaml         # Granite (~8GB)
-└── controller/
-    ├── workbench.yaml                 # GPU Orchestrator workbench
-    └── GPU-Orchestrator.ipynb         # CLI-First SOP notebook
+└── model-upload/
+    ├── kustomization.yaml
+    ├── upload-mistral-bf16.yaml       # Mistral BF16 (~48GB)
+    ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
+    └── upload-granite-8b.yaml         # Granite (~8GB)
 ```
 
 ## Key RHOAI 3.0 Design Patterns
@@ -525,10 +454,7 @@ oc delete inferenceservice --all -n private-ai
 # 3. Delete ServingRuntime
 oc delete servingruntime vllm-runtime -n private-ai
 
-# 4. Delete GPU Orchestrator workbench (if deployed)
-oc delete notebook gpu-switchboard -n private-ai
-
-# 5. Delete Argo CD Application
+# 4. Delete Argo CD Application
 oc delete application step-05-llm-on-vllm -n openshift-gitops
 ```
 
