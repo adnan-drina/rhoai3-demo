@@ -3,16 +3,16 @@ kind: Kustomization
 
 # Grafana Dashboards for RHOAI Demo
 # ============================================================================
-# Pre-configured dashboards for vLLM model performance monitoring.
+# Pre-configured dashboards for vLLM and GPU performance monitoring.
 #
 # Dashboards:
-#   - vLLM Overview: Request queue, KV cache, throughput, model comparison
-#
-# Future additions:
-#   - DCGM GPU metrics (power, temperature)
-#   - Model comparison A/B testing view
+#   1. vLLM Model Performance - All vLLM metrics with model selector
+#   2. NVIDIA DCGM GPU Metrics - Hardware metrics (temp, power, utilization)
+#   3. Mistral ROI Comparison - BF16 vs INT4 side-by-side
 # ============================================================================
 
 resources:
   - vllm-overview.yaml
+  - dcgm-gpu-metrics.yaml
+  - mistral-roi-comparison.yaml
 

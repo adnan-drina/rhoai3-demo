@@ -125,10 +125,16 @@ spec:
         - name: dashboard-provisioning
           configMap:
             name: grafana-dashboard-provisioner
-        # Dashboard JSON files
+        # Dashboard JSON files (projected from multiple ConfigMaps)
         - name: dashboards
-          configMap:
-            name: grafana-dashboards
+          projected:
+            sources:
+              - configMap:
+                  name: grafana-dashboards
+              - configMap:
+                  name: dcgm-gpu-dashboard
+              - configMap:
+                  name: mistral-roi-dashboard
         # Grafana data directory
         - name: grafana-data
           emptyDir: {}

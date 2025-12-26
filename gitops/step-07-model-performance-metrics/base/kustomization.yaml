@@ -49,6 +49,5 @@ resources:
   # GuideLLM automated benchmarking with Poisson distribution
   - guidellm/
 
-commonLabels:
-  app.kubernetes.io/part-of: rhoai3-demo
-  app.kubernetes.io/component: observability
+# Note: Removed commonLabels to avoid Service selector mismatch issues.
+# Labels are applied directly in individual manifests instead.
