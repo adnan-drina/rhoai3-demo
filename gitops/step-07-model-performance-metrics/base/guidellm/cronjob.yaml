@@ -3,7 +3,9 @@
 # Runs automated benchmark sweeps on a schedule.
 # Default: Daily at 2:00 AM UTC
 #
-# Uses a Python 3.11 image with guidellm installed at runtime.
+# Uses the official GuideLLM container image from:
+# https://github.com/vllm-project/guidellm/pkgs/container/guidellm
+#
 # Results are persisted to the guidellm-results PVC.
 #
 # To trigger manually:
@@ -36,37 +38,58 @@ spec:
             job-type: scheduled
         spec:
           restartPolicy: Never
+          # Ensure PVC is writable by any user (OpenShift assigns random UID)
+          securityContext:
+            fsGroup: 0
+          # Note: This job needs network access to download HuggingFace datasets/tokenizers
+          # If running in a restricted environment, consider pre-downloading data
           containers:
             - name: guidellm
-              image: python:3.11-slim
+              # Official GuideLLM container image
+              # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
+              image: ghcr.io/vllm-project/guidellm:nightly
+              env:
+                # Set HOME to writable directory for cache
+                - name: HOME
+                  value: /tmp
+                # Set HuggingFace cache directory
+                - name: HF_HOME
+                  value: /tmp/.cache/huggingface
+                # Set output directory for GuideLLM
+                - name: GUIDELLM_OUTPUT_DIR
+                  value: /results
               command:
                 - /bin/bash
                 - -c
                 - |
-                  echo "Installing GuideLLM..."
-                  pip install --quiet guidellm
+                  echo "GuideLLM version:"
+                  guidellm --version || echo "Version check not supported"
                   
                   echo "Running benchmark sweep..."
-                  chmod +x /scripts/benchmark-sweep.sh
                   /scripts/benchmark-sweep.sh
               volumeMounts:
                 - name: scripts
                   mountPath: /scripts
+                  readOnly: true
                 - name: results
                   mountPath: /results
+                - name: cache
+                  mountPath: /tmp/.cache
               resources:
                 requests:
                   cpu: 500m
                   memory: 512Mi
                 limits:
                   cpu: "2"
-                  memory: 1Gi
+                  memory: 2Gi
           volumes:
             - name: scripts
               configMap:
                 name: guidellm-scripts
-                defaultMode: 0755
+                defaultMode: 0555  # Read + Execute for all
             - name: results
               persistentVolumeClaim:
                 claimName: guidellm-results
+            - name: cache
+              emptyDir: {}
 

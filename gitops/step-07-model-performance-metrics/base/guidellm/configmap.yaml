@@ -69,8 +69,9 @@ data:
     echo "▶ Discovering models..."
     
     # Priority order: Compare INT4 vs BF16 first (the main story)
+    # Note: Using port 8080 because headless services resolve directly to pod IPs
     for model in mistral-3-int4 mistral-3-bf16 granite-8b-agent devstral-2 gpt-oss-20b; do
-      URL="http://${model}-predictor.private-ai.svc.cluster.local:80"
+      URL="http://${model}-predictor.private-ai.svc.cluster.local:8080"
       if curl -s --connect-timeout 5 "${URL}/v1/models" >/dev/null 2>&1; then
         echo "  ✓ ${model} is available"
         MODELS="${MODELS} ${model}"
@@ -85,19 +86,20 @@ data:
       exit 1
     fi
     
-    # Poisson Rate Sweep Configuration
-    # Simulates realistic human arrival patterns
-    RATE_MIN="0.1"
-    RATE_MAX="3.0"
-    RATE_STEPS="6"
+    # Benchmark Configuration
+    # Using 'sweep' profile for automatic rate discovery
+    # This tests throughput from low to saturation point
+    SWEEP_STEPS="5"        # Number of rate points to test
+    MAX_SECONDS="60"       # Duration per test point
     
     echo ""
-    echo "▶ Running Poisson Stress Tests..."
-    echo "  Rate Sweep: ${RATE_MIN} → ${RATE_MAX} req/s (${RATE_STEPS} steps)"
-    echo "  Distribution: Poisson (human behavior simulation)"
+    echo "▶ Running Sweep Benchmarks..."
+    echo "  Profile: sweep (automatic rate discovery)"
+    echo "  Steps: ${SWEEP_STEPS} rate points per scenario"
+    echo "  Duration: ${MAX_SECONDS}s per step"
     
     for model in ${MODELS}; do
-      MODEL_URL="http://${model}-predictor.private-ai.svc.cluster.local:80"
+      MODEL_URL="http://${model}-predictor.private-ai.svc.cluster.local:8080"
       MODEL_RESULTS_DIR="${RESULTS_DIR}/${TIMESTAMP}/${model}"
       mkdir -p "${MODEL_RESULTS_DIR}"
       
@@ -108,53 +110,26 @@ data:
       echo "  Strategy: Find the 'Breaking Point' (TTFT > ${TTFT_TARGET_ACCEPTABLE}s)"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       
-      # Scenario 1: Chat Responsiveness (TTFT focus)
-      # This is what users "feel" - the time to first token
-      echo ""
-      echo "  💬 Scenario 1: Chat Responsiveness (TTFT Focus)"
-      echo "     Simulates: Interactive chat with short exchanges"
-      guidellm benchmark \
-        --target "${MODEL_URL}/v1" \
-        --model "${model}" \
-        --rate-type poisson \
-        --rate ${RATE_MIN} ${RATE_MAX} \
-        --rate-steps ${RATE_STEPS} \
-        --max-seconds 30 \
-        --data "prompt_tokens=64,output_tokens=32" \
-        --output-path "${MODEL_RESULTS_DIR}/chat-responsiveness.json" \
-        2>&1 || echo "  ⚠️  Chat benchmark failed"
+      # Using HuggingFace dataset with explicit tokenizer
+      # Note: Requires network access to download dataset/tokenizer
       
-      # Scenario 2: Document Processing (KV Cache Stress)
-      # Long inputs stress the KV cache - the memory wall
+      # Scenario: Sweep Test - Find saturation point
       echo ""
-      echo "  📄 Scenario 2: Document Processing (KV Cache Stress)"
-      echo "     Simulates: Summarization, long document Q&A"
-      guidellm benchmark \
+      echo "  📊 Sweep Test (Find Saturation Point)"
+      echo "     Profile: sweep - automatically finds max throughput"
+      guidellm benchmark run \
         --target "${MODEL_URL}/v1" \
         --model "${model}" \
-        --rate-type poisson \
-        --rate ${RATE_MIN} ${RATE_MAX} \
-        --rate-steps ${RATE_STEPS} \
-        --max-seconds 30 \
-        --data "prompt_tokens=512,output_tokens=128" \
-        --output-path "${MODEL_RESULTS_DIR}/document-processing.json" \
-        2>&1 || echo "  ⚠️  Document processing benchmark failed"
-      
-      # Scenario 3: Code Generation (TPOT Focus)
-      # Long outputs test generation throughput
-      echo ""
-      echo "  💻 Scenario 3: Code Generation (TPOT Focus)"
-      echo "     Simulates: Code completion, long-form generation"
-      guidellm benchmark \
-        --target "${MODEL_URL}/v1" \
-        --model "${model}" \
-        --rate-type poisson \
-        --rate ${RATE_MIN} ${RATE_MAX} \
-        --rate-steps ${RATE_STEPS} \
-        --max-seconds 30 \
-        --data "prompt_tokens=128,output_tokens=256" \
-        --output-path "${MODEL_RESULTS_DIR}/code-generation.json" \
-        2>&1 || echo "  ⚠️  Code generation benchmark failed"
+        --data "openai/gsm8k" \
+        --processor "mistralai/Mistral-7B-v0.1" \
+        --profile sweep \
+        --rate ${SWEEP_STEPS} \
+        --max-seconds ${MAX_SECONDS} \
+        --max-requests 50 \
+        --output-dir "${MODEL_RESULTS_DIR}" \
+        --outputs "sweep-test.json" \
+        --disable-console-interactive \
+        2>&1 || echo "  ⚠️  Sweep benchmark failed"
       
       echo ""
       echo "  ✓ Completed all scenarios for ${model}"
@@ -194,8 +169,9 @@ data:
     COMPARISON_DIR="${RESULTS_DIR}/${TIMESTAMP}/efficiency-comparison"
     mkdir -p "${COMPARISON_DIR}"
     
-    INT4_URL="http://mistral-3-int4-predictor.private-ai.svc.cluster.local:80"
-    BF16_URL="http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:80"
+    # Using port 8080 because headless services resolve directly to pod IPs
+    INT4_URL="http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080"
+    BF16_URL="http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080"
     
     echo "═══════════════════════════════════════════════════════════════════════════"
     echo "  ROI of Quantization: INT4 vs BF16"
@@ -231,9 +207,9 @@ data:
       exit 1
     fi
     
-    # Run identical workloads with Poisson distribution
+    # Run identical workloads with sweep profile for throughput discovery
     echo ""
-    echo "▶ Running identical Poisson stress tests..."
+    echo "▶ Running sweep benchmarks for ROI comparison..."
     
     # Chat workload (most common use case)
     echo ""
@@ -243,28 +219,32 @@ data:
     
     echo ""
     echo "  Testing INT4 (1-GPU)..."
-    guidellm benchmark \
+    guidellm benchmark run \
       --target "${INT4_URL}/v1" \
       --model "mistral-3-int4" \
-      --rate-type poisson \
-      --rate 0.1 5.0 \
-      --rate-steps 10 \
-      --max-seconds 45 \
-      --data "prompt_tokens=64,output_tokens=64" \
-      --output-path "${COMPARISON_DIR}/int4-chat.json" \
+      --data '{"prompt_tokens": 128, "output_tokens": 64}' \
+      --profile sweep \
+      --rate 8 \
+      --max-seconds 60 \
+      --max-requests 100 \
+      --output-dir "${COMPARISON_DIR}" \
+      --outputs "int4-sweep.json" \
+      --disable-console-interactive \
       2>&1 || echo "  ⚠️  INT4 benchmark failed"
     
     echo ""
     echo "  Testing BF16 (4-GPU)..."
-    guidellm benchmark \
+    guidellm benchmark run \
       --target "${BF16_URL}/v1" \
       --model "mistral-3-bf16" \
-      --rate-type poisson \
-      --rate 0.1 5.0 \
-      --rate-steps 10 \
-      --max-seconds 45 \
-      --data "prompt_tokens=64,output_tokens=64" \
-      --output-path "${COMPARISON_DIR}/bf16-chat.json" \
+      --data '{"prompt_tokens": 128, "output_tokens": 64}' \
+      --profile sweep \
+      --rate 8 \
+      --max-seconds 60 \
+      --max-requests 100 \
+      --output-dir "${COMPARISON_DIR}" \
+      --outputs "bf16-sweep.json" \
+      --disable-console-interactive \
       2>&1 || echo "  ⚠️  BF16 benchmark failed"
     
     echo ""
@@ -284,27 +264,30 @@ data:
     
   single-model-benchmark.sh: |
     #!/bin/bash
-    # Single model benchmark script with Poisson distribution
-    # Usage: single-model-benchmark.sh <model-name> [scenario] [max-rate]
+    # Single model benchmark script using sweep profile
+    # Usage: single-model-benchmark.sh <model-name> [scenario] [sweep-steps]
     
     set -e
     
     MODEL_NAME="${1:-mistral-3-int4}"
     SCENARIO="${2:-chat}"
-    MAX_RATE="${3:-3.0}"
+    SWEEP_STEPS="${3:-5}"
     RESULTS_DIR="/results"
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     
-    MODEL_URL="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:80"
-    OUTPUT_FILE="${RESULTS_DIR}/${TIMESTAMP}_${MODEL_NAME}_${SCENARIO}.json"
+    # Using port 8080 because headless services resolve directly to pod IPs
+    MODEL_URL="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080"
+    OUTPUT_DIR="${RESULTS_DIR}/${TIMESTAMP}_${MODEL_NAME}"
     
     echo "═══════════════════════════════════════════════════════════════════════════"
     echo "  GuideLLM Single Model Benchmark"
     echo "  Model: ${MODEL_NAME}"
     echo "  Scenario: ${SCENARIO}"
-    echo "  Distribution: Poisson (human traffic simulation)"
-    echo "  Rate Sweep: 0.1 → ${MAX_RATE} req/s"
+    echo "  Profile: sweep (automatic throughput discovery)"
+    echo "  Steps: ${SWEEP_STEPS}"
     echo "═══════════════════════════════════════════════════════════════════════════"
+    
+    mkdir -p "${OUTPUT_DIR}"
     
     # Check model availability
     if ! curl -s --connect-timeout 10 "${MODEL_URL}/v1/models" >/dev/null 2>&1; then
@@ -344,18 +327,19 @@ data:
     
     echo ""
     echo "▶ Running ${DESCRIPTION}..."
-    echo "  Prompt tokens: ${PROMPT_TOKENS}"
-    echo "  Output tokens: ${OUTPUT_TOKENS}"
+    echo "  Using synthetic data: prompt_tokens=${PROMPT_TOKENS}, output_tokens=${OUTPUT_TOKENS}"
     
-    guidellm benchmark \
+    guidellm benchmark run \
       --target "${MODEL_URL}/v1" \
       --model "${MODEL_NAME}" \
-      --rate-type poisson \
-      --rate 0.1 ${MAX_RATE} \
-      --rate-steps 6 \
+      --data "{\"prompt_tokens\": ${PROMPT_TOKENS}, \"output_tokens\": ${OUTPUT_TOKENS}}" \
+      --profile sweep \
+      --rate ${SWEEP_STEPS} \
       --max-seconds 60 \
-      --data "prompt_tokens=${PROMPT_TOKENS},output_tokens=${OUTPUT_TOKENS}" \
-      --output-path "${OUTPUT_FILE}"
+      --max-requests 100 \
+      --output-dir "${OUTPUT_DIR}" \
+      --outputs "${SCENARIO}.json" \
+      --disable-console-interactive
     
     echo ""
     echo "✓ Benchmark complete!"
