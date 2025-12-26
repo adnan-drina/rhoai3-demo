@@ -1,0 +1,16 @@
+# ServiceAccount for GuideLLM Workbench
+# ============================================================================
+# The workbench container requires anyuid SCC to run as the guidellm user.
+# This is because the /app directory is owned by guidellm user (UID 1001).
+# ============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guidellm-workbench
+  namespace: private-ai
+  labels:
+    app: guidellm-workbench
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+

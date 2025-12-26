@@ -1,0 +1,31 @@
+# GuideLLM Workbench Configuration
+# ============================================================================
+# Pre-configured model endpoints for the private-ai namespace.
+# These are used as defaults in the Workbench UI.
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guidellm-workbench-config
+  namespace: private-ai
+  labels:
+    app: guidellm-workbench
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+data:
+  # Model endpoints (internal cluster URLs)
+  MISTRAL_3_INT4_ENDPOINT: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+  MISTRAL_3_BF16_ENDPOINT: "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1"
+  GRANITE_8B_AGENT_ENDPOINT: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+  DEVSTRAL_2_ENDPOINT: "http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1"
+  GPT_OSS_20B_ENDPOINT: "http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1"
+  
+  # Default benchmark configuration
+  DEFAULT_MAX_SECONDS: "60"
+  DEFAULT_MAX_REQUESTS: "50"
+  DEFAULT_RATE_TYPE: "poisson"
+  
+  # Output configuration
+  OUTPUT_DIR: "/tmp/results"
+

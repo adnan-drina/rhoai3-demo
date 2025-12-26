@@ -76,6 +76,7 @@ This step demonstrates the **Economics of Precision**:
 | **GuideLLM CronJob** | Daily Poisson stress tests at 2:00 AM UTC | Community (OSS) |
 | **GuideLLM Pipeline** | Tekton Pipeline for self-service benchmarks | Community (OSS) |
 | **PipelineRun Templates** | Pre-configured runs for each model | - |
+| **GuideLLM Workbench** | Streamlit UI for interactive benchmarking | Community (OSS) |
 
 > **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.0. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
@@ -282,6 +283,29 @@ oc run results-viewer --rm -it --restart=Never \
   -n private-ai
 ```
 
+## GuideLLM Workbench (Interactive UI)
+
+The [GuideLLM Workbench](https://github.com/rh-aiservices-bu/guidellm-pipeline) provides a Streamlit-based web interface for running benchmarks interactively.
+
+### Features
+
+- **Interactive Configuration**: Easy-to-use forms for endpoint, authentication, and benchmark parameters
+- **Real-time Monitoring**: Live metrics parsing during benchmark execution
+- **Quick Stats**: Sidebar with key performance indicators (requests/sec, tokens/sec, latency, TTFT)
+- **Results History**: Session-based storage with detailed result viewing
+- **Download Results**: Export benchmark results as YAML files
+
+### Access the Workbench
+
+```bash
+# Get the Workbench URL
+oc get route guidellm-workbench -n private-ai -o jsonpath='https://{.spec.host}{"\n"}'
+```
+
+### Pre-configured Endpoints
+
+The workbench comes pre-configured with all 5 model endpoints. Select from the dropdown or enter a custom endpoint.
+
 ## GuideLLM Benchmarking
 
 [GuideLLM](https://github.com/neuralmagic/guidellm) is an open-source tool from Neural Magic for evaluating LLM deployments by simulating real-world inference workloads.
@@ -433,18 +457,25 @@ gitops/step-07-model-performance-metrics/
 │   │   ├── pvc.yaml                       # Results storage
 │   │   ├── cronjob.yaml                   # Daily scheduled benchmarks
 │   │   └── job-template.yaml              # On-demand template
-│   └── guidellm-pipeline/                 # Self-service pipelines (Tekton)
+│   ├── guidellm-pipeline/                 # Self-service pipelines (Tekton)
+│   │   ├── kustomization.yaml
+│   │   ├── pvc.yaml                       # Pipeline results storage
+│   │   ├── task.yaml                      # GuideLLM Tekton Task
+│   │   ├── pipeline.yaml                  # GuideLLM Benchmark Pipeline
+│   │   └── pipelineruns/                  # Pre-configured templates
+│   │       ├── kustomization.yaml
+│   │       ├── mistral-3-bf16.yaml        # 4-GPU full precision
+│   │       ├── mistral-3-int4.yaml        # 1-GPU quantized
+│   │       ├── granite-8b-agent.yaml      # 1-GPU agent model
+│   │       ├── devstral-2.yaml            # 4-GPU coding model
+│   │       └── gpt-oss-20b.yaml           # 4-GPU foundation model
+│   └── guidellm-workbench/                # Interactive Streamlit UI
 │       ├── kustomization.yaml
-│       ├── pvc.yaml                       # Pipeline results storage
-│       ├── task.yaml                      # GuideLLM Tekton Task
-│       ├── pipeline.yaml                  # GuideLLM Benchmark Pipeline
-│       └── pipelineruns/                  # Pre-configured templates
-│           ├── kustomization.yaml
-│           ├── mistral-3-bf16.yaml        # 4-GPU full precision
-│           ├── mistral-3-int4.yaml        # 1-GPU quantized
-│           ├── granite-8b-agent.yaml      # 1-GPU agent model
-│           ├── devstral-2.yaml            # 4-GPU coding model
-│           └── gpt-oss-20b.yaml           # 4-GPU foundation model
+│       ├── rbac.yaml                      # ServiceAccount with anyuid SCC
+│       ├── configmap.yaml                 # Pre-configured model endpoints
+│       ├── deployment.yaml                # Workbench deployment
+│       ├── service.yaml
+│       └── route.yaml
 └── kustomization.yaml
 ```
 

@@ -1,0 +1,21 @@
+# GuideLLM Workbench Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: guidellm-workbench
+  namespace: private-ai
+  labels:
+    app: guidellm-workbench
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  selector:
+    app: guidellm-workbench
+  ports:
+    - name: http
+      port: 8501
+      targetPort: 8501
+      protocol: TCP
+  type: ClusterIP
+

@@ -1,0 +1,65 @@
+# GuideLLM Workbench Deployment
+# ============================================================================
+# Streamlit-based interactive benchmarking UI.
+#
+# Image: quay.io/rh-aiservices-bu/guidellm-wb:v1
+# Port: 8501 (Streamlit default)
+#
+# Pre-configured with model endpoints for private-ai namespace.
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guidellm-workbench
+  namespace: private-ai
+  labels:
+    app: guidellm-workbench
+    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/component: benchmarking
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guidellm-workbench
+  template:
+    metadata:
+      labels:
+        app: guidellm-workbench
+    spec:
+      serviceAccountName: guidellm-workbench
+      containers:
+        - name: workbench
+          image: quay.io/rh-aiservices-bu/guidellm-wb:v1
+          ports:
+            - containerPort: 8501
+              name: http
+              protocol: TCP
+          env:
+            # Default model endpoints (can be overridden in UI)
+            - name: DEFAULT_ENDPOINT
+              value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+          envFrom:
+            - configMapRef:
+                name: guidellm-workbench-config
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 30
+            periodSeconds: 5
+
