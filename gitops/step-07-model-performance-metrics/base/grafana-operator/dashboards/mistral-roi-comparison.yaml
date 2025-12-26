@@ -6,7 +6,8 @@
 #
 # SLA Thresholds:
 #   TTFT:       < 500ms (Excellent) | < 1.0s (SLA) | > 2.0s (Breaking)
-#   TPOT:       > 50 tok/s (Excellent) | > 20 tok/s (SLA) | < 10 tok/s (Breaking)
+#   TPOT:       < 50ms (Excellent) | < 75ms (SLA) | > 100ms (Breaking)
+#   Throughput: > 50 tok/s (Excellent) | > 20 tok/s (SLA) | < 10 tok/s (Breaking)
 #   KV Cache:   < 70% (Excellent) | < 85% (SLA) | > 95% (Breaking)
 #   Queue:      0 (Excellent) | 0-1 (SLA) | > 5 (Breaking)
 # ============================================================================
@@ -77,22 +78,23 @@ spec:
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "description": "Throughput (Output Tokens/sec) - SLA: > 20, Breaking: < 10",
+          "description": "Time Per Output Token (p95) - SLA: < 50ms, Breaking: > 100ms",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
               "decimals": 1,
-              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "orange", "value": 10}, {"color": "yellow", "value": 20}, {"color": "green", "value": 50}]},
-              "unit": "short"
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "orange", "value": 75}, {"color": "red", "value": 100}]},
+              "unit": "ms",
+              "noValue": "No data"
             }
           },
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4},
           "id": 11,
           "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
           "targets": [
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[1m])", "legendFormat": "Tok/sec", "refId": "A"}
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-bf16\"}[5m])) by (le)) * 1000", "legendFormat": "p95 TPOT", "refId": "A"}
           ],
-          "title": "TPOT (Tok/sec)",
+          "title": "TPOT (p95)",
           "type": "stat"
         },
         {
@@ -163,22 +165,23 @@ spec:
         },
         {
           "datasource": {"type": "prometheus", "uid": "Prometheus-UWM"},
-          "description": "Throughput (Output Tokens/sec) - SLA: > 20, Breaking: < 10",
+          "description": "Time Per Output Token (p95) - SLA: < 50ms, Breaking: > 100ms",
           "fieldConfig": {
             "defaults": {
               "color": {"mode": "thresholds"},
               "decimals": 1,
-              "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "orange", "value": 10}, {"color": "yellow", "value": 20}, {"color": "green", "value": 50}]},
-              "unit": "short"
+              "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "orange", "value": 75}, {"color": "red", "value": 100}]},
+              "unit": "ms",
+              "noValue": "No data"
             }
           },
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 9},
           "id": 21,
           "options": {"colorMode": "background", "graphMode": "area", "textMode": "value"},
           "targets": [
-            {"expr": "rate(vllm:generation_tokens_total{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[1m])", "legendFormat": "Tok/sec", "refId": "A"}
+            {"expr": "histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket{namespace=\"private-ai\", model_name=\"mistral-3-int4\"}[5m])) by (le)) * 1000", "legendFormat": "p95 TPOT", "refId": "A"}
           ],
-          "title": "TPOT (Tok/sec)",
+          "title": "TPOT (p95)",
           "type": "stat"
         },
         {

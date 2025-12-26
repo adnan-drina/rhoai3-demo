@@ -1,0 +1,327 @@
+# =============================================================================
+# GPU Switchboard Workbench - RHOAI 3.0 GitOps Pattern
+# =============================================================================
+# This workbench uses the RHOAI 3.0 controller-managed authentication pattern:
+#
+#   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
+#   - Controller injects: kube-rbac-proxy sidecar for authentication
+#   - Controller creates: {name}-kube-rbac-proxy Service + HTTPRoute
+#
+# This pattern matches Dashboard-created workbenches exactly, ensuring:
+#   - No port mismatch issues (controller manages all routing)
+#   - No manual oauth-proxy configuration needed
+#   - Gateway API URL works automatically
+#
+# The only GitOps additions are:
+#   - Git-sync init container (pre-load notebooks from Git)
+#   - RBAC for InferenceService management (GPU orchestration)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# ServiceAccount: Workbench Identity
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gpu-switchboard
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+# -----------------------------------------------------------------------------
+# PVC: Workbench Storage
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gpu-switchboard-storage
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    openshift.io/display-name: gpu-switchboard-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp3-csi
+---
+# -----------------------------------------------------------------------------
+# Notebook: GPU Switchboard
+# -----------------------------------------------------------------------------
+# Key annotation: notebooks.opendatahub.io/inject-auth: "true"
+#
+# This tells the RHOAI 3.0 Notebook Controller to:
+#   1. Inject kube-rbac-proxy sidecar for authentication
+#   2. Create {name}-kube-rbac-proxy Service targeting port 8443
+#   3. Create HTTPRoute targeting the kube-rbac-proxy Service
+#   4. Create NetworkPolicies for proper ingress
+#
+# This matches exactly what the Dashboard creates!
+# -----------------------------------------------------------------------------
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: gpu-switchboard
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    # CRITICAL: Use inject-auth (NOT inject-oauth) for RHOAI 3.0
+    # This triggers controller to inject kube-rbac-proxy sidecar
+    notebooks.opendatahub.io/inject-auth: "true"
+    # Hardware Profile: Delegates resource management to the platform
+    opendatahub.io/hardware-profile-name: cpu-small
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    # UI Metadata
+    opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
+    opendatahub.io/username: ai-admin
+    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
+    notebooks.opendatahub.io/last-size-selection: Small
+    openshift.io/display-name: "GPU Switchboard"
+    openshift.io/description: "Interactive notebook for GPU-as-a-Service demo - control 5 models with CLI commands"
+spec:
+  template:
+    spec:
+      enableServiceLinks: false
+      serviceAccountName: gpu-switchboard
+      affinity: {}
+      # =========================================================================
+      # Git-Sync Init Container: Pre-load notebooks from Git
+      # =========================================================================
+      # This is the ONLY custom addition to the standard workbench pattern.
+      # It clones the GPU-Orchestrator notebook before Jupyter starts.
+      # =========================================================================
+      initContainers:
+        - name: git-sync
+          image: alpine/git:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              REPO_URL="https://github.com/adnan-drina/rhoai3-demo.git"
+              WORKSPACE="/opt/app-root/src"
+              NOTEBOOKS_SRC="gitops/step-05-llm-on-vllm/base/controller"
+              
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  Git-Sync: Loading GPU Orchestrator Notebook                 ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+              
+              if [ ! -f "$WORKSPACE/GPU-Orchestrator.ipynb" ]; then
+                echo "→ Cloning repository..."
+                git clone --depth 1 --single-branch "$REPO_URL" /tmp/repo
+                
+                echo "→ Copying notebooks to workspace..."
+                cp /tmp/repo/$NOTEBOOKS_SRC/*.ipynb "$WORKSPACE/" 2>/dev/null || true
+                
+                rm -rf /tmp/repo
+                echo "✓ Notebooks synced successfully!"
+              else
+                echo "✓ Notebooks already exist - skipping sync"
+              fi
+              
+              ls -la "$WORKSPACE/"
+          volumeMounts:
+            - name: gpu-switchboard-storage
+              mountPath: /opt/app-root/src
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      # =========================================================================
+      # Container: Jupyter Notebook
+      # =========================================================================
+      # The kube-rbac-proxy sidecar is AUTOMATICALLY injected by the controller
+      # when inject-auth: "true" is set. We only define the notebook container.
+      # =========================================================================
+      containers:
+        - name: gpu-switchboard
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/private-ai/gpu-switchboard
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+            - name: PIP_CERT
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: REQUESTS_CA_BUNDLE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: SSL_CERT_FILE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: GIT_SSL_CAINFO
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+            requests:
+              cpu: "2"
+              memory: 4Gi
+          livenessProbe:
+            httpGet:
+              path: /notebook/private-ai/gpu-switchboard/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /notebook/private-ai/gpu-switchboard/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: gpu-switchboard-storage
+              mountPath: /opt/app-root/src
+            - name: shm
+              mountPath: /dev/shm
+            - name: trusted-ca
+              mountPath: /etc/pki/tls/custom-certs/ca-bundle.crt
+              subPath: ca-bundle.crt
+              readOnly: true
+      volumes:
+        - name: gpu-switchboard-storage
+          persistentVolumeClaim:
+            claimName: gpu-switchboard-storage
+        - name: shm
+          emptyDir:
+            medium: Memory
+        - name: trusted-ca
+          configMap:
+            name: workbench-trusted-ca-bundle
+            optional: true
+            items:
+              - key: ca-bundle.crt
+                path: ca-bundle.crt
+---
+# =============================================================================
+# RBAC: GPU Switchboard Controller Permissions
+# =============================================================================
+# These permissions allow the notebook to manage InferenceServices for the
+# GPU-as-a-Service demo. This is the only GitOps-specific RBAC needed.
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gpu-switchboard-controller
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  # Deployments (RawDeployment mode - the primary way to scale InferenceServices)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch", "update"]
+  # InferenceService management (for metadata/status queries)
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices/scale"]
+    verbs: ["get", "patch", "update"]
+  # Knative services (ksvc) - not used in RawDeployment mode, but included for completeness
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services/scale"]
+    verbs: ["get", "patch", "update"]
+  # Pod status
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Kueue workloads
+  - apiGroups: ["kueue.x-k8s.io"]
+    resources: ["workloads", "localqueues"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gpu-switchboard-controller
+  namespace: private-ai
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gpu-switchboard-controller
+subjects:
+  - kind: ServiceAccount
+    name: gpu-switchboard
+    namespace: private-ai
+---
+# ClusterRole: View ClusterQueues (for Kueue dashboard queries)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kueue-clusterqueue-viewer
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kueue.x-k8s.io"]
+    resources: ["clusterqueues", "resourceflavors"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gpu-switchboard-kueue-viewer
+  labels:
+    app: gpu-switchboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kueue-clusterqueue-viewer
+subjects:
+  - kind: ServiceAccount
+    name: gpu-switchboard
+    namespace: private-ai
+
