@@ -109,6 +109,7 @@ spec:
                           model: ${MODEL}
                       spec:
                         restartPolicy: Never
+                        dnsPolicy: ClusterFirst
                         securityContext:
                           fsGroup: 0
                         containers:
@@ -139,12 +140,40 @@ spec:
                                 echo "Target: \${TARGET_URL}"
                                 echo "Profile: \${PROFILE}"
                                 
+                                # ============================================================
+                                # FIX: Resolve DNS to IP before running GuideLLM
+                                # GuideLLM uses Python multiprocessing which forks workers.
+                                # Forked workers cannot resolve DNS (known container issue).
+                                # Solution: Resolve DNS now and use IP-based URL.
+                                # ============================================================
+                                
+                                # Extract hostname from TARGET_URL
+                                HOSTNAME=\$(echo "\${TARGET_URL}" | sed -E 's|https?://([^:/]+).*|\1|')
+                                echo "Resolving DNS for: \${HOSTNAME}"
+                                
+                                # Resolve hostname to IP using getent (works in most containers)
+                                IP=\$(getent hosts "\${HOSTNAME}" 2>/dev/null | awk '{print \$1}' | head -1)
+                                
+                                if [ -z "\${IP}" ]; then
+                                  echo "Warning: Could not resolve \${HOSTNAME}, trying nslookup..."
+                                  IP=\$(nslookup "\${HOSTNAME}" 2>/dev/null | grep -A1 'Name:' | grep 'Address:' | awk '{print \$2}' | head -1)
+                                fi
+                                
+                                if [ -z "\${IP}" ]; then
+                                  echo "Warning: DNS resolution failed, using original URL"
+                                  RESOLVED_URL="\${TARGET_URL}"
+                                else
+                                  # Replace hostname with IP in the URL
+                                  RESOLVED_URL=\$(echo "\${TARGET_URL}" | sed "s|\${HOSTNAME}|\${IP}|")
+                                  echo "Resolved: \${TARGET_URL} -> \${RESOLVED_URL}"
+                                fi
+                                
                                 cat > /tmp/prompts.json << 'EOF'
                                 [{"prompt": "What is the capital of France?"},{"prompt": "Explain quantum computing."},{"prompt": "Write a poem about the ocean."},{"prompt": "What are benefits of exercise?"},{"prompt": "How does photosynthesis work?"},{"prompt": "What is machine learning?"},{"prompt": "Tell me about the solar system."},{"prompt": "What causes rain?"},{"prompt": "Explain the theory of relativity."},{"prompt": "Describe making bread."}]
                                 EOF
                                 
                                 guidellm benchmark run \
-                                  --target "\${TARGET_URL}" \
+                                  --target "\${RESOLVED_URL}" \
                                   --data /tmp/prompts.json \
                                   --profile "\${PROFILE}" \
                                   --max-seconds "\${MAX_SECONDS}" \
