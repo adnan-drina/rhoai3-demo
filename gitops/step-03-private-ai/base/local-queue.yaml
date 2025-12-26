@@ -1,13 +1,33 @@
-# LocalQueue 'default' - REQUIRED for global Hardware Profiles
+# LocalQueue 'default' - RHOAI 3.0 Controller-Managed
 # ============================================================================
-# RHOAI 3.0 Best Practice: Use standardized 'default' name in each namespace
-# Global HardwareProfiles use scheduling.kueue.localQueueName: "default"
+# IMPORTANT: In RHOAI 3.0, the LocalQueue named 'default' is AUTOMATICALLY
+# created and managed by the RHOAI controller based on DSCInitialization
+# and DataScienceCluster settings.
 #
-# This LocalQueue points to our custom ClusterQueue (rhoai-main-queue) which:
-# - Has higher GPU quota (10 GPUs vs 5 in RHOAI default)
-# - Uses custom ResourceFlavors with nodeLabels for proper node targeting
-# - Uses ResourceFlavors with tolerations for GPU node scheduling
+# Configuration Source:
+#   DataScienceCluster.spec.components.kueue:
+#     defaultClusterQueueName: default
+#     defaultLocalQueueName: default
+#     managementState: Unmanaged
+#
+# This means:
+#   1. RHOAI creates a LocalQueue named 'default' in every DSProject namespace
+#   2. The LocalQueue points to the 'default' ClusterQueue (RHOAI-managed)
+#   3. Custom clusterQueue assignments are OVERWRITTEN by the controller
+#
+# Best Practice for RHOAI 3.0:
+#   - Use the RHOAI-managed 'default' ClusterQueue
+#   - Ensure HardwareProfiles use localQueueName: "default"
+#   - InferenceServices use kueue.x-k8s.io/queue-name: "default"
+#
+# The 'default' ClusterQueue includes GPU ResourceFlavors with proper
+# node targeting and tolerations for GPU scheduling.
 # ============================================================================
+#
+# NOTE: This file is kept for documentation purposes but will be overwritten
+# by the RHOAI controller. The actual LocalQueue configuration comes from
+# the DataScienceCluster CR in redhat-ods-applications namespace.
+#
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:
@@ -15,10 +35,9 @@ metadata:
   namespace: private-ai
   annotations:
     argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: Replace=true
     kueue.x-k8s.io/default-queue: "true"
 spec:
-  # Points to our custom GPU-as-a-Service ClusterQueue
-  # ResourceFlavors (nvidia-l4-1gpu, nvidia-l4-4gpu) inject:
-  # - nodeLabels → nodeSelector (for instance type targeting)
-  # - tolerations (for GPU node scheduling)
-  clusterQueue: rhoai-main-queue
+  # RHOAI controller will override this to 'default'
+  clusterQueue: default
+  stopPolicy: None
