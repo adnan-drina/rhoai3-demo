@@ -23,8 +23,15 @@ metadata:
   name: granite-8b-agent
   namespace: private-ai
   labels:
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: granite-8b-agent
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
+    # Kueue/KServe labels
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:

@@ -1,0 +1,92 @@
+# Kubernetes Labeling Standards
+
+## Overview
+
+This rule defines the labeling conventions for all Kubernetes resources in this project, following [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) and [OpenShift Topology View requirements](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view).
+
+## Required Labels
+
+All resources MUST include these labels:
+
+| Label | Purpose | Example |
+|-------|---------|---------|
+| `app.kubernetes.io/part-of` | Groups resources in OpenShift Topology view | `llm-serving` |
+| `app.kubernetes.io/name` | Identifies the application name | `mistral-3-int4` |
+| `app.kubernetes.io/component` | Identifies the component role | `inference`, `monitoring`, `storage` |
+
+## Naming Convention for `app.kubernetes.io/part-of`
+
+Use **short, functional group names** (not step numbers):
+
+| Group | Value | Resources |
+|-------|-------|-----------|
+| **LLM Serving** | `llm-serving` | InferenceService, ServingRuntime, vLLM pods |
+| **Observability** | `observability` | Grafana, ServiceMonitors, Dashboards |
+| **Benchmarking** | `benchmarking` | GuideLLM CronJob, Jobs, Pipelines, Workbench |
+| **Model Registry** | `model-registry` | ModelRegistry, PostgreSQL, S3 storage |
+| **Model-as-a-Service** | `maas` | LiteMaaS, LiteLLM, OAuth |
+| **GPU Infrastructure** | `gpu-infra` | NFD, GPU Operator, MachineSets |
+| **Kueue Quotas** | `kueue` | ClusterQueue, LocalQueue, ResourceFlavor |
+
+## Full Label Example
+
+```yaml
+metadata:
+  labels:
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: mistral-3-int4
+    app.kubernetes.io/instance: mistral-3-int4-private-ai
+    app.kubernetes.io/version: "3.0"
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+    
+    # OpenShift/RHOAI specific
+    opendatahub.io/dashboard: "true"  # Show in RHOAI Dashboard
+```
+
+## OpenShift Topology View
+
+The `app.kubernetes.io/part-of` label creates visual groupings in OpenShift Console Topology view:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      llm-serving                            │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │mistral-3-int4│ │mistral-3-bf16│ │granite-8b   │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘           │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                      observability                          │
+│  ┌─────────────┐ ┌─────────────┐                           │
+│  │   grafana   │ │prometheus-uwm│                           │
+│  └─────────────┘ └─────────────┘                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Version Labels
+
+Use `app.kubernetes.io/version` for:
+- Model versions (e.g., `"3.0"` for Mistral-3)
+- Operator versions (e.g., `"3.0.0"` for RHOAI)
+- Application versions
+
+## Anti-Patterns (Avoid)
+
+❌ **Step numbers in labels**: `app.kubernetes.io/part-of: step-07-model-performance-metrics`
+❌ **Overly long names**: `app.kubernetes.io/part-of: guidellm-model-performance-metrics-observability`
+❌ **Generic names**: `app.kubernetes.io/part-of: app` or `app.kubernetes.io/part-of: demo`
+
+## Migration
+
+When updating existing resources:
+1. Update the label in GitOps manifests
+2. Apply via ArgoCD sync or `oc apply`
+3. Verify grouping in OpenShift Console Topology view
+
+## References
+
+- [Kubernetes Recommended Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)
+- [OpenShift Topology View](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
+- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/)

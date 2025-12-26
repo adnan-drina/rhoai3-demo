@@ -16,7 +16,7 @@ metadata:
   name: openshift-pipelines-operator
   namespace: openshift-operators
   labels:
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: operators
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:

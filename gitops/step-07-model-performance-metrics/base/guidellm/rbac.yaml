@@ -9,7 +9,7 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: benchmarking
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 ---
@@ -20,7 +20,7 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: benchmarking
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 rules:
@@ -38,7 +38,7 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: benchmarking
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 roleRef:

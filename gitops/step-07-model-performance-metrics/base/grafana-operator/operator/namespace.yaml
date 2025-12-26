@@ -8,7 +8,7 @@ kind: Namespace
 metadata:
   name: grafana-operator
   labels:
-    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/part-of: observability
     app.kubernetes.io/component: observability
   annotations:
     argocd.argoproj.io/sync-wave: "0"

@@ -18,7 +18,7 @@ metadata:
   labels:
     app: grafana
     dashboards: "grafana"
-    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/part-of: observability
     app.kubernetes.io/component: observability
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true

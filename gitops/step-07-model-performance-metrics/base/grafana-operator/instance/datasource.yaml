@@ -15,7 +15,7 @@ metadata:
   namespace: private-ai
   labels:
     app: grafana
-    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/part-of: observability
     app.kubernetes.io/component: observability
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -57,7 +57,7 @@ metadata:
   namespace: private-ai
   labels:
     app: grafana
-    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/part-of: observability
   annotations:
     # References the SA created by the operator
     kubernetes.io/service-account.name: grafana-sa
@@ -72,7 +72,7 @@ metadata:
   name: grafana-cluster-monitoring-view
   labels:
     app: grafana
-    app.kubernetes.io/part-of: rhoai3-demo
+    app.kubernetes.io/part-of: observability
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 roleRef:

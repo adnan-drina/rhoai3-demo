@@ -21,7 +21,7 @@ metadata:
   labels:
     app: guidellm-pipeline
     model: gpt-oss-20b
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: benchmarking
 spec:
   pipelineRef:
     name: guidellm-benchmark

@@ -20,8 +20,15 @@ metadata:
   name: mistral-3-int4
   namespace: private-ai
   labels:
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: mistral-3-int4
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"  # Makes model available in AI Asset Endpoints for Playground
+    # Kueue/KServe labels
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:

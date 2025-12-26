@@ -19,7 +19,7 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm-pipeline
-    app.kubernetes.io/part-of: step-07-model-performance-metrics
+    app.kubernetes.io/part-of: benchmarking
   annotations:
     argocd.argoproj.io/sync-wave: "11"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
