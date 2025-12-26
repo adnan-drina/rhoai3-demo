@@ -45,9 +45,9 @@ spec:
           # If running in a restricted environment, consider pre-downloading data
           containers:
             - name: guidellm
-              # Official GuideLLM container image
+              # Official GuideLLM container image (stable release)
               # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
-              image: ghcr.io/vllm-project/guidellm:nightly
+              image: ghcr.io/vllm-project/guidellm:stable
               env:
                 # Set HOME to writable directory for cache
                 - name: HOME

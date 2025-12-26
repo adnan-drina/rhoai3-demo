@@ -41,9 +41,9 @@ spec:
         fsGroup: 0
       containers:
         - name: guidellm
-          # Official GuideLLM container image
+          # Official GuideLLM container image (stable release)
           # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
-          image: ghcr.io/vllm-project/guidellm:nightly
+          image: ghcr.io/vllm-project/guidellm:stable
           env:
             # Override these for specific benchmarks
             - name: MODEL_NAME
