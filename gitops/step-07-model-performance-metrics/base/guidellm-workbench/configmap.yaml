@@ -1,14 +1,7 @@
 # GuideLLM Workbench Configuration
 # ============================================================================
-# Pre-configured model endpoints for the private-ai namespace.
-# Copy these values into the Workbench UI to benchmark different models.
-#
-# Available Models:
-#   1. mistral-3-int4  (1-GPU, INT4 quantized)
-#   2. mistral-3-bf16  (4-GPU, BF16 full precision)
-#   3. granite-8b-agent (1-GPU, FP8)
-#   4. devstral-2       (4-GPU, coding model)
-#   5. gpt-oss-20b      (4-GPU, foundation model)
+# Environment-specific configuration for the GuideLLM Benchmark Workbench.
+# These values are injected into the app at startup to pre-populate UI fields.
 # ============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -22,58 +15,148 @@ metadata:
     argocd.argoproj.io/sync-wave: "14"
 data:
   # ==========================================================================
-  # Model 1: Mistral-3 INT4 (1-GPU) - DEFAULT
+  # Default Model Configuration (pre-populates UI fields)
   # ==========================================================================
-  # Target: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
-  # Model Name: mistral-3-int4
-  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
+  DEFAULT_TARGET: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+  DEFAULT_MODEL_NAME: "mistral-3-int4"
+  DEFAULT_PROCESSOR: "mistralai/Mistral-Small-24B-Instruct-2501"
   
-  # ==========================================================================
-  # Model 2: Mistral-3 BF16 (4-GPU)
-  # ==========================================================================
-  # Target: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
-  # Model Name: mistral-3-bf16
-  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
-  
-  # ==========================================================================
-  # Model 3: Granite-8B Agent (1-GPU)
-  # ==========================================================================
-  # Target: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-  # Model Name: granite-8b-agent
-  # Processor: ibm-granite/granite-3.1-8b-instruct
-  
-  # ==========================================================================
-  # Model 4: Devstral-2 (4-GPU)
-  # ==========================================================================
-  # Target: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
-  # Model Name: devstral-2
-  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
-  
-  # ==========================================================================
-  # Model 5: GPT-OSS-20B (4-GPU)
-  # ==========================================================================
-  # Target: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
-  # Model Name: gpt-oss-20b
-  # Processor: RedHatAI/gpt-oss-20b
-  
-  # ==========================================================================
-  # Quick Reference (copy-paste into UI)
-  # ==========================================================================
-  MODELS_INFO: |
-    ┌─────────────────┬───────┬────────────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────┐
-    │ Model           │ GPUs  │ Target Endpoint                                                                │ Processor                                   │
-    ├─────────────────┼───────┼────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────┤
-    │ mistral-3-int4  │ 1     │ http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1           │ mistralai/Mistral-Small-24B-Instruct-2501   │
-    │ mistral-3-bf16  │ 4     │ http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1           │ mistralai/Mistral-Small-24B-Instruct-2501   │
-    │ granite-8b-agent│ 1     │ http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1         │ ibm-granite/granite-3.1-8b-instruct         │
-    │ devstral-2      │ 4     │ http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1               │ mistralai/Mistral-Small-24B-Instruct-2501   │
-    │ gpt-oss-20b     │ 4     │ http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1              │ RedHatAI/gpt-oss-20b                        │
-    └─────────────────┴───────┴────────────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────┘
-  
-  # Default benchmark parameters
+  # Benchmark parameters
   DEFAULT_RATE_TYPE: "synchronous"
-  DEFAULT_MAX_DURATION: "60"
+  DEFAULT_MAX_SECONDS: "60"
   DEFAULT_MAX_REQUESTS: "100"
   DEFAULT_MAX_CONCURRENCY: "10"
   DEFAULT_PROMPT_TOKENS: "512"
   DEFAULT_OUTPUT_TOKENS: "128"
+  
+  # ==========================================================================
+  # Model Presets (JSON for UI dropdown selector)
+  # ==========================================================================
+  MODEL_PRESETS: |
+    [
+      {
+        "name": "Mistral-3 INT4 (1-GPU)",
+        "target": "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1",
+        "model_name": "mistral-3-int4",
+        "processor": "mistralai/Mistral-Small-24B-Instruct-2501"
+      },
+      {
+        "name": "Mistral-3 BF16 (4-GPU)",
+        "target": "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1",
+        "model_name": "mistral-3-bf16",
+        "processor": "mistralai/Mistral-Small-24B-Instruct-2501"
+      },
+      {
+        "name": "Granite-8B Agent (1-GPU)",
+        "target": "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1",
+        "model_name": "granite-8b-agent",
+        "processor": "ibm-granite/granite-3.1-8b-instruct"
+      },
+      {
+        "name": "Devstral-2 (4-GPU)",
+        "target": "http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1",
+        "model_name": "devstral-2",
+        "processor": "mistralai/Devstral-Small-2505"
+      },
+      {
+        "name": "GPT-OSS-20B (4-GPU)",
+        "target": "http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1",
+        "model_name": "gpt-oss-20b",
+        "processor": "RedHatAI/gpt-oss-20b"
+      }
+    ]
+  
+  # ==========================================================================
+  # Startup Script - Patches app.py to read environment variables
+  # ==========================================================================
+  startup.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "╔═══════════════════════════════════════════════════════════════════╗"
+    echo "║  GuideLLM Workbench - Environment Configuration                    ║"
+    echo "╚═══════════════════════════════════════════════════════════════════╝"
+    
+    # Patch app.py to use environment variables for defaults
+    APP_FILE="/app/app.py"
+    
+    if [ -f "$APP_FILE" ]; then
+      echo "Patching app.py with environment defaults..."
+      
+      # Create a Python patch script
+      cat > /tmp/patch_defaults.py << 'PYTHON_PATCH'
+    import os
+    import re
+    
+    app_file = "/app/app.py"
+    
+    with open(app_file, 'r') as f:
+        content = f.read()
+    
+    # Define replacements: (pattern, replacement)
+    replacements = [
+        # Target endpoint
+        (r'value="http://localhost:8000/v1"', 
+         f'value=os.getenv("DEFAULT_TARGET", "http://localhost:8000/v1")'),
+        
+        # Model name
+        (r'value="llama-3-2-3b"',
+         f'value=os.getenv("DEFAULT_MODEL_NAME", "llama-3-2-3b")'),
+        
+        # Processor (for Llama default)
+        (r'value="meta-llama/Llama-3.2-3B"',
+         f'value=os.getenv("DEFAULT_PROCESSOR", "meta-llama/Llama-3.2-3B")'),
+        
+        # Max seconds
+        (r'value=60,\s*step=10,\s*help="Sets the maximum duration',
+         f'value=int(os.getenv("DEFAULT_MAX_SECONDS", "60")), step=10, help="Sets the maximum duration'),
+        
+        # Max requests  
+        (r'value=100,\s*step=10,\s*help="Sets the maximum number of requests',
+         f'value=int(os.getenv("DEFAULT_MAX_REQUESTS", "100")), step=10, help="Sets the maximum number of requests'),
+        
+        # Max concurrency
+        (r'value=10,\s*step=1,\s*help="Global concurrency',
+         f'value=int(os.getenv("DEFAULT_MAX_CONCURRENCY", "10")), step=1, help="Global concurrency'),
+        
+        # Prompt tokens
+        (r'"Prompt Tokens",\s*min_value=1,\s*max_value=4096,\s*value=512',
+         f'"Prompt Tokens", min_value=1, max_value=4096, value=int(os.getenv("DEFAULT_PROMPT_TOKENS", "512"))'),
+        
+        # Output tokens (if present)
+        (r'"Output Tokens",\s*min_value=1,\s*max_value=4096,\s*value=128',
+         f'"Output Tokens", min_value=1, max_value=4096, value=int(os.getenv("DEFAULT_OUTPUT_TOKENS", "128"))'),
+    ]
+    
+    patched = False
+    for pattern, replacement in replacements:
+        if re.search(pattern, content):
+            content = re.sub(pattern, replacement, content)
+            patched = True
+            print(f"  ✓ Patched: {pattern[:50]}...")
+    
+    if patched:
+        with open(app_file, 'w') as f:
+            f.write(content)
+        print("App patched successfully!")
+    else:
+        print("No patches applied (patterns may have already been applied)")
+    PYTHON_PATCH
+      
+      python /tmp/patch_defaults.py
+      
+      echo ""
+      echo "Environment defaults:"
+      echo "  TARGET:          ${DEFAULT_TARGET:-not set}"
+      echo "  MODEL_NAME:      ${DEFAULT_MODEL_NAME:-not set}"
+      echo "  PROCESSOR:       ${DEFAULT_PROCESSOR:-not set}"
+      echo "  MAX_SECONDS:     ${DEFAULT_MAX_SECONDS:-60}"
+      echo "  MAX_REQUESTS:    ${DEFAULT_MAX_REQUESTS:-100}"
+      echo "  MAX_CONCURRENCY: ${DEFAULT_MAX_CONCURRENCY:-10}"
+      echo ""
+    else
+      echo "Warning: app.py not found at $APP_FILE"
+    fi
+    
+    echo "Starting Streamlit..."
+    exec streamlit run /app/app.py --server.port=8501 --server.address=0.0.0.0

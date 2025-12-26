@@ -1,11 +1,14 @@
 # GuideLLM Workbench Deployment
 # ============================================================================
-# Streamlit-based interactive benchmarking UI.
+# Streamlit-based interactive benchmarking UI with environment configuration.
 #
 # Image: quay.io/rh-aiservices-bu/guidellm-wb:v1
 # Port: 8501 (Streamlit default)
 #
-# Pre-configured with model endpoints for private-ai namespace.
+# The startup script patches the app to read environment variables for
+# default configuration values, eliminating manual copy-paste.
+#
+# Ref: https://github.com/rh-aiservices-bu/guidellm-pipeline
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -14,8 +17,10 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm-workbench
-    app.kubernetes.io/part-of: benchmarking
+    app.kubernetes.io/name: guidellm-workbench
     app.kubernetes.io/component: benchmarking
+    app.kubernetes.io/part-of: benchmarking
+    app.kubernetes.io/managed-by: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "15"
 spec:
@@ -27,6 +32,9 @@ spec:
     metadata:
       labels:
         app: guidellm-workbench
+      annotations:
+        # Force rollout when ConfigMap changes
+        checksum/config: "{{ include (print $.Template.BasePath \"/configmap.yaml\") . | sha256sum }}"
     spec:
       serviceAccountName: guidellm-workbench
       containers:
@@ -36,33 +44,68 @@ spec:
             - containerPort: 8501
               name: http
               protocol: TCP
+          # Use custom startup script that patches defaults
+          command: ["/bin/bash"]
+          args: ["/config/startup.sh"]
           env:
-            # GuideLLM Workbench default configuration
-            # These pre-populate the UI fields (can be changed by user)
-            - name: TARGET
-              value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
-            - name: MODEL_NAME
-              value: "mistral-3-int4"
-            - name: PROCESSOR
-              value: "mistralai/Mistral-Small-24B-Instruct-2501"
-            - name: RATE_TYPE
-              value: "synchronous"
-            - name: MAX_DURATION
-              value: "60"
-            - name: MAX_REQUESTS
-              value: "100"
-            - name: MAX_CONCURRENCY
-              value: "10"
-            # Data configuration for emulated prompts
-            - name: DATA_TYPE
-              value: "emulated"
-            - name: PROMPT_TOKENS
-              value: "512"
-            - name: OUTPUT_TOKENS
-              value: "128"
-          envFrom:
-            - configMapRef:
-                name: guidellm-workbench-config
+            # Default model configuration (pre-populates UI)
+            - name: DEFAULT_TARGET
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_TARGET
+            - name: DEFAULT_MODEL_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_MODEL_NAME
+            - name: DEFAULT_PROCESSOR
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_PROCESSOR
+            - name: DEFAULT_RATE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_RATE_TYPE
+            - name: DEFAULT_MAX_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_MAX_SECONDS
+            - name: DEFAULT_MAX_REQUESTS
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_MAX_REQUESTS
+            - name: DEFAULT_MAX_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_MAX_CONCURRENCY
+            - name: DEFAULT_PROMPT_TOKENS
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_PROMPT_TOKENS
+            - name: DEFAULT_OUTPUT_TOKENS
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: DEFAULT_OUTPUT_TOKENS
+            # Model presets for dropdown (if implemented)
+            - name: MODEL_PRESETS
+              valueFrom:
+                configMapKeyRef:
+                  name: guidellm-workbench-config
+                  key: MODEL_PRESETS
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: results
+              mountPath: /results
           resources:
             requests:
               cpu: 200m
@@ -74,12 +117,18 @@ spec:
             httpGet:
               path: /_stcore/health
               port: 8501
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90  # Allow time for patching
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /_stcore/health
               port: 8501
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 5
-
+      volumes:
+        - name: config
+          configMap:
+            name: guidellm-workbench-config
+            defaultMode: 0755  # Make startup.sh executable
+        - name: results
+          emptyDir: {}
