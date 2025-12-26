@@ -1,12 +1,11 @@
-# GuideLLM Benchmark Pipeline
+# GuideLLM Realistic Load Test Pipeline
 # ============================================================================
-# Tekton Pipeline for running GuideLLM benchmarks.
+# Tekton Pipeline for realistic user load testing using GuideLLM.
 #
-# Provides self-service benchmark execution with:
-#   - Configurable model selection
-#   - Benchmark profile options
-#   - Persistent results storage
-#   - Status reporting
+# Default Configuration:
+#   - Poisson profile: Simulates real user arrival patterns
+#   - 5 requests/second average rate
+#   - 5 minutes duration for statistical significance
 #
 # Use the pre-configured PipelineRuns in pipelineruns/ for each model.
 #
@@ -48,21 +47,28 @@ spec:
     - name: profile
       type: string
       description: |
-        Benchmark profile to use:
-        - sweep: Runs multiple rate profiles (synchronous, throughput, constant rates)
-        - throughput: Maximum throughput test
+        Benchmark profile:
+        - poisson: Realistic user load (Poisson-distributed arrivals) [default]
+        - constant: Fixed request rate (for breaking point analysis)
+        - sweep: Multiple strategies (sync, throughput, constant 1-8)
         - synchronous: One request at a time
-      default: "sweep"
+        - throughput: Maximum throughput test
+      default: "poisson"
+    
+    - name: rate
+      type: string
+      description: Request rate (requests/second)
+      default: "5"
     
     - name: max-seconds
       type: string
       description: Maximum seconds per benchmark strategy
-      default: "60"
+      default: "300"
     
     - name: max-requests
       type: string
       description: Maximum requests per benchmark strategy
-      default: "50"
+      default: "500"
   
   workspaces:
     - name: results
@@ -87,6 +93,8 @@ spec:
           value: $(params.target-url)
         - name: profile
           value: $(params.profile)
+        - name: rate
+          value: $(params.rate)
         - name: max-seconds
           value: $(params.max-seconds)
         - name: max-requests

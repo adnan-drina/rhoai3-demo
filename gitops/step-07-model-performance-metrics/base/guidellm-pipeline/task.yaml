@@ -1,9 +1,13 @@
-# GuideLLM Benchmark Task
+# GuideLLM Benchmark Task - Realistic User Load Testing
 # ============================================================================
 # Tekton Task for running GuideLLM benchmarks against vLLM models.
 #
+# Default: Poisson profile for realistic user simulation
+#   - Poisson distribution models real user arrival patterns
+#   - Natural variance in request timing (not constant hammering)
+#   - Rate parameter = average requests per second
+#
 # Uses the official GuideLLM container image (stable v0.5.0).
-# Supports configurable parameters for model, profile, and duration.
 #
 # SLA Thresholds:
 #   TTFT: < 1.0s (SLA), > 2.0s (Breaking)
@@ -41,18 +45,31 @@ spec:
     
     - name: profile
       type: string
-      description: Benchmark profile (sweep, throughput, synchronous)
-      default: "sweep"
+      description: |
+        Benchmark profile:
+          - poisson: Realistic user load (Poisson-distributed arrivals) [default]
+          - constant: Fixed request rate (for breaking point analysis)
+          - sweep: Multiple strategies (sync, throughput, constant 1-8)
+          - synchronous: One request at a time
+          - throughput: Maximum throughput test
+      default: "poisson"
+    
+    - name: rate
+      type: string
+      description: |
+        Request rate (requests/second). For poisson profile, this is the average rate.
+        For constant profile, can be comma-separated (e.g., "5,10,15,20")
+      default: "5"
     
     - name: max-seconds
       type: string
       description: Maximum seconds per benchmark strategy
-      default: "60"
+      default: "300"
     
     - name: max-requests
       type: string
       description: Maximum requests per benchmark strategy
-      default: "50"
+      default: "500"
   
   workspaces:
     - name: results
@@ -78,6 +95,7 @@ spec:
         
         MODEL_NAME="$(params.model-name)"
         PROFILE="$(params.profile)"
+        RATE="$(params.rate)"
         MAX_SECONDS="$(params.max-seconds)"
         MAX_REQUESTS="$(params.max-requests)"
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -119,11 +137,12 @@ spec:
         TARGET="${RESOLVED_TARGET}"
         
         echo "═══════════════════════════════════════════════════════════════"
-        echo "  GuideLLM Benchmark Pipeline"
+        echo "  GuideLLM Realistic Load Test"
         echo "═══════════════════════════════════════════════════════════════"
         echo "  Model:       ${MODEL_NAME}"
         echo "  Target:      ${TARGET}"
         echo "  Profile:     ${PROFILE}"
+        echo "  Rate:        ${RATE} req/s"
         echo "  Max Seconds: ${MAX_SECONDS}"
         echo "  Max Requests: ${MAX_REQUESTS}"
         echo "  Output:      ${OUTPUT_FILE}"
@@ -172,6 +191,7 @@ spec:
           --target "${TARGET}" \
           --data /tmp/prompts.json \
           --profile "${PROFILE}" \
+          --rate "${RATE}" \
           --max-seconds "${MAX_SECONDS}" \
           --max-requests "${MAX_REQUESTS}" \
           --output-dir "${OUTPUT_DIR}" \

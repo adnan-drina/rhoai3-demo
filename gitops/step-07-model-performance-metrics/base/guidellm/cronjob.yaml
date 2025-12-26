@@ -1,7 +1,11 @@
-# GuideLLM Parallel Benchmark CronJob
+# GuideLLM Parallel Benchmark CronJob - Breaking Point Analysis
 # ============================================================================
-# Spawns parallel benchmark Jobs for each model.
-# Each model runs in its own container/Job for true parallelism.
+# Daily benchmark to find model breaking points under increasing load.
+#
+# Strategy: Constant rate with incrementally increasing concurrency
+#   - Runs at 5, 10, 15, 20 concurrent requests
+#   - Each concurrency level runs for 120 seconds
+#   - Identifies where TTFT degrades and queue depth increases
 #
 # Default: Daily at 2:00 AM UTC
 #
@@ -11,6 +15,11 @@
 # The dispatcher creates individual Jobs for each available model:
 #   - guidellm-mistral-3-int4-<timestamp>
 #   - guidellm-mistral-3-bf16-<timestamp>
+#
+# Breaking Point Indicators:
+#   - TTFT (p95) > 1.0s: Performance degradation
+#   - TTFT (p95) > 2.0s: Breaking point reached
+#   - Queue Depth > 5: System saturated
 # ============================================================================
 apiVersion: batch/v1
 kind: CronJob
@@ -47,12 +56,15 @@ spec:
                   value: private-ai
                 - name: GUIDELLM_IMAGE
                   value: ghcr.io/vllm-project/guidellm:stable
+                # Breaking Point Analysis: Constant rate with increasing concurrency
                 - name: GUIDELLM_PROFILE
-                  value: sweep
+                  value: constant
+                - name: GUIDELLM_RATES
+                  value: "5,10,15,20"
                 - name: GUIDELLM_MAX_SECONDS
-                  value: "60"
+                  value: "120"
                 - name: GUIDELLM_MAX_REQUESTS
-                  value: "50"
+                  value: "200"
               command:
                 - /bin/bash
                 - -c
@@ -126,6 +138,8 @@ spec:
                                 value: ${TARGET}
                               - name: PROFILE
                                 value: ${GUIDELLM_PROFILE}
+                              - name: RATES
+                                value: "${GUIDELLM_RATES}"
                               - name: MAX_SECONDS
                                 value: "${GUIDELLM_MAX_SECONDS}"
                               - name: MAX_REQUESTS
@@ -136,9 +150,10 @@ spec:
                               - /bin/bash
                               - -c
                               - |
-                                echo "GuideLLM Benchmark: \${MODEL_NAME}"
+                                echo "GuideLLM Breaking Point Analysis: \${MODEL_NAME}"
                                 echo "Target: \${TARGET_URL}"
                                 echo "Profile: \${PROFILE}"
+                                echo "Concurrency Rates: \${RATES}"
                                 
                                 # ============================================================
                                 # FIX: Resolve DNS to IP before running GuideLLM
@@ -176,6 +191,7 @@ spec:
                                   --target "\${RESOLVED_URL}" \
                                   --data /tmp/prompts.json \
                                   --profile "\${PROFILE}" \
+                                  --rate "\${RATES}" \
                                   --max-seconds "\${MAX_SECONDS}" \
                                   --max-requests "\${MAX_REQUESTS}" \
                                   --output-dir /results \

@@ -1,19 +1,19 @@
-# GuideLLM Benchmark - Mistral-3 INT4 (1-GPU)
+# GuideLLM Realistic Load Test - Mistral-3 INT4 (1-GPU)
 # ============================================================================
-# INT4 quantized Mistral-3 model benchmark.
+# Simulates realistic user traffic using Poisson distribution.
 #
 # Model: mistral-3-int4
 # GPUs: 1 x NVIDIA L4
 # Precision: INT4 (quantized)
 #
-# Compare with mistral-3-bf16 to measure ROI of quantization.
+# Benchmark Strategy:
+#   - Poisson profile: Random arrival times (realistic user behavior)
+#   - Rate: 5 requests/second average
+#   - Duration: 5 minutes (300 seconds)
+#   - Validates model performance under real-world conditions
 #
 # Usage:
 #   oc create -f mistral-3-int4.yaml
-#   # or
-#   tkn pipeline start guidellm-benchmark \
-#     --param model-name=mistral-3-int4 \
-#     --workspace name=results,claimName=guidellm-pipeline-results
 # ============================================================================
 apiVersion: tekton.dev/v1
 kind: PipelineRun
@@ -31,12 +31,15 @@ spec:
   params:
     - name: model-name
       value: "mistral-3-int4"
+    # Poisson profile: Realistic user arrival patterns
     - name: profile
-      value: "sweep"
+      value: "poisson"
+    - name: rate
+      value: "5"
     - name: max-seconds
-      value: "60"
+      value: "300"
     - name: max-requests
-      value: "50"
+      value: "500"
   
   workspaces:
     # Use emptyDir to avoid affinity-assistant (which may land on GPU nodes)
