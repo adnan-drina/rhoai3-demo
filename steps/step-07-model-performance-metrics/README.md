@@ -330,15 +330,29 @@ This answers: *"How does my model behave when real users arrive randomly?"*
 | **Code Gen** | 128 tok | 256 tok | TPOT | Long-form generation |
 | **Stress** | 256 tok | 256 tok | Overall | High I/O workload |
 
-### Trigger Manual Benchmark
+### Trigger Manual Benchmark (Parallel Execution)
+
+The CronJob uses a dispatcher pattern to spawn parallel Jobs for each model:
 
 ```bash
-# Full sweep on all available models
-oc create job --from=cronjob/guidellm-daily manual-$(date +%H%M) -n private-ai
+# Trigger parallel benchmarks for all available models
+oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M%S) -n private-ai
 
-# Watch progress
-oc logs -f job/manual-$(date +%H%M) -n private-ai
+# Watch the dispatcher create Jobs
+oc logs -f job/benchmark-$(date +%H%M%S) -n private-ai
+
+# Monitor parallel benchmark Jobs (spawned by dispatcher)
+oc get jobs -n private-ai -l app=guidellm
+
+# Watch both models running in parallel
+oc get pods -n private-ai -l app=guidellm -w
 ```
+
+**Architecture:**
+- The CronJob is a "dispatcher" that creates individual Jobs for each model
+- Each model benchmark runs in its own container for true parallelism
+- Jobs are labeled with `benchmark-run=<timestamp>` for tracking
+- Jobs auto-delete after 24 hours (`ttlSecondsAfterFinished: 86400`)
 
 ### Run Single Model Benchmark
 

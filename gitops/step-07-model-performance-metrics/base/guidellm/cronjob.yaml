@@ -1,15 +1,16 @@
-# GuideLLM Scheduled Benchmark CronJob
+# GuideLLM Parallel Benchmark CronJob
 # ============================================================================
-# Runs automated benchmark sweeps on a schedule.
+# Spawns parallel benchmark Jobs for each model.
+# Each model runs in its own container/Job for true parallelism.
+#
 # Default: Daily at 2:00 AM UTC
 #
-# Uses the official GuideLLM container image from:
-# https://github.com/vllm-project/guidellm/pkgs/container/guidellm
-#
-# Results are persisted to the guidellm-results PVC.
-#
 # To trigger manually:
-#   oc create job --from=cronjob/guidellm-daily manual-benchmark -n private-ai
+#   oc create job --from=cronjob/guidellm-daily manual-$(date +%H%M) -n private-ai
+#
+# The dispatcher creates individual Jobs for each available model:
+#   - guidellm-mistral-3-int4-<timestamp>
+#   - guidellm-mistral-3-bf16-<timestamp>
 # ============================================================================
 apiVersion: batch/v1
 kind: CronJob
@@ -22,7 +23,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  # Run daily at 2:00 AM UTC
   schedule: "0 2 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
@@ -30,126 +30,169 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 1
-      activeDeadlineSeconds: 3600  # 1 hour max
+      activeDeadlineSeconds: 300
       template:
         metadata:
           labels:
             app: guidellm
-            job-type: scheduled
+            job-type: dispatcher
         spec:
+          serviceAccountName: guidellm-dispatcher
           restartPolicy: Never
-          # Ensure PVC is writable by any user (OpenShift assigns random UID)
-          securityContext:
-            fsGroup: 0
-          # Note: This job needs network access to download HuggingFace datasets/tokenizers
-          # If running in a restricted environment, consider pre-downloading data
           containers:
-            - name: guidellm
-              # Official GuideLLM container image (stable release v0.5.0)
-              # Ref: https://github.com/vllm-project/guidellm/pkgs/container/guidellm
-              image: ghcr.io/vllm-project/guidellm:stable
+            - name: dispatcher
+              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
               env:
-                # Set HOME to writable directory for cache
-                - name: HOME
-                  value: /tmp
-                # Set HuggingFace cache directory
-                - name: HF_HOME
-                  value: /tmp/.cache/huggingface
-                # GuideLLM Configuration via environment variables
-                - name: GUIDELLM_TARGET
-                  value: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+                - name: NAMESPACE
+                  value: private-ai
+                - name: GUIDELLM_IMAGE
+                  value: ghcr.io/vllm-project/guidellm:stable
                 - name: GUIDELLM_PROFILE
-                  value: "sweep"
+                  value: sweep
                 - name: GUIDELLM_MAX_SECONDS
                   value: "60"
                 - name: GUIDELLM_MAX_REQUESTS
                   value: "50"
-                - name: GUIDELLM_OUTPUT_DIR
-                  value: /results
               command:
                 - /bin/bash
                 - -c
                 - |
-                  echo "═══════════════════════════════════════════════════════════════"
-                  echo "  GuideLLM v0.5.0 - Multi-Model Benchmark"
-                  echo "  Profile: ${GUIDELLM_PROFILE}"
-                  echo "  Max Seconds: ${GUIDELLM_MAX_SECONDS} per model"
-                  echo "═══════════════════════════════════════════════════════════════"
+                  set -e
+                  # Use hyphen instead of underscore for K8s-compatible names
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  
+                  echo "╔═══════════════════════════════════════════════════════════════════╗"
+                  echo "║  GuideLLM Parallel Benchmark Dispatcher                           ║"
+                  echo "║  Timestamp: ${TIMESTAMP}                                          ║"
+                  echo "╚═══════════════════════════════════════════════════════════════════╝"
                   echo ""
                   
-                  # Create sample prompts (no network needed)
-                  cat > /tmp/prompts.json << 'EOF'
-                  [
-                    {"prompt": "What is the capital of France?"},
-                    {"prompt": "Explain quantum computing in simple terms."},
-                    {"prompt": "Write a short poem about the ocean."},
-                    {"prompt": "What are the benefits of exercise?"},
-                    {"prompt": "How does photosynthesis work?"},
-                    {"prompt": "Describe the process of making bread."},
-                    {"prompt": "What is machine learning?"},
-                    {"prompt": "Tell me about the solar system."},
-                    {"prompt": "What causes rain?"},
-                    {"prompt": "Explain the theory of relativity."}
-                  ]
-                  EOF
-                  echo "✓ Sample prompts created"
-                  echo ""
-                  
-                  # Models to test (BF16 first for ROI comparison)
-                  MODELS="mistral-3-bf16 mistral-3-int4"
-                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  # Models to benchmark
+                  MODELS="mistral-3-int4 mistral-3-bf16"
+                  CREATED_JOBS=""
                   
                   for MODEL in ${MODELS}; do
                     TARGET="http://${MODEL}-predictor.private-ai.svc.cluster.local:8080/v1"
+                    JOB_NAME="guidellm-${MODEL}-${TIMESTAMP}"
                     
-                    echo "───────────────────────────────────────────────────────────────"
-                    echo "  Testing: ${MODEL}"
+                    echo "───────────────────────────────────────────────────────────────────"
+                    echo "  Model: ${MODEL}"
                     echo "  Target: ${TARGET}"
-                    echo "───────────────────────────────────────────────────────────────"
+                    echo "───────────────────────────────────────────────────────────────────"
                     
-                    # Check if target is reachable
+                    # Check if model is available
                     if ! curl -s --connect-timeout 10 "${TARGET}/models" >/dev/null 2>&1; then
                       echo "  ⚠️  Model ${MODEL} is not reachable, skipping"
                       continue
                     fi
-                    echo "  ✓ Target is reachable"
+                    echo "  ✓ Model is reachable"
                     
-                    # Run benchmark
-                    guidellm benchmark run \
-                      --target "${TARGET}" \
-                      --data /tmp/prompts.json \
-                      --profile "${GUIDELLM_PROFILE}" \
-                      --max-seconds "${GUIDELLM_MAX_SECONDS}" \
-                      --max-requests "${GUIDELLM_MAX_REQUESTS}" \
-                      --output-dir "${GUIDELLM_OUTPUT_DIR}" \
-                      --outputs "${MODEL}-${TIMESTAMP}.json" \
-                      --disable-console-interactive \
-                      2>&1 || echo "  ⚠️  Benchmark for ${MODEL} exited with code $?"
+                    # Create Job YAML file
+                    cat > /tmp/job-${MODEL}.yaml << JOBEOF
+                  apiVersion: batch/v1
+                  kind: Job
+                  metadata:
+                    name: ${JOB_NAME}
+                    namespace: ${NAMESPACE}
+                    labels:
+                      app: guidellm
+                      model: ${MODEL}
+                      benchmark-run: "${TIMESTAMP}"
+                  spec:
+                    backoffLimit: 1
+                    activeDeadlineSeconds: 900
+                    ttlSecondsAfterFinished: 86400
+                    template:
+                      metadata:
+                        labels:
+                          app: guidellm
+                          model: ${MODEL}
+                      spec:
+                        restartPolicy: Never
+                        securityContext:
+                          fsGroup: 0
+                        containers:
+                          - name: benchmark
+                            image: ${GUIDELLM_IMAGE}
+                            env:
+                              - name: HOME
+                                value: /tmp
+                              - name: HF_HOME
+                                value: /tmp/.cache/huggingface
+                              - name: MODEL_NAME
+                                value: ${MODEL}
+                              - name: TARGET_URL
+                                value: ${TARGET}
+                              - name: PROFILE
+                                value: ${GUIDELLM_PROFILE}
+                              - name: MAX_SECONDS
+                                value: "${GUIDELLM_MAX_SECONDS}"
+                              - name: MAX_REQUESTS
+                                value: "${GUIDELLM_MAX_REQUESTS}"
+                              - name: TIMESTAMP
+                                value: "${TIMESTAMP}"
+                            command:
+                              - /bin/bash
+                              - -c
+                              - |
+                                echo "GuideLLM Benchmark: \${MODEL_NAME}"
+                                echo "Target: \${TARGET_URL}"
+                                echo "Profile: \${PROFILE}"
+                                
+                                cat > /tmp/prompts.json << 'EOF'
+                                [{"prompt": "What is the capital of France?"},{"prompt": "Explain quantum computing."},{"prompt": "Write a poem about the ocean."},{"prompt": "What are benefits of exercise?"},{"prompt": "How does photosynthesis work?"},{"prompt": "What is machine learning?"},{"prompt": "Tell me about the solar system."},{"prompt": "What causes rain?"},{"prompt": "Explain the theory of relativity."},{"prompt": "Describe making bread."}]
+                                EOF
+                                
+                                guidellm benchmark run \
+                                  --target "\${TARGET_URL}" \
+                                  --data /tmp/prompts.json \
+                                  --profile "\${PROFILE}" \
+                                  --max-seconds "\${MAX_SECONDS}" \
+                                  --max-requests "\${MAX_REQUESTS}" \
+                                  --output-dir /results \
+                                  --outputs "\${MODEL_NAME}-\${TIMESTAMP}.json" \
+                                  --disable-console-interactive
+                                
+                                echo "Benchmark complete for \${MODEL_NAME}"
+                            volumeMounts:
+                              - name: results
+                                mountPath: /results
+                              - name: cache
+                                mountPath: /tmp/.cache
+                            resources:
+                              requests:
+                                cpu: 500m
+                                memory: 512Mi
+                              limits:
+                                cpu: "2"
+                                memory: 2Gi
+                        volumes:
+                          - name: results
+                            persistentVolumeClaim:
+                              claimName: guidellm-results
+                          - name: cache
+                            emptyDir: {}
+                  JOBEOF
                     
-                    echo "  ✓ Completed ${MODEL}"
+                    # Apply the Job
+                    oc apply -f /tmp/job-${MODEL}.yaml
+                    
+                    echo "  ✓ Created Job: ${JOB_NAME}"
+                    CREATED_JOBS="${CREATED_JOBS} ${JOB_NAME}"
                     echo ""
                   done
                   
-                  echo "═══════════════════════════════════════════════════════════════"
-                  echo "  All benchmarks complete"
-                  echo "═══════════════════════════════════════════════════════════════"
-                  ls -la "${GUIDELLM_OUTPUT_DIR}" 2>/dev/null | tail -10 || true
-              volumeMounts:
-                - name: results
-                  mountPath: /results
-                - name: cache
-                  mountPath: /tmp/.cache
+                  echo "═══════════════════════════════════════════════════════════════════"
+                  echo "  Dispatcher complete!"
+                  echo "  Created Jobs:${CREATED_JOBS}"
+                  echo ""
+                  echo "  Monitor with:"
+                  echo "    oc get jobs -n ${NAMESPACE} -l benchmark-run=${TIMESTAMP}"
+                  echo "═══════════════════════════════════════════════════════════════════"
               resources:
                 requests:
-                  cpu: 500m
-                  memory: 512Mi
+                  cpu: 100m
+                  memory: 128Mi
                 limits:
-                  cpu: "2"
-                  memory: 2Gi
-          volumes:
-            - name: results
-              persistentVolumeClaim:
-                claimName: guidellm-results
-            - name: cache
-              emptyDir: {}
-
+                  cpu: 500m
+                  memory: 256Mi

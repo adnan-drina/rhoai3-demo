@@ -1,16 +1,24 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# GuideLLM Benchmark Automation
+# GuideLLM Parallel Benchmark Automation
 # ============================================================================
 # Automated stress testing for vLLM models using GuideLLM v0.5.0 (stable).
 #
-# Components:
-#   - PVC: Persistent storage for benchmark results
-#   - CronJob: Daily automated benchmarks at 2:00 AM UTC
+# Architecture:
+#   The CronJob acts as a "dispatcher" that spawns parallel Jobs for each model.
+#   Each model benchmark runs in its own container for true parallelism.
 #
-# The job-template.yaml is for reference only (not applied by default).
-# Use it as a template for on-demand benchmarks:
+# Components:
+#   - RBAC: ServiceAccount + Role for creating Jobs
+#   - PVC: Persistent storage for benchmark results
+#   - CronJob: Dispatcher that creates parallel benchmark Jobs
+#
+# Spawned Jobs (per run):
+#   - guidellm-mistral-3-int4-<timestamp>
+#   - guidellm-mistral-3-bf16-<timestamp>
+#
+# Manual trigger:
 #   oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M) -n private-ai
 #
 # Image: ghcr.io/vllm-project/guidellm:stable
@@ -19,8 +27,8 @@ kind: Kustomization
 # ============================================================================
 
 resources:
+  - rbac.yaml
   - pvc.yaml
   - cronjob.yaml
-  # configmap.yaml - not deployed (scripts are inlined in cronjob.yaml)
   # job-template.yaml - not deployed (template for manual use)
 
