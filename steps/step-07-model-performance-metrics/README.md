@@ -299,9 +299,11 @@ oc run results-viewer --rm -it --restart=Never \
   -n private-ai
 ```
 
-## vLLM-Playground (Interactive UI)
+## vLLM-Playground (Interactive UI) - Optional
 
 > **⚠️ Community Tool Disclaimer:** [vLLM-Playground](https://github.com/micytao/vllm-playground) is a community-driven tool and is NOT an officially supported component of Red Hat OpenShift AI 3.0.
+
+> **⚠️ Image Access:** The default image (`quay.io/rh_ee_micyang/vllm-playground-webui`) requires Quay.io authentication. The deployment is **disabled by default** (replicas: 0).
 
 ### Purpose
 
@@ -310,14 +312,25 @@ While GuideLLM gives us hard data, vLLM-Playground provides the **"Vibe Check"**
 - See latency differences in real-time
 - Perfect for stakeholder presentations
 
-### Access
+### Enabling (requires image access)
 
 ```bash
+# If you have access to the image or a pull secret configured:
+oc scale deployment/vllm-playground -n private-ai --replicas=1
+
+# Get URL once running:
 PLAYGROUND_URL=$(oc get route vllm-playground -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${PLAYGROUND_URL}"
 ```
 
-### Demo Scenario
+### Alternatives
+
+For interactive model testing without vLLM-Playground:
+- **RHOAI GenAI Playground** (Step 06) - built into RHOAI Dashboard
+- **LiteMaaS Chatbot** (Step 06B) - if deployed
+- **OpenWebUI** - open-source alternative (can be deployed separately)
+
+### Demo Scenario (if enabled)
 
 1. Open two browser tabs pointing to the playground
 2. Configure one tab to use `mistral-3-int4` endpoint

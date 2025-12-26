@@ -12,6 +12,10 @@
 #   - Real-time "vibe check" for latency differences
 #   - Interactive demo for stakeholder presentations
 #
+# NOTE: The default image requires Quay.io authentication.
+#       Set replicas: 1 and configure a pull secret if you want to enable this.
+#       Alternative: Use OpenWebUI or another public LLM chat interface.
+#
 # The playground connects to your InferenceService endpoints and provides
 # a chat interface for qualitative performance comparison.
 # ============================================================================
@@ -27,7 +31,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
     description: "Community tool for interactive vLLM testing"
 spec:
-  replicas: 1
+  # ⚠️ Disabled by default - image requires authentication
+  # Enable manually: oc scale deployment/vllm-playground -n private-ai --replicas=1
+  replicas: 0
   selector:
     matchLabels:
       app: vllm-playground
