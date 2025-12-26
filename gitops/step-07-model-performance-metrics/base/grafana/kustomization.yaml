@@ -6,5 +6,6 @@ resources:
   - service.yaml
   - route.yaml
   - servicemonitor.yaml
+  - datasource-cm.yaml
+  - local-prometheus.yaml
   - dashboards/kustomization.yaml
-

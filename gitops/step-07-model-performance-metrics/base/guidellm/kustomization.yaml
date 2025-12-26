@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# GuideLLM Benchmarking - Phase 2 Implementation
+# ============================================================================
+# TODO: Implement the following resources:
+#   - pvc.yaml          → guidellm-results PVC for storing benchmark outputs
+#   - configmap.yaml    → Benchmark scripts and configuration
+#   - cronjob.yaml      → Daily scheduled benchmark sweep
+#   - job.yaml          → On-demand benchmark job template
+#
+# See PLAN.md for detailed implementation specification
+# ============================================================================
+
+resources: []
+

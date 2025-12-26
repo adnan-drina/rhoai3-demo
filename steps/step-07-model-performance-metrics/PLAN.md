@@ -61,7 +61,7 @@ We will implement an **Incremental Load Sweep** job using GuideLLM.
         *   *Scenario B (Summary)*: Long Input / Short Output (Focus: KV Cache).
         *   *Scenario C (Coding)*: Short Input / Long Output (Focus: TPOT).
 *   **Connectivity**: Run inside `private-ai` namespace (ClusterIP) to measure *Model Performance* excluding external Ingress latency.
-*   **Persistence**: Mount `gpu-switchboard-storage` PVC to save results.
+*   **Persistence**: Mount a dedicated `guidellm-results` PVC to save results.
 
 ### 4.3 Wave 3: The "Sizing & Saturation" Dashboard
 A custom Grafana dashboard titled **"Mistral Scale Comparison"**:
@@ -93,19 +93,24 @@ A custom Grafana dashboard titled **"Mistral Scale Comparison"**:
 
 ## 6. Implementation Checklist / Coding Hand-off
 
-### Task 1: Grafana & Prometheus
-- [ ] Create `gitops/step-07-model-performance-metrics/base/grafana/`
-- [ ] Define `Deployment` (grafana), `Service`, and `Route`.
-- [ ] Define `ServiceMonitor` for vLLM pods (match label `opendatahub.io/dashboard: "true"` or similar).
+### Task 1: Grafana & Prometheus ✅ COMPLETE
+- [x] Create `gitops/step-07-model-performance-metrics/base/grafana/`
+- [x] Define `Deployment` (grafana), `Service`, and `Route`.
+- [x] Define `ServiceMonitor` for vLLM pods.
+- [x] Configure `datasource-cm.yaml` for Prometheus connectivity.
+- [x] Configure `local-prometheus.yaml` for high-resolution scraping.
 
-### Task 2: Dashboards (ConfigMaps)
-- [ ] `dashboard-dcgm.json` (Infrastructure).
-- [ ] `dashboard-vllm-global.json` (Official vLLM).
-- [ ] `dashboard-mistral-comparison.json` (Custom A/B view).
+### Task 2: Dashboards (ConfigMaps) ✅ COMPLETE
+- [x] `dashboard-provider.yaml` (Dashboard provisioning config).
+- [x] `dashboard-vllm.yaml` (vLLM Production Metrics).
+- [ ] `dashboard-dcgm.json` (Infrastructure) - Phase 2.
+- [ ] `dashboard-mistral-comparison.json` (Custom A/B view) - Phase 2.
 
-### Task 3: GuideLLM Job
-- [ ] Create `gitops/step-07-model-performance-metrics/base/guidellm/`
-- [ ] Define `Job` `guidellm-sweep`.
+### Task 3: GuideLLM Job 🔲 PENDING (Phase 2)
+- [x] Create `gitops/step-07-model-performance-metrics/base/guidellm/` (placeholder)
+- [ ] Define `PVC` for results storage.
+- [ ] Define `CronJob` for daily scheduled benchmarks.
+- [ ] Define `Job` template for on-demand runs.
 - [ ] Script the `entrypoint.sh` to run the sweep:
     ```bash
     # Pseudo-code for agent
@@ -114,6 +119,11 @@ A custom Grafana dashboard titled **"Mistral Scale Comparison"**:
        guidellm --target http://mistral-3-int4:8080 --concurrency $concurrency ...
     done
     ```
+
+### Task 4: Supporting Resources 🔲 PENDING
+- [ ] ArgoCD Application for Step 07.
+- [ ] README and deploy.sh scripts.
+- [ ] Integration testing with live models.
 
 ---
 
