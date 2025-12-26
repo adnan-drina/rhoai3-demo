@@ -1,0 +1,29 @@
+# CPU-Only LocalQueue for GuideLLM Pipeline
+# ============================================================================
+# Tekton pipeline tasks don't need GPU - they're CPU clients sending
+# HTTP requests to the model endpoints. This LocalQueue points to the
+# 'default' ClusterQueue which has 'default-flavor' for CPU-only workloads.
+#
+# Why:
+#   - GPU nodes should be reserved for LLM inference
+#   - Benchmark clients only need CPU/memory to generate HTTP traffic
+#   - The 'default' ClusterQueue has 'default-flavor' which schedules on
+#     non-GPU nodes without taints
+#
+# Usage:
+#   Add label to pods: kueue.x-k8s.io/queue-name: cpu-workloads
+# ============================================================================
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: cpu-workloads
+  namespace: private-ai
+  labels:
+    app: guidellm-pipeline
+    app.kubernetes.io/part-of: benchmarking
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  clusterQueue: default
+  stopPolicy: None
+

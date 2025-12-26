@@ -1,6 +1,5 @@
 ---
 description: Use when proposing code/manifests/README changes. Keep changes reproducible, include exact files and verification commands.
-globs:
 alwaysApply: true
 ---
 

@@ -1,3 +1,8 @@
+---
+description: Use when adding or updating Kubernetes labels on manifests. Enforce recommended labeling conventions for OpenShift Topology view.
+alwaysApply: false
+---
+
 # Kubernetes Labeling Standards
 
 ## Overview

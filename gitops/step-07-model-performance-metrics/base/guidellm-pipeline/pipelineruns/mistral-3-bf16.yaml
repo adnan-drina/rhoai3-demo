@@ -37,12 +37,16 @@ spec:
       value: "50"
   
   workspaces:
+    # Use emptyDir to avoid affinity-assistant (which may land on GPU nodes)
+    # Results are printed to logs; use CronJob + PVC for persistent results
     - name: results
-      persistentVolumeClaim:
-        claimName: guidellm-pipeline-results
+      emptyDir: {}
   
-  taskRunTemplate:
-    podTemplate:
-      securityContext:
-        fsGroup: 0
+  # Use CPU-only LocalQueue (points to 'default' ClusterQueue with default-flavor)
+  # This ensures pipeline pods are scheduled on non-GPU nodes
+  taskRunSpecs:
+    - pipelineTaskName: benchmark
+      metadata:
+        labels:
+          kueue.x-k8s.io/queue-name: cpu-workloads
 

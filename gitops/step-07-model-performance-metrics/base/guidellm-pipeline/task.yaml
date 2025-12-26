@@ -91,6 +91,33 @@ spec:
           TARGET="http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080/v1"
         fi
         
+        # ============================================================
+        # FIX: Resolve DNS to IP before running GuideLLM
+        # GuideLLM uses Python multiprocessing which forks workers.
+        # Forked workers cannot resolve DNS (known container issue).
+        # Solution: Resolve DNS now and use IP-based URL.
+        # ============================================================
+        HOSTNAME=$(echo "${TARGET}" | sed -E 's|https?://([^:/]+).*|\1|')
+        echo "Resolving DNS for: ${HOSTNAME}"
+        
+        IP=$(getent hosts "${HOSTNAME}" 2>/dev/null | awk '{print $1}' | head -1)
+        
+        if [ -z "${IP}" ]; then
+          echo "Warning: Could not resolve ${HOSTNAME} via getent, trying nslookup..."
+          IP=$(nslookup "${HOSTNAME}" 2>/dev/null | grep -A1 'Name:' | grep 'Address:' | awk '{print $2}' | head -1)
+        fi
+        
+        if [ -z "${IP}" ]; then
+          echo "Warning: DNS resolution failed, using original URL"
+          RESOLVED_TARGET="${TARGET}"
+        else
+          RESOLVED_TARGET=$(echo "${TARGET}" | sed "s|${HOSTNAME}|${IP}|")
+          echo "✓ Resolved: ${TARGET} -> ${RESOLVED_TARGET}"
+        fi
+        
+        # Use resolved URL for GuideLLM
+        TARGET="${RESOLVED_TARGET}"
+        
         echo "═══════════════════════════════════════════════════════════════"
         echo "  GuideLLM Benchmark Pipeline"
         echo "═══════════════════════════════════════════════════════════════"
