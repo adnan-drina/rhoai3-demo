@@ -1,7 +1,14 @@
 # GuideLLM Workbench Configuration
 # ============================================================================
 # Pre-configured model endpoints for the private-ai namespace.
-# These are used as defaults in the Workbench UI.
+# Copy these values into the Workbench UI to benchmark different models.
+#
+# Available Models:
+#   1. mistral-3-int4  (1-GPU, INT4 quantized)
+#   2. mistral-3-bf16  (4-GPU, BF16 full precision)
+#   3. granite-8b-agent (1-GPU, FP8)
+#   4. devstral-2       (4-GPU, coding model)
+#   5. gpt-oss-20b      (4-GPU, foundation model)
 # ============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -14,18 +21,59 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "14"
 data:
-  # Model endpoints (internal cluster URLs)
-  MISTRAL_3_INT4_ENDPOINT: "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
-  MISTRAL_3_BF16_ENDPOINT: "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1"
-  GRANITE_8B_AGENT_ENDPOINT: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
-  DEVSTRAL_2_ENDPOINT: "http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1"
-  GPT_OSS_20B_ENDPOINT: "http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1"
+  # ==========================================================================
+  # Model 1: Mistral-3 INT4 (1-GPU) - DEFAULT
+  # ==========================================================================
+  # Target: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
+  # Model Name: mistral-3-int4
+  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
   
-  # Default benchmark configuration
-  DEFAULT_MAX_SECONDS: "60"
-  DEFAULT_MAX_REQUESTS: "50"
-  DEFAULT_RATE_TYPE: "poisson"
+  # ==========================================================================
+  # Model 2: Mistral-3 BF16 (4-GPU)
+  # ==========================================================================
+  # Target: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
+  # Model Name: mistral-3-bf16
+  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
   
-  # Output configuration
-  OUTPUT_DIR: "/tmp/results"
-
+  # ==========================================================================
+  # Model 3: Granite-8B Agent (1-GPU)
+  # ==========================================================================
+  # Target: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+  # Model Name: granite-8b-agent
+  # Processor: ibm-granite/granite-3.1-8b-instruct
+  
+  # ==========================================================================
+  # Model 4: Devstral-2 (4-GPU)
+  # ==========================================================================
+  # Target: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
+  # Model Name: devstral-2
+  # Processor: mistralai/Mistral-Small-24B-Instruct-2501
+  
+  # ==========================================================================
+  # Model 5: GPT-OSS-20B (4-GPU)
+  # ==========================================================================
+  # Target: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
+  # Model Name: gpt-oss-20b
+  # Processor: RedHatAI/gpt-oss-20b
+  
+  # ==========================================================================
+  # Quick Reference (copy-paste into UI)
+  # ==========================================================================
+  MODELS_INFO: |
+    ┌─────────────────┬───────┬────────────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────────────┐
+    │ Model           │ GPUs  │ Target Endpoint                                                                │ Processor                                   │
+    ├─────────────────┼───────┼────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────────────┤
+    │ mistral-3-int4  │ 1     │ http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1           │ mistralai/Mistral-Small-24B-Instruct-2501   │
+    │ mistral-3-bf16  │ 4     │ http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1           │ mistralai/Mistral-Small-24B-Instruct-2501   │
+    │ granite-8b-agent│ 1     │ http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1         │ ibm-granite/granite-3.1-8b-instruct         │
+    │ devstral-2      │ 4     │ http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1               │ mistralai/Mistral-Small-24B-Instruct-2501   │
+    │ gpt-oss-20b     │ 4     │ http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1              │ RedHatAI/gpt-oss-20b                        │
+    └─────────────────┴───────┴────────────────────────────────────────────────────────────────────────────────┴─────────────────────────────────────────────┘
+  
+  # Default benchmark parameters
+  DEFAULT_RATE_TYPE: "synchronous"
+  DEFAULT_MAX_DURATION: "60"
+  DEFAULT_MAX_REQUESTS: "100"
+  DEFAULT_MAX_CONCURRENCY: "10"
+  DEFAULT_PROMPT_TOKENS: "512"
+  DEFAULT_OUTPUT_TOKENS: "128"
