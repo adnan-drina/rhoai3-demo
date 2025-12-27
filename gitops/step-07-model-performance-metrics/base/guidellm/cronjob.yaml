@@ -1,25 +1,28 @@
-# GuideLLM Parallel Benchmark CronJob - Breaking Point Analysis
+# GuideLLM Daily Benchmark CronJob - Sweep Profile with Synthetic Data
 # ============================================================================
-# Daily benchmark to find model breaking points under increasing load.
+# Daily benchmark using sweep profile to automatically find:
+#   1. Baseline performance (synchronous - one request at a time)
+#   2. Maximum throughput capacity (throughput - as fast as possible)
+#   3. Graduated load testing (constant rates - increasing concurrency)
 #
-# Strategy: Constant rate with incrementally increasing concurrency
-#   - Runs at 30, 40, 50 concurrent requests (high load)
-#   - Each concurrency level runs for 120 seconds
-#   - Identifies where TTFT degrades and queue depth increases
+# Synthetic Data Configuration:
+#   - Input tokens: 256 (controlled prompt length)
+#   - Output tokens: 256 (controlled generation length)
+#   - Processor: mistralai/Mistral-Small-3.1-24B-Instruct-2503
+#
+# This configuration successfully found breaking points in testing:
+#   - INT4 (1-GPU): Saturates at ~100 concurrent, KV cache 99%, TTFT 36s
+#   - BF16 (4-GPU): Handles high load with minimal degradation
 #
 # Default: Daily at 2:00 AM UTC
 #
 # To trigger manually:
 #   oc create job --from=cronjob/guidellm-daily manual-$(date +%H%M) -n private-ai
 #
-# The dispatcher creates individual Jobs for each available model:
-#   - guidellm-mistral-3-int4-<timestamp>
-#   - guidellm-mistral-3-bf16-<timestamp>
-#
-# Breaking Point Indicators:
+# Breaking Point Indicators (from Grafana):
 #   - TTFT (p95) > 1.0s: Performance degradation
-#   - TTFT (p95) > 2.0s: Breaking point reached
-#   - Queue Depth > 5: System saturated
+#   - KV Cache > 95%: Memory pressure
+#   - Queue Waiting > 0: System saturated
 # ============================================================================
 apiVersion: batch/v1
 kind: CronJob
@@ -56,26 +59,38 @@ spec:
                   value: private-ai
                 - name: GUIDELLM_IMAGE
                   value: ghcr.io/vllm-project/guidellm:stable
-                # Breaking Point Analysis: Constant rate with increasing concurrency
+                # Sweep profile: Automatic rate exploration
                 - name: GUIDELLM_PROFILE
-                  value: constant
-                - name: GUIDELLM_RATES
-                  value: "30,40,50"
+                  value: sweep
+                - name: GUIDELLM_SWEEP_SIZE
+                  value: "5"
+                # Synthetic data for controlled workload
+                - name: GUIDELLM_PROMPT_TOKENS
+                  value: "256"
+                - name: GUIDELLM_OUTPUT_TOKENS
+                  value: "256"
+                # Tokenizer for synthetic data generation
+                - name: GUIDELLM_PROCESSOR
+                  value: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                # Duration and limits
                 - name: GUIDELLM_MAX_SECONDS
-                  value: "120"
+                  value: "180"
                 - name: GUIDELLM_MAX_REQUESTS
-                  value: "300"
+                  value: "150"
               command:
                 - /bin/bash
                 - -c
                 - |
                   set -e
-                  # Use hyphen instead of underscore for K8s-compatible names
                   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
                   
                   echo "╔═══════════════════════════════════════════════════════════════════╗"
-                  echo "║  GuideLLM Parallel Benchmark Dispatcher                           ║"
+                  echo "║  GuideLLM Daily Benchmark - Sweep Profile                         ║"
                   echo "║  Timestamp: ${TIMESTAMP}                                          ║"
+                  echo "╠═══════════════════════════════════════════════════════════════════╣"
+                  echo "║  Profile: sweep (automatic rate exploration)                      ║"
+                  echo "║  Data: synthetic (${GUIDELLM_PROMPT_TOKENS} in, ${GUIDELLM_OUTPUT_TOKENS} out tokens)              ║"
+                  echo "║  Processor: ${GUIDELLM_PROCESSOR}     ║"
                   echo "╚═══════════════════════════════════════════════════════════════════╝"
                   echo ""
                   
@@ -110,9 +125,10 @@ spec:
                       app: guidellm
                       model: ${MODEL}
                       benchmark-run: "${TIMESTAMP}"
+                      profile: sweep
                   spec:
                     backoffLimit: 1
-                    activeDeadlineSeconds: 900
+                    activeDeadlineSeconds: 1800
                     ttlSecondsAfterFinished: 86400
                     template:
                       metadata:
@@ -122,8 +138,6 @@ spec:
                       spec:
                         restartPolicy: Never
                         dnsPolicy: ClusterFirst
-                        securityContext:
-                          fsGroup: 0
                         containers:
                           - name: benchmark
                             image: ${GUIDELLM_IMAGE}
@@ -138,8 +152,14 @@ spec:
                                 value: ${TARGET}
                               - name: PROFILE
                                 value: ${GUIDELLM_PROFILE}
-                              - name: RATES
-                                value: "${GUIDELLM_RATES}"
+                              - name: SWEEP_SIZE
+                                value: "${GUIDELLM_SWEEP_SIZE}"
+                              - name: PROMPT_TOKENS
+                                value: "${GUIDELLM_PROMPT_TOKENS}"
+                              - name: OUTPUT_TOKENS
+                                value: "${GUIDELLM_OUTPUT_TOKENS}"
+                              - name: PROCESSOR
+                                value: "${GUIDELLM_PROCESSOR}"
                               - name: MAX_SECONDS
                                 value: "${GUIDELLM_MAX_SECONDS}"
                               - name: MAX_REQUESTS
@@ -150,10 +170,15 @@ spec:
                               - /bin/bash
                               - -c
                               - |
-                                echo "GuideLLM Breaking Point Analysis: \${MODEL_NAME}"
-                                echo "Target: \${TARGET_URL}"
-                                echo "Profile: \${PROFILE}"
-                                echo "Concurrency Rates: \${RATES}"
+                                echo "╔═══════════════════════════════════════════════════════════════════╗"
+                                echo "║  GuideLLM Benchmark: \${MODEL_NAME}"
+                                echo "╠═══════════════════════════════════════════════════════════════════╣"
+                                echo "║  Target: \${TARGET_URL}"
+                                echo "║  Profile: \${PROFILE} (sweep_size: \${SWEEP_SIZE})"
+                                echo "║  Data: synthetic (\${PROMPT_TOKENS} input, \${OUTPUT_TOKENS} output tokens)"
+                                echo "║  Processor: \${PROCESSOR}"
+                                echo "╚═══════════════════════════════════════════════════════════════════╝"
+                                echo ""
                                 
                                 # ============================================================
                                 # FIX: Resolve DNS to IP before running GuideLLM
@@ -162,11 +187,9 @@ spec:
                                 # Solution: Resolve DNS now and use IP-based URL.
                                 # ============================================================
                                 
-                                # Extract hostname from TARGET_URL
                                 HOSTNAME=\$(echo "\${TARGET_URL}" | sed -E 's|https?://([^:/]+).*|\1|')
                                 echo "Resolving DNS for: \${HOSTNAME}"
                                 
-                                # Resolve hostname to IP using getent (works in most containers)
                                 IP=\$(getent hosts "\${HOSTNAME}" 2>/dev/null | awk '{print \$1}' | head -1)
                                 
                                 if [ -z "\${IP}" ]; then
@@ -178,27 +201,29 @@ spec:
                                   echo "Warning: DNS resolution failed, using original URL"
                                   RESOLVED_URL="\${TARGET_URL}"
                                 else
-                                  # Replace hostname with IP in the URL
                                   RESOLVED_URL=\$(echo "\${TARGET_URL}" | sed "s|\${HOSTNAME}|\${IP}|")
-                                  echo "Resolved: \${TARGET_URL} -> \${RESOLVED_URL}"
+                                  echo "✓ Resolved: \${TARGET_URL} -> \${RESOLVED_URL}"
                                 fi
                                 
-                                cat > /tmp/prompts.json << 'EOF'
-                                [{"prompt": "What is the capital of France?"},{"prompt": "Explain quantum computing."},{"prompt": "Write a poem about the ocean."},{"prompt": "What are benefits of exercise?"},{"prompt": "How does photosynthesis work?"},{"prompt": "What is machine learning?"},{"prompt": "Tell me about the solar system."},{"prompt": "What causes rain?"},{"prompt": "Explain the theory of relativity."},{"prompt": "Describe making bread."}]
-                                EOF
+                                echo ""
+                                echo "Starting sweep benchmark..."
+                                echo ""
                                 
                                 guidellm benchmark run \
                                   --target "\${RESOLVED_URL}" \
-                                  --data /tmp/prompts.json \
                                   --profile "\${PROFILE}" \
-                                  --rate "\${RATES}" \
+                                  --rate "\${SWEEP_SIZE}" \
+                                  --processor "\${PROCESSOR}" \
+                                  --data "prompt_tokens=\${PROMPT_TOKENS},output_tokens=\${OUTPUT_TOKENS}" \
                                   --max-seconds "\${MAX_SECONDS}" \
                                   --max-requests "\${MAX_REQUESTS}" \
                                   --output-dir /results \
-                                  --outputs "\${MODEL_NAME}-\${TIMESTAMP}.json" \
                                   --disable-console-interactive
                                 
-                                echo "Benchmark complete for \${MODEL_NAME}"
+                                echo ""
+                                echo "════════════════════════════════════════════════════════════════════"
+                                echo "  Benchmark complete for \${MODEL_NAME}"
+                                echo "════════════════════════════════════════════════════════════════════"
                             volumeMounts:
                               - name: results
                                 mountPath: /results
@@ -207,10 +232,10 @@ spec:
                             resources:
                               requests:
                                 cpu: 500m
-                                memory: 512Mi
+                                memory: 1Gi
                               limits:
                                 cpu: "2"
-                                memory: 2Gi
+                                memory: 4Gi
                         volumes:
                           - name: results
                             persistentVolumeClaim:
@@ -233,6 +258,9 @@ spec:
                   echo ""
                   echo "  Monitor with:"
                   echo "    oc get jobs -n ${NAMESPACE} -l benchmark-run=${TIMESTAMP}"
+                  echo ""
+                  echo "  View results in Grafana:"
+                  echo "    Dashboard: Mistral 3 (BF16 vs INT4)"
                   echo "═══════════════════════════════════════════════════════════════════"
               resources:
                 requests:

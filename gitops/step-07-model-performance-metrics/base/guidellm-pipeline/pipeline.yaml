@@ -1,15 +1,26 @@
-# GuideLLM Realistic Load Test Pipeline
+# GuideLLM Benchmark Pipeline
 # ============================================================================
-# Tekton Pipeline for realistic user load testing using GuideLLM.
+# Orchestrates GuideLLM benchmarks with flexible configuration.
 #
-# Default Configuration:
-#   - Poisson profile: Simulates real user arrival patterns
-#   - 5 requests/second average rate
-#   - 5 minutes duration for statistical significance
+# Recommended configurations:
 #
-# Use the pre-configured PipelineRuns in pipelineruns/ for each model.
+#   Daily Breaking Point Analysis (sweep + synthetic):
+#     profile: sweep
+#     rate: "5"
+#     data-type: synthetic
+#     prompt-tokens: "256"
+#     output-tokens: "256"
 #
-# Ref: https://github.com/rh-aiservices-bu/guidellm-pipeline
+#   Realistic User Load Test (poisson + synthetic):
+#     profile: poisson
+#     rate: "10"
+#     data-type: synthetic
+#
+#   Quick Smoke Test (constant + prompts):
+#     profile: constant
+#     rate: "5"
+#     data-type: prompts
+#
 # ============================================================================
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -28,11 +39,12 @@ spec:
     
     Measures key metrics:
     - Time To First Token (TTFT)
-    - Token Output Rate (TPOT)
+    - Time Per Output Token (TPOT)
     - Request Throughput
     - Latency distributions
+    - KV Cache utilization
     
-    Results are stored in the guidellm-pipeline-results PVC.
+    Results are stored in the pipeline workspace.
   
   params:
     - name: model-name
@@ -48,27 +60,46 @@ spec:
       type: string
       description: |
         Benchmark profile:
-        - poisson: Realistic user load (Poisson-distributed arrivals) [default]
-        - constant: Fixed request rate (for breaking point analysis)
-        - sweep: Multiple strategies (sync, throughput, constant 1-8)
-        - synchronous: One request at a time
-        - throughput: Maximum throughput test
-      default: "poisson"
+        - sweep: Automatic exploration (recommended)
+        - poisson: Realistic user load
+        - constant: Fixed request rate
+        - throughput: Maximum capacity
+      default: "sweep"
     
     - name: rate
       type: string
-      description: Request rate (requests/second)
+      description: Rate parameter (meaning depends on profile)
       default: "5"
+    
+    - name: data-type
+      type: string
+      description: "Data source: synthetic (recommended) or prompts"
+      default: "synthetic"
+    
+    - name: prompt-tokens
+      type: string
+      description: Input tokens for synthetic data
+      default: "256"
+    
+    - name: output-tokens
+      type: string
+      description: Output tokens for synthetic data
+      default: "256"
+    
+    - name: processor
+      type: string
+      description: HuggingFace tokenizer for synthetic data
+      default: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
     
     - name: max-seconds
       type: string
       description: Maximum seconds per benchmark strategy
-      default: "300"
+      default: "180"
     
     - name: max-requests
       type: string
       description: Maximum requests per benchmark strategy
-      default: "500"
+      default: "150"
   
   workspaces:
     - name: results
@@ -95,6 +126,14 @@ spec:
           value: $(params.profile)
         - name: rate
           value: $(params.rate)
+        - name: data-type
+          value: $(params.data-type)
+        - name: prompt-tokens
+          value: $(params.prompt-tokens)
+        - name: output-tokens
+          value: $(params.output-tokens)
+        - name: processor
+          value: $(params.processor)
         - name: max-seconds
           value: $(params.max-seconds)
         - name: max-requests
@@ -102,4 +141,3 @@ spec:
       workspaces:
         - name: results
           workspace: results
-

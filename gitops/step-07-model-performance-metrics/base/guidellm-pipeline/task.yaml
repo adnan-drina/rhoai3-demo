@@ -1,20 +1,23 @@
-# GuideLLM Benchmark Task - Realistic User Load Testing
+# GuideLLM Benchmark Task - Flexible Load Testing
 # ============================================================================
 # Tekton Task for running GuideLLM benchmarks against vLLM models.
 #
-# Default: Poisson profile for realistic user simulation
-#   - Poisson distribution models real user arrival patterns
-#   - Natural variance in request timing (not constant hammering)
-#   - Rate parameter = average requests per second
+# Supports two data modes:
+#   1. prompts: Use simple prompts (quick tests, variable load)
+#   2. synthetic: Use synthetic data with controlled token counts (recommended)
 #
-# Uses the official GuideLLM container image (stable v0.5.0).
+# Profiles:
+#   - sweep: Automatic rate exploration (finds baseline, optimal, breaking point)
+#   - poisson: Realistic user simulation (Poisson-distributed arrivals)
+#   - constant: Fixed request rate (for breaking point analysis)
+#   - throughput: Maximum throughput test
+#   - synchronous: One request at a time (baseline)
 #
 # SLA Thresholds:
 #   TTFT: < 1.0s (SLA), > 2.0s (Breaking)
-#   TPOT: > 20 tok/s (SLA), < 10 tok/s (Breaking)
-#   Queue: 0-1 (SLA), > 5 (Breaking)
+#   TPOT: < 50ms (SLA), > 100ms (Breaking)
+#   KV Cache: < 95% (healthy)
 #
-# Ref: https://github.com/rh-aiservices-bu/guidellm-pipeline
 # Ref: https://github.com/vllm-project/guidellm
 # ============================================================================
 apiVersion: tekton.dev/v1
@@ -40,36 +43,59 @@ spec:
     
     - name: target-url
       type: string
-      description: Model endpoint URL (internal cluster URL)
+      description: Model endpoint URL (leave empty for auto-discovery)
       default: ""
     
     - name: profile
       type: string
       description: |
         Benchmark profile:
-          - poisson: Realistic user load (Poisson-distributed arrivals) [default]
-          - constant: Fixed request rate (for breaking point analysis)
-          - sweep: Multiple strategies (sync, throughput, constant 1-8)
-          - synchronous: One request at a time
-          - throughput: Maximum throughput test
-      default: "poisson"
+          - sweep: Automatic exploration (recommended for daily benchmarks)
+          - poisson: Realistic user load (default)
+          - constant: Fixed request rate
+          - throughput: Maximum capacity test
+          - synchronous: Baseline (one at a time)
+      default: "sweep"
     
     - name: rate
       type: string
       description: |
-        Request rate (requests/second). For poisson profile, this is the average rate.
-        For constant profile, can be comma-separated (e.g., "5,10,15,20")
+        For sweep: number of benchmark iterations (e.g., "5")
+        For poisson/constant: requests per second (e.g., "10")
       default: "5"
+    
+    - name: data-type
+      type: string
+      description: |
+        Data source type:
+          - synthetic: Controlled token counts (recommended)
+          - prompts: Simple prompts file
+      default: "synthetic"
+    
+    - name: prompt-tokens
+      type: string
+      description: Input token count for synthetic data
+      default: "256"
+    
+    - name: output-tokens
+      type: string
+      description: Output token count for synthetic data
+      default: "256"
+    
+    - name: processor
+      type: string
+      description: HuggingFace tokenizer for synthetic data generation
+      default: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
     
     - name: max-seconds
       type: string
       description: Maximum seconds per benchmark strategy
-      default: "300"
+      default: "180"
     
     - name: max-requests
       type: string
       description: Maximum requests per benchmark strategy
-      default: "500"
+      default: "150"
   
   workspaces:
     - name: results
@@ -96,6 +122,10 @@ spec:
         MODEL_NAME="$(params.model-name)"
         PROFILE="$(params.profile)"
         RATE="$(params.rate)"
+        DATA_TYPE="$(params.data-type)"
+        PROMPT_TOKENS="$(params.prompt-tokens)"
+        OUTPUT_TOKENS="$(params.output-tokens)"
+        PROCESSOR="$(params.processor)"
         MAX_SECONDS="$(params.max-seconds)"
         MAX_REQUESTS="$(params.max-requests)"
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -113,7 +143,6 @@ spec:
         # FIX: Resolve DNS to IP before running GuideLLM
         # GuideLLM uses Python multiprocessing which forks workers.
         # Forked workers cannot resolve DNS (known container issue).
-        # Solution: Resolve DNS now and use IP-based URL.
         # ============================================================
         HOSTNAME=$(echo "${TARGET}" | sed -E 's|https?://([^:/]+).*|\1|')
         echo "Resolving DNS for: ${HOSTNAME}"
@@ -127,26 +156,25 @@ spec:
         
         if [ -z "${IP}" ]; then
           echo "Warning: DNS resolution failed, using original URL"
-          RESOLVED_TARGET="${TARGET}"
         else
-          RESOLVED_TARGET=$(echo "${TARGET}" | sed "s|${HOSTNAME}|${IP}|")
-          echo "✓ Resolved: ${TARGET} -> ${RESOLVED_TARGET}"
+          TARGET=$(echo "${TARGET}" | sed "s|${HOSTNAME}|${IP}|")
+          echo "✓ Resolved to: ${TARGET}"
         fi
         
-        # Use resolved URL for GuideLLM
-        TARGET="${RESOLVED_TARGET}"
-        
-        echo "═══════════════════════════════════════════════════════════════"
-        echo "  GuideLLM Realistic Load Test"
-        echo "═══════════════════════════════════════════════════════════════"
-        echo "  Model:       ${MODEL_NAME}"
-        echo "  Target:      ${TARGET}"
-        echo "  Profile:     ${PROFILE}"
-        echo "  Rate:        ${RATE} req/s"
-        echo "  Max Seconds: ${MAX_SECONDS}"
-        echo "  Max Requests: ${MAX_REQUESTS}"
-        echo "  Output:      ${OUTPUT_FILE}"
-        echo "═══════════════════════════════════════════════════════════════"
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║  GuideLLM Benchmark Pipeline                                      ║"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║  Model:       ${MODEL_NAME}"
+        echo "║  Target:      ${TARGET}"
+        echo "║  Profile:     ${PROFILE}"
+        echo "║  Rate:        ${RATE}"
+        echo "║  Data:        ${DATA_TYPE}"
+        if [ "${DATA_TYPE}" = "synthetic" ]; then
+        echo "║  Tokens:      ${PROMPT_TOKENS} input, ${OUTPUT_TOKENS} output"
+        echo "║  Processor:   ${PROCESSOR}"
+        fi
+        echo "║  Duration:    ${MAX_SECONDS}s / ${MAX_REQUESTS} requests"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo ""
         
         # Create output directory
@@ -162,8 +190,13 @@ spec:
         echo "✓ Model is reachable"
         echo ""
         
-        # Create sample prompts (no network needed)
-        cat > /tmp/prompts.json << 'EOF'
+        # Build GuideLLM command based on data type
+        if [ "${DATA_TYPE}" = "synthetic" ]; then
+          # Synthetic data with controlled token counts
+          DATA_ARGS="--data \"prompt_tokens=${PROMPT_TOKENS},output_tokens=${OUTPUT_TOKENS}\" --processor \"${PROCESSOR}\""
+        else
+          # Simple prompts file
+          cat > /tmp/prompts.json << 'EOF'
         [
           {"prompt": "What is the capital of France?"},
           {"prompt": "Explain quantum computing in simple terms."},
@@ -182,27 +215,28 @@ spec:
           {"prompt": "Describe the water cycle in detail."}
         ]
         EOF
-        echo "✓ Sample prompts created"
-        echo ""
+          DATA_ARGS="--data /tmp/prompts.json"
+        fi
         
         # Run benchmark
-        echo "Starting benchmark..."
-        guidellm benchmark run \
+        echo "Starting ${PROFILE} benchmark..."
+        echo ""
+        
+        eval guidellm benchmark run \
           --target "${TARGET}" \
-          --data /tmp/prompts.json \
+          ${DATA_ARGS} \
           --profile "${PROFILE}" \
           --rate "${RATE}" \
           --max-seconds "${MAX_SECONDS}" \
           --max-requests "${MAX_REQUESTS}" \
           --output-dir "${OUTPUT_DIR}" \
-          --outputs "${MODEL_NAME}-${TIMESTAMP}.json" \
           --disable-console-interactive \
           2>&1
         
         RESULT=$?
         
         echo ""
-        echo "═══════════════════════════════════════════════════════════════"
+        echo "═══════════════════════════════════════════════════════════════════"
         if [ $RESULT -eq 0 ]; then
           echo "  ✓ Benchmark completed successfully!"
           echo "success" > $(results.status.path)
@@ -210,8 +244,7 @@ spec:
           echo "  ⚠️ Benchmark completed with warnings (exit code: $RESULT)"
           echo "success" > $(results.status.path)
         fi
-        echo "  Results: ${OUTPUT_FILE}"
-        echo "═══════════════════════════════════════════════════════════════"
+        echo "═══════════════════════════════════════════════════════════════════"
         
         # Write output file path to results
         echo "${OUTPUT_FILE}" > $(results.output-file.path)
@@ -219,7 +252,7 @@ spec:
         # List results
         echo ""
         echo "Results directory:"
-        ls -la "${OUTPUT_DIR}" | tail -10
+        ls -la "${OUTPUT_DIR}" 2>/dev/null | tail -10 || echo "No files yet"
       
       securityContext:
         runAsNonRoot: true
@@ -227,8 +260,7 @@ spec:
       computeResources:
         requests:
           cpu: 500m
-          memory: 512Mi
+          memory: 1Gi
         limits:
           cpu: "2"
-          memory: 2Gi
-
+          memory: 4Gi

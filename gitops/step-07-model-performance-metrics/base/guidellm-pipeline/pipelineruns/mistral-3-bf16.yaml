@@ -1,18 +1,13 @@
-# GuideLLM Realistic Load Test - Mistral-3 BF16 (4-GPU)
+# GuideLLM Benchmark PipelineRun - Mistral-3 BF16 (4-GPU)
 # ============================================================================
-# Simulates realistic user traffic using Poisson distribution.
+# Sweep profile with synthetic data for comprehensive performance analysis.
 #
-# Model: mistral-3-bf16
-# GPUs: 4 x NVIDIA L4 (Tensor Parallelism)
-# Precision: BF16 (full precision)
+# Expected results:
+#   - Higher throughput capacity than INT4 due to 4 GPUs
+#   - Lower KV cache pressure
+#   - Better handling of high concurrency
 #
-# Benchmark Strategy:
-#   - Poisson profile: Random arrival times (realistic user behavior)
-#   - Rate: 5 requests/second average
-#   - Duration: 5 minutes (300 seconds)
-#   - Validates model performance under real-world conditions
-#
-# Usage:
+# Run manually:
 #   oc create -f mistral-3-bf16.yaml
 # ============================================================================
 apiVersion: tekton.dev/v1
@@ -31,27 +26,34 @@ spec:
   params:
     - name: model-name
       value: "mistral-3-bf16"
-    # Poisson profile: Realistic user arrival patterns
+    # Sweep profile: automatic exploration of performance envelope
     - name: profile
-      value: "poisson"
+      value: "sweep"
     - name: rate
       value: "5"
+    # Synthetic data: controlled workload (256 input + 256 output tokens)
+    - name: data-type
+      value: "synthetic"
+    - name: prompt-tokens
+      value: "256"
+    - name: output-tokens
+      value: "256"
+    - name: processor
+      value: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+    # Duration settings
     - name: max-seconds
-      value: "300"
+      value: "180"
     - name: max-requests
-      value: "500"
+      value: "150"
   
   workspaces:
-    # Use emptyDir to avoid affinity-assistant (which may land on GPU nodes)
-    # Results are printed to logs; use CronJob + PVC for persistent results
+    # Use emptyDir to avoid affinity-assistant scheduling issues
     - name: results
       emptyDir: {}
   
-  # Use CPU-only LocalQueue (points to 'default' ClusterQueue with default-flavor)
-  # This ensures pipeline pods are scheduled on non-GPU nodes
+  # Schedule on CPU-only nodes (via cpu-workloads LocalQueue)
   taskRunSpecs:
     - pipelineTaskName: benchmark
       metadata:
         labels:
           kueue.x-k8s.io/queue-name: cpu-workloads
-
