@@ -1,18 +1,20 @@
-# GuideLLM Daily Benchmark CronJob - Sweep Profile with Synthetic Data
+# GuideLLM Daily Benchmark CronJob - Graduated Concurrency Testing
 # ============================================================================
-# Daily benchmark using sweep profile to automatically find:
-#   1. Baseline performance (synchronous - one request at a time)
-#   2. Maximum throughput capacity (throughput - as fast as possible)
-#   3. Graduated load testing (constant rates - increasing concurrency)
+# Daily benchmark using constant profile with graduated concurrency levels.
+#
+# Concurrency Ramp-Up Strategy:
+#   1, 5, 10, 15, 20, 30, 40, 50, 60, 80
+#   └──────────────────────────────────┘
+#   Gradual increase to identify exact breaking point
 #
 # Synthetic Data Configuration:
 #   - Input tokens: 256 (controlled prompt length)
 #   - Output tokens: 256 (controlled generation length)
 #   - Processor: mistralai/Mistral-Small-3.1-24B-Instruct-2503
 #
-# This configuration successfully found breaking points in testing:
-#   - INT4 (1-GPU): Saturates at ~100 concurrent, KV cache 99%, TTFT 36s
-#   - BF16 (4-GPU): Handles high load with minimal degradation
+# Expected Results (from testing):
+#   - INT4 (1-GPU): Optimal 5-20 concurrent, breaking at ~80+
+#   - BF16 (4-GPU): Handles higher load with 4x GPU capacity
 #
 # Default: Daily at 2:00 AM UTC
 #
@@ -59,11 +61,14 @@ spec:
                   value: private-ai
                 - name: GUIDELLM_IMAGE
                   value: ghcr.io/vllm-project/guidellm:stable
-                # Sweep profile: Automatic rate exploration
+                # Constant profile with graduated concurrency levels
                 - name: GUIDELLM_PROFILE
-                  value: sweep
-                - name: GUIDELLM_SWEEP_SIZE
-                  value: "5"
+                  value: constant
+                # Graduated concurrency: 1 → 5 → 10 → 15 → 20 → 30 → 40 → 50 → 60 → 80
+                - name: GUIDELLM_RATES
+                  value: "1,5,10,15,20,30,40,50,60,80"
+                - name: GUIDELLM_RATE_TYPE
+                  value: concurrent
                 # Synthetic data for controlled workload
                 - name: GUIDELLM_PROMPT_TOKENS
                   value: "256"
@@ -72,11 +77,11 @@ spec:
                 # Tokenizer for synthetic data generation
                 - name: GUIDELLM_PROCESSOR
                   value: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
-                # Duration and limits
+                # Duration per concurrency level (10 levels × 60s = ~10 min per model)
                 - name: GUIDELLM_MAX_SECONDS
-                  value: "180"
+                  value: "60"
                 - name: GUIDELLM_MAX_REQUESTS
-                  value: "150"
+                  value: "100"
               command:
                 - /bin/bash
                 - -c
@@ -85,12 +90,13 @@ spec:
                   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
                   
                   echo "╔═══════════════════════════════════════════════════════════════════╗"
-                  echo "║  GuideLLM Daily Benchmark - Sweep Profile                         ║"
+                  echo "║  GuideLLM Daily Benchmark - Graduated Concurrency                 ║"
                   echo "║  Timestamp: ${TIMESTAMP}                                          ║"
                   echo "╠═══════════════════════════════════════════════════════════════════╣"
-                  echo "║  Profile: sweep (automatic rate exploration)                      ║"
-                  echo "║  Data: synthetic (${GUIDELLM_PROMPT_TOKENS} in, ${GUIDELLM_OUTPUT_TOKENS} out tokens)              ║"
-                  echo "║  Processor: ${GUIDELLM_PROCESSOR}     ║"
+                  echo "║  Profile: ${GUIDELLM_PROFILE} (${GUIDELLM_RATE_TYPE})"
+                  echo "║  Rates: ${GUIDELLM_RATES}"
+                  echo "║  Data: synthetic (${GUIDELLM_PROMPT_TOKENS} in, ${GUIDELLM_OUTPUT_TOKENS} out tokens)"
+                  echo "║  Duration: ${GUIDELLM_MAX_SECONDS}s per level, ${GUIDELLM_MAX_REQUESTS} max requests"
                   echo "╚═══════════════════════════════════════════════════════════════════╝"
                   echo ""
                   
@@ -128,7 +134,8 @@ spec:
                       profile: sweep
                   spec:
                     backoffLimit: 1
-                    activeDeadlineSeconds: 1800
+                    # 10 concurrency levels × 60s each + overhead = ~15 min
+                    activeDeadlineSeconds: 1200
                     ttlSecondsAfterFinished: 86400
                     template:
                       metadata:
@@ -152,8 +159,10 @@ spec:
                                 value: ${TARGET}
                               - name: PROFILE
                                 value: ${GUIDELLM_PROFILE}
-                              - name: SWEEP_SIZE
-                                value: "${GUIDELLM_SWEEP_SIZE}"
+                              - name: RATES
+                                value: "${GUIDELLM_RATES}"
+                              - name: RATE_TYPE
+                                value: "${GUIDELLM_RATE_TYPE}"
                               - name: PROMPT_TOKENS
                                 value: "${GUIDELLM_PROMPT_TOKENS}"
                               - name: OUTPUT_TOKENS
@@ -174,7 +183,8 @@ spec:
                                 echo "║  GuideLLM Benchmark: \${MODEL_NAME}"
                                 echo "╠═══════════════════════════════════════════════════════════════════╣"
                                 echo "║  Target: \${TARGET_URL}"
-                                echo "║  Profile: \${PROFILE} (sweep_size: \${SWEEP_SIZE})"
+                                echo "║  Profile: \${PROFILE} (\${RATE_TYPE})"
+                                echo "║  Rates: \${RATES}"
                                 echo "║  Data: synthetic (\${PROMPT_TOKENS} input, \${OUTPUT_TOKENS} output tokens)"
                                 echo "║  Processor: \${PROCESSOR}"
                                 echo "╚═══════════════════════════════════════════════════════════════════╝"
@@ -212,7 +222,8 @@ spec:
                                 guidellm benchmark run \
                                   --target "\${RESOLVED_URL}" \
                                   --profile "\${PROFILE}" \
-                                  --rate "\${SWEEP_SIZE}" \
+                                  --rate "\${RATES}" \
+                                  --rate-type "\${RATE_TYPE}" \
                                   --processor "\${PROCESSOR}" \
                                   --data "prompt_tokens=\${PROMPT_TOKENS},output_tokens=\${OUTPUT_TOKENS}" \
                                   --max-seconds "\${MAX_SECONDS}" \
