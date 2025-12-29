@@ -1091,12 +1091,11 @@ oc get odhdashboardconfig -n redhat-ods-applications -o jsonpath='{.spec.dashboa
 
 ### SLO-Driven Autoscaling with KEDA
 
-> **Status:** ✅ CMA Operator Installed | ⚠️ Prometheus Auth Pending
+> **Status:** ✅ Fully Operational
 > **Benefit:** 30%+ better GPU utilization compared to concurrency-based autoscaling
 
-Step 08 now includes the **Custom Metrics Autoscaler (CMA) Operator** for KEDA-based autoscaling.
-The operator is installed and the ScaledObject is configured, but **Prometheus authentication
-requires additional configuration** to complete the integration.
+Step 08 includes the **Custom Metrics Autoscaler (CMA) Operator** for KEDA-based autoscaling.
+KEDA scales the llm-d deployment based on real-time vLLM metrics from Prometheus.
 
 #### Current Implementation Status
 
@@ -1104,8 +1103,9 @@ requires additional configuration** to complete the integration.
 |-----------|--------|-------|
 | CMA Operator | ✅ Installed | `custom-metrics-autoscaler.v2.17.2-2` |
 | KedaController | ✅ Running | 3 KEDA pods in `openshift-keda` |
-| ScaledObject | ✅ Created | Targeting `mistral-3-distributed-kserve` |
-| Prometheus Auth | ⚠️ Pending | 401 on Thanos query - needs RBAC fix |
+| ScaledObject | ✅ Active | Targeting `mistral-3-distributed-kserve` |
+| Prometheus Auth | ✅ Working | RoleBinding with `view` role (tenancy mode) |
+| External Metrics | ✅ Querying | s0=queue depth, s1=ITL via Thanos:9092 |
 
 #### GitOps Structure
 
@@ -1125,6 +1125,27 @@ gitops/step-08-llm-d/base/
 ```
 
 Based on [GitOps Catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-custom-metrics-autoscaler).
+
+#### Scaling Target: Deployment vs LeaderWorkerSet
+
+The KEDA ScaledObject target depends on the parallelism mode:
+
+| Mode | Config | Controller Creates | KEDA Target |
+|------|--------|-------------------|-------------|
+| **Replicas Mode** | `tensor:1, replicas:2` | Deployment | `Deployment/mistral-3-distributed-kserve` |
+| **Tensor Parallel** | `tensor:2, replicas:1` | LeaderWorkerSet | `LeaderWorkerSet/mistral-3-distributed` |
+
+**Current demo uses Replicas Mode** (tensor:1, replicas:2) → KEDA targets the Deployment.
+
+For Tensor Parallel mode (LWS), scaling 1 replica adds **N pods** (N = tensor size) atomically:
+
+```yaml
+# Example: KEDA targeting LWS for tensor-parallel workloads
+scaleTargetRef:
+  apiVersion: leaderworkerset.x-k8s.io/v1
+  kind: LeaderWorkerSet
+  name: mistral-3-distributed
+```
 
 #### Why KEDA over Knative Pod Autoscaler (KPA)?
 
@@ -1232,19 +1253,28 @@ oc get scaledobject -n private-ai
 oc get events -n private-ai --field-selector involvedObject.name=mistral-3-distributed-autoscaler
 ```
 
-#### Known Issue: Prometheus Authentication
+#### Thanos Authentication (Solved)
 
-The ScaledObject currently shows `401 Unauthorized` when querying Prometheus.
+The KEDA ScaledObject queries Thanos on **port 9092** (tenancy mode), which requires:
+- A **RoleBinding** (not ClusterRoleBinding) in the `private-ai` namespace
+- The built-in **`view`** ClusterRole (not `cluster-monitoring-view`)
 
-**Root Cause:** The ServiceAccount token requires specific RBAC to access the
-`prometheuses.monitoring.coreos.com/api` resource in OpenShift Monitoring.
-
-**Workaround Options:**
-1. Use external Prometheus with direct network access
-2. Configure the odh-controller managed authentication (for InferenceService)
-3. Create a RoleBinding in `openshift-user-workload-monitoring` namespace
-
-**To be fixed in future iteration.**
+```yaml
+# Port 9092 = tenancy mode (project-scoped queries)
+# Port 9091 = cluster-wide mode (requires cluster-monitoring-view)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keda-prometheus-view
+  namespace: private-ai
+roleRef:
+  kind: ClusterRole
+  name: view  # Built-in OCP role for Thanos tenancy mode
+subjects:
+  - kind: ServiceAccount
+    name: keda-prometheus-sa
+    namespace: private-ai
+```
 
 #### Implementation Prerequisites
 
@@ -1252,9 +1282,9 @@ The ScaledObject currently shows `401 Unauthorized` when querying Prometheus.
 |-------------|--------|-------|
 | Custom Metrics Autoscaler Operator | ✅ Installed | `openshift-keda` namespace |
 | KEDA controller | ✅ Running | 3 pods operational |
-| ScaledObject | ✅ Created | Targets llm-d Deployment |
+| ScaledObject | ✅ Active | Targets llm-d Deployment |
 | Prometheus scraping vLLM | ✅ Configured | Step 07/08 ServiceMonitors |
-| Prometheus auth | ⚠️ Pending | 401 error - needs RBAC fix |
+| Prometheus auth | ✅ Working | RoleBinding + Thanos:9092 |
 | Grafana dashboard | ✅ Working | Step 08 observability |
 
 #### Best Practices from Red Hat Performance Validation
