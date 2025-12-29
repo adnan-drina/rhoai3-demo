@@ -1,0 +1,31 @@
+# KedaController - Activates the KEDA autoscaler
+#
+# This resource must be created AFTER the CMA operator is installed.
+# The odh-controller will automatically create TriggerAuthentication, ServiceAccount,
+# Role, RoleBinding, and Secret resources for CMA access to OpenShift Monitoring metrics.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/serving_models/index
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: openshift-keda
+  labels:
+    app.kubernetes.io/name: keda
+    app.kubernetes.io/component: controller
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: "KEDA Controller"
+    openshift.io/description: "Enables SLO-driven autoscaling for llm-d workloads"
+spec:
+  # Watch all namespaces for ScaledObjects
+  watchNamespace: ""
+  operator:
+    logLevel: info
+    logEncoder: console
+  metricsServer:
+    logLevel: "0"
+  serviceAccount: {}
+

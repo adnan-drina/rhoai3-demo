@@ -1,0 +1,14 @@
+# KEDA Autoscaling for llm-d
+#
+# SLO-driven autoscaling based on Inter-Token Latency (ITL) and queue depth.
+# This provides 30%+ better GPU utilization compared to concurrency-based autoscaling.
+#
+# Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - triggerauthentication.yaml
+  - scaledobject.yaml
+

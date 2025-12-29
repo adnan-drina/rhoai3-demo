@@ -1,0 +1,15 @@
+# Custom Metrics Autoscaler Namespace
+# Based on: https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-custom-metrics-autoscaler
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-keda
+  labels:
+    app.kubernetes.io/name: custom-metrics-autoscaler
+    app.kubernetes.io/component: operator
+    openshift.io/cluster-monitoring: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+    openshift.io/display-name: "OpenShift KEDA Operator"
+    openshift.io/description: "Custom Metrics Autoscaler for SLO-driven scaling"
+

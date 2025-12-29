@@ -3,6 +3,7 @@ kind: Kustomization
 
 # Step 08: Distributed Inference with llm-d
 # Demonstrates horizontal scaling of LLM inference across multiple GPU nodes
+# PLUS: SLO-driven autoscaling with KEDA
 #
 # Architecture:
 #   ┌─────────────────────────────────────────────────────────────────┐
@@ -22,6 +23,14 @@ kind: Kustomization
 #   │   │  g6.4xlarge    │  │  g6.4xlarge    │                      │
 #   │   │  1× NVIDIA L4  │  │  1× NVIDIA L4  │                      │
 #   │   └────────────────┘  └────────────────┘                      │
+#   │            ▲                   ▲                               │
+#   │            └───────────────────┴────────────────────────────┐  │
+#   │                                                             │  │
+#   │   ┌─────────────────────────────────────────────────────────┘  │
+#   │   │  KEDA ScaledObject                                         │
+#   │   │  - Scales on ITL P50 > 75ms                                │
+#   │   │  - Scales on Queue Depth > 5                               │
+#   │   └────────────────────────────────────────────────────────────│
 #   │                                                                 │
 #   └─────────────────────────────────────────────────────────────────┘
 #
@@ -32,8 +41,16 @@ kind: Kustomization
 #   - 2× g6.4xlarge GPU nodes available
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+# Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
 
 resources:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Custom Metrics Autoscaler (CMA) Operator (sync-wave: -5 to -1)
+  # Provides KEDA-based SLO-driven autoscaling
+  # Based on: https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-custom-metrics-autoscaler
+  # ═══════════════════════════════════════════════════════════════════════════
+  - cma-operator/
+  
   # ═══════════════════════════════════════════════════════════════════════════
   # Red Hat Connectivity Link (RHCL) instance (sync-wave: 0)
   # Required for llm-d Gateway integration and AuthPolicy validation
@@ -44,6 +61,12 @@ resources:
   # Distributed Inference Service (sync-wave: 1)
   # ═══════════════════════════════════════════════════════════════════════════
   - llm-d/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # KEDA Autoscaling (sync-wave: 3-5)
+  # SLO-driven autoscaling based on ITL and queue depth
+  # ═══════════════════════════════════════════════════════════════════════════
+  - keda-autoscaling/
 
   # ═══════════════════════════════════════════════════════════════════════════
   # Observability (sync-wave: 10-12)

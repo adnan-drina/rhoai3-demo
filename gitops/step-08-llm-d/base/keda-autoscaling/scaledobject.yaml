@@ -1,0 +1,98 @@
+# ScaledObject for llm-d Autoscaling
+#
+# SLO-driven autoscaling based on:
+#   1. Inter-Token Latency (ITL) - Primary: Decode phase quality
+#   2. Queue Depth - Secondary: Throughput optimization
+#
+# Key insight from Red Hat performance validation:
+#   "Concurrency is a poor proxy for load. A single 5000-token request
+#    saturates GPU while KPA sees '1 request'. KEDA with ITL metrics
+#    achieves 30%+ better GPU utilization."
+#
+# Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: mistral-3-distributed-autoscaler
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: mistral-3-distributed
+    app.kubernetes.io/component: autoscaling
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: "llm-d SLO-Driven Autoscaler"
+    openshift.io/description: "Scales llm-d based on ITL and queue depth metrics"
+spec:
+  # Target the llm-d workload Deployment
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mistral-3-distributed-kserve
+  
+  # Scaling bounds
+  minReplicaCount: 2    # Baseline for routing demo
+  maxReplicaCount: 3    # Limited by GPU nodes (3× g6.4xlarge, 1 used by INT4 vLLM)
+  
+  # Polling and cooldown
+  pollingInterval: 15   # Check metrics every 15s
+  cooldownPeriod: 120   # Wait 2min before scaling down (prevent flapping)
+  
+  # Scaling behavior
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300  # 5min stabilization
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 60   # 1min to scale up
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 30
+  
+  triggers:
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PRIMARY TRIGGER: Inter-Token Latency (ITL) - Median (P50)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ITL measures decode phase latency - the user-perceived "streaming speed".
+    # Target: 75ms median ITL per Red Hat performance validation.
+    - type: prometheus
+      metadata:
+        # User Workload Monitoring Prometheus (namespace-scoped metrics)
+        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
+        metricName: vllm_itl_p50_ms
+        # P50 ITL in milliseconds
+        query: |
+          histogram_quantile(0.50,
+            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai"}[2m])) by (le)
+          ) * 1000
+        threshold: "75"  # Scale up when median ITL exceeds 75ms
+        ignoreNullValues: "true"
+        unsafeSsl: "true"
+      authenticationRef:
+        name: keda-trigger-auth-prometheus
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECONDARY TRIGGER: Queue Depth
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Measures requests waiting in the vLLM scheduler queue.
+    # Target: Scale up when queue depth exceeds 5 requests.
+    - type: prometheus
+      metadata:
+        # User Workload Monitoring Prometheus (namespace-scoped metrics)
+        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
+        metricName: vllm_queue_depth
+        query: |
+          sum(vllm:num_requests_waiting{namespace="private-ai"}) or vector(0)
+        threshold: "5"  # Scale up when >5 requests waiting
+        ignoreNullValues: "true"
+        unsafeSsl: "true"
+      authenticationRef:
+        name: keda-trigger-auth-prometheus
+

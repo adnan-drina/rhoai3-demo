@@ -1,0 +1,16 @@
+# Custom Metrics Autoscaler Operator Subscription
+# Based on: https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-custom-metrics-autoscaler
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-custom-metrics-autoscaler-operator
+  namespace: openshift-keda
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: openshift-custom-metrics-autoscaler-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+
