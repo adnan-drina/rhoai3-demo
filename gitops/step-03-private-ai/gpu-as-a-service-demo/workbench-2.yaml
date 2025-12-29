@@ -32,6 +32,13 @@ metadata:
     opendatahub.io/username: "ai-admin"
     openshift.io/display-name: "Demo Workbench 2 (Queued)"
     openshift.io/description: "GPU-as-a-Service Demo - demonstrates Kueue queuing when GPU unavailable"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Idle Culling Configuration (RHOAI 3.0)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # The notebook controller monitors last-activity and stops idle workbenches
+    # after the platform-configured timeout (default: 1 hour)
+    # kubeflow-resource-stopped: Set to "odh-notebook-controller-lock" when stopped
+    # ═══════════════════════════════════════════════════════════════════════════
 spec:
   template:
     spec:

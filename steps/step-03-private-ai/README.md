@@ -462,7 +462,72 @@ oc delete -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 
 ---
 
-## Workbench Configuration (RHOAI 3.0)
+## Understanding Workbenches in RHOAI 3.0
+
+A **Workbench** is RHOAI's term for a containerized development environment that provides data scientists with familiar tools like JupyterLab, VS Code, or RStudio. In RHOAI 3.0, workbenches are implemented as **Kubeflow Notebook CRs** managed by the ODH Notebook Controller.
+
+### Workbench Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Workbench Lifecycle                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. User Creates Workbench (Dashboard or GitOps)                            │
+│     ↓                                                                       │
+│  2. Notebook CR Created with Hardware Profile Reference                     │
+│     ↓                                                                       │
+│  3. Kueue Intercepts → Evaluates Quota → Admits or Queues                  │
+│     ↓                                                                       │
+│  4. Pod Scheduled → kube-rbac-proxy Sidecar Injected                       │
+│     ↓                                                                       │
+│  5. HTTPRoute Created → Workbench Accessible via Gateway                   │
+│     ↓                                                                       │
+│  6. User Works → Last Activity Tracked                                      │
+│     ↓                                                                       │
+│  7. Idle Timeout → Notebook Controller Stops Workbench                      │
+│     ↓                                                                       │
+│  8. Resources Released → User Can Restart Instantly                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Workbench Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Notebook CR** | Kubernetes Custom Resource (`kubeflow.org/v1/Notebook`) that defines the workbench |
+| **Hardware Profile** | RHOAI resource that specifies CPU, memory, GPU, and tolerations |
+| **Kueue Integration** | Workbenches are queued/admitted based on cluster quota availability |
+| **kube-rbac-proxy** | Sidecar container injected for authentication (replaces OAuth proxy) |
+| **Gateway API** | Path-based routing via HTTPRoute (replaces individual Routes) |
+| **Idle Culling** | Automatic stopping of inactive workbenches to release resources |
+| **PVC Storage** | Persistent storage for notebooks and data survives restarts |
+
+### Idle Culling (Resource Management)
+
+RHOAI 3.0 includes an **Idle Notebook Culler** that automatically stops workbenches after a period of inactivity. This is critical for GPU cost optimization.
+
+| Setting | Value | Impact |
+|---------|-------|--------|
+| **Idle Timeout** | 1 hour (platform default) | Workbench stopped after 60 min of no kernel activity |
+| **Detection Method** | Jupyter kernel activity | Last execution timestamp tracked |
+| **Restart Behavior** | Instant | User clicks "Start" in Dashboard, pod recreated |
+| **Data Persistence** | ✅ Preserved | PVC data survives stop/start cycles |
+| **GPU Release** | ✅ Immediate | GPU returned to pool when stopped |
+
+> **How Idle Detection Works**: The ODH Notebook Controller periodically checks the `notebooks.kubeflow.org/last-activity` annotation. When the time since last activity exceeds the platform timeout, the controller sets `kubeflow-resource-stopped: "odh-notebook-controller-lock"` and scales the pod to 0.
+
+**Best Practices for Workbench Management:**
+
+1. **Stop when done** - Manually stop workbenches when not actively using them
+2. **Save frequently** - Ensure notebooks are saved; unsaved work persists in PVC
+3. **Right-size resources** - Use CPU-only Hardware Profiles for non-GPU work
+4. **Monitor queue status** - Check Kueue queues before creating GPU workbenches
+
+---
+
+## Workbench GitOps Configuration (RHOAI 3.0)
 
 When creating workbenches via GitOps (not Dashboard), the following configurations are **required**:
 

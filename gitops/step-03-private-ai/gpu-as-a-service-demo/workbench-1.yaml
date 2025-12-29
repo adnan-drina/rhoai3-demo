@@ -31,6 +31,13 @@ metadata:
     opendatahub.io/username: "ai-developer"
     openshift.io/display-name: "Demo Workbench 1 (GPU)"
     openshift.io/description: "GPU-as-a-Service Demo - demonstrates GPU allocation via Kueue"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Idle Culling Configuration (RHOAI 3.0)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # The notebook controller monitors last-activity and stops idle workbenches
+    # after the platform-configured timeout (default: 1 hour)
+    # kubeflow-resource-stopped: Set to "odh-notebook-controller-lock" when stopped
+    # ═══════════════════════════════════════════════════════════════════════════
 spec:
   template:
     spec:

@@ -77,6 +77,8 @@ metadata:
     notebooks.opendatahub.io/last-size-selection: Small
     openshift.io/display-name: "Model Benchmarking"
     openshift.io/description: "Run and analyze GuideLLM benchmarks - TTFT, TPOT, throughput analysis"
+    # Idle Culling: Managed by ODH Notebook Controller (platform default: 1 hour)
+    # The controller monitors last-activity and stops idle workbenches automatically
 spec:
   template:
     spec:
