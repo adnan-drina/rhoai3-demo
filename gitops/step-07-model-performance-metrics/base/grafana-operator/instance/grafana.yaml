@@ -23,10 +23,9 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  # Instance selector - dashboards with matching labels will be synced
-  instanceSelector:
-    matchLabels:
-      dashboards: "grafana"
+  # Note: instanceSelector is used on GrafanaDashboard/GrafanaDatasource CRs
+  # to select which Grafana instance to sync to. The "dashboards: grafana"
+  # label on this Grafana CR is what dashboards will match against.
   
   # Route configuration for OpenShift
   route:
