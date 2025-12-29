@@ -91,8 +91,9 @@ metadata:
     notebooks.opendatahub.io/last-size-selection: Small
     openshift.io/display-name: "GPU Orchestrator"
     openshift.io/description: "Interactive notebook for GPU-as-a-Service demo - orchestrate 5 vLLM models"
-    # Idle Culling: Managed by ODH Notebook Controller (platform default: 1 hour)
-    # The controller monitors last-activity and stops idle workbenches automatically
+    # Idle Culling: Auto-stop after 15 min of inactivity (demo setting)
+    notebooks.opendatahub.io/idle-culling-time: "15m"
+    notebooks.opendatahub.io/idle-culling-enabled: "true"
 spec:
   template:
     spec:

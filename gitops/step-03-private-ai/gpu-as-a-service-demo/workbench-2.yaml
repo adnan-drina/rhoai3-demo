@@ -36,9 +36,11 @@ metadata:
     # Idle Culling Configuration (RHOAI 3.0)
     # ═══════════════════════════════════════════════════════════════════════════
     # The notebook controller monitors last-activity and stops idle workbenches
-    # after the platform-configured timeout (default: 1 hour)
+    # after the configured timeout. For demo: 15 min to release GPUs quickly.
     # kubeflow-resource-stopped: Set to "odh-notebook-controller-lock" when stopped
     # ═══════════════════════════════════════════════════════════════════════════
+    notebooks.opendatahub.io/idle-culling-time: "15m"
+    notebooks.opendatahub.io/idle-culling-enabled: "true"
 spec:
   template:
     spec:

@@ -85,11 +85,11 @@ Automatic cost control through `OdhDashboardConfig`:
 
 | Setting | Value | Effect |
 |---------|-------|--------|
-| Idle Culling | 1 hour | Auto-stops inactive notebooks |
+| Idle Culling | 15 min (demo setting) | Auto-stops inactive notebooks quickly |
 | Default PVC | 40Gi | Standardized storage allocation |
 | Kueue UI | Enabled | Queue visibility in Dashboard |
 
-> **Why Idle Culling Matters**: Prevents "zombie" notebooks from hoarding GPUs. After 1 hour of no kernel activity, notebooks are stopped and GPUs released.
+> **Why Idle Culling Matters**: Prevents "zombie" notebooks from hoarding GPUs. For this demo, we use 15 minutes to quickly release resources when not in use.
 
 ---
 
@@ -458,7 +458,7 @@ oc delete -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 - ⏳ Fair queuing - first-come-first-served
 - 📊 Quota enforcement - team/project limits respected
 - 🔄 Automatic admission - queued workloads start when resources free up
-- 💤 Idle culling - inactive notebooks auto-stop after 1 hour
+- 💤 Idle culling - inactive notebooks auto-stop after 15 minutes (demo setting)
 
 ---
 
@@ -510,7 +510,7 @@ RHOAI 3.0 includes an **Idle Notebook Culler** that automatically stops workbenc
 
 | Setting | Value | Impact |
 |---------|-------|--------|
-| **Idle Timeout** | 1 hour (platform default) | Workbench stopped after 60 min of no kernel activity |
+| **Idle Timeout** | 15 min (demo setting) | Workbench stopped after 15 min of no kernel activity |
 | **Detection Method** | Jupyter kernel activity | Last execution timestamp tracked |
 | **Restart Behavior** | Instant | User clicks "Start" in Dashboard, pod recreated |
 | **Data Persistence** | ✅ Preserved | PVC data survives stop/start cycles |
