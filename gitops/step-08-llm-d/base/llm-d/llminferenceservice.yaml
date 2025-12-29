@@ -73,6 +73,9 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   # Pod Template (GPU Scheduling)
   # ═══════════════════════════════════════════════════════════════════════════
+  # NOTE: The llm-d controller injects a container named "main". To configure
+  # GPU resources for that container, we must use spec.template.containers with
+  # name: "main" (not a custom name like "vllm").
   template:
     # Target g6.4xlarge nodes (single L4 GPU each)
     nodeSelector:
@@ -84,19 +87,18 @@ spec:
         operator: Exists
         effect: NoSchedule
     
-    # Resource requirements for the controller-injected containers
-    # NOTE: Do NOT define spec.template.containers — this causes the controller
-    # to create a separate container. Instead, use spec.template.resources which
-    # applies to the controller's injected "main" container.
-    resources:
-      limits:
-        cpu: "16"
-        memory: 60Gi
-        nvidia.com/gpu: "1"
-      requests:
-        cpu: "8"
-        memory: 32Gi
-        nvidia.com/gpu: "1"
+    # Container resources - must match controller's container name "main"
+    containers:
+      - name: main
+        resources:
+          limits:
+            cpu: "16"
+            memory: 60Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "8"
+            memory: 32Gi
+            nvidia.com/gpu: "1"
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration

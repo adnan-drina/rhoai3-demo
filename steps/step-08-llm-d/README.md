@@ -315,14 +315,16 @@ spec:
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
-    # NOTE: Use spec.template.resources, NOT spec.template.containers
-    # The llm-d controller injects its own "main" container - defining 
-    # containers causes GPU resources to go to the wrong container
-    resources:
-      limits:
-        nvidia.com/gpu: "1"
-      requests:
-        nvidia.com/gpu: "1"
+    # NOTE: The llm-d controller injects a container named "main".
+    # We must use spec.template.containers with name: "main" to set GPU
+    # resources on the correct container (not a custom name like "vllm").
+    containers:
+      - name: main
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            nvidia.com/gpu: "1"
   
   # Router configuration
   router:
