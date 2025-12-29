@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # =============================================================================
-# GPU Switchboard Controller
+# GPU Orchestrator Workbench
 # =============================================================================
 # Deploys a pre-configured workbench for the GPU-as-a-Service demo.
 #
@@ -17,8 +17,8 @@ kind: Kustomization
 #
 # Usage:
 #   1. Apply with: oc apply -k gitops/step-05-llm-on-vllm/base/controller/
-#   2. Access via RHOAI Dashboard → private-ai → gpu-switchboard
-#   3. Open GPU-Switchboard.ipynb and run cells
+#   2. Access via RHOAI Dashboard → private-ai → gpu-orchestrator-wb
+#   3. Open GPU-Orchestrator.ipynb and run cells
 #
 # Benefits of Git-Sync over ConfigMap:
 #   - No 1MB size limit

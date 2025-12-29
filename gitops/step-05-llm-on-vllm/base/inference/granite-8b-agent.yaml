@@ -47,7 +47,7 @@ metadata:
 spec:
   predictor:
     # QUEUED ASSET: Starts at 0 replicas
-    # Toggle via GPU Switchboard for Agentic demo
+    # Toggle via GPU Orchestrator for Agentic demo
     minReplicas: 0
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock

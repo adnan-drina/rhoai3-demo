@@ -73,6 +73,9 @@ resources:
   
   # GuideLLM Workbench (Streamlit UI for interactive benchmarking)
   - guidellm-workbench/
+  
+  # Model Benchmarking Workbench (Jupyter notebook for running and analyzing benchmarks)
+  - model-benchmarking-wb/
 
 # Note: Removed commonLabels to avoid Service selector mismatch issues.
 # Labels are applied directly in individual manifests instead.

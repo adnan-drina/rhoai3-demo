@@ -8,7 +8,7 @@
 # Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
 #
 # Demo Role: This model is INTENTIONALLY set to minReplicas: 0
-# When activated via the GPU Switchboard, it will be QUEUED by Kueue
+# When activated via the GPU Orchestrator, it will be QUEUED by Kueue
 # because the cluster is already at 100% GPU capacity (5/5).
 #
 # The Demo Flow:
@@ -51,7 +51,7 @@ metadata:
 spec:
   predictor:
     # QUEUED ASSET: Starts at 0 replicas
-    # Toggle to 1 via GPU Switchboard to demonstrate queueing
+    # Toggle to 1 via GPU Orchestrator to demonstrate queueing
     minReplicas: 0
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock

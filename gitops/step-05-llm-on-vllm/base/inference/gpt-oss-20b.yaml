@@ -45,7 +45,7 @@ metadata:
 spec:
   predictor:
     # QUEUED ASSET: Starts at 0 replicas
-    # Toggle via GPU Switchboard to demonstrate Efficiency Story
+    # Toggle via GPU Orchestrator to demonstrate Efficiency Story
     minReplicas: 0
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock

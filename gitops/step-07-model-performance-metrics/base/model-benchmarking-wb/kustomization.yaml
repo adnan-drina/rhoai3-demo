@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# =============================================================================
+# Model Benchmarking Workbench
+# =============================================================================
+# Interactive Jupyter workbench for running and analyzing GuideLLM benchmarks.
+#
+# Features:
+#   - Run GuideLLM benchmarks directly from notebook cells
+#   - Access benchmark results from CronJob and Pipeline PVCs
+#   - Visualize TTFT, TPOT, throughput metrics with matplotlib/plotly
+#   - Compare INT4 vs BF16 model performance
+#
+# Usage:
+#   1. Apply with: oc apply -k gitops/step-07-model-performance-metrics/base/model-benchmarking-wb/
+#   2. Access via RHOAI Dashboard → private-ai → model-benchmarking-wb
+#   3. Open Model-Benchmarking.ipynb and run cells
+#
+# Volume Mounts:
+#   /results          - GuideLLM CronJob results (read-only)
+#   /pipeline-results - Tekton Pipeline results (read-only)
+#   /opt/app-root/src - Workbench storage (read-write)
+# =============================================================================
+
+resources:
+  - workbench.yaml
+
