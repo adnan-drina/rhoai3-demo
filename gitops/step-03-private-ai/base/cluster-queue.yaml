@@ -2,9 +2,9 @@
 # Defines total GPU/CPU/Memory available for RHOAI workloads
 #
 # Quota Strategy (GPU-as-a-Service Demo):
-#   - 1x g6.4xlarge (1 GPU) = 1 GPU for single-GPU inference
-#   - 1x g6.12xlarge (4 GPUs) = 4 GPUs for tensor-parallel models
-#   - Total: 5 GPUs available for the private-ai project
+#   - 3x g6.4xlarge (1 GPU each) = 3 GPUs for single-GPU inference (vLLM INT4 + llm-d)
+#   - 1x g6.12xlarge (4 GPUs) = 4 GPUs for tensor-parallel models (vLLM BF16)
+#   - Total: 7 GPUs available for the private-ai project
 #
 # IMPORTANT: Both flavors must be in the SAME resourceGroup so Kueue can
 # try both flavors when matching workloads. A 4-GPU request should only
@@ -34,15 +34,15 @@ spec:
   resourceGroups:
     - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
       flavors:
-        # 1-GPU flavor (g6.4xlarge nodes)
+        # 1-GPU flavor (g6.4xlarge nodes) - 3 nodes available
         - name: nvidia-l4-1gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 1       # 1 GPU from g6.4xlarge
+              nominalQuota: 3       # 3 GPUs from 3x g6.4xlarge
             - name: "cpu"
-              nominalQuota: "16"    # 16 vCPU
+              nominalQuota: "48"    # 48 vCPU (16 per node × 3)
             - name: "memory"
-              nominalQuota: "64Gi"  # 64GB RAM
+              nominalQuota: "192Gi" # 192GB RAM (64GB per node × 3)
         # 4-GPU flavor (g6.12xlarge nodes)
         - name: nvidia-l4-4gpu
           resources:

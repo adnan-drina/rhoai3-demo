@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 08 Observability (llm-d)
+#
+# This step ships the llm-d-specific observability resources (ServiceMonitors +
+# Grafana dashboards). It assumes the Grafana Operator + Grafana instance are
+# already deployed (Step 07).
+
+resources:
+  - servicemonitor-llmd-router.yaml
+  - servicemonitor-llmd-workload.yaml
+  - llm-tail-latency-and-cache.yaml
+
+

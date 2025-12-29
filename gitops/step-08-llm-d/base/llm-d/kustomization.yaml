@@ -6,4 +6,5 @@ kind: Kustomization
 
 resources:
   - llminferenceservice.yaml
+  - route.yaml
 

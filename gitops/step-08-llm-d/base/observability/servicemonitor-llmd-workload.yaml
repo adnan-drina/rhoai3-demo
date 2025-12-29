@@ -8,7 +8,9 @@ metadata:
     app.kubernetes.io/name: llmd-workload-metrics
     app.kubernetes.io/component: observability
     app.kubernetes.io/part-of: llm-serving
-    demo.rhoai.io/step: "07"
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   selector:
     matchLabels:

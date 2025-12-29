@@ -7,4 +7,6 @@ kind: Kustomization
 resources:
   - pvc.yaml
   - cronjob.yaml
+  - cronjob-multi-turn-benchmark-llmd.yaml
+  - cronjob-multi-turn-benchmark-vllm-int4.yaml
 

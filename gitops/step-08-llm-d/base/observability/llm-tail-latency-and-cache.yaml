@@ -8,6 +8,7 @@ metadata:
     dashboards: "grafana"
     app.kubernetes.io/part-of: observability
     app.kubernetes.io/component: observability
+    demo.rhoai.io/step: "08"
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "12"

@@ -1,15 +1,12 @@
-# DestinationRule: TLS origination to llm-d model server (vLLM)
+# DestinationRule: TLS origination from Gateway to llm-d model server (vLLM)
 #
 # Why this exists:
 # - The llm-d/KServe workload service (`*-kserve-workload-svc`) serves HTTPS on port 8000.
-# - The OpenShift Gateway/Envoy connects to backends via Istio. Without explicit TLS
-#   settings, Envoy can attempt plaintext and/or reject the backend certificate,
-#   resulting in `500 Internal Server Error` when calling the external endpoint.
+# - The OpenShift Gateway controller uses Istio/Envoy dataplane. Without explicit TLS
+#   settings, the gateway may attempt plaintext and/or reject the backend certificate,
+#   resulting in `500` when calling the external endpoint.
 #
-# This rule enables SIMPLE TLS origination and skips certificate verification
-# (demo-only) to make external access reliable.
-#
-# NOTE: For production, replace `insecureSkipVerify` with proper CA trust.
+# Demo-only: insecureSkipVerify is enabled.
 #
 # Verify schema:
 #   oc explain destinationrule.spec.trafficPolicy.tls

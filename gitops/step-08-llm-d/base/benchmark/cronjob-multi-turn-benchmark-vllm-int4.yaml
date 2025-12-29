@@ -1,0 +1,62 @@
+# Multi-turn benchmark (Step 05/07 baseline vLLM INT4 endpoint)
+#
+# Shipped as a CronJob for GitOps reproducibility but suspended by default so it
+# does not run unexpectedly.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: multi-turn-benchmark-vllm-int4
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: multi-turn-benchmark-vllm-int4
+    app.kubernetes.io/component: benchmark
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  schedule: "30 4 * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: multi-turn-benchmark-vllm-int4
+            app.kubernetes.io/component: benchmark
+            demo.rhoai.io/step: "08"
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: benchmark
+              image: quay.io/hayesphilip/multi-turn-benchmark:0.0.1
+              args:
+                - "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1"
+                - "--conversations"
+                - "20"
+                - "--turns"
+                - "6"
+                - "--max-tokens"
+                - "150"
+                - "--parallel"
+                - "4"
+                - "--min-delay"
+                - "0.1"
+                - "--max-delay"
+                - "1.0"
+                - "--timeout"
+                - "120"
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "2"
+                  memory: "2Gi"
+
+

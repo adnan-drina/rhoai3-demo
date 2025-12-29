@@ -22,7 +22,7 @@ Demonstrate that enterprises can **increase inference capacity without upgrading
 **Success criteria:**
 - A distributed model deployment is created using the **RHOAI 3.0 GA supported flow**
 - The endpoint is reachable and returns valid inference responses
-- We can benchmark it using the existing GuideLLM + vLLM metrics and compare to the single-node INT4 baseline
+- Step 08 deploys the **llm-d benchmarks + observability add-ons** (ServiceMonitors + Grafana dashboard) so the llm-d story is self-contained in Step 08 GitOps
 
 ---
 
@@ -197,7 +197,9 @@ oc get crd authpolicies.kuadrant.io
 # Verify Gateway API resources exist (RHOAI enables Gateway API automatically)
 oc api-resources | grep -E 'gatewayclasses|gateways|httproutes'
 
-# Verify the demo GatewayClass/Gateway used by llm-d (created by Step 08 GitOps)
+# Optional: external Gateway exposure (Step 08 overlay only)
+# Step 08 base does NOT create any additional Gateways/LBs by default.
+# If you apply `gitops/step-08-llm-d/overlays/external-gateway/`, validate:
 oc get gatewayclass openshift-default
 oc get gateway openshift-ai-inference -n openshift-ingress
 
@@ -270,10 +272,17 @@ gitops/step-08-llm-d/
 │   ├── llm-d/                           # Distributed Inference (sync-wave: 1)
 │   │   ├── kustomization.yaml
 │   │   └── llminferenceservice.yaml     # Primary CR
-│   └── benchmark/                       # Benchmarking (sync-wave: 5)
+│   ├── observability/                   # ServiceMonitors + GrafanaDashboard (sync-wave: 10-12)
+│   │   ├── kustomization.yaml
+│   │   ├── servicemonitor-llmd-router.yaml
+│   │   ├── servicemonitor-llmd-workload.yaml
+│   │   └── llm-tail-latency-and-cache.yaml
+│   └── benchmark/                       # Benchmarks (sync-wave: 5-6)
 │       ├── kustomization.yaml
-│       ├── pvc.yaml                     # Results storage
-│       └── cronjob.yaml                 # llmd-benchmark
+│       ├── pvc.yaml                     # llmd-benchmark-results (5Gi)
+│       ├── cronjob.yaml                 # GuideLLM benchmark (suspended by default)
+│       ├── cronjob-multi-turn-benchmark-llmd.yaml        # multi-turn (suspended)
+│       └── cronjob-multi-turn-benchmark-vllm-int4.yaml   # baseline (suspended)
 ```
 
 > **Note:** The Connectivity Link instance (resource kind `Kuadrant`) is deployed by Step 08 (not Step 01) because:
@@ -455,21 +464,29 @@ Step 08 includes a dedicated benchmark setup for the distributed endpoint.
 gitops/step-08-llm-d/base/benchmark/
 ├── kustomization.yaml
 ├── pvc.yaml                 # llmd-benchmark-results (5Gi)
-└── cronjob.yaml             # llmd-benchmark CronJob (daily 3:00 AM UTC)
+├── cronjob.yaml             # GuideLLM benchmark (suspended by default)
+├── cronjob-multi-turn-benchmark-llmd.yaml        # multi-turn (suspended)
+└── cronjob-multi-turn-benchmark-vllm-int4.yaml   # baseline (suspended)
 ```
 
 ### Run GuideLLM Benchmark
 
 ```bash
-# Discover what Services/Routes the llm-d controller created
-oc get svc -n private-ai | grep -i mistral || true
-oc get route -n private-ai | grep -i mistral || true
-
-# Trigger the dedicated llm-d benchmark
+# Trigger the dedicated llm-d benchmark (CronJob is suspended by default)
 oc create job --from=cronjob/llmd-benchmark manual-llmd-$(date +%H%M) -n private-ai
 
 # Monitor the benchmark
 oc logs -f job/manual-llmd-$(date +%H%M) -n private-ai
+```
+
+### Run Multi-turn Benchmarks (Cache Story)
+
+```bash
+# llm-d multi-turn (CronJob is suspended by default)
+oc create job --from=cronjob/multi-turn-benchmark-llmd mtb-llmd-$(date +%H%M) -n private-ai
+
+# vLLM baseline multi-turn (CronJob is suspended by default)
+oc create job --from=cronjob/multi-turn-benchmark-vllm-int4 mtb-vllm-$(date +%H%M) -n private-ai
 ```
 
 ### Benchmark Configuration
@@ -505,15 +522,28 @@ oc run results-viewer --rm -it --image=busybox \
 
 ---
 
+## Observability
+
+Step 08 deploys llm-d observability resources into the `private-ai` namespace:
+- **ServiceMonitors** for router metrics and workload `/metrics`
+- A **GrafanaDashboard** for tail-latency and cache health
+
+> **Dependency:** Grafana Operator + Grafana instance are deployed by Step 07.
+
+**GitOps location:** `gitops/step-08-llm-d/base/observability/`
+
+---
+
 ## Technical Notes
 
 ### Gateway Naming
 
 RHOAI 3.0 documentation references (and llm-d validates) a Gateway named `openshift-ai-inference` in the `openshift-ingress` namespace.
 
-This demo follows the Red Hat reference implementation and creates:
-- `GatewayClass/gateway.networking.k8s.io` named `openshift-default` (controller: `openshift.io/gateway-controller/v1`)
-- `Gateway/gateway.networking.k8s.io` named `openshift-ai-inference` (HTTP/80, `allowedRoutes: from: All`)
+This demo follows the Red Hat reference implementation, but **ships Gateway exposure as an optional overlay** to avoid provisioning extra cloud load balancers/DNS records by default:
+
+- **Base (default):** no additional Gateway is created
+- **Overlay:** `gitops/step-08-llm-d/overlays/external-gateway/`
 
 **If llm-d controller reports a Gateway error:**
 
@@ -582,7 +612,7 @@ oc logs -n private-ai -l component=router
   - `oc get co console authentication ingress`
 - `*.apps.<cluster_domain>` (and/or `console-openshift-console.apps...`) returns `NXDOMAIN`.
 
-**Root Cause:**
+**Root Cause (only if you created an additional Gateway/LB):**
 Using a Gateway listener hostname like `*.apps.<cluster_domain>` for the `openshift-ai-inference` Gateway can cause the OpenShift Gateway controller to create a **wildcard** `DNSRecord` and (temporarily) overwrite or remove the default `*.apps` record.
 
 That breaks *all* OpenShift Routes, including the console and OAuth routes.

@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Optional overlay: expose llm-d via a dedicated Gateway.
+#
+# Why this is an overlay (not base):
+# - Creating additional `Gateway` objects in `openshift-ingress` can provision
+#   extra cloud load balancers and managed DNS records.
+# - Misconfiguration (e.g., wildcard hostnames) can impact the cluster `*.apps`
+#   domain and break the OpenShift console.
+#
+# Apply only when you need north-south access to the llm-d HTTPRoute.
+
+resources:
+  - ../../base
+  - gateway/
+
+patches:
+  - path: patch-llminferenceservice-gateway.yaml
+    target:
+      group: serving.kserve.io
+      version: v1alpha1
+      kind: LLMInferenceService
+      name: mistral-3-distributed
+      namespace: private-ai
+
+

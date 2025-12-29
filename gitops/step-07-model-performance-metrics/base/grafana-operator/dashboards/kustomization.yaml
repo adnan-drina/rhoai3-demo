@@ -28,5 +28,4 @@ resources:
   
   # Custom Dashboards for this Demo
   - mistral-roi-comparison.yaml         # Mistral BF16 vs INT4 comparison
-  - llm-tail-latency-and-cache.yaml     # Tail latency + cache health (Step 07/08)
 

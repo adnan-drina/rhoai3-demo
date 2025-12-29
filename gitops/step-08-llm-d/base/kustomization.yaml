@@ -35,14 +35,6 @@ kind: Kustomization
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # Gateway for llm-d (sync-wave: -1)
-  # Dedicated Gateway allowing HTTPRoutes from private-ai namespace
-  # The platform-managed data-science-gateway only allows openshift-ingress
-  # and redhat-ods-applications namespaces by default
-  # ═══════════════════════════════════════════════════════════════════════════
-  - gateway/
-
-  # ═══════════════════════════════════════════════════════════════════════════
   # Red Hat Connectivity Link (RHCL) instance (sync-wave: 0)
   # Required for llm-d Gateway integration and AuthPolicy validation
   # ═══════════════════════════════════════════════════════════════════════════
@@ -52,6 +44,13 @@ resources:
   # Distributed Inference Service (sync-wave: 1)
   # ═══════════════════════════════════════════════════════════════════════════
   - llm-d/
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Observability (sync-wave: 10-12)
+  # ServiceMonitors + GrafanaDashboard for llm-d story and comparisons
+  # (Assumes Step 07 Grafana instance exists in private-ai)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - observability/
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Benchmark Resources (sync-wave: 5)

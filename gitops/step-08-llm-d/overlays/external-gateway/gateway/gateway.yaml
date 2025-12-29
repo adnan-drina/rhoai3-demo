@@ -1,0 +1,51 @@
+# Gateway for llm-d Distributed Inference (optional overlay)
+#
+# ⚠️ IMPORTANT (cluster safety):
+# Do NOT set the Gateway listener hostname to `*.apps.<cluster_domain>`.
+# That can create/overwrite the cluster `*.apps` DNS entry and break the
+# OpenShift console and all Routes.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+
+# GatewayClass - use OpenShift's Gateway controller
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: openshift-default
+  labels:
+    app.kubernetes.io/name: openshift-default
+    app.kubernetes.io/component: gateway-class
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  controllerName: openshift.io/gateway-controller/v1
+---
+# Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  # Name is referenced by Step 08 LLMInferenceService router.gateway.refs
+  name: openshift-ai-inference
+  namespace: openshift-ingress
+  labels:
+    app.kubernetes.io/name: openshift-ai-inference
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    openshift.io/display-name: "llm-d Distributed Inference Gateway"
+    openshift.io/description: "Gateway for llm-d HTTPRoute (Step 08)"
+spec:
+  gatewayClassName: openshift-default
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+
+

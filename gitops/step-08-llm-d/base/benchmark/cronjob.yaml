@@ -44,13 +44,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   schedule: "0 3 * * *"
+  # This CronJob is shipped as part of Step 08, but kept paused by default.
+  # Enable it only when you are ready to run the benchmark (or trigger manually).
+  suspend: true
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       backoffLimit: 1
-      activeDeadlineSeconds: 900
+      activeDeadlineSeconds: 1200
       template:
         metadata:
           labels:
@@ -64,6 +67,11 @@ spec:
             - name: benchmark
               image: ghcr.io/vllm-project/guidellm:stable
               env:
+                # Ensure HF cache is writable (Guidellm may download tokenizer assets)
+                - name: HOME
+                  value: /tmp
+                - name: HF_HOME
+                  value: /tmp/.cache/huggingface
                 # Model configuration
                 - name: MODEL_NAME
                   value: "mistral-3-distributed"
@@ -107,37 +115,9 @@ spec:
                   echo "╚═══════════════════════════════════════════════════════════════════╝"
                   echo ""
                   
-                  # ═══════════════════════════════════════════════════════════════════
-                  # Discover the llm-d endpoint
-                  # The controller may create Services with various naming patterns
-                  # ═══════════════════════════════════════════════════════════════════
-                  echo "→ Discovering llm-d endpoint..."
-                  
-                  # Try common patterns for llm-d service names
-                  POSSIBLE_TARGETS=(
-                    "http://${MODEL_NAME}.private-ai.svc.cluster.local:8080/v1"
-                    "http://${MODEL_NAME}-router.private-ai.svc.cluster.local:8080/v1"
-                    "http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080/v1"
-                  )
-                  
-                  TARGET=""
-                  for CANDIDATE in "${POSSIBLE_TARGETS[@]}"; do
-                    echo "  Trying: ${CANDIDATE}"
-                    if curl -sf --connect-timeout 5 "${CANDIDATE}/models" >/dev/null 2>&1; then
-                      TARGET="${CANDIDATE}"
-                      echo "  ✓ Found working endpoint: ${TARGET}"
-                      break
-                    fi
-                  done
-                  
-                  if [ -z "${TARGET}" ]; then
-                    echo "❌ Could not discover llm-d endpoint. Available services:"
-                    cat /etc/resolv.conf
-                    echo ""
-                    echo "Attempting DNS lookup..."
-                    nslookup ${MODEL_NAME}.private-ai.svc.cluster.local || true
-                    exit 1
-                  fi
+                  # llm-d workload service (in-cluster).
+                  # This endpoint is stable and does not require an external Gateway.
+                  TARGET="https://${MODEL_NAME}-kserve-workload-svc.private-ai.svc.cluster.local:8000/v1"
                   
                   # ═══════════════════════════════════════════════════════════════════
                   # Pre-resolve hostname to IP (workaround for multiprocessing DNS)
@@ -154,7 +134,7 @@ spec:
                   fi
                   
                   if [ -n "${RESOLVED_IP}" ]; then
-                    TARGET_IP="http://${RESOLVED_IP}:8080${TARGET_PATH}"
+                    TARGET_IP="https://${RESOLVED_IP}:8000${TARGET_PATH}"
                     echo "  ✓ Resolved ${TARGET_HOST} → ${RESOLVED_IP}"
                     echo "  Using IP-based URL: ${TARGET_IP}"
                   else
@@ -182,7 +162,8 @@ spec:
                     --processor "${GUIDELLM_PROCESSOR}" \
                     --max-seconds "${GUIDELLM_MAX_SECONDS}" \
                     --max-requests "${GUIDELLM_MAX_REQUESTS}" \
-                    --output-path "${RESULTS_DIR}/results.json" \
+                    --output-dir "${RESULTS_DIR}" \
+                    --disable-console-interactive \
                     2>&1 | tee "${RESULTS_DIR}/benchmark.log"
                   
                   echo ""
@@ -207,10 +188,14 @@ spec:
               volumeMounts:
                 - name: results
                   mountPath: /results
+                - name: cache
+                  mountPath: /tmp/.cache
           volumes:
             - name: results
               persistentVolumeClaim:
                 claimName: llmd-benchmark-results
+            - name: cache
+              emptyDir: {}
           # No GPU required for the benchmark client.
           # Avoid hard-coding an instance-type nodeSelector (cluster-dependent).
           tolerations: []

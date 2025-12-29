@@ -1,0 +1,13 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: mistral-3-distributed
+  namespace: private-ai
+spec:
+  router:
+    gateway:
+      refs:
+        - name: openshift-ai-inference
+          namespace: openshift-ingress
+
+

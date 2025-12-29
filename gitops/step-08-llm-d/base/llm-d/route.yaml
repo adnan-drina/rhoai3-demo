@@ -1,0 +1,37 @@
+# OpenShift Route for llm-d external access
+#
+# The Gateway API HTTPRoute created by the LLMInferenceService controller
+# has TLS origination issues with the OpenShift Gateway controller.
+# This passthrough Route provides direct external access to the llm-d
+# workload service while maintaining HTTPS.
+#
+# Access: https://<route-host>/v1/completions
+#
+# Design Decision: We use a passthrough Route (TLS termination at the pod)
+# rather than edge termination because the vLLM workload service only
+# exposes HTTPS on port 8000.
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mistral-3-distributed
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: mistral-3-distributed
+    app.kubernetes.io/component: route
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    openshift.io/display-name: "Mistral-3 Distributed (llm-d)"
+    openshift.io/description: "External access to llm-d distributed inference"
+spec:
+  to:
+    kind: Service
+    name: mistral-3-distributed-kserve-workload-svc
+    weight: 100
+  port:
+    targetPort: 8000
+  tls:
+    termination: passthrough
+
