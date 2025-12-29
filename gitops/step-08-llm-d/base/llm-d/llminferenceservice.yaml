@@ -84,30 +84,19 @@ spec:
         operator: Exists
         effect: NoSchedule
     
-    # Container resource requirements
-    containers:
-      - name: vllm
-        # vLLM CUDA image (same as Step 05 ServingRuntime)
-        image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
-        env:
-          # vLLM v1 engine (required for RHOAI 3.0)
-          - name: VLLM_USE_V1
-            value: "1"
-          # Disable hardware metrics (avoids DCGM dependency issues)
-          - name: VLLM_NO_HW_METRICS
-            value: "1"
-          # NVIDIA library path
-          - name: LD_LIBRARY_PATH
-            value: /usr/local/nvidia/lib64
-        resources:
-          limits:
-            cpu: "16"
-            memory: 60Gi
-            nvidia.com/gpu: "1"
-          requests:
-            cpu: "8"
-            memory: 32Gi
-            nvidia.com/gpu: "1"
+    # Resource requirements for the controller-injected containers
+    # NOTE: Do NOT define spec.template.containers — this causes the controller
+    # to create a separate container. Instead, use spec.template.resources which
+    # applies to the controller's injected "main" container.
+    resources:
+      limits:
+        cpu: "16"
+        memory: 60Gi
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "8"
+        memory: 32Gi
+        nvidia.com/gpu: "1"
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration
