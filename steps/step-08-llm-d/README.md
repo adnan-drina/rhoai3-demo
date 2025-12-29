@@ -644,25 +644,64 @@ oc create job --from=cronjob/multi-turn-benchmark-vllm-int4 mtb-vllm-$(date +%H%
 | **Output Tokens** | 256 | Same as Step 07 for comparison |
 | **Duration** | 60s per rate | 10 levels × 60s = ~10 min total |
 
-### Benchmark Results (Multi-Turn Conversations)
+### Benchmark Results (GuideLLM Constant Profile)
 
-> **Test:** 20 conversations × 6 turns each = 120 requests, 4 parallel workers
+> **Test:** Same configuration as Step 07 (256 in/out tokens, rates 1→30 concurrent)
 
-| Metric | vLLM INT4 (1 replica) | llm-d (1 replica) | llm-d (2 replicas) |
-|--------|----------------------|-------------------|-------------------|
-| **TTFT P50** | 10,980 ms | 12,507 ms | **9,448 ms** ✅ |
-| **TTFT P95** | 23,107 ms | 29,215 ms | 28,839 ms |
-| **TTFT P99** | 24,358 ms | 31,684 ms | 42,591 ms |
-| **TTFT Mean** | 12,160 ms | 13,611 ms | **11,704 ms** ✅ |
-| **Total Time** | 764s | 1,285s | **896s** ✅ |
-| **Requests/sec** | 0.16 | 0.09 | 0.13 |
-| **Speedup Ratio** | 1.18x | 1.17x | 0.88x |
+| Concurrency | TTFT (P50) | TTFT (P95) | ITL (P50) | ITL (P95) | Notes |
+|-------------|-----------|-----------|-----------|-----------|-------|
+| 1 | 253 ms | 260 ms | 52 ms | 52 ms | Baseline |
+| 3 | 780 ms | 836 ms | 53 ms | 56 ms | Still responsive |
+| 8 | 2,191 ms | 2,212 ms | 55 ms | 63 ms | Approaching threshold |
+| 15 | 2,514 ms | 4,170 ms | 66 ms | 74 ms | Queue building |
+| 30 | 4,420 ms | 8,322 ms | 85 ms | 92 ms | High load |
 
 **Key Observations:**
-- ✅ **TTFT P50 improved 14%** vs vLLM baseline (9.4s vs 11.0s)
-- ✅ **Total time reduced 30%** vs single-replica llm-d (896s vs 1285s)
-- ✅ **Mean TTFT improved 4%** vs vLLM baseline
-- ⚠️ P95/P99 variance higher due to cache distribution across replicas
+- ✅ **ITL stays stable** even at high concurrency (52ms → 85ms)
+- ✅ **Throughput scales** — up to 549 tok/s at 30 concurrent
+- ⚠️ TTFT degrades under load (expected with 2 replicas)
+
+### Benchmark Results (Multi-Turn Conversations)
+
+> **Reference:** [rh-aiservices-bu/multi-turn-benchmarking](https://github.com/rh-aiservices-bu/multi-turn-benchmarking)
+> This repository provides a purpose-built multi-turn benchmark tool that measures **prefix caching effectiveness**.
+
+**From the reference repo (vLLM vs llm-d comparison):**
+
+| Metric | vLLM | llm-d | Improvement |
+|--------|------|-------|-------------|
+| **Mean TTFT** | 211.82 ms | 120.98 ms | **43% faster** |
+| **P50 TTFT** | 123.22 ms | 92.09 ms | **25% faster** |
+| **P95 TTFT** | 744.71 ms | 271.60 ms | **64% faster** |
+| **P99 TTFT** | 840.95 ms | 674.21 ms | **20% faster** |
+
+> **Key insight:** The P95 improvement (64% faster) demonstrates llm-d's prefix-aware routing.
+> Requests are directed to replicas with cached KV entries, avoiding expensive cold-start prefill operations.
+
+**Why multi-turn is the ideal benchmark:**
+- **First turn:** Cold cache, requires full prefill (compute-heavy)
+- **Subsequent turns:** Same conversation prefix is already cached
+- **llm-d advantage:** Routes requests to the replica with the cached prefix
+- **Speedup ratio:** 3.84x (first turn avg: 361ms, later turns avg: 94ms)
+
+### Run the Multi-Turn Benchmark
+
+```bash
+# Using the reference repo's pre-built image
+oc run multi-turn-bench --rm -it \
+  --image=quay.io/hayesphilip/multi-turn-benchmark:0.0.1 \
+  --restart=Never \
+  -n private-ai \
+  -- http://mistral-3-distributed-kserve-workload-svc.private-ai.svc.cluster.local:8000/v1
+
+# With custom parameters
+oc run multi-turn-bench --rm -it \
+  --image=quay.io/hayesphilip/multi-turn-benchmark:0.0.1 \
+  --restart=Never \
+  -n private-ai \
+  -- http://mistral-3-distributed-kserve-workload-svc.private-ai.svc.cluster.local:8000/v1 \
+  --conversations 11 --turns 10 --parallel 4
+```
 
 **For full routing demo** (per [reference repo](https://github.com/rh-aiservices-bu/rhaoi3-llm-d)):
 - Scale to **4 replicas** to demonstrate 90%+ KV cache hit rate
@@ -916,7 +955,16 @@ oc delete application step-08-llm-d -n openshift-gitops
 - [Demystifying llm-d and vLLM: The race to production](https://www.redhat.com/en/blog/demystifying-llm-d-and-vllm-race-production)
 - [Autoscaling vLLM on OpenShift AI](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving)
 
-### Repo References
+### Reference Implementations
+
+- **[rh-aiservices-bu/rhaoi3-llm-d](https://github.com/rh-aiservices-bu/rhaoi3-llm-d)** — Red Hat AI Services reference implementation for llm-d
+- **[rh-aiservices-bu/multi-turn-benchmarking](https://github.com/rh-aiservices-bu/multi-turn-benchmarking)** — Multi-turn conversation benchmark tool
+  - Specifically designed to measure **prefix caching effectiveness**
+  - Pre-built image: `quay.io/hayesphilip/multi-turn-benchmark:0.0.1`
+  - Shows 64% improvement in P95 TTFT with llm-d vs vLLM
+  - Demonstrates the "Speedup Ratio" (first turn vs later turns)
+
+### Related Steps in This Demo
 
 - [Step 01: GPU Prerequisites](../step-01-gpu-and-prereq/README.md) — LeaderWorkerSet operator, GPU nodes
 - [Step 05: vLLM Baseline](../step-05-llm-on-vllm/README.md) — INT4 model configuration
