@@ -1,6 +1,6 @@
-# Argo CD Application: Step-06B LiteMaaS (Experimental)
-# ⚠️ EXPERIMENTAL: Proof-of-concept MaaS platform
-# Requires pre-created OAuthClient and OpenShift groups
+# Argo CD Application: Step-06B LiteMaaS
+# Model-as-a-Service platform for LLM subscriptions and API key management
+# OAuthClient is included in GitOps - no manual pre-creation required
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

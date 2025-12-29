@@ -3,6 +3,11 @@ kind: Application
 metadata:
   name: step-07-model-performance-metrics
   namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "07"
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -21,6 +26,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      # Required for CRDs with complex schemas (Grafana, Routes)
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
@@ -28,11 +35,38 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    # ConfigMap for dashboards might have transient fields or console-managed annotations
+    # OpenShift Routes have fields that cause schema comparison issues
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status
+    # Grafana CRDs - ignore status and operator-managed fields
+    - group: grafana.integreatly.org
+      kind: Grafana
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    - group: grafana.integreatly.org
+      kind: GrafanaDashboard
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    - group: grafana.integreatly.org
+      kind: GrafanaDatasource
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    # ConfigMap annotations managed by console/operator
     - group: ""
       kind: ConfigMap
-      namespace: private-ai
       jsonPointers:
         - /metadata/annotations
         - /metadata/resourceVersion
+    # Notebook controller-managed annotations
+    - group: kubeflow.org
+      kind: Notebook
+      jsonPointers:
+        - /metadata/annotations
+        - /status
 

@@ -3,6 +3,11 @@ kind: Application
 metadata:
   name: step-03-private-ai
   namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "03"
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -27,6 +32,7 @@ spec:
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
       - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
@@ -41,3 +47,13 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /metadata/labels
+    # Secrets may have additional annotations
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /metadata/annotations
+    # LocalQueue status managed by Kueue
+    - group: kueue.x-k8s.io
+      kind: LocalQueue
+      jsonPointers:
+        - /status

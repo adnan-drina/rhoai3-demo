@@ -4,10 +4,12 @@ metadata:
   name: step-05-llm-on-vllm
   namespace: openshift-gitops
   labels:
-    app.kubernetes.io/part-of: rhoai-demo
-    demo-step: "05"
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "05"
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "50"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -23,12 +25,25 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
-      - PruneLast=true
-      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    # InferenceService status and predictor fields managed by KServe
+    - group: serving.kserve.io
+      kind: InferenceService
+      jsonPointers:
+        - /status
+        - /spec/predictor/model/runtime
+    # Notebook controller-managed annotations
+    - group: kubeflow.org
+      kind: Notebook
+      jsonPointers:
+        - /metadata/annotations
+        - /status
 

@@ -3,6 +3,11 @@ kind: Application
 metadata:
   name: step-04-model-registry
   namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "04"
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
