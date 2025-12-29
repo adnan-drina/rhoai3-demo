@@ -826,6 +826,44 @@ oc delete application step-08-llm-d -n openshift-gitops
 
 ---
 
+## RHOAI 3.0 llm-d Architecture
+
+Understanding the four-layer architecture helps explain Gateway behavior:
+
+| Layer | Component | Role | Status in Demo |
+|-------|-----------|------|----------------|
+| **Orchestration** | LeaderWorkerSet (LWS) | Multi-pod coordination for tensor parallelism | N/A (using replicas) |
+| **Engine** | vLLM | High-performance inference runtime | ✅ Running in workload pods |
+| **Gateway** | InferenceGateway (MaaS) | Auth, rate limiting, unified endpoint | ❌ CRD not available |
+| **Network** | Service Mesh/Istio | Pod-to-pod TLS, ingress | ✅ Partial (see limitations) |
+
+> **Key insight**: The `InferenceGateway` (`maas.opendatahub.io/v1alpha1`) is the proper MaaS endpoint.
+> This CRD is **Developer Preview** and not available in RHOAI 3.0 GA installations.
+
+### Why Gateway API TLS Fails
+
+The Gateway API → HTTPRoute → InferencePool path requires TLS origination to the backend:
+1. Gateway receives HTTP:80
+2. HTTPRoute routes to InferencePool (port 8000)
+3. InferencePool → EPP → Workload pods (HTTPS:8000)
+
+**Issue**: The Gateway Envoy's TLS origination to the HTTPS backend fails despite:
+- DestinationRules with `mode: SIMPLE` and `insecureSkipVerify: true`
+- Service `appProtocol: https` annotation
+- Correct Envoy cluster configuration
+
+**Workaround**: Use OpenShift Route with passthrough TLS (TLS terminated at pod).
+
+### Accessing llm-d in This Demo
+
+| Method | URL | Status |
+|--------|-----|--------|
+| **OpenShift Route** (recommended) | `https://mistral-3-distributed-private-ai.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com` | ✅ Works |
+| **Gateway API** (dashboard URL) | `http://...elb.amazonaws.com/private-ai/mistral-3-distributed` | ❌ 500 Error |
+| **Internal cluster** | `http://openshift-ai-inference-openshift-default.openshift-ingress.svc.cluster.local/...` | ❌ 500 Error |
+
+---
+
 ## Future Enhancements
 
 ### Model-as-a-Service (MaaS) Integration
