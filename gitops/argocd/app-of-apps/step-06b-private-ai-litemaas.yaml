@@ -33,6 +33,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      # Force ownership of conflicting resources
+      - ServerSideApply.ForceConflicts=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
@@ -45,4 +48,10 @@ spec:
       kind: "*"
       jsonPointers:
         - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
+    # OpenShift Routes - ignore host and status
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status
 

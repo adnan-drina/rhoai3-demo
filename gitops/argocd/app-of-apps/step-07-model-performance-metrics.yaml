@@ -26,6 +26,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      # Force ownership of conflicting resources (ConfigMaps)
+      - ServerSideApply.ForceConflicts=true
       # Required for CRDs with complex schemas (Grafana, Routes)
       - RespectIgnoreDifferences=true
     retry:
