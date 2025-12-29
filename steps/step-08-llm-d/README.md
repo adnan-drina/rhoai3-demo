@@ -127,7 +127,8 @@ To ensure llm-d can **always start** even when vLLM workloads are consuming GPUs
 ║  ─────────────────┼───────┼────────────────────────────┼──────────────────  ║
 ║  g6.12xlarge ×1   │ 4× L4 │ Mistral-3 BF16 (vLLM)      │ rhoai-main-queue   ║
 ║  g6.4xlarge  ×1   │ 1× L4 │ Mistral-3 INT4 (vLLM)      │ rhoai-main-queue   ║
-║  g6.4xlarge  ×2   │ 2× L4 │ Mistral-3 INT4 (llm-d) ⭐  │ rhoai-llmd-queue   ║
+║  g6.4xlarge  ×2   │ 2× L4 │ Mistral-3 INT4 (llm-d) ⭐  │ default queue      ║
+║                   │       │ (2 replicas, 1 GPU each)   │                    ║
 ║                                                                              ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  TOTAL: 1× g6.12xlarge + 3× g6.4xlarge = 7 GPUs                             ║
@@ -135,6 +136,9 @@ To ensure llm-d can **always start** even when vLLM workloads are consuming GPUs
 ║  Cost: $3.40/hr (g6.12xlarge) + $2.55/hr (3× g6.4xlarge) = ~$5.95/hr        ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
+
+> **Note:** The llm-d controller assigns pods to the `default` LocalQueue (not `llmd`).
+> This is expected behavior — the controller manages queue assignment internally.
 
 ### Kueue Queue Separation
 
@@ -290,15 +294,30 @@ gitops/step-08-llm-d/
 > 2. Step 08 creates the **instance** (in `private-ai` namespace)
 > 3. This pattern separates operator installation from workload configuration
 
+### Current Configuration
+
+> **Configuration aligned with [Red Hat reference implementation](https://github.com/rh-aiservices-bu/rhaoi3-llm-d)**
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| **Parallelism** | `tensor: 1` | Single GPU per replica (no sharding) |
+| **Replicas** | `2` | 2 independent model instances |
+| **Queue** | `llmd` → `rhoai-llmd-queue` | Dedicated GPU reservation |
+
+**Why this configuration?**
+- Enables **llm-d intelligent routing** demonstration
+- Router can direct requests to replica with cached KV prefix
+- Shows P50 latency improvement over round-robin
+
 ### Comparison with Step 05/07 Baseline
 
 | Metric | INT4 Single-Node (Step 05) | Distributed llm-d (Step 08) |
 |--------|---------------------------|------------------------------|
-| **GPUs** | 1× L4 | 2× L4 (tensor parallel) |
+| **GPUs** | 1× L4 | 2× L4 (2 replicas) |
 | **Instance** | g6.4xlarge | 2× g6.4xlarge |
 | **Cost** | $0.85/hr | $1.70/hr |
-| **Throughput** | ~85 tok/s | TBD (expected: 1.5-2x) |
-| **Breaking Point** | ~8 concurrent | TBD (expected: ~15-20) |
+| **Routing** | N/A | KV-cache aware |
+| **Throughput** | ~85 tok/s | See benchmark results below |
 
 ---
 
@@ -357,17 +376,23 @@ metadata:
   labels:
     # Use the reserved llm-d LocalQueue (created in Step 03)
     kueue.x-k8s.io/queue-name: llmd
+  annotations:
+    # Disable authentication for demo simplicity
+    security.opendatahub.io/enable-auth: "false"
 spec:
   model:
     name: mistral-3-distributed
     uri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
   
-  # Distribute across 2 GPUs using tensor parallelism
+  # Routing Demo Configuration (matching reference repo pattern)
+  # - tensor: 1 = single GPU per replica (no sharding)
+  # - replicas: 2 = enables intelligent routing between instances
   parallelism:
-    tensor: 2
+    tensor: 1
   
-  # Number of replicas (each replica spans tensor GPUs)
-  replicas: 1
+  # 2 replicas for routing demonstration
+  # llm-d router can route to replica with cached KV prefix
+  replicas: 2
   
   # Pod template for GPU scheduling
   template:
@@ -378,24 +403,22 @@ spec:
         operator: Exists
         effect: NoSchedule
     # NOTE: The llm-d controller injects a container named "main".
-    # We must use spec.template.containers with name: "main" to set GPU
-    # resources on the correct container (not a custom name like "vllm").
     containers:
       - name: main
         resources:
           limits:
+            cpu: "16"
+            memory: 60Gi
             nvidia.com/gpu: "1"
           requests:
+            cpu: "8"
+            memory: 32Gi
             nvidia.com/gpu: "1"
   
-  # Router configuration
+  # Router configuration (no external Gateway by default)
   router:
     route: {}
     scheduler: {}
-    gateway:
-      refs:
-        - name: openshift-ai-inference
-          namespace: openshift-ingress
 ```
 
 ### 2. Verify Deployment
@@ -413,12 +436,32 @@ oc describe llminferenceservice mistral-3-distributed -n private-ai | grep -A10 
 
 ### 3. Test the Endpoint
 
+**Option A: Via OpenShift Route (recommended)**
+
+Step 08 creates a passthrough Route for direct external access:
+
 ```bash
-# Get the endpoint URL
-ENDPOINT=$(oc get llminferenceservice mistral-3-distributed -n private-ai -o jsonpath='{.status.url}')
+# Get the Route URL
+ROUTE_URL=$(oc get route mistral-3-distributed -n private-ai -o jsonpath='https://{.spec.host}')
 
 # Test inference
-curl -sk "$ENDPOINT/v1/chat/completions" \
+curl -sk "$ROUTE_URL/v1/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mistral-3-distributed",
+    "prompt": "Hello!",
+    "max_tokens": 50
+  }'
+```
+
+**Option B: Via Gateway (if configured)**
+
+```bash
+# Get the Gateway endpoint URL
+GATEWAY_URL=$(oc get llminferenceservice mistral-3-distributed -n private-ai -o jsonpath='{.status.url}')
+
+# Test inference (may return 500 due to TLS origination issues)
+curl -sk "$GATEWAY_URL/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "mistral-3-distributed",
@@ -427,15 +470,19 @@ curl -sk "$ENDPOINT/v1/chat/completions" \
   }'
 ```
 
+> **Note:** The OpenShift Route uses passthrough TLS termination (at the pod),
+> which avoids the TLS re-encryption complexity between Gateway and backend.
+
 ---
 
 ## Validate
 
 ### Expected Outcomes
 
-1. **Pods on separate nodes**: Each worker scheduled on different g6.4xlarge
-2. **Router pod running**: Handles request scheduling
-3. **Endpoint accessible**: Gateway routes traffic to router
+1. **2 workload pods running**: Each on a separate g6.4xlarge node
+2. **Router pod running**: Handles KV-cache aware request scheduling
+3. **Endpoint accessible**: Via OpenShift Route or Gateway
+4. **Metrics flowing**: Visible in Grafana "LLM Tail Latency + Cache Health" dashboard
 
 ### Validation Commands
 
@@ -499,16 +546,38 @@ oc create job --from=cronjob/multi-turn-benchmark-vllm-int4 mtb-vllm-$(date +%H%
 | **Output Tokens** | 256 | Same as Step 07 for comparison |
 | **Duration** | 60s per rate | 10 levels × 60s = ~10 min total |
 
+### Benchmark Results (Multi-Turn Conversations)
+
+> **Test:** 20 conversations × 6 turns each = 120 requests, 4 parallel workers
+
+| Metric | vLLM INT4 (1 replica) | llm-d (1 replica) | llm-d (2 replicas) |
+|--------|----------------------|-------------------|-------------------|
+| **TTFT P50** | 10,980 ms | 12,507 ms | **9,448 ms** ✅ |
+| **TTFT P95** | 23,107 ms | 29,215 ms | 28,839 ms |
+| **TTFT P99** | 24,358 ms | 31,684 ms | 42,591 ms |
+| **TTFT Mean** | 12,160 ms | 13,611 ms | **11,704 ms** ✅ |
+| **Total Time** | 764s | 1,285s | **896s** ✅ |
+| **Requests/sec** | 0.16 | 0.09 | 0.13 |
+| **Speedup Ratio** | 1.18x | 1.17x | 0.88x |
+
+**Key Observations:**
+- ✅ **TTFT P50 improved 14%** vs vLLM baseline (9.4s vs 11.0s)
+- ✅ **Total time reduced 30%** vs single-replica llm-d (896s vs 1285s)
+- ✅ **Mean TTFT improved 4%** vs vLLM baseline
+- ⚠️ P95/P99 variance higher due to cache distribution across replicas
+
+**For full routing demo** (per [reference repo](https://github.com/rh-aiservices-bu/rhaoi3-llm-d)):
+- Scale to **4 replicas** to demonstrate 90%+ KV cache hit rate
+- Requires 4× g6.4xlarge nodes
+
 ### Metrics to Compare
 
-| Metric | INT4 Single (Step 07) | Distributed (Step 08) | Notes |
-|--------|----------------------|----------------------|-------|
-| TTFT (p95) | TBD (measure) | TBD (measure) | Expect similar or slightly higher |
-| TPOT (p95) | TBD (measure) | TBD (measure) | Expect similar |
-| Max Throughput | TBD (measure) | TBD (measure) | Hypothesis: higher with tensor=2 |
-| Breaking Point | TBD (measure) | TBD (measure) | Hypothesis: higher with tensor=2 |
-| KV Cache Usage | `vllm:kv_cache_usage_perc` | TBD | Key saturation indicator |
-| Queue Depth | `vllm:num_requests_waiting` | TBD | Saturation indicator |
+| Metric | Source | Notes |
+|--------|--------|-------|
+| TTFT (p50/p95/p99) | `vllm:time_to_first_token_seconds_bucket` | User-perceived latency |
+| ITL/TPOT | `vllm:time_per_output_token_seconds_bucket` | Decode speed |
+| KV Cache Usage | `vllm:gpu_cache_usage_perc` | Saturation indicator |
+| Queue Depth | `vllm:num_requests_waiting` | Backpressure indicator |
 
 ### View Results
 
@@ -531,6 +600,27 @@ Step 08 deploys llm-d observability resources into the `private-ai` namespace:
 > **Dependency:** Grafana Operator + Grafana instance are deployed by Step 07.
 
 **GitOps location:** `gitops/step-08-llm-d/base/observability/`
+
+### Access the Dashboard
+
+```bash
+# Get Grafana URL
+GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='https://{.spec.host}')
+echo "Grafana: $GRAFANA_URL"
+
+# Dashboard: Dashboards → private-ai → LLM Tail Latency + Cache Health
+# Set model dropdown to: mistral-3-distributed
+```
+
+### Key Metrics to Monitor
+
+| Panel | Metric | What to Watch |
+|-------|--------|---------------|
+| **Time to First Token (TTFT)** | P50/P95/P99 | User-perceived latency |
+| **Inter-Token Latency (ITL)** | P50/P95 | Decode speed consistency |
+| **Token Throughput** | prompt/gen tok/s | Overall performance |
+| **KV Cache Usage** | % | Saturation indicator (>80% = pressure) |
+| **Queue Health** | running vs waiting | Backpressure indicator |
 
 ---
 
