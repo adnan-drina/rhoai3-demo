@@ -995,6 +995,74 @@ oc get odhdashboardconfig -n redhat-ods-applications -o jsonpath='{.spec.dashboa
 
 ## Advanced Topics (Optional)
 
+### LeaderWorkerSet (LWS) and Tensor Parallelism
+
+**Important distinction:** Our demo uses `tensor: 1, replicas: 2` which creates **independent replicas**, NOT tensor parallelism.
+
+| Mode | Configuration | Workload | Use Case |
+|------|---------------|----------|----------|
+| **Routing Demo** (current) | `tensor: 1, replicas: 2` | Deployment | KV-cache aware routing between independent instances |
+| **Tensor Parallelism** | `tensor: 2, replicas: 1` | LeaderWorkerSet | Model sharded across multiple GPUs/nodes |
+
+#### Why LWS Matters
+
+Standard Deployments treat pods independently. LWS provides:
+
+1. **Atomic Startup**: Both Leader and Worker must start together
+2. **Fate Sharing**: If Leader crashes, Workers restart together
+3. **Stable DNS**: Headless Service provides predictable addresses for Ray/NCCL communication
+
+#### LWS Configuration Example
+
+For true tensor parallelism (model too large for single GPU):
+
+```yaml
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: mistral-70b-sharded
+  namespace: private-ai
+spec:
+  model:
+    uri: oci://registry.redhat.io/rhelai1/modelcar-mistral-large:latest
+  parallelism:
+    tensor: 2  # Shard model across 2 pods
+  replicas: 1  # Single sharded instance
+  template:
+    containers:
+      - name: main
+        resources:
+          limits:
+            nvidia.com/gpu: "1"  # 1 GPU per pod × 2 pods = 2 GPUs total
+```
+
+This creates a `LeaderWorkerSet` with:
+- Pod 0: Leader (Ray Head, Model Shard 0)
+- Pod 1: Worker (Ray Worker, Model Shard 1)
+
+#### Verification
+
+```bash
+# Check if LWS CRD is available
+oc get crd | grep leaderworkerset
+
+# Check if LWS was created (only for tensor > 1)
+oc get leaderworkerset -n private-ai
+
+# Our demo uses Deployment (replicas mode)
+oc get deployment -n private-ai | grep mistral-3-distributed
+```
+
+#### Current Demo Design Decision
+
+We chose `tensor: 1, replicas: 2` to demonstrate **llm-d intelligent routing**:
+- Shows KV-cache aware request scheduling
+- Demonstrates ~90% cache hit rate vs ~25% with round-robin
+- Lower P95/P99 tail latency
+- Works with our 2× g6.4xlarge GPU allocation
+
+For massive models (>24GB) that don't fit on a single GPU, use tensor parallelism with LWS.
+
 ### Disaggregated Prefill/Decode
 
 llm-d supports separating prefill and decode workers for independent scaling:
