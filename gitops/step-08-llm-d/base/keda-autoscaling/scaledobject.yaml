@@ -46,24 +46,32 @@ spec:
     name: mistral-3-distributed-kserve
   
   # Scaling bounds
-  # NOTE: For autoscaling demo, start at 1 replica to observe scale-up
-  minReplicaCount: 1    # Start small for autoscaling demo
+  # NOTE: minReplicaCount=2 is the stable default. Large LLM model loading takes
+  # 2-5 minutes, and scaling down before a new pod is ready causes a restart loop.
+  # For autoscaling demo (scale-up observation), temporarily set minReplicaCount=1.
+  minReplicaCount: 2    # Stable: prevent scale-down restart loop
   maxReplicaCount: 3    # Limited by GPU nodes (3× g6.4xlarge, 1 used by INT4 vLLM)
   
+  # ═══════════════════════════════════════════════════════════════════════════
   # Polling and cooldown
-  pollingInterval: 15   # Check metrics every 15s
-  cooldownPeriod: 120   # Wait 2min before scaling down (prevent flapping)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # IMPORTANT: For LLM workloads, cooldownPeriod must be LONGER than model
+  # loading time. A 24B INT4 model takes 3-5+ minutes to load into GPU memory.
+  # If cooldownPeriod is too short, KEDA will kill pods before they're ready.
+  pollingInterval: 15     # Check metrics every 15s
+  cooldownPeriod: 600     # Wait 10min before scaling down (model loading is slow!)
   
   # Scaling behavior
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleDown:
-          stabilizationWindowSeconds: 300  # 5min stabilization
+          # Long stabilization prevents thrashing during model loading
+          stabilizationWindowSeconds: 600  # 10min stabilization for LLM
           policies:
             - type: Pods
               value: 1
-              periodSeconds: 60
+              periodSeconds: 120  # Scale down 1 pod per 2 minutes max
         scaleUp:
           stabilizationWindowSeconds: 60   # 1min to scale up
           policies:
