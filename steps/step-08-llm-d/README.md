@@ -868,44 +868,125 @@ The Gateway API → HTTPRoute → InferencePool path requires TLS origination to
 
 ### Model-as-a-Service (MaaS) Integration
 
-> **Status:** Planned for future iteration
-> **Dependency:** `InferenceGateway` CRD (Developer Preview in RHOAI 3.0)
+> **Status:** Developer Preview in RHOAI 3.0 GA
+> **Dependency:** `InferenceGateway` CRD (`maas.opendatahub.io/v1alpha1`) - **Not available in this cluster**
 
-MaaS provides a centralized "Enterprise AI API" pattern that could enhance this demo:
+MaaS provides a centralized "Enterprise AI API" pattern using four layers:
 
 ```
-┌─────────┐     ┌──────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│ Client  │────▶│ InferenceGateway │────▶│ llm-d Router │────▶│ llm-d Workload  │
-│ + API   │     │ (Authorino auth) │     │ (scheduler)  │     │ (2 replicas)    │
-│   Key   │     │ (Rate limiting)  │     │              │     │                 │
-└─────────┘     └──────────────────┘     └──────────────┘     └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MaaS Architecture                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────┐     ┌──────────────────┐     ┌──────────────┐     ┌─────────┐ │
+│  │ Client  │────▶│ InferenceGateway │────▶│ llm-d Router │────▶│ Workload│ │
+│  │ + API   │     │ (Authorino auth) │     │ (EPP/KV-cache│     │ (vLLM)  │ │
+│  │   Key   │     │ (Limitador rate) │     │  scheduling) │     │         │ │
+│  └─────────┘     └──────────────────┘     └──────────────┘     └─────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Benefits:**
-| Feature | Description |
-|---------|-------------|
-| **Single Endpoint** | All models via one URL (`/v1/chat/completions`) |
-| **API Key Auth** | Track usage per team/application |
-| **Rate Limiting** | Protect GPU resources from overload |
-| **Model Discovery** | Auto-register labeled models |
+#### MaaS Configuration Layers
 
-**Current blockers:**
-- `InferenceGateway` CRD (`maas.opendatahub.io/v1alpha1`) not available in cluster
-- MaaS is Developer Preview, not GA
+| Layer | Component | Purpose | Status |
+|-------|-----------|---------|--------|
+| **1. Platform** | `OdhDashboardConfig.modelAsService: true` | Enable MaaS controllers | ✅ Enabled |
+| **2. Identity** | AuthConfig + API Key Secret | Request authentication | ✅ CRD available |
+| **3. Rate Limit** | Limitador | Token/request quotas | ✅ CRD available |
+| **4. Routing** | InferenceGateway | Unified endpoint | ❌ CRD not installed |
 
-**Prerequisites for future implementation:**
+#### Example MaaS Configuration (For Future Use)
+
+When `InferenceGateway` CRD becomes available, configure MaaS as follows:
+
+**API Key Secret:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-api-key
+  namespace: private-ai
+  labels:
+    authorino.kuadrant.io/managed-by: authorino
+stringData:
+  api_key: "rhoai-demo-secret-2025"
+```
+
+**AuthConfig:**
+```yaml
+apiVersion: authorino.kuadrant.io/v1beta1
+kind: AuthConfig
+metadata:
+  name: maas-auth
+  namespace: private-ai
+spec:
+  hosts:
+    - "*"
+  authentication:
+    "api-key-auth":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino.kuadrant.io/managed-by: authorino
+      header:
+        name: Authorization
+```
+
+**InferenceGateway:**
+```yaml
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: InferenceGateway
+metadata:
+  name: enterprise-ai-gateway
+  namespace: private-ai
+spec:
+  auth:
+    type: authorino
+  rateLimit:
+    type: limitador
+  gatewayRef:
+    name: data-science-gateway
+    namespace: openshift-ingress
+  models:
+    - name: mistral-3-bf16
+      serviceName: mistral-3-bf16-predictor
+    - name: mistral-3-int4
+      serviceName: mistral-3-int4-predictor
+    - name: mistral-3-distributed
+      serviceName: mistral-3-distributed-api  # llm-d Leader
+```
+
+**Testing (when available):**
 ```bash
-# Verify InferenceGateway CRD availability
+# Get MaaS endpoint
+MAAS_URL=$(oc get inferencegateway enterprise-ai-gateway -n private-ai -o jsonpath='{.status.url}')
+
+# Test with API key
+curl -k -X POST "$MAAS_URL/v1/chat/completions" \
+  -H "Authorization: Bearer rhoai-demo-secret-2025" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mistral-3-distributed",
+    "messages": [{"role": "user", "content": "Explain llm-d."}]
+  }'
+```
+
+#### Current Verification
+
+```bash
+# Check if InferenceGateway CRD exists (currently NOT available)
 oc api-resources | grep -i inferencegateway
 
-# Check if MaaS controller is running
+# Check MaaS controller (currently NOT running)
 oc get pods -n redhat-ods-applications | grep maas
 
-# OdhDashboardConfig already has modelAsService: true
-oc get odhdashboardconfig -n redhat-ods-applications -o yaml | grep modelAsService
+# Confirm modelAsService is enabled (✅ TRUE)
+oc get odhdashboardconfig -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.modelAsService}'
 ```
 
 **References:**
+- [RHOAI 3.0 Release Notes - Developer Preview Features](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/release_notes/index)
 - [Red Hat Developer: Introducing MaaS on OpenShift AI](https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai)
 - [OpenDataHub MaaS Documentation](https://opendatahub-io.github.io/models-as-a-service/)
 - [GitHub: opendatahub-io/models-as-a-service](https://github.com/opendatahub-io/models-as-a-service)
