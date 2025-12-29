@@ -27,6 +27,10 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: "grafana"
+  # Map datasource template variable to our actual datasource
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "Prometheus-UWM"
   folder: "RHOAI Single Model Serving Dashboards"
   json: |-
     {
