@@ -46,7 +46,8 @@ spec:
     name: mistral-3-distributed-kserve
   
   # Scaling bounds
-  minReplicaCount: 2    # Baseline for routing demo
+  # NOTE: For autoscaling demo, start at 1 replica to observe scale-up
+  minReplicaCount: 1    # Start small for autoscaling demo
   maxReplicaCount: 3    # Limited by GPU nodes (3× g6.4xlarge, 1 used by INT4 vLLM)
   
   # Polling and cooldown
