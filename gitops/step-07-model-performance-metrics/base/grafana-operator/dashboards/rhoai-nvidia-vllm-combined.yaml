@@ -2133,8 +2133,8 @@ spec:
         "list": [
           {
             "current": {
-              "text": "Prometheus",
-              "value": "682a2344-305f-4039-b45a-303051728943"
+              "text": "Prometheus-UWM",
+              "value": "Prometheus-UWM"
             },
             "name": "datasource",
             "options": [],
