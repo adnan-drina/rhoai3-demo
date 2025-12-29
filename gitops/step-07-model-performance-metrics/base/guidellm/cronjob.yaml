@@ -2,19 +2,22 @@
 # ============================================================================
 # Daily benchmark using constant profile with graduated concurrency levels.
 #
-# Concurrency Ramp-Up Strategy:
-#   1, 5, 10, 15, 20, 30, 40, 50, 60, 80
-#   └──────────────────────────────────┘
-#   Gradual increase to identify exact breaking point
+# Concurrency Ramp-Up Strategy (optimized from test results):
+#   5 → 10 → 20 → 30 → 40
+#   │    │    │    │    └── BF16 breaking point
+#   │    │    │    └─────── BF16 SLA breach starts
+#   │    │    └──────────── BF16 sweet spot / INT4 severe
+#   │    └───────────────── INT4 breaking point
+#   └────────────────────── INT4 SLA breach starts
 #
 # Synthetic Data Configuration:
 #   - Input tokens: 256 (controlled prompt length)
 #   - Output tokens: 256 (controlled generation length)
 #   - Processor: mistralai/Mistral-Small-3.1-24B-Instruct-2503
 #
-# Expected Results (from testing):
-#   - INT4 (1-GPU): Optimal 5-20 concurrent, breaking at ~80+
-#   - BF16 (4-GPU): Handles higher load with 4x GPU capacity
+# Expected Results (from testing 2024-12-27):
+#   - INT4 (1-GPU): Optimal 1-3 concurrent, TTFT breaks at 5+ (>1s)
+#   - BF16 (4-GPU): Optimal 1-20 concurrent, TTFT breaks at 30+ (>2s)
 #
 # Default: Daily at 2:00 AM UTC
 #
@@ -64,9 +67,9 @@ spec:
                 # Constant profile with graduated concurrency levels
                 - name: GUIDELLM_PROFILE
                   value: constant
-                # Graduated concurrency: 1 → 5 → 10 → 15 → 20 → 30 → 40 → 50 → 60 → 80
+                # Focused rates: 5 levels from optimal to breaking point
                 - name: GUIDELLM_RATES
-                  value: "1,5,10,15,20,30,40,50,60,80"
+                  value: "5,10,20,30,40"
                 - name: GUIDELLM_RATE_TYPE
                   value: concurrent
                 # Synthetic data for controlled workload
