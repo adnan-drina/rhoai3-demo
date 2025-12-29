@@ -46,10 +46,9 @@ spec:
     name: mistral-3-distributed-kserve
   
   # Scaling bounds
-  # NOTE: minReplicaCount=2 is the stable default. Large LLM model loading takes
-  # 2-5 minutes, and scaling down before a new pod is ready causes a restart loop.
-  # For autoscaling demo (scale-up observation), temporarily set minReplicaCount=1.
-  minReplicaCount: 2    # Stable: prevent scale-down restart loop
+  # With 600s cooldown/stabilization, KEDA waits long enough for model loading
+  # (24B INT4 takes ~2 min) before making scale-down decisions.
+  minReplicaCount: 1    # Allow full scale-down for autoscaling demo
   maxReplicaCount: 3    # Limited by GPU nodes (3× g6.4xlarge, 1 used by INT4 vLLM)
   
   # ═══════════════════════════════════════════════════════════════════════════
