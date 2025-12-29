@@ -87,13 +87,16 @@ spec:
     # Target: Scale up when average queue length across shards > 5
     - type: prometheus
       metadata:
-        # Thanos Querier endpoint (port 9092 per OCP 4.20 docs)
+        # ═══════════════════════════════════════════════════════════════════════
+        # Thanos Querier Configuration (per Red Hat Developer Article)
+        # ═══════════════════════════════════════════════════════════════════════
+        # Ref: https://developers.redhat.com/articles/2025/09/23/how-set-kserve-autoscaling-vllm-keda
+        # The 'namespace' field is passed to Thanos port 9092 for tenancy filtering.
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         metricName: vllm_queue_depth
         namespace: private-ai
         # Average queue depth across all model replicas
-        query: |
-          sum(vllm:num_requests_waiting{namespace="private-ai"}) / count(vllm:num_requests_waiting{namespace="private-ai"})
+        query: 'sum(vllm:num_requests_waiting{namespace="private-ai", pod=~"mistral-3-distributed.*"})'
         threshold: "5"  # Scale up when avg queue > 5
         ignoreNullValues: "true"
         unsafeSsl: "true"
