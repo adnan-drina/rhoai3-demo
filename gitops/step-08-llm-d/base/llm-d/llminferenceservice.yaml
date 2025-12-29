@@ -103,10 +103,14 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration
   # ═══════════════════════════════════════════════════════════════════════════
-  # NOTE: Gateway integration requires Red Hat Connectivity Link (AuthPolicy CRD).
-  # For demo without Connectivity Link, we skip external Gateway exposure
-  # and rely on internal cluster routing.
+  # Gateway reference: RHOAI 3.0 defaults to "openshift-ai-inference" but this
+  # cluster uses "data-science-gateway". We must specify the correct gateway.
+  # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
   router:
     route: {}
     scheduler: {}
+    gateway:
+      refs:
+        - name: data-science-gateway
+          namespace: openshift-ingress
 

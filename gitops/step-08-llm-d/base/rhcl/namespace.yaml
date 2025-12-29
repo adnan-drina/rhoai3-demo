@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuadrant-system
+  labels:
+    app.kubernetes.io/name: rhcl
+    app.kubernetes.io/component: gateway-integration
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    openshift.io/description: "Kuadrant/RHCL instance namespace per RHOAI 3.0 docs"
+

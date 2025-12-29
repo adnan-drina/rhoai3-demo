@@ -1,8 +1,10 @@
 apiVersion: kuadrant.io/v1beta1
 kind: Kuadrant
 metadata:
+  # Per RHOAI 3.0 docs, Kuadrant instance should be in kuadrant-system namespace
+  # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
   name: kuadrant
-  namespace: private-ai
+  namespace: kuadrant-system
   labels:
     app.kubernetes.io/name: rhcl
     app.kubernetes.io/component: gateway-integration

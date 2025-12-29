@@ -3,7 +3,8 @@
 **"Elastic Scale-Out on a Budget"** — Demonstrating horizontal scaling of LLM inference across multiple GPU nodes using RHOAI 3.0's llm-d (Distributed Inference) capability.
 
 > ⚠️ **DEMO-ONLY**: This step deploys llm-d without authentication for simplicity.
-> For production deployments, implement Red Hat Connectivity Link (RHCL) auth per [RHOAI 3.0 docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index).
+> For production deployments, configure authentication using **Red Hat Connectivity Link (RHCL)**:
+> - [RHOAI 3.0: Configuring authentication for Distributed Inference with llm-d using RHCL](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#configuring-authentication-for-llmd_rhoai-user)
 
 ---
 
@@ -45,6 +46,8 @@ llm-d solves this by enabling **horizontal scaling** — distributing a model ac
 | **Engine** | vLLM | High-performance inference engine |
 | **Platform** | llm-d | Orchestration layer enabling disaggregation, cache-aware routing, fleet-scale elasticity |
 
+> **Official explanation:** [RHOAI 3.0: Deploying models by using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#deploying-models-using-distributed-inference_rhoai-user)
+
 ---
 
 ## Prerequisites
@@ -66,6 +69,14 @@ llm-d solves this by enabling **horizontal scaling** — distributing a model ac
 >
 > The llm-d controller requires the `AuthPolicy` CRD (`authpolicies.kuadrant.io`) for Gateway validation.
 > Install the **RHCL operator** (`rhcl-operator`) from `redhat-operators` (Step 01).
+>
+> After installing RHCL, **restart the RHOAI controllers** per [RHOAI 3.0 docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#deploying-models-using-distributed-inference_rhoai-user):
+> ```bash
+> oc delete pod -n redhat-ods-applications -l app=odh-model-controller
+> oc delete pod -n redhat-ods-applications -l control-plane=kserve-controller-manager
+> ```
+>
+> **Ref:** [RHOAI 3.0: Configuring authentication for llm-d using RHCL](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#configuring-authentication-for-llmd_rhoai-user)
 
 ---
 
@@ -199,6 +210,9 @@ oc get nodes -l node.kubernetes.io/instance-type=g6.4xlarge
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> **KV-cache routing (official example):**
+> [RHOAI 3.0: Intelligent inference scheduler with KV cache routing](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#intelligent_inference_scheduler_with_kv_cache_routing)
+
 ### llm-d Components
 
 | Component | Description | Created By |
@@ -275,6 +289,9 @@ oc apply -k gitops/step-08-llm-d/base/
 # Wait for deployment
 oc get llminferenceservice -n private-ai -w
 ```
+
+> **Doc-aligned example:** This step follows the official multi-node pattern:
+> [RHOAI 3.0: Example usage — Multi-node deployment](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#multi_node_deployment)
 
 ---
 
@@ -558,8 +575,16 @@ oc delete application step-08-llm-d -n openshift-gitops
 
 ### Official Documentation
 
-- [RHOAI 3.0: Deploying models with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index)
-- [RHOAI 3.0 Release Notes (llm-d GA)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/release_notes/index)
+- **Deploying models (llm-d)**:
+  - [RHOAI 3.0: Deploying models by using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#deploying-models-using-distributed-inference_rhoai-user)
+  - [RHOAI 3.0: Configuring authentication for llm-d using Red Hat Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#configuring-authentication-for-llmd_rhoai-user)
+  - [RHOAI 3.0: Enabling Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#enabling-distributed-inference_rhoai-user)
+  - [RHOAI 3.0: Example usage — Single-node GPU deployment](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#single_node_gpu_deployment)
+  - [RHOAI 3.0: Example usage — Multi-node deployment](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#multi_node_deployment)
+  - [RHOAI 3.0: Example usage — Intelligent inference scheduler with KV cache routing](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#intelligent_inference_scheduler_with_kv_cache_routing)
+- **Release notes**:
+  - [RHOAI 3.0: New features and enhancements](https://docs.redhat.com/documentation/red_hat_openshift_ai_self-managed/3.0/html/release_notes/new-features-and-enhancements_relnotes)
+  - [RHOAI 3.0: Release notes (index)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/release_notes/index)
 
 ### Additional Reading
 

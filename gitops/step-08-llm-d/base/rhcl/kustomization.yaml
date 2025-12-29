@@ -3,10 +3,14 @@ kind: Kustomization
 
 # Red Hat Connectivity Link (RHCL) instance for llm-d Gateway integration.
 #
+# Per RHOAI 3.0 docs, the Kuadrant instance should be in kuadrant-system namespace.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+#
 # Note: The RHCL operator is installed in Step 01. This step creates the
-# namespace-scoped instance required for policy reconciliation.
+# namespace and instance required for policy reconciliation.
 
 resources:
+  - namespace.yaml
   - rhcl-instance.yaml
 
 
