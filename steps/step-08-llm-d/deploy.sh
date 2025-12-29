@@ -37,7 +37,7 @@ if ! oc get crd authpolicies.kuadrant.io &>/dev/null; then
     echo "   The llm-d controller requires RHCL (Red Hat Connectivity Link) operator."
     echo ""
     echo "   Install RHCL via Step 01:"
-    echo "   oc apply -k gitops/step-01-gpu-and-prereq/base/kuadrant-operator/"
+    echo "   oc apply -k gitops/step-01-gpu-and-prereq/base/rhcl-operator/"
     exit 1
 fi
 echo "  ✓ RHCL AuthPolicy CRD available"

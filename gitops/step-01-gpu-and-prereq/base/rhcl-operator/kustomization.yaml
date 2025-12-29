@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Red Hat Connectivity Link (RHCL) Operator
+#
+# Provides Gateway policy CRDs used by llm-d (for example AuthPolicy).
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link
+
+resources:
+  - namespace.yaml
+  - operatorgroup.yaml
+  - subscription.yaml
+
+

@@ -1,0 +1,17 @@
+apiVersion: kuadrant.io/v1beta1
+kind: Kuadrant
+metadata:
+  name: kuadrant
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: rhcl
+    app.kubernetes.io/component: gateway-integration
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    openshift.io/display-name: "Connectivity Link (RHCL) Gateway Integration"
+    openshift.io/description: "Enables AuthPolicy support for llm-d distributed inference"
+spec: {}
+
+

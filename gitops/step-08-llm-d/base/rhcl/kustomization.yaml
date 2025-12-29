@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Red Hat Connectivity Link (RHCL) instance for llm-d Gateway integration.
+#
+# Note: The RHCL operator is installed in Step 01. This step creates the
+# namespace-scoped instance required for policy reconciliation.
+
+resources:
+  - rhcl-instance.yaml
+
+

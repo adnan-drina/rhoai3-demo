@@ -3,7 +3,7 @@
 **"Elastic Scale-Out on a Budget"** — Demonstrating horizontal scaling of LLM inference across multiple GPU nodes using RHOAI 3.0's llm-d (Distributed Inference) capability.
 
 > ⚠️ **DEMO-ONLY**: This step deploys llm-d without authentication for simplicity.
-> For production deployments, implement Connectivity Link / Kuadrant auth per [RHOAI 3.0 docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index).
+> For production deployments, implement Red Hat Connectivity Link (RHCL) auth per [RHOAI 3.0 docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index).
 
 ---
 
@@ -62,11 +62,10 @@ llm-d solves this by enabling **horizontal scaling** — distributing a model ac
 | **2× g6.4xlarge nodes** available | 🔲 | Scale MachineSet |
 | **llm-d reserved queue** (`rhoai-llmd-queue` + `LocalQueue/llmd`) | 🔲 | Step 03 |
 
-> **Important: RHCL vs Kuadrant**
-> 
-> The llm-d controller requires an `AuthPolicy` CRD for Gateway validation. This is provided by:
-> - **Red Hat Connectivity Link (RHCL)** (`rhcl-operator`) from `redhat-operators` ✅
-> - ~~Community `kuadrant-operator`~~ — **not supported** for this demo; can conflict with Red Hat operator versions (for example Authorino), do NOT use
+> **Important: Red Hat Connectivity Link (RHCL)**
+>
+> The llm-d controller requires the `AuthPolicy` CRD (`authpolicies.kuadrant.io`) for Gateway validation.
+> Install the **RHCL operator** (`rhcl-operator`) from `redhat-operators` (Step 01).
 
 ---
 
@@ -145,7 +144,7 @@ oc api-resources | grep llminferenceservice
 # Verify LeaderWorkerSet operator is installed (operator CRD, not workload CRD)
 oc api-resources | grep leaderworkersetoperator
 
-# Verify RHCL/Kuadrant operator is installed and AuthPolicy CRD is available
+# Verify RHCL operator is installed and AuthPolicy CRD is available
 oc get csv -n rhcl-operator | grep rhcl
 # Expected: rhcl-operator.v1.2.1 ... Succeeded
 
@@ -215,9 +214,9 @@ oc get nodes -l node.kubernetes.io/instance-type=g6.4xlarge
 gitops/step-08-llm-d/
 ├── base/
 │   ├── kustomization.yaml
-│   ├── kuadrant/                        # Kuadrant instance (sync-wave: 0)
+│   ├── rhcl/                            # Connectivity Link instance (sync-wave: 0)
 │   │   ├── kustomization.yaml
-│   │   └── kuadrant.yaml                # Required for llm-d Gateway integration
+│   │   └── rhcl-instance.yaml           # Required for llm-d Gateway integration
 │   ├── llm-d/                           # Distributed Inference (sync-wave: 1)
 │   │   ├── kustomization.yaml
 │   │   └── llminferenceservice.yaml     # Primary CR
@@ -227,9 +226,9 @@ gitops/step-08-llm-d/
 │       └── cronjob.yaml                 # llmd-benchmark
 ```
 
-> **Note:** The Kuadrant CR is deployed by Step 08 (not Step 01) because:
+> **Note:** The Connectivity Link instance (resource kind `Kuadrant`) is deployed by Step 08 (not Step 01) because:
 > 1. Step 01 installs the **RHCL operator** (provides CRDs)
-> 2. Step 08 creates the **Kuadrant instance** (in `private-ai` namespace)
+> 2. Step 08 creates the **instance** (in `private-ai` namespace)
 > 3. This pattern separates operator installation from workload configuration
 
 ### Comparison with Step 05/07 Baseline

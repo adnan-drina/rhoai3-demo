@@ -389,7 +389,6 @@ Models-as-a-Service provides a **unified API gateway** for all deployed models w
 | OpenShift | ≥ 4.19.9 | Cluster platform |
 | RHOAI Operator | 3.x | AI platform |
 | **Connectivity Link** | 1.2+ | Gateway policies, rate limiting |
-| **Kuadrant Operator** | Latest | Unified API management |
 | **LLM-D Runtime** | Latest | Distributed inference (not vLLM) |
 
 ### Placeholder GitOps Structure

@@ -1,5 +1,3 @@
-# Red Hat Connectivity Link (RHCL) Operator Namespace
-# Standard namespace for RHCL (Kuadrant) operator installation
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -9,4 +7,5 @@ metadata:
     app.kubernetes.io/component: operator
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+
 

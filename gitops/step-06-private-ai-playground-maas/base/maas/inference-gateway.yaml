@@ -15,7 +15,7 @@
 #
 # MaaS Infrastructure Requirements:
 #   1. Red Hat Connectivity Link 1.2 operator
-#   2. Kuadrant operator (ties Authorino + Limitador together)
+#   2. Red Hat Connectivity Link (RHCL) operator (ties Authorino + Limitador together)
 #   3. LLM-D runtime (Distributed Inference Server, not vLLM)
 #   4. MaaS deployment script from opendatahub-io/maas-billing
 #

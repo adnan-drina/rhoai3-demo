@@ -35,10 +35,10 @@ kind: Kustomization
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # Kuadrant Instance (sync-wave: 0)
+  # Red Hat Connectivity Link (RHCL) instance (sync-wave: 0)
   # Required for llm-d Gateway integration and AuthPolicy validation
   # ═══════════════════════════════════════════════════════════════════════════
-  - kuadrant/
+  - rhcl/
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Distributed Inference Service (sync-wave: 1)

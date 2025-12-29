@@ -21,7 +21,7 @@
 #   and update the gateway ref if needed.
 #
 # ⚠️  DEMO-ONLY: This deployment is unauthenticated.
-#     For production, implement Connectivity Link / Kuadrant auth per RHOAI docs.
+#     For production, implement Red Hat Connectivity Link (RHCL) auth per RHOAI docs.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 
