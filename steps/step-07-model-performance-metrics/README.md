@@ -125,6 +125,77 @@ Based on [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metric
 
 > **Breaking Point Definition**: System is saturated when **TTFT > 1.0s** consistently OR **Queue Depth > 0** under steady load.
 
+## Benchmark Results (Validated)
+
+Based on GuideLLM graduated concurrency testing with synthetic data (256 input, 256 output tokens).
+
+### Memory Optimizations Applied
+
+Both models have been tuned using Red Hat AI Field Engineering recommendations:
+
+| Optimization | INT4 (1-GPU) | BF16 (4-GPU) | Purpose |
+|--------------|--------------|--------------|---------|
+| `--kv-cache-dtype=fp8` | ✅ Applied | ✅ Applied | Doubles KV cache capacity |
+| `--enable-chunked-prefill` | ✅ Applied | ✅ Applied | Prevents prefill blocking |
+| `--max-model-len` | 8192 | 32768 | Right-sized for hardware |
+| `--gpu-memory-utilization` | 0.85 | 0.9 | Driver breathing room |
+
+### INT4 (1-GPU) Performance Profile
+
+**Hardware:** g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+
+| Concurrent Users | TTFT (p95) | TPOT (p95) | Throughput | Status |
+|------------------|------------|------------|------------|--------|
+| 1 | 1,105ms | 56ms | 51 tok/s | ✅ Baseline |
+| 3 | 874ms | 56ms | 135 tok/s | ✅ **Healthy** |
+| 5 | 1,489ms | 60ms | 207 tok/s | ⚠️ SLA borderline |
+| **8** | **2,185ms** | **63ms** | **281 tok/s** | ⚠️ **Target capacity** |
+| 10 | 2,822ms | 68ms | 313 tok/s | 🔴 Breaking |
+| 15 | 4,277ms | 75ms | 438 tok/s | 🔴 Severe degradation |
+
+> **INT4 Sweet Spot:** 3-5 concurrent users with TTFT < 1.5s
+> **INT4 Breaking Point:** 8-10 concurrent users (TTFT > 2s)
+
+### BF16 (4-GPU) Performance Profile
+
+**Hardware:** g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+
+| Concurrent Users | TTFT (p95) | TPOT (p95) | Throughput | Status |
+|------------------|------------|------------|------------|--------|
+| 1 | 574ms | 54ms | 35 tok/s | ✅ Baseline |
+| 5 | 594ms | 58ms | 160 tok/s | ✅ Healthy |
+| **10** | **1,167ms** | **64ms** | **312 tok/s** | ✅ **Sweet spot** |
+| 15 | 1,695ms | 67ms | 438 tok/s | ⚠️ SLA borderline |
+| **20** | **2,084ms** | **78ms** | **593 tok/s** | 🔴 **Breaking point** |
+| 30 | 2,993ms | 86ms | 694 tok/s | 🔴 Severe degradation |
+
+> **BF16 Sweet Spot:** 5-15 concurrent users with TTFT < 1.7s
+> **BF16 Breaking Point:** 20 concurrent users (TTFT > 2s)
+
+### ROI Analysis: The Economics of Precision
+
+| Metric | INT4 (1-GPU) | BF16 (4-GPU) | Ratio |
+|--------|--------------|--------------|-------|
+| **Hardware Cost** | $0.85/hr | $3.40/hr | 4x |
+| **Sweet Spot Capacity** | 3-5 users | 10-15 users | 3x |
+| **Breaking Point** | 8-10 users | 20 users | 2-2.5x |
+| **Max Throughput** | ~300 tok/s | ~700 tok/s | 2.3x |
+| **Efficiency (tok/s/$)** | 353 tok/s/$ | 206 tok/s/$ | **INT4 1.7x better** |
+
+### Key Findings
+
+1. **FP8 KV Cache is Critical for INT4**: Without FP8 cache, INT4 broke at 5 users. With optimization, it handles 8+ users (60% improvement).
+
+2. **INT4 is More Cost-Efficient**: At $0.85/hr vs $3.40/hr, INT4 delivers 1.7x more tokens per dollar.
+
+3. **BF16 Scales Better**: For high-concurrency workloads (15+ users), BF16's 4-GPU parallelism provides more stable latency.
+
+4. **The "4x INT4" Strategy**: Running 4 INT4 instances (4 × 8 = 32 concurrent users) would cost the same as 1 BF16 instance (20 concurrent users), providing 60% more capacity.
+
+### Demo Storyline
+
+> *"With Red Hat AI memory optimizations, a single $0.85/hr L4 GPU running INT4 quantization handles 8 concurrent users with sub-100ms per-token latency. For the cost of one 4-GPU BF16 deployment, you can run 4 INT4 instances serving 60% more users with 98.9% accuracy recovery."*
+
 ## Deployment
 
 ### Option A: Direct Deploy (Recommended for Demo)

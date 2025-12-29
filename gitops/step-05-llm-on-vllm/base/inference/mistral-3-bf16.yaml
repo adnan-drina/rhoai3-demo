@@ -6,6 +6,14 @@
 # Model: Mistral Small 24B Instruct - Full Precision BF16
 # Storage: s3://models/mistral-small-24b/ (MinIO)
 # Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
+#   - Weights: ~48GB (24B × 2 bytes)
+#   - System overhead: ~8GB (2GB per GPU × 4)
+#   - KV Cache headroom: ~40GB (doubled with FP8 → ~80GB effective)
+#
+# Memory Optimization (Red Hat AI Field Engineering):
+#   --kv-cache-dtype=fp8     → Doubles KV cache capacity for high concurrency
+#   --enable-chunked-prefill → Prevents prefill spikes from blocking users
+#   --max-model-len=32768    → Full 32K context (native Mistral v3 support)
 #
 # Demo Role: This model consumes 4/5 of the cluster's GPU quota.
 # When combined with mistral-3-int4 (1 GPU), the cluster is at 100% capacity.
@@ -70,9 +78,15 @@ spec:
         - --served-model-name=mistral-3-bf16
         - --tensor-parallel-size=4
         - --dtype=bfloat16
+        # Full 32K context - native Mistral Small v3 support
         - --max-model-len=32768
+        # FP8 KV cache doubles effective capacity (40GB → 80GB)
+        - --kv-cache-dtype=fp8
+        # Chunked prefill prevents long prompts from blocking other users
+        - --enable-chunked-prefill
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
+        # Agentic features
         - --tool-call-parser=mistral
         - --enable-auto-tool-choice
       env:
