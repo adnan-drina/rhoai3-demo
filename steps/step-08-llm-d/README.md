@@ -1091,12 +1091,40 @@ oc get odhdashboardconfig -n redhat-ods-applications -o jsonpath='{.spec.dashboa
 
 ### SLO-Driven Autoscaling with KEDA
 
-> **Status:** Validated in upstream Open Data Hub; applicable to RHOAI 3.0
+> **Status:** ✅ CMA Operator Installed | ⚠️ Prometheus Auth Pending
 > **Benefit:** 30%+ better GPU utilization compared to concurrency-based autoscaling
 
-Current Step 08 uses **Kueue** for workload admission and quota management, but does not implement
-**horizontal pod autoscaling** for the llm-d workload. Red Hat engineering has validated a superior
-autoscaling approach using **KEDA** (Kubernetes Event-Driven Autoscaler) with SLO-driven metrics.
+Step 08 now includes the **Custom Metrics Autoscaler (CMA) Operator** for KEDA-based autoscaling.
+The operator is installed and the ScaledObject is configured, but **Prometheus authentication
+requires additional configuration** to complete the integration.
+
+#### Current Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| CMA Operator | ✅ Installed | `custom-metrics-autoscaler.v2.17.2-2` |
+| KedaController | ✅ Running | 3 KEDA pods in `openshift-keda` |
+| ScaledObject | ✅ Created | Targeting `mistral-3-distributed-kserve` |
+| Prometheus Auth | ⚠️ Pending | 401 on Thanos query - needs RBAC fix |
+
+#### GitOps Structure
+
+```
+gitops/step-08-llm-d/base/
+├── cma-operator/                    # CMA Operator Installation
+│   ├── kustomization.yaml
+│   ├── namespace.yaml               # openshift-keda namespace
+│   ├── operatorgroup.yaml
+│   ├── subscription.yaml            # stable channel
+│   └── kedacontroller.yaml          # Activates KEDA
+│
+└── keda-autoscaling/                # ScaledObject Configuration
+    ├── kustomization.yaml
+    ├── triggerauthentication.yaml   # Prometheus auth (needs fix)
+    └── scaledobject.yaml            # ITL + Queue triggers
+```
+
+Based on [GitOps Catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-custom-metrics-autoscaler).
 
 #### Why KEDA over Knative Pod Autoscaler (KPA)?
 
@@ -1143,52 +1171,91 @@ autoscaling approach using **KEDA** (Kubernetes Event-Driven Autoscaler) with SL
 | **Queue Depth** | `vllm:num_requests_waiting` | Throughput optimization |
 | **KV Cache Usage** | `vllm:gpu_cache_usage_perc` | Memory pressure indicator |
 
-#### Example KEDA ScaledObject (For Future Use)
+#### Deployed ScaledObject Configuration
+
+The ScaledObject is deployed in `gitops/step-08-llm-d/base/keda-autoscaling/scaledobject.yaml`:
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: llmd-autoscaler
+  name: mistral-3-distributed-autoscaler
   namespace: private-ai
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: mistral-3-distributed-kserve
-  minReplicaCount: 2
-  maxReplicaCount: 7  # Match available GPU capacity
-  pollingInterval: 15
-  cooldownPeriod: 60
+  minReplicaCount: 2    # Baseline for routing demo
+  maxReplicaCount: 3    # Limited by GPU nodes
+  pollingInterval: 15   # Check metrics every 15s
+  cooldownPeriod: 120   # Wait 2min before scaling down
   triggers:
-    # Primary: Scale based on Inter-Token Latency SLO
+    # Primary: Inter-Token Latency (ITL) - Median (P50)
     - type: prometheus
       metadata:
-        serverAddress: http://prometheus-k8s.openshift-monitoring.svc:9090
-        metricName: vllm_itl_p50
+        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
         query: |
           histogram_quantile(0.50,
-            sum(rate(vllm:time_per_output_token_seconds_bucket{model_name="mistral-3-distributed"}[1m])) by (le)
+            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai"}[2m])) by (le)
           ) * 1000
-        threshold: "75"  # Target: 75ms median ITL
-    # Secondary: Scale on queue depth
+        threshold: "75"  # Scale up when median ITL exceeds 75ms
+      authenticationRef:
+        name: keda-trigger-auth-prometheus
+    # Secondary: Queue Depth
     - type: prometheus
       metadata:
-        serverAddress: http://prometheus-k8s.openshift-monitoring.svc:9090
-        metricName: vllm_queue_depth
+        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
         query: |
-          sum(vllm:num_requests_waiting{model_name="mistral-3-distributed"})
-        threshold: "5"
+          sum(vllm:num_requests_waiting{namespace="private-ai"}) or vector(0)
+        threshold: "5"  # Scale up when >5 requests waiting
+      authenticationRef:
+        name: keda-trigger-auth-prometheus
 ```
+
+#### Validation Commands
+
+```bash
+# Check CMA Operator installation
+oc get csv -n openshift-keda | grep custom-metrics
+
+# Check KedaController status
+oc get kedacontroller -n openshift-keda
+
+# Check KEDA pods
+oc get pods -n openshift-keda
+
+# Check ScaledObject status
+oc get scaledobject -n private-ai
+
+# View ScaledObject events (for debugging)
+oc get events -n private-ai --field-selector involvedObject.name=mistral-3-distributed-autoscaler
+```
+
+#### Known Issue: Prometheus Authentication
+
+The ScaledObject currently shows `401 Unauthorized` when querying Prometheus.
+
+**Root Cause:** The ServiceAccount token requires specific RBAC to access the
+`prometheuses.monitoring.coreos.com/api` resource in OpenShift Monitoring.
+
+**Workaround Options:**
+1. Use external Prometheus with direct network access
+2. Configure the odh-controller managed authentication (for InferenceService)
+3. Create a RoleBinding in `openshift-user-workload-monitoring` namespace
+
+**To be fixed in future iteration.**
 
 #### Implementation Prerequisites
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
-| Custom Metrics Autoscaler Operator | 🔲 | Install from OperatorHub |
-| KEDA controller | 🔲 | Deployed by operator |
-| Prometheus scraping vLLM | ✅ | Step 07 ServiceMonitors |
-| Grafana dashboard | ✅ | Step 08 observability |
+| Custom Metrics Autoscaler Operator | ✅ Installed | `openshift-keda` namespace |
+| KEDA controller | ✅ Running | 3 pods operational |
+| ScaledObject | ✅ Created | Targets llm-d Deployment |
+| Prometheus scraping vLLM | ✅ Configured | Step 07/08 ServiceMonitors |
+| Prometheus auth | ⚠️ Pending | 401 error - needs RBAC fix |
+| Grafana dashboard | ✅ Working | Step 08 observability |
 
 #### Best Practices from Red Hat Performance Validation
 
