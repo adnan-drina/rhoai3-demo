@@ -6,14 +6,33 @@
 # Configuration aligned with Red Hat reference implementation:
 # https://github.com/rh-aiservices-bu/rhaoi3-llm-d
 #
-# Architecture (Routing Demo - matching reference repo):
-#   - 2 replicas with 1 GPU each → demonstrates llm-d intelligent routing
-#   - llm-d router routes requests to replica with cached prefix (KV cache aware)
-#   - Shows P95 tail latency improvement vs round-robin
+# ═══════════════════════════════════════════════════════════════════════════════
+# DESIGN DECISION: Replicas Mode vs Tensor Parallelism
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This demo uses REPLICAS MODE (tensor:1, replicas:2) — NOT Tensor Parallelism.
+#
+# | Mode              | Configuration           | What It Creates    | Use Case                  |
+# |-------------------|-------------------------|--------------------|-----------------------------|
+# | Replicas (current)| tensor:1, replicas:2    | Deployment         | KV-cache routing demo       |
+# | Tensor Parallel   | tensor:2, replicas:1    | LeaderWorkerSet    | Model sharding (70B+ models)|
+#
+# Why Replicas Mode for this demo:
+#   1. Continues Step 07 benchmark story — compares routing efficiency vs round-robin
+#   2. Shows llm-d's unique value — ~63% faster P95 TTFT, ~90% cache hit rate
+#   3. Model fits on 1 GPU — Mistral INT4 (~12GB) doesn't need sharding
+#   4. Matches reference repo — comparable benchmark results
+#
+# Expected improvements (vs vLLM round-robin):
+#   - P50 TTFT: ~25% faster
+#   - P95 TTFT: ~63% faster
+#   - Cache speedup: 2.1x better
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 #
 # Prerequisites:
 #   - 2× g6.4xlarge nodes with available GPU capacity
-#   - Gateway API configured (optional, Route also works)
+#   - Gateway API configured (optional, OpenShift Route also works)
 #
 # Dashboard Visibility:
 #   LLMInferenceService (v1alpha1) does NOT appear in the RHOAI Dashboard.

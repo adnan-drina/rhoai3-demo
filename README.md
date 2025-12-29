@@ -46,7 +46,7 @@ oc login --token=<your-token> --server=<api-server>
 | 06B | [LiteMaaS (Experimental)](steps/step-06b-private-ai-litemaas/README.md) | LiteLLM + subscription UX (experimental) |
 | 07 | [Model Performance Metrics](steps/step-07-model-performance-metrics/README.md) | Grafana + GuideLLM + benchmarking/pipelines |
 | 07B | [GuideLLM vLLM Playground](steps/step-07b-guidellm-vllm-playground/README.md) | vLLM playground (future enhancement) |
-| 08 | [Distributed Inference (llm-d)](steps/step-08-llm-d/README.md) | Distributed inference with llm-d (LLMInferenceService) |
+| 08 | [Distributed Inference (llm-d)](steps/step-08-llm-d/README.md) | Distributed inference with llm-d — intelligent routing (2 replicas) |
 
 ## What Gets Deployed
 
