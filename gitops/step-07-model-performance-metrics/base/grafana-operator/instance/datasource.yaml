@@ -27,6 +27,9 @@ spec:
   
   datasource:
     name: Prometheus-UWM
+    # Set explicit UID to match dashboard references
+    # GrafanaDashboard datasources mapping sets uid to datasource name
+    uid: Prometheus-UWM
     type: prometheus
     access: proxy
     url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091

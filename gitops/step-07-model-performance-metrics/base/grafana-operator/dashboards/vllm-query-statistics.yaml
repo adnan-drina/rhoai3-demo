@@ -31,6 +31,13 @@ spec:
     matchLabels:
       dashboards: "grafana"
   
+  # Map the dashboard's datasource variable to our actual datasource
+  # The official dashboard uses ${DS_PROMETHEUS} which expects a datasource with UID "prometheus"
+  # Our Grafana Operator created a datasource named "Prometheus-UWM" with a random UID
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "Prometheus-UWM"
+  
   # Reference the official vLLM dashboard from GitHub
   url: "https://raw.githubusercontent.com/vllm-project/vllm/main/examples/online_serving/dashboards/grafana/query_statistics.json"
   
