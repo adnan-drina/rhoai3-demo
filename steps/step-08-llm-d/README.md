@@ -794,6 +794,54 @@ oc delete application step-08-llm-d -n openshift-gitops
 
 ---
 
+## Future Enhancements
+
+### Model-as-a-Service (MaaS) Integration
+
+> **Status:** Planned for future iteration
+> **Dependency:** `InferenceGateway` CRD (Developer Preview in RHOAI 3.0)
+
+MaaS provides a centralized "Enterprise AI API" pattern that could enhance this demo:
+
+```
+┌─────────┐     ┌──────────────────┐     ┌──────────────┐     ┌─────────────────┐
+│ Client  │────▶│ InferenceGateway │────▶│ llm-d Router │────▶│ llm-d Workload  │
+│ + API   │     │ (Authorino auth) │     │ (scheduler)  │     │ (2 replicas)    │
+│   Key   │     │ (Rate limiting)  │     │              │     │                 │
+└─────────┘     └──────────────────┘     └──────────────┘     └─────────────────┘
+```
+
+**Benefits:**
+| Feature | Description |
+|---------|-------------|
+| **Single Endpoint** | All models via one URL (`/v1/chat/completions`) |
+| **API Key Auth** | Track usage per team/application |
+| **Rate Limiting** | Protect GPU resources from overload |
+| **Model Discovery** | Auto-register labeled models |
+
+**Current blockers:**
+- `InferenceGateway` CRD (`maas.opendatahub.io/v1alpha1`) not available in cluster
+- MaaS is Developer Preview, not GA
+
+**Prerequisites for future implementation:**
+```bash
+# Verify InferenceGateway CRD availability
+oc api-resources | grep -i inferencegateway
+
+# Check if MaaS controller is running
+oc get pods -n redhat-ods-applications | grep maas
+
+# OdhDashboardConfig already has modelAsService: true
+oc get odhdashboardconfig -n redhat-ods-applications -o yaml | grep modelAsService
+```
+
+**References:**
+- [Red Hat Developer: Introducing MaaS on OpenShift AI](https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai)
+- [OpenDataHub MaaS Documentation](https://opendatahub-io.github.io/models-as-a-service/)
+- [GitHub: opendatahub-io/models-as-a-service](https://github.com/opendatahub-io/models-as-a-service)
+
+---
+
 ## Advanced Topics (Optional)
 
 ### Disaggregated Prefill/Decode
