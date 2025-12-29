@@ -6,10 +6,19 @@
 # Model: Red Hat Validated ModelCar - Neural Magic INT4 W4A16
 # Source: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
 # Quantization: INT4 weights, FP16 activations
-#   - 4-bit weights: ~13.5GB (75% reduction from BF16)
+#   - 4-bit weights: ~12GB (75% reduction from BF16)
 #   - 98.9% accuracy recovery vs full precision
 #
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+#   - Weights: 12GB
+#   - System overhead: ~1.5GB
+#   - KV Cache headroom: ~10.5GB (doubled with FP8 cache → ~20GB effective)
+#
+# Memory Optimization (Red Hat AI Field Engineering):
+#   --kv-cache-dtype=fp8     → Doubles KV cache capacity
+#   --max-model-len=8192     → Sweet spot for 24B on L4
+#   --enable-chunked-prefill → Prevents prefill spikes blocking users
+#   --gpu-memory-utilization=0.85 → Driver breathing room
 #
 # Demo Role: This model consumes 1/5 of the cluster's GPU quota.
 # Combined with mistral-3-bf16 (4 GPUs), achieves 100% saturation (5/5).
@@ -67,9 +76,15 @@ spec:
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
       args:
         - --served-model-name=mistral-3-int4
-        # 16K context for Playground compatibility (LlamaStack sends max_tokens=4096)
-        - --max-model-len=16384
-        - --gpu-memory-utilization=0.9
+        # Memory-optimized config for 1x L4 (24GB) - Red Hat AI Field Engineering
+        # 8K context = sweet spot for 24B models on L4 hardware
+        - --max-model-len=8192
+        # FP8 KV cache doubles effective cache capacity (10.5GB → 20GB effective)
+        - --kv-cache-dtype=fp8
+        # Chunked prefill prevents long prompts from blocking other users
+        - --enable-chunked-prefill
+        # 85% utilization gives driver breathing room under high load
+        - --gpu-memory-utilization=0.85
         - --trust-remote-code
       env:
         # RHOAI 3.0 GA: V1 engine required
