@@ -732,7 +732,39 @@ oc get co console authentication ingress
 > **Note (client-side DNS caching):** your workstation DNS resolver may cache `NXDOMAIN` for several minutes.
 > If the console is still not reachable after the record is restored, flush local DNS caches and retry.
 
-### Gateway Connection Issues
+### Gateway TLS Origination Issues (Known Limitation)
+
+**Symptom**: Gateway endpoint returns "Internal Server Error" (HTTP 500)
+
+**Root Cause**: The Gateway API HTTPRoute routes to an HTTPS backend (vLLM serving on port 8000 with TLS). The TLS origination from the Gateway Envoy proxy to the backend fails despite configured `DestinationRules`.
+
+**Context from [rh-aiservices-bu/rhaoi3-llm-d](https://github.com/rh-aiservices-bu/rhaoi3-llm-d) reference repo**:
+- The reference repo uses internal cluster URLs for benchmarks
+- Different cluster/Istio configurations may work
+- The Gateway TLS origination behavior appears to be environment-specific
+
+**Workaround**: Use the **OpenShift Route** (passthrough TLS) instead of the Gateway endpoint:
+
+```bash
+# ✅ WORKS: OpenShift Route (passthrough TLS)
+ROUTE_URL=$(oc get route mistral-3-distributed -n private-ai -o jsonpath='https://{.spec.host}')
+curl -sk "$ROUTE_URL/v1/models"
+
+# ❌ MAY NOT WORK: Gateway endpoint (TLS origination issue)
+GATEWAY_URL=$(oc get llminferenceservice mistral-3-distributed -n private-ai -o jsonpath='{.status.url}')
+curl -sk "$GATEWAY_URL/v1/models"  # Returns 500
+```
+
+**Why Route works but Gateway doesn't**:
+| Access Method | TLS Handling | Status |
+|---------------|--------------|--------|
+| OpenShift Route (passthrough) | TLS terminated at pod | ✅ Works |
+| Gateway API → HTTPRoute | TLS origination from Envoy to HTTPS backend | ❌ 500 Error |
+
+> **Design Decision**: For this demo, we use the OpenShift Route for external access.
+> The Gateway endpoint URL shown in the dashboard may not be functional.
+
+### Gateway Connection Issues (General)
 
 **Symptom**: External endpoint not accessible
 
