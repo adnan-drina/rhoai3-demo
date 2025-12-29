@@ -127,6 +127,18 @@ spec:
             cpu: "8"
             memory: 32Gi
             nvidia.com/gpu: "1"
+        # Override liveness probe for longer model loading time
+        # Reference: rh-aiservices-bu/rhaoi3-llm-d uses 120s + 30s × 5 = 270s for 0.6B model
+        # Our 24B INT4 model needs ~4-5 min for: model load + torch.compile + CUDA graphs
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 300  # Wait 5 min before first check (24B >> 0.6B)
+          periodSeconds: 30         # Check every 30s (same as reference)
+          timeoutSeconds: 30        # Allow 30s for health check response
+          failureThreshold: 10      # 10 failures × 30s = 5 more minutes
   
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration
