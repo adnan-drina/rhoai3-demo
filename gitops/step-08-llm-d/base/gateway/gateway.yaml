@@ -1,13 +1,14 @@
 # Gateway for llm-d Distributed Inference
 #
-# This Gateway extends the RHOAI platform gateway to allow HTTPRoutes from
-# the private-ai namespace. The platform-managed data-science-gateway only
-# allows routes from openshift-ingress and redhat-ods-applications by default.
+# The llm-d controller validates against a Gateway named "openshift-ai-inference"
+# by default. This Gateway provides the expected name with proper namespace
+# allowlist for private-ai.
 #
 # Design Decision:
-#   Rather than modifying the platform-managed Gateway (which gets reconciled
-#   by GatewayConfig controller), we create a dedicated Gateway for llm-d
-#   workloads that explicitly allows the private-ai namespace.
+#   The RHOAI llm-d controller is hardcoded to validate Gateway availability
+#   using the name "openshift-ai-inference". Rather than modifying the platform-
+#   managed data-science-gateway (which gets reconciled by GatewayConfig), we
+#   create the expected Gateway with proper namespace configuration.
 #
 # Note: This Gateway uses the same GatewayClass and TLS secret as the platform
 #   Gateway, ensuring consistent TLS termination and routing behavior.
@@ -17,10 +18,11 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: llm-d-inference-gateway
+  # Name MUST be "openshift-ai-inference" - llm-d controller validates against this name
+  name: openshift-ai-inference
   namespace: openshift-ingress
   labels:
-    app.kubernetes.io/name: llm-d-inference-gateway
+    app.kubernetes.io/name: openshift-ai-inference
     app.kubernetes.io/component: gateway
     app.kubernetes.io/part-of: llm-serving
     demo.rhoai.io/step: "08"

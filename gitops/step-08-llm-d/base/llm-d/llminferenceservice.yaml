@@ -103,15 +103,14 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration
   # ═══════════════════════════════════════════════════════════════════════════
-  # Gateway reference: We use a dedicated llm-d-inference-gateway that allows
-  # HTTPRoutes from the private-ai namespace. The platform-managed 
-  # data-science-gateway only allows openshift-ingress and redhat-ods-applications.
+  # Gateway reference: The llm-d controller defaults to "openshift-ai-inference".
+  # We create this Gateway in GitOps with proper namespace allowlist for private-ai.
   # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
   router:
     route: {}
     scheduler: {}
     gateway:
       refs:
-        - name: llm-d-inference-gateway
+        - name: openshift-ai-inference
           namespace: openshift-ingress
 
