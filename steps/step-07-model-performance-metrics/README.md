@@ -571,7 +571,6 @@ gitops/step-07-model-performance-metrics/
 │   │       ├── vllm-performance-statistics.yaml  # Official (from GitHub URL)
 │   │       ├── vllm-query-statistics.yaml        # Official (from GitHub URL)
 │   │       ├── rhoai-vllm-model-metrics.yaml     # Custom per-model metrics
-│   │       ├── rhoai-nvidia-vllm-combined.yaml   # Custom unified GPU+vLLM view
 │   │       ├── dcgm-gpu-metrics.yaml             # Custom NVIDIA DCGM
 │   │       └── mistral-roi-comparison.yaml       # Custom (BF16 vs INT4)
 │   ├── guidellm/                          # Automated benchmarking (CronJob)
@@ -609,7 +608,6 @@ gitops/step-07-model-performance-metrics/
 | **vLLM Performance Statistics** | Official vLLM GitHub (URL) | E2E Latency, TTFT, ITL, TPS (auto-updated) |
 | **vLLM Query Statistics** | Official vLLM GitHub (URL) | Request Rate, Success/Error, Token Distribution |
 | **RHOAI vLLM Model Metrics** | Custom (embedded) | Per-model performance, KV Cache, Queue depth |
-| **RHOAI NVIDIA vLLM Combined** | Custom (embedded) | Unified GPU + vLLM metrics view |
 | **NVIDIA DCGM GPU Metrics** | Custom (embedded) | Temperature, Power, Utilization, Memory |
 | **Mistral ROI Comparison** | Custom (embedded) | BF16 vs INT4 head-to-head, Efficiency curves |
 
@@ -628,11 +626,10 @@ oc get csv -n openshift-operators | grep pipelines
 oc get grafana -n private-ai
 # Expected: grafana   12.x.x   complete   success   <age>
 
-# 4. Verify all 6 GrafanaDashboards are synced
+# 4. Verify all 5 GrafanaDashboards are synced
 oc get grafanadashboard -n private-ai
-# Expected: 6 dashboards (vllm-performance-statistics, vllm-query-statistics, 
-#           rhoai-vllm-model-metrics, rhoai-nvidia-vllm-combined, 
-#           dcgm-gpu-metrics, mistral-roi-comparison)
+# Expected: 5 dashboards (vllm-performance-statistics, vllm-query-statistics, 
+#           rhoai-vllm-model-metrics, dcgm-gpu-metrics, mistral-roi-comparison)
 
 # 5. Verify GrafanaDatasource is ready
 oc get grafanadatasource -n private-ai

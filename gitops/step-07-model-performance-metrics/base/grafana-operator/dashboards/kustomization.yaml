@@ -24,7 +24,6 @@ resources:
   - dcgm-gpu-metrics.yaml               # Official NVIDIA DCGM Exporter Dashboard
   
   # RHOAI Community Dashboards (from rh-aiservices-bu/rhoai-uwm)
-  - rhoai-nvidia-vllm-combined.yaml     # Combined GPU + vLLM view (NVIDIA)
   - rhoai-vllm-model-metrics.yaml       # vLLM model metrics with histograms
   
   # Custom Dashboards for this Demo
