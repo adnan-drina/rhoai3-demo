@@ -9,3 +9,5 @@ resources:
   # - step-04-model-registry.yaml
   # - step-05-llm-on-vllm.yaml
   # - step-06-private-ai-playground-maas.yaml
+  # - step-07-model-performance-metrics.yaml
+  # - step-08-llm-d.yaml

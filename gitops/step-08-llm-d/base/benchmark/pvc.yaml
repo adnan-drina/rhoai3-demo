@@ -1,0 +1,21 @@
+# PVC for Step 08 GuideLLM benchmark results
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llmd-benchmark-results
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: llmd-benchmark
+    app.kubernetes.io/component: benchmark
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp3-csi
+

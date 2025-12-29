@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Red Hat Connectivity Link (RHCL) Operator
+# Productized version of Kuadrant providing Gateway API integration
+# Provides AuthPolicy CRD required for llm-d distributed inference (Step 08)
+#
+# Key CRDs:
+#   - authpolicies.kuadrant.io (required by llm-d)
+#   - kuadrants.kuadrant.io (instance CR)
+#   - ratelimitpolicies.kuadrant.io
+#
+# NOTE: RHCL v1.2.1 is compatible with Red Hat Authorino v1.2.4
+# The community kuadrant-operator has version conflicts with RH operators
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link
+
+resources:
+  - namespace.yaml
+  - operatorgroup.yaml
+  - subscription.yaml
+

@@ -1,0 +1,121 @@
+# LLMInferenceService: Distributed Inference with llm-d
+# 
+# This CR deploys a model using llm-d's distributed inference capability,
+# enabling horizontal scaling across multiple GPU nodes.
+#
+# Architecture:
+#   - Tensor Parallelism: Model sharded across 2 GPUs (one per node)
+#   - Each worker runs on a separate g6.4xlarge (1× NVIDIA L4)
+#   - llm-d router handles request scheduling and load balancing
+#
+# Prerequisites:
+#   - LeaderWorkerSet operator (installed in Step 01)
+#   - Gateway API configured in openshift-ingress namespace
+#   - 2× g6.4xlarge nodes with available GPU capacity
+#
+# Gateway Note:
+#   Official RHOAI 3.0 docs reference a Gateway named "openshift-ai-inference".
+#   This cluster uses "data-science-gateway" instead.
+#   If llm-d controller fails to bind, check:
+#     oc describe llminferenceservice mistral-3-distributed -n private-ai
+#   and update the gateway ref if needed.
+#
+# ⚠️  DEMO-ONLY: This deployment is unauthenticated.
+#     For production, implement Connectivity Link / Kuadrant auth per RHOAI docs.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: mistral-3-distributed
+  namespace: private-ai
+  labels:
+    # Route to the reserved llm-d LocalQueue (created in Step 03)
+    # This ensures llm-d gets dedicated GPU capacity from rhoai-llmd-queue
+    # even when the main vLLM queue is saturated
+    kueue.x-k8s.io/queue-name: llmd
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: mistral-3-distributed
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    # Description for dashboard visibility
+    openshift.io/display-name: "Mistral-3 Distributed (llm-d)"
+    openshift.io/description: "Distributed inference using tensor parallelism across 2× g6.4xlarge nodes"
+spec:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Model Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  model:
+    name: mistral-3-distributed
+    # Same INT4 ModelCar image as Step 05 baseline
+    uri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Parallelism Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Tensor parallelism: shard model across 2 GPUs (one per node)
+  # This enables horizontal scaling without requiring multi-GPU instances
+  parallelism:
+    tensor: 2
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Replica Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Number of complete replicas (each replica spans tensor parallel GPUs)
+  # With tensor=2, this creates 2 worker pods per replica
+  replicas: 1
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Pod Template (GPU Scheduling)
+  # ═══════════════════════════════════════════════════════════════════════════
+  template:
+    # Target g6.4xlarge nodes (single L4 GPU each)
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.4xlarge
+    
+    # Tolerate GPU node taint
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    
+    # Container resource requirements
+    containers:
+      - name: vllm
+        # vLLM CUDA image (same as Step 05 ServingRuntime)
+        image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
+        env:
+          # vLLM v1 engine (required for RHOAI 3.0)
+          - name: VLLM_USE_V1
+            value: "1"
+          # Disable hardware metrics (avoids DCGM dependency issues)
+          - name: VLLM_NO_HW_METRICS
+            value: "1"
+          # NVIDIA library path
+          - name: LD_LIBRARY_PATH
+            value: /usr/local/nvidia/lib64
+        resources:
+          limits:
+            cpu: "16"
+            memory: 60Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "8"
+            memory: 32Gi
+            nvidia.com/gpu: "1"
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Router Configuration
+  # ═══════════════════════════════════════════════════════════════════════════
+  # NOTE: Gateway integration requires Red Hat Connectivity Link (AuthPolicy CRD).
+  # For demo without Connectivity Link, we skip external Gateway exposure
+  # and rely on internal cluster routing.
+  router:
+    route: {}
+    scheduler: {}
+

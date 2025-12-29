@@ -1,0 +1,11 @@
+# Red Hat Connectivity Link Operator Group
+# AllNamespaces install mode for cluster-wide policy management
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: rhcl-operator
+  namespace: rhcl-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec: {}
+

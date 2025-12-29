@@ -53,7 +53,14 @@ resources:
   - dns-operator/operatorgroup.yaml
   - dns-operator/subscription.yaml
 
-  # 8. Red Hat Build of Kueue (required for GPU-as-a-Service / Distributed Workloads)
+  # 8. Red Hat Connectivity Link (RHCL) - provides AuthPolicy CRD for llm-d Gateway integration
+  #    NOTE: Using rhcl-operator (Red Hat) instead of kuadrant-operator (community)
+  #          Community version has Authorino version conflicts with RH Authorino v1.2.4
+  - kuadrant-operator/namespace.yaml
+  - kuadrant-operator/operatorgroup.yaml
+  - kuadrant-operator/subscription.yaml
+
+  # 9. Red Hat Build of Kueue (required for GPU-as-a-Service / Distributed Workloads)
   - kueue-operator/namespace.yaml
   - kueue-operator/operatorgroup.yaml
   - kueue-operator/subscription.yaml

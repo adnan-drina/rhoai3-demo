@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 08 Benchmark Resources
+# Dedicated GuideLLM benchmark for distributed inference endpoint
+
+resources:
+  - pvc.yaml
+  - cronjob.yaml
+

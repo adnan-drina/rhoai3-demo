@@ -40,7 +40,13 @@ oc login --token=<your-token> --server=<api-server>
 | 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
 | 02 | [RHOAI 3.0](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
 | 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
-| 04 | [Model Registry](steps/step-04-model-registry/README.md) | Model versioning and lifecycle (placeholder) |
+| 04 | [Model Registry](steps/step-04-model-registry/README.md) | Enterprise model governance (registry + seed) |
+| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | GPU-as-a-Service model portfolio (KServe + vLLM) |
+| 06 | [GenAI Playground](steps/step-06-private-ai-playground-maas/README.md) | GenAI Studio Playground via LlamaStackDistribution |
+| 06B | [LiteMaaS (Experimental)](steps/step-06b-private-ai-litemaas/README.md) | LiteLLM + subscription UX (experimental) |
+| 07 | [Model Performance Metrics](steps/step-07-model-performance-metrics/README.md) | Grafana + GuideLLM + benchmarking/pipelines |
+| 07B | [GuideLLM vLLM Playground](steps/step-07b-guidellm-vllm-playground/README.md) | vLLM playground (future enhancement) |
+| 08 | [Distributed Inference (llm-d)](steps/step-08-llm-d/README.md) | Distributed inference with llm-d (LLMInferenceService) |
 
 ## What Gets Deployed
 
@@ -51,7 +57,8 @@ oc login --token=<your-token> --server=<api-server>
 - **NVIDIA GPU Operator** - GPU drivers, device plugin, DCGM metrics
 - **OpenShift Serverless** - KnativeServing for KServe autoscaling
 - **LeaderWorkerSet (LWS)** - Multi-node GPU orchestration for llm-d
-- **Authorino/Limitador/DNS** - Red Hat Connectivity Link for inference gateway
+- **Red Hat Connectivity Link (RHCL)** - AuthPolicy, rate limiting, DNS for inference gateway
+- **Authorino/Limitador/DNS Operators** - RHCL component operators
 - **GPU MachineSets** - AWS g6.4xlarge, g6.12xlarge instances
 
 ### Step 2: RHOAI 3.0 Platform
@@ -83,7 +90,13 @@ rhoai3-demo/
 │   │       ├── step-01-gpu-and-prereq.yaml
 │   │       ├── step-02-rhoai.yaml
 │   │       ├── step-03-private-ai.yaml
-│   │       └── step-04-model-registry.yaml
+│   │       ├── step-04-model-registry.yaml
+│   │       ├── step-05-llm-on-vllm.yaml
+│   │       ├── step-06-private-ai-playground-maas.yaml
+│   │       ├── step-06b-private-ai-litemaas.yaml
+│   │       ├── step-07-model-performance-metrics.yaml
+│   │       ├── step-07b-guidellm-vllm-playground.yaml
+│   │       └── step-08-llm-d.yaml
 │   │
 │   ├── step-01-gpu-and-prereq/  # GPU + prerequisites
 │   │   └── base/
@@ -111,7 +124,25 @@ rhoai3-demo/
     │   ├── deploy.sh
     │   └── README.md
     │
-    └── step-04-model-registry/
+    ├── step-04-model-registry/
+    │   ├── deploy.sh
+    │   └── README.md
+    ├── step-05-llm-on-vllm/
+    │   ├── deploy.sh
+    │   └── README.md
+    ├── step-06-private-ai-playground-maas/
+    │   ├── deploy.sh
+    │   └── README.md
+    ├── step-06b-private-ai-litemaas/
+    │   ├── deploy.sh
+    │   └── README.md
+    ├── step-07-model-performance-metrics/
+    │   ├── deploy.sh
+    │   └── README.md
+    ├── step-07b-guidellm-vllm-playground/
+    │   ├── deploy.sh
+    │   └── README.md
+    └── step-08-llm-d/
         ├── deploy.sh
         └── README.md
 ```

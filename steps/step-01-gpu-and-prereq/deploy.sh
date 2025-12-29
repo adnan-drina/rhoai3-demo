@@ -8,7 +8,7 @@
 # - GPU Operator + ClusterPolicy + DCGM Dashboard
 # - OpenShift Serverless + KnativeServing
 # - LeaderWorkerSet Operator
-# - Red Hat Connectivity Link (Authorino, Limitador, DNS)
+# - Red Hat Connectivity Link (RHCL, Authorino, Limitador, DNS)
 # - GPU MachineSets (AWS)
 # =============================================================================
 set -euo pipefail
@@ -79,6 +79,13 @@ until oc get csv -n openshift-lws-operator 2>/dev/null | grep -q "Succeeded"; do
     sleep 10
 done
 log_success "LeaderWorkerSet Operator ready"
+
+log_step "Waiting for Red Hat Connectivity Link (RHCL)..."
+until oc get crd authpolicies.kuadrant.io &>/dev/null; do
+    log_info "Waiting for RHCL AuthPolicy CRD..."
+    sleep 10
+done
+log_success "RHCL AuthPolicy CRD available"
 
 # =============================================================================
 # Deploy MachineSets (cluster-specific, not in GitOps)
@@ -203,6 +210,7 @@ echo "  - LeaderWorkerSet (openshift-lws-operator)"
 echo "  - Authorino (openshift-authorino)"
 echo "  - Limitador (openshift-limitador-operator)"
 echo "  - DNS Operator (openshift-dns-operator)"
+echo "  - Red Hat Connectivity Link (rhcl-operator)"
 echo ""
 echo "MachineSets (replicas=1):"
 echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${REGION}b"
@@ -221,3 +229,5 @@ echo "  oc get csv -n nvidia-gpu-operator | grep gpu"
 echo "  oc get csv -n openshift-serverless | grep serverless"
 echo "  oc get knativeserving -n knative-serving"
 echo "  oc get csv -n openshift-lws-operator | grep leader"
+echo "  oc get csv -n rhcl-operator | grep rhcl"
+echo "  oc get crd authpolicies.kuadrant.io"

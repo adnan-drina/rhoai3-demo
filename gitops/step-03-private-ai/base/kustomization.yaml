@@ -57,8 +57,12 @@ resources:
   - resource-flavors.yaml
   # ClusterQueue - Cluster-wide quota pool
   - cluster-queue.yaml
+  # ClusterQueue - Reserved llm-d quota pool (2 GPUs reserved)
+  - cluster-queue-llmd.yaml
   # LocalQueue - Project entry point (named 'default' for HardwareProfile compat)
   - local-queue.yaml
+  # LocalQueue - Dedicated llm-d queue (maps to rhoai-llmd-queue)
+  - local-queue-llmd.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
   # 6. Project RBAC (sync-wave: 5)

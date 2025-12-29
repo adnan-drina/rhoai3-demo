@@ -1,0 +1,27 @@
+# LocalQueue for llm-d in private-ai namespace
+#
+# This LocalQueue routes llm-d workloads to the reserved rhoai-llmd-queue,
+# ensuring they get dedicated GPU capacity.
+#
+# Usage: Add label to llm-d workloads:
+#   metadata:
+#     labels:
+#       kueue.x-k8s.io/queue-name: llmd
+#
+# Ref: https://kueue.sigs.k8s.io/docs/concepts/local_queue/
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: llmd
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: kueue
+    app.kubernetes.io/component: local-queue
+    app.kubernetes.io/part-of: private-ai
+    demo.rhoai.io/step: "03"
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    openshift.io/display-name: "llm-d Reserved Queue"
+    openshift.io/description: "Routes llm-d workloads to reserved GPU capacity"
+spec:
+  clusterQueue: rhoai-llmd-queue

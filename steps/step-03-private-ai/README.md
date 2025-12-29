@@ -205,11 +205,16 @@ Automatic cost control through `OdhDashboardConfig`:
 |----------|------|---------|
 | **ResourceFlavor** | `nvidia-l4-1gpu` | Targets g6.4xlarge nodes (1x L4) |
 | **ResourceFlavor** | `nvidia-l4-4gpu` | Targets g6.12xlarge nodes (4x L4) |
-| **ClusterQueue** | `rhoai-main-queue` | Custom GPU quota pool (5 GPUs) |
+| **ClusterQueue** | `rhoai-main-queue` | Main GPU quota pool (5 GPUs) for vLLM |
+| **ClusterQueue** | `rhoai-llmd-queue` | Reserved GPU quota (2 GPUs) for llm-d ⭐ |
 | **LocalQueue** | `default` | Standard name → maps to `rhoai-main-queue` |
+| **LocalQueue** | `llmd` | llm-d workloads → maps to `rhoai-llmd-queue` ⭐ |
 
-> **Standardized Queue Strategy**: The LocalQueue named `default` is the standard name that Hardware Profiles expect. It acts as a **logical redirector** to your custom ClusterQueue (`rhoai-main-queue`). This mapping is configured via `DataScienceCluster.spec.components.kueue.defaultClusterQueueName: rhoai-main-queue`.
-> Global profiles reference `localQueueName: default` - this queue must exist in each project.
+> **Queue Separation Strategy**:
+> - The `default` LocalQueue is the standard name that Hardware Profiles expect. It maps to `rhoai-main-queue`.
+> - The `llmd` LocalQueue provides a **hard reservation** of 2 GPUs for llm-d distributed inference (Step 08).
+> - This ensures llm-d can always start, even when vLLM workloads saturate the main queue.
+> - Global profiles reference `localQueueName: default` - this queue must exist in each project.
 
 ### Namespace
 

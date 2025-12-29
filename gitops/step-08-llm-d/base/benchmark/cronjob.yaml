@@ -1,0 +1,217 @@
+# GuideLLM Benchmark CronJob for llm-d Distributed Inference
+# ============================================================================
+# Benchmark the distributed inference endpoint (mistral-3-distributed)
+# and compare with single-node baselines from Step 07.
+#
+# Key Differences from Step 07:
+#   - Targets the llm-d distributed endpoint
+#   - Service name may differ (controller-managed)
+#   - Focus on capacity improvements from horizontal scaling
+#
+# Concurrency Ramp-Up Strategy:
+#   1 → 3 → 5 → 8 → 10 → 15 → 20 → 30 → 40 → 50
+#   │   │   │   │    │    │    │    │    │    └── High-load stress test
+#   │   │   │   │    │    │    │    │    └─────── Distributed capacity target
+#   │   │   │   │    │    │    │    └──────────── Single-node breaking point
+#   │   │   │   │    │    │    └───────────────── Reference: INT4 breaking point
+#   │   │   │   │    │    └────────────────────── Baseline comparison
+#   │   │   │   │    └─────────────────────────── Warmup
+#   │   │   │   └──────────────────────────────── Single user baseline
+#   │   │   └──────────────────────────────────── 
+#   │   └──────────────────────────────────────── 
+#   └──────────────────────────────────────────── 
+#
+# Hypothesis:
+#   With tensor parallelism=2, we expect ~1.5-2x throughput improvement
+#   and higher breaking point compared to single-node INT4.
+#
+# Default: Daily at 3:00 AM UTC (after Step 07 benchmarks)
+#
+# To trigger manually:
+#   oc create job --from=cronjob/llmd-benchmark manual-llmd-$(date +%H%M) -n private-ai
+# ============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: llmd-benchmark
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: llmd-benchmark
+    app.kubernetes.io/component: benchmark
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: llmd-benchmark
+            app.kubernetes.io/component: benchmark
+            job-type: llmd-benchmark
+        spec:
+          restartPolicy: Never
+          dnsPolicy: ClusterFirst
+          containers:
+            - name: benchmark
+              image: ghcr.io/vllm-project/guidellm:stable
+              env:
+                # Model configuration
+                - name: MODEL_NAME
+                  value: "mistral-3-distributed"
+                # Constant profile with graduated concurrency
+                - name: GUIDELLM_PROFILE
+                  value: constant
+                # Extended range to test distributed capacity
+                - name: GUIDELLM_RATES
+                  value: "1,3,5,8,10,15,20,30,40,50"
+                - name: GUIDELLM_RATE_TYPE
+                  value: concurrent
+                # Synthetic data (same as Step 07 for comparison)
+                - name: GUIDELLM_PROMPT_TOKENS
+                  value: "256"
+                - name: GUIDELLM_OUTPUT_TOKENS
+                  value: "256"
+                - name: GUIDELLM_PROCESSOR
+                  value: "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+                # Duration per concurrency level
+                - name: GUIDELLM_MAX_SECONDS
+                  value: "60"
+                - name: GUIDELLM_MAX_REQUESTS
+                  value: "100"
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  RESULTS_DIR="/results/llmd-${TIMESTAMP}"
+                  mkdir -p "${RESULTS_DIR}"
+                  
+                  echo "╔═══════════════════════════════════════════════════════════════════╗"
+                  echo "║  llm-d Distributed Inference Benchmark                            ║"
+                  echo "║  Timestamp: ${TIMESTAMP}                                          ║"
+                  echo "╠═══════════════════════════════════════════════════════════════════╣"
+                  echo "║  Model: ${MODEL_NAME}"
+                  echo "║  Profile: ${GUIDELLM_PROFILE} (${GUIDELLM_RATE_TYPE})"
+                  echo "║  Rates: ${GUIDELLM_RATES}"
+                  echo "║  Data: synthetic (${GUIDELLM_PROMPT_TOKENS} in, ${GUIDELLM_OUTPUT_TOKENS} out)"
+                  echo "╚═══════════════════════════════════════════════════════════════════╝"
+                  echo ""
+                  
+                  # ═══════════════════════════════════════════════════════════════════
+                  # Discover the llm-d endpoint
+                  # The controller may create Services with various naming patterns
+                  # ═══════════════════════════════════════════════════════════════════
+                  echo "→ Discovering llm-d endpoint..."
+                  
+                  # Try common patterns for llm-d service names
+                  POSSIBLE_TARGETS=(
+                    "http://${MODEL_NAME}.private-ai.svc.cluster.local:8080/v1"
+                    "http://${MODEL_NAME}-router.private-ai.svc.cluster.local:8080/v1"
+                    "http://${MODEL_NAME}-predictor.private-ai.svc.cluster.local:8080/v1"
+                  )
+                  
+                  TARGET=""
+                  for CANDIDATE in "${POSSIBLE_TARGETS[@]}"; do
+                    echo "  Trying: ${CANDIDATE}"
+                    if curl -sf --connect-timeout 5 "${CANDIDATE}/models" >/dev/null 2>&1; then
+                      TARGET="${CANDIDATE}"
+                      echo "  ✓ Found working endpoint: ${TARGET}"
+                      break
+                    fi
+                  done
+                  
+                  if [ -z "${TARGET}" ]; then
+                    echo "❌ Could not discover llm-d endpoint. Available services:"
+                    cat /etc/resolv.conf
+                    echo ""
+                    echo "Attempting DNS lookup..."
+                    nslookup ${MODEL_NAME}.private-ai.svc.cluster.local || true
+                    exit 1
+                  fi
+                  
+                  # ═══════════════════════════════════════════════════════════════════
+                  # Pre-resolve hostname to IP (workaround for multiprocessing DNS)
+                  # ═══════════════════════════════════════════════════════════════════
+                  echo ""
+                  echo "→ Resolving hostname to IP for multiprocessing compatibility..."
+                  
+                  TARGET_HOST=$(echo "${TARGET}" | sed -E 's|https?://([^:/]+).*|\1|')
+                  TARGET_PATH=$(echo "${TARGET}" | sed -E 's|https?://[^/]+(.*)|\1|')
+                  
+                  RESOLVED_IP=$(getent hosts "${TARGET_HOST}" 2>/dev/null | awk '{print $1}' | head -1)
+                  if [ -z "${RESOLVED_IP}" ]; then
+                    RESOLVED_IP=$(nslookup "${TARGET_HOST}" 2>/dev/null | grep -A1 "Name:" | grep "Address:" | awk '{print $2}' | head -1)
+                  fi
+                  
+                  if [ -n "${RESOLVED_IP}" ]; then
+                    TARGET_IP="http://${RESOLVED_IP}:8080${TARGET_PATH}"
+                    echo "  ✓ Resolved ${TARGET_HOST} → ${RESOLVED_IP}"
+                    echo "  Using IP-based URL: ${TARGET_IP}"
+                  else
+                    echo "  ⚠️  Could not resolve IP, using hostname (may fail in workers)"
+                    TARGET_IP="${TARGET}"
+                  fi
+                  
+                  # ═══════════════════════════════════════════════════════════════════
+                  # Run GuideLLM benchmark
+                  # ═══════════════════════════════════════════════════════════════════
+                  echo ""
+                  echo "═══════════════════════════════════════════════════════════════════"
+                  echo "  Starting GuideLLM benchmark..."
+                  echo "  Target: ${TARGET_IP}"
+                  echo "  Model: ${MODEL_NAME}"
+                  echo "═══════════════════════════════════════════════════════════════════"
+                  
+                  guidellm benchmark run \
+                    --target "${TARGET_IP}" \
+                    --model "${MODEL_NAME}" \
+                    --profile "${GUIDELLM_PROFILE}" \
+                    --rate "${GUIDELLM_RATES}" \
+                    --rate-type "${GUIDELLM_RATE_TYPE}" \
+                    --data "prompt_tokens=${GUIDELLM_PROMPT_TOKENS},output_tokens=${GUIDELLM_OUTPUT_TOKENS}" \
+                    --processor "${GUIDELLM_PROCESSOR}" \
+                    --max-seconds "${GUIDELLM_MAX_SECONDS}" \
+                    --max-requests "${GUIDELLM_MAX_REQUESTS}" \
+                    --output-path "${RESULTS_DIR}/results.json" \
+                    2>&1 | tee "${RESULTS_DIR}/benchmark.log"
+                  
+                  echo ""
+                  echo "╔═══════════════════════════════════════════════════════════════════╗"
+                  echo "║  ✓ Benchmark complete!                                            ║"
+                  echo "║  Results: ${RESULTS_DIR}                                          ║"
+                  echo "╚═══════════════════════════════════════════════════════════════════╝"
+                  
+                  # Summary
+                  if [ -f "${RESULTS_DIR}/results.json" ]; then
+                    echo ""
+                    echo "Results summary:"
+                    cat "${RESULTS_DIR}/results.json" | head -100
+                  fi
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 4Gi
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
+              volumeMounts:
+                - name: results
+                  mountPath: /results
+          volumes:
+            - name: results
+              persistentVolumeClaim:
+                claimName: llmd-benchmark-results
+          # No GPU required for the benchmark client.
+          # Avoid hard-coding an instance-type nodeSelector (cluster-dependent).
+          tolerations: []
+

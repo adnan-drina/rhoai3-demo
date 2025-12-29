@@ -23,6 +23,7 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0. 
 | Red Hat Authorino | stable | AuthZ for the llm-d Inference Gateway |
 | Limitador Operator | stable | Rate limiting for LLM endpoints |
 | DNS Operator | stable | Endpoint DNS management |
+| **Red Hat Connectivity Link (RHCL)** | stable v1.2.1 | AuthPolicy CRD for llm-d Gateway integration |
 
 ### GPU-as-a-Service (Kueue)
 
@@ -237,8 +238,11 @@ oc apply -k gitops/step-01-gpu-and-prereq/base/leaderworkerset/
 # Check LWS operator status
 oc get csv -n openshift-lws-operator | grep leader
 
-# Verify CRD is installed
-oc get crd leaderworkersets.leaderworkerset.x-k8s.io
+# Verify the LWS operator API is available.
+# Note: On this RHOAI 3.0 / OCP 4.20 cluster, the *workload* LeaderWorkerSet CRD
+# (leaderworkerset.x-k8s.io) is not exposed; only the operator API is.
+oc api-resources | grep leaderworkersetoperator
+oc get crd leaderworkersetoperators.operator.openshift.io
 ```
 
 **Ref:** [RHOAI 3.0 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
@@ -315,7 +319,43 @@ oc get crd dnsrecords.dns.kuadrant.io
 
 ---
 
-### 8. Red Hat Build of Kueue Operator
+### 8. Red Hat Connectivity Link (RHCL) Operator
+
+**Purpose:** Provides the unified Gateway API integration for llm-d. RHCL is the **productized version of Kuadrant** and provides critical CRDs for distributed inference.
+
+**Key CRDs Provided:**
+| CRD | API Version | Purpose |
+|-----|-------------|---------|
+| `authpolicies.kuadrant.io` | `v1` | **Required by llm-d** for Gateway validation |
+| `kuadrants.kuadrant.io` | `v1beta1` | Kuadrant instance CR |
+| `ratelimitpolicies.kuadrant.io` | `v1` | Rate limiting policies |
+| `dnspolicies.kuadrant.io` | `v1` | DNS management policies |
+| `tlspolicies.kuadrant.io` | `v1` | TLS termination policies |
+
+> **Important Version Note:** The community `kuadrant-operator` (from `community-operators`) conflicts with the Red Hat Authorino operator v1.2.4 due to bundling an older Authorino v0.13.0. Always use `rhcl-operator` from `redhat-operators` for RHOAI 3.0 compatibility.
+
+**Deployment Command:**
+```bash
+oc apply -k gitops/step-01-gpu-and-prereq/base/kuadrant-operator/
+```
+
+**Validation:**
+```bash
+# Check RHCL operator status
+oc get csv -n rhcl-operator | grep rhcl
+
+# Verify AuthPolicy CRD is installed (required by llm-d)
+oc get crd authpolicies.kuadrant.io
+
+# Verify Kuadrant CRD is installed
+oc get crd kuadrants.kuadrant.io
+```
+
+**Ref:** [Red Hat Connectivity Link Documentation](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/)
+
+---
+
+### 9. Red Hat Build of Kueue Operator
 
 **Purpose:** Provides workload queuing, quota management, and GPU-as-a-Service capabilities. **Required for RHOAI 3.0** to enable Hardware Profiles with Queue-based scheduling.
 
@@ -469,8 +509,8 @@ oc get knativeserving knative-serving -n knative-serving
 # 4. Kernel-version labels present (indicates NFD success - CRITICAL for DTK)
 oc get node --show-labels | grep kernel-version
 
-# 5. llm-d CRDs installed
-oc get crd | grep -E "leaderworkerset|authorino|limitador"
+# 5. llm-d CRDs installed (including AuthPolicy from RHCL)
+oc get crd | grep -E "leaderworkerset|authorino|limitador|authpolicies.kuadrant"
 
 # 6. All operators healthy
 oc get csv -A | grep Succeeded
@@ -487,6 +527,8 @@ echo "=== LeaderWorkerSet ===" && oc get csv -n openshift-lws-operator | grep le
 echo "=== Authorino ===" && oc get csv -n openshift-authorino | grep authorino
 echo "=== Limitador ===" && oc get csv -n openshift-limitador-operator | grep limitador
 echo "=== DNS Operator ===" && oc get csv -n openshift-dns-operator | grep dns
+echo "=== RHCL (Kuadrant) ===" && oc get csv -n rhcl-operator | grep rhcl
+echo "=== AuthPolicy CRD ===" && oc get crd authpolicies.kuadrant.io
 echo "=== Kueue Operator ===" && oc get csv -n openshift-kueue-operator | grep kueue
 echo "=== Kueue Instance ===" && oc get kueue cluster
 ```
@@ -534,6 +576,10 @@ gitops/step-01-gpu-and-prereq/
 │   │   ├── namespace.yaml
 │   │   ├── operatorgroup.yaml
 │   │   └── subscription.yaml
+│   ├── kuadrant-operator/          # Red Hat Connectivity Link (RHCL)
+│   │   ├── namespace.yaml          # rhcl-operator namespace
+│   │   ├── operatorgroup.yaml
+│   │   └── subscription.yaml       # Uses redhat-operators (NOT community)
 │   └── kueue-operator/             # Red Hat Build of Kueue
 │       ├── namespace.yaml
 │       ├── operatorgroup.yaml
