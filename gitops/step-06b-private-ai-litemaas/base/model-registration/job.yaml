@@ -1,0 +1,146 @@
+# Model Registration Job for LiteLLM
+# Registers all vLLM models with LiteLLM on startup
+# Uses STORE_MODEL_IN_DB=True so models persist in PostgreSQL
+#
+# This job is idempotent - it can be re-run safely
+# Models already registered will be skipped (LiteLLM handles duplicates)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: litellm-model-registration
+  namespace: litemaas
+  labels:
+    app: litellm
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    # Allow re-running this job on each sync
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: litellm-registration
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: register-models
+          image: curlimages/curl:latest
+          env:
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secret
+                  key: master-key
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              LITELLM_URL="http://litellm.litemaas.svc.cluster.local:4000"
+              
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  LiteLLM Model Registration                                   ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+              
+              # Wait for LiteLLM to be ready
+              echo "→ Waiting for LiteLLM to be ready..."
+              until curl -sf "$LITELLM_URL/health/readiness" > /dev/null 2>&1; do
+                echo "  Waiting for LiteLLM..."
+                sleep 5
+              done
+              echo "✓ LiteLLM is ready"
+              
+              # Function to register a model (idempotent - duplicates are ignored)
+              register_model() {
+                local model_id="$1"
+                local api_base="$2"
+                local description="$3"
+                
+                echo "→ Registering model: $model_id"
+                
+                # Check if model already exists
+                existing=$(curl -sf -H "Authorization: Bearer $LITELLM_API_KEY" \
+                  "$LITELLM_URL/v1/models" 2>/dev/null | grep -o "\"id\":\"$model_id\"" || true)
+                
+                if [ -n "$existing" ]; then
+                  echo "  ✓ Model already registered: $model_id"
+                  return 0
+                fi
+                
+                # Register the model
+                response=$(curl -sf -X POST "$LITELLM_URL/model/new" \
+                  -H "Authorization: Bearer $LITELLM_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"model_name\": \"$model_id\",
+                    \"litellm_params\": {
+                      \"model\": \"openai/$model_id\",
+                      \"api_base\": \"$api_base\",
+                      \"api_key\": \"not-needed\"
+                    },
+                    \"model_info\": {
+                      \"description\": \"$description\",
+                      \"id\": \"$model_id\"
+                    }
+                  }" 2>&1) || true
+                
+                if echo "$response" | grep -q "error"; then
+                  echo "  ⚠ Warning: $response"
+                else
+                  echo "  ✓ Registered: $model_id"
+                fi
+              }
+              
+              echo ""
+              echo "═══════════════════════════════════════════════════════════════"
+              echo "  Registering vLLM Models from private-ai namespace"
+              echo "═══════════════════════════════════════════════════════════════"
+              
+              # Register all vLLM models
+              # These use the internal cluster DNS names
+              
+              register_model "mistral-3-int4" \
+                "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1" \
+                "Mistral Small 3.1 24B INT4 - Quantized for efficiency (1x L4 GPU)"
+              
+              register_model "mistral-3-bf16" \
+                "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1" \
+                "Mistral Small 3.1 24B BF16 - Full precision (4x L4 GPUs)"
+              
+              register_model "granite-8b-agent" \
+                "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1" \
+                "IBM Granite 3.2 8B Instruct - Agentic model with tool calling"
+              
+              register_model "devstral-2" \
+                "http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1" \
+                "Devstral Small 2503 - Coding and development assistant"
+              
+              register_model "gpt-oss-20b" \
+                "http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1" \
+                "GPT-OSS 20B - Open source GPT alternative"
+              
+              echo ""
+              echo "═══════════════════════════════════════════════════════════════"
+              echo "  Verifying registered models"
+              echo "═══════════════════════════════════════════════════════════════"
+              
+              curl -sf -H "Authorization: Bearer $LITELLM_API_KEY" \
+                "$LITELLM_URL/v1/models" | grep -o '"id":"[^"]*"' | tr ',' '\n' | sed 's/"id":"/ → /g' | sed 's/"//g'
+              
+              echo ""
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  ✓ Model registration complete                               ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+

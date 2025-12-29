@@ -1,0 +1,25 @@
+# OAuthClient for LiteMaaS OpenShift SSO Integration
+# This is a CLUSTER-SCOPED resource (no namespace)
+# Required for OpenShift OAuth login to LiteMaaS frontend
+#
+# The secret must match OAUTH_CLIENT_SECRET in backend-secret
+# The redirectURI must match OAUTH_CALLBACK_URL in backend-secret
+apiVersion: oauth.openshift.io/v1
+kind: OAuthClient
+metadata:
+  name: litemaas-oauth-client
+  labels:
+    app: litemaas
+    app.kubernetes.io/part-of: litemaas
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: Validate=false
+# Grant method: auto = automatically approve OAuth requests
+grantMethod: auto
+# Secret must match backend-secret OAUTH_CLIENT_SECRET
+secret: 277e639bb4ebed8e0e5dd9517dc947cf
+# Callback URL must match backend-secret OAUTH_CALLBACK_URL
+# NOTE: Update this URL when deploying to a different cluster
+redirectURIs:
+  - https://litemaas-litemaas.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com/api/auth/callback
+

@@ -8,11 +8,22 @@ kind: Kustomization
 namespace: litemaas
 
 resources:
+  # Core infrastructure (sync-wave 0-2)
   - namespace/
   - postgres/
+  
+  # LiteLLM proxy (sync-wave 3)
   - litellm/
+  
+  # LiteMaaS application (sync-wave 4)
   - backend/
   - frontend/
+  
+  # Model registration (sync-wave 5, runs after LiteLLM is ready)
+  - model-registration/
+  
+  # OAuth (cluster-scoped, applied directly without namespace transform)
+  - oauth/oauthclient.yaml
 
 # Note: Don't use commonLabels as it affects selectors and breaks Service->Pod matching
 
