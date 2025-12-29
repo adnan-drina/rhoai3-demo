@@ -4,6 +4,9 @@
 #
 # This job is idempotent - it can be re-run safely
 # Models already registered will be skipped (LiteLLM handles duplicates)
+#
+# To re-run manually: oc delete job litellm-model-registration -n litemaas
+# Then trigger Argo CD sync
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -13,10 +16,8 @@ metadata:
     app: litellm
     app.kubernetes.io/part-of: litemaas
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
-    # Allow re-running this job on each sync
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    # High sync-wave ensures LiteLLM is ready first
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 3
