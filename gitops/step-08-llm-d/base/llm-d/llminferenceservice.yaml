@@ -3,6 +3,9 @@
 # This CR deploys a model using llm-d's distributed inference capability,
 # enabling horizontal scaling across multiple GPU nodes.
 #
+# Configuration aligned with Red Hat reference implementation:
+# https://github.com/rh-aiservices-bu/rhaoi3-llm-d
+#
 # Architecture:
 #   - Tensor Parallelism: Model sharded across 2 GPUs (one per node)
 #   - Each worker runs on a separate g6.4xlarge (1× NVIDIA L4)
@@ -13,14 +16,12 @@
 #   - Gateway API configured in openshift-ingress namespace
 #   - 2× g6.4xlarge nodes with available GPU capacity
 #
-# Gateway Note:
-#   Official RHOAI 3.0 docs reference a Gateway named "openshift-ai-inference".
-#   This cluster uses "data-science-gateway" instead.
-#   If llm-d controller fails to bind, check:
-#     oc describe llminferenceservice mistral-3-distributed -n private-ai
-#   and update the gateway ref if needed.
+# Dashboard Visibility:
+#   LLMInferenceService (v1alpha1) does NOT appear in the RHOAI Dashboard.
+#   This is expected behavior per RHOAI 3.0 - llm-d is managed via CLI only.
+#   Use 'oc get llminferenceservice' to monitor status.
 #
-# ⚠️  DEMO-ONLY: This deployment is unauthenticated.
+# ⚠️  DEMO-ONLY: Authentication is disabled for demo simplicity.
 #     For production, implement Red Hat Connectivity Link (RHCL) auth per RHOAI docs.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
@@ -43,7 +44,13 @@ metadata:
     demo.rhoai.io/step: "08"
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    # Description for dashboard visibility
+    # RHOAI annotations (matching reference repo)
+    opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    # Disable authentication for demo simplicity (per reference repo)
+    security.opendatahub.io/enable-auth: "false"
+    # Display metadata
     openshift.io/display-name: "Mistral-3 Distributed (llm-d)"
     openshift.io/description: "Distributed inference using tensor parallelism across 2× g6.4xlarge nodes"
 spec:

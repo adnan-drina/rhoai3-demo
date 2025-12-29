@@ -2,6 +2,9 @@
 
 **"Elastic Scale-Out on a Budget"** — Demonstrating horizontal scaling of LLM inference across multiple GPU nodes using RHOAI 3.0's llm-d (Distributed Inference) capability.
 
+> **Reference Implementation**: This step is aligned with the Red Hat AI Services reference repo:
+> https://github.com/rh-aiservices-bu/rhaoi3-llm-d
+
 > ⚠️ **DEMO-ONLY**: This step deploys llm-d without authentication for simplicity.
 > For production deployments, configure authentication using **Red Hat Connectivity Link (RHCL)**:
 > - [RHOAI 3.0: Configuring authentication for Distributed Inference with llm-d using RHCL](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#configuring-authentication-for-llmd_rhoai-user)
@@ -47,6 +50,35 @@ llm-d solves this by enabling **horizontal scaling** — distributing a model ac
 | **Platform** | llm-d | Orchestration layer enabling disaggregation, cache-aware routing, fleet-scale elasticity |
 
 > **Official explanation:** [RHOAI 3.0: Deploying models by using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index#deploying-models-using-distributed-inference_rhoai-user)
+
+---
+
+## Dashboard Visibility
+
+> **Important**: `LLMInferenceService` does **NOT** appear in the RHOAI Dashboard.
+
+| Resource Type | API Version | Dashboard Visibility | Management |
+|--------------|-------------|---------------------|------------|
+| `InferenceService` | `serving.kserve.io/v1beta1` | ✅ Visible | UI + CLI |
+| `LLMInferenceService` | `serving.kserve.io/v1alpha1` | ❌ Not visible | CLI only |
+
+This is **expected behavior** per RHOAI 3.0 — llm-d uses the alpha API and is managed exclusively via CLI/GitOps.
+
+### Monitoring llm-d
+
+```bash
+# Check status
+oc get llminferenceservice -n private-ai
+
+# View detailed conditions
+oc describe llminferenceservice mistral-3-distributed -n private-ai
+
+# View pods
+oc get pods -n private-ai -l app.kubernetes.io/name=mistral-3-distributed
+
+# Get endpoint URL
+oc get llminferenceservice mistral-3-distributed -n private-ai -o jsonpath='{.status.url}'
+```
 
 ---
 
@@ -162,8 +194,12 @@ oc get csv -n rhcl-operator | grep rhcl
 oc get crd authpolicies.kuadrant.io
 # Expected: authpolicies.kuadrant.io ... <date>
 
-# Verify Gateway exists (note: our cluster uses data-science-gateway, not openshift-ai-inference)
-oc get gateway -n openshift-ingress
+# Verify Gateway API resources exist (RHOAI enables Gateway API automatically)
+oc api-resources | grep -E 'gatewayclasses|gateways|httproutes'
+
+# Verify the demo GatewayClass/Gateway used by llm-d (created by Step 08 GitOps)
+oc get gatewayclass openshift-default
+oc get gateway openshift-ai-inference -n openshift-ingress
 
 # Verify Kueue resources
 oc get clusterqueue rhoai-main-queue
@@ -349,7 +385,7 @@ spec:
     scheduler: {}
     gateway:
       refs:
-        - name: data-science-gateway
+        - name: openshift-ai-inference
           namespace: openshift-ingress
 ```
 
@@ -473,19 +509,19 @@ oc run results-viewer --rm -it --image=busybox \
 
 ### Gateway Naming
 
-Official RHOAI 3.0 documentation references a Gateway named `openshift-ai-inference`.
-Our cluster uses `data-science-gateway` in `openshift-ingress` namespace.
+RHOAI 3.0 documentation references (and llm-d validates) a Gateway named `openshift-ai-inference` in the `openshift-ingress` namespace.
 
-**If llm-d controller fails to bind:**
+This demo follows the Red Hat reference implementation and creates:
+- `GatewayClass/gateway.networking.k8s.io` named `openshift-default` (controller: `openshift.io/gateway-controller/v1`)
+- `Gateway/gateway.networking.k8s.io` named `openshift-ai-inference` (HTTP/80, `allowedRoutes: from: All`)
+
+**If llm-d controller reports a Gateway error:**
+
 ```bash
-# Check for gateway binding errors
+oc get gatewayclass openshift-default
+oc get gateway openshift-ai-inference -n openshift-ingress
+oc get httproute -n private-ai
 oc describe llminferenceservice mistral-3-distributed -n private-ai
-
-# Verify available gateways
-oc get gateway -n openshift-ingress
-
-# Update the manifest if needed
-# gitops/step-08-llm-d/base/llm-d/llminferenceservice.yaml → spec.router.gateway.refs
 ```
 
 ### Kueue Integration
@@ -537,6 +573,44 @@ oc describe pod -n private-ai <pod-name> | grep -A10 "Events:"
 oc get pods -n private-ai | grep router
 oc logs -n private-ai -l component=router
 ```
+
+### OpenShift Console / Routes Unavailable After Creating `openshift-ai-inference` Gateway
+
+**Symptom**:
+- OpenShift web console is unavailable (browser can’t load).
+- Cluster operators show route/DNS errors:
+  - `oc get co console authentication ingress`
+- `*.apps.<cluster_domain>` (and/or `console-openshift-console.apps...`) returns `NXDOMAIN`.
+
+**Root Cause:**
+Using a Gateway listener hostname like `*.apps.<cluster_domain>` for the `openshift-ai-inference` Gateway can cause the OpenShift Gateway controller to create a **wildcard** `DNSRecord` and (temporarily) overwrite or remove the default `*.apps` record.
+
+That breaks *all* OpenShift Routes, including the console and OAuth routes.
+
+**Solution (cluster admin):**
+
+```bash
+# 1) Identify DNSRecords
+oc get dnsrecord -A
+
+# 2) Ensure the ingress wildcard is still owned by the default ingress controller
+oc get dnsrecord default-wildcard -n openshift-ingress-operator -o yaml | grep -A5 dnsName
+
+# 3) Remove any stale openshift-ai-inference gateway stack created with the old class
+# (these are generated resources; safe to delete if the Gateway is no longer using that class)
+oc delete svc openshift-ai-inference-data-science-gateway-class -n openshift-ingress --ignore-not-found=true
+oc delete deploy openshift-ai-inference-data-science-gateway-class -n openshift-ingress --ignore-not-found=true
+
+# 4) Force a re-publish of the *.apps DNSRecord (bumps generation/reconcile)
+oc patch dnsrecord default-wildcard -n openshift-ingress-operator --type=merge -p '{"spec":{"recordTTL":31}}'
+oc patch dnsrecord default-wildcard -n openshift-ingress-operator --type=merge -p '{"spec":{"recordTTL":30}}'
+
+# 5) Validate operators recover
+oc get co console authentication ingress
+```
+
+> **Note (client-side DNS caching):** your workstation DNS resolver may cache `NXDOMAIN` for several minutes.
+> If the console is still not reachable after the record is restored, flush local DNS caches and retry.
 
 ### Gateway Connection Issues
 

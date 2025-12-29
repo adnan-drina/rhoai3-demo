@@ -3,12 +3,21 @@ kind: Kustomization
 
 # Gateway configuration for llm-d distributed inference.
 #
-# The platform-managed data-science-gateway only allows routes from
-# openshift-ingress and redhat-ods-applications namespaces by default.
-# This Gateway extends the allowed namespaces to include private-ai.
+# This configuration matches the Red Hat reference implementation:
+# https://github.com/rh-aiservices-bu/rhaoi3-llm-d
+#
+# Key choices:
+#   - GatewayClass: openshift-default (standard OpenShift Gateway controller)
+#   - Protocol: HTTP (avoids TLS re-encryption complexity)
+#   - Namespace access: All (demo simplicity)
+#
+# For production, configure:
+#   - HTTPS with proper TLS termination
+#   - Namespace restrictions
+#   - Red Hat Connectivity Link (RHCL) authentication
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 
 resources:
   - gateway.yaml
-
+  - destinationrule-llmd-workload.yaml

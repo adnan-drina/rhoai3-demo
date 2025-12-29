@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llmd-router-metrics
+  namespace: private-ai
+  labels:
+    monitoring.opendatahub.io/scrape: "true"
+    app.kubernetes.io/name: llmd-router-metrics
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "07"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: llminferenceservice-router-scheduler
+      app.kubernetes.io/part-of: llminferenceservice
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - private-ai
+
+

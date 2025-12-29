@@ -42,19 +42,16 @@ if ! oc get crd authpolicies.kuadrant.io &>/dev/null; then
 fi
 echo "  ✓ RHCL AuthPolicy CRD available"
 
-# Check Gateway exists
-if ! oc get gateway -n openshift-ingress data-science-gateway &>/dev/null; then
-    echo "❌ Gateway 'data-science-gateway' not found in openshift-ingress."
-    echo ""
-    echo "RHOAI docs often reference a gateway named 'openshift-ai-inference'."
-    echo "If your cluster uses a different name, update:"
-    echo "  gitops/step-08-llm-d/base/llm-d/llminferenceservice.yaml"
-    echo ""
-    echo "Available Gateways:"
-    oc get gateway -n openshift-ingress || true
+# Check Gateway API is available (RHOAI enables Gateway API automatically)
+if ! oc api-resources | grep -q "^gatewayclasses"; then
+    echo "❌ Gateway API resources not found (GatewayClass). Is Gateway API enabled on the cluster?"
     exit 1
 fi
-echo "  ✓ Gateway API configured"
+if ! oc api-resources | grep -q "^gateways[[:space:]]"; then
+    echo "❌ Gateway API resources not found (Gateway). Is Gateway API enabled on the cluster?"
+    exit 1
+fi
+echo "  ✓ Gateway API resources available"
 
 # Check llm-d reserved queue exists (created in Step 03)
 if ! oc get clusterqueue rhoai-llmd-queue &>/dev/null; then

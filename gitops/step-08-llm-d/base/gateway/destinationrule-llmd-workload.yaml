@@ -1,0 +1,41 @@
+# DestinationRule: TLS origination to llm-d model server (vLLM)
+#
+# Why this exists:
+# - The llm-d/KServe workload service (`*-kserve-workload-svc`) serves HTTPS on port 8000.
+# - The OpenShift Gateway/Envoy connects to backends via Istio. Without explicit TLS
+#   settings, Envoy can attempt plaintext and/or reject the backend certificate,
+#   resulting in `500 Internal Server Error` when calling the external endpoint.
+#
+# This rule enables SIMPLE TLS origination and skips certificate verification
+# (demo-only) to make external access reliable.
+#
+# NOTE: For production, replace `insecureSkipVerify` with proper CA trust.
+#
+# Verify schema:
+#   oc explain destinationrule.spec.trafficPolicy.tls
+#
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: llmd-workload-svc-tls
+  namespace: openshift-ingress
+  labels:
+    app.kubernetes.io/name: llmd-workload-svc-tls
+    app.kubernetes.io/component: gateway-backend-tls
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    openshift.io/description: "Enable TLS origination from Gateway to llm-d HTTPS backend (demo-only insecureSkipVerify)"
+spec:
+  host: mistral-3-distributed-kserve-workload-svc.private-ai.svc.cluster.local
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: 8000
+        tls:
+          mode: SIMPLE
+          insecureSkipVerify: true
+          sni: mistral-3-distributed-kserve-workload-svc.private-ai.svc.cluster.local
+
+

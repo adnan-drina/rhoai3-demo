@@ -64,6 +64,9 @@ resources:
   
   # Grafana Operator: Operator + Instance + Dashboards as CRs
   - grafana-operator/
+
+  # Additional ServiceMonitors for llm-d (router + workload metrics)
+  - monitoring/
   
   # GuideLLM automated benchmarking (CronJob for daily runs)
   - guidellm/

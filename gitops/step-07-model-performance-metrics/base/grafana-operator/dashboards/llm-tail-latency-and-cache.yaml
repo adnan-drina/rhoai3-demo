@@ -1,0 +1,205 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: llm-tail-latency-and-cache
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: observability
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+
+  # Map ${DS_PROMETHEUS} from the imported dashboard format to our UWM datasource.
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "Prometheus-UWM"
+
+  # This dashboard is inspired by the llm-d vs vLLM tail-latency story in:
+  # https://github.com/rh-aiservices-bu/rhaoi3-llm-d
+  #
+  # Adaptation notes for this repo:
+  # - Uses our Prometheus label key: namespace (not kubernetes_namespace)
+  # - Uses vLLM histogram metrics already used in Step 07 dashboards
+  json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "type": "text",
+          "title": "",
+          "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+          "transparent": true,
+          "options": {
+            "mode": "markdown",
+            "content": "## Tail Latency + Cache Health\\n\\nThis dashboard focuses on *user-perceived latency* (TTFT P95/P99) and cache saturation signals.\\n\\n- **Step 07**: baseline vLLM (INT4/BF16)\\n- **Step 08**: llm-d distributed inference (router + workload metrics)\\n"
+          }
+        },
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Time to First Token (TTFT)",
+          "description": "**TTFT** measures the critical latency from when a request is received until the first token is generated.\\n\\n- **P95/P99** represents your most frustrated users (tail latency).",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 3 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P50"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P95"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P99"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Inter-Token Latency (ITL / TPOT)",
+          "description": "**ITL/TPOT** reflects decode speed consistency (lower is better).",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 3 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P50"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P95"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Token Throughput (prompt + generation)",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(rate(vllm:prompt_tokens_total{namespace=~\"$namespace\", model_name=~\"$model\"}[5m]))",
+              "legendFormat": "prompt tok/s"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate(vllm:generation_tokens_total{namespace=~\"$namespace\", model_name=~\"$model\"}[5m]))",
+              "legendFormat": "gen tok/s"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "KV Cache Usage (%)",
+          "description": "High KV cache usage is a strong saturation signal for LLM serving.",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 11 },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "textMode": "value" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 0,
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "orange", "value": 85 }, { "color": "red", "value": 95 } ] }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max(vllm:kv_cache_usage_perc{namespace=~\"$namespace\", model_name=~\"$model\"}) * 100",
+              "legendFormat": "kv_cache"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Queue health (running vs waiting)",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 11 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true } },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(vllm:num_requests_running{namespace=~\"$namespace\", model_name=~\"$model\"})",
+              "legendFormat": "running"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(vllm:num_requests_waiting{namespace=~\"$namespace\", model_name=~\"$model\"})",
+              "legendFormat": "waiting"
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "style": "dark",
+      "tags": ["rhoai", "vllm", "llm-d", "tail-latency"],
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+            "query": { "query": "label_values(vllm:time_to_first_token_seconds_bucket, namespace)", "refId": "PrometheusVariableQueryEditor-namespace" },
+            "refresh": 1,
+            "current": { "selected": false, "text": "private-ai", "value": "private-ai" }
+          },
+          {
+            "name": "model",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+            "query": { "query": "label_values(vllm:time_to_first_token_seconds_bucket{namespace=~\"$namespace\"}, model_name)", "refId": "PrometheusVariableQueryEditor-model" },
+            "refresh": 1
+          }
+        ]
+      },
+      "time": { "from": "now-30m", "to": "now" },
+      "timezone": "browser",
+      "title": "LLM Tail Latency + Cache Health",
+      "version": 1
+    }
+
+

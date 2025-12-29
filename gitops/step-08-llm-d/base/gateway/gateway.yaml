@@ -1,20 +1,41 @@
 # Gateway for llm-d Distributed Inference
 #
-# The llm-d controller validates against a Gateway named "openshift-ai-inference"
-# by default. This Gateway provides the expected name with proper namespace
-# allowlist for private-ai.
+# This Gateway configuration matches the Red Hat reference implementation:
+# https://github.com/rh-aiservices-bu/rhaoi3-llm-d
 #
 # Design Decision:
-#   The RHOAI llm-d controller is hardcoded to validate Gateway availability
-#   using the name "openshift-ai-inference". Rather than modifying the platform-
-#   managed data-science-gateway (which gets reconciled by GatewayConfig), we
-#   create the expected Gateway with proper namespace configuration.
+#   We use the simpler HTTP-based Gateway from the reference repo rather than
+#   HTTPS with TLS termination. This avoids the TLS re-encryption complexity
+#   when the backend vLLM service also uses HTTPS.
 #
-# Note: This Gateway uses the same GatewayClass and TLS secret as the platform
-#   Gateway, ensuring consistent TLS termination and routing behavior.
+# ⚠️ IMPORTANT (cluster safety):
+#   Do NOT set the Gateway listener hostname to `*.apps.<cluster_domain>`.
+#   That can create a wildcard `DNSRecord` and temporarily overwrite the cluster
+#   `*.apps` DNS entry, breaking the OpenShift console and all Routes.
+#   Keep the Gateway hostname unset (or use a single dedicated hostname).
+#
+# For production deployments requiring TLS, configure:
+#   1. Edge termination at the OpenShift Router level
+#   2. Or use service mesh for mTLS between gateway and backend
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
 
+# GatewayClass - use OpenShift's default controller
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: openshift-default
+  labels:
+    app.kubernetes.io/name: openshift-default
+    app.kubernetes.io/component: gateway-class
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  controllerName: openshift.io/gateway-controller/v1
+---
+# Gateway - HTTP-based for simplicity (matching reference repo)
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -29,29 +50,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
     openshift.io/display-name: "llm-d Distributed Inference Gateway"
-    openshift.io/description: "Gateway allowing HTTPRoutes from private-ai namespace for llm-d"
+    openshift.io/description: "HTTP Gateway for llm-d, matching Red Hat reference implementation"
 spec:
-  gatewayClassName: data-science-gateway-class
+  gatewayClassName: openshift-default
   listeners:
-    - name: https
-      port: 443
-      protocol: HTTPS
-      # Wildcard allows any hostname - the HTTPRoute will specify the actual hostname
-      hostname: "*.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: default-gateway-tls
-            kind: Secret
+    - name: http
+      port: 80
+      protocol: HTTP
       allowedRoutes:
         namespaces:
-          from: Selector
-          selector:
-            matchExpressions:
-              - key: kubernetes.io/metadata.name
-                operator: In
-                values:
-                  - openshift-ingress
-                  - redhat-ods-applications
-                  - private-ai  # Allow llm-d HTTPRoutes from private-ai namespace
-
+          from: All  # Allow routes from any namespace (demo simplicity)

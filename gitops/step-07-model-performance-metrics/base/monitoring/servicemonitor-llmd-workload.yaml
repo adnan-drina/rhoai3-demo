@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: llmd-workload-metrics
+  namespace: private-ai
+  labels:
+    monitoring.opendatahub.io/scrape: "true"
+    app.kubernetes.io/name: llmd-workload-metrics
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "07"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: llminferenceservice-workload
+      app.kubernetes.io/part-of: llminferenceservice
+  endpoints:
+    - port: https
+      path: /metrics
+      scheme: https
+      interval: 30s
+      scrapeTimeout: 10s
+      tlsConfig:
+        insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+      - private-ai
+
+
