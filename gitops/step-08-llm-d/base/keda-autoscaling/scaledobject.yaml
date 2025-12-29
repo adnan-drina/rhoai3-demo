@@ -105,21 +105,31 @@ spec:
         name: keda-trigger-auth-prometheus
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # SECONDARY TRIGGER: Inter-Token Latency (ITL) - P50
+    # SECONDARY TRIGGER: Inter-Token Latency (ITL) - P95
     # ═══════════════════════════════════════════════════════════════════════════
     # ITL measures decode phase latency - the user-perceived "streaming speed".
-    # Target: 75ms median ITL per Red Hat performance validation.
+    # 
+    # Calibration based on Step 07 benchmark results:
+    #   - P95 TPOT baseline (1 user): 56ms
+    #   - P95 TPOT at capacity (8 users): 63ms  
+    #   - P95 TPOT at breaking point (15 users): 75ms
+    #
+    # Threshold: 70ms (before severe degradation, per Step 07 SLA table)
+    # Using P95 instead of P50 per Red Hat Developer recommendation:
+    #   "Our use of a p50 (median) ITL might not be as effective as a p90 or p95 target"
+    #
+    # Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
     - type: prometheus
       metadata:
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
-        metricName: vllm_itl_p50_ms
+        metricName: vllm_itl_p95_ms
         namespace: private-ai
-        # P50 ITL in milliseconds
+        # P95 ITL in milliseconds (better signal than P50 per Red Hat article)
         query: |
-          histogram_quantile(0.50,
-            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai"}[2m])) by (le)
+          histogram_quantile(0.95,
+            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai", pod=~"mistral-3-distributed.*"}[2m])) by (le)
           ) * 1000
-        threshold: "75"  # Scale up when median ITL > 75ms
+        threshold: "70"  # Scale up when P95 ITL > 70ms (before 75ms breaking point)
         ignoreNullValues: "true"
         unsafeSsl: "true"
         authModes: "bearer"

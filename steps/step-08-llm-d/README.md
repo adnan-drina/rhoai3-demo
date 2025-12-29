@@ -1240,6 +1240,31 @@ scaleTargetRef:
 | **Queue Depth** | `vllm:num_requests_waiting` | Throughput optimization |
 | **KV Cache Usage** | `vllm:gpu_cache_usage_perc` | Memory pressure indicator |
 
+#### Threshold Calibration (Based on Step 07 Data)
+
+The KEDA thresholds are calibrated using **Step 07 benchmark results** for the same hardware (Mistral 24B INT4 on NVIDIA L4):
+
+| Concurrent Users | P95 TPOT (ITL) | Queue Depth | Status |
+|------------------|----------------|-------------|--------|
+| 1 | 56ms | 0 | ✅ Baseline |
+| 3 | 56ms | 0 | ✅ Healthy |
+| 5 | 60ms | 0-1 | ⚠️ SLA borderline |
+| **8** | **63ms** | 2-5 | ⚠️ Target capacity |
+| 10 | 68ms | >5 | 🔴 Breaking |
+| 15 | **75ms** | >5 | 🔴 Severe degradation |
+
+**Calibration decisions:**
+
+| Metric | Step 07 Breaking Point | Threshold | Rationale |
+|--------|------------------------|-----------|-----------|
+| **P95 ITL** | 75ms | **70ms** | Scale before severe degradation |
+| **Queue Depth** | >5 | **5** | Scale when users start waiting |
+
+> **Why P95 instead of P50?**
+> Per [Red Hat Developer article](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving):
+> *"Our use of a p50 (median) ITL might not be as effective as a p90 or p95 target"*
+> P95 catches tail latency spikes that frustrate users, while P50 may miss them.
+
 #### Deployed ScaledObject Configuration
 
 The ScaledObject is deployed in `gitops/step-08-llm-d/base/keda-autoscaling/scaledobject.yaml`:
@@ -1255,32 +1280,43 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: mistral-3-distributed-kserve
-  minReplicaCount: 2    # Baseline for routing demo
-  maxReplicaCount: 3    # Limited by GPU nodes
+  minReplicaCount: 1    # Allow full scale-down for autoscaling demo
+  maxReplicaCount: 3    # Limited by GPU nodes (3× g6.4xlarge)
   pollingInterval: 15   # Check metrics every 15s
-  cooldownPeriod: 120   # Wait 2min before scaling down
+  cooldownPeriod: 600   # 10min - must exceed model loading time (3-5 min)
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 600  # 10min - prevents thrashing during model loading
   triggers:
-    # Primary: Inter-Token Latency (ITL) - Median (P50)
+    # PRIMARY: Queue Depth (most effective per Red Hat Engineering)
     - type: prometheus
       metadata:
-        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
-        query: |
-          histogram_quantile(0.50,
-            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai"}[2m])) by (le)
-          ) * 1000
-        threshold: "75"  # Scale up when median ITL exceeds 75ms
+        serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
+        namespace: private-ai
+        query: 'sum(vllm:num_requests_waiting{namespace="private-ai", pod=~"mistral-3-distributed.*"})'
+        threshold: "5"  # Scale up when >5 requests waiting (Step 07 breaking point)
       authenticationRef:
         name: keda-trigger-auth-prometheus
-    # Secondary: Queue Depth
+    # SECONDARY: Inter-Token Latency (ITL) - P95
     - type: prometheus
       metadata:
-        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
+        serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
+        namespace: private-ai
         query: |
-          sum(vllm:num_requests_waiting{namespace="private-ai"}) or vector(0)
-        threshold: "5"  # Scale up when >5 requests waiting
+          histogram_quantile(0.95,
+            sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai", pod=~"mistral-3-distributed.*"}[2m])) by (le)
+          ) * 1000
+        threshold: "70"  # Scale up when P95 ITL > 70ms (before 75ms breaking point)
       authenticationRef:
         name: keda-trigger-auth-prometheus
 ```
+
+> **Critical: cooldownPeriod for LLM workloads**
+> A 24B INT4 model takes **3-5 minutes** to load into GPU memory. If `cooldownPeriod` is shorter,
+> KEDA will scale down pods before they're ready, causing thrashing. We set 600s (10 minutes)
+> to allow full model loading + CUDA graph capture.
 
 #### Validation Commands
 
@@ -1337,21 +1373,28 @@ subjects:
 
 #### Best Practices from Red Hat Performance Validation
 
-1. **Use ITL (not concurrency) for heterogeneous workloads**
+1. **Calibrate thresholds using benchmark data (Step 07)**
+   - Run graduated concurrency tests to find breaking points
+   - Set ITL threshold 5-10ms **below** the breaking point for proactive scaling
+   - Use P95 (not P50) for tail latency sensitivity
+
+2. **Use ITL (not concurrency) for heterogeneous workloads**
    - Real-world LLM traffic has wildly varying sequence lengths
    - A single 5000-token request saturates GPU while KPA sees "1 request"
 
-2. **Start with conservative thresholds**
-   - Median ITL target: 70-75ms
-   - Queue depth threshold: 5 requests
+3. **Set cooldownPeriod > model loading time**
+   - 24B INT4 model loading: 3-5 minutes
+   - CUDA graph capture: 1+ minute
+   - Our setting: **600 seconds** (10 minutes) prevents thrashing
 
-3. **Combine multiple triggers**
-   - Primary: ITL for quality of service
-   - Secondary: Queue depth for throughput
+4. **Combine multiple triggers (queue + latency)**
+   - Primary: Queue depth for throughput optimization
+   - Secondary: ITL for quality of service
+   - Either trigger can initiate scale-up
 
-4. **Tune aggregation windows**
-   - Short window: Risk of flapping (overreaction to spikes)
-   - Long window: Slow response to genuine SLO violations
+5. **Use Thanos port 9092 for tenancy mode**
+   - Port 9091 = cluster-wide (requires `cluster-monitoring-view`)
+   - Port 9092 = tenancy-filtered (requires `view` RoleBinding in namespace)
 
 #### Future Exploration
 
