@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Gateway configuration for llm-d distributed inference.
+#
+# The platform-managed data-science-gateway only allows routes from
+# openshift-ingress and redhat-ods-applications namespaces by default.
+# This Gateway extends the allowed namespaces to include private-ai.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+
+resources:
+  - gateway.yaml
+

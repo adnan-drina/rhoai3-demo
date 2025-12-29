@@ -103,14 +103,15 @@ spec:
   # ═══════════════════════════════════════════════════════════════════════════
   # Router Configuration
   # ═══════════════════════════════════════════════════════════════════════════
-  # Gateway reference: RHOAI 3.0 defaults to "openshift-ai-inference" but this
-  # cluster uses "data-science-gateway". We must specify the correct gateway.
+  # Gateway reference: We use a dedicated llm-d-inference-gateway that allows
+  # HTTPRoutes from the private-ai namespace. The platform-managed 
+  # data-science-gateway only allows openshift-ingress and redhat-ods-applications.
   # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
   router:
     route: {}
     scheduler: {}
     gateway:
       refs:
-        - name: data-science-gateway
+        - name: llm-d-inference-gateway
           namespace: openshift-ingress
 

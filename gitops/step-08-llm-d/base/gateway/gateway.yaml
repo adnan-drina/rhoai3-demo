@@ -1,0 +1,55 @@
+# Gateway for llm-d Distributed Inference
+#
+# This Gateway extends the RHOAI platform gateway to allow HTTPRoutes from
+# the private-ai namespace. The platform-managed data-science-gateway only
+# allows routes from openshift-ingress and redhat-ods-applications by default.
+#
+# Design Decision:
+#   Rather than modifying the platform-managed Gateway (which gets reconciled
+#   by GatewayConfig controller), we create a dedicated Gateway for llm-d
+#   workloads that explicitly allows the private-ai namespace.
+#
+# Note: This Gateway uses the same GatewayClass and TLS secret as the platform
+#   Gateway, ensuring consistent TLS termination and routing behavior.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/deploying_models/index
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: llm-d-inference-gateway
+  namespace: openshift-ingress
+  labels:
+    app.kubernetes.io/name: llm-d-inference-gateway
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: llm-serving
+    demo.rhoai.io/step: "08"
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    openshift.io/display-name: "llm-d Distributed Inference Gateway"
+    openshift.io/description: "Gateway allowing HTTPRoutes from private-ai namespace for llm-d"
+spec:
+  gatewayClassName: data-science-gateway-class
+  listeners:
+    - name: https
+      port: 443
+      protocol: HTTPS
+      # Wildcard allows any hostname - the HTTPRoute will specify the actual hostname
+      hostname: "*.apps.cluster-78cqq.78cqq.sandbox3352.opentlc.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: default-gateway-tls
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - openshift-ingress
+                  - redhat-ods-applications
+                  - private-ai  # Allow llm-d HTTPRoutes from private-ai namespace
+
