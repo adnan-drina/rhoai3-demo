@@ -1089,6 +1089,138 @@ oc get odhdashboardconfig -n redhat-ods-applications -o jsonpath='{.spec.dashboa
 - [OpenDataHub MaaS Documentation](https://opendatahub-io.github.io/models-as-a-service/)
 - [GitHub: opendatahub-io/models-as-a-service](https://github.com/opendatahub-io/models-as-a-service)
 
+### SLO-Driven Autoscaling with KEDA
+
+> **Status:** Validated in upstream Open Data Hub; applicable to RHOAI 3.0
+> **Benefit:** 30%+ better GPU utilization compared to concurrency-based autoscaling
+
+Current Step 08 uses **Kueue** for workload admission and quota management, but does not implement
+**horizontal pod autoscaling** for the llm-d workload. Red Hat engineering has validated a superior
+autoscaling approach using **KEDA** (Kubernetes Event-Driven Autoscaler) with SLO-driven metrics.
+
+#### Why KEDA over Knative Pod Autoscaler (KPA)?
+
+| Autoscaler | Scaling Metric | Best For | Limitation |
+|------------|----------------|----------|------------|
+| **KPA (Knative)** | Request concurrency | Homogeneous workloads | Fails for variable sequence lengths |
+| **KEDA (SLO-driven)** | ITL, TTFT, queue depth | **Heterogeneous workloads** | Requires Prometheus metrics |
+
+**Key finding from Red Hat performance validation:**
+> "The KPA left 30% of our cluster capacity idle while failing its performance targets.
+> KEDA correctly identified the true system load, scaled to use the full cluster capacity,
+> and successfully held the latency at our 70-ms target."
+>
+> — [Autoscaling vLLM with OpenShift AI model serving](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving)
+
+#### The Problem with Concurrency-Based Scaling
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     Why Concurrency Fails for LLMs                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Concurrency = 10 requests                                                  │
+│                                                                             │
+│  Homogeneous:              Heterogeneous (Reality):                         │
+│  ┌───┐┌───┐┌───┐...       ┌─┐┌───────────────────┐┌──┐...                  │
+│  │100│100│100│            │10│     5000 tokens    │200│                     │
+│  └───┘└───┘└───┘          └─┘└───────────────────┘└──┘                      │
+│  ~equal load              WILDLY different load                             │
+│                                                                             │
+│  KPA sees: "10 requests, OK"                                                │
+│  Reality: GPU is saturated by 1 long request                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Recommended Metrics for vLLM Autoscaling
+
+| Metric | vLLM Prometheus Metric | Use Case |
+|--------|------------------------|----------|
+| **Time to First Token (TTFT)** | `vllm:time_to_first_token_seconds` | Prefill phase latency, queue delays |
+| **Inter-Token Latency (ITL)** | `vllm:time_per_output_token_seconds_bucket` | Decode phase, sustained generation speed |
+| **End-to-End Latency** | `vllm:e2e_request_latency_seconds_bucket` | Uniform workloads only |
+| **Queue Depth** | `vllm:num_requests_waiting` | Throughput optimization |
+| **KV Cache Usage** | `vllm:gpu_cache_usage_perc` | Memory pressure indicator |
+
+#### Example KEDA ScaledObject (For Future Use)
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: llmd-autoscaler
+  namespace: private-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mistral-3-distributed-kserve
+  minReplicaCount: 2
+  maxReplicaCount: 7  # Match available GPU capacity
+  pollingInterval: 15
+  cooldownPeriod: 60
+  triggers:
+    # Primary: Scale based on Inter-Token Latency SLO
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-k8s.openshift-monitoring.svc:9090
+        metricName: vllm_itl_p50
+        query: |
+          histogram_quantile(0.50,
+            sum(rate(vllm:time_per_output_token_seconds_bucket{model_name="mistral-3-distributed"}[1m])) by (le)
+          ) * 1000
+        threshold: "75"  # Target: 75ms median ITL
+    # Secondary: Scale on queue depth
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-k8s.openshift-monitoring.svc:9090
+        metricName: vllm_queue_depth
+        query: |
+          sum(vllm:num_requests_waiting{model_name="mistral-3-distributed"})
+        threshold: "5"
+```
+
+#### Implementation Prerequisites
+
+| Requirement | Status | Notes |
+|-------------|--------|-------|
+| Custom Metrics Autoscaler Operator | 🔲 | Install from OperatorHub |
+| KEDA controller | 🔲 | Deployed by operator |
+| Prometheus scraping vLLM | ✅ | Step 07 ServiceMonitors |
+| Grafana dashboard | ✅ | Step 08 observability |
+
+#### Best Practices from Red Hat Performance Validation
+
+1. **Use ITL (not concurrency) for heterogeneous workloads**
+   - Real-world LLM traffic has wildly varying sequence lengths
+   - A single 5000-token request saturates GPU while KPA sees "1 request"
+
+2. **Start with conservative thresholds**
+   - Median ITL target: 70-75ms
+   - Queue depth threshold: 5 requests
+
+3. **Combine multiple triggers**
+   - Primary: ITL for quality of service
+   - Secondary: Queue depth for throughput
+
+4. **Tune aggregation windows**
+   - Short window: Risk of flapping (overreaction to spikes)
+   - Long window: Slow response to genuine SLO violations
+
+#### Future Exploration
+
+- **Rate-of-change calculations** for proactive (anticipatory) scaling
+- **Predictive autoscaling** using trend analysis
+- **Multi-trigger combinations** (GPU utilization + queue length + latency)
+- **Integration with Kueue** for coordinated admission + scaling
+
+**References:**
+- [Red Hat Developer: Autoscaling vLLM with OpenShift AI model serving](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving)
+- [Red Hat Developer: How to set up KServe autoscaling for vLLM with KEDA](https://developers.redhat.com/articles/2025/11/21/how-set-kserve-autoscaling-vllm-keda)
+- [KEDA Documentation](https://keda.sh/docs/)
+- [Custom Metrics Autoscaler Operator](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/index#nodes-cma-autoscaling-custom)
+
 ---
 
 ## Advanced Topics (Optional)
