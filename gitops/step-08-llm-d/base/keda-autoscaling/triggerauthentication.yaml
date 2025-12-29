@@ -33,33 +33,14 @@ metadata:
     kubernetes.io/service-account.name: keda-prometheus-sa
 type: kubernetes.io/service-account-token
 ---
-# ClusterRole for querying Prometheus API
-# Grants access to the prometheuses.monitoring.coreos.com/api resource
+# RoleBinding to allow KEDA SA to query Thanos (tenancy mode - port 9092)
+# Port 9092 requires 'view' role in the specific project
+# Ref: oc get svc thanos-querier -n openshift-monitoring -o yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: RoleBinding
 metadata:
-  name: keda-prometheus-api-access
-  labels:
-    app.kubernetes.io/name: keda-auth
-    app.kubernetes.io/component: autoscaling
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-rules:
-  # Access Prometheus API (required for Thanos/Prometheus queries)
-  - apiGroups: ["monitoring.coreos.com"]
-    resources: ["prometheuses/api"]
-    resourceNames: ["k8s", "user-workload"]
-    verbs: ["get", "create", "update"]
-  # Allow viewing namespaces
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get", "list", "watch"]
----
-# ClusterRoleBinding to allow KEDA SA to query Prometheus
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: keda-prometheus-private-ai
+  name: keda-prometheus-view
+  namespace: private-ai
   labels:
     app.kubernetes.io/name: keda-auth
     app.kubernetes.io/component: autoscaling
@@ -68,7 +49,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: keda-prometheus-api-access
+  name: view  # Built-in OCP role for Thanos tenancy mode (port 9092)
 subjects:
   - kind: ServiceAccount
     name: keda-prometheus-sa

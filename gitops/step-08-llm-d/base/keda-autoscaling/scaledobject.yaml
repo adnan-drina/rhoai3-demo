@@ -1,15 +1,29 @@
 # ScaledObject for llm-d Autoscaling
 #
-# SLO-driven autoscaling based on:
-#   1. Inter-Token Latency (ITL) - Primary: Decode phase quality
-#   2. Queue Depth - Secondary: Throughput optimization
+# ═══════════════════════════════════════════════════════════════════════════════
+# IMPORTANT: Scaling Target depends on parallelism mode
+# ═══════════════════════════════════════════════════════════════════════════════
 #
-# Key insight from Red Hat performance validation:
-#   "Concurrency is a poor proxy for load. A single 5000-token request
-#    saturates GPU while KPA sees '1 request'. KEDA with ITL metrics
-#    achieves 30%+ better GPU utilization."
+# Current demo uses: tensor:1, replicas:2 → creates Deployment
+# If using: tensor:2, replicas:1 → creates LeaderWorkerSet (LWS)
+#
+# For LWS mode, target would be:
+#   scaleTargetRef:
+#     apiVersion: leaderworkerset.x-k8s.io/v1
+#     kind: LeaderWorkerSet
+#     name: mistral-3-distributed
+#
+# Scaling 1 LWS replica adds N pods (N = tensor size = shard count)
+# This maintains Tensor Parallel (TP) integrity.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# SLO-driven autoscaling based on:
+#   1. Queue Depth - Primary: Users waiting in vLLM queue (KV Cache pressure)
+#   2. Inter-Token Latency (ITL) - Secondary: Decode phase quality
 #
 # Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
+# Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/deploying-the-custom-metrics-autoscaler
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -58,41 +72,46 @@ spec:
   
   triggers:
     # ═══════════════════════════════════════════════════════════════════════════
-    # PRIMARY TRIGGER: Inter-Token Latency (ITL) - Median (P50)
+    # PRIMARY TRIGGER: Queue Depth (vllm:num_requests_waiting)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # This is the most effective metric for llm-d per Red Hat Engineering.
+    # It represents users stuck in queue because KV Cache is full.
+    # Target: Scale up when average queue length across shards > 5
+    - type: prometheus
+      metadata:
+        # Thanos Querier endpoint (port 9092 per OCP 4.20 docs)
+        serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
+        metricName: vllm_queue_depth
+        namespace: private-ai
+        # Average queue depth across all model replicas
+        query: |
+          sum(vllm:num_requests_waiting{namespace="private-ai"}) / count(vllm:num_requests_waiting{namespace="private-ai"})
+        threshold: "5"  # Scale up when avg queue > 5
+        ignoreNullValues: "true"
+        unsafeSsl: "true"
+        authModes: "bearer"
+      authenticationRef:
+        name: keda-trigger-auth-prometheus
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECONDARY TRIGGER: Inter-Token Latency (ITL) - P50
     # ═══════════════════════════════════════════════════════════════════════════
     # ITL measures decode phase latency - the user-perceived "streaming speed".
     # Target: 75ms median ITL per Red Hat performance validation.
     - type: prometheus
       metadata:
-        # User Workload Monitoring Prometheus (namespace-scoped metrics)
-        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
+        serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         metricName: vllm_itl_p50_ms
+        namespace: private-ai
         # P50 ITL in milliseconds
         query: |
           histogram_quantile(0.50,
             sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai"}[2m])) by (le)
           ) * 1000
-        threshold: "75"  # Scale up when median ITL exceeds 75ms
+        threshold: "75"  # Scale up when median ITL > 75ms
         ignoreNullValues: "true"
         unsafeSsl: "true"
-      authenticationRef:
-        name: keda-trigger-auth-prometheus
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SECONDARY TRIGGER: Queue Depth
-    # ═══════════════════════════════════════════════════════════════════════════
-    # Measures requests waiting in the vLLM scheduler queue.
-    # Target: Scale up when queue depth exceeds 5 requests.
-    - type: prometheus
-      metadata:
-        # User Workload Monitoring Prometheus (namespace-scoped metrics)
-        serverAddress: https://prometheus-user-workload.openshift-user-workload-monitoring.svc.cluster.local:9091
-        metricName: vllm_queue_depth
-        query: |
-          sum(vllm:num_requests_waiting{namespace="private-ai"}) or vector(0)
-        threshold: "5"  # Scale up when >5 requests waiting
-        ignoreNullValues: "true"
-        unsafeSsl: "true"
+        authModes: "bearer"
       authenticationRef:
         name: keda-trigger-auth-prometheus
 
