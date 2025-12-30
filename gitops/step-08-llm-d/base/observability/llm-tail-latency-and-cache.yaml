@@ -89,7 +89,7 @@ spec:
           "id": 2,
           "type": "timeseries",
           "title": "Inter-Token Latency (ITL / TPOT)",
-          "description": "**ITL/TPOT** reflects decode speed consistency (lower is better).",
+          "description": "**ITL/TPOT** reflects decode speed consistency (lower is better).\\n\\nThis is the key metric for KEDA autoscaling (threshold: 65ms P95).",
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 3 },
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
@@ -104,6 +104,11 @@ spec:
               "refId": "B",
               "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
               "legendFormat": "P95"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=~\"$namespace\", model_name=~\"$model\"}[5m])))",
+              "legendFormat": "P99"
             }
           ]
         },
@@ -147,8 +152,8 @@ spec:
           "targets": [
             {
               "refId": "A",
-              "expr": "max(vllm:kv_cache_usage_perc{namespace=~\"$namespace\", model_name=~\"$model\"}) * 100",
-              "legendFormat": "kv_cache"
+              "expr": "max(vllm:gpu_cache_usage_perc{namespace=~\"$namespace\", model_name=~\"$model\"}) * 100",
+              "legendFormat": "GPU Cache %"
             }
           ]
         },
