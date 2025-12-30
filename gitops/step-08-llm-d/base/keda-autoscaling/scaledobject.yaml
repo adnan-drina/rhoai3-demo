@@ -84,8 +84,13 @@ spec:
     # ═══════════════════════════════════════════════════════════════════════════
     # This is the most effective metric for llm-d per Red Hat Engineering.
     # It represents users stuck in queue because KV Cache is full.
-    # Target: Scale up when average queue length across shards > 5
+    #
+    # IMPORTANT: metricType=Value ensures we compare TOTAL queue depth (not per-replica)
+    # Without this, HPA divides by replicas: queue=10 with 2 replicas → 5 per replica
+    #
+    # Target: Scale up when TOTAL queue depth across cluster > 5
     - type: prometheus
+      metricType: Value  # Use total value, not per-replica average
       metadata:
         # ═══════════════════════════════════════════════════════════════════════
         # Thanos Querier Configuration (per Red Hat Developer Article)
@@ -95,9 +100,9 @@ spec:
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         metricName: vllm_queue_depth
         namespace: private-ai
-        # Average queue depth across all model replicas
+        # TOTAL queue depth across all model replicas (not averaged)
         query: 'sum(vllm:num_requests_waiting{namespace="private-ai", pod=~"mistral-3-distributed.*"})'
-        threshold: "5"  # Scale up when avg queue > 5
+        threshold: "5"  # Scale up when TOTAL queue > 5
         ignoreNullValues: "true"
         unsafeSsl: "true"
         authModes: "bearer"
@@ -109,6 +114,9 @@ spec:
     # ═══════════════════════════════════════════════════════════════════════════
     # ITL measures decode phase latency - the user-perceived "streaming speed".
     # 
+    # IMPORTANT: metricType=Value ensures we compare cluster-wide P95 ITL
+    # (not divided by replicas). The P95 is already a cluster-wide percentile.
+    #
     # Calibration based on Step 07 benchmark results:
     #   - P95 TPOT baseline (1 user): 56ms
     #   - P95 TPOT at capacity (8 users): 63ms  
@@ -120,16 +128,17 @@ spec:
     #
     # Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
     - type: prometheus
+      metricType: Value  # Use actual P95 value, not per-replica average
       metadata:
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         metricName: vllm_itl_p95_ms
         namespace: private-ai
-        # P95 ITL in milliseconds (better signal than P50 per Red Hat article)
+        # Cluster-wide P95 ITL in milliseconds
         query: |
           histogram_quantile(0.95,
             sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai", pod=~"mistral-3-distributed.*"}[2m])) by (le)
           ) * 1000
-        threshold: "70"  # Scale up when P95 ITL > 70ms (before 75ms breaking point)
+        threshold: "65"  # Scale up when P95 ITL > 65ms (between 63ms capacity and 75ms breaking)
         ignoreNullValues: "true"
         unsafeSsl: "true"
         authModes: "bearer"

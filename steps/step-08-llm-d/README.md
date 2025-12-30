@@ -1257,13 +1257,20 @@ The KEDA thresholds are calibrated using **Step 07 benchmark results** for the s
 
 | Metric | Step 07 Breaking Point | Threshold | Rationale |
 |--------|------------------------|-----------|-----------|
-| **P95 ITL** | 75ms | **70ms** | Scale before severe degradation |
+| **P95 ITL** | 75ms | **65ms** | Scale between capacity (63ms) and breaking (75ms) |
 | **Queue Depth** | >5 | **5** | Scale when users start waiting |
 
 > **Why P95 instead of P50?**
 > Per [Red Hat Developer article](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving):
 > *"Our use of a p50 (median) ITL might not be as effective as a p90 or p95 target"*
 > P95 catches tail latency spikes that frustrate users, while P50 may miss them.
+
+> **Critical Fix: metricType: Value**
+> By default, KEDA uses `AverageValue` which **divides the metric by replica count**.
+> For cluster-wide metrics (P95 ITL, total queue depth), this causes incorrect scaling:
+> - ITL 73ms with 2 replicas → HPA sees 36.5ms (below threshold!)
+>
+> Setting `metricType: Value` ensures the raw metric is compared directly against the threshold.
 
 #### Deployed ScaledObject Configuration
 
@@ -1292,15 +1299,17 @@ spec:
   triggers:
     # PRIMARY: Queue Depth (most effective per Red Hat Engineering)
     - type: prometheus
+      metricType: Value  # CRITICAL: Use raw value, not per-replica average
       metadata:
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         namespace: private-ai
         query: 'sum(vllm:num_requests_waiting{namespace="private-ai", pod=~"mistral-3-distributed.*"})'
-        threshold: "5"  # Scale up when >5 requests waiting (Step 07 breaking point)
+        threshold: "5"  # Scale up when TOTAL queue > 5 (Step 07 breaking point)
       authenticationRef:
         name: keda-trigger-auth-prometheus
     # SECONDARY: Inter-Token Latency (ITL) - P95
     - type: prometheus
+      metricType: Value  # CRITICAL: Use raw P95 value, not divided by replicas
       metadata:
         serverAddress: https://thanos-querier.openshift-monitoring.svc.cluster.local:9092
         namespace: private-ai
@@ -1308,7 +1317,7 @@ spec:
           histogram_quantile(0.95,
             sum(rate(vllm:time_per_output_token_seconds_bucket{namespace="private-ai", pod=~"mistral-3-distributed.*"}[2m])) by (le)
           ) * 1000
-        threshold: "70"  # Scale up when P95 ITL > 70ms (before 75ms breaking point)
+        threshold: "65"  # Scale up when P95 ITL > 65ms (between capacity and breaking)
       authenticationRef:
         name: keda-trigger-auth-prometheus
 ```
