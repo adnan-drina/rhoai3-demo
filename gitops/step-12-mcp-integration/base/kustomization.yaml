@@ -10,6 +10,7 @@ kind: Kustomization
 #   5. slack-mcp (team notifications in demo mode)
 
 resources:
+  - acme-corp/
   - postgresql/
   - mcp-builds/
   - database-mcp/

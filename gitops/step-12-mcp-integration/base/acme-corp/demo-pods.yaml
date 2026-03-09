@@ -1,0 +1,144 @@
+# ACME Corp Equipment Monitoring Demo Pods
+# Pod naming convention: acme-equipment-XXXX (matches database acme_pod_equipment_map table)
+#
+# Pod 0001 and 0005: healthy, running
+# Pod 0007: FAILING with DFO calibration error (CrashLoopBackOff)
+#   -> This is the "failed pod" the demo agent will investigate
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: acme-equipment-0001
+  namespace: acme-corp
+  labels:
+    app: acme-equipment
+    equipment-id: LITHO-001
+    product: l-900-euv-calibration-suite
+    status: healthy
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    equipment.acme.com/type: "EUV Scanner"
+    equipment.acme.com/model: "ASML TWINSCAN NXE:3400C"
+    equipment.acme.com/location: "Fab 5, Bay 3"
+spec:
+  containers:
+    - name: equipment-agent
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "ACME Equipment Agent v2.1.0"
+          echo "Equipment ID: LITHO-001"
+          echo "Product: L-900 EUV Calibration Suite"
+          echo "Status: OPERATIONAL"
+          echo "---"
+          echo "$(date): Starting equipment monitoring..."
+          while true; do
+            echo "$(date): [LITHO-001] Health check: OK | Wafers: 125000 | Overlay: 1.2nm"
+            sleep 30
+          done
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "10m"
+        limits:
+          memory: "64Mi"
+          cpu: "50m"
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: acme-equipment-0005
+  namespace: acme-corp
+  labels:
+    app: acme-equipment
+    equipment-id: L-900-07
+    product: l-900-euv-calibration-suite
+    status: healthy
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    equipment.acme.com/type: "L-900 EUV Scanner"
+    equipment.acme.com/model: "ASML TWINSCAN NXE:3600D"
+    equipment.acme.com/location: "Fab 3, Bay 12"
+spec:
+  containers:
+    - name: equipment-agent
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "ACME Equipment Agent v2.1.0"
+          echo "Equipment ID: L-900-07"
+          echo "Product: L-900 EUV Calibration Suite"
+          echo "Status: OPERATIONAL"
+          echo "---"
+          echo "$(date): Starting equipment monitoring..."
+          while true; do
+            echo "$(date): [L-900-07] Health check: OK | Wafers: 85000 | Overlay: 0.9nm"
+            sleep 30
+          done
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "10m"
+        limits:
+          memory: "64Mi"
+          cpu: "50m"
+  restartPolicy: Always
+---
+# Pod 0007 — FAILING with DFO calibration error
+# This pod exits with code 1 after printing error messages,
+# causing CrashLoopBackOff — the "failed pod" the agent investigates.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: acme-equipment-0007
+  namespace: acme-corp
+  labels:
+    app: acme-equipment
+    equipment-id: L-900-08
+    product: l-900-euv-calibration-suite
+    status: error
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    equipment.acme.com/type: "L-900 EUV Scanner"
+    equipment.acme.com/model: "ASML TWINSCAN NXE:3600D"
+    equipment.acme.com/location: "Fab 3, Bay 8"
+    equipment.acme.com/error: "DFO_CALIBRATION_DRIFT"
+spec:
+  containers:
+    - name: equipment-agent
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "ACME Equipment Agent v2.1.0"
+          echo "Equipment ID: L-900-08"
+          echo "Product: L-900 EUV Calibration Suite"
+          echo "Status: ERROR"
+          echo "---"
+          echo "$(date): Starting equipment monitoring..."
+          sleep 5
+          echo "$(date): [L-900-08] ERROR: DFO calibration drift detected"
+          echo "$(date): [L-900-08] CRITICAL: Overlay accuracy degraded to 4.2nm (threshold: 3.5nm)"
+          echo "$(date): [L-900-08] WARNING: Dynamic Focus Optimizer module requires recalibration"
+          echo "$(date): [L-900-08] ACTION REQUIRED: Schedule DFO recalibration - Part P12345"
+          echo ""
+          echo "ERROR: L-900 EUV Calibration Suite - DFO_CALIBRATION_DRIFT"
+          echo "The Dynamic Focus Optimizer (DFO) module has exceeded calibration tolerance."
+          echo "Overlay accuracy: 4.2nm (exceeds 3.5nm threshold)"
+          echo "Recommended action: Schedule DFO recalibration using Part P12345"
+          echo ""
+          exit 1
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "10m"
+        limits:
+          memory: "64Mi"
+          cpu: "50m"
+  restartPolicy: Always

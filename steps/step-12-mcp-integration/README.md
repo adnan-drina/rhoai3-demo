@@ -89,39 +89,65 @@ oc rollout restart deploy/lsd-genai-playground -n private-ai
 ./steps/step-12-mcp-integration/validate.sh
 ```
 
+## ACME Corp Demo Environment
+
+Step 12 deploys an `acme-corp` namespace with three simulated equipment monitoring pods:
+
+| Pod | Equipment | Status | Behavior |
+|-----|-----------|--------|----------|
+| `acme-equipment-0001` | LITHO-001 | Healthy | Logs OK health checks every 30s |
+| `acme-equipment-0005` | L-900-07 | Healthy | Logs OK health checks every 30s |
+| `acme-equipment-0007` | L-900-08 | **CrashLoopBackOff** | Exits with DFO calibration error |
+
+Pod `acme-equipment-0007` is deliberately broken -- it prints error messages about "DFO calibration drift" and "overlay accuracy degraded to 4.2nm" then exits with code 1. This makes it the failing pod the agent investigates in the demo.
+
+The pods map to equipment records in PostgreSQL via the `acme_pod_equipment_map` table.
+
 ## Demo Scenarios
 
-### Scenario 1: Equipment Lookup
+### The End-to-End Demo (recommended)
 
-In the Playground, select `granite-8b-agent`, enable `Database-MCP-Server`:
+This is a 4-question agentic workflow that chains all three MCP servers plus RAG. In the Playground, select `granite-8b-agent` and enable all MCP servers + RAG:
+
+**Q1: "List pods in acme-corp project"**
+
+The agent calls `list_pods_summary(namespace="acme-corp")` via the OpenShift MCP server. Returns 3 pods -- two Running, one in CrashLoopBackOff (`acme-equipment-0007`).
+
+**Q2: "Fetch the equipment name for the failed pod"**
+
+The agent calls `query_pod_equipment(pod_name="acme-equipment-0007")` via the Database MCP server. Returns: "Pod acme-equipment-0007 monitors equipment L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite."
+
+**Q3: "Search for known issues for the mentioned product"**
+
+The agent calls `knowledge_search` (RAG) against the `acme_corporate` Milvus collection with a query about L-900 EUV issues. Returns relevant calibration procedure documentation from the ingested ACME PDFs.
+
+> **Note:** This step requires that ACME PDFs have been ingested via step 09. See `steps/step-09-rag-pipeline/scenario-docs/README.md`.
+
+**Q4: "Send a Slack message with the summary to the platform team"**
+
+The agent calls `send_slack_message` or `send_equipment_alert` via the Slack MCP server with a summary of findings. In demo mode, the message is logged (not sent to Slack).
+
+### Additional Scenarios
+
+#### Equipment Lookup
 
 > "What lithography equipment do we have and when was LITHO-001 last calibrated?"
 
 The agent calls `query_equipment` and returns structured equipment data with calibration dates.
 
-### Scenario 2: Cluster Troubleshooting
+#### Combined RAG + MCP
 
-Enable `OpenShift-MCP-Server`:
-
-> "List all pods in the private-ai namespace and check for any issues."
-
-The agent calls `list_pods_summary` and `get_recent_events` to report pod status and warnings.
-
-### Scenario 3: Combined RAG + MCP (the power demo)
-
-Enable both RAG (knowledge search) and `Database-MCP-Server`:
+Enable both RAG and Database MCP:
 
 > "Based on our calibration documentation, what procedure should I follow for LITHO-001, and when was it last calibrated?"
 
-The agent uses `knowledge_search` (RAG) for the calibration procedure docs AND `query_equipment` (MCP) for the actual calibration date -- combining document knowledge with live system data in one answer.
+The agent uses `knowledge_search` (RAG) for the procedure docs AND `query_equipment` (MCP) for the actual calibration date -- combining document knowledge with live system data.
 
-### Scenario 4: Team Notification
+#### Cluster Events
 
-Enable `Slack-MCP-Server`:
+> "Check for any warning events in the acme-corp namespace."
 
-> "Send an alert to the maintenance team that L-900-08 needs urgent recalibration."
-
-The agent calls `send_equipment_alert` (demo mode: message is logged, not sent to Slack).
+The agent calls `get_recent_events(namespace="acme-corp")` to surface Kubernetes events related to the failing pod.
 
 ## MCP Server Details
 
@@ -213,6 +239,7 @@ oc get isvc granite-8b-agent -n private-ai \
 gitops/step-12-mcp-integration/
 ├── base/
 │   ├── kustomization.yaml
+│   ├── acme-corp/               # Demo namespace + 3 pods + RBAC
 │   ├── postgresql/              # Equipment database
 │   ├── mcp-builds/              # 3x BuildConfig + ImageStream
 │   ├── database-mcp/            # Deployment + ConfigMap + Service

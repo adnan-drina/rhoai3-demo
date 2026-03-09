@@ -1,0 +1,15 @@
+# ACME Corp Demo Namespace
+# Simulates a production environment with equipment monitoring pods.
+# Used for the MCP Tools demo workflow (list pods -> lookup equipment -> RAG -> Slack).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acme-corp
+  labels:
+    app.kubernetes.io/name: acme-corp
+    app.kubernetes.io/part-of: mcp-integration
+    demo: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    openshift.io/display-name: "ACME Corp Equipment Monitoring"
+    openshift.io/description: "Demo namespace for MCP Tools workflow - simulates production equipment monitoring"
