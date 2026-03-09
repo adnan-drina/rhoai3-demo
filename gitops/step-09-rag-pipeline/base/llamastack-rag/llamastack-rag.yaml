@@ -48,6 +48,8 @@ spec:
           value: fake
         - name: LLAMA_STACK_CONFIG_DIR
           value: /opt/app-root/src/.llama/distributions/rh/
+        - name: FMS_ORCHESTRATOR_URL
+          value: http://guardrails-orchestrator.private-ai.svc:8080
       resources:
         requests:
           cpu: 250m
@@ -194,7 +196,28 @@ data:
       embedding_dimension: 768
       provider_vector_db_id: eu_ai_act
 
-    shields: []
+    shields:
+    - shield_id: regex_pii
+      provider_id: trustyai_fms
+      provider_shield_id: regex_pii
+      params:
+        type: content
+        confidence_threshold: 0.5
+        message_types: ["user"]
+        detectors:
+          regex:
+            detector_params:
+              regex: ["email", "us-social-security-number", "credit-card"]
+    - shield_id: hap_shield
+      provider_id: trustyai_fms
+      provider_shield_id: hap_shield
+      params:
+        type: content
+        confidence_threshold: 0.5
+        message_types: ["user"]
+        detectors:
+          hap:
+            detector_params: {}
     datasets: []
     scoring_fns: []
     benchmarks: []

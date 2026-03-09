@@ -1,0 +1,39 @@
+# Prompt Injection Detector — detects attempts to override model instructions
+# Uses deberta-v3-base-prompt-injection-v2 (~86M params, CPU-only).
+# Provides /api/v1/text/contents endpoint for the Guardrails Orchestrator.
+#
+# Ref: https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: prompt-injection-detector
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/name: prompt-injection-detector
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: detector
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    openshift.io/display-name: prompt-injection-detector
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat:
+        name: guardrails-detector-hf-runtime
+      name: ""
+      runtime: guardrails-detector-runtime
+      storageUri: "oci://quay.io/trustyai_testing/detectors/deberta-v3-base-prompt-injection-v2@sha256:8737d6c7c09edf4c16dc87426624fd8ed7d118a12527a36b670be60f089da215"
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+          nvidia.com/gpu: "0"
+        limits:
+          cpu: "1"
+          memory: 2Gi
+          nvidia.com/gpu: "0"

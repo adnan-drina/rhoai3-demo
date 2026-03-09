@@ -1,0 +1,47 @@
+# Guardrails Detector Hugging Face ServingRuntime
+# Shared runtime for all HF text classification detector models (HAP, prompt injection).
+# Provides the /api/v1/text/contents detector API endpoint.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: guardrails-detector-runtime
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: detector-runtime
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    openshift.io/display-name: Guardrails Detector ServingRuntime for KServe
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+spec:
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: guardrails-detector-hf-runtime
+  containers:
+    - name: kserve-container
+      image: quay.io/trustyai/guardrails-detector-huggingface-runtime:v0.2.0
+      command:
+        - uvicorn
+        - app:app
+      args:
+        - "--workers=1"
+        - "--host=0.0.0.0"
+        - "--port=8000"
+        - "--log-config=/common/log_conf.yaml"
+      env:
+        - name: MODEL_DIR
+          value: /mnt/models
+        - name: HF_HOME
+          value: /tmp/hf_home
+        - name: SAFE_LABELS
+          value: "[0]"
+      ports:
+        - containerPort: 8000
+          protocol: TCP

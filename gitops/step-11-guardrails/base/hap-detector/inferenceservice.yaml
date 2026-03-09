@@ -1,0 +1,39 @@
+# HAP Detector — Hate, Abuse, and Profanity detection
+# Uses ibm-granite/granite-guardian-hap-38m (~38M params, CPU-only).
+# Provides /api/v1/text/contents endpoint for the Guardrails Orchestrator.
+#
+# Ref: https://huggingface.co/ibm-granite/granite-guardian-hap-38m
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: hap-detector
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/name: hap-detector
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: detector
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    openshift.io/display-name: hap-detector
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat:
+        name: guardrails-detector-hf-runtime
+      name: ""
+      runtime: guardrails-detector-runtime
+      storageUri: "oci://quay.io/trustyai_testing/detectors/granite-guardian-hap-38m@sha256:9dd129668cce86dac82bca9ed1cd5fd5dbad81cdd6db1b65be7e88bfca30f0a4"
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+          nvidia.com/gpu: "0"
+        limits:
+          cpu: "1"
+          memory: 2Gi
+          nvidia.com/gpu: "0"

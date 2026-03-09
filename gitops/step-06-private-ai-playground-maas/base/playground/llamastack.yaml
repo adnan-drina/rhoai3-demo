@@ -49,9 +49,11 @@ spec:
         # TLS verification disabled for internal cluster communication
         - name: VLLM_TLS_VERIFY
           value: "false"
-        # FMS orchestrator (not used in basic setup)
+        # FMS Guardrails Orchestrator — provides safety shields for PII and HAP detection.
+        # When step-11 is not deployed, LlamaStack logs a connection warning but
+        # inference works normally. Shields activate once the Orchestrator is running.
         - name: FMS_ORCHESTRATOR_URL
-          value: http://localhost
+          value: http://guardrails-orchestrator.private-ai.svc:8080
         # Max tokens sent to vLLM (must be < model's --max-model-len)
         - name: VLLM_MAX_TOKENS
           value: "4096"
@@ -303,7 +305,30 @@ data:
         gpu_count: 1
         use_case: agentic tool-calling
     
-    shields: []
+    # Safety shields — registered via the trustyai_fms provider when FMS Orchestrator is running.
+    # When step-11 is not deployed, shields are registered but inactive (no Orchestrator to call).
+    shields:
+    - shield_id: regex_pii
+      provider_id: trustyai_fms
+      provider_shield_id: regex_pii
+      params:
+        type: content
+        confidence_threshold: 0.5
+        message_types: ["user"]
+        detectors:
+          regex:
+            detector_params:
+              regex: ["email", "us-social-security-number", "credit-card"]
+    - shield_id: hap_shield
+      provider_id: trustyai_fms
+      provider_shield_id: hap_shield
+      params:
+        type: content
+        confidence_threshold: 0.5
+        message_types: ["user"]
+        detectors:
+          hap:
+            detector_params: {}
     # RAG vector databases — populated by step-09 ingestion pipeline.
     # These are registered at startup so the Playground can query them.
     # If step-09 is not deployed, collections will be empty but not cause errors.

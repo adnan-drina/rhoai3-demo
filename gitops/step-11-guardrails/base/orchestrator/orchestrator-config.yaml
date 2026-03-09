@@ -1,0 +1,50 @@
+# Guardrails Orchestrator Configuration
+# Defines the LLM to guardrail and the available detector services.
+#
+# Detectors:
+#   regex           — built-in PII detection (email, SSN, credit-card, phone, IP)
+#   hap             — granite-guardian-hap-38m for hate/abuse/profanity
+#   prompt_injection — deberta-v3 for prompt injection attacks
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: guardrails-orchestrator-config
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  config.yaml: |
+    chat_generation:
+      service:
+        hostname: granite-8b-agent-predictor.private-ai.svc.cluster.local
+        port: 8080
+    detectors:
+      regex:
+        type: text_contents
+        service:
+          hostname: "127.0.0.1"
+          port: 8080
+        chunker_id: whole_doc_chunker
+        default_threshold: 0.5
+      hap:
+        type: text_contents
+        service:
+          hostname: hap-detector-predictor.private-ai.svc.cluster.local
+          port: 8000
+        chunker_id: whole_doc_chunker
+        default_threshold: 0.5
+      prompt_injection:
+        type: text_contents
+        service:
+          hostname: prompt-injection-detector-predictor.private-ai.svc.cluster.local
+          port: 8000
+        chunker_id: whole_doc_chunker
+        default_threshold: 0.5
+    passthrough_headers:
+      - "authorization"
+      - "content-type"

@@ -1,0 +1,54 @@
+# Guardrails Gateway Configuration
+# Defines preset detector pipelines exposed as named route endpoints:
+#   /passthrough/v1/chat/completions — no detectors (baseline)
+#   /pii/v1/chat/completions         — PII regex only
+#   /safe/v1/chat/completions        — PII + HAP + prompt injection
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: guardrails-gateway-config
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  config.yaml: |
+    orchestrator:
+      host: "localhost"
+      port: 8032
+    detectors:
+      - name: pii_regex
+        server: regex
+        input: true
+        output: true
+        detector_params:
+          regex:
+            - email
+            - us-social-security-number
+            - credit-card
+            - us-phone-number
+      - name: hap_filter
+        server: hap
+        input: true
+        output: true
+        detector_params: {}
+      - name: injection_check
+        server: prompt_injection
+        input: true
+        output: false
+        detector_params: {}
+    routes:
+      - name: passthrough
+        detectors:
+      - name: pii
+        detectors:
+          - pii_regex
+      - name: safe
+        detectors:
+          - pii_regex
+          - hap_filter
+          - injection_check
