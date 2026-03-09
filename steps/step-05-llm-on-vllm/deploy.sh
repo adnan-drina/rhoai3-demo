@@ -120,8 +120,12 @@ echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-gpt-oss-20b.yaml"
 echo "    oc apply -f ${GITOPS_DIR}/model-upload/upload-granite-8b.yaml"
 echo ""
 
-read -p "Continue with deployment? (y/n) " -n 1 -r
-echo ""
+if [[ "${CONFIRM:-}" == "true" ]]; then
+  REPLY=y
+else
+  read -p "Continue with deployment? (y/n) " -n 1 -r
+  echo ""
+fi
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   echo "Deployment cancelled."
   exit 0
