@@ -41,12 +41,11 @@ spec:
     containerSpec:
       name: llama-stack
       port: 8321
-      command:
-        - /bin/sh
-        - -c
-        - llama stack run /etc/llama-stack/run.yaml
       env:
-        # Primary vLLM endpoint — required by rh-dev distribution startup
+        # Override operator's config path to use our custom run.yaml
+        - name: LLAMA_STACK_CONFIG
+          value: "/etc/llama-stack/run.yaml"
+        # Primary vLLM endpoint — required by rh-dev distribution for initial provider check
         - name: VLLM_URL
           value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
         # TLS verification disabled for internal cluster communication
