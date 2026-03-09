@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 12: MCP Integration
+# Deploys the Model Context Protocol infrastructure:
+#   1. PostgreSQL (ACME equipment database)
+#   2. BuildConfigs for 3 MCP server images
+#   3. database-mcp (equipment queries via PostgreSQL)
+#   4. openshift-mcp (cluster inspection via K8s API)
+#   5. slack-mcp (team notifications in demo mode)
+
+resources:
+  - postgresql/
+  - mcp-builds/
+  - database-mcp/
+  - openshift-mcp/
+  - slack-mcp/

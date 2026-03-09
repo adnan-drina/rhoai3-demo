@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-mcp
+  namespace: private-ai
+  labels:
+    app: database-mcp
+    app.kubernetes.io/name: database-mcp
+    app.kubernetes.io/part-of: mcp-integration
+    app.kubernetes.io/component: mcp-server
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"database-mcp:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"database-mcp\")].image"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-mcp
+  template:
+    metadata:
+      labels:
+        app: database-mcp
+        app.kubernetes.io/part-of: mcp-integration
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: database-mcp
+          image: image-registry.openshift-image-registry.svc:5000/private-ai/database-mcp:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: database-mcp-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRESQL_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10

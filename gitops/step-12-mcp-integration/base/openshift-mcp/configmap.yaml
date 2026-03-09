@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openshift-mcp-config
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: mcp-integration
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  MCP_TRANSPORT: sse

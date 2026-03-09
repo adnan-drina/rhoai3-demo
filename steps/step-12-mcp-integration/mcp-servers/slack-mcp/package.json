@@ -1,0 +1,12 @@
+{
+  "name": "slack-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Model Context Protocol server for Slack notifications",
+  "scripts": {
+    "start": "node app/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0"
+  }
+}

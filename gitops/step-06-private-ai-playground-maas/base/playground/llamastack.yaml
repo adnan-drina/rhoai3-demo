@@ -351,5 +351,19 @@ data:
     tool_groups:
     - toolgroup_id: builtin::rag
       provider_id: rag-runtime
+    # MCP tool groups — registered when step-12 MCP servers are deployed.
+    # When step-12 is not deployed, LlamaStack logs connection warnings but works normally.
+    - toolgroup_id: mcp::database
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: "http://database-mcp.private-ai.svc:8080/sse"
+    - toolgroup_id: mcp::openshift
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: "http://openshift-mcp.private-ai.svc:8000/sse"
+    - toolgroup_id: mcp::slack
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: "http://slack-mcp.private-ai.svc:8080/sse"
     server:
       port: 8321
