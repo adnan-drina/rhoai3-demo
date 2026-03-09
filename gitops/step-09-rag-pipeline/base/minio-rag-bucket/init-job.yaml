@@ -1,0 +1,58 @@
+# MinIO Bucket Initialization Job for RAG Documents
+# Creates the rag-documents bucket used by the RAG ingestion pipeline.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#using-connections
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-rag-bucket-init
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: minio-rag-init
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+          envFrom:
+            - secretRef:
+                name: minio-credentials
+          command:
+            - /bin/sh
+            - -ce
+            - |
+              mkdir -p /tmp/.mc
+
+              echo "Waiting for MinIO at http://minio.minio-storage.svc:9000..."
+              until mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
+                echo "MinIO is unavailable - sleeping 5s..."
+                sleep 5
+              done
+              echo "MinIO is ready!"
+
+              echo "Creating rag-documents bucket..."
+              mc mb --ignore-existing myminio/rag-documents
+
+              echo ""
+              echo "=== RAG Bucket Initialization Complete ==="
+              mc ls myminio/rag-documents/ 2>/dev/null || echo "(bucket is empty — documents will be uploaded by deploy.sh)"

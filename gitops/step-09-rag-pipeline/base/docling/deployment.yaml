@@ -1,0 +1,65 @@
+# Docling Document Processing Service
+# Standalone deployment for PDF-to-Markdown conversion via REST API.
+# The KFP pipeline calls POST /v1alpha/convert/file with PDF payloads.
+#
+# Docling takes ~5-10 minutes for first startup (model download).
+#
+# Ref: https://github.com/docling-project/docling-serve
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docling-service
+  namespace: private-ai
+  labels:
+    app: docling
+    app.kubernetes.io/name: docling
+    app.kubernetes.io/component: document-processing
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    openshift.io/display-name: "Docling Document Processing"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docling
+  template:
+    metadata:
+      labels:
+        app: docling
+        app.kubernetes.io/name: docling
+        app.kubernetes.io/component: document-processing
+        app.kubernetes.io/part-of: rag-pipeline
+    spec:
+      containers:
+        - name: docling
+          image: quay.io/docling-project/docling-serve:latest
+          ports:
+            - containerPort: 5001
+              name: http
+              protocol: TCP
+          env:
+            - name: DOCLING_SERVE_PORT
+              value: "5001"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 6Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 180
+            periodSeconds: 60
+            timeoutSeconds: 10

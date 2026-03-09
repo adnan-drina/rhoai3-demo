@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: step-09-rag-pipeline
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "09"
+  annotations:
+    argocd.argoproj.io/sync-wave: "90"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/step-09-rag-pipeline/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: private-ai
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: llamastack.io
+      kind: LlamaStackDistribution
+      jsonPointers:
+        - /status
+    - group: datasciencepipelinesapplications.opendatahub.io
+      kind: DataSciencePipelinesApplication
+      jsonPointers:
+        - /status

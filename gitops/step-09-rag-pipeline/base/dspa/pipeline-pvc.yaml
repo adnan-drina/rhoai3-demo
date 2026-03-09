@@ -1,0 +1,19 @@
+# Shared workspace PVC for RAG pipeline inter-component file transfer.
+# Components mount this at /shared-data to pass downloaded PDFs and
+# processed markdown between pipeline steps without KFP artifact limits.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rag-pipeline-workspace
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: pipeline-workspace
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

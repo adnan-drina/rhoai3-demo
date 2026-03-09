@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 09: RAG Pipeline
+# Deploys the full document-ingestion-and-retrieval stack:
+#   1. Milvus vector database (persistent, embedded etcd)
+#   2. Docling document processing service
+#   3. MinIO bucket for RAG documents
+#   4. DSPA (Kubeflow Pipelines v2) for pipeline orchestration
+#   5. LlamaStackDistribution configured for RAG with remote Milvus
+
+resources:
+  - milvus/
+  - docling/
+  - minio-rag-bucket/
+  - dspa/
+  - llamastack-rag/

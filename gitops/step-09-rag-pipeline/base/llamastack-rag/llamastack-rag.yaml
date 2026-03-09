@@ -1,0 +1,205 @@
+# =============================================================================
+# LlamaStackDistribution - RAG Backend
+# =============================================================================
+# Purpose-built LlamaStackDistribution for RAG workflows.
+# Differs from step-06's lsd-genai-playground in:
+#   - vector_io: remote::milvus (persistent) instead of inline::milvus (SQLite)
+#   - Primary LLM: granite-8b-agent (tool-calling for RAG)
+#   - Pre-registered vector_dbs for 3 demo scenarios
+#
+# CRD Verification:
+#   oc get crd llamastackdistributions.llamastack.io
+#   oc explain llamastackdistribution.spec
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+# =============================================================================
+apiVersion: llamastack.io/v1alpha1
+kind: LlamaStackDistribution
+metadata:
+  name: lsd-rag
+  namespace: private-ai
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/name: llamastack-rag
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: rag-backend
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: lsd-rag
+spec:
+  replicas: 1
+  server:
+    distribution:
+      name: rh-dev
+    containerSpec:
+      name: llama-stack
+      port: 8321
+      command:
+        - /bin/sh
+        - -c
+        - llama stack run /etc/llama-stack/run.yaml
+      env:
+        - name: VLLM_TLS_VERIFY
+          value: "false"
+        - name: VLLM_MAX_TOKENS
+          value: "4096"
+        - name: VLLM_API_TOKEN
+          value: fake
+        - name: LLAMA_STACK_CONFIG_DIR
+          value: /opt/app-root/src/.llama/distributions/rh/
+      resources:
+        requests:
+          cpu: 250m
+          memory: 500Mi
+        limits:
+          cpu: "2"
+          memory: 12Gi
+    userConfig:
+      configMapName: llama-stack-rag-config
+---
+# =============================================================================
+# LlamaStack RAG Configuration (run.yaml)
+# =============================================================================
+# Key differences from step-06 playground config:
+#   - vector_io: remote::milvus pointing to milvus-standalone service
+#   - vector_dbs: 3 pre-registered collections for demo scenarios
+#   - Single vLLM provider: granite-8b-agent (tool-calling for RAG)
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-rag-config
+  namespace: private-ai
+  labels:
+    llamastack.io/distribution: lsd-rag
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: Replace=true
+data:
+  run.yaml: |
+    version: "2"
+    image_name: rh
+    apis:
+    - agents
+    - datasetio
+    - files
+    - inference
+    - safety
+    - scoring
+    - tool_runtime
+    - vector_io
+    providers:
+      inference:
+      # Embedding model (for RAG)
+      - provider_id: sentence-transformers
+        provider_type: inline::sentence-transformers
+        config: {}
+      # Granite 8B Agent — tool-calling LLM for RAG queries
+      - provider_id: vllm-granite-agent
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+
+      vector_io:
+      - provider_id: milvus-shared
+        provider_type: remote::milvus
+        config:
+          host: milvus-standalone.private-ai.svc.cluster.local
+          port: 19530
+          db_name: default
+          embedding_dimension: 768
+          metric_type: IP
+          consistency_level: Session
+
+      agents:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          persistence_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
+            namespace: null
+            type: sqlite
+          responses_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
+            type: sqlite
+      eval: []
+      files:
+      - provider_id: meta-reference-files
+        provider_type: inline::localfs
+        config:
+          metadata_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
+            type: sqlite
+          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      datasetio:
+      - provider_id: huggingface
+        provider_type: remote::huggingface
+        config:
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
+            namespace: null
+            type: sqlite
+      scoring:
+      - provider_id: basic
+        provider_type: inline::basic
+        config: {}
+      - provider_id: llm-as-judge
+        provider_type: inline::llm-as-judge
+        config: {}
+      tool_runtime:
+      - provider_id: rag-runtime
+        provider_type: inline::rag-runtime
+        config: {}
+      - provider_id: model-context-protocol
+        provider_type: remote::model-context-protocol
+        config: {}
+    metadata_store:
+      type: sqlite
+      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+
+    # Model registrations
+    models:
+    - provider_id: sentence-transformers
+      model_id: granite-embedding-125m
+      provider_model_id: ibm-granite/granite-embedding-125m-english
+      model_type: embedding
+      metadata:
+        embedding_dimension: 768
+    - provider_id: vllm-granite-agent
+      model_id: granite-8b-agent
+      model_type: llm
+      metadata:
+        description: "Granite 3.1 8B - Tool-calling specialist for RAG"
+        display_name: "Granite-3.1-8B Agent (1-GPU FP8)"
+        gpu_count: 1
+        use_case: agentic tool-calling
+
+    # Pre-registered vector databases for the 3 demo scenarios
+    vector_dbs:
+    - vector_db_id: red_hat_docs
+      embedding_model: ibm-granite/granite-embedding-125m-english
+      embedding_dimension: 768
+      provider_vector_db_id: red_hat_docs
+    - vector_db_id: acme_corporate
+      embedding_model: ibm-granite/granite-embedding-125m-english
+      embedding_dimension: 768
+      provider_vector_db_id: acme_corporate
+    - vector_db_id: eu_ai_act
+      embedding_model: ibm-granite/granite-embedding-125m-english
+      embedding_dimension: 768
+      provider_vector_db_id: eu_ai_act
+
+    shields: []
+    datasets: []
+    scoring_fns: []
+    benchmarks: []
+    tool_groups:
+    - toolgroup_id: builtin::rag
+      provider_id: rag-runtime
+    server:
+      port: 8321

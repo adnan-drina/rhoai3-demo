@@ -1,0 +1,32 @@
+# DataSciencePipelinesApplication for RAG Ingestion Pipelines
+# Provides Kubeflow Pipelines v2 infrastructure backed by MinIO (step-03).
+#
+# Verification:
+#   oc get dspa dspa-rag -n private-ai
+#   oc get pods -n private-ai -l app=ds-pipeline-dspa-rag
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa-rag
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: dspa-rag
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: pipeline-server
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    openshift.io/display-name: "RAG Ingestion Pipelines"
+spec:
+  objectStorage:
+    externalStorage:
+      bucket: pipelines
+      host: minio.minio-storage.svc.cluster.local
+      port: "9000"
+      scheme: http
+      s3CredentialsSecret:
+        secretName: dspa-minio-credentials
+        accessKey: accesskey
+        secretKey: secretkey
