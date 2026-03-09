@@ -14,7 +14,8 @@ spec:
   # Unmanaged: RHOAI recognizes Kueue but doesn't manage its installation
   # The standalone Red Hat Build of Kueue operator handles the actual installation
   managementState: Unmanaged
-  # Default queue names - matches what the standalone operator creates
-  defaultClusterQueueName: default
+  # Queue mapping: LocalQueue "default" (per namespace) → ClusterQueue "rhoai-main-queue" (global GPU pool)
+  # Must match the ClusterQueue created in step-03 and referenced by LocalQueue "default"
+  defaultClusterQueueName: rhoai-main-queue
   defaultLocalQueueName: default
 
