@@ -42,12 +42,12 @@ spec:
       name: llama-stack
       port: 8321
       env:
-        # Override operator's config path to use our custom run.yaml
-        - name: LLAMA_STACK_CONFIG
-          value: "/etc/llama-stack/run.yaml"
-        # Primary vLLM endpoint — required by rh-dev distribution for initial provider check
-        - name: VLLM_URL
+        # Primary vLLM endpoint — rh-dev distribution reads VLLM_API_URL (not VLLM_URL)
+        # Ref: https://rhpds.github.io/showroom-agentic-ai-llamastack/modules/02-llamastack.html
+        - name: VLLM_API_URL
           value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+        - name: VLLM_API_TOKEN
+          value: "fake"
         # TLS verification disabled for internal cluster communication
         - name: VLLM_TLS_VERIFY
           value: "false"
@@ -59,17 +59,9 @@ spec:
         # Max tokens sent to vLLM (must be < model's --max-model-len)
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        # API tokens for vLLM authentication (not enforced in this demo)
-        - name: VLLM_API_TOKEN_1
-          value: fake
-        - name: VLLM_API_TOKEN_2
-          value: fake
-        - name: VLLM_API_TOKEN_3
-          value: fake
-        - name: VLLM_API_TOKEN_4
-          value: fake
-        - name: VLLM_API_TOKEN_5
-          value: fake
+        # Milvus local DB path (for inline vector_io when remote Milvus is not available)
+        - name: MILVUS_DB_PATH
+          value: "~/.llama/milvus.db"
         # Config directory for LlamaStack
         - name: LLAMA_STACK_CONFIG_DIR
           value: /opt/app-root/src/.llama/distributions/rh/
@@ -137,9 +129,9 @@ data:
       - provider_id: vllm-mistral-int4
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          api_token: ${env.VLLM_API_TOKEN:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=false}
           url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -148,9 +140,9 @@ data:
       - provider_id: vllm-mistral-bf16
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_2:=fake}
+          api_token: ${env.VLLM_API_TOKEN:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=false}
           url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -159,9 +151,9 @@ data:
       - provider_id: vllm-devstral
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_3:=fake}
+          api_token: ${env.VLLM_API_TOKEN:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=false}
           url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -170,9 +162,9 @@ data:
       - provider_id: vllm-gpt-oss
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_4:=fake}
+          api_token: ${env.VLLM_API_TOKEN:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=false}
           url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -181,9 +173,9 @@ data:
       - provider_id: vllm-granite-agent
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN_5:=fake}
+          api_token: ${env.VLLM_API_TOKEN:=fake}
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=false}
           url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
       
       # Remote Milvus — shared with step-09 RAG pipeline for persistent vectors.

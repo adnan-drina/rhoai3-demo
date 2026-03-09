@@ -29,27 +29,38 @@ spec:
     whenCanBorrow: Borrow
     whenCanPreempt: TryNextFlavor
   
-  # SINGLE resourceGroup with BOTH flavors - critical for heterogeneous GPUs
-  # Kueue will try nvidia-l4-1gpu first, then nvidia-l4-4gpu if request > 1 GPU
+  # Resource groups for heterogeneous workloads:
+  # - default-flavor FIRST for CPU-only pods (LlamaStack, Grafana, etc.)
+  # - GPU flavors for model inference pods
+  # Kueue tries flavors in order; a pod requesting 0 GPUs gets default-flavor
   resourceGroups:
     - coveredResources: ["nvidia.com/gpu", "cpu", "memory"]
       flavors:
-        # 1-GPU flavor (g6.4xlarge nodes) - 3 nodes available
+        # CPU-only flavor (worker nodes) - for non-GPU workloads like LlamaStack
+        - name: default-flavor
+          resources:
+            - name: "nvidia.com/gpu"
+              nominalQuota: 0
+            - name: "cpu"
+              nominalQuota: "57"
+            - name: "memory"
+              nominalQuota: "234Gi"
+        # 1-GPU flavor (g6.4xlarge nodes)
         - name: nvidia-l4-1gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 3       # 3 GPUs from 3x g6.4xlarge
+              nominalQuota: 3
             - name: "cpu"
-              nominalQuota: "48"    # 48 vCPU (16 per node × 3)
+              nominalQuota: "48"
             - name: "memory"
-              nominalQuota: "192Gi" # 192GB RAM (64GB per node × 3)
+              nominalQuota: "192Gi"
         # 4-GPU flavor (g6.12xlarge nodes)
         - name: nvidia-l4-4gpu
           resources:
             - name: "nvidia.com/gpu"
-              nominalQuota: 4       # 4 GPUs from g6.12xlarge
+              nominalQuota: 4
             - name: "cpu"
-              nominalQuota: "48"    # 48 vCPU
+              nominalQuota: "48"
             - name: "memory"
-              nominalQuota: "192Gi" # 192GB RAM
+              nominalQuota: "192Gi"
 
