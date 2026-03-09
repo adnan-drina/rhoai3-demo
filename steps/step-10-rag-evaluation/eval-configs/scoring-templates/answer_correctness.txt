@@ -1,0 +1,12 @@
+You are evaluating a RAG system's answer quality.
+
+Question: {input_query}
+Expected answer: {expected_answer}
+Generated answer: {generated_answer}
+
+Rate the correctness of the generated answer on a scale from 0.0 to 1.0.
+Consider: factual accuracy, completeness, and relevance to the question.
+A score of 1.0 means the answer is fully correct and complete.
+A score of 0.0 means the answer is completely wrong or irrelevant.
+
+Return ONLY a JSON object: {"score": <float>}

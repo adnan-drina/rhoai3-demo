@@ -1,0 +1,12 @@
+You are evaluating whether a RAG system's answer is grounded in retrieved context.
+
+Question: {input_query}
+Generated answer: {generated_answer}
+
+Does the answer appear to be based on retrieved documents rather than hallucinated?
+Consider whether the answer contains specific facts, references, or details that
+would only come from source documents, versus generic or fabricated information.
+
+Rate groundedness from 0.0 (pure hallucination) to 1.0 (fully grounded).
+
+Return ONLY a JSON object: {"score": <float>}

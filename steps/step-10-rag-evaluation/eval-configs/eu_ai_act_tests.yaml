@@ -1,0 +1,55 @@
+name: "EU AI Act Compliance RAG Quality"
+description: "Evaluate RAG answers against EU AI Act official documents"
+vector_db_id: eu_ai_act
+model_id: granite-8b-agent
+llamastack_url: http://lsd-rag.private-ai.svc:8321
+
+scoring_params:
+  llm-as-judge::answer-correctness:
+    judge_model: granite-8b-agent
+    prompt_template: scoring-templates/answer_correctness.txt
+  llm-as-judge::answer-groundedness:
+    judge_model: granite-8b-agent
+    prompt_template: scoring-templates/answer_groundedness.txt
+  basic::tool_choice: null
+
+tests:
+  - prompt: "What are the requirements for high-risk AI systems under the EU AI Act?"
+    expected_result: "High-risk AI systems must implement risk management systems, use high-quality training data, maintain technical documentation, enable human oversight, and ensure accuracy, robustness, and cybersecurity."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What AI practices are prohibited by the EU AI Act?"
+    expected_result: "Prohibited practices include social scoring by governments, real-time biometric identification in public spaces for law enforcement except in specific cases, manipulation of vulnerable groups, and subliminal manipulation techniques."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What transparency obligations apply to AI systems that interact with people?"
+    expected_result: "AI systems interacting with people must disclose that the user is interacting with an AI system. Deepfakes and AI-generated content must be clearly labeled as artificially generated or manipulated."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "How does the EU AI Act classify AI systems by risk level?"
+    expected_result: "The Act defines four risk levels: unacceptable risk (banned), high risk (subject to strict requirements), limited risk (transparency obligations), and minimal risk (no restrictions)."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What penalties can be imposed for non-compliance with the EU AI Act?"
+    expected_result: "Penalties include fines up to 35 million euros or 7% of global annual turnover for prohibited AI practices, up to 15 million euros or 3% for other violations, and up to 7.5 million euros or 1.5% for providing incorrect information."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What role do national supervisory authorities play in enforcing the EU AI Act?"
+    expected_result: "National supervisory authorities are responsible for monitoring compliance, conducting market surveillance, investigating complaints, and imposing sanctions for violations of the AI Act within their member state."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "When does the EU AI Act come into effect?"
+    expected_result: "The EU AI Act entered into force in August 2024, with a phased implementation. Prohibited practices apply after 6 months, high-risk requirements after 24 months, and full application by August 2027."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What are the obligations for providers of general-purpose AI models?"
+    expected_result: "Providers of general-purpose AI models must provide technical documentation, comply with EU copyright law, publish training data summaries, and for models with systemic risk, conduct model evaluations and report serious incidents."
+    expected_tools:
+      - builtin::rag/knowledge_search
