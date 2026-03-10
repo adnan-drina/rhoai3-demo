@@ -101,7 +101,7 @@ data:
     # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
     version: "2"
     # LlamaStack version in RHOAI 3.3: 0.4.2.1+rhai0
-    image_name: starter
+    image_name: custom
     apis:
     - agents
     - datasetio
@@ -126,10 +126,8 @@ data:
       - provider_id: vllm-mistral-int4
         provider_type: remote::vllm
         config:
-          url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
-          api_token: fake
+          base_url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
           max_tokens: 4096
-          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -138,11 +136,10 @@ data:
       - provider_id: vllm-mistral-bf16
         provider_type: remote::vllm
         config:
-          api_token: fake
           max_tokens: 4096
           # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
-          url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
+          base_url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
       # vLLM Provider 3: Devstral-2 (4-GPU) - Agentic Coding
@@ -150,11 +147,10 @@ data:
       - provider_id: vllm-devstral
         provider_type: remote::vllm
         config:
-          api_token: fake
           max_tokens: 4096
           # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
-          url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
+          base_url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
       # vLLM Provider 4: GPT-OSS-20B (4-GPU) - Complex Reasoning
@@ -162,11 +158,10 @@ data:
       - provider_id: vllm-gpt-oss
         provider_type: remote::vllm
         config:
-          api_token: fake
           max_tokens: 4096
           # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
-          url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
+          base_url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
       
       # ═══════════════════════════════════════════════════════════════════════════
       # vLLM Provider 5: Granite-8B Agent (1-GPU) - Tool Calling
@@ -174,11 +169,10 @@ data:
       - provider_id: vllm-granite-agent
         provider_type: remote::vllm
         config:
-          api_token: fake
           max_tokens: 4096
           # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
-          url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
       
       # Remote Milvus — shared with step-09 RAG pipeline for persistent vectors.
       # When step-09 is not deployed, LlamaStack will log connection errors for
