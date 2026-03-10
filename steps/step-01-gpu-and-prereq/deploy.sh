@@ -74,7 +74,7 @@ done
 log_success "Serverless CRD available"
 
 log_step "Waiting for LeaderWorkerSet Operator..."
-until oc get csv -n openshift-lws-operator 2>/dev/null | grep -q "Succeeded"; do
+until oc get csv -n openshift-lws-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat build of Leader Worker Set")].status.phase}' 2>/dev/null | grep -q "Succeeded"; do
     log_info "Waiting for LWS Operator..."
     sleep 10
 done
