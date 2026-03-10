@@ -113,34 +113,17 @@ data:
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
-      - provider_id: vllm-mistral-int4
+      # Only active models (minReplicas: 1) — queued models cause DNS failures
+      - provider_id: vllm-granite-agent
         provider_type: remote::vllm
         config:
-          base_url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
+          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
           max_tokens: 4096
           tls_verify: false
       - provider_id: vllm-mistral-bf16
         provider_type: remote::vllm
         config:
           base_url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      - provider_id: vllm-devstral
-        provider_type: remote::vllm
-        config:
-          base_url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      - provider_id: vllm-gpt-oss
-        provider_type: remote::vllm
-        config:
-          base_url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      - provider_id: vllm-granite-agent
-        provider_type: remote::vllm
-        config:
-          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
           max_tokens: 4096
           tls_verify: false
       vector_io:
@@ -200,24 +183,12 @@ data:
         model_type: embedding
         metadata:
           embedding_dimension: 768
-      - provider_id: vllm-mistral-int4
-        model_id: mistral-3-int4
+      - provider_id: vllm-granite-agent
+        model_id: granite-8b-agent
         model_type: llm
         metadata: {}
       - provider_id: vllm-mistral-bf16
         model_id: mistral-3-bf16
-        model_type: llm
-        metadata: {}
-      - provider_id: vllm-devstral
-        model_id: devstral-2
-        model_type: llm
-        metadata: {}
-      - provider_id: vllm-gpt-oss
-        model_id: gpt-oss-20b
-        model_type: llm
-        metadata: {}
-      - provider_id: vllm-granite-agent
-        model_id: granite-8b-agent
         model_type: llm
         metadata: {}
       shields: []
