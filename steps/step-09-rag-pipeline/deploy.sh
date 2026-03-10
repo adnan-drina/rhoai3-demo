@@ -31,7 +31,7 @@ fi
 log_success "Namespace $NAMESPACE exists"
 
 if ! oc get crd llamastackdistributions.llamastack.io &>/dev/null; then
-    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.0 installed (step-02)?"
+    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.2 installed (step-02)?"
     exit 1
 fi
 log_success "LlamaStackDistribution CRD available"

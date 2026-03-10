@@ -93,7 +93,7 @@ All Model Registry components are deployed in the `rhoai-model-registries` names
 
 ## Model Catalog
 
-RHOAI 3.0 includes a pre-bundled **Model Catalog** with 48+ validated models:
+RHOAI 3.2 includes a pre-bundled **Model Catalog** with 48+ validated models:
 
 | Provider | Models |
 |----------|--------|
@@ -178,7 +178,7 @@ All resources in `rhoai-model-registries` namespace:
 ## Prerequisites
 
 - [x] Step 01 completed (GPU infrastructure)
-- [x] Step 02 completed (RHOAI 3.0 with ModelRegistry component)
+- [x] Step 02 completed (RHOAI 3.2 with ModelRegistry component)
 - [x] Step 03 completed (MinIO for artifact storage)
 
 ---
@@ -441,9 +441,9 @@ oc delete application step-04-model-registry -n openshift-gitops --cascade=foreg
 ## Documentation Links
 
 ### Official Red Hat Documentation
-- [Enabling Model Registry Component](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/enabling_the_model_registry_component/index)
-- [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index)
-- [Working with Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_model_registries/index)
+- [Enabling Model Registry Component](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/enabling_the_model_registry_component/index)
+- [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_model_registries/index)
+- [Working with Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/working_with_model_registries/index)
 
 ### Model Reference
 - [Red Hat AI Validated Models](https://huggingface.co/collections/RedHatAI)

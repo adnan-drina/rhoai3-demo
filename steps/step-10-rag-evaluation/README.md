@@ -249,8 +249,8 @@ steps/step-10-rag-evaluation/
 
 ## Official Documentation
 
-- [RHOAI 3.0 -- Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
-- [RHOAI 3.0 -- Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
+- [RHOAI 3.2 -- Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
+- [RHOAI 3.2 -- Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
 - [Llama Stack Scoring API](https://llama-stack.readthedocs.io/en/latest/references/api_reference/)
 - [TrustyAI Ragas Provider](https://github.com/trustyai-explainability/llama-stack-provider-ragas)
 - [KFP v2 User Guides](https://www.kubeflow.org/docs/components/pipelines/user-guides/)

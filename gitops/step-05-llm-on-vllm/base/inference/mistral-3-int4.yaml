@@ -87,7 +87,7 @@ spec:
         - --gpu-memory-utilization=0.85
         - --trust-remote-code
       env:
-        # RHOAI 3.0 GA: V1 engine required
+        # RHOAI 3.2 GA: V1 engine required
         # Driver 570.195.03 provides CUDA 12.x compatibility
         - name: VLLM_USE_V1
           value: "1"

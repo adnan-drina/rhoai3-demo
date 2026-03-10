@@ -290,13 +290,13 @@ oc delete configmap guardrails-orchestrator-config guardrails-gateway-config -n 
 
 ## Key Design Decisions
 
-> **Design Decision:** Three detectors (regex + HAP + prompt injection) instead of four. The language detector from the rhoai-genaiops workshop adds a fourth InferenceService with minimal demo value. The RHOAI 3.0 docs examples use this trio.
+> **Design Decision:** Three detectors (regex + HAP + prompt injection) instead of four. The language detector from the rhoai-genaiops workshop adds a fourth InferenceService with minimal demo value. The RHOAI 3.2 docs examples use this trio.
 
 > **Design Decision:** Gateway routes (`/passthrough`, `/pii`, `/safe`) instead of per-request detector specification. Preset routes are simpler for demos and match the production pattern of enforced safety policies.
 
 > **Design Decision:** Both LlamaStack distributions updated with `FMS_ORCHESTRATOR_URL` and shield registrations. This enables guardrails in the Playground UI (step-06) and in RAG agent API calls (step-09).
 
-> **Note (RHOAI 3.0):** When step-11 is NOT deployed, both LSDs will log connection warnings for `FMS_ORCHESTRATOR_URL` but inference and RAG work normally. Shields activate only when the Orchestrator is running.
+> **Note (RHOAI 3.2):** When step-11 is NOT deployed, both LSDs will log connection warnings for `FMS_ORCHESTRATOR_URL` but inference and RAG work normally. Shields activate only when the Orchestrator is running.
 
 ## Resource Requirements
 
@@ -309,8 +309,8 @@ oc delete configmap guardrails-orchestrator-config guardrails-gateway-config -n 
 
 ## Official Documentation
 
-- [RHOAI 3.0 -- Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety)
-- [RHOAI 3.0 -- Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
+- [RHOAI 3.2 -- Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety)
+- [RHOAI 3.2 -- Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
 - [FMS Guardrails Orchestrator](https://github.com/foundation-model-stack/fms-guardrails-orchestrator)
 - [TrustyAI GuardrailsOrchestrator Tutorial](https://trustyai.org/docs/main/gorch-tutorial)
 - [IBM Granite Guardian HAP](https://huggingface.co/ibm-granite/granite-guardian-hap-38m)

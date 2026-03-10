@@ -5,7 +5,7 @@
 #   oc get dspa dspa-rag -n private-ai
 #   oc get pods -n private-ai -l app=ds-pipeline-dspa-rag
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:

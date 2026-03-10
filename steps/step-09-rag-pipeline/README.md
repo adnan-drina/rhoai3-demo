@@ -65,7 +65,7 @@ Step-06 proved your team can experiment with LLMs via the GenAI Playground. But 
 | **DSPA / KFP v2** | GA | `aipipelines: Managed` in DSC |
 | **Docling** | Community | Standalone deployment |
 
-> **Ref:** [RHOAI 3.0 Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
+> **Ref:** [RHOAI 3.2 Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
 
 ## Prerequisites
 
@@ -346,13 +346,13 @@ oc delete configmap llama-stack-rag-config -n private-ai
 
 > **Design Decision:** Server-side chunking and embedding via `rag_tool.insert()`. LlamaStack handles both using `granite-embedding-125m` (768d), keeping the pipeline lightweight.
 
-> **Known Limitation (RHOAI 3.0):** The `remote::milvus` provider configuration may differ between LlamaStack versions. Verify the exact config schema with `oc exec deploy/lsd-rag -- llama stack list-providers vector_io` if registration fails.
+> **Known Limitation (RHOAI 3.2):** The `remote::milvus` provider configuration may differ between LlamaStack versions. Verify the exact config schema with `oc exec deploy/lsd-rag -- llama stack list-providers vector_io` if registration fails.
 
 ## Official Documentation
 
-- [RHOAI 3.0 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
-- [RHOAI 3.0 — Overview of Milvus Vector Databases](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag#overview-of-milvus-vector-databases_rag)
-- [RHOAI 3.0 — Preparing Documents with Docling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag#preparing-documents-with-docling-for-llama-stack-retrieval_rag)
+- [RHOAI 3.2 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
+- [RHOAI 3.2 — Overview of Milvus Vector Databases](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag#overview-of-milvus-vector-databases_rag)
+- [RHOAI 3.2 — Preparing Documents with Docling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag#preparing-documents-with-docling-for-llama-stack-retrieval_rag)
 - [Llama Stack — RAG Demo Samples](https://github.com/opendatahub-io/llama-stack-rag-demo)
 - [KFP v2 User Guides](https://www.kubeflow.org/docs/components/pipelines/user-guides/)
 

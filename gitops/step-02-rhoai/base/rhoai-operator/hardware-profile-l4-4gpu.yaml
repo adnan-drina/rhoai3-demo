@@ -2,7 +2,7 @@
 # Global profile with Queue-based scheduling for Kueue integration
 # Node specs: 48 vCPU, 192 GB RAM, 4x NVIDIA L4 GPU
 #
-# Uses standardized 'default' LocalQueue name (RHOAI 3.0 best practice)
+# Uses standardized 'default' LocalQueue name (RHOAI 3.2 best practice)
 # Each namespace defines its own 'default' LocalQueue → ClusterQueue mapping
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile

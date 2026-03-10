@@ -1,7 +1,7 @@
 # MinIO Bucket Initialization Job for RAG Documents
 # Creates the rag-documents bucket used by the RAG ingestion pipeline.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_resources/index#using-connections
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_resources/index#using-connections
 apiVersion: batch/v1
 kind: Job
 metadata:

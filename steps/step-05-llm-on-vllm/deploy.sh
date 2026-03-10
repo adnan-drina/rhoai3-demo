@@ -13,7 +13,7 @@
 #     4. gpt-oss-20b        (4-GPU, S3, High-reasoning)
 #     5. granite-8b-agent   (1-GPU, S3, RAG/Tool-call)
 #
-# RHOAI 3.0 Patterns Used:
+# RHOAI 3.2 Patterns Used:
 #   - Kueue quota management (5 GPU limit)
 #   - KServe with S3 and OCI storage
 #   - Model Registry integration

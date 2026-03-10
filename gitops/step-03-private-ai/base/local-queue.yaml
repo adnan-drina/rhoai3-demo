@@ -1,6 +1,6 @@
 # LocalQueue 'default' - Standardized Queue Strategy
 # ============================================================================
-# RHOAI 3.0 Best Practice: "Local Mapping to Global Pool"
+# RHOAI 3.2 Best Practice: "Local Mapping to Global Pool"
 #
 # The LocalQueue named 'default' acts as a logical redirector to your
 # high-governance global resource pool (rhoai-main-queue).

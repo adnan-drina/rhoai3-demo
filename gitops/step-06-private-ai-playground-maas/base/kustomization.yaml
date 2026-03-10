@@ -28,7 +28,7 @@ kind: Kustomization
 #   - genAiStudio: true in OdhDashboardConfig (step-02)
 #   - llamastackoperator: Managed in DataScienceCluster (step-02)
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/experimenting_with_models_in_the_gen_ai_playground/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/experimenting_with_models_in_the_gen_ai_playground/index
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
@@ -41,9 +41,9 @@ resources:
   - playground/
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # Model-as-a-Service (MaaS) - NOT AVAILABLE in RHOAI 3.0
+  # Model-as-a-Service (MaaS) - NOT AVAILABLE in RHOAI 3.2
   # ═══════════════════════════════════════════════════════════════════════════
-  # The InferenceGateway CRD is not available in RHOAI 3.0.
+  # The InferenceGateway CRD is not available in RHOAI 3.2.
   # MaaS is in Developer Preview and may be available in future versions.
   #
   # For now, use direct InferenceService URLs for API access:

@@ -29,7 +29,7 @@ oc login --token=<your-token> --server=<api-server>
 # 5. Deploy Step 1: GPU Infrastructure & Prerequisites
 ./steps/step-01-gpu-and-prereq/deploy.sh
 
-# 6. Deploy Step 2: RHOAI 3.0
+# 6. Deploy Step 2: RHOAI 3.2
 ./steps/step-02-rhoai/deploy.sh
 ```
 
@@ -38,7 +38,7 @@ oc login --token=<your-token> --server=<api-server>
 | Step | Name | Description |
 |------|------|-------------|
 | 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
-| 02 | [RHOAI 3.0](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
+| 02 | [RHOAI 3.2](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
 | 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
 | 04 | [Model Registry](steps/step-04-model-registry/README.md) | Enterprise model governance (registry + seed) |
 | 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | GPU-as-a-Service model portfolio (KServe + vLLM) |
@@ -61,7 +61,7 @@ oc login --token=<your-token> --server=<api-server>
 - **Authorino/Limitador/DNS Operators** - RHCL component operators
 - **GPU MachineSets** - AWS g6.4xlarge, g6.12xlarge instances
 
-### Step 2: RHOAI 3.0 Platform
+### Step 2: RHOAI 3.2 Platform
 
 - **RHOAI Operator** (fast-3.x channel)
 - **DSCInitialization** - Global operator configuration
@@ -101,7 +101,7 @@ rhoai3-demo/
 │   ├── step-01-gpu-and-prereq/  # GPU + prerequisites
 │   │   └── base/
 │   │
-│   ├── step-02-rhoai/           # RHOAI 3.0 platform
+│   ├── step-02-rhoai/           # RHOAI 3.2 platform
 │   │   └── base/
 │   │
 │   ├── step-03-private-ai/      # GPU-as-a-Service
@@ -166,7 +166,7 @@ oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host
 
 ## Documentation References
 
-- [RHOAI 3.0 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.2 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [OpenShift 4.20 GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [NVIDIA GPU Operator on OpenShift](https://docs.nvidia.com/datacenter/cloud-native/openshift/24.9.1/install-gpu-ocp.html)
 

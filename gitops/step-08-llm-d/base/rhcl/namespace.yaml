@@ -7,5 +7,5 @@ metadata:
     app.kubernetes.io/component: gateway-integration
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
-    openshift.io/description: "Kuadrant/RHCL instance namespace per RHOAI 3.0 docs"
+    openshift.io/description: "Kuadrant/RHCL instance namespace per RHOAI 3.2 docs"
 

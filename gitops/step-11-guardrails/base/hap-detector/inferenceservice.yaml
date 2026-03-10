@@ -3,7 +3,7 @@
 # Provides /api/v1/text/contents endpoint for the Guardrails Orchestrator.
 #
 # Ref: https://huggingface.co/ibm-granite/granite-guardian-hap-38m
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:

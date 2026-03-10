@@ -7,7 +7,7 @@ kind: Kustomization
 # These jobs download Red Hat Validated models from HuggingFace and upload
 # to MinIO for KServe storage-initializer to stream at pod startup.
 #
-# S3 Storage Strategy (Official RHOAI 3.0 Recommendation):
+# S3 Storage Strategy (Official RHOAI 3.2 Recommendation):
 #   - Avoids CRI-O overlay extraction failures for large images
 #   - KServe storage-initializer streams directly to ephemeral storage
 #   - 300GB EBS nodes can handle 50GB+ model weights

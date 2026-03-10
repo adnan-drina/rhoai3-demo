@@ -1,5 +1,5 @@
 # MariaDB Deployment for Model Registry Metadata
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index#creating-a-model-registry-database_model-reg
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_model_registries/index#creating-a-model-registry-database_model-reg
 apiVersion: apps/v1
 kind: Deployment
 metadata:

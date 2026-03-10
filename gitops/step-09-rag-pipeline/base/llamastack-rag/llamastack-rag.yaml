@@ -11,7 +11,7 @@
 #   oc get crd llamastackdistributions.llamastack.io
 #   oc explain llamastackdistribution.spec
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 # =============================================================================
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
@@ -81,7 +81,11 @@ metadata:
     argocd.argoproj.io/sync-options: Replace=true
 data:
   run.yaml: |
+    # NOTE (RHOAI 3.2): PostgreSQL is recommended for production LlamaStack deployments.
+    # SQLite stores below are retained for demo simplicity but are deprecated for production.
+    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
     version: "2"
+    # LlamaStack version in RHOAI 3.2: 0.3.5+rhai0
     image_name: rh
     apis:
     - agents
@@ -122,6 +126,8 @@ data:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
         config:
+          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
           persistence_store:
             db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
             namespace: null
@@ -134,6 +140,8 @@ data:
       - provider_id: meta-reference-files
         provider_type: inline::localfs
         config:
+          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
           metadata_store:
             db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
             type: sqlite
@@ -142,6 +150,8 @@ data:
       - provider_id: huggingface
         provider_type: remote::huggingface
         config:
+          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
           kvstore:
             db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
             namespace: null
@@ -160,6 +170,8 @@ data:
       - provider_id: model-context-protocol
         provider_type: remote::model-context-protocol
         config: {}
+    # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
     metadata_store:
       type: sqlite
       db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db

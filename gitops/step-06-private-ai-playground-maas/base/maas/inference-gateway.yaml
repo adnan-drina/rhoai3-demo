@@ -2,11 +2,11 @@
 # InferenceGateway CR - PLACEHOLDER (MaaS Developer Preview)
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# Status: Developer Preview (DP) - NOT AVAILABLE in RHOAI 3.0 GA
+# Status: Developer Preview (DP) - NOT AVAILABLE in RHOAI 3.2 GA
 # Action: Implement when MaaS reaches Technology Preview (TP)
 #
 # The InferenceGateway CRD (maas.opendatahub.io/v1alpha1) is NOT present in
-# RHOAI 3.0 GA clusters. This file is a placeholder documenting the expected
+# RHOAI 3.2 GA clusters. This file is a placeholder documenting the expected
 # configuration for when MaaS becomes available.
 #
 # Current Verification (should return empty):

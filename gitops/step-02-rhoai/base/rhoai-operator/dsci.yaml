@@ -1,4 +1,4 @@
-# DSCInitialization - mandatory in RHOAI 3.0
+# DSCInitialization - mandatory in RHOAI 3.2
 # Sets global configuration for the operator (certificates, monitoring, etc.)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3/html/installing_and_uninstalling_openshift_ai_self-managed/index
 apiVersion: dscinitialization.opendatahub.io/v1

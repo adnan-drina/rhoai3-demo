@@ -32,6 +32,7 @@ spec:
           number: 8000
         tls:
           mode: SIMPLE
+          # NOTE (RHOAI 3.2): Production llm-d deployments use strict TLS. Demo uses insecure for simplicity.
           insecureSkipVerify: true
           sni: mistral-3-distributed-kserve-workload-svc.private-ai.svc.cluster.local
 

@@ -2,7 +2,7 @@
 # =============================================================================
 # Step 02: Red Hat OpenShift AI 3.0 - Deploy Script
 # =============================================================================
-# Deploys RHOAI 3.0 Platform Layer:
+# Deploys RHOAI 3.2 Platform Layer:
 # - RHOAI Operator (fast-3.x channel)
 # - DSCInitialization (Service Mesh: Managed)
 # - DataScienceCluster with full 3.0 components
@@ -78,7 +78,7 @@ until oc get csv -n redhat-ods-operator -o jsonpath='{.items[?(@.spec.displayNam
 done
 log_success "RHOAI Operator installed"
 
-# Wait for RHOAI 3.0 CRDs
+# Wait for RHOAI 3.2 CRDs
 log_info "Waiting for DSCInitialization CRD..."
 until oc get crd dscinitializations.dscinitialization.opendatahub.io &>/dev/null; do
     sleep 5
@@ -127,7 +127,7 @@ log_step "Deployment Complete"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "RHOAI 3.0 Platform Deployed Successfully"
+echo "RHOAI 3.2 Platform Deployed Successfully"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Enabled Components:"

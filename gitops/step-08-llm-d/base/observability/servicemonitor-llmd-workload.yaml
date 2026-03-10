@@ -23,6 +23,7 @@ spec:
       interval: 30s
       scrapeTimeout: 10s
       tlsConfig:
+        # NOTE (RHOAI 3.2): Production llm-d deployments use strict TLS. Demo uses insecure for simplicity.
         insecureSkipVerify: true
   namespaceSelector:
     matchNames:

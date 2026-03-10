@@ -19,7 +19,7 @@ kind: Kustomization
 # Model Registration: Done via RHOAI Dashboard (Settings → Model registries)
 # This is the recommended governance workflow for ai-admin.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_model_registries/index
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════

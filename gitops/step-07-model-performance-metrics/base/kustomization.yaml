@@ -48,7 +48,7 @@ kind: Kustomization
 #
 # For interactive benchmark UI, see Step 07B (vLLM-Playground - future).
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/managing_and_monitoring_models/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/managing_and_monitoring_models/index
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20
 # Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
 # Ref: https://github.com/neuralmagic/guidellm

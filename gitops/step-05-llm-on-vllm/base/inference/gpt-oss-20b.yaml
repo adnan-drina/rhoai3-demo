@@ -77,7 +77,7 @@ spec:
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
       env:
-        # RHOAI 3.0 GA: V1 engine required
+        # RHOAI 3.2 GA: V1 engine required
         - name: VLLM_USE_V1
           value: "1"
         - name: VLLM_NO_HW_METRICS

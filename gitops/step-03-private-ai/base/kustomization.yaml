@@ -17,7 +17,7 @@ kind: Kustomization
 #                      │  (S3 Data)  │
 #                      └─────────────┘
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════

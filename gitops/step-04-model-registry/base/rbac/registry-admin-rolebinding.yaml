@@ -1,7 +1,7 @@
 # RoleBinding for ai-admin to have full Model Registry access
 # Admins can archive/delete models, manage versions, etc.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/managing_model_registries/index#managing-model-registry-permissions_model-reg
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_model_registries/index#managing-model-registry-permissions_model-reg
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
