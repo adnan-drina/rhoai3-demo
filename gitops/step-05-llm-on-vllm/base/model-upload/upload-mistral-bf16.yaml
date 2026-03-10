@@ -101,7 +101,7 @@ spec:
                   if resp.get('KeyCount', 0) >= 5:
                       print(f"✓ Model already in MinIO - skipping")
                       sys.exit(0)
-              except: pass
+              except Exception: pass
 
               # Download from HuggingFace
               model_path = Path(MODEL_DIR)
