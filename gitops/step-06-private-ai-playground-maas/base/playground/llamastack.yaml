@@ -58,8 +58,6 @@ spec:
           value: "4096"
         - name: MILVUS_DB_PATH
           value: "~/.llama/milvus.db"
-        - name: LLAMA_STACK_CONFIG_DIR
-          value: /opt/app-root/src/.llama/distributions/rh/
       resources:
         requests:
           cpu: 250m
