@@ -95,13 +95,10 @@ metadata:
     argocd.argoproj.io/sync-options: Replace=true
 data:
   config.yaml: |
-    # Llama Stack Configuration - All 5 Models
-    # NOTE (RHOAI 3.3): PostgreSQL is recommended for production LlamaStack deployments.
-    # SQLite stores below are retained for demo simplicity but are deprecated for production.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-    version: "2"
-    # LlamaStack version in RHOAI 3.3: 0.4.2.1+rhai0
-    image_name: custom
+    # LlamaStack v0.4.2.1+rhai0 Configuration — RHOAI 3.3
+    # Schema: llama_stack.core.server.server.StackConfig
+    version: 2
+    image_name: rh-dev
     apis:
     - agents
     - datasetio
@@ -113,70 +110,39 @@ data:
     - vector_io
     providers:
       inference:
-      # ═══════════════════════════════════════════════════════════════════════════
-      # Embedding Model (for RAG)
-      # ═══════════════════════════════════════════════════════════════════════════
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
-      
-      # ═══════════════════════════════════════════════════════════════════════════
-      # vLLM Provider 1: Mistral-3 INT4 (1-GPU) - Efficient Chat
-      # ═══════════════════════════════════════════════════════════════════════════
       - provider_id: vllm-mistral-int4
         provider_type: remote::vllm
         config:
           base_url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
           max_tokens: 4096
           tls_verify: false
-      
-      # ═══════════════════════════════════════════════════════════════════════════
-      # vLLM Provider 2: Mistral-3 BF16 (4-GPU) - Full Precision
-      # ═══════════════════════════════════════════════════════════════════════════
       - provider_id: vllm-mistral-bf16
         provider_type: remote::vllm
         config:
-          max_tokens: 4096
-          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
-          tls_verify: false
           base_url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
-      
-      # ═══════════════════════════════════════════════════════════════════════════
-      # vLLM Provider 3: Devstral-2 (4-GPU) - Agentic Coding
-      # ═══════════════════════════════════════════════════════════════════════════
+          max_tokens: 4096
+          tls_verify: false
       - provider_id: vllm-devstral
         provider_type: remote::vllm
         config:
-          max_tokens: 4096
-          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
-          tls_verify: false
           base_url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
-      
-      # ═══════════════════════════════════════════════════════════════════════════
-      # vLLM Provider 4: GPT-OSS-20B (4-GPU) - Complex Reasoning
-      # ═══════════════════════════════════════════════════════════════════════════
+          max_tokens: 4096
+          tls_verify: false
       - provider_id: vllm-gpt-oss
         provider_type: remote::vllm
         config:
-          max_tokens: 4096
-          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
-          tls_verify: false
           base_url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
-      
-      # ═══════════════════════════════════════════════════════════════════════════
-      # vLLM Provider 5: Granite-8B Agent (1-GPU) - Tool Calling
-      # ═══════════════════════════════════════════════════════════════════════════
+          max_tokens: 4096
+          tls_verify: false
       - provider_id: vllm-granite-agent
         provider_type: remote::vllm
         config:
-          max_tokens: 4096
-          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
-          tls_verify: false
           base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-      
-      # Remote Milvus — shared with step-09 RAG pipeline for persistent vectors.
-      # When step-09 is not deployed, LlamaStack will log connection errors for
-      # vector_io operations but inference and chat will work normally.
+          max_tokens: 4096
+          tls_verify: false
       vector_io:
       - provider_id: milvus-shared
         provider_type: remote::milvus
@@ -185,42 +151,33 @@ data:
           port: 19530
           db_name: default
           embedding_dimension: 768
-          metric_type: IP
-          consistency_level: Session
       agents:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-          persistence_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
-            namespace: null
-            type: sqlite
-          responses_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
-            type: sqlite
+          persistence:
+            agent_state:
+              namespace: agents
+              backend: kv_default
+            responses:
+              table_name: agent_responses
+              backend: sql_default
       eval: []
       files:
       - provider_id: meta-reference-files
         provider_type: inline::localfs
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           metadata_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
-            type: sqlite
+            table_name: files_metadata
+            backend: sql_default
           storage_dir: /opt/app-root/src/.llama/distributions/rh/files
       datasetio:
       - provider_id: huggingface
         provider_type: remote::huggingface
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           kvstore:
-            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
-            namespace: null
-            type: sqlite
+            namespace: huggingface_datasetio
+            backend: kv_default
       scoring:
       - provider_id: basic
         provider_type: inline::basic
@@ -235,133 +192,54 @@ data:
       - provider_id: model-context-protocol
         provider_type: remote::model-context-protocol
         config: {}
-    # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-    metadata_store:
-      type: sqlite
-      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # Model Registrations (All 5 Models)
-    # ═══════════════════════════════════════════════════════════════════════════
-    models:
-    # Embedding model for RAG
-    - provider_id: sentence-transformers
-      model_id: granite-embedding-125m
-      provider_model_id: ibm-granite/granite-embedding-125m-english
-      model_type: embedding
-      metadata:
-        embedding_dimension: 768
-    
-    # LLM 1: Mistral-3 INT4 (1-GPU) - Efficient Chat
-    - provider_id: vllm-mistral-int4
-      model_id: mistral-3-int4
-      model_type: llm
-      metadata:
-        description: "Mistral Small 24B INT4 - Efficient 1-GPU inference"
-        display_name: "Mistral-3 INT4 (1-GPU)"
-        gpu_count: 1
-        use_case: chat assistant
-    
-    # LLM 2: Mistral-3 BF16 (4-GPU) - Full Precision
-    - provider_id: vllm-mistral-bf16
-      model_id: mistral-3-bf16
-      model_type: llm
-      metadata:
-        description: "Mistral Small 24B BF16 - Full precision enterprise chat"
-        display_name: "Mistral-3 BF16 (4-GPU)"
-        gpu_count: 4
-        use_case: enterprise chat assistant
-    
-    # LLM 3: Devstral-2 (4-GPU) - Agentic Coding
-    - provider_id: vllm-devstral
-      model_id: devstral-2
-      model_type: llm
-      metadata:
-        description: "Devstral-2 - Optimized for agentic coding and tool use"
-        display_name: "Devstral-2 (4-GPU Agentic)"
-        gpu_count: 4
-        use_case: agentic coding assistant
-    
-    # LLM 4: GPT-OSS-20B (4-GPU) - Complex Reasoning
-    - provider_id: vllm-gpt-oss
-      model_id: gpt-oss-20b
-      model_type: llm
-      metadata:
-        description: "GPT-OSS-20B - High-reasoning OpenAI alternative"
-        display_name: "GPT-OSS-20B (4-GPU BF16)"
-        gpu_count: 4
-        use_case: complex reasoning
-    
-    # LLM 5: Granite-8B Agent (1-GPU) - Tool Calling
-    - provider_id: vllm-granite-agent
-      model_id: granite-8b-agent
-      model_type: llm
-      metadata:
-        description: "Granite 3.1 8B - Small but mighty tool-calling specialist"
-        display_name: "Granite-3.1-8B Agent (1-GPU FP8)"
-        gpu_count: 1
-        use_case: agentic tool-calling
-    
-    # Safety shields — registered via the trustyai_fms provider when FMS Orchestrator is running.
-    # When step-11 is not deployed, shields are registered but inactive (no Orchestrator to call).
-    shields:
-    - shield_id: regex_pii
-      provider_id: trustyai_fms
-      provider_shield_id: regex_pii
-      params:
-        type: content
-        confidence_threshold: 0.5
-        message_types: ["user"]
-        detectors:
-          regex:
-            detector_params:
-              regex: ["email", "us-social-security-number", "credit-card"]
-    - shield_id: hap_shield
-      provider_id: trustyai_fms
-      provider_shield_id: hap_shield
-      params:
-        type: content
-        confidence_threshold: 0.5
-        message_types: ["user"]
-        detectors:
-          hap:
-            detector_params: {}
-    # RAG vector databases — populated by step-09 ingestion pipeline.
-    # These are registered at startup so the Playground can query them.
-    # If step-09 is not deployed, collections will be empty but not cause errors.
-    vector_dbs:
-    - vector_db_id: red_hat_docs
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: red_hat_docs
-    - vector_db_id: acme_corporate
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: acme_corporate
-    - vector_db_id: eu_ai_act
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: eu_ai_act
-    datasets: []
-    scoring_fns: []
-    benchmarks: []
-    tool_groups:
-    - toolgroup_id: builtin::rag
-      provider_id: rag-runtime
-    # MCP tool groups — registered when step-12 MCP servers are deployed.
-    # When step-12 is not deployed, LlamaStack logs connection warnings but works normally.
-    - toolgroup_id: mcp::database
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://database-mcp.private-ai.svc:8080/sse"
-    - toolgroup_id: mcp::openshift
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://openshift-mcp.private-ai.svc:8000/sse"
-    - toolgroup_id: mcp::slack
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://slack-mcp.private-ai.svc:8080/sse"
+    registered_resources:
+      models:
+      - provider_id: sentence-transformers
+        model_id: granite-embedding-125m
+        provider_model_id: ibm-granite/granite-embedding-125m-english
+        model_type: embedding
+        metadata:
+          embedding_dimension: 768
+      - provider_id: vllm-mistral-int4
+        model_id: mistral-3-int4
+        model_type: llm
+        metadata: {}
+      - provider_id: vllm-mistral-bf16
+        model_id: mistral-3-bf16
+        model_type: llm
+        metadata: {}
+      - provider_id: vllm-devstral
+        model_id: devstral-2
+        model_type: llm
+        metadata: {}
+      - provider_id: vllm-gpt-oss
+        model_id: gpt-oss-20b
+        model_type: llm
+        metadata: {}
+      - provider_id: vllm-granite-agent
+        model_id: granite-8b-agent
+        model_type: llm
+        metadata: {}
+      shields: []
+      vector_stores: []
+      datasets: []
+      scoring_fns: []
+      benchmarks: []
+      tool_groups:
+      - toolgroup_id: builtin::rag
+        provider_id: rag-runtime
+      - toolgroup_id: mcp::database
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://database-mcp.private-ai.svc:8080/sse"
+      - toolgroup_id: mcp::openshift
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://openshift-mcp.private-ai.svc:8000/sse"
+      - toolgroup_id: mcp::slack
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://slack-mcp.private-ai.svc:8080/sse"
+      connectors: []
     server:
       port: 8321
