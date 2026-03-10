@@ -42,34 +42,22 @@ spec:
       name: llama-stack
       port: 8321
       env:
-        # Override LLAMA_STACK_CONFIG to use our custom config instead of operator default
-        # The rh-dev image resolves ${env.VLLM_URL} only from its own built distributions
-        - name: LLAMA_STACK_CONFIG
-          value: "/etc/llama-stack/config.yaml"
-        # Primary vLLM endpoint
-        # Ref: https://rhpds.github.io/showroom-agentic-ai-llamastack/modules/02-llamastack.html
+        # LLAMA_STACK_CONFIG is set by the operator automatically — do NOT duplicate it.
+        # Primary vLLM endpoint (granite-8b-agent is always-on baseline)
         - name: VLLM_API_URL
           value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
         - name: VLLM_URL
           value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
         - name: VLLM_API_TOKEN
           value: "fake"
-        # TLS verification disabled for internal cluster communication
-        # NOTE (RHOAI 3.3): Production deployments should use TLS verification (value: "true").
         - name: VLLM_TLS_VERIFY
           value: "false"
-        # FMS Guardrails Orchestrator — provides safety shields for PII and HAP detection.
-        # When step-11 is not deployed, LlamaStack logs a connection warning but
-        # inference works normally. Shields activate once the Orchestrator is running.
         - name: FMS_ORCHESTRATOR_URL
           value: http://guardrails-orchestrator.private-ai.svc:8080
-        # Max tokens sent to vLLM (must be < model's --max-model-len)
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        # Milvus local DB path (for inline vector_io when remote Milvus is not available)
         - name: MILVUS_DB_PATH
           value: "~/.llama/milvus.db"
-        # Config directory for LlamaStack
         - name: LLAMA_STACK_CONFIG_DIR
           value: /opt/app-root/src/.llama/distributions/rh/
       resources:
