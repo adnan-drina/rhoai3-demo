@@ -98,7 +98,7 @@ data:
     # LlamaStack v0.4.2.1+rhai0 Configuration — RHOAI 3.3
     # Schema: llama_stack.core.server.server.StackConfig
     version: 2
-    image_name: rh-dev
+    image_name: custom
     apis:
     - agents
     - datasetio
