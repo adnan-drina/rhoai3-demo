@@ -14,35 +14,32 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
-    targetRevision: HEAD
+    targetRevision: main
     path: gitops/step-06-private-ai-playground-maas/base
-  
   destination:
     server: https://kubernetes.default.svc
     namespace: private-ai
-  
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false  # Namespace created in step-03
+      - CreateNamespace=false
       - ServerSideApply=true
-      - SkipDryRunOnMissingResource=true  # LlamaStack/InferenceGateway CRDs may be TP/DP
+      - ServerSideDiff=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  
-  # Ignore differences in auto-generated fields
   ignoreDifferences:
-    - group: "*"
-      kind: "*"
+    - group: llamastack.io
+      kind: LlamaStackDistribution
       jsonPointers:
-        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
-
+        - /status
+        - /spec/server/containerSpec/env

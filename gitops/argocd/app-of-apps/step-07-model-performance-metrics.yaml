@@ -32,7 +32,7 @@ spec:
       # Required for CRDs with complex schemas (Grafana, Routes)
       - RespectIgnoreDifferences=true
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 5s
         factor: 2

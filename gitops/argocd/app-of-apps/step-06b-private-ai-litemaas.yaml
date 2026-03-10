@@ -19,7 +19,7 @@ spec:
   
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
-    targetRevision: HEAD
+    targetRevision: main
     path: gitops/step-06b-private-ai-litemaas/base
   
   destination:
@@ -37,7 +37,7 @@ spec:
       - ServerSideApply.ForceConflicts=true
       - RespectIgnoreDifferences=true
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 5s
         factor: 2
