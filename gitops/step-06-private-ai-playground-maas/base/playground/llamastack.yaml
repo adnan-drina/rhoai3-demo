@@ -144,13 +144,10 @@ data:
           max_tokens: 4096
           tls_verify: false
       vector_io:
-      - provider_id: milvus-shared
-        provider_type: remote::milvus
+      - provider_id: milvus-inline
+        provider_type: inline::milvus
         config:
-          host: milvus-standalone.private-ai.svc.cluster.local
-          port: 19530
-          db_name: default
-          embedding_dimension: 768
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
       agents:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
