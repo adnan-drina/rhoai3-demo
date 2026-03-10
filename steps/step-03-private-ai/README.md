@@ -369,10 +369,15 @@ oc login -u ai-developer -p redhat123
 oc login -u ai-admin -p redhat123
 ```
 
-**In RHOAI Dashboard:**
-1. Go to **Distributed Workloads** in sidebar
-2. View `rhoai-main-queue` ClusterQueue status
-3. See workloads: Admitted vs. Pending
+**In RHOAI Dashboard — Distributed Workload Monitoring:**
+1. Go to **Observe & monitor** → **Workload metrics** in the sidebar
+2. Select project **private-ai** from the Project dropdown
+3. Click the **Distributed workload status** tab
+4. View workloads: Admitted vs. Pending vs. Running
+5. Click **Project metrics** tab to see GPU/CPU usage per ClusterQueue
+
+> **Note (RHOAI 3.3):** The sidebar item is "Workload metrics" under "Observe & monitor",
+> not "Distributed Workloads" as in earlier versions.
 
 **Monitor GPU Usage:**
 1. OpenShift Console → **Observe** → **Dashboards**
