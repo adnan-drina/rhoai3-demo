@@ -3,8 +3,13 @@
 #
 # Kueue uses ResourceFlavors to:
 # 1. Match pods to appropriate nodes via nodeLabels
-# 2. Apply tolerations to pods via tolerations field
+# 2. Inject tolerations into pods when unsuspending (from tolerations field)
 # 3. Understand node taints for admission decisions via nodeTaints
+#
+# IMPORTANT (RHOAI 3.3 / Kueue 1.2): Workloads managed by Kueue must NOT
+# define their own GPU tolerations. Kueue injects tolerations from the
+# ResourceFlavor when unsuspending pods. If the pod already has tolerations,
+# Kubernetes rejects the modification: "existing toleration can not be modified"
 ---
 # NVIDIA L4 1GPU Flavor (g6.4xlarge)
 # 16 vCPU, 64GB RAM, 1x NVIDIA L4 (24GB VRAM)
@@ -18,12 +23,10 @@ spec:
   nodeLabels:
     node.kubernetes.io/instance-type: g6.4xlarge
     node-role.kubernetes.io/gpu: ""
-  # Tolerations are injected into pods using this flavor
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
       effect: NoSchedule
-  # nodeTaints inform Kueue about the taints on target nodes
   nodeTaints:
     - key: nvidia.com/gpu
       value: "true"
@@ -41,14 +44,11 @@ spec:
   nodeLabels:
     node.kubernetes.io/instance-type: g6.12xlarge
     node-role.kubernetes.io/gpu: ""
-  # Tolerations are injected into pods using this flavor
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
       effect: NoSchedule
-  # nodeTaints inform Kueue about the taints on target nodes
   nodeTaints:
     - key: nvidia.com/gpu
       value: "true"
       effect: NoSchedule
-
