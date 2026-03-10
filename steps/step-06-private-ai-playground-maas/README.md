@@ -70,11 +70,37 @@ The GenAI Playground provides this sandbox environment within the RHOAI Dashboar
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **GenAI Studio UI** | GA | Enabled via `genAiStudio: true` |
+| **GenAI Studio UI** | Technology Preview (TP) | Entire playground feature is TP in 3.3 |
 | **LlamaStack Operator** | Technology Preview (TP) | API may change between versions |
-| **AI Asset Endpoints** | GA | Label-based model discovery |
+| **AI Asset Endpoints** | Technology Preview (TP) | Label-based model discovery |
 
 > **Ref:** [RHOAI 3.3 Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+
+## Tool-Calling Requirements
+
+For RAG and MCP features to work in the Playground, models **must** have tool-calling enabled via vLLM runtime arguments. Without these, the model won't invoke `knowledge_search` (RAG) or MCP tools.
+
+| Model | Parser | Args Required |
+|-------|--------|--------------|
+| granite-8b-agent | `granite` | `--enable-auto-tool-choice --tool-call-parser=granite` |
+| mistral-3-bf16 | `mistral` | `--enable-auto-tool-choice --tool-call-parser=mistral` |
+| mistral-3-int4 | `mistral` | `--enable-auto-tool-choice --tool-call-parser=mistral` |
+| devstral-2 | `mistral` | `--enable-auto-tool-choice --tool-call-parser=mistral` |
+| gpt-oss-20b | N/A | No tool-calling support (reasoning model) |
+
+> **Ref:** [RHOAI 3.3 — Model and runtime requirements for the playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#model-and-runtime-requirements-for-the-playground_rhoai-user)
+
+## RAG: Two Approaches
+
+| Feature | Dashboard Playground RAG | LlamaStack Remote Milvus |
+|---------|------------------------|-------------------------|
+| **How** | Upload PDF/DOC/CSV in Playground UI | Step-09 ingestion pipeline to Milvus |
+| **Vector DB** | Inline (ephemeral, per-session) | Remote Milvus (persistent) |
+| **Scope** | Per-playground instance | Shared across all consumers |
+| **Limitation** | Max 10 files, 10MB each | No file limit |
+| **Config** | No config needed — built into Playground | `remote::milvus` in LlamaStack config.yaml |
+
+> **Note (RHOAI 3.3):** The Dashboard Playground RAG currently works only with the inline vector database. There is no mechanism to connect it to an external Milvus. Our LlamaStack config.yaml includes `remote::milvus` for LlamaStack API consumers (notebooks, apps), but the Dashboard UI uses its own inline DB.
 
 ## Prerequisites
 
@@ -238,10 +264,11 @@ oc get inferenceservice -n private-ai -l 'opendatahub.io/genai-asset=true'
 **Solution:**
 ```bash
 # Check which models are actually running
-oc get pods -n private-ai | grep predictor
+oc get inferenceservice -n private-ai -o custom-columns='NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status,MIN:.spec.predictor.minReplicas'
 
-# Scale up the desired model
-oc scale deployment <model>-predictor -n private-ai --replicas=1
+# Scale up the desired model (declarative — survives controller reconciliation)
+oc patch inferenceservice <model> -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":1}}}'
 ```
 
 ### LlamaStack Pod CrashLoopBackOff
@@ -283,7 +310,8 @@ gitops/step-06-private-ai-playground-maas/
 │   ├── kustomization.yaml              # Main kustomization
 │   └── playground/
 │       ├── kustomization.yaml
-│       └── llamastack.yaml             # LlamaStackDistribution + ConfigMap
+│       ├── llamastack.yaml             # LlamaStackDistribution + ConfigMap
+│       └── mcp-servers-configmap.yaml  # MCP server discovery for Dashboard UI
 
 steps/step-06-private-ai-playground-maas/
 ├── deploy.sh                           # Deployment script

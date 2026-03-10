@@ -6,4 +6,7 @@ kind: Kustomization
 
 resources:
   - llamastack.yaml
+  # MCP server discovery for Dashboard Playground UI (redhat-ods-applications namespace)
+  # Ref: RHOAI 3.3 docs — "Configuring Model Context Protocol servers"
+  - mcp-servers-configmap.yaml
 

@@ -3,9 +3,9 @@
 # =============================================================================
 # The SECONDARY model in the "Resource Handover" demo.
 #
-# Model: Red Hat Validated ModelCar - Neural Magic INT4 W4A16
-# Source: registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
-# Quantization: INT4 weights, FP16 activations
+# Model: Red Hat Validated ModelCar - Mistral Small 3.1 24B INT4 W4A16
+# Source: registry.redhat.io/rhelai1/modelcar-mistral-small-3-1-24b-instruct-2503-quantized-w4a16:1.5
+# Quantization: INT4 weights, FP16 activations (March 2025 collection)
 #   - 4-bit weights: ~12GB (75% reduction from BF16)
 #   - 98.9% accuracy recovery vs full precision
 #
@@ -69,9 +69,9 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # Red Hat Validated ModelCar - OCI Image with INT4 weights (~13.5GB)
-      # Fits in CRI-O overlay (< 20GB limit)
-      storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-24b-instruct-2501-quantized-w4a16:1.5
+      # Red Hat Validated ModelCar - Mistral Small 3.1 INT4 (~13.5GB)
+      # Upgraded from 2501 (v3.0) to 2503 (v3.1) — improved tool-calling
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-3-1-24b-instruct-2503-quantized-w4a16:1.5
       args:
         - --served-model-name=mistral-3-int4
         # Memory-optimized config for 1x L4 (24GB) - Red Hat AI Field Engineering
@@ -84,6 +84,9 @@ spec:
         # 85% utilization gives driver breathing room under high load
         - --gpu-memory-utilization=0.85
         - --trust-remote-code
+        # Tool calling — REQUIRED for Playground RAG and MCP
+        - --tool-call-parser=mistral
+        - --enable-auto-tool-choice
       env:
         # RHOAI 3.3 GA: V1 engine required
         # Driver 570.195.03 provides CUDA 12.x compatibility
