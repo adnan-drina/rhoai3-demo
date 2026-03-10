@@ -1,14 +1,15 @@
 # =============================================================================
-# vLLM ServingRuntime for RHOAI 3.3 (Standard S3 Storage Approach)
+# vLLM ServingRuntime for RHOAI 3.3 — Aligned with Platform Default
 # =============================================================================
-# This is the OFFICIAL Red Hat recommended approach for serving large LLMs.
-# 
-# Key Features:
-# - "Thin" runtime image (~3GB vLLM engine only)
-# - Model weights downloaded via KServe Storage Initializer from S3/MinIO
-# - Avoids CRI-O image extraction issues with 90GB+ images
+# This ServingRuntime uses the SAME image and configuration as the
+# RHOAI 3.3 platform-provided vllm-cuda-runtime-template.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
+# Image: vLLM v0.13.0 (RHOAI 3.3)
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
+#
+# To verify alignment with the platform default:
+#   oc get template vllm-cuda-runtime-template -n redhat-ods-applications \
+#     -o jsonpath='{.objects[0].spec.containers[0].image}'
 # =============================================================================
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
@@ -21,11 +22,11 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
     opendatahub.io/apiProtocol: REST
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-    opendatahub.io/runtime-version: v0.9.1.0
+    opendatahub.io/runtime-version: v0.13.0
     opendatahub.io/serving-runtime-scope: namespace
-    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime"
+    opendatahub.io/template-display-name: "vLLM NVIDIA GPU ServingRuntime for KServe"
     opendatahub.io/template-name: vllm-cuda-runtime
-    openshift.io/display-name: "vLLM Runtime for S3 Storage"
+    openshift.io/display-name: "vLLM NVIDIA GPU ServingRuntime for KServe"
 spec:
   annotations:
     opendatahub.io/kserve-runtime: vllm
@@ -37,12 +38,8 @@ spec:
       autoSelect: true
   containers:
     - name: kserve-container
-      # Thin vLLM runtime image (~3GB) - model weights loaded from S3
-      image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ad756c01ec99a99cc7d93401c41b8d92ca96fb1ab7c5262919d818f2be4f3768
-      command:
-        - python
-        - -m
-        - vllm.entrypoints.openai.api_server
+      # RHOAI 3.3 default vLLM image (v0.13.0)
+      image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ec799bb5eeb7e25b4b25a8917ab5161da6b6f1ab830cbba61bba371cffb0c34d
       args:
         - --port=8080
         - --model=/mnt/models
