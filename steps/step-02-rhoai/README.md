@@ -1,12 +1,12 @@
 # Step 02: Red Hat OpenShift AI 3.0 Platform
 
-Installs the **RHOAI 3.2 Platform Layer**, transitioning from the infrastructure layer (GPUs/Operators) to the AI Platform with GenAI Studio, Hardware Profiles, and full component stack.
+Installs the **RHOAI 3.3 Platform Layer**, transitioning from the infrastructure layer (GPUs/Operators) to the AI Platform with GenAI Studio, Hardware Profiles, and full component stack.
 
-> **⚠️ Important**: RHOAI 3.2 is for **new installations only**. You cannot upgrade from 2.x. See the [Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/release_notes/index) for details.
+> **⚠️ Important**: RHOAI 3.3 is for **new installations only**. You cannot upgrade from 2.x. See the [Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index) for details.
 
 ---
 
-## What's New in RHOAI 3.2
+## What's New in RHOAI 3.3
 
 ### Key Changes from 2.x
 
@@ -94,11 +94,11 @@ spec:
 
 ---
 
-## RHOAI 3.2 Resources
+## RHOAI 3.3 Resources
 
 | Resource | Purpose |
 |----------|---------|
-| **Subscription** | Uses `fast-3.x` channel (required for 3.0) |
+| **Subscription** | Uses `stable-3.x` channel (required for 3.0) |
 | **DSCInitialization** | Global operator configuration (Service Mesh: Managed) |
 | **DataScienceCluster** | Core RHOAI components |
 | **Auth** | User/Admin group management (`rhoai-admins`, `rhoai-users`) |
@@ -107,9 +107,9 @@ spec:
 
 ---
 
-## Kueue Integration (RHOAI 3.2 Architecture)
+## Kueue Integration (RHOAI 3.3 Architecture)
 
-RHOAI 3.2 uses a **standalone Kueue operator** (installed in step-01-gpu-and-prereq) instead of an embedded version.
+RHOAI 3.3 uses a **standalone Kueue operator** (installed in step-01-gpu-and-prereq) instead of an embedded version.
 
 ### Configuration
 
@@ -272,7 +272,7 @@ gitops/step-02-rhoai/
     └── rhoai-operator/
         ├── namespace.yaml                  # redhat-ods-operator namespace
         ├── operatorgroup.yaml              # Operator group
-        ├── subscription.yaml               # fast-3.x channel
+        ├── subscription.yaml               # stable-3.x channel
         ├── dsci.yaml                       # DSCInitialization (Service Mesh: Managed)
         ├── datasciencecluster.yaml         # Full 3.0 component stack (kueue: Unmanaged)
         ├── kueue-component.yaml            # ODH Kueue for Dashboard integration
@@ -297,7 +297,7 @@ oc get subscription rhods-operator -n redhat-ods-operator -o yaml
 # Check install plan
 oc get installplan -n redhat-ods-operator
 
-# Verify fast-3.x channel is available
+# Verify stable-3.x channel is available
 oc get packagemanifest rhods-operator -o jsonpath='{.status.channels[*].name}'
 ```
 
@@ -335,7 +335,7 @@ oc logs -n redhat-ods-operator -l name=rhods-operator --tail=100
 
 > **⚠️ Warning**: Removing RHOAI will delete all workbenches, pipelines, model deployments, and associated data in RHOAI-managed namespaces. Back up any critical data before proceeding.
 
-### Remove RHOAI 3.2 Platform
+### Remove RHOAI 3.3 Platform
 
 ```bash
 # 1. Delete DataScienceCluster first (allows graceful component cleanup)
@@ -374,13 +374,13 @@ oc delete application step-02-rhoai -n openshift-gitops --cascade=foreground
 ## Documentation Links
 
 ### Official Red Hat Documentation
-- [RHOAI 3.2 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/release_notes/index)
-- [RHOAI 3.2 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [Installing RHOAI Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-rhoai-components)
-- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/working_with_accelerators/index#working-with-hardware-profiles)
+- [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
+- [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [Installing RHOAI Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-rhoai-components)
+- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 
 ### Community Resources
-- [RHOAI 3.2 Showroom](https://rhpds.github.io/redhat-openshift-ai-3-showroom/)
+- [RHOAI 3.3 Showroom](https://rhpds.github.io/redhat-openshift-ai-3-showroom/)
 - [Red Hat CoP GitOps Catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai)
 
 ---
@@ -389,6 +389,6 @@ oc delete application step-02-rhoai -n openshift-gitops --cascade=foreground
 
 > **⚠️ Warning**: You cannot upgrade from OpenShift AI 2.25 or any earlier version to 3.0. OpenShift AI 3.0 introduces significant technology and component changes and is intended for **new installations only**.
 >
-> To use OpenShift AI 3.0, install the Red Hat OpenShift AI Operator on a cluster running OpenShift Container Platform 4.19 or later and select the `fast-3.x` channel.
+> To use OpenShift AI 3.0, install the Red Hat OpenShift AI Operator on a cluster running OpenShift Container Platform 4.19 or later and select the `stable-3.x` channel.
 >
-> — [Red Hat Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+> — [Red Hat Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)

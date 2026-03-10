@@ -3,7 +3,7 @@
 # Step 06: GenAI Playground Deployment
 # =============================================================================
 # Deploys the LlamaStack backend and configures AI Asset Endpoints
-# for the GenAI Playground in RHOAI 3.2.
+# for the GenAI Playground in RHOAI 3.3.
 #
 # Components:
 #   - LlamaStackDistribution CR
@@ -70,7 +70,7 @@ echo -e "  ${GREEN}✓${NC} LlamaStack operator is Managed"
 
 # Check LlamaStackDistribution CRD exists
 if ! oc get crd llamastackdistributions.llamastack.io &>/dev/null; then
-    echo -e "${RED}✗ LlamaStackDistribution CRD not found. Ensure RHOAI 3.2 is installed.${NC}"
+    echo -e "${RED}✗ LlamaStackDistribution CRD not found. Ensure RHOAI 3.3 is installed.${NC}"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} LlamaStackDistribution CRD available"

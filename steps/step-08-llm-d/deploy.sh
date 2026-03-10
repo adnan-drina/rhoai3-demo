@@ -19,7 +19,7 @@ echo "→ Checking prerequisites..."
 
 # Check LLMInferenceService CRD
 if ! oc api-resources | grep -q "llminferenceservice"; then
-    echo "❌ LLMInferenceService CRD not found. Is RHOAI 3.2 installed?"
+    echo "❌ LLMInferenceService CRD not found. Is RHOAI 3.3 installed?"
     exit 1
 fi
 echo "  ✓ LLMInferenceService CRD available"

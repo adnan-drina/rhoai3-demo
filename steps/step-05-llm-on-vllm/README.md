@@ -1,6 +1,6 @@
 # Step 05: GPU-as-a-Service Demo
 
-**"Enterprise Model Portfolio"** - Demonstrating RHOAI 3.2's intelligent GPU allocation with Kueue and 5 Red Hat Validated models.
+**"Enterprise Model Portfolio"** - Demonstrating RHOAI 3.3's intelligent GPU allocation with Kueue and 5 Red Hat Validated models.
 
 ## The Business Story
 
@@ -272,7 +272,7 @@ oc scale deployment devstral-2-predictor -n private-ai --replicas=0
 
 ### Why Scale Deployments (Not InferenceServices)
 
-RHOAI 3.2 uses **RawDeployment mode** by default (not Knative Serving). This means:
+RHOAI 3.3 uses **RawDeployment mode** by default (not Knative Serving). This means:
 - Each InferenceService creates a Deployment named `{name}-predictor`
 - `oc scale inferenceservice` doesn't work (scale subresource not implemented)
 - `oc scale deployment {name}-predictor` is immediate and reliable
@@ -365,7 +365,7 @@ oc get rs -n private-ai | grep <model>-predictor
 oc scale rs/<stale-replicaset> -n private-ai --replicas=0
 ```
 
-> **Design Decision (RHOAI 3.2):** We use `Recreate` strategy for all GPU-intensive InferenceServices
+> **Design Decision (RHOAI 3.3):** We use `Recreate` strategy for all GPU-intensive InferenceServices
 > to prevent Kueue admission deadlocks. This causes brief unavailability during updates but
 > ensures deterministic behavior in quota-constrained environments.
 
@@ -407,11 +407,11 @@ args:
 
 ### Workbench: Route Access Issues
 
-**Root Cause:** Using the wrong annotation for RHOAI 3.2 workbenches.
+**Root Cause:** Using the wrong annotation for RHOAI 3.3 workbenches.
 
 | Annotation | Effect | Use Case |
 |------------|--------|----------|
-| `inject-auth: "true"` | Controller injects `kube-rbac-proxy` sidecar | ✅ **RHOAI 3.2 (use this)** |
+| `inject-auth: "true"` | Controller injects `kube-rbac-proxy` sidecar | ✅ **RHOAI 3.3 (use this)** |
 | `inject-oauth: "true"` | OLD pattern, requires manual oauth-proxy sidecar | ❌ RHOAI 2.x (deprecated) |
 
 **Solution:** Use `notebooks.opendatahub.io/inject-auth: "true"` and let the controller manage:
@@ -421,7 +421,7 @@ apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
   annotations:
-    # CRITICAL: Use inject-auth for RHOAI 3.2
+    # CRITICAL: Use inject-auth for RHOAI 3.3
     notebooks.opendatahub.io/inject-auth: "true"
 spec:
   template:
@@ -472,7 +472,7 @@ gitops/step-05-llm-on-vllm/base/
     └── upload-granite-8b.yaml         # Granite (~8GB)
 ```
 
-## Key RHOAI 3.2 Design Patterns
+## Key RHOAI 3.3 Design Patterns
 
 ### Dynamic Admission (Kueue)
 
@@ -544,8 +544,8 @@ oc delete application step-05-llm-on-vllm -n openshift-gitops --cascade=foregrou
 
 ## Official Documentation
 
-- [RHOAI 3.2 Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/working_with_distributed_workloads/index)
-- [Kueue Integration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/working_with_distributed_workloads/index#configuring-quota-management-for-distributed-workloads_distributed-workloads)
+- [RHOAI 3.3 Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index)
+- [Kueue Integration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index#configuring-quota-management-for-distributed-workloads_distributed-workloads)
 - [KServe Storage Configuration](https://kserve.github.io/website/latest/modelserving/storage/)
 - [Red Hat KB: NVIDIA Driver 580.x Compatibility](https://access.redhat.com/solutions/7134740)
 

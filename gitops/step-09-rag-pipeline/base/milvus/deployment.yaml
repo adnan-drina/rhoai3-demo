@@ -2,7 +2,7 @@
 # Persistent vector database for RAG document storage.
 # Uses embedded etcd (ETCD_USE_EMBED=true) to avoid a separate etcd deployment.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 # Ref: https://milvus.io/docs/install_standalone-docker.md
 apiVersion: apps/v1
 kind: Deployment

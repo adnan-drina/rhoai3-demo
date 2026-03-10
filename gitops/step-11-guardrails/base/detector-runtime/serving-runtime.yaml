@@ -2,7 +2,7 @@
 # Shared runtime for all HF text classification detector models (HAP, prompt injection).
 # Provides the /api/v1/text/contents detector API endpoint.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:

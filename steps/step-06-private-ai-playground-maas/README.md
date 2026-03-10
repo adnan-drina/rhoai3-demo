@@ -74,7 +74,7 @@ The GenAI Playground provides this sandbox environment within the RHOAI Dashboar
 | **LlamaStack Operator** | Technology Preview (TP) | API may change between versions |
 | **AI Asset Endpoints** | GA | Label-based model discovery |
 
-> **Ref:** [RHOAI 3.2 Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+> **Ref:** [RHOAI 3.3 Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
 
 ## Prerequisites
 
@@ -345,15 +345,15 @@ oc delete application step-06-private-ai-playground-maas -n openshift-gitops
 
 ## Official Documentation
 
-- [RHOAI 3.2 Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
-- [RHOAI 3.2 Configuring a Playground for Your Project](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/experimenting_with_models_in_the_gen_ai_playground/index#configuring-a-playground-for-your-project_rhoai-user)
-- [RHOAI 3.2 Support Matrix](https://access.redhat.com/articles/7019198)
+- [RHOAI 3.3 Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+- [RHOAI 3.3 Configuring a Playground for Your Project](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index#configuring-a-playground-for-your-project_rhoai-user)
+- [RHOAI 3.3 Support Matrix](https://access.redhat.com/articles/7019198)
 
 ---
 
 ## Future Enhancement: Models-as-a-Service (MaaS)
 
-> **Status:** Developer Preview (DP) as of RHOAI 3.2  
+> **Status:** Developer Preview (DP) as of RHOAI 3.3  
 > **Target:** Implement when MaaS reaches Technology Preview (TP)
 
 ### What is MaaS?
@@ -450,7 +450,7 @@ curl -k https://mistral-3-int4-private-ai.apps.cluster.../v1/chat/completions \
 - [Introducing Models-as-a-Service in OpenShift AI](https://developers.redhat.com/articles/2025/11/25/introducing-models-service-openshift-ai) (Developer Preview announcement)
 - [MaaS Community Documentation](https://opendatahub-io.github.io/models-as-a-service/latest/)
 - [MaaS GitHub Repository](https://github.com/opendatahub-io/maas-billing)
-- [RHOAI 3.2 Support Matrix](https://access.redhat.com/articles/7019198) - Check MaaS support status
+- [RHOAI 3.3 Support Matrix](https://access.redhat.com/articles/7019198) - Check MaaS support status
 
 ---
 

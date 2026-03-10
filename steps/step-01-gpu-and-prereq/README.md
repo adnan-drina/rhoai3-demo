@@ -36,7 +36,7 @@ Prepares an OpenShift 4.20 cluster on AWS for Red Hat OpenShift AI (RHOAI) 3.0. 
 
 ## Prerequisites
 
-Per [Red Hat OpenShift AI 3.0 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index):
+Per [Red Hat OpenShift AI 3.0 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index):
 
 - [ ] OpenShift 4.20+ cluster on AWS
 - [ ] Cluster admin access
@@ -89,7 +89,7 @@ spec:
 
 ### 0. User Workload Monitoring
 
-**Purpose:** RHOAI 3.2 components (KServe, TrustyAI, Model Servers) export metrics to user namespaces. This configuration enables the cluster to scrape those endpoints.
+**Purpose:** RHOAI 3.3 components (KServe, TrustyAI, Model Servers) export metrics to user namespaces. This configuration enables the cluster to scrape those endpoints.
 
 | Setting | Purpose |
 |---------|---------|
@@ -191,7 +191,7 @@ oc get nodes -l feature.node.kubernetes.io/pci-10de.present=true \
   -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable."nvidia\.com/gpu"
 ```
 
-**Ref:** [RHOAI 3.2 - Specialized Hardware Driver Enablement](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+**Ref:** [RHOAI 3.3 - Specialized Hardware Driver Enablement](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 
 ---
 
@@ -199,7 +199,7 @@ oc get nodes -l feature.node.kubernetes.io/pci-10de.present=true \
 
 **Purpose:** Provides Knative Serving infrastructure for KServe model serving.
 
-> **Note:** While RHOAI 3.2 uses RawDeployment mode (deprecating Serverless mode), Knative Serving remains a **prerequisite** for the Inference Gateway networking logic.
+> **Note:** While RHOAI 3.3 uses RawDeployment mode (deprecating Serverless mode), Knative Serving remains a **prerequisite** for the Inference Gateway networking logic.
 
 This step installs:
 1. **OpenShift Serverless Operator** - The operator itself
@@ -220,7 +220,7 @@ oc get knativeserving knative-serving -n knative-serving
 # Expected: READY=True
 ```
 
-**Ref:** [RHOAI 3.2 - KServe Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
+**Ref:** [RHOAI 3.3 - KServe Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
 
 ---
 
@@ -239,13 +239,13 @@ oc apply -k gitops/step-01-gpu-and-prereq/base/leaderworkerset/
 oc get csv -n openshift-lws-operator | grep leader
 
 # Verify the LWS operator API is available.
-# Note: On this RHOAI 3.2 / OCP 4.20 cluster, the *workload* LeaderWorkerSet CRD
+# Note: On this RHOAI 3.3 / OCP 4.20 cluster, the *workload* LeaderWorkerSet CRD
 # (leaderworkerset.x-k8s.io) is not exposed; only the operator API is.
 oc api-resources | grep leaderworkersetoperator
 oc get crd leaderworkersetoperators.operator.openshift.io
 ```
 
-**Ref:** [RHOAI 3.2 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
+**Ref:** [RHOAI 3.3 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
 
 ---
 
@@ -271,7 +271,7 @@ oc get csv -n openshift-authorino | grep authorino
 oc get crd authorinos.operator.authorino.kuadrant.io
 ```
 
-**Ref:** [RHOAI 3.2 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
+**Ref:** [RHOAI 3.3 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
 
 ---
 
@@ -355,7 +355,7 @@ oc get crd kuadrants.kuadrant.io
 
 ### 9. Red Hat Build of Kueue Operator
 
-**Purpose:** Provides workload queuing, quota management, and GPU-as-a-Service capabilities. **Required for RHOAI 3.2** to enable Hardware Profiles with Queue-based scheduling.
+**Purpose:** Provides workload queuing, quota management, and GPU-as-a-Service capabilities. **Required for RHOAI 3.3** to enable Hardware Profiles with Queue-based scheduling.
 
 **Key Configuration:** The Kueue instance (`cluster`) is configured with framework integrations:
 ```yaml
@@ -389,7 +389,7 @@ oc get kueue cluster
 oc get pods -n openshift-kueue-operator
 ```
 
-**Ref:** [RHOAI 3.2 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
+**Ref:** [RHOAI 3.3 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
 
 ---
 
@@ -598,11 +598,11 @@ gitops/step-01-gpu-and-prereq/
 ### Red Hat Knowledge Base
 - [NVIDIA GPU driver 580.105.08 compatibility issue with RHOAI 2.25.0 and 3.0](https://access.redhat.com/solutions/7134740) - **Critical for vLLM deployments**
 
-### RHOAI 3.2 Documentation
-- [RHOAI 3.2 - Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [RHOAI 3.2 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
-- [RHOAI 3.2 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
-- [RHOAI 3.2 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
+### RHOAI 3.3 Documentation
+- [RHOAI 3.3 - Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.3 - Installing Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
+- [RHOAI 3.3 - Installing the OpenShift Serverless Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-openshift-serverless-operator_install-kserve)
+- [RHOAI 3.3 - Installing the Red Hat Authorino Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve)
 
 ### OpenShift Container Platform 4.20
 - [OCP 4.20 - Understanding the Driver Toolkit](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/using-the-driver-toolkit)
@@ -622,7 +622,7 @@ gitops/step-01-gpu-and-prereq/
 
 ## Troubleshooting
 
-### ⚠️ CUDA 13.0 Driver Compatibility Issue (RHOAI 3.2)
+### ⚠️ CUDA 13.0 Driver Compatibility Issue (RHOAI 3.3)
 
 **Red Hat Knowledge Base:** [NVIDIA GPU driver 580.105.08 compatibility issue with RHOAI 2.25.0 and 3.0](https://access.redhat.com/solutions/7134740)
 
@@ -641,7 +641,7 @@ Error 803: system has unsupported display driver / cuda driver combination
 | Component | Version | CUDA |
 |-----------|---------|------|
 | GPU Operator 25.10.1 (Dec 4, 2025) | Driver **580.105.08** | **13.0** |
-| RHOAI 3.2 vLLM Image | v0.11.0+rhai1 | **12.8** |
+| RHOAI 3.3 vLLM Image | v0.11.0+rhai1 | **12.8** |
 
 The `cuda-compat` package in the vLLM container causes the CUDA 12.8 runtime to conflict with the CUDA 13.0 host driver.
 

@@ -62,7 +62,7 @@ data:
           "source": [
             "# 🚀 GPU-as-a-Service Demo\n",
             "\n",
-            "This notebook demonstrates Kueue-managed GPU allocation in RHOAI 3.2.\n",
+            "This notebook demonstrates Kueue-managed GPU allocation in RHOAI 3.3.\n",
             "\n",
             "## What's happening behind the scenes:\n",
             "1. You selected a **Hardware Profile** (NVIDIA L4 1GPU)\n",

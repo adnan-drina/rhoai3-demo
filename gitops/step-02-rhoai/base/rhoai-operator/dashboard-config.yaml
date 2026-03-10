@@ -1,6 +1,6 @@
-# OdhDashboardConfig - RHOAI 3.2 Dashboard Feature Toggles
+# OdhDashboardConfig - RHOAI 3.3 Dashboard Feature Toggles
 # Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-01-odh-dashboard.html
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config
 apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
@@ -39,7 +39,7 @@ spec:
     # Distributed Workloads (Kueue queues visible in sidebar)
     disableDistributedWorkloads: false
     
-    # Kueue UI Integration (RHOAI 3.2 Standalone Kueue)
+    # Kueue UI Integration (RHOAI 3.3 Standalone Kueue)
     # Required for dashboard to recognize external Kueue operator
     disableKueue: false
   

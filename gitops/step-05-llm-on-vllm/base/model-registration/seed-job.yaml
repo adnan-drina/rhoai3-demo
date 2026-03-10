@@ -17,7 +17,7 @@
 #   2. Efficiency Story: Trade 1x 4-GPU for 4x 1-GPU specialists
 #   3. Model Portfolio: Show all 5 Red Hat Validated models
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/working_with_model_registries/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_model_registries/index
 # =============================================================================
 apiVersion: batch/v1
 kind: Job
@@ -124,7 +124,7 @@ spec:
                   -H "Content-Type: application/json" \
                   -d "{
                     \"name\": \"${VERSION_NAME}\",
-                    \"description\": \"Production-ready version for RHOAI 3.2\",
+                    \"description\": \"Production-ready version for RHOAI 3.3\",
                     \"author\": \"ai-admin\",
                     \"registeredModelId\": \"${MODEL_ID}\",
                     \"customProperties\": ${VERSION_META}
@@ -132,7 +132,7 @@ spec:
                 VERSION_ID=$(echo "$VERSION_RESP" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1)
                 echo "  Created ModelVersion ID: ${VERSION_ID}"
                 
-                # Create ModelArtifact with S3 metadata (Official RHOAI 3.2 format)
+                # Create ModelArtifact with S3 metadata (Official RHOAI 3.3 format)
                 # This enables the "Deploy from Registry" flow in GenAI Studio
                 curl -sf -X POST "${API_BASE}/model_versions/${VERSION_ID}/artifacts" \
                   -H "Content-Type: application/json" \

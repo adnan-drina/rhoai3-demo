@@ -5,11 +5,11 @@ kind: Kustomization
 # Model-as-a-Service (MaaS) - PLACEHOLDER FOR FUTURE IMPLEMENTATION
 # ═══════════════════════════════════════════════════════════════════════════════
 #
-# Status: Developer Preview (DP) as of RHOAI 3.2
+# Status: Developer Preview (DP) as of RHOAI 3.3
 # Action: Implement when MaaS reaches Technology Preview (TP)
 #
 # Current Blockers:
-#   1. InferenceGateway CRD not available in RHOAI 3.2 GA
+#   1. InferenceGateway CRD not available in RHOAI 3.3 GA
 #   2. Requires Red Hat Connectivity Link 1.2 operator (not installed)
 #   3. Requires LLM-D runtime (we use vLLM runtime)
 #

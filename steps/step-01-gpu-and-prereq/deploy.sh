@@ -2,7 +2,7 @@
 # =============================================================================
 # Step 01: GPU Infrastructure & RHOAI Prerequisites - Deploy Script
 # =============================================================================
-# Deploys all prerequisites for RHOAI 3.2:
+# Deploys all prerequisites for RHOAI 3.3:
 # - User Workload Monitoring
 # - NFD Operator + Instance
 # - GPU Operator + ClusterPolicy + DCGM Dashboard

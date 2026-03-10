@@ -1,7 +1,7 @@
 # KnativeServing Instance
-# Required prerequisite for KServe model serving in RHOAI 3.2
+# Required prerequisite for KServe model serving in RHOAI 3.3
 # Even with RawDeployment mode, Knative infrastructure is needed for the serving platform
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#configuring-the-openshift-serverless-operator_install-kserve
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#configuring-the-openshift-serverless-operator_install-kserve
 apiVersion: operator.knative.dev/v1beta1
 kind: KnativeServing
 metadata:

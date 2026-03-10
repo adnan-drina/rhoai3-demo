@@ -1,5 +1,5 @@
 # Namespace for Kueue Operator
-# Required for RHOAI 3.2 Distributed Workloads
+# Required for RHOAI 3.3 Distributed Workloads
 apiVersion: v1
 kind: Namespace
 metadata:

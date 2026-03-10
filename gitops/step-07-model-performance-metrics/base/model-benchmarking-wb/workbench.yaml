@@ -1,5 +1,5 @@
 # =============================================================================
-# Model Benchmarking Workbench - RHOAI 3.2 GitOps Pattern
+# Model Benchmarking Workbench - RHOAI 3.3 GitOps Pattern
 # =============================================================================
 # Interactive Jupyter workbench for running and analyzing GuideLLM benchmarks.
 #
@@ -9,7 +9,7 @@
 #   - Visualize TTFT, TPOT, throughput metrics
 #   - Compare INT4 vs BF16 model performance
 #
-# This workbench uses the RHOAI 3.2 controller-managed authentication pattern:
+# This workbench uses the RHOAI 3.3 controller-managed authentication pattern:
 #   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
 #   - Controller injects: kube-rbac-proxy sidecar for authentication
 # =============================================================================
@@ -64,7 +64,7 @@ metadata:
     opendatahub.io/odh-managed: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    # RHOAI 3.2: Use inject-auth for kube-rbac-proxy sidecar
+    # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
     # Hardware Profile: CPU-only for analysis work
     opendatahub.io/hardware-profile-name: cpu-small

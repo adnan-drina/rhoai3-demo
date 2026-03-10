@@ -19,7 +19,7 @@ spec:
       protocol: TCP
       targetPort: 8080  # Raw REST port, bypassing OAuth proxy
   selector:
-    # Standard RHOAI 3.2 Model Registry pod selector
+    # Standard RHOAI 3.3 Model Registry pod selector
     app: private-ai-registry
     component: model-registry
   type: ClusterIP

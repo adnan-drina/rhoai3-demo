@@ -1,5 +1,5 @@
 # =============================================================================
-# vLLM ServingRuntime for RHOAI 3.2 (Standard S3 Storage Approach)
+# vLLM ServingRuntime for RHOAI 3.3 (Standard S3 Storage Approach)
 # =============================================================================
 # This is the OFFICIAL Red Hat recommended approach for serving large LLMs.
 # 
@@ -8,7 +8,7 @@
 # - Model weights downloaded via KServe Storage Initializer from S3/MinIO
 # - Avoids CRI-O image extraction issues with 90GB+ images
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/deploying_models/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
 # =============================================================================
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime

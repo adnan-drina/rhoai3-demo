@@ -15,7 +15,7 @@ metadata:
     # Kueue queue assignment (matches Hardware Profile's localQueueName)
     kueue.x-k8s.io/queue-name: "default"
   annotations:
-    # RHOAI 3.2: Use inject-auth for kube-rbac-proxy sidecar
+    # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
     # Hardware Profile reference (nvidia-l4-1gpu)
     opendatahub.io/hardware-profile-name: "nvidia-l4-1gpu"
@@ -33,7 +33,7 @@ metadata:
     openshift.io/display-name: "Demo Workbench 2 (Queued)"
     openshift.io/description: "GPU-as-a-Service Demo - demonstrates Kueue queuing when GPU unavailable"
     # ═══════════════════════════════════════════════════════════════════════════
-    # Idle Culling Configuration (RHOAI 3.2)
+    # Idle Culling Configuration (RHOAI 3.3)
     # ═══════════════════════════════════════════════════════════════════════════
     # The notebook controller monitors last-activity and stops idle workbenches
     # after the configured timeout. For demo: 15 min to release GPUs quickly.
@@ -63,7 +63,7 @@ spec:
               name: notebook-port
               protocol: TCP
           env:
-            # RHOAI 3.2: MUST set base_url for path-based routing via Gateway API
+            # RHOAI 3.3: MUST set base_url for path-based routing via Gateway API
             - name: NOTEBOOK_ARGS
               value: |-
                 --ServerApp.port=8888

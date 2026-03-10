@@ -23,6 +23,6 @@ resources:
   - workbench-1.yaml
   - workbench-2.yaml
 # Note: Routes and NetworkPolicies are NOT needed!
-# RHOAI 3.2 auto-creates HTTPRoutes via Gateway API
+# RHOAI 3.3 auto-creates HTTPRoutes via Gateway API
 
 

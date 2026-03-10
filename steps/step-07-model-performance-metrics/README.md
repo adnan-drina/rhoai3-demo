@@ -708,7 +708,7 @@ Direct PromQL queries in OpenShift Console:
 ## Official Documentation & References
 
 ### Red Hat Official
-- [RHOAI 3.2 Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/managing_and_monitoring_models/index)
+- [RHOAI 3.3 Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index)
 - [OpenShift User Workload Monitoring (4.20)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/enabling-monitoring-for-user-defined-projects)
 - [Red Hat OpenShift Pipelines 1.20](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20)
 - [GuideLLM - Evaluate LLM Deployments (Red Hat Developers)](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference)

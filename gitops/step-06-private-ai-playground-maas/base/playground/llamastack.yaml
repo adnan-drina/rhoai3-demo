@@ -8,8 +8,8 @@
 #   - MCP servers for tool calling
 #   - Session/agent state management
 #
-# STATUS: Technology Preview (TP) in RHOAI 3.2
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/experimenting_with_models_in_the_gen_ai_playground/index
+# STATUS: Technology Preview (TP) in RHOAI 3.3
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index
 #
 # CRD Verification:
 #   oc get crd llamastackdistributions.llamastack.io
@@ -55,7 +55,7 @@ spec:
         - name: VLLM_API_TOKEN
           value: "fake"
         # TLS verification disabled for internal cluster communication
-        # NOTE (RHOAI 3.2): Production deployments should use TLS verification (value: "true").
+        # NOTE (RHOAI 3.3): Production deployments should use TLS verification (value: "true").
         - name: VLLM_TLS_VERIFY
           value: "false"
         # FMS Guardrails Orchestrator — provides safety shields for PII and HAP detection.
@@ -110,11 +110,11 @@ metadata:
 data:
   config.yaml: |
     # Llama Stack Configuration - All 5 Models
-    # NOTE (RHOAI 3.2): PostgreSQL is recommended for production LlamaStack deployments.
+    # NOTE (RHOAI 3.3): PostgreSQL is recommended for production LlamaStack deployments.
     # SQLite stores below are retained for demo simplicity but are deprecated for production.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
+    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
     version: "2"
-    # LlamaStack version in RHOAI 3.2: 0.3.5+rhai0
+    # LlamaStack version in RHOAI 3.3: 0.4.2.1+rhai0
     image_name: starter
     apis:
     - agents
@@ -143,7 +143,7 @@ data:
           url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
           api_token: fake
           max_tokens: 4096
-          # NOTE (RHOAI 3.2): Set to true for production. Demo uses false for internal cluster communication.
+          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
       
       # ═══════════════════════════════════════════════════════════════════════════
@@ -154,7 +154,7 @@ data:
         config:
           api_token: fake
           max_tokens: 4096
-          # NOTE (RHOAI 3.2): Set to true for production. Demo uses false for internal cluster communication.
+          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
           url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
       
@@ -166,7 +166,7 @@ data:
         config:
           api_token: fake
           max_tokens: 4096
-          # NOTE (RHOAI 3.2): Set to true for production. Demo uses false for internal cluster communication.
+          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
           url: http://devstral-2-predictor.private-ai.svc.cluster.local:8080/v1
       
@@ -178,7 +178,7 @@ data:
         config:
           api_token: fake
           max_tokens: 4096
-          # NOTE (RHOAI 3.2): Set to true for production. Demo uses false for internal cluster communication.
+          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
           url: http://gpt-oss-20b-predictor.private-ai.svc.cluster.local:8080/v1
       
@@ -190,7 +190,7 @@ data:
         config:
           api_token: fake
           max_tokens: 4096
-          # NOTE (RHOAI 3.2): Set to true for production. Demo uses false for internal cluster communication.
+          # NOTE (RHOAI 3.3): Set to true for production. Demo uses false for internal cluster communication.
           tls_verify: false
           url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
       
@@ -211,8 +211,8 @@ data:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
         config:
-          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
+          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           persistence_store:
             db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
             namespace: null
@@ -225,8 +225,8 @@ data:
       - provider_id: meta-reference-files
         provider_type: inline::localfs
         config:
-          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
+          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           metadata_store:
             db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
             type: sqlite
@@ -235,8 +235,8 @@ data:
       - provider_id: huggingface
         provider_type: remote::huggingface
         config:
-          # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
+          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           kvstore:
             db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
             namespace: null
@@ -255,8 +255,8 @@ data:
       - provider_id: model-context-protocol
         provider_type: remote::model-context-protocol
         config: {}
-    # NOTE (RHOAI 3.2): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/release_notes/index#deprecated-sqlite
+    # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
+    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
     metadata_store:
       type: sqlite
       db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db

@@ -276,11 +276,11 @@ oc delete clusterrolebinding openshift-mcp-view
 
 > **Design Decision:** MCP as one tool source among several. The LlamaStack agent combines RAG tools (`builtin::rag`) with MCP tools (`mcp::database`, `mcp::openshift`, `mcp::slack`) -- the agent decides which tools to invoke based on the user's question.
 
-> **Design Decision:** Playground ConfigMap in `redhat-ods-applications` is applied by `deploy.sh` (not GitOps) because ArgoCD targets the `private-ai` namespace. This is consistent with the RHOAI 3.2 documentation pattern.
+> **Design Decision:** Playground ConfigMap in `redhat-ods-applications` is applied by `deploy.sh` (not GitOps) because ArgoCD targets the `private-ai` namespace. This is consistent with the RHOAI 3.3 documentation pattern.
 
 ## Official Documentation
 
-- [RHOAI 3.2 -- Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
-- [RHOAI 3.2 -- Testing with MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/experimenting_with_models_in_the_gen_ai_playground/testing-with-model-control-protocol-servers_rhoai-user)
+- [RHOAI 3.3 -- Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
+- [RHOAI 3.3 -- Testing with MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/testing-with-model-control-protocol-servers_rhoai-user)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Llama Stack Agents](https://llama-stack.readthedocs.io/en/latest/concepts/agents.html)

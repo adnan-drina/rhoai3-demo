@@ -1,7 +1,7 @@
 # =============================================================================
-# GPU Orchestrator Workbench - RHOAI 3.2 GitOps Pattern
+# GPU Orchestrator Workbench - RHOAI 3.3 GitOps Pattern
 # =============================================================================
-# This workbench uses the RHOAI 3.2 controller-managed authentication pattern:
+# This workbench uses the RHOAI 3.3 controller-managed authentication pattern:
 #
 #   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
 #   - Controller injects: kube-rbac-proxy sidecar for authentication
@@ -58,7 +58,7 @@ spec:
 # -----------------------------------------------------------------------------
 # Key annotation: notebooks.opendatahub.io/inject-auth: "true"
 #
-# This tells the RHOAI 3.2 Notebook Controller to:
+# This tells the RHOAI 3.3 Notebook Controller to:
 #   1. Inject kube-rbac-proxy sidecar for authentication
 #   2. Create {name}-kube-rbac-proxy Service targeting port 8443
 #   3. Create HTTPRoute targeting the kube-rbac-proxy Service
@@ -77,7 +77,7 @@ metadata:
     opendatahub.io/odh-managed: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    # CRITICAL: Use inject-auth (NOT inject-oauth) for RHOAI 3.2
+    # CRITICAL: Use inject-auth (NOT inject-oauth) for RHOAI 3.3
     # This triggers controller to inject kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
     # Hardware Profile: Delegates resource management to the platform

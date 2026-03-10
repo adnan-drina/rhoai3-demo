@@ -227,7 +227,7 @@ Automatic cost control through `OdhDashboardConfig`:
 ## Prerequisites
 
 - [x] Step 01 completed (GPU infrastructure, MachineSets, Kueue Operator)
-- [x] Step 02 completed (RHOAI 3.2 with Hardware Profiles)
+- [x] Step 02 completed (RHOAI 3.3 with Hardware Profiles)
 - [x] GPU nodes available with labels
 
 ---
@@ -434,7 +434,7 @@ oc get pods -n private-ai -w
 
 #### Access the Workbenches
 
-RHOAI 3.2 uses **Gateway API with path-based routing**. HTTPRoutes are auto-created by RHOAI.
+RHOAI 3.3 uses **Gateway API with path-based routing**. HTTPRoutes are auto-created by RHOAI.
 
 ```bash
 # Get the Gateway hostname
@@ -467,9 +467,9 @@ oc delete -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 
 ---
 
-## Understanding Workbenches in RHOAI 3.2
+## Understanding Workbenches in RHOAI 3.3
 
-A **Workbench** is RHOAI's term for a containerized development environment that provides data scientists with familiar tools like JupyterLab, VS Code, or RStudio. In RHOAI 3.2, workbenches are implemented as **Kubeflow Notebook CRs** managed by the ODH Notebook Controller.
+A **Workbench** is RHOAI's term for a containerized development environment that provides data scientists with familiar tools like JupyterLab, VS Code, or RStudio. In RHOAI 3.3, workbenches are implemented as **Kubeflow Notebook CRs** managed by the ODH Notebook Controller.
 
 ### Workbench Architecture
 
@@ -511,7 +511,7 @@ A **Workbench** is RHOAI's term for a containerized development environment that
 
 ### Idle Culling (Resource Management)
 
-RHOAI 3.2 includes an **Idle Notebook Culler** that automatically stops workbenches after a period of inactivity. This is critical for GPU cost optimization.
+RHOAI 3.3 includes an **Idle Notebook Culler** that automatically stops workbenches after a period of inactivity. This is critical for GPU cost optimization.
 
 | Setting | Value | Impact |
 |---------|-------|--------|
@@ -532,7 +532,7 @@ RHOAI 3.2 includes an **Idle Notebook Culler** that automatically stops workbenc
 
 ---
 
-## Workbench GitOps Configuration (RHOAI 3.2)
+## Workbench GitOps Configuration (RHOAI 3.3)
 
 When creating workbenches via GitOps (not Dashboard), the following configurations are **required**:
 
@@ -581,7 +581,7 @@ nodeSelector:
 
 ### Path-Based Routing (Gateway API)
 
-RHOAI 3.2 uses Gateway API instead of individual Routes:
+RHOAI 3.3 uses Gateway API instead of individual Routes:
 
 ```yaml
 env:
@@ -609,7 +609,7 @@ readinessProbe:
 
 ### Authentication Sidecar
 
-RHOAI 3.2 uses `kube-rbac-proxy` instead of OAuth proxy:
+RHOAI 3.3 uses `kube-rbac-proxy` instead of OAuth proxy:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -759,7 +759,7 @@ oc patch notebook demo-workbench-1 -n private-ai --type=merge -p \
 
 ### Workbench Route Not Working
 
-RHOAI 3.2 uses Gateway API, not Routes:
+RHOAI 3.3 uses Gateway API, not Routes:
 
 ```bash
 # Check HTTPRoute exists
@@ -794,11 +794,11 @@ This is a known ArgoCD limitation with OpenShift's `user.openshift.io` API.
 
 ---
 
-## RHOAI 3.2 Architecture Notes
+## RHOAI 3.3 Architecture Notes
 
 ### Gateway API (Path-Based Routing)
 
-RHOAI 3.2 replaced individual Routes with Gateway API:
+RHOAI 3.3 replaced individual Routes with Gateway API:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
@@ -808,7 +808,7 @@ RHOAI 3.2 replaced individual Routes with Gateway API:
 
 ### Authentication (kube-rbac-proxy)
 
-RHOAI 3.2 replaced OAuth proxy with kube-rbac-proxy:
+RHOAI 3.3 replaced OAuth proxy with kube-rbac-proxy:
 
 | Annotation | Old (2.x) | New (3.0) |
 |------------|-----------|-----------|
@@ -888,11 +888,11 @@ oc delete application step-03-private-ai -n openshift-gitops --cascade=foregroun
 ## Documentation Links
 
 ### Official Red Hat Documentation
-- [RHOAI 3.2 - Managing Resources](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_resources/index)
-- [RHOAI 3.2 - Using Connections](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_resources/index#using-connections)
-- [RHOAI 3.2 - Dashboard Configuration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config)
-- [RHOAI 3.2 - User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/managing_users/index)
-- [RHOAI 3.2 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
+- [RHOAI 3.3 - Managing Resources](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index)
+- [RHOAI 3.3 - Using Connections](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#using-connections)
+- [RHOAI 3.3 - Dashboard Configuration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config)
+- [RHOAI 3.3 - User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_users/index)
+- [RHOAI 3.3 - Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_on_data_science_projects/working-with-distributed-workloads_distributed-workloads)
 - [OpenShift - Configuring HTPasswd](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-identity-providers#configuring-htpasswd-identity-provider)
 
 ### GPU Monitoring

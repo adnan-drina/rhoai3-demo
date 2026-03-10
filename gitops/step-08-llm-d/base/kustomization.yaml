@@ -37,10 +37,10 @@ kind: Kustomization
 # Prerequisites:
 #   - LeaderWorkerSet operator installed (Step 01)
 #   - Red Hat Connectivity Link (RHCL) operator installed (Step 01)
-#   - Gateway API configured (RHOAI 3.2 default)
+#   - Gateway API configured (RHOAI 3.3 default)
 #   - 2× g6.4xlarge GPU nodes available
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/deploying_models/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
 # Ref: https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving
 
 resources:

@@ -126,7 +126,7 @@ spec:
                   "customProperties": {
                     "License": {"metadataType": "MetadataStringValue", "string_value": "https://www.apache.org/licenses/LICENSE-2.0"},
                     "Provider": {"metadataType": "MetadataStringValue", "string_value": "IBM"},
-                    "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.2"},
+                    "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.3"},
                     "granite": {"metadataType": "MetadataStringValue", "string_value": ""},
                     "fp8": {"metadataType": "MetadataStringValue", "string_value": ""},
                     "validated": {"metadataType": "MetadataStringValue", "string_value": ""},

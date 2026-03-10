@@ -36,13 +36,13 @@
 #
 # Dashboard Visibility:
 #   LLMInferenceService (v1alpha1) does NOT appear in the RHOAI Dashboard.
-#   This is expected behavior per RHOAI 3.2 - llm-d is managed via CLI only.
+#   This is expected behavior per RHOAI 3.3 - llm-d is managed via CLI only.
 #   Use 'oc get llminferenceservice' to monitor status.
 #
 # ⚠️  DEMO-ONLY: Authentication is disabled for demo simplicity.
 #     For production, implement Red Hat Connectivity Link (RHCL) auth per RHOAI docs.
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/deploying_models/index
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
 
 apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
@@ -150,7 +150,7 @@ spec:
   # If you want an externally reachable HTTPRoute for llm-d, apply the overlay:
   #   gitops/step-08-llm-d/overlays/external-gateway/
   #
-  # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.2/html-single/deploying_models/index
+  # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
   router:
     route: {}
     scheduler: {}

@@ -58,7 +58,7 @@ spec:
     deploymentStrategy:
       type: Recreate
     # Tolerations: Required for GPU node taints
-    # Note: RHOAI 3.2 HardwareProfile with Queue scheduling doesn't inject these
+    # Note: RHOAI 3.3 HardwareProfile with Queue scheduling doesn't inject these
     # Kueue ResourceFlavor has nodeTaints configured for admission decisions
     tolerations:
       - key: nvidia.com/gpu
@@ -90,7 +90,7 @@ spec:
         - --tool-call-parser=mistral
         - --enable-auto-tool-choice
       env:
-        # RHOAI 3.2 GA: V1 engine required
+        # RHOAI 3.3 GA: V1 engine required
         # Driver 570.195.03 provides CUDA 12.x compatibility
         - name: VLLM_USE_V1
           value: "1"
