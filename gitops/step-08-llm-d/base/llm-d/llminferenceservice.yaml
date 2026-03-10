@@ -109,11 +109,8 @@ spec:
     nodeSelector:
       node.kubernetes.io/instance-type: g6.4xlarge
     
-    # Tolerate GPU node taint
-    tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
+    # NOTE (RHOAI 3.3 / Kueue 1.2): Tolerations injected by Kueue from ResourceFlavor.
+    # Do NOT define tolerations here — causes "existing toleration can not be modified" error.
     
     # Container resources - must match controller's container name "main"
     containers:
