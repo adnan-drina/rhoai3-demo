@@ -35,8 +35,6 @@ metadata:
   namespace: minio-storage
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 3600
   backoffLimit: 3
@@ -67,6 +65,8 @@ spec:
             - |
               set -e
               export HOME=/tmp
+              export PYTHONUNBUFFERED=1
+              export HF_HUB_OFFLINE=1
               MODEL_NAME="Granite-3.1-8B-Instruct-FP8"
               HF_REPO="RedHatAI/granite-3.1-8b-instruct-FP8-dynamic"
               S3_PREFIX="granite-3.1-8b-instruct-fp8"

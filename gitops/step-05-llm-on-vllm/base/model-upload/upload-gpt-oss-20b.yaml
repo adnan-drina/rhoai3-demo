@@ -37,8 +37,6 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "1"
 spec:
   ttlSecondsAfterFinished: 3600
@@ -70,6 +68,8 @@ spec:
             - |
               set -e
               export HOME=/tmp
+              export PYTHONUNBUFFERED=1
+              export HF_HUB_OFFLINE=1
               MODEL_NAME="GPT-OSS-20B"
               HF_REPO="RedHatAI/gpt-oss-20b"
               S3_PREFIX="gpt-oss-20b"
