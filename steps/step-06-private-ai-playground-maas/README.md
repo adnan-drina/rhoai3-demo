@@ -275,16 +275,34 @@ oc patch inferenceservice <model> -n private-ai --type merge \
 
 **Symptom:** `lsd-genai-playground` pod keeps restarting.
 
-**Root Cause:** ConfigMap syntax error or invalid model URLs.
+**Root Cause (most common):** LlamaStack v0.4.2.1+rhai0 has a completely different config schema. Check logs for specific validation errors.
 
-**Solution:**
+**Common causes and fixes:**
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `You must provide a URL` | Config uses `url` | Change to `base_url` in vLLM provider configs |
+| `LocalfsFilesImplConfig validation error` | Old SQLite format | Use `table_name` + `backend` instead of `db_path` + `type` |
+| `MilvusVectorIOConfig validation error` | Old Milvus format | Use `inline::milvus` with `db_path` + `persistence` |
+| `duplicate entries for key LLAMA_STACK_CONFIG` | Env var in CR | Remove — operator injects it automatically |
+| `Name or service not known` | Queued model DNS failure | Only register active models (minReplicas: 1) |
+| `rh-dev template merge` | `image_name: rh-dev` | Use `image_name: custom` to prevent template overlay |
+
 ```bash
 # Check LlamaStack logs
 oc logs deployment/lsd-genai-playground -n private-ai --tail=100
 
-# Verify ConfigMap run.yaml syntax
-oc get configmap llama-stack-config -n private-ai -o yaml
+# Verify ConfigMap is v0.4.x compatible
+oc get configmap llama-stack-config -n private-ai -o jsonpath='{.data.config\.yaml}' | python3 -c "import sys,yaml; c=yaml.safe_load(sys.stdin); print(f'version={c.get(\"version\")} image_name={c.get(\"image_name\")} providers={list(c.get(\"providers\",{}).keys())}')"
+
+# Debug config schema in-image
+oc run llama-debug --rm -it --restart=Never \
+  --image=$(oc get llamastackdistribution lsd-genai-playground -n private-ai \
+    -o jsonpath='{.status.distributionConfig.availableDistributions.rh-dev}') \
+  -n default -- python3 -c "from llama_stack.providers.remote.inference.vllm.config import VLLMInferenceAdapterConfig; print([f.name for f in VLLMInferenceAdapterConfig.model_fields.values()])"
 ```
+
+> **Resolved (RHOAI 3.3):** The v0.4.x schema is documented in `docs/resolved-issues.md` — search for "LlamaStack v0.4.x config schema".
 
 ### Model Works Directly but Not in Playground
 
@@ -331,29 +349,36 @@ metadata:
     opendatahub.io/genai-use-case: "chat assistant"
 ```
 
-### LlamaStack Model Registration (in ConfigMap)
+### LlamaStack Model Registration (v0.4.x — in `registered_resources`)
 
 ```yaml
-models:
-- provider_id: vllm-mistral-int4      # Must match provider in providers.inference
-  model_id: mistral-3-int4            # Model name for Playground
-  model_type: llm
-  metadata:
-    display_name: "Mistral-3 INT4 (1-GPU)"
+registered_resources:
+  models:
+  - provider_id: vllm-granite-agent    # Must match provider in providers.inference
+    model_id: granite-8b-agent         # Model name for Playground
+    model_type: llm
+    metadata: {}
 ```
 
-### vLLM Provider Configuration
+### vLLM Provider Configuration (v0.4.x — `base_url` not `url`)
 
 ```yaml
 providers:
   inference:
-  - provider_id: vllm-mistral-int4
+  - provider_id: vllm-granite-agent
     provider_type: remote::vllm
     config:
-      url: http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1
-      max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-      tls_verify: false  # Internal cluster communication
+      base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+      max_tokens: 4096
+      tls_verify: false
 ```
+
+> **Important (RHOAI 3.3 / LlamaStack v0.4.x):**
+> - Use `base_url`, not `url` (field renamed)
+> - Use `image_name: custom` to prevent rh-dev template merge
+> - Only register active models (minReplicas: 1) — queued models cause DNS failures
+> - Storage references use `table_name` + `backend`, not `db_path` + `type`
+> - Do NOT set `LLAMA_STACK_CONFIG` in `containerSpec.env` — operator injects it
 
 ## Rollback / Cleanup
 
