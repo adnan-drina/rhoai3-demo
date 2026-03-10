@@ -13,57 +13,61 @@ In enterprise environments, GPU resources are expensive and shared. Teams can't 
 
 ## Demo Overview
 
+### GPU Configuration (Sandbox-Optimized)
+
+| Node | Instance | GPUs | vCPU | Active Model |
+|------|----------|------|------|-------------|
+| GPU Worker 1 | g6.4xlarge | 1x L4 | 16 | `granite-8b-agent` (FP8) |
+| GPU Worker 2 | g6.12xlarge | 4x L4 | 48 | `mistral-3-bf16` (BF16) |
+| **Total** | | **5 GPUs** | **64 vCPU** | Fits 64 GPU vCPU sandbox limit |
+
 ### Enterprise Model Portfolio (5 Red Hat Validated Models)
 
-Our cluster has **5 GPUs** with a **5 GPU quota**, but access to **14 GPUs worth of models**:
+| Model | GPUs | Status | Node | Use Case |
+|-------|------|--------|------|----------|
+| **granite-8b-agent** | 1 | ✅ Active | g6.4xlarge | RAG, MCP, Guardrails, Playground |
+| **mistral-3-bf16** | 4 | ✅ Active | g6.12xlarge | Full-precision LLM, Playground |
+| **mistral-3-int4** | 1 | ⏸️ Queued | (swap with granite-8b) | Cost-efficient chat (75% savings) |
+| **devstral-2** | 4 | ⏸️ Queued | (swap with mistral-bf16) | Agentic tool-calling |
+| **gpt-oss-20b** | 4 | ⏸️ Queued | (swap with mistral-bf16) | High-reasoning |
 
-| Model | GPUs | Status | Provider | Use Case |
-|-------|------|--------|----------|----------|
-| **mistral-3-bf16** | 4 | ✅ Active | Mistral AI | Primary Production |
-| **mistral-3-int4** | 1 | ✅ Active | Neural Magic | Cost-efficient (75% savings) |
-| **devstral-2** | 4 | ⏸️ Queued | Mistral AI | Agentic Tool-calling |
-| **gpt-oss-20b** | 4 | ⏸️ Queued | RedHatAI | High-reasoning (Oct 2025) |
-| **granite-8b-agent** | 1 | ⏸️ Queued | IBM/Red Hat | RAG/Tool-call (May 2025) |
-
-**Total Potential:** 14 GPUs | **Quota Limit:** 5 GPUs
+**Total Potential:** 14 GPUs | **Quota Limit:** 5 GPUs | **Active:** 5/5
 
 ### Demo Scenarios
 
 ```
 ═══════════════════════════════════════════════════════════════
-SCENARIO 1: RESOURCE HANDOVER
+SCENARIO 1: 4-GPU MODEL SWAP
 ───────────────────────────────────────────────────────────────
-Story: "Switch from general-purpose Mistral to specialized Devstral"
+Story: "Switch from general-purpose Mistral to high-reasoning GPT-OSS"
 
-Before: BF16 (4) + INT4 (1) = 5 GPUs
-Action: Enable Devstral → PENDING ⏳ (over quota)
-Fix:    Disable BF16 → Devstral INSTANTLY starts! ⚡
-After:  Devstral (4) + INT4 (1) = 5 GPUs
+Before: granite-8b (1) + mistral-bf16 (4) = 5 GPUs
+Action: Scale bf16 → 0, scale gpt-oss-20b → 1
+After:  granite-8b (1) + gpt-oss-20b (4) = 5 GPUs
 
 ═══════════════════════════════════════════════════════════════
-SCENARIO 2: EFFICIENCY STORY
+SCENARIO 2: 1-GPU MODEL SWAP
 ───────────────────────────────────────────────────────────────
-Story: "Trade 1x 4-GPU model for 4x 1-GPU specialists"
+Story: "Switch agent model to quantized chat model"
 
-Before: BF16 (4) + INT4 (1) = 5 GPUs (2 models)
-After:  Granite (1) + GPT-OSS (1) + INT4 (1) + ... = 4+ specialists
-
-Message: "Same 5 GPUs, 4x more specialized workloads!"
+Before: granite-8b (1) + mistral-bf16 (4) = 5 GPUs
+Action: Scale granite-8b → 0, scale mistral-int4 → 1
+After:  mistral-int4 (1) + mistral-bf16 (4) = 5 GPUs
 
 ═══════════════════════════════════════════════════════════════
-SCENARIO 3: PRIORITY QUEUE
+SCENARIO 3: FULL SWAP (both nodes)
 ───────────────────────────────────────────────────────────────
-Story: "Kueue ensures fair access - no GPU hoarding"
+Story: "Completely different model portfolio, same hardware"
 
-Action: Enable ALL 5 models (14 GPUs requested)
-Result: Only 5 GPUs admitted, rest queued
-Watch:  Disable one → Another AUTO-STARTS
+Before: granite-8b (1) + mistral-bf16 (4) = 5 GPUs
+Action: Scale both → 0, enable gpt-oss-20b + mistral-int4
+After:  mistral-int4 (1) + gpt-oss-20b (4) = 5 GPUs
 
 ═══════════════════════════════════════════════════════════════
 THE KEY MESSAGE:
-"This is GPU-as-a-Service. Model Registry provides governance,
-Kueue provides resource arbitration. Organizations access a wide
-range of Red Hat Validated models while controlling AWS GPU costs."
+"This is GPU-as-a-Service. 5 models registered, 2 active at
+any time, swappable on demand. Kueue enforces quotas while
+Model Registry provides governance."
 ═══════════════════════════════════════════════════════════════
 ```
 
@@ -77,8 +81,8 @@ range of Red Hat Validated models while controlling AWS GPU costs."
 │  ┌──────────────────────────┐  ┌────────────────────────────────────┐  │
 │  │     MinIO (S3 Storage)   │  │    Red Hat Registry (OCI)          │  │
 │  │  s3://models/mistral-24b │  │  registry.redhat.io/rhelai1/       │  │
-│  │      (~48GB BF16)        │  │  modelcar-...-quantized-w4a16:1.5  │  │
-│  │  For models > 20GB       │  │  (~13.5GB INT4) For models < 20GB  │  │
+│  │  s3://models/granite-8b  │  │  modelcar-...-quantized-w4a16:1.5  │  │
+│  │  s3://models/gpt-oss-20b │  │  (~13.5GB INT4)                    │  │
 │  └──────────────────────────┘  └────────────────────────────────────┘  │
 │              │                                    │                     │
 │              ▼                                    ▼                     │
@@ -87,17 +91,17 @@ range of Red Hat Validated models while controlling AWS GPU costs."
 │  │   (4x NVIDIA L4)        │  │   (1x NVIDIA L4)        │              │
 │  │                         │  │                         │              │
 │  │  ┌───────────────────┐  │  │  ┌───────────────────┐  │              │
-│  │  │ mistral-3-bf16    │  │  │  │ mistral-3-int4    │  │              │
-│  │  │      OR           │  │  │  │ Always Running    │  │              │
-│  │  │ devstral-2        │  │  │  │                   │  │              │
-│  │  │ (swapped via Kueue)│ │  │  │                   │  │              │
+│  │  │ mistral-3-bf16    │  │  │  │ granite-8b-agent  │  │              │
+│  │  │      OR           │  │  │  │      OR           │  │              │
+│  │  │ gpt-oss-20b       │  │  │  │ mistral-3-int4    │  │              │
+│  │  │ (swapped via Kueue)│ │  │  │ (swapped via Kueue)│ │              │
 │  │  └───────────────────┘  │  │  └───────────────────┘  │              │
 │  └─────────────────────────┘  └─────────────────────────┘              │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                        Kueue Controller                          │   │
-│  │  ClusterQueue: rhoai-main-queue (5 GPUs quota)                  │   │
-│  │  ResourceFlavors: nvidia-l4-1gpu, nvidia-l4-4gpu                │   │
+│  │  ClusterQueue: rhoai-main-queue (1 + 4 = 5 GPUs quota)         │   │
+│  │  ResourceFlavors: default-flavor, nvidia-l4-1gpu, nvidia-l4-4gpu│   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -105,39 +109,20 @@ range of Red Hat Validated models while controlling AWS GPU costs."
 
 ## Model Portfolio
 
-### Active Models (Baseline Saturation)
+### Active Models (Baseline)
 
 | Name | GPUs | Hardware | Storage | Provider | Description |
 |------|------|----------|---------|----------|-------------|
-| **mistral-3-bf16** | 4 | g6.12xlarge | S3 | Mistral AI | Primary 24B full precision |
-| **mistral-3-int4** | 1 | g6.4xlarge | OCI | Neural Magic | 75% cost savings (INT4 W4A16) |
+| **granite-8b-agent** | 1 | g6.4xlarge | S3 | IBM/Red Hat | RAG, MCP tools, Guardrails (Steps 06, 09-12) |
+| **mistral-3-bf16** | 4 | g6.12xlarge | S3 | Mistral AI | Full-precision 24B LLM, Playground chat |
 
-### Queued Models (Ready for Activation)
+### Queued Models (Swap to Activate)
 
-| Name | GPUs | Hardware | Storage | Provider | Description |
-|------|------|----------|---------|----------|-------------|
-| **devstral-2** | 4 | g6.12xlarge | S3 | Mistral AI | Agentic tool-calling |
-| **gpt-oss-20b** | 4 | g6.12xlarge | S3 | RedHatAI | High-reasoning (Oct 2025) |
-| **granite-8b-agent** | 1 | g6.4xlarge | S3 | IBM/Red Hat | RAG & tool-call (May 2025) |
-
-### Model Highlights
-
-#### 🏆 Granite 3.1 8B Agent: "Small but Mighty"
-
-The flagship model for **agentic workflows**:
-- **Tool-calling**: Native support via `--chat-template=granite`
-- **Function-calling**: `--enable-auto-tool-choice` for Agent Playground
-- **RAG-ready**: 16k context for long retrieval contexts
-- **Efficient**: FP8 quantization fits on single L4 (~8GB VRAM)
-
-> *"Granite 3.1 models are designed for high-performance agentic workflows, featuring native support for tool-calling and enhanced RAG capabilities."*
-
-#### 🧠 GPT-OSS-20B: "The Reasoning Lead"
-
-Enterprise-vetted reasoning model (October 2025 Collection):
-- **Complex reasoning**: Multi-step instruction following
-- **OpenAI-alternative**: Same API, enterprise-supported
-- **Full precision**: BF16 on 4-GPU for maximum quality
+| Name | GPUs | Hardware | Storage | Provider | Swap With |
+|------|------|----------|---------|----------|-----------|
+| **mistral-3-int4** | 1 | g6.4xlarge | OCI | Neural Magic | granite-8b-agent |
+| **devstral-2** | 4 | g6.12xlarge | S3 | Mistral AI | mistral-3-bf16 |
+| **gpt-oss-20b** | 4 | g6.12xlarge | S3 | RedHatAI | mistral-3-bf16 |
 
 ### Storage Strategy
 
@@ -148,17 +133,16 @@ Enterprise-vetted reasoning model (October 2025 Collection):
 
 ## Prerequisites
 
-### 1. Scale AWS MachineSets
+### 1. GPU Nodes
 
 ```bash
-CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
+# Verify GPU nodes are Ready
+oc get nodes -l node-role.kubernetes.io/gpu -o custom-columns='NAME:.metadata.name,TYPE:.metadata.labels.node\.kubernetes\.io/instance-type,GPU:.status.allocatable.nvidia\.com/gpu'
 
-# Scale for 5 total GPUs
-oc scale machineset ${CLUSTER_ID}-gpu-g6-12xlarge-us-east-2b -n openshift-machine-api --replicas=1
-oc scale machineset ${CLUSTER_ID}-gpu-g6-4xlarge-us-east-2b -n openshift-machine-api --replicas=1
-
-# Verify nodes (3-5 minutes)
-oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4
+# Expected:
+# NAME          TYPE           GPU
+# ip-...        g6.4xlarge     1
+# ip-...        g6.12xlarge    4
 ```
 
 ### 2. Upload Models to MinIO
@@ -167,23 +151,17 @@ oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4
 # Create HuggingFace token secret
 oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxxYOURTOKENxxx
 
-# Upload Mistral BF16 (required for baseline)
-oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-bf16.yaml
-oc logs -f job/upload-mistral-bf16 -n minio-storage  # ~30-60 min
-
-# Optional: Upload extended portfolio models
-oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-gpt-oss-20b.yaml
-oc logs -f job/upload-gpt-oss-20b -n minio-storage  # ~30 min
-
+# Upload models (granite-8b is fastest ~10 min, mistral-bf16 ~30 min, gpt-oss ~30 min)
 oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-granite-8b.yaml
-oc logs -f job/upload-granite-8b -n minio-storage  # ~10 min
+oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-bf16.yaml
+oc apply -f gitops/step-05-llm-on-vllm/base/model-upload/upload-gpt-oss-20b.yaml
 ```
 
 ### 3. Verify Kueue Quota
 
 ```bash
-# ClusterQueue should show nominalQuota: 5 for nvidia.com/gpu
 oc get clusterqueue rhoai-main-queue -o yaml | grep -A20 "resourceGroups"
+# Should show: default-flavor (0 GPU), nvidia-l4-1gpu (1 GPU), nvidia-l4-4gpu (4 GPU)
 ```
 
 ## Deployment
@@ -191,263 +169,155 @@ oc get clusterqueue rhoai-main-queue -o yaml | grep -A20 "resourceGroups"
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-05-llm-on-vllm/deploy.sh
+CONFIRM=true ./steps/step-05-llm-on-vllm/deploy.sh
 ```
 
-### B) Step-by-step (exact commands)
-
-For manual deployment or debugging:
+### B) Step-by-step
 
 ```bash
-# 1. Validate manifests (dry-run)
-kustomize build gitops/step-05-llm-on-vllm/base | oc apply --dry-run=server -f -
+# 1. Apply active models FIRST (get admitted by Kueue)
+oc apply -f gitops/step-05-llm-on-vllm/base/serving-runtime/vllm-runtime.yaml
+oc apply -f gitops/step-05-llm-on-vllm/base/inference/granite-8b-agent.yaml
+oc apply -f gitops/step-05-llm-on-vllm/base/inference/mistral-3-bf16.yaml
 
-# 2. Apply Argo CD Application (or apply directly)
-oc apply -f gitops/argocd/app-of-apps/step-05-llm-on-vllm.yaml
-
-# Or apply directly without ArgoCD:
-oc apply -k gitops/step-05-llm-on-vllm/base/
-
-# 3. Wait for ServingRuntime to be created
-until oc get servingruntime vllm-runtime -n private-ai &>/dev/null; do sleep 5; done
-
-# 4. Wait for InferenceServices to be created
+# 2. Wait for active models to be Ready
 oc get inferenceservice -n private-ai -w
+# Wait until granite-8b-agent and mistral-3-bf16 show Ready=True
 
-# 5. Check which InferenceServices are admitted by Kueue
-oc get workloads -n private-ai
-
-# 6. Wait for active models to be ready (this may take 5-10 minutes for model download)
-oc get inferenceservice -n private-ai -o custom-columns=NAME:.metadata.name,READY:.status.conditions[0].status,URL:.status.url
+# 3. Then deploy queued models (minReplicas: 0)
+oc apply -f gitops/step-05-llm-on-vllm/base/inference/mistral-3-int4.yaml
+oc apply -f gitops/step-05-llm-on-vllm/base/inference/devstral-2.yaml
+oc apply -f gitops/step-05-llm-on-vllm/base/inference/gpt-oss-20b.yaml
 ```
 
-> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
+> **Important**: Deploy active models BEFORE queued models. Kueue admits in creation order —
+> if a queued 4-GPU model is created before the active 4-GPU model, it grabs the quota first.
 
----
+## Running the Demo: Model Swapping
 
-## Running the Demo
-
-### CLI-as-SOP Pattern
-
-This demo uses a **"CLI-First Guide"** approach, demonstrating Platform Engineering reality:
-the notebook serves as the **Standard Operating Procedure (SOP)**, using native `oc` commands.
-
-This makes it clear to the audience that RHOAI is **standard Kubernetes/OpenShift** under the hood.
-
-### Option 1: GPU Orchestrator Notebook (Recommended)
-
-1. Open the RHOAI Dashboard
-2. Navigate to **Data Science Projects** → **private-ai**
-3. Create a new workbench (or use an existing one)
-4. Upload and open `GPU-Orchestrator.ipynb`
-5. Follow the step-by-step CLI commands with explanations
-
-The notebook covers three scenarios:
-- **Scenario 1:** Resource Conflict (request more GPUs than available)
-- **Scenario 2:** Dynamic Handover (release GPUs to unblock queue)
-- **Scenario 3:** Efficiency Portfolio (trade 1 big model for specialists)
-
-> **Note:** The GPU-Orchestrator notebook is available as a reference SOP. Create your own workbench via the RHOAI Dashboard for interactive exploration.
-
-### Option 2: Direct CLI Commands
+### Swap 4-GPU Model (bf16 → gpt-oss-20b)
 
 ```bash
-# Step 0: Verify baseline (5/5 GPUs used)
-oc get inferenceservice -n private-ai
-oc get workloads -n private-ai
+# Scale down mistral-3-bf16
+oc patch inferenceservice mistral-3-bf16 -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":0}}}'
 
-# Step 1: Scale up Devstral-2 (will be PENDING - over quota)
-oc scale deployment devstral-2-predictor -n private-ai --replicas=1
-oc get workloads -n private-ai  # Shows PENDING
+# Scale up gpt-oss-20b
+oc patch inferenceservice gpt-oss-20b -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":1}}}'
 
-# Step 2: Scale down BF16 to trigger handover
-oc scale deployment mistral-3-bf16-predictor -n private-ai --replicas=0
-# Watch Devstral-2 start INSTANTLY!
-oc get pods -n private-ai -l serving.kserve.io/inferenceservice
-
-# Step 3: Reset to baseline
-oc scale deployment mistral-3-bf16-predictor -n private-ai --replicas=1
-oc scale deployment devstral-2-predictor -n private-ai --replicas=0
+# Watch the swap
+oc get inferenceservice -n private-ai -w
 ```
 
-### Why Scale Deployments (Not InferenceServices)
+### Swap 1-GPU Model (granite-8b → mistral-int4)
 
-RHOAI 3.3 uses **RawDeployment mode** by default (not Knative Serving). This means:
-- Each InferenceService creates a Deployment named `{name}-predictor`
-- `oc scale inferenceservice` doesn't work (scale subresource not implemented)
-- `oc scale deployment {name}-predictor` is immediate and reliable
+```bash
+# Scale down granite-8b-agent
+oc patch inferenceservice granite-8b-agent -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":0}}}'
 
-| InferenceService | Deployment | GPUs |
-|------------------|------------|------|
-| mistral-3-bf16 | mistral-3-bf16-predictor | 4 |
-| mistral-3-int4 | mistral-3-int4-predictor | 1 |
-| devstral-2 | devstral-2-predictor | 4 |
-| granite-8b-agent | granite-8b-agent-predictor | 1 |
-| gpt-oss-20b | gpt-oss-20b-predictor | 4 |
+# Scale up mistral-3-int4
+oc patch inferenceservice mistral-3-int4 -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":1}}}'
+
+# Watch the swap
+oc get inferenceservice -n private-ai -w
+```
+
+### Reset to Baseline
+
+```bash
+# Restore active models
+oc patch inferenceservice granite-8b-agent -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":1}}}'
+oc patch inferenceservice mistral-3-bf16 -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":1}}}'
+
+# Scale down swapped models
+oc patch inferenceservice gpt-oss-20b -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":0}}}'
+oc patch inferenceservice mistral-3-int4 -n private-ai --type merge \
+  -p '{"spec":{"predictor":{"minReplicas":0}}}'
+```
 
 ## Validation
 
-### Test the Models
+### Test Active Models
 
 ```bash
+# Granite-8B Agent (1-GPU) — the demo workhorse
+curl -s -k https://granite-8b-agent-private-ai.apps.<cluster>/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "granite-8b-agent", "messages": [{"role": "user", "content": "Hello!"}]}' | jq .
+
 # Mistral-3-BF16 (4-GPU)
 curl -s -k https://mistral-3-bf16-private-ai.apps.<cluster>/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "mistral-3-bf16", "messages": [{"role": "user", "content": "Hello!"}]}' | jq .
-
-# Mistral-3-INT4 (1-GPU)
-curl -s -k https://mistral-3-int4-private-ai.apps.<cluster>/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "mistral-3-int4", "messages": [{"role": "user", "content": "Hello!"}]}' | jq .
 ```
 
 ### Check Kueue Status
 
 ```bash
-# Workloads in the queue
+# View in RHOAI Dashboard: Observe & monitor → Workload metrics → Distributed workload status
 oc get workload -n private-ai
-
-# ClusterQueue admission status
 oc describe clusterqueue rhoai-main-queue
 ```
 
 ## Troubleshooting
 
-### Workload Stuck in Pending
+### Kueue Admits Wrong Model First
 
-```bash
-# Check why workload isn't admitted
-oc describe workload -n private-ai <workload-name>
+**Symptom:** A queued model (minReplicas:0) gets admitted instead of an active model.
 
-# Common causes:
-# 1. Insufficient quota → Check nominalQuota in ClusterQueue
-# 2. No matching ResourceFlavor → Check nodeLabels match actual nodes
-# 3. Missing tolerations → Check ResourceFlavor has tolerations
-```
+**Root Cause:** All InferenceServices created simultaneously — Kueue admits in creation order.
 
-### Kueue + Rolling Update Deadlock (SchedulingGated Pods)
+**Fix:** Deploy active models first, wait for Ready, then deploy queued models. See Deployment section.
 
-**Symptom:** Two predictor pods for the same model - one Running, one `SchedulingGated`:
+### vLLM v0.13.0 CUDA Out of Memory (RHOAI 3.3)
 
-```
-mistral-3-int4-predictor-58595d486-67n5x    0/2     SchedulingGated   0          5m
-mistral-3-int4-predictor-7b686578fb-rq7tk   2/2     Running           0          4h
-```
+**Symptom:** `CUDA out of memory occurred when warming up sampler with 256 dummy requests`
 
-**Root Cause:** When an annotation changes (e.g., ArgoCD tracking label), Kubernetes triggers a rolling update. With `RollingUpdate` strategy:
-1. New pod is created to replace the old one
-2. Kueue gates the new pod because GPU quota is full (old pod still holds it)
-3. Old pod can't terminate until new pod is ready
-4. **Deadlock**: Neither pod can progress
+**Root Cause:** vLLM v0.13.0 (RHOAI 3.3) uses more VRAM during warmup than v0.9.x.
 
-**Solution (GitOps):** All InferenceServices use `deploymentStrategy.type: Recreate`:
-
-```yaml
-spec:
-  predictor:
-    deploymentStrategy:
-      type: Recreate    # Terminates old pod BEFORE creating new one
-```
-
-This is already configured in all InferenceService manifests. With `Recreate`:
-1. Old pod terminates first (releasing GPU quota)
-2. New pod is created
-3. Kueue admits the new pod (quota now available)
-
-**Manual Fix (if deadlock already occurred):**
-
-```bash
-# 1. Force delete the SchedulingGated pod
-oc delete pod <schedulinggated-pod> -n private-ai --force --grace-period=0
-
-# 2. Scale down the stale ReplicaSet
-oc get rs -n private-ai | grep <model>-predictor
-oc scale rs/<stale-replicaset> -n private-ai --replicas=0
-```
-
-> **Design Decision (RHOAI 3.3):** We use `Recreate` strategy for all GPU-intensive InferenceServices
-> to prevent Kueue admission deadlocks. This causes brief unavailability during updates but
-> ensures deterministic behavior in quota-constrained environments.
-
-### OCI Image Pull Fails: "No Space Left"
-
-```bash
-# OCI images > 20GB exceed CRI-O overlay limits
-# Solution: Use S3 storage instead (see mistral-3-bf16.yaml)
-```
-
-### CUDA Driver Error 803
-
-See [Red Hat KB 7134740](https://access.redhat.com/solutions/7134740) for driver downgrade instructions.
-
-### Granite Model: Chat Template or Quantization Errors
-
-**Symptom 1:** `ValueError: The supplied chat template string (granite) appears path-like, but doesn't exist!`
-
-**Root Cause:** vLLM doesn't have a built-in template named "granite". The Granite model has its template in `tokenizer_config.json`.
-
-**Fix:** Remove `--chat-template=granite` from the InferenceService args.
-
-**Symptom 2:** `Quantization method specified in the model config (compressed-tensors) does not match the quantization method specified in the 'quantization' argument (fp8)`
-
-**Root Cause:** The `RedHatAI/granite-3.1-8b-instruct-FP8-dynamic` model uses `compressed-tensors` format, not the generic `fp8` format.
-
-**Fix:** Remove `--quantization=fp8` - vLLM auto-detects the quantization from the model config.
-
-**Working Granite Args:**
+**Fix:** Reduce memory parameters:
 ```yaml
 args:
-  - --served-model-name=granite-8b-agent
-  - --max-model-len=16384
-  - --gpu-memory-utilization=0.9
-  - --trust-remote-code
-  - --enable-auto-tool-choice
-  - --tool-call-parser=granite
+  - --max-model-len=16384        # was 32768
+  - --gpu-memory-utilization=0.85 # was 0.9
+  - --max-num-seqs=128           # reduces warmup memory
 ```
 
-### Workbench: Route Access Issues
+### Kueue Toleration Conflict (SchedulingGated)
 
-**Root Cause:** Using the wrong annotation for RHOAI 3.3 workbenches.
+**Symptom:** Pod stays `SchedulingGated` with error: `spec.tolerations: Forbidden: existing toleration can not be modified`
 
-| Annotation | Effect | Use Case |
-|------------|--------|----------|
-| `inject-auth: "true"` | Controller injects `kube-rbac-proxy` sidecar | ✅ **RHOAI 3.3 (use this)** |
-| `inject-oauth: "true"` | OLD pattern, requires manual oauth-proxy sidecar | ❌ RHOAI 2.x (deprecated) |
+**Root Cause:** Kueue injects tolerations from ResourceFlavor. If the pod already defines tolerations, Kubernetes rejects the modification.
 
-**Solution:** Use `notebooks.opendatahub.io/inject-auth: "true"` and let the controller manage:
+**Fix (RHOAI 3.3 / Kueue 1.2):** Do NOT define GPU tolerations in workload manifests. Let Kueue inject them from the ResourceFlavor. See [Kueue ResourceFlavor docs](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/).
 
-```yaml
-apiVersion: kubeflow.org/v1
-kind: Notebook
-metadata:
-  annotations:
-    # CRITICAL: Use inject-auth for RHOAI 3.3
-    notebooks.opendatahub.io/inject-auth: "true"
-spec:
-  template:
-    spec:
-      containers:
-        - name: my-workbench
-          # Only define the notebook container
-          # The kube-rbac-proxy sidecar is AUTO-INJECTED
+### Kueue + Rolling Update Deadlock
+
+**Symptom:** Two predictor pods — one Running, one `SchedulingGated`.
+
+**Fix:** All InferenceServices use `deploymentStrategy.type: Recreate` (already configured).
+
+### ServingRuntime Shows "Outdated"
+
+**Symptom:** RHOAI dashboard shows "Outdated" label on serving runtime.
+
+**Root Cause:** Custom ServingRuntime uses older vLLM image than RHOAI 3.3 default.
+
+**Fix:** Update runtime image to match RHOAI 3.3 default:
+```bash
+# Check RHOAI 3.3 default image
+oc get template vllm-cuda-runtime-template -n redhat-ods-applications \
+  -o jsonpath='{.objects[0].spec.containers[0].image}'
+
+# Update annotation
+opendatahub.io/runtime-version: v0.13.0
 ```
-
-The controller automatically creates:
-- `{name}-kube-rbac-proxy` Service (port 8443)
-- HTTPRoute targeting the kube-rbac-proxy Service
-- TLS certificates and ConfigMap
-- NetworkPolicies for proper ingress
-
-## Why CLI-First Demo?
-
-| Approach | Benefit |
-|----------|---------|
-| **Transparency** | Shows OpenShift AI uses standard Kubernetes commands |
-| **Realism** | This is how real Platform Engineers manage model capacity |
-| **Simplicity** | No widget debugging—`oc scale` just works |
-| **Portability** | Commands work in any terminal, not just Jupyter |
-
-> **Tip:** Create a workbench via the RHOAI Dashboard if you prefer a notebook-based SOP experience.
 
 ## GitOps Structure
 
@@ -455,18 +325,17 @@ The controller automatically creates:
 gitops/step-05-llm-on-vllm/base/
 ├── kustomization.yaml
 ├── serving-runtime/
-│   └── vllm-runtime.yaml              # Thin vLLM runtime
+│   └── vllm-runtime.yaml              # vLLM v0.13.0 (RHOAI 3.3)
 ├── inference/
 │   ├── kustomization.yaml
+│   ├── granite-8b-agent.yaml          # 1-GPU, S3, minReplicas: 1 (Active)
 │   ├── mistral-3-bf16.yaml            # 4-GPU, S3, minReplicas: 1 (Active)
-│   ├── mistral-3-int4.yaml            # 1-GPU, OCI, minReplicas: 1 (Active)
+│   ├── mistral-3-int4.yaml            # 1-GPU, OCI, minReplicas: 0 (Queued)
 │   ├── devstral-2.yaml                # 4-GPU, S3, minReplicas: 0 (Queued)
-│   ├── gpt-oss-20b.yaml               # 4-GPU, S3, minReplicas: 0 (Queued)
-│   └── granite-8b-agent.yaml          # 1-GPU, S3, minReplicas: 0 (Queued)
+│   └── gpt-oss-20b.yaml              # 4-GPU, S3, minReplicas: 0 (Queued)
 ├── model-registration/
 │   └── seed-job.yaml                  # Register 5 models in Registry
 └── model-upload/
-    ├── kustomization.yaml
     ├── upload-mistral-bf16.yaml       # Mistral BF16 (~48GB)
     ├── upload-gpt-oss-20b.yaml        # GPT-OSS (~44GB)
     └── upload-granite-8b.yaml         # Granite (~8GB)
@@ -474,82 +343,29 @@ gitops/step-05-llm-on-vllm/base/
 
 ## Key RHOAI 3.3 Design Patterns
 
-### Dynamic Admission (Kueue)
+### Kueue Tolerations (Automatic Injection)
 
-> *"Kueue allows for the declarative management of resource quotas. By submitting more work than the quota allows, administrators can demonstrate the deterministic queueing behavior required for shared enterprise GPU clusters."*
-
-### KServe Replica Management
-
-> *"Setting minReplicas to 1 ensures immediate availability, while minReplicas 0 allows for cost-optimization. Managing these fields via API allows for higher-level orchestration of inference capacity."*
+> *Kueue injects tolerations from ResourceFlavor into pods when unsuspending. Workloads must NOT define their own GPU tolerations — Kueue handles it.*
+> Ref: [Kueue ResourceFlavor](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/)
 
 ### Deployment Strategy: Recreate (GPU Quota Safety)
 
-All InferenceServices in this demo use `deploymentStrategy.type: Recreate`:
+> *All InferenceServices use `deploymentStrategy.type: Recreate` to prevent Kueue admission deadlocks in GPU-constrained environments.*
 
-```yaml
-spec:
-  predictor:
-    deploymentStrategy:
-      type: Recreate
-```
+### ServingRuntime Alignment
 
-**Why?** In GPU-constrained environments managed by Kueue, the default `RollingUpdate` strategy causes deadlocks:
-- New pods can't start (Kueue gates them due to quota)
-- Old pods can't terminate (waiting for new pods to be ready)
-
-**Trade-off:** Brief unavailability during updates vs. deterministic quota-safe updates.
-
-> **Best Practice:** Use `Recreate` for all GPU-intensive workloads in Kueue-managed namespaces.
-
----
-
-## Rollback / Cleanup
-
-### Remove LLM Deployments
-
-```bash
-# 1. Scale down all InferenceServices (releases GPUs immediately)
-oc scale inferenceservice --all -n private-ai --replicas=0
-
-# 2. Delete InferenceServices
-oc delete inferenceservice --all -n private-ai
-
-# 3. Delete ServingRuntime
-oc delete servingruntime vllm-runtime -n private-ai
-
-# 4. Delete Argo CD Application
-oc delete application step-05-llm-on-vllm -n openshift-gitops
-```
-
-### Remove Model Artifacts from MinIO
-
-```bash
-# Connect to MinIO and delete model files
-MINIO_POD=$(oc get pod -n minio-storage -l app=minio -o jsonpath='{.items[0].metadata.name}')
-oc exec -n minio-storage $MINIO_POD -- mc rm -r --force local/models/
-```
-
-### GitOps Revert (alternative)
-
-```bash
-# Remove from Git and let Argo CD prune
-git revert <commit-with-step-05>
-git push
-
-# Or delete Argo CD Application with cascade
-oc delete application step-05-llm-on-vllm -n openshift-gitops --cascade=foreground
-```
+> *The vllm-runtime ServingRuntime uses the RHOAI 3.3 default image (v0.13.0). Verify alignment with: `oc get template vllm-cuda-runtime-template -n redhat-ods-applications -o jsonpath='{.objects[0].metadata.annotations.opendatahub\.io/runtime-version}'`*
 
 ---
 
 ## Official Documentation
 
+- [RHOAI 3.3 Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
 - [RHOAI 3.3 Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index)
-- [Kueue Integration](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index#configuring-quota-management-for-distributed-workloads_distributed-workloads)
-- [KServe Storage Configuration](https://kserve.github.io/website/latest/modelserving/storage/)
-- [Red Hat KB: NVIDIA Driver 580.x Compatibility](https://access.redhat.com/solutions/7134740)
+- [Kueue ResourceFlavor](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/)
+- [Red Hat KB: NVIDIA Driver Compatibility](https://access.redhat.com/solutions/7134740)
 
 ## Next Steps
 
-- **Step 06**: RAG Pipeline with LangChain
-- **Step 07**: Agent Playground with Bee Framework
+- **Step 06**: GenAI Playground (LlamaStack + models in Playground UI)
+- **Step 07**: Model Performance Metrics (Grafana, GuideLLM, Tekton)
