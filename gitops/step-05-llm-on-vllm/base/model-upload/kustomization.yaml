@@ -13,9 +13,10 @@ kind: Kustomization
 #   - 300GB EBS nodes can handle 50GB+ model weights
 #
 # ArgoCD Sync Behavior:
-#   - Jobs use sync-wave: 1 to run BEFORE InferenceServices
+#   - PVCs are managed by ArgoCD (persistent storage for model cache)
+#   - Jobs use argocd.argoproj.io/hook: Skip — ArgoCD ignores them
+#   - Jobs are run by deploy.sh (oc apply -f) only, not by ArgoCD
 #   - Jobs are idempotent - they skip if model already exists in MinIO
-#   - PVCs persist to avoid re-downloading on subsequent syncs
 #
 # Prerequisites:
 #   - HF token (optional for public models): 

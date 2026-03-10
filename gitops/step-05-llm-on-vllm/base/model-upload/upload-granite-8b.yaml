@@ -34,8 +34,7 @@ metadata:
   name: upload-granite-8b
   namespace: minio-storage
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
+    argocd.argoproj.io/hook: Skip
 spec:
   ttlSecondsAfterFinished: 3600
   activeDeadlineSeconds: 1800
