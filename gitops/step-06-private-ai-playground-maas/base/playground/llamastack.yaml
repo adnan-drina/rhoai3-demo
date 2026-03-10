@@ -148,6 +148,9 @@ data:
         provider_type: inline::milvus
         config:
           db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          persistence:
+            namespace: milvus_vectors
+            backend: kv_default
       agents:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
