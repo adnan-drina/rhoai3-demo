@@ -73,13 +73,15 @@ spec:
         - --served-model-name=mistral-3-bf16
         - --tensor-parallel-size=4
         - --dtype=bfloat16
-        # Full 32K context - native Mistral Small v3 support
-        - --max-model-len=32768
+        # Context length reduced for vLLM v0.13.0 (RHOAI 3.3) warmup memory
+        # v0.13.0 uses more VRAM during warmup than v0.9.x
+        - --max-model-len=16384
         # FP8 KV cache doubles effective capacity (40GB → 80GB)
         - --kv-cache-dtype=fp8
         # Chunked prefill prevents long prompts from blocking other users
         - --enable-chunked-prefill
-        - --gpu-memory-utilization=0.9
+        - --gpu-memory-utilization=0.85
+        - --max-num-seqs=128
         - --trust-remote-code
         # Agentic features
         - --tool-call-parser=mistral
