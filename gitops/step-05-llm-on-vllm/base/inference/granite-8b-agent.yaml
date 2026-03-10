@@ -46,9 +46,9 @@ metadata:
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # QUEUED ASSET: Starts at 0 replicas
-    # Toggle via GPU Orchestrator for Agentic demo
-    minReplicas: 0
+    # PRIMARY 1-GPU MODEL: Always running — workhorse for RAG, MCP, Guardrails
+    # Used by Steps 06 (Playground), 09 (RAG), 10 (Eval), 11 (Guardrails), 12 (MCP)
+    minReplicas: 1
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock
     # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods

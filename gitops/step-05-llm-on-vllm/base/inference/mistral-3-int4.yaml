@@ -52,8 +52,9 @@ metadata:
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # SECONDARY LOAD: Always running in baseline state
-    minReplicas: 1
+    # QUEUED: Needs 1 GPU but g6.4xlarge is used by granite-8b-agent
+    # Activate by scaling granite-8b-agent to 0, or add a 2nd g6.4xlarge node
+    minReplicas: 0
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock
     # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods

@@ -412,20 +412,34 @@ The script will:
 
 We use the **G6 family (NVIDIA L4 GPUs)** for high-efficiency inference.
 
+### Default Configuration: 1x g6.4xlarge + 1x g6.12xlarge (5 GPUs)
+
+Optimized for sandbox environments with a 64 GPU vCPU limit:
+
+| Node | Instance | GPUs | vCPU | Active Model |
+|------|----------|------|------|-------------|
+| GPU Worker 1 | g6.4xlarge | 1x L4 | 16 | `granite-8b-agent` (FP8) |
+| GPU Worker 2 | g6.12xlarge | 4x L4 | 48 | `mistral-3-bf16` (BF16) |
+| **Total** | | **5 GPUs** | **64 vCPU** | |
+
+> **AWS Quota:** Requires "Running On-Demand G and VT instances" >= 64 vCPU.
+> Sandbox accounts default to 64 — this config fits exactly.
+
 ### Scale GPU Nodes
 
-MachineSets are created with `replicas: 1`. Adjust as needed:
+MachineSets are created with `replicas: 1` by `deploy.sh`:
 
 ```bash
-# Get cluster ID
+# Get cluster ID and AZ
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
+AZ=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.placement.availabilityZone}')
 
 # Scale g6.4xlarge (1x NVIDIA L4)
-oc scale machineset $CLUSTER_ID-gpu-g6-4xlarge-us-east-2b \
+oc scale machineset $CLUSTER_ID-gpu-g6-4xlarge-$AZ \
   -n openshift-machine-api --replicas=1
 
 # Scale g6.12xlarge (4x NVIDIA L4)
-oc scale machineset $CLUSTER_ID-gpu-g6-12xlarge-us-east-2b \
+oc scale machineset $CLUSTER_ID-gpu-g6-12xlarge-$AZ \
   -n openshift-machine-api --replicas=1
 ```
 

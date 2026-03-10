@@ -5,60 +5,55 @@ kind: Kustomization
 # GPU-as-a-Service Demo: Enterprise Model Portfolio
 # =============================================================================
 #
-# This configuration demonstrates RHOAI 3.3's dynamic GPU allocation via Kueue.
+# Optimized for 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5 GPUs
 #
-# BASELINE STATE (Full Quota Saturation):
-#   - mistral-3-bf16 (4 GPUs) + mistral-3-int4 (1 GPU) = 5/5 GPUs
+# BASELINE STATE:
+#   - granite-8b-agent (1 GPU) + mistral-3-bf16 (4 GPUs) = 5/5 GPUs
 #   - All other models at minReplicas: 0 (queued, ready to activate)
+#
+# GPU ALLOCATION:
+# ┌─────────────────────┬──────┬─────────┬───────────────────────────────────┐
+# │ Model               │ GPUs │ Status  │ Use Case                          │
+# ├─────────────────────┼──────┼─────────┼───────────────────────────────────┤
+# │ granite-8b-agent    │ 1    │ Active  │ RAG, MCP, Guardrails, Playground  │
+# │ mistral-3-bf16      │ 4    │ Active  │ Full-precision LLM, Playground    │
+# │ mistral-3-int4      │ 1    │ Queued  │ Cost-efficient chat (needs GPU)   │
+# │ devstral-2          │ 4    │ Queued  │ Agentic tool-calling              │
+# │ gpt-oss-20b         │ 4    │ Queued  │ High-reasoning                    │
+# └─────────────────────┴──────┴─────────┴───────────────────────────────────┘
 #
 # DEMO SCENARIOS:
 #
 # 1. "Resource Handover" - Swap BF16 for Devstral-2
-#    Before: mistral-3-bf16 (4) + mistral-3-int4 (1) = 5 GPUs
-#    After:  devstral-2 (4) + mistral-3-int4 (1) = 5 GPUs
+#    Action: devstral-2 minReplicas→1, mistral-3-bf16 minReplicas→0
+#    Shows Kueue preemption and GPU reallocation
 #
-# 2. "Efficiency Story" - Trade 1x 4-GPU for 4x 1-GPU Specialists
-#    Before: mistral-3-bf16 (4) + mistral-3-int4 (1) = 5 GPUs
-#    After:  mistral-3-int4 (1) + granite-8b (1) + [room for 3 more] = specialists
-#
-# 3. "Model Portfolio" - Show all 5 Red Hat Validated models
-#    Total potential: 14 GPUs requested (4+1+4+4+1)
-#    Kueue enforces: Only 5 GPUs admitted at any time
-#
-# MODEL PORTFOLIO:
-# ┌─────────────────────┬──────┬─────────┬───────────────────────────────────┐
-# │ Model               │ GPUs │ Status  │ Use Case                          │
-# ├─────────────────────┼──────┼─────────┼───────────────────────────────────┤
-# │ mistral-3-bf16      │ 4    │ Active  │ High-throughput Production        │
-# │ mistral-3-int4      │ 1    │ Active  │ Cost-efficient (75% savings)      │
-# │ devstral-2          │ 4    │ Queued  │ Agentic Tool-calling              │
-# │ gpt-oss-20b         │ 4    │ Queued  │ High-reasoning OpenAI-alternative │
-# │ granite-8b-agent    │ 1    │ Queued  │ Small but Mighty - RAG/Tool-call  │
-# └─────────────────────┴──────┴─────────┴───────────────────────────────────┘
+# 2. "Model Swap" - Switch granite-8b for mistral-3-int4
+#    Action: mistral-3-int4 minReplicas→1, granite-8b minReplicas→0
+#    Shows different model capabilities on same hardware
 #
 # =============================================================================
 
 resources:
   # ═══════════════════════════════════════════════════════════════════════════
-  # ACTIVE MODELS (minReplicas: 1) - Baseline Saturation
+  # ACTIVE MODELS (minReplicas: 1)
   # ═══════════════════════════════════════════════════════════════════════════
   
-  # Primary Load: 4-GPU BF16 Full Precision
-  - mistral-3-bf16.yaml
+  # Workhorse: 1-GPU FP8 — RAG, MCP tools, Guardrails (Steps 06, 09-12)
+  - granite-8b-agent.yaml
   
-  # Secondary Load: 1-GPU INT4 Quantized (Red Hat ModelCar)
-  - mistral-3-int4.yaml
+  # Full Precision: 4-GPU BF16 — Playground chat, Benchmarking (Steps 06, 07)
+  - mistral-3-bf16.yaml
   
   # ═══════════════════════════════════════════════════════════════════════════
   # QUEUED MODELS (minReplicas: 0) - Ready for Demo Activation
   # ═══════════════════════════════════════════════════════════════════════════
   
-  # Agentic Model: 4-GPU BF16 (same base as Mistral, tool-calling optimized)
+  # INT4 Quantized: 1-GPU (shares g6.4xlarge with granite-8b — swap to activate)
+  - mistral-3-int4.yaml
+  
+  # Agentic Coding: 4-GPU BF16 (shares g6.12xlarge with mistral-bf16 — swap)
   - devstral-2.yaml
   
-  # High-Reasoning: 4-GPU BF16 (Red Hat Validated, Oct 2025)
+  # High-Reasoning: 4-GPU BF16
   - gpt-oss-20b.yaml
-  
-  # The Agentic Core: 1-GPU FP8 (Red Hat Validated, May 2025)
-  # Key for Step 06: Agent Playground
-  - granite-8b-agent.yaml
