@@ -1,0 +1,123 @@
+# RAG Chatbot — Streamlit frontend for LlamaStack RAG queries
+# Built from steps/step-07-rag/chatbot/ via OpenShift BuildConfig
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: rag-chatbot
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: rag-chatbot
+  namespace: private-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: Skip
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/adnan-drina/rhoai3-demo.git
+      ref: main
+    contextDir: steps/step-07-rag/chatbot
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: rag-chatbot:latest
+  triggers: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-chatbot
+  namespace: private-ai
+  labels:
+    app: rag-chatbot
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: chatbot-ui
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-chatbot
+  template:
+    metadata:
+      labels:
+        app: rag-chatbot
+        app.kubernetes.io/part-of: llama-stack
+    spec:
+      containers:
+        - name: chatbot
+          image: image-registry.openshift-image-registry.svc:5000/private-ai/rag-chatbot:latest
+          ports:
+            - containerPort: 8501
+              name: http
+          env:
+            - name: LLAMA_STACK_URL
+              value: "http://lsd-rag-service.private-ai.svc.cluster.local:8321"
+            - name: INFERENCE_MODEL
+              value: "vllm-granite-agent/granite-8b-agent"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 15
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-chatbot
+  namespace: private-ai
+  labels:
+    app: rag-chatbot
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  selector:
+    app: rag-chatbot
+  ports:
+    - port: 8501
+      targetPort: 8501
+      name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: rag-chatbot
+  namespace: private-ai
+  labels:
+    app: rag-chatbot
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  to:
+    kind: Service
+    name: rag-chatbot
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

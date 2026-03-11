@@ -18,5 +18,6 @@ resources:
   # Platform (sync-wave 3-4)
   - dspa/                # Kubeflow Pipelines v2
   - llamastack-rag/      # LlamaStack RAG backend (PostgreSQL + Milvus + granite-8b)
-  # Workbench (sync-wave 5-10)
+  # Workbench & UI (sync-wave 5-10)
   - rag-wb/              # RAG development workbench (Jupyter)
+  - chatbot/             # RAG Chatbot UI (Streamlit)
