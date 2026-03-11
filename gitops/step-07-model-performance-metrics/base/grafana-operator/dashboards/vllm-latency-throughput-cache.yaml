@@ -2,22 +2,19 @@
 # ============================================================================
 # Source: https://github.com/llm-d/llm-d-deployer/blob/main/quickstart/grafana/dashboards/llm-d-dashboard.json
 #
-# Comprehensive 13-panel dashboard for vLLM inference monitoring:
-#   - E2E Request Latency (P50/P95/P99)
-#   - Token Throughput (prompt + generation)
-#   - Time Per Output Token (TPOT) Latency
-#   - Scheduler State (running/waiting/swapped)
-#   - Time To First Token (TTFT) Latency
-#   - Cache Utilization (KV cache GPU/CPU %)
-#   - Request Prompt/Generation Length distributions
-#   - Finish Reason breakdown
-#   - Queue Time
-#   - Prefill and Decode Time
+# Modified from upstream:
+#   - namespace variable default: private-ai (was: first alphabetical)
+#   - model_name variable default: granite-8b-agent
+#   - DS_PROMETHEUS replaced with Prometheus-UWM datasource UID
 #
-# Note: This dashboard is from the llm-d project but covers standard vLLM
-# metrics — no llm-d/EPP-specific panels. Reusable for any vLLM deployment.
+# To update from upstream:
+#   curl -sL https://raw.githubusercontent.com/llm-d/llm-d-deployer/main/quickstart/grafana/dashboards/llm-d-dashboard.json \
+#     | sed 's/${DS_PROMETHEUS}/Prometheus-UWM/g' > llm-d-dashboard.json
+#   # Then fix namespace/model_name defaults in templating.list
 #
-# Ref: https://medium.com/@jajodia.nirjhar/how-we-built-an-observability-stack-for-llm-d-on-openshift-ai-d46e6365a362
+# 12 panels: E2E Latency, Token Throughput, TPOT, Scheduler State,
+# TTFT, Cache Utilization, Prompt/Generation Length, Finish Reason,
+# Queue Time, Prefill/Decode Time, Max Generation Tokens
 # ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
@@ -36,7 +33,6 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: "grafana"
-  datasources:
-    - inputName: "DS_PROMETHEUS"
-      datasourceName: "Prometheus-UWM"
-  url: https://raw.githubusercontent.com/llm-d/llm-d-deployer/refs/heads/main/quickstart/grafana/dashboards/llm-d-dashboard.json
+  configMapRef:
+    name: vllm-latency-throughput-cache-json
+    key: dashboard.json

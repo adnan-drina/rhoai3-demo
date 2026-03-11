@@ -23,9 +23,11 @@ resources:
   - vllm-query-statistics.yaml          # Official vLLM: Request/Token Statistics
   - dcgm-gpu-metrics.yaml               # Official NVIDIA DCGM Exporter Dashboard
   
-  # vLLM Comprehensive Dashboard (from llm-d-deployer - 13 panels)
+  # vLLM Comprehensive Dashboard (from llm-d-deployer - 12 panels)
   # Covers: latency P50/P95/P99, throughput, TPOT, TTFT, KV cache, queue time
-  - vllm-latency-throughput-cache.yaml  # llm-d-deployer: comprehensive vLLM metrics
+  # ConfigMap: pre-processed JSON with namespace=private-ai default
+  - vllm-ltc-configmap.yaml             # Dashboard JSON as ConfigMap
+  - vllm-latency-throughput-cache.yaml   # GrafanaDashboard CR (references ConfigMap)
   
   # RHOAI Community Dashboards (from rh-aiservices-bu/rhoai-uwm)
   - rhoai-vllm-model-metrics.yaml       # vLLM model metrics with histograms
