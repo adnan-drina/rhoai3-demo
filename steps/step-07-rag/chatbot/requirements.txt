@@ -1,2 +1,0 @@
-streamlit>=1.40,<2
-llama-stack-client>=0.4,<0.5

@@ -1,0 +1,21 @@
+# RAG Chatbot UI — adapted from https://github.com/rh-ai-quickstart/RAG
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /app
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY pyproject.toml ./
+
+RUN pip install --no-cache-dir pip --upgrade && \
+    pip install --no-cache-dir streamlit pandas "llama-stack-client>=0.4,<0.5" requests
+
+COPY . /app/
+
+USER 1001
+
+EXPOSE 8501
+
+ENTRYPOINT ["python", "-m", "streamlit", "run", "/app/llama_stack_ui/distribution/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]
