@@ -71,4 +71,13 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /status
+    # Tekton Pipeline/Task — operator adds status and managed fields
+    - group: tekton.dev
+      kind: Pipeline
+      jsonPointers:
+        - /status
+    - group: tekton.dev
+      kind: Task
+      jsonPointers:
+        - /status
 
