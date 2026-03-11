@@ -11,8 +11,9 @@ Step-05 proved your team can experiment with LLMs via the GenAI Playground. But 
 | **Milvus** | Persistent vector database for embeddings | Platform (invisible) |
 | **Docling** | PDF-to-Markdown intelligent conversion | Data Engineer |
 | **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | MLOps Engineer |
-| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | AI Engineer |
+| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries (v0.4.2.1+rhai0) | AI Engineer |
 | **Granite-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
+| **RAG Chatbot UI** | Web frontend for interactive RAG queries (direct + agent modes) | Demo / End User |
 
 ## Architecture
 
@@ -49,9 +50,9 @@ Step-05 proved your team can experiment with LLMs via the GenAI Playground. But 
 │                                                                                   │
 │   ┌─────────────────────────────────────────────────────────┐                    │
 │   │              MinIO (Step-03)                             │                    │
-│   │   s3://rag-documents/scenario1-red-hat/                  │                    │
-│   │   s3://rag-documents/scenario2-acme/                     │                    │
-│   │   s3://rag-documents/scenario3-eu-ai-act/                │                    │
+│   │   s3://rag-documents/whoami/                             │                    │
+│   │   s3://rag-documents/acme_corporate/                     │                    │
+│   │   s3://rag-documents/eu_ai_act/                          │                    │
 │   └─────────────────────────────────────────────────────────┘                    │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -150,7 +151,7 @@ After step-07 deploys, the GenAI Playground (step-05) automatically connects to 
 
 1. Open **RHOAI Dashboard** > **GenAI Studio** > **Playground**
 2. Select a model with tool-calling support (e.g., `granite-8b-agent`)
-3. In the Playground, the RAG tool (`builtin::rag/knowledge_search`) is available with the 3 ingested collections: `red_hat_docs`, `acme_corporate`, `eu_ai_act`
+3. In the Playground, the RAG tool (`builtin::rag/knowledge_search`) is available with the 3 ingested collections: `whoami`, `acme_corporate`, `eu_ai_act`
 4. Ask a question that relates to the ingested content
 
 > **How it works:** Step-05's `lsd-genai-playground` uses `remote::milvus` pointing to `milvus-standalone.private-ai.svc.cluster.local:19530` — the same Milvus instance that step-07 deploys and populates. Both the Playground and the `lsd-rag` backend share the same vector data.
@@ -159,13 +160,25 @@ After step-07 deploys, the GenAI Playground (step-05) automatically connects to 
 
 ## Demo Scenarios
 
-### Scenario 1: ACME Corporate
+Three validated scenarios (the `red_hat_docs` scenario was removed — its content overlapped with general knowledge the model already has):
+
+| Scenario | Collection | Documents | Description |
+|----------|------------|-----------|-------------|
+| **whoami** | `whoami` | 1 file | Simple identity doc — fast ingestion, used for pipeline validation |
+| **acme_corporate** | `acme_corporate` | 5 files | Manufacturing/lithography internal docs |
+| **eu_ai_act** | `eu_ai_act` | 1 file | EU AI Act regulatory text |
+
+### Scenario 1: whoami (Pipeline Validation)
+
+**Story:** "Quick identity test — validates the full KFP pipeline end-to-end."
+
+Sample prompt: `"Who is the author and what is their role?"`
+
+> This is the recommended first scenario for pipeline validation. It ingests in seconds and confirms the full chain: MinIO → Docling → LlamaStack → Milvus.
+
+### Scenario 2: ACME Corporate
 
 **Story:** "Manufacturing engineers query internal lithography documentation."
-
-| Collection | Documents | Chunks |
-|------------|-----------|--------|
-| `acme_corporate` | 6 PDFs | ~32 |
 
 Sample query:
 ```python
@@ -192,25 +205,53 @@ for log in AgentEventLogger().log(response):
     log.print()
 ```
 
-### Scenario 2: Red Hat RHOAI Docs
-
-**Story:** "Platform engineers ask questions about RAG configuration in RHOAI."
-
-| Collection | Documents | Chunks |
-|------------|-----------|--------|
-| `red_hat_docs` | 1 PDF | ~135 |
-
-Sample prompt: `"How do I configure a LlamaStackDistribution for RAG?"`
-
 ### Scenario 3: EU AI Act
 
 **Story:** "Compliance officers query official EU AI Act text for regulatory guidance."
 
-| Collection | Documents | Chunks |
-|------------|-----------|--------|
-| `eu_ai_act` | 3 PDFs | ~953 |
-
 Sample prompt: `"What are the requirements for high-risk AI systems under the EU AI Act?"`
+
+## RAG Chatbot UI
+
+A web-based chatbot frontend provides interactive RAG queries against the ingested document collections.
+
+**Source:** Adapted from [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG) frontend (MIT license), customized for this demo's LlamaStack backend.
+
+**URL pattern:** `https://rag-chatbot-private-ai.apps.<cluster>/`
+
+### Two Query Modes
+
+| Mode | How it works | Status |
+|------|-------------|--------|
+| **Direct** (recommended) | `vector_stores.search()` → `chat.completions()` with context injection | Works perfectly with v0.4.2.1 server |
+| **Agent** | Responses API with `file_search` tool | Tool invocation works, but `file_search` returns empty results with custom-config LSD |
+
+> **Design Decision:** Direct mode is recommended for demos. The agent-based mode correctly invokes the `file_search` tool, but the Responses API `file_search` does not return results when the LSD uses `userConfig` (custom config). This is a known limitation of LlamaStack v0.4.2.1 with custom config — the `rh-dev` template wires file_search differently. Direct mode bypasses this by performing explicit vector search followed by context-augmented completion.
+
+### Deployment
+
+The chatbot is built as a container image using an OpenShift BuildConfig and deployed as a Deployment + Route:
+
+```bash
+# Image is built in-cluster via BuildConfig
+oc get build -n private-ai -l app=rag-chatbot
+
+# Access the chatbot
+oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
+```
+
+> **Known Issue:** Build pods may get stuck in `SchedulingGated` state due to Kueue admission. See Troubleshooting section for the fix.
+
+## LlamaStack Version & Client Compatibility
+
+> **Note (RHOAI 3.3):** LlamaStack **v0.4.2.1+rhai0** is the version shipped with RHOAI 3.3 — this is not a choice but the platform-provided version.
+
+> **Client pinning:** `llama-stack-client>=0.4,<0.5` is required for compatibility. The 0.5.x client introduces breaking protocol changes (HTTP 426 "Upgrade Required" errors against the 0.4.x server).
+
+```
+# In requirements.txt or pip install:
+llama-stack-client>=0.4,<0.5
+```
 
 ## Pipeline Architecture
 
@@ -285,6 +326,40 @@ oc logs <pod-name> -n private-ai
 # - Docling service not ready (first start takes ~10 min)
 # - MinIO credentials not injected (check minio-connection secret)
 # - LlamaStack not reachable from pipeline pods
+```
+
+### Chatbot Build Pod Stuck in SchedulingGated
+
+**Symptom:** `rag-chatbot-1-build` pod shows `SchedulingGated` and never starts.
+
+**Root Cause:** Kueue adds scheduling gates to all pods in the namespace. Build pods don't have Kueue queue-name labels, so they're gated indefinitely.
+
+**Solution:**
+```bash
+# Remove the Kueue scheduling gate from the build pod
+oc patch pod rag-chatbot-1-build -n private-ai --type=json \
+  -p '[{"op":"remove","path":"/spec/schedulingGates"}]'
+```
+
+### Responses API file_search Returns Empty Results
+
+**Symptom:** Agent mode invokes the `file_search` tool correctly, but zero results are returned from vector stores.
+
+**Root Cause:** The Responses API `file_search` tool does not work properly when the LSD uses `userConfig` (custom config for remote Milvus). The `rh-dev` template wires the file_search provider differently than custom config.
+
+**Solution:** Use Direct mode instead (explicit `vector_stores.search()` → `chat.completions()` with context). This is the recommended RAG pattern for custom-config LSDs.
+
+> **Known Limitation (RHOAI 3.3):** Responses API `file_search` requires `rh-dev` template wiring. Custom config LSDs should use direct vector search + completion pattern.
+
+### llama-stack-client 0.5.x Incompatible with RHOAI 3.3 Server
+
+**Symptom:** HTTP 426 "Upgrade Required" errors when calling LlamaStack APIs.
+
+**Root Cause:** `llama-stack-client>=0.5` uses a newer protocol version incompatible with the v0.4.2.1+rhai0 server shipped with RHOAI 3.3.
+
+**Solution:**
+```bash
+pip install "llama-stack-client>=0.4,<0.5"
 ```
 
 ### Insert Component: files.create / vector_stores.files.create Errors
