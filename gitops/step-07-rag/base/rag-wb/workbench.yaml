@@ -73,6 +73,10 @@ metadata:
     notebooks.opendatahub.io/idle-culling-enabled: "true"
 spec:
   template:
+    metadata:
+      labels:
+        # Required by lsd-rag-network-policy (LlamaStack operator creates it)
+        app.kubernetes.io/part-of: llama-stack
     spec:
       enableServiceLinks: false
       serviceAccountName: rag-wb
