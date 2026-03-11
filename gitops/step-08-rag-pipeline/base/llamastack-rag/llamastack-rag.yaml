@@ -50,8 +50,12 @@ spec:
           value: http://guardrails-orchestrator.private-ai.svc:8080
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        - name: MILVUS_DB_PATH
-          value: "~/.llama/milvus.db"
+        # Remote Milvus — gRPC endpoint (RHOAI 3.3 recommended format)
+        # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
+        - name: MILVUS_ENDPOINT
+          value: "tcp://milvus-standalone.private-ai.svc.cluster.local:19530"
+        - name: MILVUS_TOKEN
+          value: ""
       resources:
         requests:
           cpu: 250m
