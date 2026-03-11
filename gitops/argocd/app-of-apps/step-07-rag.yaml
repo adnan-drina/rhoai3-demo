@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-07-rag-pipeline
+  name: step-07-rag
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-07-rag-pipeline/base
+    path: gitops/step-07-rag/base
   destination:
     server: https://kubernetes.default.svc
     namespace: private-ai

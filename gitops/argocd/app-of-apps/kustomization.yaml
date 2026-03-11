@@ -9,7 +9,7 @@ resources:
   # - step-04-model-registry.yaml
   # - step-05-llm-on-vllm.yaml
   # - step-06-model-metrics.yaml
-  # - step-07-rag-pipeline.yaml
+  # - step-07-rag.yaml
   # - step-08-rag-evaluation.yaml
   # - step-09-guardrails.yaml
   # - step-10-mcp-integration.yaml
