@@ -53,7 +53,7 @@ spec:
     spec:
       containers:
         - name: postgresql
-          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql:16-el9
+          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql:15-el9
           ports:
             - containerPort: 5432
               protocol: TCP
