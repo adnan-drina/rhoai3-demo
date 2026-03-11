@@ -6,8 +6,8 @@
 #    chunk_size_tokens: int [Default: 512.0]
 #    docling_service: str [Default: 'http://docling-service.private-ai.svc:5001']
 #    embedding_dimension: int [Default: 768.0]
-#    embedding_model: str [Default: 'ibm-granite/granite-embedding-125m-english']
-#    llamastack_url: str [Default: 'http://lsd-rag.private-ai.svc:8321']
+#    embedding_model: str [Default: 'sentence-transformers/ibm-granite/granite-embedding-125m-english']
+#    llamastack_url: str [Default: 'http://lsd-rag-service.private-ai.svc.cluster.local:8321']
 #    max_tokens: int [Default: 4096.0]
 #    minio_endpoint: str [Default: 'http://minio.minio-storage.svc.cluster.local:9000']
 #    minio_secret_name: str [Default: 'minio-connection']
@@ -17,7 +17,7 @@
 #    s3_prefix: str [Default: 's3://rag-documents/scenario2-acme/']
 #    temperature: float [Default: 0.0]
 #    vector_db_id: str [Default: 'acme_corporate']
-#    vector_provider: str [Default: 'milvus']
+#    vector_provider: str [Default: 'milvus-shared']
 components:
   comp-download-from-s3-component:
     executorLabel: exec-download-from-s3-component
@@ -806,11 +806,11 @@ root:
         isOptional: true
         parameterType: NUMBER_INTEGER
       embedding_model:
-        defaultValue: ibm-granite/granite-embedding-125m-english
+        defaultValue: sentence-transformers/ibm-granite/granite-embedding-125m-english
         isOptional: true
         parameterType: STRING
       llamastack_url:
-        defaultValue: http://lsd-rag.private-ai.svc:8321
+        defaultValue: http://lsd-rag-service.private-ai.svc.cluster.local:8321
         isOptional: true
         parameterType: STRING
       max_tokens:
@@ -850,7 +850,7 @@ root:
         isOptional: true
         parameterType: STRING
       vector_provider:
-        defaultValue: milvus
+        defaultValue: milvus-shared
         isOptional: true
         parameterType: STRING
 schemaVersion: 2.1.0
