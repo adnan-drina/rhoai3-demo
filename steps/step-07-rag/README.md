@@ -342,7 +342,11 @@ oc delete configmap llama-stack-rag-config -n private-ai
 
 > **Design Decision:** We use embedded etcd (`ETCD_USE_EMBED=true`) rather than a separate etcd service. This is simpler and proven at demo scale. For production, deploy a separate etcd per the RHOAI documentation.
 
-> **Design Decision:** Only one LlamaStackDistribution per namespace is allowed by the Dashboard. `lsd-rag` (this step) and the Playground LSD (step-05) cannot coexist. Delete the Playground LSD before deploying `lsd-rag`, or vice versa.
+> **Design Decision:** Two LSDs coexist in `private-ai`: `lsd-genai-playground` (Dashboard-created,
+> inline Milvus, multi-model for Playground) and `lsd-rag` (GitOps-created, remote Milvus, production
+> RAG). The LlamaStack operator supports multiple LSDs per namespace — the 1-LSD restriction is only
+> in the Dashboard's "Create playground" UI flow (bypassed since `lsd-genai-playground` is already created).
+> The RAG workbench connects to `lsd-rag-service:8321`, the Playground connects to `lsd-genai-playground`.
 
 > **Design Decision:** Server-side chunking and embedding via `rag_tool.insert()`. LlamaStack handles both using `granite-embedding-125m` (768d), keeping the pipeline lightweight.
 
