@@ -1,22 +1,21 @@
 """
 Insert via LlamaStack Component — reads processed markdown from the shared PVC
-and ingests it into Milvus through Llama Stack's vector_stores.files.create() API.
+and ingests it into Milvus through LlamaStack's vector_stores.files.create() API.
 
 Server-side chunking and embedding: LlamaStack handles both using the
 granite-embedding-125m model registered in the LSD configuration.
 
 Uses 0.4.x API: files.create() for upload, then vector_stores.files.create()
-for indexing. The deprecated rag_tool.insert() / RAGDocument API is not used.
+for indexing with static chunking strategy.
 """
 
-from pathlib import Path
 from typing import NamedTuple, Dict, Any, List
 from kfp.dsl import component
 
 
 @component(
     base_image="python:3.12",
-    packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
+    packages_to_install=["llama_stack_client>=0.4,<0.5"],
 )
 def insert_via_llamastack_component(
     setup_config: Dict[str, Any],
@@ -27,6 +26,7 @@ def insert_via_llamastack_component(
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
     from llama_stack_client import LlamaStackClient
     from collections import namedtuple
+    from pathlib import Path
     import os
 
     InsertOutput = namedtuple("InsertOutput", ["status", "chunks_inserted"])
@@ -43,17 +43,32 @@ def insert_via_llamastack_component(
         return InsertOutput(status="skipped", chunks_inserted=0)
 
     file_path = Path(processed_file)
-    content_len = file_path.stat().st_size
-    print(f"Inserting: {original_key} ({content_len} bytes)")
+    content = file_path.read_text(encoding="utf-8")
+    content_len = len(content)
+    print(f"Inserting: {original_key} ({content_len} chars)")
+    print(f"  LlamaStack: {base_url}")
+    print(f"  Vector stores: {vector_db_ids}")
 
-    client = LlamaStackClient(base_url=base_url)
+    client = LlamaStackClient(base_url=base_url, timeout=300.0)
+
+    # Upload the markdown file to LlamaStack Files API
+    # Use a descriptive filename based on the original PDF key
+    upload_name = original_key.replace("/", "_").replace(" ", "_")
+    if not upload_name.endswith(".md"):
+        upload_name = upload_name.rsplit(".", 1)[0] + ".md" if "." in upload_name else upload_name + ".md"
 
     try:
-        uploaded = client.files.create(file=file_path, purpose="assistants")
+        with open(processed_file, "rb") as f:
+            uploaded = client.files.create(
+                file=(upload_name, f),
+                purpose="assistants",
+            )
+        print(f"  Uploaded: {uploaded.id} ({upload_name})")
     except Exception as e:
         print(f"  [FAIL] File upload: {e}")
         return InsertOutput(status="error", chunks_inserted=0)
 
+    # Index into each vector store
     chunk_overlap = max(1, chunk_size // 4)
     chunking_strategy = {
         "type": "static",
@@ -63,16 +78,19 @@ def insert_via_llamastack_component(
         },
     }
 
+    inserted = 0
     for db_id in vector_db_ids:
         try:
-            client.vector_stores.files.create(
+            vs_file = client.vector_stores.files.create(
                 vector_store_id=db_id,
                 file_id=uploaded.id,
                 chunking_strategy=chunking_strategy,
             )
-            print(f"  [OK] Inserted into '{db_id}'")
+            status = vs_file.status if hasattr(vs_file, "status") else "unknown"
+            print(f"  [OK] Indexed into '{db_id}': status={status}")
+            inserted += 1
         except Exception as e:
-            print(f"  [FAIL] Insert into '{db_id}': {e}")
-            return InsertOutput(status="error", chunks_inserted=0)
+            print(f"  [FAIL] Index into '{db_id}': {e}")
+            return InsertOutput(status="error", chunks_inserted=inserted)
 
-    return InsertOutput(status="success", chunks_inserted=1)
+    return InsertOutput(status="success", chunks_inserted=inserted)

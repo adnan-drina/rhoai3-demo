@@ -1,10 +1,9 @@
 """
 Process with Docling Component — converts a downloaded PDF to Markdown
-using the Docling REST API.
+using the Docling REST API (v1).
 
-Includes two-format fallback logic (flat fields vs options JSON) and
-multi-shape response extraction adopted from rhoai-genaiops.
-Writes results to /shared-data/processed/.
+Docling v1.14.3 API: POST /v1/convert/file
+Response: {"document": {"md_content": "..."}, "status": "success|failure"}
 """
 
 from typing import NamedTuple, Dict, Any
@@ -32,10 +31,10 @@ def process_with_docling_component(
     api_address = doc_config["docling_service"]
     timeout = doc_config["processing_timeout"]
 
-    print(f"Processing: {original_key}")
-    print(f"  Docling: {api_address}/v1alpha/convert/file")
-
     DoclingOutput = namedtuple("DoclingOutput", ["processed_file", "success"])
+
+    print(f"Processing: {original_key}")
+    print(f"  Docling: {api_address}/v1/convert/file")
 
     if not os.path.exists(document_path):
         print(f"  [FAIL] File not found: {document_path}")
@@ -60,59 +59,36 @@ def process_with_docling_component(
     safe_name = _safe_ascii_name(os.path.basename(document_path))
     files = {"files": (safe_name, file_content, "application/pdf")}
 
-    attempts = [
-        {"desc": "flat fields", "data": {"to_formats": "md", "image_export_mode": "placeholder"}},
-        {"desc": "options JSON", "data": {"options": json.dumps({"to_formats": ["md"], "image_export_mode": "placeholder"})}},
-    ]
-
-    last_err = None
-    response = None
-    for attempt in attempts:
-        print(f"  -> Trying {attempt['desc']}...")
-        try:
-            response = requests.post(
-                f"{api_address}/v1alpha/convert/file",
-                files=files,
-                data=attempt["data"],
-                timeout=timeout,
-            )
-            if response.status_code == 422:
-                last_err = f"422 {response.text[:400]}"
-                continue
-            response.raise_for_status()
-            break
-        except requests.exceptions.RequestException as e:
-            last_err = str(e)
-            continue
-    else:
-        print(f"  [FAIL] Docling failed after retries: {last_err}")
+    try:
+        response = requests.post(
+            f"{api_address}/v1/convert/file",
+            files=files,
+            data={"to_formats": "md", "image_export_mode": "placeholder"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"  [FAIL] Docling request: {e}")
         return DoclingOutput(processed_file="", success=False)
 
-    def _extract_md(payload: dict) -> str:
-        if isinstance(payload, dict):
-            doc = payload.get("document")
-            if isinstance(doc, dict):
-                for k in ("md_content", "md"):
-                    if isinstance(doc.get(k), str):
-                        return doc[k]
-                content = doc.get("content")
-                if isinstance(content, dict) and isinstance(content.get("md"), str):
-                    return content["md"]
-            docs = payload.get("documents")
-            if isinstance(docs, list) and docs:
-                first = docs[0]
-                if isinstance(first, dict):
-                    for k in ("md_content", "md"):
-                        if isinstance(first.get(k), str):
-                            return first[k]
-            res = payload.get("result")
-            if isinstance(res, dict) and isinstance(res.get("md"), str):
-                return res["md"]
-        raise KeyError(f"No markdown found. Keys: {list(payload) if isinstance(payload, dict) else type(payload).__name__}")
-
     try:
-        md_content = _extract_md(response.json())
-    except (KeyError, json.JSONDecodeError) as e:
+        result = response.json()
+        status = result.get("status", "unknown")
+        if status != "success":
+            print(f"  [FAIL] Docling status: {status}")
+            errors = result.get("errors", [])
+            if errors:
+                print(f"  Errors: {errors}")
+            return DoclingOutput(processed_file="", success=False)
+
+        doc = result.get("document", {})
+        md_content = doc.get("md_content")
+        if not md_content:
+            md_content = doc.get("md") or doc.get("text_content") or ""
+        if not md_content:
+            print(f"  [FAIL] No markdown in response. Keys: {list(doc.keys())}")
+            return DoclingOutput(processed_file="", success=False)
+    except (json.JSONDecodeError, KeyError) as e:
         print(f"  [FAIL] Response parse error: {e}")
         return DoclingOutput(processed_file="", success=False)
 

@@ -313,9 +313,9 @@ deploymentSpec:
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'llama_stack_client>=0.4,<0.5'\
-          \ 'requests'  &&  python3 -m pip install --quiet --no-warn-script-location\
-          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
-          3.9\"' && \"$0\" \"$@\"\n"
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
         - sh
         - -ec
         - 'program_path=$(mktemp -d)
@@ -331,30 +331,43 @@ deploymentSpec:
           \ Any],\n    processed_file: str,\n    original_key: str,\n    bucket_name:\
           \ str,\n    vector_db_ids: List[str],\n) -> NamedTuple(\"InsertOutput\"\
           , [(\"status\", str), (\"chunks_inserted\", int)]):\n    from llama_stack_client\
-          \ import LlamaStackClient\n    from collections import namedtuple\n    import\
-          \ os\n\n    InsertOutput = namedtuple(\"InsertOutput\", [\"status\", \"\
-          chunks_inserted\"])\n\n    base_url = setup_config[\"base_url\"]\n    chunk_size\
-          \ = setup_config[\"document_intelligence\"][\"chunk_size_tokens\"]\n   \
-          \ vector_db_id = setup_config[\"vector_db_id\"]\n\n    if not vector_db_ids:\n\
-          \        vector_db_ids = [vector_db_id]\n\n    if not processed_file or\
-          \ not os.path.exists(processed_file):\n        print(f\"  [SKIP] No processed\
-          \ file for {original_key}\")\n        return InsertOutput(status=\"skipped\"\
-          , chunks_inserted=0)\n\n    file_path = Path(processed_file)\n    content_len\
-          \ = file_path.stat().st_size\n    print(f\"Inserting: {original_key} ({content_len}\
-          \ bytes)\")\n\n    client = LlamaStackClient(base_url=base_url)\n\n    try:\n\
-          \        uploaded = client.files.create(file=file_path, purpose=\"assistants\"\
-          )\n    except Exception as e:\n        print(f\"  [FAIL] File upload: {e}\"\
-          )\n        return InsertOutput(status=\"error\", chunks_inserted=0)\n\n\
-          \    chunk_overlap = max(1, chunk_size // 4)\n    chunking_strategy = {\n\
-          \        \"type\": \"static\",\n        \"static\": {\n            \"max_chunk_size_tokens\"\
+          \ import LlamaStackClient\n    from collections import namedtuple\n    from\
+          \ pathlib import Path\n    import os\n\n    InsertOutput = namedtuple(\"\
+          InsertOutput\", [\"status\", \"chunks_inserted\"])\n\n    base_url = setup_config[\"\
+          base_url\"]\n    chunk_size = setup_config[\"document_intelligence\"][\"\
+          chunk_size_tokens\"]\n    vector_db_id = setup_config[\"vector_db_id\"]\n\
+          \n    if not vector_db_ids:\n        vector_db_ids = [vector_db_id]\n\n\
+          \    if not processed_file or not os.path.exists(processed_file):\n    \
+          \    print(f\"  [SKIP] No processed file for {original_key}\")\n       \
+          \ return InsertOutput(status=\"skipped\", chunks_inserted=0)\n\n    file_path\
+          \ = Path(processed_file)\n    content = file_path.read_text(encoding=\"\
+          utf-8\")\n    content_len = len(content)\n    print(f\"Inserting: {original_key}\
+          \ ({content_len} chars)\")\n    print(f\"  LlamaStack: {base_url}\")\n \
+          \   print(f\"  Vector stores: {vector_db_ids}\")\n\n    client = LlamaStackClient(base_url=base_url,\
+          \ timeout=300.0)\n\n    # Upload the markdown file to LlamaStack Files API\n\
+          \    # Use a descriptive filename based on the original PDF key\n    upload_name\
+          \ = original_key.replace(\"/\", \"_\").replace(\" \", \"_\")\n    if not\
+          \ upload_name.endswith(\".md\"):\n        upload_name = upload_name.rsplit(\"\
+          .\", 1)[0] + \".md\" if \".\" in upload_name else upload_name + \".md\"\n\
+          \n    try:\n        with open(processed_file, \"rb\") as f:\n          \
+          \  uploaded = client.files.create(\n                file=(upload_name, f),\n\
+          \                purpose=\"assistants\",\n            )\n        print(f\"\
+          \  Uploaded: {uploaded.id} ({upload_name})\")\n    except Exception as e:\n\
+          \        print(f\"  [FAIL] File upload: {e}\")\n        return InsertOutput(status=\"\
+          error\", chunks_inserted=0)\n\n    # Index into each vector store\n    chunk_overlap\
+          \ = max(1, chunk_size // 4)\n    chunking_strategy = {\n        \"type\"\
+          : \"static\",\n        \"static\": {\n            \"max_chunk_size_tokens\"\
           : chunk_size,\n            \"chunk_overlap_tokens\": chunk_overlap,\n  \
-          \      },\n    }\n\n    for db_id in vector_db_ids:\n        try:\n    \
-          \        client.vector_stores.files.create(\n                vector_store_id=db_id,\n\
-          \                file_id=uploaded.id,\n                chunking_strategy=chunking_strategy,\n\
-          \            )\n            print(f\"  [OK] Inserted into '{db_id}'\")\n\
-          \        except Exception as e:\n            print(f\"  [FAIL] Insert into\
-          \ '{db_id}': {e}\")\n            return InsertOutput(status=\"error\", chunks_inserted=0)\n\
-          \n    return InsertOutput(status=\"success\", chunks_inserted=1)\n\n"
+          \      },\n    }\n\n    inserted = 0\n    for db_id in vector_db_ids:\n\
+          \        try:\n            vs_file = client.vector_stores.files.create(\n\
+          \                vector_store_id=db_id,\n                file_id=uploaded.id,\n\
+          \                chunking_strategy=chunking_strategy,\n            )\n \
+          \           status = vs_file.status if hasattr(vs_file, \"status\") else\
+          \ \"unknown\"\n            print(f\"  [OK] Indexed into '{db_id}': status={status}\"\
+          )\n            inserted += 1\n        except Exception as e:\n         \
+          \   print(f\"  [FAIL] Index into '{db_id}': {e}\")\n            return InsertOutput(status=\"\
+          error\", chunks_inserted=inserted)\n\n    return InsertOutput(status=\"\
+          success\", chunks_inserted=inserted)\n\n"
         image: python:3.12
         resources:
           cpuLimit: 0.5
@@ -438,9 +451,9 @@ deploymentSpec:
           \ unicodedata\n    import uuid\n    from collections import namedtuple\n\
           \n    doc_config = setup_config[\"document_intelligence\"]\n    api_address\
           \ = doc_config[\"docling_service\"]\n    timeout = doc_config[\"processing_timeout\"\
-          ]\n\n    print(f\"Processing: {original_key}\")\n    print(f\"  Docling:\
-          \ {api_address}/v1alpha/convert/file\")\n\n    DoclingOutput = namedtuple(\"\
-          DoclingOutput\", [\"processed_file\", \"success\"])\n\n    if not os.path.exists(document_path):\n\
+          ]\n\n    DoclingOutput = namedtuple(\"DoclingOutput\", [\"processed_file\"\
+          , \"success\"])\n\n    print(f\"Processing: {original_key}\")\n    print(f\"\
+          \  Docling: {api_address}/v1/convert/file\")\n\n    if not os.path.exists(document_path):\n\
           \        print(f\"  [FAIL] File not found: {document_path}\")\n        return\
           \ DoclingOutput(processed_file=\"\", success=False)\n\n    with open(document_path,\
           \ \"rb\") as f:\n        file_content = f.read()\n    print(f\"  Read {len(file_content)}\
@@ -452,40 +465,25 @@ deploymentSpec:
           \        if not s.lower().endswith(\".pdf\"):\n            s += \".pdf\"\
           \n        return s\n\n    safe_name = _safe_ascii_name(os.path.basename(document_path))\n\
           \    files = {\"files\": (safe_name, file_content, \"application/pdf\")}\n\
-          \n    attempts = [\n        {\"desc\": \"flat fields\", \"data\": {\"to_formats\"\
-          : \"md\", \"image_export_mode\": \"placeholder\"}},\n        {\"desc\":\
-          \ \"options JSON\", \"data\": {\"options\": json.dumps({\"to_formats\":\
-          \ [\"md\"], \"image_export_mode\": \"placeholder\"})}},\n    ]\n\n    last_err\
-          \ = None\n    response = None\n    for attempt in attempts:\n        print(f\"\
-          \  -> Trying {attempt['desc']}...\")\n        try:\n            response\
-          \ = requests.post(\n                f\"{api_address}/v1alpha/convert/file\"\
-          ,\n                files=files,\n                data=attempt[\"data\"],\n\
-          \                timeout=timeout,\n            )\n            if response.status_code\
-          \ == 422:\n                last_err = f\"422 {response.text[:400]}\"\n \
-          \               continue\n            response.raise_for_status()\n    \
-          \        break\n        except requests.exceptions.RequestException as e:\n\
-          \            last_err = str(e)\n            continue\n    else:\n      \
-          \  print(f\"  [FAIL] Docling failed after retries: {last_err}\")\n     \
-          \   return DoclingOutput(processed_file=\"\", success=False)\n\n    def\
-          \ _extract_md(payload: dict) -> str:\n        if isinstance(payload, dict):\n\
-          \            doc = payload.get(\"document\")\n            if isinstance(doc,\
-          \ dict):\n                for k in (\"md_content\", \"md\"):\n         \
-          \           if isinstance(doc.get(k), str):\n                        return\
-          \ doc[k]\n                content = doc.get(\"content\")\n             \
-          \   if isinstance(content, dict) and isinstance(content.get(\"md\"), str):\n\
-          \                    return content[\"md\"]\n            docs = payload.get(\"\
-          documents\")\n            if isinstance(docs, list) and docs:\n        \
-          \        first = docs[0]\n                if isinstance(first, dict):\n\
-          \                    for k in (\"md_content\", \"md\"):\n              \
-          \          if isinstance(first.get(k), str):\n                         \
-          \   return first[k]\n            res = payload.get(\"result\")\n       \
-          \     if isinstance(res, dict) and isinstance(res.get(\"md\"), str):\n \
-          \               return res[\"md\"]\n        raise KeyError(f\"No markdown\
-          \ found. Keys: {list(payload) if isinstance(payload, dict) else type(payload).__name__}\"\
-          )\n\n    try:\n        md_content = _extract_md(response.json())\n    except\
-          \ (KeyError, json.JSONDecodeError) as e:\n        print(f\"  [FAIL] Response\
-          \ parse error: {e}\")\n        return DoclingOutput(processed_file=\"\"\
-          , success=False)\n\n    os.makedirs(\"/shared-data/processed\", exist_ok=True)\n\
+          \n    try:\n        response = requests.post(\n            f\"{api_address}/v1/convert/file\"\
+          ,\n            files=files,\n            data={\"to_formats\": \"md\", \"\
+          image_export_mode\": \"placeholder\"},\n            timeout=timeout,\n \
+          \       )\n        response.raise_for_status()\n    except requests.exceptions.RequestException\
+          \ as e:\n        print(f\"  [FAIL] Docling request: {e}\")\n        return\
+          \ DoclingOutput(processed_file=\"\", success=False)\n\n    try:\n      \
+          \  result = response.json()\n        status = result.get(\"status\", \"\
+          unknown\")\n        if status != \"success\":\n            print(f\"  [FAIL]\
+          \ Docling status: {status}\")\n            errors = result.get(\"errors\"\
+          , [])\n            if errors:\n                print(f\"  Errors: {errors}\"\
+          )\n            return DoclingOutput(processed_file=\"\", success=False)\n\
+          \n        doc = result.get(\"document\", {})\n        md_content = doc.get(\"\
+          md_content\")\n        if not md_content:\n            md_content = doc.get(\"\
+          md\") or doc.get(\"text_content\") or \"\"\n        if not md_content:\n\
+          \            print(f\"  [FAIL] No markdown in response. Keys: {list(doc.keys())}\"\
+          )\n            return DoclingOutput(processed_file=\"\", success=False)\n\
+          \    except (json.JSONDecodeError, KeyError) as e:\n        print(f\"  [FAIL]\
+          \ Response parse error: {e}\")\n        return DoclingOutput(processed_file=\"\
+          \", success=False)\n\n    os.makedirs(\"/shared-data/processed\", exist_ok=True)\n\
           \    out_path = f\"/shared-data/processed/{uuid.uuid4().hex}.md\"\n    with\
           \ open(out_path, \"w\", encoding=\"utf-8\") as f:\n        f.write(md_content)\n\
           \n    print(f\"  [OK] {len(md_content)} chars -> {out_path}\")\n    return\
