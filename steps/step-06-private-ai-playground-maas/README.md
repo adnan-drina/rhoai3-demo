@@ -349,36 +349,42 @@ metadata:
     opendatahub.io/genai-use-case: "chat assistant"
 ```
 
-### LlamaStack Model Registration (v0.4.x — in `registered_resources`)
+### LlamaStack Configuration (RHOAI 3.3 — env vars only, NO custom config)
+
+> **Critical:** Do NOT provide a custom `config.yaml` or `run.yaml` via `userConfig`.
+> The `rh-dev` distribution template handles all provider wiring internally.
+> Custom configs bypass the template and **break Playground RAG**.
 
 ```yaml
-registered_resources:
-  models:
-  - provider_id: vllm-granite-agent    # Must match provider in providers.inference
-    model_id: granite-8b-agent         # Model name for Playground
-    model_type: llm
-    metadata: {}
+# CORRECT: All config via env vars
+spec:
+  server:
+    distribution:
+      name: rh-dev
+    containerSpec:
+      env:
+        - name: INFERENCE_MODEL
+          value: granite-8b-agent
+        - name: VLLM_URL
+          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+        - name: ENABLE_SENTENCE_TRANSFORMERS
+          value: "true"
+        - name: EMBEDDING_PROVIDER
+          value: "sentence-transformers"
+        - name: POSTGRES_HOST
+          value: llamastack-postgres.private-ai.svc.cluster.local
+        # ... POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 ```
 
-### vLLM Provider Configuration (v0.4.x — `base_url` not `url`)
+> **Ref:** [RHOAI 3.3 Example A: LlamaStackDistribution](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
 
-```yaml
-providers:
-  inference:
-  - provider_id: vllm-granite-agent
-    provider_type: remote::vllm
-    config:
-      base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-      max_tokens: 4096
-      tls_verify: false
-```
+### Playground RAG — System Instructions Required
 
-> **Important (RHOAI 3.3 / LlamaStack v0.4.x):**
-> - Use `base_url`, not `url` (field renamed)
-> - Use `image_name: custom` to prevent rh-dev template merge
-> - Only register active models (minReplicas: 1) — queued models cause DNS failures
-> - Storage references use `table_name` + `backend`, not `db_path` + `type`
-> - Do NOT set `LLAMA_STACK_CONFIG` in `containerSpec.env` — operator injects it
+The model does not automatically use uploaded documents. Set System instructions:
+
+> **"You MUST use the knowledge_search tool to obtain updated information."**
+
+This is documented in [RHOAI 3.3 Troubleshooting — 11.2](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/troubleshooting-playground-issues_rhoai-user).
 
 ## Rollback / Cleanup
 
@@ -386,10 +392,7 @@ providers:
 # 1. Delete LlamaStackDistribution (operator cleans up deployment/service)
 oc delete llamastackdistribution lsd-genai-playground -n private-ai
 
-# 2. Delete ConfigMap
-oc delete configmap llama-stack-config -n private-ai
-
-# 3. Remove AI Asset labels (optional - models still work without them)
+# 2. Remove AI Asset labels (optional - models still work without them)
 oc label inferenceservice --all -n private-ai opendatahub.io/genai-asset-
 
 # 4. Delete Argo CD Application (if using GitOps)
