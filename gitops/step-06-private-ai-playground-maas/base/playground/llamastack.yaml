@@ -56,11 +56,8 @@ spec:
           value: http://guardrails-orchestrator.private-ai.svc:8080
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        # Remote Milvus — shared with step-08 RAG pipeline
-        - name: MILVUS_ENDPOINT
-          value: "tcp://milvus-standalone.private-ai.svc.cluster.local:19530"
-        - name: MILVUS_TOKEN
-          value: ""
+        - name: MILVUS_DB_PATH
+          value: "~/.llama/milvus.db"
       resources:
         requests:
           cpu: 250m
@@ -129,12 +126,15 @@ data:
           base_url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
           max_tokens: 4096
           tls_verify: false
+      # Playground RAG uses inline::milvus (RHOAI 3.3 documented limitation).
+      # Remote Milvus file_search is broken in LlamaStack v0.4.2.1+rhai0
+      # (search succeeds but results don't propagate to Responses API tool output).
+      # Production RAG with remote Milvus is available via lsd-rag (step-08).
       vector_io:
-      - provider_id: milvus-remote
-        provider_type: remote::milvus
+      - provider_id: milvus-inline
+        provider_type: inline::milvus
         config:
-          uri: http://milvus-standalone.private-ai.svc.cluster.local:19530
-          token: ""
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
           persistence:
             namespace: milvus_vectors
             backend: kv_default
