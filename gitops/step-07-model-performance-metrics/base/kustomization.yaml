@@ -59,23 +59,21 @@ kind: Kustomization
 # ============================================================================
 
 resources:
-  # OpenShift Pipelines Operator (Tekton) for self-service benchmarks
+  # OpenShift Pipelines Operator (used by step-09 RAG pipeline)
   - pipelines-operator/
-  
-  # Grafana Operator: Operator + Instance + Dashboards as CRs
+
+  # Grafana Operator: Operator + Instance + Dashboards
   - grafana-operator/
-  
-  # GuideLLM automated benchmarking (CronJob for daily runs)
+
+  # GuideLLM: CronJob for automated benchmarks + Job templates for on-demand
   - guidellm/
-  
-  # GuideLLM Pipeline (Tekton Task/Pipeline for self-service runs)
-  - guidellm-pipeline/
-  
-  # GuideLLM Workbench (Streamlit UI for interactive benchmarking)
-  - guidellm-workbench/
-  
-  # Model Benchmarking Workbench (Jupyter notebook for running and analyzing benchmarks)
+
+  # Model Benchmarking Workbench (Jupyter notebook for analysis)
   - model-benchmarking-wb/
+
+  # REMOVED (simplified):
+  # - guidellm-pipeline/   → Replaced by simple Job templates in guidellm/
+  # - guidellm-workbench/  → Broken Streamlit image; use Grafana dashboards instead
 
 # Note: Removed commonLabels to avoid Service selector mismatch issues.
 # Labels are applied directly in individual manifests instead.

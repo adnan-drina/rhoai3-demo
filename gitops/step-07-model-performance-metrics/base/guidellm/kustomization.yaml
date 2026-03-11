@@ -28,7 +28,7 @@ kind: Kustomization
 
 resources:
   - rbac.yaml
-  - pvc.yaml
   - cronjob.yaml
-  # job-template.yaml - not deployed (template for manual use)
+  # pvc.yaml removed — metrics flow through Prometheus/Grafana, not PVC files
+  # Job templates in job-templates/ are for manual use (oc create -f)
 

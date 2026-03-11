@@ -67,20 +67,55 @@ This step demonstrates the **Economics of Precision**:
 
 | Component | Description | Official/Community |
 |-----------|-------------|-------------------|
-| **OpenShift Pipelines Operator** | Red Hat Tekton for CI/CD pipelines (v1.20.2) | Red Hat Official |
+| **OpenShift Pipelines Operator** | Red Hat Tekton (used by step-09 RAG pipeline) | Red Hat Official |
 | **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
 | **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
 | **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | - |
-| **7 GrafanaDashboard CRs** | Official vLLM + llm-d-deployer + RHOAI + custom dashboards | - |
+| **6 GrafanaDashboard CRs** | Official vLLM + llm-d-deployer + RHOAI + custom dashboards | - |
 | **ServiceAccount** | `grafana-sa` with `cluster-monitoring-view` permissions | - |
-| **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC (dispatcher pattern) | Community (OSS) |
-| **GuideLLM Pipeline** | Tekton Pipeline for self-service benchmarks | Community (OSS) |
-| **5 PipelineRun Templates** | Pre-configured runs for each model | - |
-| **GuideLLM Workbench** | Streamlit UI with pre-configured model endpoints | Community (OSS) |
+| **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC | Community (OSS) |
+| **Job Templates** | On-demand benchmark Jobs per model (`oc create -f`) | Community (OSS) |
 
 > **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.3. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
-> **Note:** For interactive benchmark UI, see [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) (future enhancement).
+## Benchmarking Approach
+
+We use a **simplified CronJob + Job template** pattern instead of Tekton Pipelines:
+
+```
+CronJob (daily, 2 AM UTC)
+├── Checks which models are running (curl /models)
+├── Creates a GuideLLM Job per active model
+└── Each Job: benchmark → metrics flow to Prometheus → visible in Grafana
+
+On-demand (any time):
+  oc create -f gitops/.../guidellm/job-templates/granite-8b-agent.yaml
+  oc create -f gitops/.../guidellm/job-templates/mistral-3-bf16.yaml
+```
+
+**Why not Tekton Pipelines?** In Kueue-managed namespaces, Tekton's affinity assistants and topology scheduling gates create deadlocks. Simple Jobs with `kueue.x-k8s.io/queue-name: default` work reliably.
+
+**Why no results PVC?** The real value is in Prometheus/Grafana metrics, not JSON files. vLLM automatically exposes metrics via ServiceMonitors — every benchmark request lights up the dashboards.
+
+## Traffic Profiles (aligned with NeuralNav/GuideLLM standards)
+
+| Profile | Tokens (in→out) | Use Case | Model | SLO Class |
+|---------|----------------|----------|-------|-----------|
+| **Chatbot/Q&A** | 512→256 | Interactive chat, tool-calling | `granite-8b-agent` | Conversational |
+| **Enterprise Chat** | 1024→1024 | Content generation, translation | `mistral-3-bf16` | Interactive |
+| **RAG/Summarization** | 4096→512 | Document analysis, long-context Q&A | `granite-8b-agent` (RAG) | Interactive |
+
+> **Ref:** [NeuralNav Traffic Profile Framework](https://github.com/redhat-et/neuralnav/blob/main/docs/traffic_and_slos.md)
+
+## SLO Targets (Experience-Driven)
+
+| Experience Class | TTFT P95 | ITL P95 | E2E P95 | Our Model | Status |
+|-----------------|---------|---------|---------|-----------|--------|
+| **Conversational** | ≤150ms | ≤25ms | ≤7s | granite-8b: 60-95ms TTFT, 40ms TPOT | ✅ Meets SLO |
+| **Interactive** | ≤500ms | ≤35ms | ≤25s | mistral-bf16: 70-115ms TTFT, 53ms TPOT | ⚠️ TPOT exceeds |
+| **Deferred** | ≤1s | ≤40ms | ≤35s | mistral-bf16 at high concurrency | ✅ Meets SLO |
+
+> **Ref:** [NeuralNav Experience-Driven SLOs](https://github.com/redhat-et/neuralnav/blob/main/docs/traffic_and_slos.md#3-experience-classes-and-user-expectations)
 
 ### Grafana Operator Benefits
 
@@ -552,15 +587,15 @@ rate(vllm:generation_tokens_total{namespace="private-ai"}[1m])
 gitops/step-07-model-performance-metrics/
 ├── base/
 │   ├── kustomization.yaml
-│   ├── pipelines-operator/                # Red Hat OpenShift Pipelines (Tekton)
+│   ├── pipelines-operator/                # Red Hat OpenShift Pipelines (for step-09)
 │   │   ├── kustomization.yaml
-│   │   └── subscription.yaml              # latest channel, v1.20.2
+│   │   └── subscription.yaml
 │   ├── grafana-operator/
 │   │   ├── kustomization.yaml
 │   │   ├── operator/                      # Grafana Operator from OperatorHub
 │   │   │   ├── kustomization.yaml
-│   │   │   ├── namespace.yaml             # grafana-operator namespace
-│   │   │   ├── operatorgroup.yaml         # AllNamespaces mode
+│   │   │   ├── namespace.yaml
+│   │   │   ├── operatorgroup.yaml
 │   │   │   └── subscription.yaml          # community-operators, v5 channel
 │   │   ├── instance/                      # Grafana instance in private-ai
 │   │   │   ├── kustomization.yaml
@@ -568,37 +603,20 @@ gitops/step-07-model-performance-metrics/
 │   │   │   └── datasource.yaml            # GrafanaDatasource + RBAC
 │   │   └── dashboards/                    # GrafanaDashboard CRs (6 total)
 │   │       ├── kustomization.yaml
-│   │       ├── vllm-performance-statistics.yaml  # Official (from GitHub URL)
-│   │       ├── vllm-query-statistics.yaml        # Official (from GitHub URL)
-│   │       ├── rhoai-vllm-model-metrics.yaml     # Custom per-model metrics
-│   │       ├── dcgm-gpu-metrics.yaml             # Custom NVIDIA DCGM
-│   │       ├── mistral-roi-comparison.yaml       # Custom (BF16 vs INT4)
-│   │       └── vllm-latency-throughput-cache.yaml # llm-d-deployer (13 panels)
-│   ├── guidellm/                          # Automated benchmarking (CronJob)
+│   │       ├── vllm-performance-statistics.yaml  # Official vLLM (URL)
+│   │       ├── vllm-query-statistics.yaml        # Official vLLM (URL)
+│   │       ├── vllm-latency-throughput-cache.yaml # llm-d-deployer (ConfigMap)
+│   │       ├── vllm-ltc-configmap.yaml           # Dashboard JSON (12 panels)
+│   │       ├── rhoai-vllm-model-metrics.yaml     # RHOAI community
+│   │       ├── dcgm-gpu-metrics.yaml             # NVIDIA DCGM
+│   │       └── mistral-roi-comparison.yaml       # BF16 vs INT4
+│   ├── guidellm/                          # Benchmarking (CronJob + Job templates)
 │   │   ├── kustomization.yaml
-│   │   ├── rbac.yaml                      # ServiceAccount + Role for dispatcher
-│   │   ├── pvc.yaml                       # Results storage
-│   │   ├── cronjob.yaml                   # Daily dispatcher (creates parallel Jobs)
-│   │   └── job-template.yaml              # On-demand template (reference only)
-│   ├── guidellm-pipeline/                 # Self-service pipelines (Tekton)
-│   │   ├── kustomization.yaml
-│   │   ├── pvc.yaml                       # Pipeline results storage
-│   │   ├── task.yaml                      # GuideLLM Tekton Task
-│   │   ├── pipeline.yaml                  # GuideLLM Benchmark Pipeline
-│   │   └── pipelineruns/                  # Pre-configured templates
-│   │       ├── kustomization.yaml
-│   │       ├── mistral-3-bf16.yaml        # 4-GPU full precision
-│   │       ├── mistral-3-int4.yaml        # 1-GPU quantized
-│   │       ├── granite-8b-agent.yaml      # 1-GPU agent model
-│   │       ├── devstral-2.yaml            # 4-GPU coding model
-│   │       └── gpt-oss-20b.yaml           # 4-GPU foundation model
-│   └── guidellm-workbench/                # Interactive Streamlit UI
-│       ├── kustomization.yaml
-│       ├── rbac.yaml                      # ServiceAccount with anyuid SCC
-│       ├── configmap.yaml                 # Pre-configured endpoints + startup script
-│       ├── deployment.yaml                # Workbench deployment (patched at startup)
-│       ├── service.yaml
-│       └── route.yaml
+│   │   ├── rbac.yaml                      # SA + Role for dispatcher
+│   │   ├── cronjob.yaml                   # Daily dispatcher
+│   │   └── job-templates/                 # On-demand benchmarks (oc create -f)
+│   │       ├── granite-8b-agent.yaml      # 512→256 Chatbot profile
+│   │       └── mistral-3-bf16.yaml        # 1024→1024 Enterprise profile
 └── kustomization.yaml
 ```
 
@@ -726,9 +744,10 @@ Direct PromQL queries in OpenShift Console:
 - [Grafana Operator Documentation](https://grafana.github.io/grafana-operator/docs/)
 - [redhat-cop/gitops-catalog - OpenShift Pipelines](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-pipelines-operator)
 - [redhat-cop/gitops-catalog - Grafana Operator](https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator)
-- [GuideLLM GitHub Repository](https://github.com/neuralmagic/guidellm)
-- [GuideLLM Pipeline (rh-aiservices-bu)](https://github.com/rh-aiservices-bu/guidellm-pipeline)
-- [AI on OpenShift - KServe UWM Dashboard](https://ai-on-openshift.io/odh-rhoai/kserve-uwm-dashboard-metrics/)
+- [GuideLLM (vllm-project)](https://github.com/vllm-project/guidellm) — SLO-aware benchmarking platform
+- [NeuralNav - SLO-Driven Capacity Planning](https://github.com/redhat-et/neuralnav) — Traffic profiles + experience-driven SLOs
+- [llm-d Observability on OpenShift AI](https://medium.com/@jajodia.nirjhar/how-we-built-an-observability-stack-for-llm-d-on-openshift-ai-d46e6365a362) — Grafana + Thanos pattern
+- [llm-d-deployer vLLM Dashboard](https://github.com/llm-d/llm-d-deployer/tree/main/quickstart/grafana/dashboards)
 - [RHOAI GenAIOps Patterns](https://github.com/rhoai-genaiops)
 
 ### Future Enhancement: Metrics-Based Autoscaling (RHOAI 3.3 TP)

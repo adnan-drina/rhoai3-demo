@@ -1,0 +1,66 @@
+# GuideLLM Benchmark: mistral-3-bf16 (4-GPU BF16)
+# Usage: oc create -f mistral-3-bf16.yaml
+# Traffic profile: 1024→1024 (Content generation / enterprise chat)
+# SLO target: Interactive — TTFT ≤500ms, ITL ≤35ms
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: bench-bf16-
+  namespace: private-ai
+  labels:
+    app: guidellm
+    model: mistral-3-bf16
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: guidellm
+        model: mistral-3-bf16
+        kueue.x-k8s.io/queue-name: default
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: benchmark
+          image: ghcr.io/vllm-project/guidellm:stable
+          env:
+            - name: HOME
+              value: /tmp
+            - name: HF_HOME
+              value: /tmp/.cache/huggingface
+          command: ["guidellm"]
+          args:
+            - benchmark
+            - run
+            - --target
+            - "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1"
+            - --model
+            - "mistral-3-bf16"
+            - --rate
+            - "1,3,5,8,10,15"
+            - --rate-type
+            - constant
+            - --max-seconds
+            - "60"
+            - --max-requests
+            - "50"
+            - --data
+            - '{"prompt_tokens":1024,"output_tokens":1024}'
+            - --output-path
+            - /tmp/results.json
+            - --disable-console-interactive
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /tmp/.cache
+      volumes:
+        - name: cache
+          emptyDir: {}
