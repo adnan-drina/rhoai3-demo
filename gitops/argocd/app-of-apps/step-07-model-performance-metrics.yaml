@@ -26,9 +26,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - ServerSideApply.ForceConflicts=true
       - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
-      # Required for CRDs with complex schemas (Grafana, Routes)
       - RespectIgnoreDifferences=true
     retry:
       limit: 10
