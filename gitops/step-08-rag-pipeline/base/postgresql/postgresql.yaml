@@ -1,0 +1,117 @@
+# PostgreSQL for LlamaStack Metadata (RHOAI 3.3 Production Recommendation)
+# ============================================================================
+# "Starting with OpenShift AI 3.2, PostgreSQL is the default backend for
+# production-grade deployments." — RHOAI 3.3 LlamaStack docs
+#
+# This PostgreSQL instance stores:
+#   - Vector store metadata
+#   - File references
+#   - Agent state and responses
+#   - Configuration state
+#
+# LlamaStack automatically creates the database specified by POSTGRES_DB
+# if it does not already exist.
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
+# ============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llamastack-postgres-pvc
+  namespace: private-ai
+  labels:
+    app: llamastack-postgres
+    app.kubernetes.io/part-of: rag-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llamastack-postgres
+  namespace: private-ai
+  labels:
+    app: llamastack-postgres
+    app.kubernetes.io/part-of: rag-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llamastack-postgres
+  template:
+    metadata:
+      labels:
+        app: llamastack-postgres
+    spec:
+      containers:
+        - name: postgresql
+          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql:16-el9
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRESQL_DATABASE
+              value: llamastack
+            - name: POSTGRESQL_USER
+              value: llamastack
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: llamastack-postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U llamastack -d llamastack
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U llamastack -d llamastack
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: llamastack-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llamastack-postgres
+  namespace: private-ai
+  labels:
+    app: llamastack-postgres
+    app.kubernetes.io/part-of: rag-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app: llamastack-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP

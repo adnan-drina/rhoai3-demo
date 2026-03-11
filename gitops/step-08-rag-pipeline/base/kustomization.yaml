@@ -10,8 +10,11 @@ kind: Kustomization
 #   5. LlamaStackDistribution configured for RAG with remote Milvus
 
 resources:
-  - milvus/
-  - docling/
-  - minio-rag-bucket/
-  - dspa/
-  - llamastack-rag/
+  # Infrastructure (sync-wave 1-2)
+  - postgresql/          # PostgreSQL for LlamaStack metadata (RHOAI 3.3 production)
+  - milvus/              # Milvus vector database
+  - docling/             # PDF→Markdown document processor
+  - minio-rag-bucket/    # MinIO bucket for RAG documents
+  # Platform (sync-wave 3-4)
+  - dspa/                # Kubeflow Pipelines v2
+  - llamastack-rag/      # LlamaStack RAG backend (PostgreSQL + Milvus + granite-8b)

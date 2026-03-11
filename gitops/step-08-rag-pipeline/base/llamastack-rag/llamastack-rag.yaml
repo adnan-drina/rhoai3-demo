@@ -1,19 +1,13 @@
 # =============================================================================
-# LlamaStackDistribution - RAG Backend
+# LlamaStackDistribution - RAG Backend (RHOAI 3.3 Production Pattern)
 # =============================================================================
-# Purpose-built LlamaStack for RAG workflows with remote Milvus.
-# Differs from step-06's lsd-genai-playground:
-#   - vector_io: remote::milvus (persistent) for 3 demo collections
-#   - Primary LLM: granite-8b-agent (tool-calling for RAG)
+# Aligned with RHOAI 3.3 production recommendations:
+#   - PostgreSQL for metadata persistence (not SQLite)
+#   - Secret-based credentials (not hardcoded env vars)
+#   - MILVUS_ENDPOINT with tcp:// protocol (gRPC port 19530)
+#   - Remote Milvus for vector storage
 #
-# v0.4.x Schema Notes (same as step-06):
-#   - image_name: custom (prevents rh-dev template merge)
-#   - base_url not url in vLLM providers
-#   - Storage uses table_name+backend references
-#   - registered_resources instead of top-level models/vector_dbs
-#   - Do NOT set LLAMA_STACK_CONFIG in env (operator injects it)
-#
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
 # =============================================================================
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
@@ -38,24 +32,54 @@ spec:
       name: llama-stack
       port: 8321
       env:
+        # vLLM credentials from Secret (RHOAI 3.3 recommended)
         - name: VLLM_API_URL
-          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-vllm-secret
+              key: VLLM_URL
         - name: VLLM_URL
-          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-vllm-secret
+              key: VLLM_URL
         - name: VLLM_API_TOKEN
-          value: "fake"
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-vllm-secret
+              key: VLLM_API_TOKEN
         - name: VLLM_TLS_VERIFY
           value: "false"
-        - name: FMS_ORCHESTRATOR_URL
-          value: http://guardrails-orchestrator.private-ai.svc:8080
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        # Remote Milvus — gRPC endpoint (RHOAI 3.3 recommended format)
-        # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
+        # PostgreSQL metadata store (RHOAI 3.3 production requirement)
+        - name: POSTGRES_HOST
+          value: llamastack-postgres.private-ai.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: llamastack
+        - name: POSTGRES_USER
+          value: llamastack
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-postgres-secret
+              key: POSTGRES_PASSWORD
+        # Remote Milvus from Secret (RHOAI 3.3 recommended)
         - name: MILVUS_ENDPOINT
-          value: "tcp://milvus-standalone.private-ai.svc.cluster.local:19530"
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-milvus-secret
+              key: MILVUS_ENDPOINT
         - name: MILVUS_TOKEN
-          value: ""
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-milvus-secret
+              key: MILVUS_TOKEN
+        # Guardrails (activates when step-10 is deployed)
+        - name: FMS_ORCHESTRATOR_URL
+          value: http://guardrails-orchestrator.private-ai.svc:8080
       resources:
         requests:
           cpu: 250m
