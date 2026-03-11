@@ -18,20 +18,27 @@ kind: Kustomization
 # ============================================================================
 
 resources:
-  # Official Upstream Dashboards (from GitHub URLs - auto-updated)
-  - vllm-performance-statistics.yaml    # Official vLLM: E2E Latency, TTFT, TPOT
-  - vllm-query-statistics.yaml          # Official vLLM: Request/Token Statistics
-  - dcgm-gpu-metrics.yaml               # Official NVIDIA DCGM Exporter Dashboard
-  
-  # vLLM Comprehensive Dashboard (from llm-d-deployer - 12 panels)
-  # Covers: latency P50/P95/P99, throughput, TPOT, TTFT, KV cache, queue time
-  # ConfigMap: pre-processed JSON with namespace=private-ai default
-  - vllm-ltc-configmap.yaml             # Dashboard JSON as ConfigMap
-  - vllm-latency-throughput-cache.yaml   # GrafanaDashboard CR (references ConfigMap)
-  
-  # RHOAI Community Dashboards (from rh-aiservices-bu/rhoai-uwm)
-  - rhoai-vllm-model-metrics.yaml       # vLLM model metrics with histograms
-  
-  # Custom Dashboards for this Demo
-  - mistral-roi-comparison.yaml         # Mistral BF16 vs INT4 comparison
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PRIMARY: vLLM Latency, Throughput & Cache (12 panels)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Source: llm-d-deployer (pre-processed with namespace=private-ai default)
+  # Covers: E2E P50/P95/P99, TTFT, TPOT, throughput, scheduler state,
+  #         KV cache utilization, queue time, prefill/decode time
+  - vllm-ltc-configmap.yaml
+  - vllm-latency-throughput-cache.yaml
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # GPU HARDWARE: NVIDIA DCGM GPU Metrics
+  # ═══════════════════════════════════════════════════════════════════════════
+  - dcgm-gpu-metrics.yaml
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ROI STORY: Mistral BF16 vs INT4 Comparison
+  # ═══════════════════════════════════════════════════════════════════════════
+  - mistral-roi-comparison.yaml
+
+  # REMOVED (consolidated into vllm-latency-throughput-cache):
+  # - vllm-performance-statistics.yaml  → E2E/TTFT/ITL/TPS covered
+  # - vllm-query-statistics.yaml        → Request/token stats covered
+  # - rhoai-vllm-model-metrics.yaml     → Per-model KV cache covered
 

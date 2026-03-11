@@ -67,12 +67,10 @@ This step demonstrates the **Economics of Precision**:
 
 | Component | Description | Official/Community |
 |-----------|-------------|-------------------|
-| **OpenShift Pipelines Operator** | Red Hat Tekton (used by step-09 RAG pipeline) | Red Hat Official |
 | **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
 | **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
 | **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | - |
-| **6 GrafanaDashboard CRs** | Official vLLM + llm-d-deployer + RHOAI + custom dashboards | - |
-| **ServiceAccount** | `grafana-sa` with `cluster-monitoring-view` permissions | - |
+| **3 GrafanaDashboards** | vLLM metrics + GPU hardware + ROI comparison | - |
 | **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC | Community (OSS) |
 | **Job Templates** | On-demand benchmark Jobs per model (`oc create -f`) | Community (OSS) |
 
@@ -245,312 +243,81 @@ Both models have been tuned using Red Hat AI Field Engineering recommendations:
 oc apply -f gitops/argocd/app-of-apps/step-07-model-performance-metrics.yaml
 ```
 
-## The "ROI of Quantization" Demo
+## Demo Walkthrough
 
-### Step 1: Access Grafana Dashboard
+### Before the Demo (~5 min)
 
 ```bash
-# Get Grafana URL
-GRAFANA_URL=$(oc get route grafana -n private-ai -o jsonpath='{.spec.host}')
+# 1. Get Grafana URL
+GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${GRAFANA_URL}"
-```
 
-**No login required** (anonymous access enabled). Default dashboard: **vLLM Model Performance**
+# 2. Run benchmarks to generate live Grafana data
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
 
-### Step 2: Run the Efficiency Comparison
-
-```bash
-# Trigger the ROI comparison benchmark
-oc create job --from=cronjob/guidellm-daily roi-comparison-$(date +%H%M) -n private-ai
-
-# Watch progress
-oc logs -f job/roi-comparison-$(date +%H%M) -n private-ai
-```
-
-Alternatively, use the Tekton Pipeline for a structured efficiency comparison:
-
-```bash
-# Run INT4 benchmark via Pipeline
-oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-int4.yaml
-
-# Run BF16 benchmark via Pipeline (in parallel)
-oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-bf16.yaml
-
-# Watch pipeline progress
-tkn pipelinerun list -n private-ai
-tkn pipelinerun logs -f -n private-ai
-```
-
-### Step 4: Interpret Results
-
-After running the efficiency comparison, analyze:
-
-1. **Break Point (INT4)**: At what req/s does TTFT exceed 1.0s?
-2. **Break Point (BF16)**: At what req/s does TTFT exceed 1.0s?
-3. **Efficiency Delta**: `BF16_breakpoint / INT4_breakpoint`
-4. **Cost Analysis**: If INT4 breaks at 2 req/s and BF16 at 6 req/s, can 4x INT4 instances (4 × 2 = 8 req/s) outperform 1x BF16 at lower cost?
-
-## Self-Service Benchmarking with OpenShift Pipelines
-
-This step deploys [Red Hat OpenShift Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20) (Tekton) for self-service benchmark execution. Each model has a pre-configured PipelineRun template.
-
-### Available Pipeline Runs
-
-| Model | GPU Config | PipelineRun Template |
-|-------|------------|---------------------|
-| `mistral-3-bf16` | 4 x L4 | `pipelineruns/mistral-3-bf16.yaml` |
-| `mistral-3-int4` | 1 x L4 | `pipelineruns/mistral-3-int4.yaml` |
-| `granite-8b-agent` | 1 x L4 | `pipelineruns/granite-8b-agent.yaml` |
-| `devstral-2` | 4 x L4 | `pipelineruns/devstral-2.yaml` |
-| `gpt-oss-20b` | 4 x L4 | `pipelineruns/gpt-oss-20b.yaml` |
-
-Reference: [rh-aiservices-bu/guidellm-pipeline](https://github.com/rh-aiservices-bu/guidellm-pipeline)
-
-### Run Benchmark via Pipeline
-
-**Option 1: Using Templates (Recommended)**
-
-```bash
-# Benchmark Mistral-3 INT4 (1-GPU)
-oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-int4.yaml
-
-# Benchmark Mistral-3 BF16 (4-GPU)
-oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-bf16.yaml
-
-# Watch pipeline progress
-tkn pipelinerun logs -f -n private-ai
-```
-
-**Option 2: Using Tekton CLI**
-
-```bash
-# Install tkn CLI (if not installed)
-# brew install tektoncd-cli  # macOS
-
-# Run benchmark with custom parameters
-tkn pipeline start guidellm-benchmark -n private-ai \
-  --param model-name=mistral-3-int4 \
-  --param profile=sweep \
-  --param max-seconds=60 \
-  --param max-requests=50 \
-  --workspace name=results,claimName=guidellm-pipeline-results
-```
-
-**Option 3: OpenShift Console**
-
-1. Navigate to **Pipelines → Pipelines** in `private-ai` namespace
-2. Click on **guidellm-benchmark** pipeline
-3. Click **Start** and fill in parameters
-4. Monitor execution in **PipelineRuns** tab
-
-### View Pipeline Results
-
-```bash
-# List completed runs
-tkn pipelinerun list -n private-ai
-
-# View specific run logs
-tkn pipelinerun logs <run-name> -n private-ai
-
-# Access results PVC
-oc run results-viewer --rm -it --restart=Never \
-  --image=registry.access.redhat.com/ubi9/ubi-minimal \
-  --overrides='{"spec":{"containers":[{"name":"viewer","image":"registry.access.redhat.com/ubi9/ubi-minimal","command":["sh","-c","ls -la /results/*"],"volumeMounts":[{"name":"results","mountPath":"/results"}]}],"volumes":[{"name":"results","persistentVolumeClaim":{"claimName":"guidellm-pipeline-results"}}]}}' \
-  -n private-ai
-```
-
-## GuideLLM Workbench (Interactive UI)
-
-The [GuideLLM Workbench](https://github.com/rh-aiservices-bu/guidellm-pipeline) provides a Streamlit-based web interface for running benchmarks interactively.
-
-### Features
-
-- **Pre-populated Configuration**: UI fields auto-filled with environment-specific endpoints
-- **Interactive Configuration**: Easy-to-use forms for endpoint, authentication, and benchmark parameters
-- **Real-time Monitoring**: Live metrics parsing during benchmark execution
-- **Quick Stats**: Sidebar with key performance indicators (requests/sec, tokens/sec, latency, TTFT)
-- **Results History**: Session-based storage with detailed result viewing
-- **Download Results**: Export benchmark results as YAML files
-
-### Access the Workbench
-
-```bash
-# Get the Workbench URL
-oc get route guidellm-workbench -n private-ai -o jsonpath='https://{.spec.host}{"\n"}'
-```
-
-### Pre-configured Endpoints
-
-The workbench is automatically configured via the `guidellm-workbench-config` ConfigMap. The UI opens with the default model (`mistral-3-int4`) pre-selected.
-
-| Default Setting | Value |
-|----------------|-------|
-| **Target Endpoint** | `http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1` |
-| **Model Name** | `mistral-3-int4` |
-| **Processor** | `mistralai/Mistral-Small-24B-Instruct-2501` |
-| **Max Duration** | 60 seconds |
-| **Max Requests** | 100 |
-| **Max Concurrency** | 10 |
-
-All 5 model presets are available in the ConfigMap's `MODEL_PRESETS` JSON for future dropdown implementation.
-
-### Environment Configuration (GitOps)
-
-The workbench configuration is defined in:
-
-```
-gitops/step-07-model-performance-metrics/base/guidellm-workbench/configmap.yaml
-```
-
-The ConfigMap includes:
-- **Default values** for UI fields (`DEFAULT_TARGET`, `DEFAULT_MODEL_NAME`, etc.)
-- **Model presets** JSON array for all 5 models
-- **Startup script** that patches `app.py` to read environment variables
-
-> **Design Decision:** We use a startup script to patch the Streamlit app at runtime because the upstream image has hardcoded defaults. This allows GitOps configuration without modifying the container image.
-
-## GuideLLM Benchmarking
-
-[GuideLLM](https://github.com/neuralmagic/guidellm) is an open-source tool from Neural Magic for evaluating LLM deployments by simulating real-world inference workloads.
-
-### Poisson Stress Test Methodology
-
-We use **Poisson distribution** to simulate realistic human arrival patterns, not synthetic constant load:
-
-```
-λ (lambda) = average requests per second
-Actual arrivals follow Poisson distribution (natural variability)
-```
-
-This answers: *"How does my model behave when real users arrive randomly?"*
-
-### Benchmark Scenarios
-
-| Scenario | Prompt | Output | Focus | Simulates |
-|----------|--------|--------|-------|-----------|
-| **Chat** | 64 tok | 64 tok | TTFT | Interactive conversation |
-| **Summarization** | 512 tok | 128 tok | KV Cache | Document processing |
-| **Code Gen** | 128 tok | 256 tok | TPOT | Long-form generation |
-| **Stress** | 256 tok | 256 tok | Overall | High I/O workload |
-
-### Trigger Manual Benchmark (Parallel Execution)
-
-The CronJob uses a dispatcher pattern to spawn parallel Jobs for each model:
-
-```bash
-# Trigger parallel benchmarks for all available models
-oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M%S) -n private-ai
-
-# Watch the dispatcher create Jobs
-oc logs -f job/benchmark-$(date +%H%M%S) -n private-ai
-
-# Monitor parallel benchmark Jobs (spawned by dispatcher)
-oc get jobs -n private-ai -l app=guidellm
-
-# Watch both models running in parallel
+# 3. Monitor progress
 oc get pods -n private-ai -l app=guidellm -w
 ```
 
-**Architecture:**
-- The CronJob is a "dispatcher" that creates individual Jobs for each model
-- Each model benchmark runs in its own container for true parallelism
-- Jobs are labeled with `benchmark-run=<timestamp>` for tracking
-- Jobs auto-delete after 24 hours (`ttlSecondsAfterFinished: 86400`)
+### During the Demo
 
-### Run Single Model Benchmark
+**Dashboard 1: vLLM Latency, Throughput & Cache** (primary — show live)
 
-**Option 1: Using Tekton Pipeline (Recommended)**
+Open Grafana → select "vLLM Latency, Throughput & Cache" dashboard. Ensure `namespace=private-ai` and `model_name=granite-8b-agent`.
+
+Walk through these panels:
+
+1. **E2E Request Latency** — "P99 latency stays under 40s even at 10 concurrent users"
+2. **Token Throughput** — "We're generating 80-120 tokens/second on a single $0.85/hr GPU"
+3. **Scheduler State** — "Green line shows concurrent requests; yellow would show queuing — we have zero queue backlog"
+4. **Cache Utilization** — "KV cache usage stays healthy, no memory pressure"
+5. **Time To First Token** — "TTFT P95 under 95ms — users see the first token almost instantly"
+
+Switch `model_name` to `mistral-3-bf16` and compare the same panels.
+
+**Dashboard 2: NVIDIA DCGM GPU Metrics** (optional — hardware story)
+
+- Show GPU utilization hitting 100% during benchmarks
+- Point out: "This is the capacity ceiling — when we need more, Kueue queues the request"
+
+**Dashboard 3: Mistral ROI Comparison** (closing — business story)
+
+- Side-by-side BF16 vs INT4 metrics
+- Key message: *"The 1-GPU model delivers 60% of the 4-GPU model's throughput at 25% of the cost"*
+
+### Demo Talking Points
+
+> *"On a single $0.85/hr L4 GPU, granite-8b-agent handles 10 concurrent users with sub-100ms TTFT and zero queue backlog. The 4-GPU BF16 model costs 4x more but only delivers 2x the throughput. For cost-sensitive workloads, running 4 instances of the 1-GPU model gives you more total capacity at the same price."*
+
+> *"When the GPU hits 100% utilization, Kueue's quota management kicks in — new models queue until resources free up. This is exactly the GPU-as-a-Service pattern we demonstrated in Step 05."*
+
+## Running Benchmarks
+
+### On-Demand (Job Templates)
 
 ```bash
-# Use the pre-configured PipelineRun template
-oc create -f gitops/step-07-model-performance-metrics/base/guidellm-pipeline/pipelineruns/mistral-3-int4.yaml
+# Benchmark granite-8b-agent (1-GPU, ~5 min)
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
 
-# Monitor the pipeline
-tkn pipelinerun logs -f -n private-ai
+# Benchmark mistral-3-bf16 (4-GPU, ~8 min)
+oc create -f gitops/step-07-model-performance-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
+
+# Monitor
+oc get pods -n private-ai -l app=guidellm -w
+
+# View results
+oc logs job/<job-name> -n private-ai | grep -A12 "Request Latency Statistics"
 ```
 
-**Option 2: Using GuideLLM Workbench (Interactive)**
+### Automated (CronJob)
 
 ```bash
-# Open the workbench UI
-oc get route guidellm-workbench -n private-ai -o jsonpath='https://{.spec.host}{"\n"}'
-# The UI opens with mistral-3-int4 pre-configured - just click "Run Benchmark"
-```
+# Runs daily at 2:00 AM UTC — benchmarks all active models
+oc get cronjob guidellm-daily -n private-ai
 
-**Option 3: Ad-hoc Job (Advanced)**
-
-```bash
-# Create an ad-hoc benchmark job
-cat <<EOF | oc apply -f -
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: benchmark-int4-$(date +%H%M%S)
-  namespace: private-ai
-  labels:
-    app: guidellm
-spec:
-  backoffLimit: 1
-  ttlSecondsAfterFinished: 86400
-  template:
-    spec:
-      restartPolicy: Never
-      securityContext:
-        fsGroup: 0
-      containers:
-        - name: benchmark
-          image: ghcr.io/vllm-project/guidellm:stable
-          env:
-            - name: HOME
-              value: /tmp
-            - name: HF_HOME
-              value: /tmp/.cache/huggingface
-          command:
-            - /bin/bash
-            - -c
-            - |
-              cat > /tmp/prompts.json << 'PROMPTS'
-              [{"prompt": "What is the capital of France?"},{"prompt": "Explain quantum computing."}]
-              PROMPTS
-              
-              guidellm benchmark run \
-                --target "http://mistral-3-int4-predictor.private-ai.svc.cluster.local:8080/v1" \
-                --data /tmp/prompts.json \
-                --profile sweep \
-                --max-seconds 60 \
-                --max-requests 50 \
-                --output-dir /results \
-                --outputs "mistral-3-int4-adhoc.json" \
-                --disable-console-interactive
-          volumeMounts:
-            - name: results
-              mountPath: /results
-            - name: cache
-              mountPath: /tmp/.cache
-          resources:
-            requests:
-              cpu: 500m
-              memory: 512Mi
-            limits:
-              cpu: "2"
-              memory: 2Gi
-      volumes:
-        - name: results
-          persistentVolumeClaim:
-            claimName: guidellm-results
-        - name: cache
-          emptyDir: {}
-EOF
-```
-
-### View Benchmark Results
-
-```bash
-# Create a debug pod to view results
-oc run results-viewer --rm -it --restart=Never \
-  --image=registry.access.redhat.com/ubi9/ubi-minimal \
-  --overrides='{"spec":{"containers":[{"name":"viewer","image":"registry.access.redhat.com/ubi9/ubi-minimal","command":["sh","-c","find /results -name *.json | head -20"],"volumeMounts":[{"name":"results","mountPath":"/results"}]}],"volumes":[{"name":"results","persistentVolumeClaim":{"claimName":"guidellm-results"}}]}}' \
-  -n private-ai
+# Trigger manually
+oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n private-ai
 ```
 
 ## vLLM Metrics Reference
@@ -601,15 +368,12 @@ gitops/step-07-model-performance-metrics/
 │   │   │   ├── kustomization.yaml
 │   │   │   ├── grafana.yaml               # Grafana CR (anonymous access)
 │   │   │   └── datasource.yaml            # GrafanaDatasource + RBAC
-│   │   └── dashboards/                    # GrafanaDashboard CRs (6 total)
+│   │   └── dashboards/                    # 3 focused GrafanaDashboard CRs
 │   │       ├── kustomization.yaml
-│   │       ├── vllm-performance-statistics.yaml  # Official vLLM (URL)
-│   │       ├── vllm-query-statistics.yaml        # Official vLLM (URL)
-│   │       ├── vllm-latency-throughput-cache.yaml # llm-d-deployer (ConfigMap)
-│   │       ├── vllm-ltc-configmap.yaml           # Dashboard JSON (12 panels)
-│   │       ├── rhoai-vllm-model-metrics.yaml     # RHOAI community
-│   │       ├── dcgm-gpu-metrics.yaml             # NVIDIA DCGM
-│   │       └── mistral-roi-comparison.yaml       # BF16 vs INT4
+│   │       ├── vllm-latency-throughput-cache.yaml # PRIMARY: 12-panel vLLM metrics
+│   │       ├── vllm-ltc-configmap.yaml           # Dashboard JSON (ConfigMap)
+│   │       ├── dcgm-gpu-metrics.yaml             # GPU hardware metrics
+│   │       └── mistral-roi-comparison.yaml       # BF16 vs INT4 ROI story
 │   ├── guidellm/                          # Benchmarking (CronJob + Job templates)
 │   │   ├── kustomization.yaml
 │   │   ├── rbac.yaml                      # SA + Role for dispatcher
@@ -620,63 +384,47 @@ gitops/step-07-model-performance-metrics/
 └── kustomization.yaml
 ```
 
-### Dashboards (GrafanaDashboard CRs)
+### Dashboards (3 Focused Views)
 
-| Dashboard | Source | Features |
-|-----------|--------|----------|
-| **vLLM Performance Statistics** | [Official vLLM GitHub](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana) (URL) | E2E Latency, TTFT, ITL, TPS (auto-updated) |
-| **vLLM Query Statistics** | [Official vLLM GitHub](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana) (URL) | Request Rate, Success/Error, Token Distribution |
-| **vLLM Latency, Throughput & Cache** | [llm-d-deployer](https://github.com/llm-d/llm-d-deployer) (URL) | **13 panels**: E2E P50/P95/P99, TTFT, TPOT, Scheduler State, KV Cache %, Queue Time, Prefill/Decode Time |
-| **RHOAI vLLM Model Metrics** | [rh-aiservices-bu/rhoai-uwm](https://github.com/rh-aiservices-bu/rhoai-uwm) (embedded) | Per-model performance, KV Cache, Queue depth |
-| **NVIDIA DCGM GPU Metrics** | Custom (embedded) | Temperature, Power, Utilization, Memory |
-| **Mistral ROI Comparison** | Custom (embedded) | BF16 vs INT4 head-to-head, Efficiency curves |
+| # | Dashboard | Purpose | Demo Use |
+|---|-----------|---------|----------|
+| 1 | **vLLM Latency, Throughput & Cache** | 12-panel comprehensive vLLM metrics | **Primary** — show during live benchmark |
+| 2 | **NVIDIA DCGM GPU Metrics** | GPU hardware: temp, power, utilization | Show GPU saturation at breaking point |
+| 3 | **Mistral ROI Comparison** | BF16 vs INT4 side-by-side | Close with the ROI story |
 
-> **Recommended starting dashboard:** The **vLLM Latency, Throughput & Cache** dashboard provides the most comprehensive single-pane view of vLLM inference health. Start here for troubleshooting and during demo benchmarks.
+> Consolidated from 6 dashboards to 3. The vLLM Latency, Throughput & Cache dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) replaces the 3 separate vLLM dashboards — it covers E2E latency P50/P95/P99, TTFT, TPOT, scheduler state, KV cache utilization, queue time, and prefill/decode time in one view.
 
 ## Validation
 
 ```bash
-# 1. Verify Grafana Operator is installed
+# 1. Verify Grafana Operator
 oc get csv -n grafana-operator | grep grafana
-# Expected: grafana-operator.v5.21.x ... Succeeded
+# Expected: grafana-operator.v5.x ... Succeeded
 
-# 2. Verify OpenShift Pipelines Operator is installed
-oc get csv -n openshift-operators | grep pipelines
-# Expected: openshift-pipelines-operator-rh.v1.20.x ... Succeeded
-
-# 3. Verify Grafana instance is ready
+# 2. Verify Grafana instance
 oc get grafana -n private-ai
-# Expected: grafana   12.x.x   complete   success   <age>
+# Expected: grafana   12.x.x   complete   success
 
-# 4. Verify all 6 GrafanaDashboards are synced
+# 3. Verify 3 dashboards
 oc get grafanadashboard -n private-ai
-# Expected: 6 dashboards (vllm-performance-statistics, vllm-query-statistics,
-#           vllm-latency-throughput-cache, rhoai-vllm-model-metrics,
-#           dcgm-gpu-metrics, mistral-roi-comparison)
+# Expected: vllm-latency-throughput-cache, dcgm-gpu-metrics, mistral-roi-comparison
 
-# 5. Verify GrafanaDatasource is ready
+# 4. Verify datasource
 oc get grafanadatasource -n private-ai
 # Expected: prometheus-uwm
 
-# 6. Verify Grafana Route is accessible
-curl -k -s -o /dev/null -w "%{http_code}" https://$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')/api/health
+# 5. Verify Grafana route
+curl -k -s -o /dev/null -w "%{http_code}" \
+  https://$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')/api/health
 # Expected: 200
 
-# 7. Verify GuideLLM CronJob exists
+# 6. Verify CronJob
 oc get cronjob guidellm-daily -n private-ai
-# Expected: guidellm-daily   0 2 * * *   ...
+# Expected: guidellm-daily   0 2 * * *
 
-# 8. Verify GuideLLM PVCs are bound
-oc get pvc -n private-ai | grep guidellm
-# Expected: guidellm-results and guidellm-pipeline-results both Bound
-
-# 9. Verify Tekton Pipeline and Task exist
-oc get pipeline,task -n private-ai
-# Expected: guidellm-benchmark (Pipeline and Task)
-
-# 10. Verify GuideLLM Workbench is running
-oc get deployment guidellm-workbench -n private-ai
-# Expected: 1/1 READY
+# 7. Verify ServiceMonitors (auto-created by KServe)
+oc get servicemonitor -n private-ai
+# Expected: one per model (*-metrics)
 
 # 11. Verify Workbench Route is accessible
 curl -k -s -o /dev/null -w "%{http_code}" https://$(oc get route guidellm-workbench -n private-ai -o jsonpath='{.spec.host}')/_stcore/health
