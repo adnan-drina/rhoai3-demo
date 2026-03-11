@@ -60,8 +60,11 @@ spec:
         - name: VLLM_MAX_TOKENS
           value: "4096"
         # Inline embeddings (sentence-transformers, no GPU needed)
+        # Both env vars required per RHOAI 3.3 docs
         - name: ENABLE_SENTENCE_TRANSFORMERS
           value: "true"
+        - name: EMBEDDING_PROVIDER
+          value: "sentence-transformers"
         # Guardrails (activates when step-10 is deployed)
         - name: FMS_ORCHESTRATOR_URL
           value: http://guardrails-orchestrator.private-ai.svc:8080
