@@ -103,8 +103,10 @@ spec:
   
   results:
     - name: output-file
+      type: string
       description: Path to the benchmark results JSON file
     - name: status
+      type: string
       description: Benchmark completion status (success/failed)
   
   steps:

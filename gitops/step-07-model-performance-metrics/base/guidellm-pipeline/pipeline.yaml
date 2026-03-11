@@ -116,6 +116,7 @@ spec:
   tasks:
     - name: benchmark
       taskRef:
+        kind: Task
         name: guidellm-benchmark
       params:
         - name: model-name
