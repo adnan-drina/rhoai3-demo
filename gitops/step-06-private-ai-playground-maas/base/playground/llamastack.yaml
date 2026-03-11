@@ -56,8 +56,11 @@ spec:
           value: http://guardrails-orchestrator.private-ai.svc:8080
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        - name: MILVUS_DB_PATH
-          value: "~/.llama/milvus.db"
+        # Remote Milvus — shared with step-08 RAG pipeline
+        - name: MILVUS_ENDPOINT
+          value: "tcp://milvus-standalone.private-ai.svc.cluster.local:19530"
+        - name: MILVUS_TOKEN
+          value: ""
       resources:
         requests:
           cpu: 250m
@@ -127,10 +130,11 @@ data:
           max_tokens: 4096
           tls_verify: false
       vector_io:
-      - provider_id: milvus-inline
-        provider_type: inline::milvus
+      - provider_id: milvus-remote
+        provider_type: remote::milvus
         config:
-          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          uri: http://milvus-standalone.private-ai.svc.cluster.local:19530
+          token: ""
           persistence:
             namespace: milvus_vectors
             backend: kv_default
