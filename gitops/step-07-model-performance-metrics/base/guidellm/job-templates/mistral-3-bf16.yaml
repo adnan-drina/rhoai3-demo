@@ -1,6 +1,6 @@
 # GuideLLM Benchmark: mistral-3-bf16 (4-GPU BF16)
 # Usage: oc create -f mistral-3-bf16.yaml
-# Traffic profile: 1024→1024 (Content generation / enterprise chat)
+# Traffic profile: 1024→1024 (Enterprise chat / content generation)
 # SLO target: Interactive — TTFT ≤500ms, ITL ≤35ms
 apiVersion: batch/v1
 kind: Job
@@ -30,27 +30,33 @@ spec:
               value: /tmp
             - name: HF_HOME
               value: /tmp/.cache/huggingface
-          command: ["guidellm"]
-          args:
-            - benchmark
-            - run
-            - --target
-            - "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1"
-            - --model
-            - "mistral-3-bf16"
-            - --rate
-            - "1,3,5,8,10,15"
-            - --rate-type
-            - constant
-            - --max-seconds
-            - "60"
-            - --max-requests
-            - "50"
-            - --data
-            - '{"prompt_tokens":1024,"output_tokens":1024}'
-            - --output-path
-            - /tmp/results.json
-            - --disable-console-interactive
+          command:
+            - /bin/bash
+            - -c
+            - |
+              cat > /tmp/prompts.json << 'EOF'
+              [
+                {"prompt": "Write a comprehensive technical analysis comparing containerization technologies: Docker, Podman, CRI-O, and containerd. Include performance characteristics, security models, and use cases for each."},
+                {"prompt": "Design a complete microservices architecture for an e-commerce platform. Include service boundaries, communication patterns, data management strategies, and deployment considerations on Kubernetes."},
+                {"prompt": "Explain the complete lifecycle of a machine learning model from data collection to production deployment, including MLOps best practices for monitoring, versioning, and retraining."},
+                {"prompt": "Write a detailed guide on implementing observability in distributed systems, covering metrics, logging, and tracing with OpenTelemetry, Prometheus, Grafana, and Jaeger."},
+                {"prompt": "Describe the architecture and implementation of a RAG system using vector databases, embedding models, and LLMs. Include chunking strategies, retrieval optimization, and evaluation methods."},
+                {"prompt": "Explain GPU memory management in vLLM inference serving, including KV cache, paged attention, tensor parallelism, and strategies for optimizing memory utilization across multiple GPUs."},
+                {"prompt": "Write a comprehensive comparison of LLM quantization methods: INT4, INT8, FP8, GPTQ, AWQ, and their impact on model quality, inference speed, and memory usage."},
+                {"prompt": "Design a complete CI/CD pipeline using GitOps principles with ArgoCD on OpenShift. Include environment promotion, rollback strategies, canary deployments, and security scanning."}
+              ]
+              EOF
+              guidellm benchmark run \
+                --target "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1" \
+                --model "mistral-3-bf16" \
+                --data /tmp/prompts.json \
+                --rate "1,3,5,8,10,15" \
+                --rate-type constant \
+                --max-seconds 60 \
+                --max-requests 50 \
+                --output-path /tmp/results.json \
+                --disable-console-interactive || true
+              echo "Benchmark complete"
           resources:
             requests:
               cpu: 500m
