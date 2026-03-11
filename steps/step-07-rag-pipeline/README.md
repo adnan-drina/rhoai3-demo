@@ -342,9 +342,28 @@ oc delete configmap llama-stack-rag-config -n private-ai
 
 > **Design Decision:** We use embedded etcd (`ETCD_USE_EMBED=true`) rather than a separate etcd service. This is simpler and proven at demo scale. For production, deploy a separate etcd per the RHOAI documentation.
 
-> **Design Decision:** We deploy a separate `LlamaStackDistribution` (`lsd-rag`) rather than modifying step-05's `lsd-genai-playground`. This keeps steps independent and both can coexist.
+> **Design Decision:** Only one LlamaStackDistribution per namespace is allowed by the Dashboard. `lsd-rag` (this step) and the Playground LSD (step-05) cannot coexist. Delete the Playground LSD before deploying `lsd-rag`, or vice versa.
 
 > **Design Decision:** Server-side chunking and embedding via `rag_tool.insert()`. LlamaStack handles both using `granite-embedding-125m` (768d), keeping the pipeline lightweight.
+
+> **Design Decision:** `userConfig` with `image_name: custom` is used because we need `remote::milvus`. The `rh-dev` env-var-only pattern only supports inline Milvus (`MILVUS_DB_PATH`) or pgvector (`ENABLE_PGVECTOR`). For remote Milvus, custom config is the only option per RHOAI 3.3 documentation.
+
+### RHOAI 3.3 Alignment
+
+The `lsd-rag` configuration follows these RHOAI 3.3 documented patterns:
+
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| `INFERENCE_MODEL` from Secret | Aligned | Required by `rh-dev` template |
+| `VLLM_URL` / credentials from Secret | Aligned | All vLLM config via `llamastack-vllm-secret` |
+| PostgreSQL metadata (all from Secret) | Aligned | `llamastack-postgres-secret` with HOST/PORT/DB/USER/PASSWORD |
+| `ENABLE_SENTENCE_TRANSFORMERS=true` | Aligned | Inline embeddings, no GPU needed |
+| `storage.size: 5Gi` | Aligned | Persistent vector data and file cache |
+| `FMS_ORCHESTRATOR_URL` | Aligned | Points to guardrails (step-09) |
+| Resource limits `cpu: 4, memory: 12Gi` | Aligned | Matches documented examples |
+| `userConfig` for remote Milvus | Necessary | No env-var support for remote Milvus endpoints |
+
+> **Alternative:** To eliminate `userConfig` entirely, switch from Milvus to **pgvector** (`ENABLE_PGVECTOR=true`). This reuses the existing PostgreSQL and allows full env-var-only configuration. See [RHOAI 3.3 — Deploying with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-llamastackdistribution-with-pgvector_rag).
 
 > **Known Limitation (RHOAI 3.3):** The `remote::milvus` provider configuration may differ between LlamaStack versions. Verify the exact config schema with `oc exec deploy/lsd-rag -- llama stack list-providers vector_io` if registration fails.
 
