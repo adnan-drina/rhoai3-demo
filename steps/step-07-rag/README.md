@@ -28,7 +28,7 @@ Step-05 proved your team can experiment with LLMs via the GenAI Playground. But 
 │   │   │     Docling Ingestion Pipeline         │              │                    │
 │   │   │  1. Fetch PDFs from MinIO              │              │                    │
 │   │   │  2. Convert to Markdown (Docling)      │              │                    │
-│   │   │  3. Insert via LlamaStack rag_tool     │              │                    │
+│   │   │  3. Insert via LlamaStack (vector_stores.files)      │                    │
 │   │   └───────────────────────────────────────┘              │                    │
 │   └───────────────────────────────────────────────────────────┘                    │
 │                               │                                                   │
@@ -287,6 +287,16 @@ oc logs <pod-name> -n private-ai
 # - LlamaStack not reachable from pipeline pods
 ```
 
+### Insert Component: files.create / vector_stores.files.create Errors
+
+**Symptom:** Insert step fails with `AttributeError`, `TypeError`, or "rag_tool" / "RAGDocument" not found.
+
+**Root Cause:** Pipeline uses `llama_stack_client>=0.4,<0.5`. The 0.3.x API (`rag_tool.insert()`, `RAGDocument`) was deprecated; 0.4.x uses `files.create()` + `vector_stores.files.create()`.
+
+**Solution:** Ensure components use the updated API. If you see `tool_runtime.rag_tool` or `RAGDocument` in logs, the component code may be outdated — recompile the pipeline (`python kfp/pipeline.py` or `./deploy.sh`) and re-run ingestion.
+
+> **Note (0.4.x):** Document-level metadata (source, original_filename, scenario) is no longer passed via RAGDocument. The files API stores file content; metadata support may differ. Verify retrieval behavior if you rely on metadata filters.
+
 ## GitOps Structure
 
 ```
@@ -348,7 +358,7 @@ oc delete configmap llama-stack-rag-config -n private-ai
 > in the Dashboard's "Create playground" UI flow (bypassed since `lsd-genai-playground` is already created).
 > The RAG workbench connects to `lsd-rag-service:8321`, the Playground connects to `lsd-genai-playground`.
 
-> **Design Decision:** Server-side chunking and embedding via `rag_tool.insert()`. LlamaStack handles both using `granite-embedding-125m` (768d), keeping the pipeline lightweight.
+> **Design Decision:** Server-side chunking and embedding via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d), keeping the pipeline lightweight. Uses llama_stack_client 0.4.x API (files.create + vector_stores.files.create); the deprecated rag_tool.insert() / RAGDocument API is not used.
 
 > **Design Decision:** `userConfig` with `image_name: custom` is used because we need `remote::milvus`. The `rh-dev` env-var-only pattern only supports inline Milvus (`MILVUS_DB_PATH`) or pgvector (`ENABLE_PGVECTOR`). For remote Milvus, custom config is the only option per RHOAI 3.3 documentation.
 

@@ -1,18 +1,22 @@
 """
 Insert via LlamaStack Component — reads processed markdown from the shared PVC
-and ingests it into Milvus through Llama Stack's rag_tool.insert() API.
+and ingests it into Milvus through Llama Stack's vector_stores.files.create() API.
 
 Server-side chunking and embedding: LlamaStack handles both using the
 granite-embedding-125m model registered in the LSD configuration.
+
+Uses 0.4.x API: files.create() for upload, then vector_stores.files.create()
+for indexing. The deprecated rag_tool.insert() / RAGDocument API is not used.
 """
 
+from pathlib import Path
 from typing import NamedTuple, Dict, Any, List
 from kfp.dsl import component
 
 
 @component(
     base_image="python:3.12",
-    packages_to_install=["llama_stack_client==0.3.1", "requests"],
+    packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
 )
 def insert_via_llamastack_component(
     setup_config: Dict[str, Any],
@@ -21,10 +25,9 @@ def insert_via_llamastack_component(
     bucket_name: str,
     vector_db_ids: List[str],
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
-    from llama_stack_client import LlamaStackClient, RAGDocument
+    from llama_stack_client import LlamaStackClient
     from collections import namedtuple
     import os
-    import time
 
     InsertOutput = namedtuple("InsertOutput", ["status", "chunks_inserted"])
 
@@ -39,31 +42,33 @@ def insert_via_llamastack_component(
         print(f"  [SKIP] No processed file for {original_key}")
         return InsertOutput(status="skipped", chunks_inserted=0)
 
-    with open(processed_file, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    print(f"Inserting: {original_key} ({len(content)} chars)")
-
-    doc = RAGDocument(
-        document_id=f"doc_{os.path.basename(processed_file).replace('.md', '')}",
-        content=content,
-        metadata={
-            "source": f"minio://{bucket_name}/{original_key}",
-            "original_filename": original_key,
-            "processing_method": "docling",
-            "scenario": vector_db_id,
-            "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        },
-    )
+    file_path = Path(processed_file)
+    content_len = file_path.stat().st_size
+    print(f"Inserting: {original_key} ({content_len} bytes)")
 
     client = LlamaStackClient(base_url=base_url)
 
+    try:
+        uploaded = client.files.create(file=file_path, purpose="assistants")
+    except Exception as e:
+        print(f"  [FAIL] File upload: {e}")
+        return InsertOutput(status="error", chunks_inserted=0)
+
+    chunk_overlap = max(1, chunk_size // 4)
+    chunking_strategy = {
+        "type": "static",
+        "static": {
+            "max_chunk_size_tokens": chunk_size,
+            "chunk_overlap_tokens": chunk_overlap,
+        },
+    }
+
     for db_id in vector_db_ids:
         try:
-            client.tool_runtime.rag_tool.insert(
-                documents=[doc],
-                vector_db_id=db_id,
-                chunk_size_in_tokens=chunk_size,
+            client.vector_stores.files.create(
+                vector_store_id=db_id,
+                file_id=uploaded.id,
+                chunking_strategy=chunking_strategy,
             )
             print(f"  [OK] Inserted into '{db_id}'")
         except Exception as e:

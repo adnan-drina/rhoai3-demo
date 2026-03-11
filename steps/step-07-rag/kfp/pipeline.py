@@ -10,7 +10,7 @@ Components are in kfp/components/ following KFP modular best practices.
 Key design choices (RHOAI 3.0 aligned):
   - kubernetes.use_secret_as_env()  for MinIO credentials (no secrets in params)
   - kubernetes.mount_pvc()          for inter-component file sharing
-  - Server-side chunking            via rag_tool.insert()
+  - Server-side chunking            via vector_stores.files.create()
   - Docling fallback logic          for API version tolerance
 
 Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
