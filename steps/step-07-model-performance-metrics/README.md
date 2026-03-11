@@ -523,5 +523,5 @@ spec:
 > **Ref:** [RHOAI 3.3 — Configuring metrics-based autoscaling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/managing_and_monitoring_models#configuring-metrics-based-autoscaling_monitor-model)
 
 ### Related Steps
-- [Step 09: RAG Pipeline](../step-09-rag-pipeline/README.md) — Document ingestion and vector search
+- [Step 09: RAG Pipeline](../step-08-rag-pipeline/README.md) — Document ingestion and vector search
 - [llm-d Workshop](https://rhpds.github.io/llm-d-showroom/) — Distributed inference with intelligent routing (separate demo)

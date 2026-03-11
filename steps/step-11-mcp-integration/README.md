@@ -54,7 +54,7 @@ oc get llamastackdistribution -n private-ai
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-12-mcp-integration/deploy.sh
+./steps/step-11-mcp-integration/deploy.sh
 ```
 
 This will:
@@ -68,7 +68,7 @@ This will:
 
 ```bash
 # 1. Deploy via ArgoCD
-oc apply -f gitops/argocd/app-of-apps/step-12-mcp-integration.yaml
+oc apply -f gitops/argocd/app-of-apps/step-11-mcp-integration.yaml
 
 # 2. Wait for builds
 oc get builds -n private-ai -w
@@ -77,7 +77,7 @@ oc get builds -n private-ai -w
 oc get deploy database-mcp openshift-mcp slack-mcp -n private-ai
 
 # 4. Register in Playground
-oc apply -f steps/step-12-mcp-integration/mcp-playground-config.yaml
+oc apply -f steps/step-11-mcp-integration/mcp-playground-config.yaml
 
 # 5. Restart LlamaStack
 oc rollout restart deploy/lsd-genai-playground -n private-ai
@@ -86,7 +86,7 @@ oc rollout restart deploy/lsd-genai-playground -n private-ai
 ## Validation
 
 ```bash
-./steps/step-12-mcp-integration/validate.sh
+./steps/step-11-mcp-integration/validate.sh
 ```
 
 ## ACME Corp Demo Environment
@@ -121,7 +121,7 @@ The agent calls `query_pod_equipment(pod_name="acme-equipment-0007")` via the Da
 
 The agent calls `knowledge_search` (RAG) against the `acme_corporate` Milvus collection with a query about L-900 EUV issues. Returns relevant calibration procedure documentation from the ingested ACME PDFs.
 
-> **Note:** This step requires that ACME PDFs have been ingested via step 09. See `steps/step-09-rag-pipeline/scenario-docs/README.md`.
+> **Note:** This step requires that ACME PDFs have been ingested via step 09. See `steps/step-08-rag-pipeline/scenario-docs/README.md`.
 
 **Q4: "Send a Slack message with the summary to the platform team"**
 
@@ -195,7 +195,7 @@ oc get builds -n private-ai
 oc start-build database-mcp -n private-ai
 ```
 
-Source code is committed in `steps/step-12-mcp-integration/mcp-servers/`. BuildConfigs pull from the Git repo and build using the Dockerfiles in each server directory.
+Source code is committed in `steps/step-11-mcp-integration/mcp-servers/`. BuildConfigs pull from the Git repo and build using the Dockerfiles in each server directory.
 
 ## Troubleshooting
 
@@ -236,7 +236,7 @@ oc get isvc granite-8b-agent -n private-ai \
 ## GitOps Structure
 
 ```
-gitops/step-12-mcp-integration/
+gitops/step-11-mcp-integration/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── acme-corp/               # Demo namespace + 3 pods + RBAC
@@ -246,7 +246,7 @@ gitops/step-12-mcp-integration/
 │   ├── openshift-mcp/           # Deployment + SA + ClusterRoleBinding
 │   └── slack-mcp/               # Deployment + ConfigMap + Service
 
-steps/step-12-mcp-integration/
+steps/step-11-mcp-integration/
 ├── deploy.sh
 ├── validate.sh
 ├── mcp-playground-config.yaml   # gen-ai-aa-mcp-servers ConfigMap
@@ -261,7 +261,7 @@ steps/step-12-mcp-integration/
 
 ```bash
 # Delete ArgoCD Application
-oc delete application step-12-mcp-integration -n openshift-gitops
+oc delete application step-11-mcp-integration -n openshift-gitops
 
 # Remove Playground ConfigMap
 oc delete configmap gen-ai-aa-mcp-servers -n redhat-ods-applications

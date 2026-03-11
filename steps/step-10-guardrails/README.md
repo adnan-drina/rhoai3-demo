@@ -59,14 +59,14 @@ oc get isvc granite-8b-agent -n private-ai
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-11-guardrails/deploy.sh
+./steps/step-10-guardrails/deploy.sh
 ```
 
 ### B) Step-by-step (manual)
 
 ```bash
 # 1. Apply ArgoCD application
-oc apply -f gitops/argocd/app-of-apps/step-11-guardrails.yaml
+oc apply -f gitops/argocd/app-of-apps/step-10-guardrails.yaml
 
 # 2. Wait for detectors
 oc wait isvc/hap-detector -n private-ai --for=condition=Ready --timeout=300s
@@ -83,7 +83,7 @@ oc rollout restart deploy/lsd-rag -n private-ai
 ## Validation
 
 ```bash
-./steps/step-11-guardrails/validate.sh
+./steps/step-10-guardrails/validate.sh
 ```
 
 ### Manual checks
@@ -251,7 +251,7 @@ oc exec <orchestrator-pod> -n private-ai -c guardrails-orchestrator -- \
 ## GitOps Structure
 
 ```
-gitops/step-11-guardrails/
+gitops/step-10-guardrails/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── detector-runtime/
@@ -265,7 +265,7 @@ gitops/step-11-guardrails/
 │       ├── gateway-config.yaml            # Preset routes (/pii, /safe)
 │       └── guardrails-orchestrator.yaml   # GuardrailsOrchestrator CR
 
-steps/step-11-guardrails/
+steps/step-10-guardrails/
 ├── deploy.sh
 ├── validate.sh
 └── README.md
@@ -279,7 +279,7 @@ Patches applied to existing steps:
 
 ```bash
 # Delete ArgoCD Application (cascading delete)
-oc delete application step-11-guardrails -n openshift-gitops
+oc delete application step-10-guardrails -n openshift-gitops
 
 # Or delete individual components
 oc delete guardrailsorchestrator guardrails-orchestrator -n private-ai

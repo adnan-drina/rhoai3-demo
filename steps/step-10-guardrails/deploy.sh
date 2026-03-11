@@ -1,19 +1,19 @@
 #!/bin/bash
-# Step 12: MCP Integration — Deploy Script
-# Deploys PostgreSQL, builds 3 MCP server images, deploys MCP servers,
-# registers them in the Playground, and restarts LlamaStack pods.
+# Step 11: AI Safety with Guardrails — Deploy Script
+# Deploys the Guardrails Orchestrator, HAP detector, prompt injection detector,
+# and Gateway with preset safety routes. Restarts LlamaStack pods to connect.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="private-ai"
-STEP_NAME="step-12-mcp-integration"
+STEP_NAME="step-10-guardrails"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 12: MCP Integration (Database + OpenShift + Slack)        ║"
+echo "║  Step 11: AI Safety with Guardrails                             ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -24,58 +24,41 @@ log_step "Checking prerequisites..."
 
 check_oc_logged_in
 
+if ! oc get namespace "$NAMESPACE" &>/dev/null; then
+    log_error "Namespace $NAMESPACE not found."
+    exit 1
+fi
+log_success "Namespace $NAMESPACE exists"
+
+TRUSTYAI_STATE=$(oc get datasciencecluster default-dsc \
+    -o jsonpath='{.spec.components.trustyai.managementState}' 2>/dev/null || echo "Unknown")
+if [ "$TRUSTYAI_STATE" != "Managed" ]; then
+    log_error "trustyai managementState is '$TRUSTYAI_STATE' (expected 'Managed')."
+    exit 1
+fi
+log_success "trustyai: Managed"
+
 if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
     log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
     exit 1
 fi
 log_success "granite-8b-agent present"
-
-if ! oc get llamastackdistribution -n "$NAMESPACE" &>/dev/null 2>&1; then
-    log_error "No LlamaStackDistribution found. Deploy step-06 first."
-    exit 1
-fi
-log_success "LlamaStack present"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 1: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Deploying Step 12 via ArgoCD..."
+log_step "Deploying Step 11 via ArgoCD..."
+
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Wait for builds
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for MCP server image builds..."
-sleep 10
-
-BUILD_TIMEOUT=300
-BUILD_ELAPSED=0
-while [ $BUILD_ELAPSED -lt $BUILD_TIMEOUT ]; do
-    COMPLETE=$(oc get builds -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c "Complete" || echo "0")
-    TOTAL=$(oc get builds -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-
-    log_info "  Builds: $COMPLETE/$TOTAL complete"
-
-    if [ "$COMPLETE" -ge 3 ]; then
-        break
-    fi
-    sleep 15
-    BUILD_ELAPSED=$((BUILD_ELAPSED + 15))
-done
-
-if [ "$COMPLETE" -ge 3 ]; then
-    log_success "All 3 MCP server images built"
-else
-    log_error "Build timeout. Check: oc get builds -n $NAMESPACE"
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Wait for ArgoCD sync + components
+# Step 2: Wait for ArgoCD sync
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for ArgoCD sync..."
+sleep 5
+
 TIMEOUT=300
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -92,32 +75,53 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
     sleep 10
     ELAPSED=$((ELAPSED + 10))
 done
+
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    log_error "Timeout waiting for ArgoCD sync."
+fi
 echo ""
 
-log_step "Waiting for PostgreSQL..."
-oc wait deploy/postgresql -n "$NAMESPACE" --for=condition=Available --timeout=120s 2>/dev/null || \
-    log_error "PostgreSQL did not become available"
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 3: Wait for detectors
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Waiting for HAP detector..."
+oc wait inferenceservice/hap-detector -n "$NAMESPACE" \
+    --for=condition=Ready --timeout=300s 2>/dev/null || \
+    log_error "HAP detector did not become ready"
 
-log_step "Waiting for MCP servers..."
-for server in database-mcp openshift-mcp slack-mcp; do
-    oc wait deploy/$server -n "$NAMESPACE" --for=condition=Available --timeout=120s 2>/dev/null || \
-        log_error "$server did not become available"
+log_step "Waiting for prompt injection detector..."
+oc wait inferenceservice/prompt-injection-detector -n "$NAMESPACE" \
+    --for=condition=Ready --timeout=300s 2>/dev/null || \
+    log_error "Prompt injection detector did not become ready"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 4: Wait for Orchestrator
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Waiting for Guardrails Orchestrator..."
+
+ORCH_READY=false
+for i in $(seq 1 30); do
+    POD_STATUS=$(oc get pods -l app=guardrails-orchestrator -n "$NAMESPACE" \
+        --no-headers -o custom-columns=":status.phase" 2>/dev/null | head -1)
+    if [ "$POD_STATUS" = "Running" ]; then
+        ORCH_READY=true
+        break
+    fi
+    sleep 10
 done
-log_success "All MCP servers running"
+
+if [ "$ORCH_READY" = "true" ]; then
+    log_success "Guardrails Orchestrator is running"
+else
+    log_error "Guardrails Orchestrator did not reach Running state"
+fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Apply Playground MCP ConfigMap
+# Step 5: Restart LlamaStack pods to connect to Orchestrator
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Registering MCP servers in GenAI Playground..."
-oc apply -f "$SCRIPT_DIR/mcp-playground-config.yaml"
-log_success "gen-ai-aa-mcp-servers ConfigMap applied to redhat-ods-applications"
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Restart LlamaStack pods
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Restarting LlamaStack pods to discover MCP tool_groups..."
+log_step "Restarting LlamaStack pods to connect to Guardrails Orchestrator..."
 
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
     oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
@@ -134,17 +138,19 @@ echo ""
 # Step 6: Validation output
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 12 deployment complete!                                   ║"
+echo "║  Step 11 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
-echo "║  MCP Servers:                                                   ║"
-echo "║    database-mcp  :8080/sse (PostgreSQL equipment queries)      ║"
-echo "║    openshift-mcp :8000/sse (cluster inspection)                ║"
-echo "║    slack-mcp     :8080/sse (team notifications, demo mode)     ║"
+echo "║  Components:                                                    ║"
+echo "║    oc get guardrailsorchestrator -n $NAMESPACE             ║"
+echo "║    oc get isvc hap-detector prompt-injection-detector          ║"
 echo "║                                                                 ║"
-echo "║  Playground: MCP servers visible in GenAI Studio > AI Assets   ║"
+echo "║  Gateway routes (in-cluster):                                   ║"
+echo "║    /passthrough/v1/chat/completions  (no detectors)            ║"
+echo "║    /pii/v1/chat/completions          (PII regex)               ║"
+echo "║    /safe/v1/chat/completions         (PII + HAP + injection)   ║"
 echo "║                                                                 ║"
 echo "║  Validate:                                                      ║"
-echo "║    ./steps/step-12-mcp-integration/validate.sh                 ║"
+echo "║    ./steps/step-10-guardrails/validate.sh                      ║"
 echo "║                                                                 ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"

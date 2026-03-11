@@ -509,6 +509,6 @@ curl -k https://mistral-3-int4-private-ai.apps.cluster.../v1/chat/completions \
 
 ## Next Steps
 
-- **Step 09 — RAG Pipeline**: Deploy Milvus + Docling + DSPA for document ingestion. Once step-09 runs, the Playground connects to remote Milvus and can query all 3 RAG collections (`red_hat_docs`, `acme_corporate`, `eu_ai_act`). See [Step 09 README](../step-09-rag-pipeline/README.md).
+- **Step 09 — RAG Pipeline**: Deploy Milvus + Docling + DSPA for document ingestion. Once step-09 runs, the Playground connects to remote Milvus and can query all 3 RAG collections (`red_hat_docs`, `acme_corporate`, `eu_ai_act`). See [Step 09 README](../step-08-rag-pipeline/README.md).
 - **MCP Servers**: Configure tool-calling capabilities
 - **MaaS**: Implement when it reaches Technology Preview

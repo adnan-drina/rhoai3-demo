@@ -54,7 +54,7 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector-
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-10-rag-evaluation/deploy.sh
+./steps/step-09-rag-evaluation/deploy.sh
 ```
 
 This will:
@@ -67,17 +67,17 @@ This will:
 
 ```bash
 # Copy configs to cluster (first time only)
-./steps/step-10-rag-evaluation/deploy.sh  # or manually oc cp
+./steps/step-09-rag-evaluation/deploy.sh  # or manually oc cp
 
 # Trigger a new eval run
-./steps/step-10-rag-evaluation/run-eval.sh my-run-id
+./steps/step-09-rag-evaluation/run-eval.sh my-run-id
 ```
 
 ### C) Re-run after changing tests
 
 Edit files in `eval-configs/`, then:
 ```bash
-./steps/step-10-rag-evaluation/deploy.sh
+./steps/step-09-rag-evaluation/deploy.sh
 ```
 
 The deploy script re-copies configs and launches a fresh run.
@@ -85,7 +85,7 @@ The deploy script re-copies configs and launches a fresh run.
 ## Validation
 
 ```bash
-./steps/step-10-rag-evaluation/validate.sh
+./steps/step-09-rag-evaluation/validate.sh
 ```
 
 ### Manual checks
@@ -220,7 +220,7 @@ oc get configmap llama-stack-rag-config -n private-ai -o yaml | grep -A5 scoring
 ## Directory Structure
 
 ```
-steps/step-10-rag-evaluation/
+steps/step-09-rag-evaluation/
 ├── deploy.sh                          # Full deployment + run
 ├── run-eval.sh                        # Standalone eval trigger
 ├── validate.sh                        # Check results

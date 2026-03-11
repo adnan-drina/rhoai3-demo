@@ -94,7 +94,7 @@ Place PDF files in `scenario-docs/` subdirectories. See `scenario-docs/README.md
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-09-rag-pipeline/deploy.sh
+./steps/step-08-rag-pipeline/deploy.sh
 ```
 
 ### B) Step-by-step (manual)
@@ -109,14 +109,14 @@ oc create secret generic dspa-minio-credentials -n private-ai \
   --dry-run=client -o yaml | oc apply -f -
 
 # 2. Apply ArgoCD application
-oc apply -f gitops/argocd/app-of-apps/step-09-rag-pipeline.yaml
+oc apply -f gitops/argocd/app-of-apps/step-08-rag-pipeline.yaml
 
 # 3. Wait for components
 oc wait deploy/milvus-standalone -n private-ai --for=condition=Available --timeout=180s
 oc wait llamastackdistribution/lsd-rag -n private-ai --for=jsonpath='{.status.phase}'=Ready --timeout=300s
 
 # 4. Upload documents and run pipelines
-cd steps/step-09-rag-pipeline
+cd steps/step-08-rag-pipeline
 ./upload-to-minio.sh scenario-docs/scenario2-acme/sample.pdf rag-documents/scenario2-acme/sample.pdf
 ./run-batch-ingestion.sh acme
 ```
@@ -124,7 +124,7 @@ cd steps/step-09-rag-pipeline
 ## Validation
 
 ```bash
-./steps/step-09-rag-pipeline/validate.sh
+./steps/step-08-rag-pipeline/validate.sh
 ```
 
 ### Manual checks
@@ -290,7 +290,7 @@ oc logs <pod-name> -n private-ai
 ## GitOps Structure
 
 ```
-gitops/step-09-rag-pipeline/
+gitops/step-08-rag-pipeline/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── milvus/                    # Milvus standalone (embedded etcd)
@@ -309,7 +309,7 @@ gitops/step-09-rag-pipeline/
 │   └── llamastack-rag/            # LSD with remote Milvus
 │       └── llamastack-rag.yaml
 
-steps/step-09-rag-pipeline/
+steps/step-08-rag-pipeline/
 ├── deploy.sh
 ├── validate.sh
 ├── run-batch-ingestion.sh
@@ -326,7 +326,7 @@ steps/step-09-rag-pipeline/
 
 ```bash
 # Delete ArgoCD Application (cascading delete of all resources)
-oc delete application step-09-rag-pipeline -n openshift-gitops
+oc delete application step-08-rag-pipeline -n openshift-gitops
 
 # Or delete individual components
 oc delete llamastackdistribution lsd-rag -n private-ai

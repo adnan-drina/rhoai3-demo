@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="private-ai"
-STEP_NAME="step-09-rag-pipeline"
+STEP_NAME="step-08-rag-pipeline"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
@@ -253,6 +253,6 @@ echo "║    oc get dspa dspa-rag -n $NAMESPACE                          ║"
 echo "║    oc get llamastackdistribution lsd-rag -n $NAMESPACE         ║"
 echo "║                                                                 ║"
 echo "║  Validate RAG:                                                  ║"
-echo "║    ./steps/step-09-rag-pipeline/validate.sh                    ║"
+echo "║    ./steps/step-08-rag-pipeline/validate.sh                    ║"
 echo "║                                                                 ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"

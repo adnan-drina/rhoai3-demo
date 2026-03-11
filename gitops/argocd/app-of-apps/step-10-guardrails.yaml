@@ -1,13 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-11-guardrails
+  name: step-10-guardrails
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
-    demo.rhoai.io/step: "11"
+    demo.rhoai.io/step: "10"
   annotations:
-    argocd.argoproj.io/sync-wave: "110"
+    argocd.argoproj.io/sync-wave: "100"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-11-guardrails/base
+    path: gitops/step-10-guardrails/base
   destination:
     server: https://kubernetes.default.svc
     namespace: private-ai

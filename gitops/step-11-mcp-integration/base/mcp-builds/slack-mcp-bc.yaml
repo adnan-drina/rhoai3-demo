@@ -1,7 +1,7 @@
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
-  name: database-mcp
+  name: slack-mcp
   namespace: private-ai
   labels:
     app.kubernetes.io/part-of: mcp-integration
@@ -11,7 +11,7 @@ metadata:
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: database-mcp
+  name: slack-mcp
   namespace: private-ai
   labels:
     app.kubernetes.io/part-of: mcp-integration
@@ -23,7 +23,7 @@ spec:
     git:
       uri: https://github.com/adnan-drina/rhoai3-demo.git
       ref: main
-    contextDir: steps/step-12-mcp-integration/mcp-servers/database-mcp
+    contextDir: steps/step-11-mcp-integration/mcp-servers/slack-mcp
   strategy:
     type: Docker
     dockerStrategy:
@@ -31,6 +31,6 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: database-mcp:latest
+      name: slack-mcp:latest
   triggers:
     - type: ConfigChange

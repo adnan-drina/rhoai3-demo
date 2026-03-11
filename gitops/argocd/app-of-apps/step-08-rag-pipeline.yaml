@@ -1,13 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-12-mcp-integration
+  name: step-08-rag-pipeline
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
-    demo.rhoai.io/step: "12"
+    demo.rhoai.io/step: "08"
   annotations:
-    argocd.argoproj.io/sync-wave: "120"
+    argocd.argoproj.io/sync-wave: "80"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-12-mcp-integration/base
+    path: gitops/step-08-rag-pipeline/base
   destination:
     server: https://kubernetes.default.svc
     namespace: private-ai
@@ -35,11 +35,11 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    - group: build.openshift.io
-      kind: BuildConfig
+    - group: llamastack.io
+      kind: LlamaStackDistribution
       jsonPointers:
         - /status
-    - group: serving.kserve.io
-      kind: InferenceService
+    - group: datasciencepipelinesapplications.opendatahub.io
+      kind: DataSciencePipelinesApplication
       jsonPointers:
         - /status
