@@ -1,4 +1,4 @@
-# Step 09: RAG Pipeline
+# Step 08: RAG Pipeline
 
 **"From Chat to Knowledge-Grounded Answers"** - Document ingestion and retrieval with Llama Stack, Milvus, Docling, and Kubeflow Pipelines.
 

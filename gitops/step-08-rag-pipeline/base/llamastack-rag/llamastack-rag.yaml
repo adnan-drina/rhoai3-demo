@@ -1,15 +1,17 @@
 # =============================================================================
 # LlamaStackDistribution - RAG Backend
 # =============================================================================
-# Purpose-built LlamaStackDistribution for RAG workflows.
-# Differs from step-06's lsd-genai-playground in:
-#   - vector_io: remote::milvus (persistent) instead of inline::milvus (SQLite)
+# Purpose-built LlamaStack for RAG workflows with remote Milvus.
+# Differs from step-06's lsd-genai-playground:
+#   - vector_io: remote::milvus (persistent) for 3 demo collections
 #   - Primary LLM: granite-8b-agent (tool-calling for RAG)
-#   - Pre-registered vector_dbs for 3 demo scenarios
 #
-# CRD Verification:
-#   oc get crd llamastackdistributions.llamastack.io
-#   oc explain llamastackdistribution.spec
+# v0.4.x Schema Notes (same as step-06):
+#   - image_name: custom (prevents rh-dev template merge)
+#   - base_url not url in vLLM providers
+#   - Storage uses table_name+backend references
+#   - registered_resources instead of top-level models/vector_dbs
+#   - Do NOT set LLAMA_STACK_CONFIG in env (operator injects it)
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 # =============================================================================
@@ -35,21 +37,21 @@ spec:
     containerSpec:
       name: llama-stack
       port: 8321
-      command:
-        - /bin/sh
-        - -c
-        - llama stack run /etc/llama-stack/run.yaml
       env:
+        - name: VLLM_API_URL
+          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+        - name: VLLM_URL
+          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+        - name: VLLM_API_TOKEN
+          value: "fake"
         - name: VLLM_TLS_VERIFY
           value: "false"
-        - name: VLLM_MAX_TOKENS
-          value: "4096"
-        - name: VLLM_API_TOKEN
-          value: fake
-        - name: LLAMA_STACK_CONFIG_DIR
-          value: /opt/app-root/src/.llama/distributions/rh/
         - name: FMS_ORCHESTRATOR_URL
           value: http://guardrails-orchestrator.private-ai.svc:8080
+        - name: VLLM_MAX_TOKENS
+          value: "4096"
+        - name: MILVUS_DB_PATH
+          value: "~/.llama/milvus.db"
       resources:
         requests:
           cpu: 250m
@@ -61,12 +63,7 @@ spec:
       configMapName: llama-stack-rag-config
 ---
 # =============================================================================
-# LlamaStack RAG Configuration (run.yaml)
-# =============================================================================
-# Key differences from step-06 playground config:
-#   - vector_io: remote::milvus pointing to milvus-standalone service
-#   - vector_dbs: 3 pre-registered collections for demo scenarios
-#   - Single vLLM provider: granite-8b-agent (tool-calling for RAG)
+# LlamaStack RAG Configuration — v0.4.2.1+rhai0 Schema
 # =============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -80,13 +77,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/sync-options: Replace=true
 data:
-  run.yaml: |
-    # NOTE (RHOAI 3.3): PostgreSQL is recommended for production LlamaStack deployments.
-    # SQLite stores below are retained for demo simplicity but are deprecated for production.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-    version: "2"
-    # LlamaStack version in RHOAI 3.3: 0.4.2.1+rhai0
-    image_name: rh
+  config.yaml: |
+    version: 2
+    image_name: custom
     apis:
     - agents
     - datasetio
@@ -98,64 +91,51 @@ data:
     - vector_io
     providers:
       inference:
-      # Embedding model (for RAG)
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
-      # Granite 8B Agent — tool-calling LLM for RAG queries
       - provider_id: vllm-granite-agent
         provider_type: remote::vllm
         config:
-          api_token: ${env.VLLM_API_TOKEN:=fake}
-          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
-          url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-
+          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
+          max_tokens: 4096
+          tls_verify: false
       vector_io:
       - provider_id: milvus-shared
         provider_type: remote::milvus
         config:
-          host: milvus-standalone.private-ai.svc.cluster.local
-          port: 19530
-          db_name: default
-          embedding_dimension: 768
-          metric_type: IP
-          consistency_level: Session
-
+          uri: http://milvus-standalone.private-ai.svc.cluster.local:19530
+          token: ""
+          persistence:
+            namespace: milvus_vectors
+            backend: kv_default
       agents:
       - provider_id: meta-reference
         provider_type: inline::meta-reference
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-          persistence_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
-            namespace: null
-            type: sqlite
-          responses_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
-            type: sqlite
+          persistence:
+            agent_state:
+              namespace: agents
+              backend: kv_default
+            responses:
+              table_name: agent_responses
+              backend: sql_default
       eval: []
       files:
       - provider_id: meta-reference-files
         provider_type: inline::localfs
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           metadata_store:
-            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
-            type: sqlite
+            table_name: files_metadata
+            backend: sql_default
           storage_dir: /opt/app-root/src/.llama/distributions/rh/files
       datasetio:
       - provider_id: huggingface
         provider_type: remote::huggingface
         config:
-          # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-          # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
           kvstore:
-            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
-            namespace: null
-            type: sqlite
+            namespace: huggingface_datasetio
+            backend: kv_default
       scoring:
       - provider_id: basic
         provider_type: inline::basic
@@ -170,83 +150,38 @@ data:
       - provider_id: model-context-protocol
         provider_type: remote::model-context-protocol
         config: {}
-    # NOTE (RHOAI 3.3): SQLite is deprecated for production. Use PostgreSQL for production deployments.
-    # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index#deprecated-sqlite
-    metadata_store:
-      type: sqlite
-      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
-
-    # Model registrations
-    models:
-    - provider_id: sentence-transformers
-      model_id: granite-embedding-125m
-      provider_model_id: ibm-granite/granite-embedding-125m-english
-      model_type: embedding
-      metadata:
-        embedding_dimension: 768
-    - provider_id: vllm-granite-agent
-      model_id: granite-8b-agent
-      model_type: llm
-      metadata:
-        description: "Granite 3.1 8B - Tool-calling specialist for RAG"
-        display_name: "Granite-3.1-8B Agent (1-GPU FP8)"
-        gpu_count: 1
-        use_case: agentic tool-calling
-
-    # Pre-registered vector databases for the 3 demo scenarios
-    vector_dbs:
-    - vector_db_id: red_hat_docs
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: red_hat_docs
-    - vector_db_id: acme_corporate
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: acme_corporate
-    - vector_db_id: eu_ai_act
-      embedding_model: ibm-granite/granite-embedding-125m-english
-      embedding_dimension: 768
-      provider_vector_db_id: eu_ai_act
-
-    shields:
-    - shield_id: regex_pii
-      provider_id: trustyai_fms
-      provider_shield_id: regex_pii
-      params:
-        type: content
-        confidence_threshold: 0.5
-        message_types: ["user"]
-        detectors:
-          regex:
-            detector_params:
-              regex: ["email", "us-social-security-number", "credit-card"]
-    - shield_id: hap_shield
-      provider_id: trustyai_fms
-      provider_shield_id: hap_shield
-      params:
-        type: content
-        confidence_threshold: 0.5
-        message_types: ["user"]
-        detectors:
-          hap:
-            detector_params: {}
-    datasets: []
-    scoring_fns: []
-    benchmarks: []
-    tool_groups:
-    - toolgroup_id: builtin::rag
-      provider_id: rag-runtime
-    - toolgroup_id: mcp::database
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://database-mcp.private-ai.svc:8080/sse"
-    - toolgroup_id: mcp::openshift
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://openshift-mcp.private-ai.svc:8000/sse"
-    - toolgroup_id: mcp::slack
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: "http://slack-mcp.private-ai.svc:8080/sse"
+    registered_resources:
+      models:
+      - provider_id: sentence-transformers
+        model_id: granite-embedding-125m
+        provider_model_id: ibm-granite/granite-embedding-125m-english
+        model_type: embedding
+        metadata:
+          embedding_dimension: 768
+      - provider_id: vllm-granite-agent
+        model_id: granite-8b-agent
+        model_type: llm
+        metadata: {}
+      shields: []
+      vector_stores: []
+      datasets: []
+      scoring_fns: []
+      benchmarks: []
+      tool_groups:
+      - toolgroup_id: builtin::rag
+        provider_id: rag-runtime
+      - toolgroup_id: mcp::database
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://database-mcp.private-ai.svc:8080/sse"
+      - toolgroup_id: mcp::openshift
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://openshift-mcp.private-ai.svc:8000/sse"
+      - toolgroup_id: mcp::slack
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: "http://slack-mcp.private-ai.svc:8080/sse"
+      connectors: []
     server:
       port: 8321
