@@ -1,20 +1,15 @@
 # =============================================================================
 # LlamaStackDistribution - GenAI Playground Backend
 # =============================================================================
-# The LlamaStackDistribution CR orchestrates the GenAI Playground backend.
-# It translates UI actions into vLLM API calls and manages:
-#   - Model inference routing
-#   - RAG (vector_io with Milvus)
-#   - MCP servers for tool calling
-#   - Session/agent state management
+# RHOAI 3.3 production pattern: NO custom config.yaml
+# Let the rh-dev distribution template handle all provider wiring.
+# All configuration via environment variables only.
 #
-# STATUS: Technology Preview (TP) in RHOAI 3.3
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index
+# ROOT CAUSE of previous RAG failure: our custom config.yaml with
+# image_name:custom bypassed the rh-dev template that wires
+# file_search → vector_io → embedding in the Responses API.
 #
-# CRD Verification:
-#   oc get crd llamastackdistributions.llamastack.io
-#   oc explain llamastackdistribution.spec
-#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
 # =============================================================================
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
@@ -33,31 +28,43 @@ metadata:
 spec:
   replicas: 1
   server:
-    # Distribution: Red Hat's pre-built LlamaStack distribution
     distribution:
       name: rh-dev
-    
-    # Container configuration
     containerSpec:
       name: llama-stack
       port: 8321
       env:
-        # LLAMA_STACK_CONFIG is set by the operator automatically — do NOT duplicate it.
-        # Primary vLLM endpoint (granite-8b-agent is always-on baseline)
-        - name: VLLM_API_URL
-          value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
+        # PostgreSQL metadata (RHOAI 3.3 production requirement)
+        - name: POSTGRES_HOST
+          value: llamastack-postgres.private-ai.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: llamastack
+        - name: POSTGRES_USER
+          value: llamastack
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-postgres-secret
+              key: POSTGRES_PASSWORD
+        # Inference model (granite-8b-agent with tool-calling)
+        - name: INFERENCE_MODEL
+          value: granite-8b-agent
         - name: VLLM_URL
           value: "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1"
         - name: VLLM_API_TOKEN
           value: "fake"
         - name: VLLM_TLS_VERIFY
           value: "false"
-        - name: FMS_ORCHESTRATOR_URL
-          value: http://guardrails-orchestrator.private-ai.svc:8080
         - name: VLLM_MAX_TOKENS
           value: "4096"
-        - name: MILVUS_DB_PATH
-          value: "~/.llama/milvus.db"
+        # Inline embeddings (sentence-transformers, no GPU needed)
+        - name: ENABLE_SENTENCE_TRANSFORMERS
+          value: "true"
+        # Guardrails (activates when step-10 is deployed)
+        - name: FMS_ORCHESTRATOR_URL
+          value: http://guardrails-orchestrator.private-ai.svc:8080
       resources:
         requests:
           cpu: 250m
@@ -65,156 +72,3 @@ spec:
         limits:
           cpu: "2"
           memory: 12Gi
-    
-    # User-provided configuration (run.yaml)
-    userConfig:
-      configMapName: llama-stack-config
----
-# =============================================================================
-# LlamaStack Configuration (run.yaml)
-# =============================================================================
-# This ConfigMap contains the LlamaStack run.yaml that defines:
-#   - Inference providers (vLLM endpoints for all 5 models)
-#   - Vector I/O providers (Milvus for RAG)
-#   - Tool runtimes (RAG, MCP)
-#   - Model registrations
-#
-# All 5 models are registered even if not running (minReplicas: 0).
-# LlamaStack will return errors for unavailable models, which is expected.
-# =============================================================================
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: llama-stack-config
-  namespace: private-ai
-  labels:
-    llamastack.io/distribution: lsd-genai-playground
-    opendatahub.io/dashboard: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/sync-options: Replace=true
-data:
-  config.yaml: |
-    # LlamaStack v0.4.2.1+rhai0 Configuration — RHOAI 3.3
-    # Schema: llama_stack.core.server.server.StackConfig
-    version: 2
-    image_name: custom
-    apis:
-    - agents
-    - datasetio
-    - files
-    - inference
-    - safety
-    - scoring
-    - tool_runtime
-    - vector_io
-    providers:
-      inference:
-      - provider_id: sentence-transformers
-        provider_type: inline::sentence-transformers
-        config: {}
-      # Only active models (minReplicas: 1) — queued models cause DNS failures
-      - provider_id: vllm-granite-agent
-        provider_type: remote::vllm
-        config:
-          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      - provider_id: vllm-mistral-bf16
-        provider_type: remote::vllm
-        config:
-          base_url: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      # Playground RAG uses inline::milvus (RHOAI 3.3 documented limitation).
-      # Remote Milvus file_search is broken in LlamaStack v0.4.2.1+rhai0
-      # (search succeeds but results don't propagate to Responses API tool output).
-      # Production RAG with remote Milvus is available via lsd-rag (step-08).
-      vector_io:
-      - provider_id: milvus-inline
-        provider_type: inline::milvus
-        config:
-          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
-          persistence:
-            namespace: milvus_vectors
-            backend: kv_default
-      agents:
-      - provider_id: meta-reference
-        provider_type: inline::meta-reference
-        config:
-          persistence:
-            agent_state:
-              namespace: agents
-              backend: kv_default
-            responses:
-              table_name: agent_responses
-              backend: sql_default
-      eval: []
-      files:
-      - provider_id: meta-reference-files
-        provider_type: inline::localfs
-        config:
-          metadata_store:
-            table_name: files_metadata
-            backend: sql_default
-          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
-      datasetio:
-      - provider_id: huggingface
-        provider_type: remote::huggingface
-        config:
-          kvstore:
-            namespace: huggingface_datasetio
-            backend: kv_default
-      scoring:
-      - provider_id: basic
-        provider_type: inline::basic
-        config: {}
-      - provider_id: llm-as-judge
-        provider_type: inline::llm-as-judge
-        config: {}
-      tool_runtime:
-      - provider_id: rag-runtime
-        provider_type: inline::rag-runtime
-        config: {}
-      - provider_id: model-context-protocol
-        provider_type: remote::model-context-protocol
-        config: {}
-    registered_resources:
-      models:
-      - provider_id: sentence-transformers
-        model_id: granite-embedding-125m
-        provider_model_id: ibm-granite/granite-embedding-125m-english
-        model_type: embedding
-        metadata:
-          embedding_dimension: 768
-      - provider_id: vllm-granite-agent
-        model_id: granite-8b-agent
-        model_type: llm
-        metadata: {}
-      - provider_id: vllm-mistral-bf16
-        model_id: mistral-3-bf16
-        model_type: llm
-        metadata: {}
-      shields: []
-      vector_stores: []
-      datasets: []
-      scoring_fns: []
-      benchmarks: []
-      tool_groups:
-      - toolgroup_id: builtin::rag
-        provider_id: rag-runtime
-      - toolgroup_id: mcp::database
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://database-mcp.private-ai.svc:8080/sse"
-      - toolgroup_id: mcp::openshift
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://openshift-mcp.private-ai.svc:8000/sse"
-      - toolgroup_id: mcp::slack
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://slack-mcp.private-ai.svc:8080/sse"
-      connectors: []
-    server:
-      port: 8321
