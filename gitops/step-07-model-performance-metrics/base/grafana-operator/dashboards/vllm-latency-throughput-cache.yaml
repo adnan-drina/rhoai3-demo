@@ -1,0 +1,42 @@
+# vLLM Latency, Throughput & Cache Dashboard (from llm-d-deployer)
+# ============================================================================
+# Source: https://github.com/llm-d/llm-d-deployer/blob/main/quickstart/grafana/dashboards/llm-d-dashboard.json
+#
+# Comprehensive 13-panel dashboard for vLLM inference monitoring:
+#   - E2E Request Latency (P50/P95/P99)
+#   - Token Throughput (prompt + generation)
+#   - Time Per Output Token (TPOT) Latency
+#   - Scheduler State (running/waiting/swapped)
+#   - Time To First Token (TTFT) Latency
+#   - Cache Utilization (KV cache GPU/CPU %)
+#   - Request Prompt/Generation Length distributions
+#   - Finish Reason breakdown
+#   - Queue Time
+#   - Prefill and Decode Time
+#
+# Note: This dashboard is from the llm-d project but covers standard vLLM
+# metrics — no llm-d/EPP-specific panels. Reusable for any vLLM deployment.
+#
+# Ref: https://medium.com/@jajodia.nirjhar/how-we-built-an-observability-stack-for-llm-d-on-openshift-ai-d46e6365a362
+# ============================================================================
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: vllm-latency-throughput-cache
+  namespace: private-ai
+  labels:
+    app: grafana
+    dashboards: "grafana"
+    app.kubernetes.io/part-of: observability
+    app.kubernetes.io/component: observability
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  datasources:
+    - inputName: "DS_PROMETHEUS"
+      datasourceName: "Prometheus-UWM"
+  url: https://raw.githubusercontent.com/llm-d/llm-d-deployer/refs/heads/main/quickstart/grafana/dashboards/llm-d-dashboard.json

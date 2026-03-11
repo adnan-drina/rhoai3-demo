@@ -71,14 +71,14 @@ This step demonstrates the **Economics of Precision**:
 | **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
 | **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
 | **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | - |
-| **6 GrafanaDashboard CRs** | Official vLLM + RHOAI + custom dashboards | - |
+| **7 GrafanaDashboard CRs** | Official vLLM + llm-d-deployer + RHOAI + custom dashboards | - |
 | **ServiceAccount** | `grafana-sa` with `cluster-monitoring-view` permissions | - |
 | **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC (dispatcher pattern) | Community (OSS) |
 | **GuideLLM Pipeline** | Tekton Pipeline for self-service benchmarks | Community (OSS) |
 | **5 PipelineRun Templates** | Pre-configured runs for each model | - |
 | **GuideLLM Workbench** | Streamlit UI with pre-configured model endpoints | Community (OSS) |
 
-> **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.0. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
+> **⚠️ Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported components of Red Hat OpenShift AI 3.3. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
 > **Note:** For interactive benchmark UI, see [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) (future enhancement).
 
@@ -572,7 +572,8 @@ gitops/step-07-model-performance-metrics/
 │   │       ├── vllm-query-statistics.yaml        # Official (from GitHub URL)
 │   │       ├── rhoai-vllm-model-metrics.yaml     # Custom per-model metrics
 │   │       ├── dcgm-gpu-metrics.yaml             # Custom NVIDIA DCGM
-│   │       └── mistral-roi-comparison.yaml       # Custom (BF16 vs INT4)
+│   │       ├── mistral-roi-comparison.yaml       # Custom (BF16 vs INT4)
+│   │       └── vllm-latency-throughput-cache.yaml # llm-d-deployer (13 panels)
 │   ├── guidellm/                          # Automated benchmarking (CronJob)
 │   │   ├── kustomization.yaml
 │   │   ├── rbac.yaml                      # ServiceAccount + Role for dispatcher
@@ -605,11 +606,14 @@ gitops/step-07-model-performance-metrics/
 
 | Dashboard | Source | Features |
 |-----------|--------|----------|
-| **vLLM Performance Statistics** | Official vLLM GitHub (URL) | E2E Latency, TTFT, ITL, TPS (auto-updated) |
-| **vLLM Query Statistics** | Official vLLM GitHub (URL) | Request Rate, Success/Error, Token Distribution |
-| **RHOAI vLLM Model Metrics** | Custom (embedded) | Per-model performance, KV Cache, Queue depth |
+| **vLLM Performance Statistics** | [Official vLLM GitHub](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana) (URL) | E2E Latency, TTFT, ITL, TPS (auto-updated) |
+| **vLLM Query Statistics** | [Official vLLM GitHub](https://github.com/vllm-project/vllm/tree/main/examples/online_serving/dashboards/grafana) (URL) | Request Rate, Success/Error, Token Distribution |
+| **vLLM Latency, Throughput & Cache** | [llm-d-deployer](https://github.com/llm-d/llm-d-deployer) (URL) | **13 panels**: E2E P50/P95/P99, TTFT, TPOT, Scheduler State, KV Cache %, Queue Time, Prefill/Decode Time |
+| **RHOAI vLLM Model Metrics** | [rh-aiservices-bu/rhoai-uwm](https://github.com/rh-aiservices-bu/rhoai-uwm) (embedded) | Per-model performance, KV Cache, Queue depth |
 | **NVIDIA DCGM GPU Metrics** | Custom (embedded) | Temperature, Power, Utilization, Memory |
 | **Mistral ROI Comparison** | Custom (embedded) | BF16 vs INT4 head-to-head, Efficiency curves |
+
+> **Recommended starting dashboard:** The **vLLM Latency, Throughput & Cache** dashboard provides the most comprehensive single-pane view of vLLM inference health. Start here for troubleshooting and during demo benchmarks.
 
 ## Validation
 
@@ -626,10 +630,11 @@ oc get csv -n openshift-operators | grep pipelines
 oc get grafana -n private-ai
 # Expected: grafana   12.x.x   complete   success   <age>
 
-# 4. Verify all 5 GrafanaDashboards are synced
+# 4. Verify all 6 GrafanaDashboards are synced
 oc get grafanadashboard -n private-ai
-# Expected: 5 dashboards (vllm-performance-statistics, vllm-query-statistics, 
-#           rhoai-vllm-model-metrics, dcgm-gpu-metrics, mistral-roi-comparison)
+# Expected: 6 dashboards (vllm-performance-statistics, vllm-query-statistics,
+#           vllm-latency-throughput-cache, rhoai-vllm-model-metrics,
+#           dcgm-gpu-metrics, mistral-roi-comparison)
 
 # 5. Verify GrafanaDatasource is ready
 oc get grafanadatasource -n private-ai
@@ -725,6 +730,30 @@ Direct PromQL queries in OpenShift Console:
 - [GuideLLM Pipeline (rh-aiservices-bu)](https://github.com/rh-aiservices-bu/guidellm-pipeline)
 - [AI on OpenShift - KServe UWM Dashboard](https://ai-on-openshift.io/odh-rhoai/kserve-uwm-dashboard-metrics/)
 - [RHOAI GenAIOps Patterns](https://github.com/rhoai-genaiops)
+
+### Future Enhancement: Metrics-Based Autoscaling (RHOAI 3.3 TP)
+
+RHOAI 3.3 introduces **metrics-based autoscaling** (Technology Preview) using KEDA with vLLM metrics. This enables autoscaling InferenceServices based on latency and throughput SLOs instead of traditional request concurrency.
+
+```yaml
+# Example: Scale based on vLLM queue depth
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 5
+    autoscaling:
+      metrics:
+        - type: External
+          external:
+            metric:
+              backend: "prometheus"
+              query: vllm:num_requests_waiting
+            target:
+              type: Value
+              value: 2
+```
+
+> **Ref:** [RHOAI 3.3 — Configuring metrics-based autoscaling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/managing_and_monitoring_models#configuring-metrics-based-autoscaling_monitor-model)
 
 ### Related Steps
 - [Step 07B: vLLM-Playground](../step-07b-guidellm-vllm-playground/README.md) - Interactive benchmark UI (future)
