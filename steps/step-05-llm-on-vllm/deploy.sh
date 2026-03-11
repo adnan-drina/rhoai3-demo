@@ -167,6 +167,65 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 oc get inferenceservice -n private-ai
 
 # =============================================================================
+# Phase 4: AI Asset Labels & Playground Readiness
+# =============================================================================
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Phase 4: AI Asset Labels & Playground Readiness"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Add AI Asset labels to all InferenceServices
+declare -A MODEL_USE_CASES=(
+  ["mistral-3-int4"]="chat assistant"
+  ["mistral-3-bf16"]="enterprise chat assistant"
+  ["devstral-2"]="agentic coding assistant"
+  ["gpt-oss-20b"]="complex reasoning"
+  ["granite-8b-agent"]="agentic tool-calling"
+)
+
+for model in "${!MODEL_USE_CASES[@]}"; do
+  use_case="${MODEL_USE_CASES[$model]}"
+  if oc get inferenceservice "${model}" -n private-ai &>/dev/null; then
+    oc patch inferenceservice "${model}" -n private-ai --type=merge -p "{
+      \"metadata\": {
+        \"labels\": {
+          \"opendatahub.io/genai-asset\": \"true\"
+        },
+        \"annotations\": {
+          \"opendatahub.io/model-type\": \"generative\",
+          \"opendatahub.io/genai-use-case\": \"${use_case}\",
+          \"security.opendatahub.io/enable-auth\": \"false\"
+        }
+      }
+    }" &>/dev/null
+    echo "✓ ${model} - labeled (${use_case})"
+  fi
+done
+
+# Check LlamaStack operator (Managed) and CRD
+LLS_STATE=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.llamastackoperator.managementState}' 2>/dev/null || echo "unknown")
+if [[ "${LLS_STATE}" == "Managed" ]]; then
+  echo "✓ LlamaStack operator is Managed"
+else
+  echo "⚠ LlamaStack operator not Managed (managementState: ${LLS_STATE})"
+fi
+
+if oc get crd llamastackdistributions.llamastack.io &>/dev/null; then
+  echo "✓ LlamaStackDistribution CRD exists"
+else
+  echo "⚠ LlamaStackDistribution CRD not found"
+fi
+
+echo ""
+echo "  Playground creation via Dashboard:"
+echo "    1. Open RHOAI Dashboard → GenAI Studio → Playground"
+echo "    2. Select the 'Private AI - GPU as a Service' project"
+echo "    3. Click 'Create playground' and select RUNNING models only"
+echo "       (granite-8b-agent, mistral-3-bf16 when active)"
+echo "    4. Non-running models cause LlamaStack connection errors"
+echo ""
+
+# =============================================================================
 # Summary
 # =============================================================================
 echo ""

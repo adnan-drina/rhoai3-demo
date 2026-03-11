@@ -41,12 +41,12 @@ oc login --token=<your-token> --server=<api-server>
 | 02 | [RHOAI 3.3](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
 | 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
 | 04 | [Model Registry](steps/step-04-model-registry/README.md) | Enterprise model governance (registry + seed) |
-| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | GPU-as-a-Service model portfolio (KServe + vLLM) |
-| 06 | [GenAI Playground](steps/step-06-private-ai-playground-maas/README.md) | GenAI Studio Playground via LlamaStackDistribution |
-| 06B | [LiteMaaS (Experimental)](steps/step-06b-private-ai-litemaas/README.md) | LiteLLM + subscription UX (experimental) |
-| 07 | [Model Performance Metrics](steps/step-07-model-performance-metrics/README.md) | Grafana + GuideLLM + benchmarking/pipelines |
-| 07B | [GuideLLM vLLM Playground](steps/step-07b-guidellm-vllm-playground/README.md) | vLLM playground (future enhancement) |
-| 08 | [Distributed Inference (llm-d)](steps/step-08-llm-d/README.md) | Distributed inference with llm-d — intelligent routing (2 replicas) |
+| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | GPU-as-a-Service model portfolio (KServe + vLLM + Playground) |
+| 06 | [Model Performance Metrics](steps/step-06-model-performance-metrics/README.md) | Grafana + GuideLLM + benchmarking |
+| 07 | [RAG Pipeline](steps/step-07-rag-pipeline/README.md) | Milvus, Docling, DSPA, LlamaStack RAG |
+| 08 | [RAG Evaluation](steps/step-08-rag-evaluation/README.md) | KFP eval pipeline, LLM-as-judge scoring |
+| 09 | [Guardrails](steps/step-09-guardrails/README.md) | TrustyAI, PII/HAP/injection detectors |
+| 10 | [MCP Integration](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers |
 
 ## What Gets Deployed
 
@@ -92,11 +92,11 @@ rhoai3-demo/
 │   │       ├── step-03-private-ai.yaml
 │   │       ├── step-04-model-registry.yaml
 │   │       ├── step-05-llm-on-vllm.yaml
-│   │       ├── step-06-private-ai-playground-maas.yaml
-│   │       ├── step-06b-private-ai-litemaas.yaml
-│   │       ├── step-07-model-performance-metrics.yaml
-│   │       ├── step-07b-guidellm-vllm-playground.yaml
-│   │       └── step-08-llm-d.yaml
+│   │       ├── step-06-model-performance-metrics.yaml
+│   │       ├── step-07-rag-pipeline.yaml
+│   │       ├── step-08-rag-evaluation.yaml
+│   │       ├── step-09-guardrails.yaml
+│   │       └── step-10-mcp-integration.yaml
 │   │
 │   ├── step-01-gpu-and-prereq/  # GPU + prerequisites
 │   │   └── base/
@@ -130,19 +130,19 @@ rhoai3-demo/
     ├── step-05-llm-on-vllm/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-06-private-ai-playground-maas/
+    ├── step-06-model-performance-metrics/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-06b-private-ai-litemaas/
+    ├── step-07-rag-pipeline/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-07-model-performance-metrics/
+    ├── step-08-rag-evaluation/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-07b-guidellm-vllm-playground/
+    ├── step-09-guardrails/
     │   ├── deploy.sh
     │   └── README.md
-    └── step-08-llm-d/
+    └── step-10-mcp-integration/
         ├── deploy.sh
         └── README.md
 ```

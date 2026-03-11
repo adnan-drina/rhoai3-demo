@@ -367,5 +367,25 @@ gitops/step-05-llm-on-vllm/base/
 
 ## Next Steps
 
-- **Step 06**: GenAI Playground (LlamaStack + models in Playground UI)
-- **Step 07**: Model Performance Metrics (Grafana, GuideLLM, Tekton)
+- **Step 06**: Model Performance & Benchmarks (Grafana dashboards, GuideLLM)
+- **Step 07**: RAG Pipeline (Milvus, Docling, document ingestion)
+
+## GenAI Playground Validation
+
+After deploying models, validate them in the RHOAI GenAI Playground:
+
+1. Open RHOAI Dashboard → **GenAI Studio** → **Playground**
+2. Select the **Private AI - GPU as a Service** project
+3. Click **Create playground** and select the running models (granite-8b-agent, mistral-3-bf16)
+4. Test basic chat: Select a model and send a prompt
+5. Test RAG: Toggle RAG ON, upload a PDF, set System instructions:
+   > "You are a knowledgeable AI assistant. When documents are available, always use the knowledge_search tool before answering. Ground your response in the retrieved content. If no relevant information is found, say so and offer general knowledge as a fallback."
+6. Ask a question about the uploaded document
+
+> **Important:** Only register running models (with active predictor pods) in the Playground.
+> Non-running models cause LlamaStack connection errors that affect all models.
+
+> **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall
+> `index` field validation error. Use Granite for RAG demos, Mistral for basic chat.
+
+> **Ref:** [RHOAI 3.3 — Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)

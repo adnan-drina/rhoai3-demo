@@ -1,0 +1,83 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: step-06-model-performance-metrics
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "06"
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/step-06-model-performance-metrics/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: private-ai
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ServerSideApply.ForceConflicts=true
+      - ServerSideDiff=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    # OpenShift Routes have fields that cause schema comparison issues
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status
+    # Grafana CRDs - ignore status and operator-managed fields
+    - group: grafana.integreatly.org
+      kind: Grafana
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    - group: grafana.integreatly.org
+      kind: GrafanaDashboard
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    - group: grafana.integreatly.org
+      kind: GrafanaDatasource
+      jsonPointers:
+        - /status
+        - /spec/instanceSelector
+    # ConfigMap annotations managed by console/operator
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/resourceVersion
+    # Notebook controller-managed annotations
+    - group: kubeflow.org
+      kind: Notebook
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    # Tekton Pipeline/Task — operator adds status and managed fields
+    - group: tekton.dev
+      kind: Pipeline
+      jsonPointers:
+        - /status
+    - group: tekton.dev
+      kind: Task
+      jsonPointers:
+        - /status
+

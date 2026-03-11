@@ -212,7 +212,7 @@ Automatic cost control through `OdhDashboardConfig`:
 
 > **Queue Separation Strategy**:
 > - The `default` LocalQueue is the standard name that Hardware Profiles expect. It maps to `rhoai-main-queue`.
-> - The `llmd` LocalQueue provides a **hard reservation** of 2 GPUs for llm-d distributed inference (Step 08).
+> - The `llmd` LocalQueue provides a **hard reservation** of 2 GPUs for llm-d distributed inference (see [llm-d workshop](https://rhpds.github.io/llm-d-showroom/)).
 > - This ensures llm-d can always start, even when vLLM workloads saturate the main queue.
 > - Global profiles reference `localQueueName: default` - this queue must exist in each project.
 
