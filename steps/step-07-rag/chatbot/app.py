@@ -1,8 +1,13 @@
 """
 RAG Chatbot — Streamlit frontend for LlamaStack RAG queries.
 
-Connects to lsd-rag via the Responses API with file_search for grounded answers.
-Supports 4 knowledge base scenarios and with/without RAG comparison.
+Uses direct vector search + context injection pattern:
+  1. Search vector store for relevant chunks
+  2. Inject chunks as context into the prompt
+  3. Model generates grounded answer
+
+This pattern works reliably with lsd-rag's custom config (image_name: custom)
+where the Responses API file_search tool doesn't have proper vector_io wiring.
 
 Inspired by: https://github.com/rh-ai-quickstart/RAG
 """
@@ -13,12 +18,13 @@ from llama_stack_client import LlamaStackClient
 
 LLAMA_STACK_URL = os.getenv("LLAMA_STACK_URL", "http://lsd-rag-service.private-ai.svc.cluster.local:8321")
 DEFAULT_MODEL = os.getenv("INFERENCE_MODEL", "vllm-granite-agent/granite-8b-agent")
+MAX_CONTEXT_CHARS = 4000
 
 SYSTEM_PROMPT_RAG = (
-    "You are a knowledgeable AI assistant. When documents are available, "
-    "always use the knowledge_search tool before answering. Ground your "
-    "response in the retrieved content. If no relevant information is found, "
-    "say so and offer general knowledge as a fallback."
+    "You are a knowledgeable AI assistant. Answer based strictly on the "
+    "provided document context. If the context doesn't contain relevant "
+    "information, say so clearly and offer what you know from general knowledge, "
+    "distinguishing between document-based and general knowledge."
 )
 SYSTEM_PROMPT_DIRECT = (
     "You are a helpful AI assistant. Answer questions concisely and accurately."
@@ -38,7 +44,9 @@ def get_vector_stores():
         for vs in client.vector_stores.list():
             fc = vs.file_counts
             done = fc.completed if hasattr(fc, "completed") else 0
-            stores[vs.name] = {"id": vs.id, "files": done}
+            if done > 0:
+                if vs.name not in stores or done > stores[vs.name]["files"]:
+                    stores[vs.name] = {"id": vs.id, "files": done}
     except Exception as e:
         st.error(f"Failed to list vector stores: {e}")
     return stores
@@ -57,18 +65,54 @@ def get_models():
     return models
 
 
+def search_vector_store(query: str, vector_store_id: str, max_results: int = 5):
+    """Search vector store and return context string + chunk details."""
+    client = get_client()
+    try:
+        results = client.vector_stores.search(
+            vector_store_id=vector_store_id,
+            query=query,
+            max_num_results=max_results,
+        )
+        chunks = results.data if hasattr(results, "data") else []
+        context_parts = []
+        details = []
+        for r in chunks:
+            text = r.content[0].text if hasattr(r, "content") and r.content else ""
+            score = r.score if hasattr(r, "score") else 0
+            if text:
+                context_parts.append(text)
+                details.append({"score": round(score, 3), "preview": text[:100]})
+        context = "\n\n---\n\n".join(context_parts)
+        return context[:MAX_CONTEXT_CHARS], details
+    except Exception as e:
+        return "", [{"score": 0, "preview": f"Search error: {e}"}]
+
+
 def query_rag(question: str, model: str, vector_store_id: str, system_prompt: str):
+    """RAG query: search → inject context → generate."""
+    context, details = search_vector_store(question, vector_store_id)
+
+    if not context:
+        return "No relevant documents found in the knowledge base.", details
+
+    augmented_input = (
+        f"QUESTION: {question}\n\n"
+        f"DOCUMENT CONTEXT:\n{context}\n\n"
+        f"Answer the question based on the document context above."
+    )
+
     client = get_client()
     response = client.responses.create(
         model=model,
-        input=question,
+        input=augmented_input,
         instructions=system_prompt,
-        tools=[{"type": "file_search", "vector_store_ids": [vector_store_id]}],
     )
-    return response.output_text
+    return response.output_text, details
 
 
 def query_direct(question: str, model: str, system_prompt: str):
+    """Direct query without RAG."""
     client = get_client()
     response = client.responses.create(
         model=model,
@@ -162,10 +206,13 @@ if question := st.chat_input("Ask a question about your documents..."):
             st.markdown("**With RAG**")
             with st.spinner("Searching knowledge base..."):
                 try:
-                    rag_answer = query_rag(
+                    rag_answer, details = query_rag(
                         question, selected_model, stores[selected_store]["id"], system_prompt
                     )
                     st.markdown(rag_answer)
+                    with st.expander("📚 Retrieved chunks"):
+                        for d in details:
+                            st.markdown(f"- **Score {d['score']}:** {d['preview']}...")
                 except Exception as e:
                     st.error(f"RAG query failed: {e}")
                     rag_answer = f"Error: {e}"
@@ -177,10 +224,13 @@ if question := st.chat_input("Ask a question about your documents..."):
         with st.chat_message("assistant"):
             with st.spinner("Searching knowledge base..."):
                 try:
-                    answer = query_rag(
+                    answer, details = query_rag(
                         question, selected_model, stores[selected_store]["id"], system_prompt
                     )
                     st.markdown(answer)
+                    with st.expander("📚 Retrieved chunks"):
+                        for d in details:
+                            st.markdown(f"- **Score {d['score']}:** {d['preview']}...")
                     st.session_state.messages.append({"role": "assistant", "content": answer})
                 except Exception as e:
                     st.error(f"RAG query failed: {e}")
