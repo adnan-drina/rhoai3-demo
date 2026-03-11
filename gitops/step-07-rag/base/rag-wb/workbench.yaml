@@ -1,29 +1,25 @@
 # =============================================================================
-# Model Benchmarking Workbench - RHOAI 3.3 GitOps Pattern
+# RAG Workbench - RHOAI 3.3 GitOps Pattern
 # =============================================================================
-# Interactive Jupyter workbench for running and analyzing GuideLLM benchmarks.
+# Interactive Jupyter workbench for RAG development and testing:
+#   - Query LlamaStack RAG backend with file_search
+#   - Compare answers with/without vector store context
+#   - Debug vector search results directly
+#   - Run RAG ingestion pipelines
 #
-# Features:
-#   - Run GuideLLM benchmarks directly from notebook
-#   - Analyze benchmark results stored in PVC
-#   - Visualize TTFT, TPOT, throughput metrics
-#   - Compare INT4 vs BF16 model performance
-#
-# This workbench uses the RHOAI 3.3 controller-managed authentication pattern:
-#   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
-#   - Controller injects: kube-rbac-proxy sidecar for authentication
+# Pre-configured env vars point to lsd-rag and Milvus services.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# ServiceAccount: Workbench Identity
+# ServiceAccount
 # -----------------------------------------------------------------------------
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: model-benchmarking-wb
+  name: rag-wb
   namespace: private-ai
   labels:
-    app: model-benchmarking-wb
+    app: rag-wb
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -34,60 +30,55 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: model-benchmarking-wb-storage
+  name: rag-wb-storage
   namespace: private-ai
   labels:
-    app: model-benchmarking-wb
+    app: rag-wb
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    openshift.io/display-name: model-benchmarking-wb-storage
+    openshift.io/display-name: rag-wb-storage
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 20Gi
+      storage: 10Gi
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
-# Notebook: Model Benchmarking Workbench
+# Notebook: RAG Workbench
 # -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
-  name: model-benchmarking-wb
+  name: rag-wb
   namespace: private-ai
   labels:
-    app: model-benchmarking-wb
+    app: rag-wb
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
-    # Hardware Profile: CPU-only for analysis work
     opendatahub.io/hardware-profile-name: cpu-small
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    # UI Metadata
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
     opendatahub.io/username: ai-admin
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
-    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
     notebooks.opendatahub.io/last-size-selection: Small
-    openshift.io/display-name: "Model Benchmarking"
-    openshift.io/description: "Run and analyze GuideLLM benchmarks - TTFT, TPOT, throughput analysis"
-    # Idle Culling: Auto-stop after 15 min of inactivity (demo setting)
+    openshift.io/display-name: "RAG Development"
+    openshift.io/description: "Query LlamaStack RAG backend, debug vector search, run ingestion pipelines"
     notebooks.opendatahub.io/idle-culling-time: "15m"
     notebooks.opendatahub.io/idle-culling-enabled: "true"
 spec:
   template:
     spec:
       enableServiceLinks: false
-      serviceAccountName: model-benchmarking-wb
+      serviceAccountName: rag-wb
       affinity: {}
       # =========================================================================
-      # Git-Sync Init Container: Pre-load benchmarking notebook from Git
+      # Git-Sync Init Container: Pre-load RAG notebook from Git
       # =========================================================================
       initContainers:
         - name: git-sync
@@ -99,28 +90,28 @@ spec:
               set -e
               REPO_URL="https://github.com/adnan-drina/rhoai3-demo.git"
               WORKSPACE="/opt/app-root/src"
-              NOTEBOOKS_SRC="gitops/step-06-model-metrics/base/model-benchmarking-wb"
-              
+              NOTEBOOKS_SRC="steps/step-07-rag/notebooks"
+
               echo "╔══════════════════════════════════════════════════════════════╗"
-              echo "║  Git-Sync: Loading Model Benchmarking Notebook               ║"
+              echo "║  Git-Sync: Loading RAG Demo Notebook                         ║"
               echo "╚══════════════════════════════════════════════════════════════╝"
-              
-              if [ ! -f "$WORKSPACE/Model-Benchmarking.ipynb" ]; then
+
+              if [ ! -f "$WORKSPACE/rag-demo.ipynb" ]; then
                 echo "→ Cloning repository..."
                 git clone --depth 1 --single-branch "$REPO_URL" /tmp/repo
-                
+
                 echo "→ Copying notebooks to workspace..."
                 cp /tmp/repo/$NOTEBOOKS_SRC/*.ipynb "$WORKSPACE/" 2>/dev/null || true
-                
+
                 rm -rf /tmp/repo
                 echo "✓ Notebooks synced successfully!"
               else
                 echo "✓ Notebooks already exist - skipping sync"
               fi
-              
+
               ls -la "$WORKSPACE/"
           volumeMounts:
-            - name: model-benchmarking-wb-storage
+            - name: rag-wb-storage
               mountPath: /opt/app-root/src
           resources:
             limits:
@@ -134,7 +125,7 @@ spec:
       # Container: Jupyter Notebook
       # =========================================================================
       containers:
-        - name: model-benchmarking-wb
+        - name: rag-wb
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
           imagePullPolicy: Always
           workingDir: /opt/app-root/src
@@ -144,10 +135,11 @@ spec:
                 --ServerApp.port=8888
                 --ServerApp.token=''
                 --ServerApp.password=''
-                --ServerApp.base_url=/notebook/private-ai/model-benchmarking-wb
+                --ServerApp.base_url=/notebook/private-ai/rag-wb
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+            # TLS/CA certs
             - name: PIP_CERT
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: REQUESTS_CA_BUNDLE
@@ -158,9 +150,16 @@ spec:
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: GIT_SSL_CAINFO
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            # GuideLLM configuration
-            - name: GUIDELLM_RESULTS_DIR
-              value: /results
+            # LlamaStack RAG configuration
+            - name: LLAMA_STACK_URL
+              value: "http://lsd-rag-service.private-ai.svc.cluster.local:8321"
+            - name: INFERENCE_MODEL
+              value: "granite-8b-agent"
+            # Milvus direct access (for debugging)
+            - name: MILVUS_HOST
+              value: "milvus-standalone.private-ai.svc.cluster.local"
+            - name: MILVUS_PORT
+              value: "19530"
           ports:
             - containerPort: 8888
               name: notebook-port
@@ -170,11 +169,11 @@ spec:
               cpu: "2"
               memory: 4Gi
             requests:
-              cpu: "2"
-              memory: 4Gi
+              cpu: "1"
+              memory: 2Gi
           livenessProbe:
             httpGet:
-              path: /notebook/private-ai/model-benchmarking-wb/api
+              path: /notebook/private-ai/rag-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -184,7 +183,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /notebook/private-ai/model-benchmarking-wb/api
+              path: /notebook/private-ai/rag-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -193,14 +192,8 @@ spec:
             successThreshold: 1
             failureThreshold: 3
           volumeMounts:
-            - name: model-benchmarking-wb-storage
+            - name: rag-wb-storage
               mountPath: /opt/app-root/src
-            - name: guidellm-results
-              mountPath: /results
-              readOnly: true
-            - name: pipeline-results
-              mountPath: /pipeline-results
-              readOnly: true
             - name: shm
               mountPath: /dev/shm
             - name: trusted-ca
@@ -208,15 +201,9 @@ spec:
               subPath: ca-bundle.crt
               readOnly: true
       volumes:
-        - name: model-benchmarking-wb-storage
+        - name: rag-wb-storage
           persistentVolumeClaim:
-            claimName: model-benchmarking-wb-storage
-        - name: guidellm-results
-          persistentVolumeClaim:
-            claimName: guidellm-results
-        - name: pipeline-results
-          persistentVolumeClaim:
-            claimName: guidellm-pipeline-results
+            claimName: rag-wb-storage
         - name: shm
           emptyDir:
             medium: Memory
@@ -229,56 +216,48 @@ spec:
                 path: ca-bundle.crt
 ---
 # =============================================================================
-# RBAC: Model Benchmarking Permissions
-# =============================================================================
-# Permissions to run benchmarks and view results
+# RBAC: RAG Workbench Permissions
 # =============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: model-benchmarking-controller
+  name: rag-wb-controller
   namespace: private-ai
   labels:
-    app: model-benchmarking-wb
+    app: rag-wb
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 rules:
-  # Create and monitor benchmark Jobs
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch", "create", "delete"]
-  # View PipelineRuns
-  - apiGroups: ["tekton.dev"]
-    resources: ["pipelineruns", "taskruns"]
-    verbs: ["get", "list", "watch", "create"]
-  # View Pods for log access
   - apiGroups: [""]
-    resources: ["pods", "pods/log"]
+    resources: ["pods", "pods/log", "services", "configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
-  # View InferenceServices (to get model endpoints)
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices"]
     verbs: ["get", "list", "watch"]
-  # View ConfigMaps (for GuideLLM config)
-  - apiGroups: [""]
-    resources: ["configmaps"]
+  - apiGroups: ["llamastack.io"]
+    resources: ["llamastackdistributions"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["kubeflow.org"]
+    resources: ["pipelineruns"]
+    verbs: ["get", "list", "watch", "create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: model-benchmarking-controller
+  name: rag-wb-controller
   namespace: private-ai
   labels:
-    app: model-benchmarking-wb
+    app: rag-wb
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: model-benchmarking-controller
+  name: rag-wb-controller
 subjects:
   - kind: ServiceAccount
-    name: model-benchmarking-wb
+    name: rag-wb
     namespace: private-ai
-
