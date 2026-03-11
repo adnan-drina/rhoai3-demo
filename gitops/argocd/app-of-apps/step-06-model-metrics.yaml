@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-06-model-performance-metrics
+  name: step-06-model-metrics
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/step-06-model-performance-metrics/base
+    path: gitops/step-06-model-metrics/base
   destination:
     server: https://kubernetes.default.svc
     namespace: private-ai
