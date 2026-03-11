@@ -1,6 +1,6 @@
-# Red Hat OpenShift AI 3.0 Demo
+# Red Hat OpenShift AI 3.3 Demo
 
-GitOps-driven demo for deploying **Red Hat OpenShift AI (RHOAI) 3.0** on OpenShift 4.20 using OpenShift GitOps (Argo CD) and Kustomize.
+GitOps-driven demo for deploying **Red Hat OpenShift AI (RHOAI) 3.3** on OpenShift 4.20 using OpenShift GitOps (Argo CD) and Kustomize.
 
 ## Prerequisites
 
@@ -41,11 +41,11 @@ oc login --token=<your-token> --server=<api-server>
 | 02 | [RHOAI 3.3](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
 | 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
 | 04 | [Model Registry](steps/step-04-model-registry/README.md) | Enterprise model governance (registry + seed) |
-| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | GPU-as-a-Service model portfolio (KServe + vLLM + Playground) |
-| 06 | [Model Performance Metrics](steps/step-06-model-performance-metrics/README.md) | Grafana + GuideLLM + benchmarking |
-| 07 | [RAG Pipeline](steps/step-07-rag-pipeline/README.md) | Milvus, Docling, DSPA, LlamaStack RAG |
-| 08 | [RAG Evaluation](steps/step-08-rag-evaluation/README.md) | KFP eval pipeline, LLM-as-judge scoring |
-| 09 | [Guardrails](steps/step-09-guardrails/README.md) | TrustyAI, PII/HAP/injection detectors |
+| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | Deploy 5 models + GenAI Playground validation |
+| 06 | [Model Metrics](steps/step-06-model-metrics/README.md) | Grafana, GuideLLM benchmarks |
+| 07 | [RAG](steps/step-07-rag/README.md) | Milvus, Docling, DSPA, LlamaStack RAG, RAG workbench |
+| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | RAG evaluation with TrustyAI/Ragas |
+| 09 | [Guardrails](steps/step-09-guardrails/README.md) | FMS Guardrails Orchestrator |
 | 10 | [MCP Integration](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers |
 
 ## What Gets Deployed
@@ -92,9 +92,8 @@ rhoai3-demo/
 │   │       ├── step-03-private-ai.yaml
 │   │       ├── step-04-model-registry.yaml
 │   │       ├── step-05-llm-on-vllm.yaml
-│   │       ├── step-06-model-performance-metrics.yaml
-│   │       ├── step-07-rag-pipeline.yaml
-│   │       ├── step-08-rag-evaluation.yaml
+│   │       ├── step-06-model-metrics.yaml
+│   │       ├── step-07-rag.yaml
 │   │       ├── step-09-guardrails.yaml
 │   │       └── step-10-mcp-integration.yaml
 │   │
@@ -108,7 +107,22 @@ rhoai3-demo/
 │   │   ├── base/
 │   │   └── gpu-as-a-service-demo/
 │   │
-│   └── step-04-model-registry/  # Model Registry (placeholder)
+│   ├── step-04-model-registry/  # Model Registry
+│   │   └── base/
+│   │
+│   ├── step-05-llm-on-vllm/     # LLM serving + Playground
+│   │   └── base/
+│   │
+│   ├── step-06-model-metrics/    # Grafana + GuideLLM
+│   │   └── base/
+│   │
+│   ├── step-07-rag/              # Milvus, Docling, DSPA, LlamaStack
+│   │   └── base/
+│   │
+│   ├── step-09-guardrails/       # FMS Guardrails Orchestrator
+│   │   └── base/
+│   │
+│   └── step-10-mcp-integration/  # MCP servers
 │       └── base/
 │
 └── steps/
@@ -130,13 +144,13 @@ rhoai3-demo/
     ├── step-05-llm-on-vllm/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-06-model-performance-metrics/
+    ├── step-06-model-metrics/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-07-rag-pipeline/
+    ├── step-07-rag/
     │   ├── deploy.sh
     │   └── README.md
-    ├── step-08-rag-evaluation/
+    ├── step-08-model-evaluation/
     │   ├── deploy.sh
     │   └── README.md
     ├── step-09-guardrails/
