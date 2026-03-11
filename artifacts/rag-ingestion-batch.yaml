@@ -1,0 +1,896 @@
+# PIPELINE DEFINITION
+# Name: rag-ingestion-batch
+# Description: RAG batch ingestion: Docling + LlamaStack Vector IO with parallel processing (v1.0.0)
+# Inputs:
+#    cache_buster: str [Default: '']
+#    chunk_size_tokens: int [Default: 512.0]
+#    docling_service: str [Default: 'http://docling-service.private-ai.svc:5001']
+#    embedding_dimension: int [Default: 768.0]
+#    embedding_model: str [Default: 'ibm-granite/granite-embedding-125m-english']
+#    llamastack_url: str [Default: 'http://lsd-rag.private-ai.svc:8321']
+#    max_tokens: int [Default: 4096.0]
+#    minio_endpoint: str [Default: 'http://minio.minio-storage.svc.cluster.local:9000']
+#    minio_secret_name: str [Default: 'minio-connection']
+#    model_id: str [Default: 'granite-8b-agent']
+#    num_splits: int [Default: 2.0]
+#    processing_timeout: int [Default: 180.0]
+#    s3_prefix: str [Default: 's3://rag-documents/scenario2-acme/']
+#    temperature: float [Default: 0.0]
+#    vector_db_id: str [Default: 'acme_corporate']
+#    vector_provider: str [Default: 'milvus']
+components:
+  comp-download-from-s3-component:
+    executorLabel: exec-download-from-s3-component
+    inputDefinitions:
+      parameters:
+        minio_endpoint:
+          parameterType: STRING
+        s3_prefix:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        downloaded_files:
+          parameterType: LIST
+        file_count:
+          parameterType: NUMBER_INTEGER
+        original_keys:
+          parameterType: LIST
+  comp-for-loop-1:
+    dag:
+      tasks:
+        for-loop-2:
+          componentRef:
+            name: comp-for-loop-2
+          inputs:
+            parameters:
+              pipelinechannel--register-vector-db-component-vector_db_ids:
+                componentInputParameter: pipelinechannel--register-vector-db-component-vector_db_ids
+              pipelinechannel--setup-config-component-setup_config:
+                componentInputParameter: pipelinechannel--setup-config-component-setup_config
+              pipelinechannel--split-pdf-list-component-file_groups-loop-item:
+                componentInputParameter: pipelinechannel--split-pdf-list-component-file_groups-loop-item
+          iteratorPolicy:
+            parallelismLimit: 1
+          parameterIterator:
+            itemInput: pipelinechannel--split-pdf-list-component-file_groups-loop-item-loop-item
+            items:
+              inputParameter: pipelinechannel--split-pdf-list-component-file_groups-loop-item
+          taskInfo:
+            name: process-pdf
+    inputDefinitions:
+      parameters:
+        pipelinechannel--register-vector-db-component-vector_db_ids:
+          parameterType: LIST
+        pipelinechannel--setup-config-component-setup_config:
+          parameterType: STRUCT
+        pipelinechannel--split-pdf-list-component-file_groups:
+          parameterType: LIST
+        pipelinechannel--split-pdf-list-component-file_groups-loop-item:
+          parameterType: LIST
+  comp-for-loop-2:
+    dag:
+      tasks:
+        insert-via-llamastack-component:
+          cachingOptions: {}
+          componentRef:
+            name: comp-insert-via-llamastack-component
+          dependentTasks:
+          - process-with-docling-component
+          inputs:
+            parameters:
+              bucket_name:
+                runtimeValue:
+                  constant: rag-documents
+              original_key:
+                componentInputParameter: pipelinechannel--split-pdf-list-component-file_groups-loop-item-loop-item
+              processed_file:
+                taskOutputParameter:
+                  outputParameterKey: processed_file
+                  producerTask: process-with-docling-component
+              setup_config:
+                componentInputParameter: pipelinechannel--setup-config-component-setup_config
+              vector_db_ids:
+                componentInputParameter: pipelinechannel--register-vector-db-component-vector_db_ids
+          taskInfo:
+            name: insert-via-llamastack-component
+        process-with-docling-component:
+          cachingOptions: {}
+          componentRef:
+            name: comp-process-with-docling-component
+          inputs:
+            parameters:
+              document_path:
+                componentInputParameter: pipelinechannel--split-pdf-list-component-file_groups-loop-item-loop-item
+              original_key:
+                componentInputParameter: pipelinechannel--split-pdf-list-component-file_groups-loop-item-loop-item
+              setup_config:
+                componentInputParameter: pipelinechannel--setup-config-component-setup_config
+          taskInfo:
+            name: process-with-docling-component
+    inputDefinitions:
+      parameters:
+        pipelinechannel--register-vector-db-component-vector_db_ids:
+          parameterType: LIST
+        pipelinechannel--setup-config-component-setup_config:
+          parameterType: STRUCT
+        pipelinechannel--split-pdf-list-component-file_groups-loop-item:
+          parameterType: LIST
+        pipelinechannel--split-pdf-list-component-file_groups-loop-item-loop-item:
+          parameterType: STRING
+  comp-insert-via-llamastack-component:
+    executorLabel: exec-insert-via-llamastack-component
+    inputDefinitions:
+      parameters:
+        bucket_name:
+          parameterType: STRING
+        original_key:
+          parameterType: STRING
+        processed_file:
+          parameterType: STRING
+        setup_config:
+          parameterType: STRUCT
+        vector_db_ids:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        chunks_inserted:
+          parameterType: NUMBER_INTEGER
+        status:
+          parameterType: STRING
+  comp-pipeline-completion-component:
+    executorLabel: exec-pipeline-completion-component
+    inputDefinitions:
+      parameters:
+        file_count:
+          parameterType: NUMBER_INTEGER
+        vector_db_status:
+          parameterType: STRUCT
+    outputDefinitions:
+      parameters:
+        completion_status:
+          parameterType: STRING
+  comp-process-with-docling-component:
+    executorLabel: exec-process-with-docling-component
+    inputDefinitions:
+      parameters:
+        document_path:
+          parameterType: STRING
+        original_key:
+          parameterType: STRING
+        setup_config:
+          parameterType: STRUCT
+    outputDefinitions:
+      parameters:
+        processed_file:
+          parameterType: STRING
+        success:
+          parameterType: BOOLEAN
+  comp-register-vector-db-component:
+    executorLabel: exec-register-vector-db-component
+    inputDefinitions:
+      parameters:
+        setup_config:
+          parameterType: STRUCT
+    outputDefinitions:
+      parameters:
+        vector_db_ids:
+          parameterType: LIST
+        vector_db_status:
+          parameterType: STRUCT
+  comp-setup-config-component:
+    executorLabel: exec-setup-config-component
+    inputDefinitions:
+      parameters:
+        chunk_size_tokens:
+          parameterType: NUMBER_INTEGER
+        docling_service:
+          parameterType: STRING
+        embedding_dimension:
+          parameterType: NUMBER_INTEGER
+        embedding_model:
+          parameterType: STRING
+        llamastack_url:
+          parameterType: STRING
+        max_tokens:
+          parameterType: NUMBER_INTEGER
+        model_id:
+          parameterType: STRING
+        processing_timeout:
+          parameterType: NUMBER_INTEGER
+        temperature:
+          parameterType: NUMBER_DOUBLE
+        vector_db_id:
+          parameterType: STRING
+        vector_provider:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        setup_config:
+          parameterType: STRUCT
+  comp-split-pdf-list-component:
+    executorLabel: exec-split-pdf-list-component
+    inputDefinitions:
+      parameters:
+        downloaded_files:
+          parameterType: LIST
+        num_splits:
+          parameterType: NUMBER_INTEGER
+        original_keys:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        file_groups:
+          parameterType: LIST
+        key_groups:
+          parameterType: LIST
+defaultPipelineRoot: s3://pipelines/
+deploymentSpec:
+  executors:
+    exec-download-from-s3-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - download_from_s3_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'boto3==1.34.103'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef download_from_s3_component(\n    s3_prefix: str,\n    minio_endpoint:\
+          \ str,\n) -> NamedTuple(\n    \"DownloadOutput\",\n    [(\"downloaded_files\"\
+          , List[str]), (\"original_keys\", List[str]), (\"file_count\", int)],\n\
+          ):\n    import boto3\n    import os\n    from collections import namedtuple\n\
+          \    from urllib.parse import urlparse\n\n    print(\"Downloading Documents\
+          \ from MinIO\")\n    print(\"=\" * 60)\n\n    endpoint = os.environ.get(\"\
+          AWS_S3_ENDPOINT\", minio_endpoint)\n    access_key = os.environ.get(\"AWS_ACCESS_KEY_ID\"\
+          )\n    secret_key = os.environ.get(\"AWS_SECRET_ACCESS_KEY\")\n\n    if\
+          \ not all([endpoint, access_key, secret_key]):\n        raise RuntimeError(\n\
+          \            \"Missing MinIO credentials. Expected env vars: \"\n      \
+          \      \"AWS_S3_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY\"\n \
+          \       )\n\n    parsed = urlparse(s3_prefix)\n    bucket = parsed.netloc\
+          \ or s3_prefix.split(\"//\")[1].split(\"/\")[0]\n    prefix = \"/\".join(parsed.path.strip(\"\
+          /\").split(\"/\")) if parsed.path.strip(\"/\") else \"\"\n\n    print(f\"\
+          \  Endpoint: {endpoint}\")\n    print(f\"  Bucket:   {bucket}\")\n    print(f\"\
+          \  Prefix:   {prefix}\")\n\n    shared_dir = \"/shared-data/documents\"\n\
+          \    os.makedirs(shared_dir, exist_ok=True)\n\n    s3 = boto3.client(\n\
+          \        \"s3\",\n        endpoint_url=endpoint if endpoint.startswith(\"\
+          http\") else f\"http://{endpoint}\",\n        aws_access_key_id=access_key,\n\
+          \        aws_secret_access_key=secret_key,\n        verify=False,\n    )\n\
+          \n    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)\n    objects\
+          \ = response.get(\"Contents\", [])\n    print(f\"  Found {len(objects)}\
+          \ objects\")\n\n    downloaded_files: list[str] = []\n    original_keys:\
+          \ list[str] = []\n\n    for obj in objects:\n        key = obj[\"Key\"]\n\
+          \        if key.endswith(\"/\"):\n            continue\n        if not key.lower().endswith(\"\
+          .pdf\"):\n            print(f\"  Skipping non-PDF: {key}\")\n          \
+          \  continue\n\n        safe_name = key.replace(\"/\", \"_\")\n        local_path\
+          \ = f\"{shared_dir}/{safe_name}\"\n\n        try:\n            s3.download_file(bucket,\
+          \ key, local_path)\n            size = os.path.getsize(local_path)\n   \
+          \         print(f\"  [OK] {key} ({size} bytes)\")\n            downloaded_files.append(local_path)\n\
+          \            original_keys.append(key)\n        except Exception as e:\n\
+          \            print(f\"  [FAIL] {key}: {e}\")\n            continue\n\n \
+          \   print(f\"\\nDownloaded {len(downloaded_files)} / {len(objects)} objects\"\
+          )\n\n    DownloadOutput = namedtuple(\"DownloadOutput\", [\"downloaded_files\"\
+          , \"original_keys\", \"file_count\"])\n    return DownloadOutput(\n    \
+          \    downloaded_files=downloaded_files,\n        original_keys=original_keys,\n\
+          \        file_count=len(downloaded_files),\n    )\n\n"
+        image: python:3.11
+        resources:
+          cpuLimit: 1.0
+          cpuRequest: 0.5
+          memoryLimit: 1.073741824
+          memoryRequest: 0.536870912
+          resourceCpuLimit: '1'
+          resourceCpuRequest: 500m
+          resourceMemoryLimit: 1Gi
+          resourceMemoryRequest: 512Mi
+    exec-insert-via-llamastack-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - insert_via_llamastack_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'llama_stack_client==0.3.1'\
+          \ 'requests'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef insert_via_llamastack_component(\n    setup_config: Dict[str,\
+          \ Any],\n    processed_file: str,\n    original_key: str,\n    bucket_name:\
+          \ str,\n    vector_db_ids: List[str],\n) -> NamedTuple(\"InsertOutput\"\
+          , [(\"status\", str), (\"chunks_inserted\", int)]):\n    from llama_stack_client\
+          \ import LlamaStackClient, RAGDocument\n    from collections import namedtuple\n\
+          \    import os\n    import time\n\n    InsertOutput = namedtuple(\"InsertOutput\"\
+          , [\"status\", \"chunks_inserted\"])\n\n    base_url = setup_config[\"base_url\"\
+          ]\n    chunk_size = setup_config[\"document_intelligence\"][\"chunk_size_tokens\"\
+          ]\n    vector_db_id = setup_config[\"vector_db_id\"]\n\n    if not vector_db_ids:\n\
+          \        vector_db_ids = [vector_db_id]\n\n    if not processed_file or\
+          \ not os.path.exists(processed_file):\n        print(f\"  [SKIP] No processed\
+          \ file for {original_key}\")\n        return InsertOutput(status=\"skipped\"\
+          , chunks_inserted=0)\n\n    with open(processed_file, \"r\", encoding=\"\
+          utf-8\") as f:\n        content = f.read()\n\n    print(f\"Inserting: {original_key}\
+          \ ({len(content)} chars)\")\n\n    doc = RAGDocument(\n        document_id=f\"\
+          doc_{os.path.basename(processed_file).replace('.md', '')}\",\n        content=content,\n\
+          \        metadata={\n            \"source\": f\"minio://{bucket_name}/{original_key}\"\
+          ,\n            \"original_filename\": original_key,\n            \"processing_method\"\
+          : \"docling\",\n            \"scenario\": vector_db_id,\n            \"\
+          ingested_at\": time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime()),\n \
+          \       },\n    )\n\n    client = LlamaStackClient(base_url=base_url)\n\n\
+          \    for db_id in vector_db_ids:\n        try:\n            client.tool_runtime.rag_tool.insert(\n\
+          \                documents=[doc],\n                vector_db_id=db_id,\n\
+          \                chunk_size_in_tokens=chunk_size,\n            )\n     \
+          \       print(f\"  [OK] Inserted into '{db_id}'\")\n        except Exception\
+          \ as e:\n            print(f\"  [FAIL] Insert into '{db_id}': {e}\")\n \
+          \           return InsertOutput(status=\"error\", chunks_inserted=0)\n\n\
+          \    return InsertOutput(status=\"success\", chunks_inserted=1)\n\n"
+        image: python:3.12
+        resources:
+          cpuLimit: 0.5
+          cpuRequest: 0.25
+          memoryLimit: 0.536870912
+          memoryRequest: 0.268435456
+          resourceCpuLimit: 500m
+          resourceCpuRequest: 250m
+          resourceMemoryLimit: 512Mi
+          resourceMemoryRequest: 256Mi
+    exec-pipeline-completion-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - pipeline_completion_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef pipeline_completion_component(\n    vector_db_status: Dict[str,\
+          \ Any],\n    file_count: int,\n) -> NamedTuple(\"CompletionOutput\", [(\"\
+          completion_status\", str)]):\n    from collections import namedtuple\n\n\
+          \    print(\"Pipeline Completion\")\n    print(\"=\" * 60)\n\n    db_ok\
+          \ = vector_db_status.get(\"ready\", False)\n    db_id = vector_db_status.get(\"\
+          vector_db_id\", \"unknown\")\n\n    if db_ok and file_count > 0:\n     \
+          \   status = \"SUCCESS\"\n    elif db_ok:\n        status = \"PARTIAL_SUCCESS\"\
+          \n    else:\n        status = \"FAILED\"\n\n    print(f\"  Vector DB:  {db_id}\
+          \ (ready={db_ok})\")\n    print(f\"  Files:      {file_count}\")\n    print(f\"\
+          \  Status:     {status}\")\n    print(\"=\" * 60)\n\n    CompletionOutput\
+          \ = namedtuple(\"CompletionOutput\", [\"completion_status\"])\n    return\
+          \ CompletionOutput(completion_status=status)\n\n"
+        image: python:3.11
+    exec-process-with-docling-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - process_with_docling_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'requests'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef process_with_docling_component(\n    document_path: str,\n  \
+          \  original_key: str,\n    setup_config: Dict[str, Any],\n) -> NamedTuple(\"\
+          DoclingOutput\", [(\"processed_file\", str), (\"success\", bool)]):\n  \
+          \  import requests\n    import json\n    import os\n    import re\n    import\
+          \ unicodedata\n    import uuid\n    from collections import namedtuple\n\
+          \n    doc_config = setup_config[\"document_intelligence\"]\n    api_address\
+          \ = doc_config[\"docling_service\"]\n    timeout = doc_config[\"processing_timeout\"\
+          ]\n\n    print(f\"Processing: {original_key}\")\n    print(f\"  Docling:\
+          \ {api_address}/v1alpha/convert/file\")\n\n    DoclingOutput = namedtuple(\"\
+          DoclingOutput\", [\"processed_file\", \"success\"])\n\n    if not os.path.exists(document_path):\n\
+          \        print(f\"  [FAIL] File not found: {document_path}\")\n        return\
+          \ DoclingOutput(processed_file=\"\", success=False)\n\n    with open(document_path,\
+          \ \"rb\") as f:\n        file_content = f.read()\n    print(f\"  Read {len(file_content)}\
+          \ bytes\")\n\n    def _safe_ascii_name(name: str, default: str = \"upload.pdf\"\
+          ) -> str:\n        if not name:\n            return default\n        s =\
+          \ unicodedata.normalize(\"NFKD\", name)\n        s = s.encode(\"ascii\"\
+          , \"ignore\").decode(\"ascii\")\n        s = re.sub(r\"[^A-Za-z0-9._-]\"\
+          , \"_\", s).strip(\"._\")\n        if not s:\n            s = default\n\
+          \        if not s.lower().endswith(\".pdf\"):\n            s += \".pdf\"\
+          \n        return s\n\n    safe_name = _safe_ascii_name(os.path.basename(document_path))\n\
+          \    files = {\"files\": (safe_name, file_content, \"application/pdf\")}\n\
+          \n    attempts = [\n        {\"desc\": \"flat fields\", \"data\": {\"to_formats\"\
+          : \"md\", \"image_export_mode\": \"placeholder\"}},\n        {\"desc\":\
+          \ \"options JSON\", \"data\": {\"options\": json.dumps({\"to_formats\":\
+          \ [\"md\"], \"image_export_mode\": \"placeholder\"})}},\n    ]\n\n    last_err\
+          \ = None\n    response = None\n    for attempt in attempts:\n        print(f\"\
+          \  -> Trying {attempt['desc']}...\")\n        try:\n            response\
+          \ = requests.post(\n                f\"{api_address}/v1alpha/convert/file\"\
+          ,\n                files=files,\n                data=attempt[\"data\"],\n\
+          \                timeout=timeout,\n            )\n            if response.status_code\
+          \ == 422:\n                last_err = f\"422 {response.text[:400]}\"\n \
+          \               continue\n            response.raise_for_status()\n    \
+          \        break\n        except requests.exceptions.RequestException as e:\n\
+          \            last_err = str(e)\n            continue\n    else:\n      \
+          \  print(f\"  [FAIL] Docling failed after retries: {last_err}\")\n     \
+          \   return DoclingOutput(processed_file=\"\", success=False)\n\n    def\
+          \ _extract_md(payload: dict) -> str:\n        if isinstance(payload, dict):\n\
+          \            doc = payload.get(\"document\")\n            if isinstance(doc,\
+          \ dict):\n                for k in (\"md_content\", \"md\"):\n         \
+          \           if isinstance(doc.get(k), str):\n                        return\
+          \ doc[k]\n                content = doc.get(\"content\")\n             \
+          \   if isinstance(content, dict) and isinstance(content.get(\"md\"), str):\n\
+          \                    return content[\"md\"]\n            docs = payload.get(\"\
+          documents\")\n            if isinstance(docs, list) and docs:\n        \
+          \        first = docs[0]\n                if isinstance(first, dict):\n\
+          \                    for k in (\"md_content\", \"md\"):\n              \
+          \          if isinstance(first.get(k), str):\n                         \
+          \   return first[k]\n            res = payload.get(\"result\")\n       \
+          \     if isinstance(res, dict) and isinstance(res.get(\"md\"), str):\n \
+          \               return res[\"md\"]\n        raise KeyError(f\"No markdown\
+          \ found. Keys: {list(payload) if isinstance(payload, dict) else type(payload).__name__}\"\
+          )\n\n    try:\n        md_content = _extract_md(response.json())\n    except\
+          \ (KeyError, json.JSONDecodeError) as e:\n        print(f\"  [FAIL] Response\
+          \ parse error: {e}\")\n        return DoclingOutput(processed_file=\"\"\
+          , success=False)\n\n    os.makedirs(\"/shared-data/processed\", exist_ok=True)\n\
+          \    out_path = f\"/shared-data/processed/{uuid.uuid4().hex}.md\"\n    with\
+          \ open(out_path, \"w\", encoding=\"utf-8\") as f:\n        f.write(md_content)\n\
+          \n    print(f\"  [OK] {len(md_content)} chars -> {out_path}\")\n    return\
+          \ DoclingOutput(processed_file=out_path, success=True)\n\n"
+        image: python:3.11
+        resources:
+          cpuLimit: 1.0
+          cpuRequest: 0.5
+          memoryLimit: 1.073741824
+          memoryRequest: 0.536870912
+          resourceCpuLimit: '1'
+          resourceCpuRequest: 500m
+          resourceMemoryLimit: 1Gi
+          resourceMemoryRequest: 512Mi
+    exec-register-vector-db-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_vector_db_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'llama_stack_client==0.3.1'\
+          \ 'requests'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_vector_db_component(\n    setup_config: Dict[str, Any],\n\
+          ) -> NamedTuple(\"VectorDBOutput\", [(\"vector_db_status\", Dict[str, Any]),\
+          \ (\"vector_db_ids\", List[str])]):\n    from llama_stack_client import\
+          \ LlamaStackClient\n    from collections import namedtuple\n\n    print(\"\
+          Registering Vector Database\")\n    print(\"=\" * 60)\n\n    base_url =\
+          \ setup_config[\"base_url\"]\n    vector_db_id = setup_config[\"vector_db_id\"\
+          ]\n    doc_config = setup_config[\"document_intelligence\"]\n\n    print(f\"\
+          \  LlamaStack: {base_url}\")\n    print(f\"  DB ID:      {vector_db_id}\"\
+          )\n    print(f\"  Embedding:  {doc_config['embedding_model']} ({doc_config['embedding_dimension']}d)\"\
+          )\n    print(f\"  Provider:   {doc_config['vector_provider']}\")\n\n   \
+          \ client = LlamaStackClient(base_url=base_url)\n\n    try:\n        vs =\
+          \ client.vector_stores.create(\n            name=vector_db_id,\n       \
+          \     extra_body={\n                \"embedding_model\": doc_config[\"embedding_model\"\
+          ],\n                \"embedding_dimension\": doc_config[\"embedding_dimension\"\
+          ],\n                \"provider_id\": doc_config[\"vector_provider\"],\n\
+          \                \"vector_db_id\": vector_db_id,\n            },\n     \
+          \   )\n        created_id = vs.id\n        print(f\"  [OK] Vector store\
+          \ created: {created_id}\")\n    except Exception as e:\n        if \"already\
+          \ exists\" in str(e).lower():\n            print(f\"  [OK] Vector store\
+          \ '{vector_db_id}' already exists \u2014 reusing\")\n            created_id\
+          \ = vector_db_id\n        else:\n            print(f\"  [FAIL] {e}\")\n\
+          \            VectorDBOutput = namedtuple(\"VectorDBOutput\", [\"vector_db_status\"\
+          , \"vector_db_ids\"])\n            return VectorDBOutput(\n            \
+          \    vector_db_status={\"status\": \"error\", \"error\": str(e), \"ready\"\
+          : False},\n                vector_db_ids=[],\n            )\n\n    status\
+          \ = {\n        \"status\": \"success\",\n        \"vector_db_id\": created_id,\n\
+          \        \"embedding_model\": doc_config[\"embedding_model\"],\n       \
+          \ \"embedding_dimension\": doc_config[\"embedding_dimension\"],\n      \
+          \  \"provider\": doc_config[\"vector_provider\"],\n        \"ready\": True,\n\
+          \    }\n\n    VectorDBOutput = namedtuple(\"VectorDBOutput\", [\"vector_db_status\"\
+          , \"vector_db_ids\"])\n    return VectorDBOutput(vector_db_status=status,\
+          \ vector_db_ids=[created_id])\n\n"
+        image: python:3.12
+    exec-setup-config-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - setup_config_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'llama_stack_client==0.3.1'\
+          \ 'requests'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef setup_config_component(\n    llamastack_url: str,\n    model_id:\
+          \ str,\n    temperature: float,\n    max_tokens: int,\n    embedding_model:\
+          \ str,\n    embedding_dimension: int,\n    chunk_size_tokens: int,\n   \
+          \ vector_provider: str,\n    docling_service: str,\n    processing_timeout:\
+          \ int,\n    vector_db_id: str,\n) -> NamedTuple(\"SetupOutput\", [(\"setup_config\"\
+          , Dict[str, Any])]):\n    from collections import namedtuple\n\n    print(\"\
+          Initializing RAG Pipeline Configuration\")\n    print(\"=\" * 60)\n\n  \
+          \  if temperature > 0.0:\n        sampling_strategy = {\n            \"\
+          type\": \"top_p\",\n            \"temperature\": temperature,\n        \
+          \    \"top_p\": 0.95,\n        }\n    else:\n        sampling_strategy =\
+          \ {\"type\": \"greedy\"}\n\n    sampling_params = {\n        \"strategy\"\
+          : sampling_strategy,\n        \"max_tokens\": max_tokens,\n    }\n\n   \
+          \ setup_config = {\n        \"base_url\": llamastack_url,\n        \"model_config\"\
+          : {\n            \"model_id\": model_id,\n            \"temperature\": temperature,\n\
+          \            \"max_tokens\": max_tokens,\n            \"stream\": True,\n\
+          \        },\n        \"sampling_params\": sampling_params,\n        \"document_intelligence\"\
+          : {\n            \"embedding_model\": embedding_model,\n            \"embedding_dimension\"\
+          : embedding_dimension,\n            \"chunk_size_tokens\": chunk_size_tokens,\n\
+          \            \"vector_provider\": vector_provider,\n            \"docling_service\"\
+          : docling_service,\n            \"processing_timeout\": processing_timeout,\n\
+          \        },\n        \"vector_db_id\": vector_db_id,\n    }\n\n    print(f\"\
+          \  LlamaStack URL: {llamastack_url}\")\n    print(f\"  Model: {model_id}\"\
+          )\n    print(f\"  Sampling: {sampling_strategy['type']}\")\n    print(f\"\
+          \  Embedding: {embedding_model} ({embedding_dimension}d)\")\n    print(f\"\
+          \  Vector DB: {vector_db_id}\")\n    print(f\"  Docling: {docling_service}\"\
+          )\n    print(\"=\" * 60)\n\n    SetupOutput = namedtuple(\"SetupOutput\"\
+          , [\"setup_config\"])\n    return SetupOutput(setup_config=setup_config)\n\
+          \n"
+        image: python:3.12
+    exec-split-pdf-list-component:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - split_pdf_list_component
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef split_pdf_list_component(\n    downloaded_files: List[str],\n\
+          \    original_keys: List[str],\n    num_splits: int,\n) -> NamedTuple(\"\
+          SplitOutput\", [(\"file_groups\", List[List[str]]), (\"key_groups\", List[List[str]])]):\n\
+          \    from collections import namedtuple\n\n    n = max(1, num_splits)\n\
+          \    file_groups: list[list[str]] = [[] for _ in range(n)]\n    key_groups:\
+          \ list[list[str]] = [[] for _ in range(n)]\n\n    for i, (fp, key) in enumerate(zip(downloaded_files,\
+          \ original_keys)):\n        idx = i % n\n        file_groups[idx].append(fp)\n\
+          \        key_groups[idx].append(key)\n\n    for g_idx, group in enumerate(file_groups):\n\
+          \        print(f\"  Group {g_idx}: {len(group)} files\")\n\n    SplitOutput\
+          \ = namedtuple(\"SplitOutput\", [\"file_groups\", \"key_groups\"])\n   \
+          \ return SplitOutput(file_groups=file_groups, key_groups=key_groups)\n\n"
+        image: python:3.11
+pipelineInfo:
+  description: 'RAG batch ingestion: Docling + LlamaStack Vector IO with parallel
+    processing (v1.0.0)'
+  name: rag-ingestion-batch
+root:
+  dag:
+    tasks:
+      download-from-s3-component:
+        cachingOptions: {}
+        componentRef:
+          name: comp-download-from-s3-component
+        inputs:
+          parameters:
+            minio_endpoint:
+              componentInputParameter: minio_endpoint
+            s3_prefix:
+              componentInputParameter: s3_prefix
+        taskInfo:
+          name: download-from-s3-component
+      for-loop-1:
+        componentRef:
+          name: comp-for-loop-1
+        dependentTasks:
+        - register-vector-db-component
+        - setup-config-component
+        - split-pdf-list-component
+        inputs:
+          parameters:
+            pipelinechannel--register-vector-db-component-vector_db_ids:
+              taskOutputParameter:
+                outputParameterKey: vector_db_ids
+                producerTask: register-vector-db-component
+            pipelinechannel--setup-config-component-setup_config:
+              taskOutputParameter:
+                outputParameterKey: setup_config
+                producerTask: setup-config-component
+            pipelinechannel--split-pdf-list-component-file_groups:
+              taskOutputParameter:
+                outputParameterKey: file_groups
+                producerTask: split-pdf-list-component
+        parameterIterator:
+          itemInput: pipelinechannel--split-pdf-list-component-file_groups-loop-item
+          items:
+            inputParameter: pipelinechannel--split-pdf-list-component-file_groups
+        taskInfo:
+          name: process-group
+      pipeline-completion-component:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-pipeline-completion-component
+        dependentTasks:
+        - download-from-s3-component
+        - register-vector-db-component
+        inputs:
+          parameters:
+            file_count:
+              taskOutputParameter:
+                outputParameterKey: file_count
+                producerTask: download-from-s3-component
+            vector_db_status:
+              taskOutputParameter:
+                outputParameterKey: vector_db_status
+                producerTask: register-vector-db-component
+        taskInfo:
+          name: pipeline-completion-component
+      register-vector-db-component:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-register-vector-db-component
+        dependentTasks:
+        - download-from-s3-component
+        - setup-config-component
+        inputs:
+          parameters:
+            setup_config:
+              taskOutputParameter:
+                outputParameterKey: setup_config
+                producerTask: setup-config-component
+        taskInfo:
+          name: register-vector-db-component
+      setup-config-component:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-setup-config-component
+        inputs:
+          parameters:
+            chunk_size_tokens:
+              componentInputParameter: chunk_size_tokens
+            docling_service:
+              componentInputParameter: docling_service
+            embedding_dimension:
+              componentInputParameter: embedding_dimension
+            embedding_model:
+              componentInputParameter: embedding_model
+            llamastack_url:
+              componentInputParameter: llamastack_url
+            max_tokens:
+              componentInputParameter: max_tokens
+            model_id:
+              componentInputParameter: model_id
+            processing_timeout:
+              componentInputParameter: processing_timeout
+            temperature:
+              componentInputParameter: temperature
+            vector_db_id:
+              componentInputParameter: vector_db_id
+            vector_provider:
+              componentInputParameter: vector_provider
+        taskInfo:
+          name: setup-config-component
+      split-pdf-list-component:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-split-pdf-list-component
+        dependentTasks:
+        - download-from-s3-component
+        - register-vector-db-component
+        inputs:
+          parameters:
+            downloaded_files:
+              taskOutputParameter:
+                outputParameterKey: downloaded_files
+                producerTask: download-from-s3-component
+            num_splits:
+              componentInputParameter: num_splits
+            original_keys:
+              taskOutputParameter:
+                outputParameterKey: original_keys
+                producerTask: download-from-s3-component
+        taskInfo:
+          name: split-pdf-list-component
+  inputDefinitions:
+    parameters:
+      cache_buster:
+        defaultValue: ''
+        isOptional: true
+        parameterType: STRING
+      chunk_size_tokens:
+        defaultValue: 512.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      docling_service:
+        defaultValue: http://docling-service.private-ai.svc:5001
+        isOptional: true
+        parameterType: STRING
+      embedding_dimension:
+        defaultValue: 768.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      embedding_model:
+        defaultValue: ibm-granite/granite-embedding-125m-english
+        isOptional: true
+        parameterType: STRING
+      llamastack_url:
+        defaultValue: http://lsd-rag.private-ai.svc:8321
+        isOptional: true
+        parameterType: STRING
+      max_tokens:
+        defaultValue: 4096.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      minio_endpoint:
+        defaultValue: http://minio.minio-storage.svc.cluster.local:9000
+        isOptional: true
+        parameterType: STRING
+      minio_secret_name:
+        defaultValue: minio-connection
+        isOptional: true
+        parameterType: STRING
+      model_id:
+        defaultValue: granite-8b-agent
+        isOptional: true
+        parameterType: STRING
+      num_splits:
+        defaultValue: 2.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      processing_timeout:
+        defaultValue: 180.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      s3_prefix:
+        defaultValue: s3://rag-documents/scenario2-acme/
+        isOptional: true
+        parameterType: STRING
+      temperature:
+        defaultValue: 0.0
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      vector_db_id:
+        defaultValue: acme_corporate
+        isOptional: true
+        parameterType: STRING
+      vector_provider:
+        defaultValue: milvus
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.16.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-download-from-s3-component:
+          pvcMount:
+          - constant: rag-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: rag-pipeline-workspace
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: AWS_S3_ENDPOINT
+              secretKey: AWS_S3_ENDPOINT
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: AWS_ACCESS_KEY_ID
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: AWS_SECRET_ACCESS_KEY
+            optional: false
+            secretNameParameter:
+              componentInputParameter: minio_secret_name
+        exec-insert-via-llamastack-component:
+          pvcMount:
+          - constant: rag-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: rag-pipeline-workspace
+        exec-process-with-docling-component:
+          pvcMount:
+          - constant: rag-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: rag-pipeline-workspace
