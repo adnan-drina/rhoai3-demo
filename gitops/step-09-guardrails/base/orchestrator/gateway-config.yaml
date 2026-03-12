@@ -23,7 +23,7 @@ data:
     detectors:
       - name: pii_regex
         server: regex
-        input: true
+        input: false
         output: true
         detector_params:
           regex:
@@ -31,6 +31,9 @@ data:
             - us-social-security-number
             - credit-card
             - us-phone-number
+            - '(?i)\+31[\s-]*\d[\s-]*\d{3,}'
+            - '(?i)linkedin\.com/in/\w+'
+            - '(?i)github\.com/\w+'
       - name: hap_filter
         server: hap
         input: true
