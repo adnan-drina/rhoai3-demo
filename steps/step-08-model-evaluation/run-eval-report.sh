@@ -1,6 +1,6 @@
 #!/bin/bash
-# Step 08: Generate and store pre/post RAG evaluation reports
-# Runs the Llama Stack eval API from the lsd-rag pod (localhost, no DNS issues)
+# Step 08: Generate pre/post RAG evaluation reports from GitOps-managed test configs
+# Reads *_tests.yaml from the PVC (synced by ArgoCD), runs the Llama Stack eval API,
 # and uploads HTML reports to MinIO.
 #
 # Usage: ./run-eval-report.sh
@@ -29,11 +29,21 @@ if [ -z "$LSD_POD" ]; then
 fi
 log_success "Using pod: $LSD_POD"
 
-# Get MinIO credentials for report upload
 MINIO_ENDPOINT=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_S3_ENDPOINT}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
 MINIO_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
 MINIO_SECRET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
 MINIO_BUCKET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_S3_BUCKET}' 2>/dev/null | base64 -d 2>/dev/null || echo "rhoai-storage")
+
+log_step "Copying eval configs to lsd-rag pod..."
+oc exec "$LSD_POD" -n "$NAMESPACE" -- mkdir -p /tmp/eval-configs/scoring-templates 2>/dev/null
+for f in "$SCRIPT_DIR"/eval-configs/*_tests.yaml; do
+    [ -f "$f" ] && oc cp "$f" "$NAMESPACE/$LSD_POD:/tmp/eval-configs/$(basename $f)" 2>/dev/null
+done
+for f in "$SCRIPT_DIR"/eval-configs/scoring-templates/*.txt; do
+    [ -f "$f" ] && oc cp "$f" "$NAMESPACE/$LSD_POD:/tmp/eval-configs/scoring-templates/$(basename $f)" 2>/dev/null
+done
+log_success "Configs copied"
+echo ""
 
 log_step "Running evaluation on $LSD_POD..."
 echo ""
@@ -41,7 +51,7 @@ echo ""
 oc exec "$LSD_POD" -n "$NAMESPACE" -- python3 -c "
 import warnings; warnings.filterwarnings('ignore')
 import logging; logging.getLogger('httpx').setLevel(logging.WARNING)
-import json, time, os, tempfile
+import json, time, os, tempfile, glob, yaml
 import requests as http
 from llama_stack_client import LlamaStackClient, BadRequestError
 
@@ -52,42 +62,26 @@ S3_ENDPOINT = '$MINIO_ENDPOINT'
 S3_KEY = '$MINIO_KEY'
 S3_SECRET = '$MINIO_SECRET'
 S3_BUCKET = '$MINIO_BUCKET'
+EVAL_DIR = '/tmp/eval-configs'
 
 client = LlamaStackClient(base_url=BASE)
 
-# --- Discover vector stores ---
 stores = {vs.name: vs.id for vs in client.vector_stores.list().data}
 print(f'Vector stores: {list(stores.keys())}')
 
-# --- Test cases ---
-scenarios = {
-    'acme_corporate': [
-        {'q': 'What are the key calibration procedures for DFO lithography?',
-         'a': 'DFO calibration involves alignment verification, dose calibration, focus optimization, and overlay measurement.'},
-        {'q': 'What products and standards does ACME cover?',
-         'a': 'ACME covers EUV and DUV lithography products aligned with SEMI and ISO standards.'},
-        {'q': 'Describe the Tier-1 and Tier-2 trouble response procedures.',
-         'a': 'Tier-1 covers initial triage and standard fixes. Tier-2 involves engineering analysis and root cause investigation.'},
-    ],
-    'eu_ai_act': [
-        {'q': 'What are the main risk categories in the EU AI Act?',
-         'a': 'Unacceptable risk (banned), high risk (strict requirements), limited risk (transparency), minimal risk (voluntary).'},
-        {'q': 'What obligations do providers of high-risk AI systems have?',
-         'a': 'Risk management, data governance, technical documentation, human oversight, and accuracy.'},
-    ],
-    'whoami': [
-        {'q': 'What is this persons professional background?',
-         'a': 'Technology professional with experience in cloud computing, Kubernetes, and AI/ML platforms.'},
-    ],
-}
+# --- Load test configs from PVC ---
+configs = sorted(glob.glob(os.path.join(EVAL_DIR, '*_tests.yaml')))
+print(f'Test configs found: {len(configs)}')
+for c in configs:
+    print(f'  {os.path.basename(c)}')
 
-# --- Register LLM-as-judge scoring function ---
-JUDGE_PROMPT = '''Evaluate the response quality.
-Question: {input_query}
-Expected: {expected_answer}
-Generated: {generated_answer}
-Select: (A) subset (B) superset (C) same (D) disagrees (E) insignificant diff.
-Answer: '''
+# --- Register judge scoring function ---
+judge_path = os.path.join(EVAL_DIR, 'scoring-templates', 'judge_prompt.txt')
+if os.path.exists(judge_path):
+    with open(judge_path) as f:
+        JUDGE_PROMPT = f.read()
+else:
+    JUDGE_PROMPT = 'Question: {input_query}\nExpected: {expected_answer}\nGenerated: {generated_answer}\nAnswer: '
 
 try:
     client.scoring_functions.register(
@@ -98,7 +92,7 @@ try:
 except BadRequestError:
     pass
 
-# --- Helper functions ---
+# --- Helpers ---
 def retrieve_context(q, store_id):
     try:
         r = http.post(f'{BASE}/v1/vector_stores/{store_id}/search',
@@ -108,7 +102,8 @@ def retrieve_context(q, store_id):
             for c in item.get('content', []):
                 chunks.append(c.get('text', ''))
         return chr(10).join(chunks[:3])
-    except:
+    except Exception as e:
+        print(f'    Retrieval error: {e}')
         return ''
 
 def call_llm(q, context=None):
@@ -117,55 +112,43 @@ def call_llm(q, context=None):
         msgs.append({'role': 'system', 'content': f'Answer based on this context:{chr(10)}{context[:3000]}'})
     msgs.append({'role': 'user', 'content': q})
     r = http.post(f'{BASE}/v1/chat/completions', json={
-        'model': MODEL, 'messages': msgs, 'max_tokens': 300, 'temperature': 0, 'stream': False
-    }, timeout=60).json()
+        'model': MODEL, 'messages': msgs, 'max_tokens': 400, 'temperature': 0, 'stream': False
+    }, timeout=120).json()
     return r['choices'][0]['message']['content']
 
-def generate_html(scenario_name, mode, results, run_id):
+def generate_html(name, mode, results, run_id):
     color = '#28a745' if mode == 'post-rag' else '#6c757d'
     rows = ''
     for i, r in enumerate(results, 1):
-        score = r.get('judge_score', '')
-        feedback = r.get('judge_feedback', '')[:200]
         rows += f'''<tr>
-          <td>{i}</td><td>{r['q']}</td>
-          <td>{r['answer'][:400]}</td><td>{r['expected'][:400]}</td>
-          <td><strong>{score}</strong><br><small>{feedback}</small></td>
+          <td>{i}</td><td>{r['q'][:200]}</td>
+          <td>{r['answer'][:500]}</td><td>{r['expected'][:500]}</td>
+          <td><strong>{r.get('judge_letter','')}</strong><br><small>{r.get('judge_feedback','')[:250]}</small></td>
         </tr>'''
-
     return f'''<!DOCTYPE html>
-<html><head><meta charset=\"utf-8\"><title>RAG Eval - {scenario_name} ({mode})</title>
+<html><head><meta charset=\"utf-8\"><title>RAG Eval - {name} ({mode})</title>
 <style>
 body {{ font-family: -apple-system, sans-serif; margin: 20px; background: #f8f9fa; }}
 .container {{ max-width: 1400px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); overflow: hidden; }}
 .header {{ background: linear-gradient(135deg, {color}, {'#20c997' if mode=='post-rag' else '#495057'}); color: #fff; padding: 30px; text-align: center; }}
-.content {{ padding: 30px; }}
-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+table {{ width: 100%; border-collapse: collapse; margin: 15px 30px; }}
 th {{ background: {color}; color: #fff; padding: 12px 8px; text-align: left; font-size: .9em; }}
 td {{ padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; max-width: 350px; word-wrap: break-word; font-size: .85em; }}
 tr:nth-child(even) {{ background: #f8f9fa; }}
-.meta {{ color: #6c757d; margin: 10px 0; }}
+.meta {{ color: #6c757d; margin: 10px 30px; }}
 .badge {{ display: inline-block; padding: 4px 12px; border-radius: 4px; color: #fff; background: {color}; font-weight: bold; }}
 </style></head><body>
 <div class=\"container\">
-  <div class=\"header\">
-    <h1>RAG Evaluation Report</h1>
-    <p>{scenario_name}</p>
-    <span class=\"badge\">{mode.upper()}</span>
-  </div>
-  <div class=\"content\">
-    <p class=\"meta\">Run ID: {run_id} | Mode: {mode} | Generated: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} | Tests: {len(results)}</p>
-    <table>
-      <thead><tr><th>#</th><th>Question</th><th>Generated Answer</th><th>Expected</th><th>Judge Score</th></tr></thead>
-      <tbody>{rows}</tbody>
-    </table>
-  </div>
+  <div class=\"header\"><h1>RAG Evaluation Report</h1><p>{name}</p><span class=\"badge\">{mode.upper()}</span></div>
+  <p class=\"meta\">Run ID: {run_id} | Mode: {mode} | {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} | Tests: {len(results)}</p>
+  <table><thead><tr><th>#</th><th>Question</th><th>Generated Answer</th><th>Expected</th><th>Judge Score</th></tr></thead>
+  <tbody>{rows}</tbody></table>
 </div></body></html>'''
 
 def upload_to_s3(html, s3_key):
     if not all([S3_ENDPOINT, S3_KEY, S3_SECRET]):
-        print(f'    S3 credentials missing - cannot upload')
-        return False
+        print(f'    S3 creds missing')
+        return
     try:
         import boto3
         endpoint = S3_ENDPOINT if S3_ENDPOINT.startswith('http') else f'http://{S3_ENDPOINT}'
@@ -177,89 +160,87 @@ def upload_to_s3(html, s3_key):
         s3.upload_file(tmp, S3_BUCKET, s3_key, ExtraArgs={'ContentType': 'text/html'})
         os.unlink(tmp)
         print(f'    Uploaded: s3://{S3_BUCKET}/{s3_key}')
-        return True
     except Exception as e:
-        print(f'    Upload failed: {e}')
-        return False
+        print(f'    Upload error: {e}')
 
-# --- Run evaluations ---
-all_results = {}
+# --- Process each config ---
+for cfg_path in configs:
+    with open(cfg_path) as f:
+        cfg = yaml.safe_load(f)
 
-for scenario, tests in scenarios.items():
-    store_id = stores.get(scenario, '')
+    scenario = cfg.get('name', os.path.basename(cfg_path))
+    mode = cfg.get('mode', 'post-rag')
+    db_id = cfg.get('vector_db_id')
+    tests = cfg.get('tests', [])
+    store_id = stores.get(db_id, '') if db_id else ''
+
     print(f'\\n{\"=\"*70}')
-    print(f'Scenario: {scenario}')
+    print(f'{scenario} [{mode}] ({len(tests)} tests)')
     print(f'{\"=\"*70}')
 
-    for mode in ['pre-rag', 'post-rag']:
-        print(f'\\n  --- {mode.upper()} ---')
-        results = []
-        rows_for_eval = []
+    results = []
+    eval_rows = []
 
-        for t in tests:
-            q, expected = t['q'], t['a']
-            if mode == 'post-rag' and store_id:
-                ctx = retrieve_context(q, store_id)
-                answer = call_llm(q, context=ctx)
-            else:
-                answer = call_llm(q)
+    for t in tests:
+        q = t['prompt']
+        expected = t['expected_result']
 
-            results.append({'q': q, 'expected': expected, 'answer': answer,
-                           'judge_score': '', 'judge_feedback': ''})
-            rows_for_eval.append({
-                'input_query': q, 'expected_answer': expected,
-                'chat_completion_input': json.dumps([{'role':'user','content':q}]),
-            })
-            print(f'    Q: {q[:50]}...')
-            print(f'    A: {answer[:80]}...')
+        if mode == 'post-rag' and store_id:
+            ctx = retrieve_context(q, store_id)
+            answer = call_llm(q, context=ctx)
+        else:
+            answer = call_llm(q)
 
-        # Score via Llama Stack eval API
-        ds_id = f'{scenario}-{mode}-{RUN_ID}'
-        bm_id = f'{scenario}-{mode}-bm-{RUN_ID}'
+        results.append({'q': q, 'expected': expected, 'answer': answer, 'judge_letter': '', 'judge_feedback': ''})
+        eval_rows.append({'input_query': q, 'expected_answer': expected,
+            'chat_completion_input': json.dumps([{'role':'user','content':q}])})
+        print(f'  Q: {q[:55]}...')
+        print(f'  A: {answer[:75]}...')
 
-        try:
-            client.beta.datasets.register(purpose='eval/question-answer',
-                source={'type':'rows','rows':rows_for_eval},
-                dataset_id=ds_id, metadata={}, extra_body={'provider_id':'localfs'})
+    # Score via Llama Stack eval API
+    safe = os.path.basename(cfg_path).replace('.yaml','').replace('_tests','')
+    ds_id = f'{safe}-{RUN_ID}'
+    bm_id = f'{safe}-bm-{RUN_ID}'
 
-            client.alpha.benchmarks.register(benchmark_id=bm_id, dataset_id=ds_id,
-                scoring_functions=['basic::subset_of', 'rag-eval-judge'],
-                extra_body={'provider_id':'meta-reference'})
+    try:
+        client.beta.datasets.register(purpose='eval/question-answer',
+            source={'type':'rows','rows':eval_rows},
+            dataset_id=ds_id, metadata={}, extra_body={'provider_id':'localfs'})
 
-            job = client.alpha.eval.run_eval(bm_id, benchmark_config={
-                'eval_candidate':{'type':'model','model':MODEL,'sampling_params':{'max_tokens':300}},
-                'scoring_params':{'basic::subset_of':{'type':'basic','aggregation_functions':['accuracy']}},
-            })
-            result = client.alpha.eval.jobs.retrieve(job_id=job.job_id, benchmark_id=bm_id)
+        client.alpha.benchmarks.register(benchmark_id=bm_id, dataset_id=ds_id,
+            scoring_functions=['basic::subset_of', 'rag-eval-judge'],
+            extra_body={'provider_id':'meta-reference'})
 
-            # Extract scores
-            for fn_id, sr in (result.scores or {}).items():
-                for i, row in enumerate(sr.score_rows or []):
-                    if i < len(results):
-                        if 'judge' in fn_id:
-                            results[i]['judge_score'] = row.get('judge_feedback','')[:50]
-                            results[i]['judge_feedback'] = row.get('judge_feedback','')
-                        else:
-                            existing = results[i].get('judge_score','')
-                            results[i]['judge_score'] = f'{existing} subset_of={row.get(\"score\",\"?\")}'.strip()
+        job = client.alpha.eval.run_eval(bm_id, benchmark_config={
+            'eval_candidate':{'type':'model','model':MODEL,'sampling_params':{'max_tokens':400}},
+            'scoring_params':{'basic::subset_of':{'type':'basic','aggregation_functions':['accuracy']}},
+        })
+        result = client.alpha.eval.jobs.retrieve(job_id=job.job_id, benchmark_id=bm_id)
 
-                if sr.aggregated_results:
-                    print(f'    {fn_id}: {sr.aggregated_results}')
+        for fn_id, sr in (result.scores or {}).items():
+            if sr.aggregated_results:
+                print(f'  {fn_id}: {sr.aggregated_results}')
+            for i, row in enumerate(sr.score_rows or []):
+                if i < len(results):
+                    fb = row.get('judge_feedback', '')
+                    if fb:
+                        letter = fb.strip()[0:3] if fb.strip() else ''
+                        results[i]['judge_letter'] = letter
+                        results[i]['judge_feedback'] = fb
+                    score = row.get('score')
+                    if score is not None:
+                        existing = results[i].get('judge_letter', '')
+                        results[i]['judge_letter'] = f'{existing} subset_of={score}'.strip()
 
-        except Exception as e:
-            print(f'    Scoring error: {e}')
+    except Exception as e:
+        print(f'  Scoring error: {e}')
 
-        # Generate and upload HTML report
-        html = generate_html(scenario, mode, results, RUN_ID)
-        s3_key = f'eval-results/{RUN_ID}/{scenario}_{mode}_report.html'
-        upload_to_s3(html, s3_key)
+    html = generate_html(scenario, mode, results, RUN_ID)
+    s3_key = f'eval-results/{RUN_ID}/{safe}_report.html'
+    upload_to_s3(html, s3_key)
 
-        all_results[f'{scenario}_{mode}'] = results
-
-# --- Summary ---
 print(f'\\n{\"=\"*70}')
-print(f'EVALUATION COMPLETE')
-print(f'Run ID: {RUN_ID}')
+print(f'EVALUATION COMPLETE — Run ID: {RUN_ID}')
 print(f'Reports: s3://{S3_BUCKET}/eval-results/{RUN_ID}/')
 print(f'{\"=\"*70}')
 "
@@ -269,7 +250,7 @@ if [ $? -eq 0 ]; then
     log_success "Evaluation reports generated"
     echo ""
     echo "View reports:"
-    echo "  MinIO UI: https://$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}' 2>/dev/null || echo 'minio-console')/browser/${MINIO_BUCKET}/eval-results/${RUN_ID}/"
+    echo "  MinIO UI: https://$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}' 2>/dev/null)/browser/${MINIO_BUCKET}/eval-results/${RUN_ID}/"
     echo "  CLI:      oc exec -n minio-storage deploy/minio -- mc ls local/${MINIO_BUCKET}/eval-results/${RUN_ID}/"
 else
     log_error "Evaluation failed"
