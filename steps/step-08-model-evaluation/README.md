@@ -323,6 +323,95 @@ Interactive notebook (`notebooks/deepeval_rag.ipynb`) for per-conversation analy
 
 ---
 
+## Demo Walkthrough: Pre-RAG vs Post-RAG
+
+This walkthrough demonstrates that RAG adds measurable value by comparing LLM answers
+with and without document context using the Llama Stack Eval API.
+
+### Prerequisites
+
+```bash
+# Validate step-08 is deployed and healthy
+./steps/step-08-model-evaluation/validate.sh
+# Expected: 12/12 PASS
+```
+
+### Step 1: Show the Problem (Pre-RAG Hallucination)
+
+Ask the LLM about ACME without any document context:
+
+```bash
+oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "vllm-granite-agent/granite-8b-agent",
+       "messages": [{"role": "user", "content": "What products and standards does ACME cover?"}],
+       "max_tokens": 200, "temperature": 0, "stream": false}' | python3 -c "
+import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
+```
+
+**Expected:** Generic/hallucinated answer (e.g., "automotive communication standards", "industrial automation").
+
+### Step 2: Show the Solution (Post-RAG Grounded Answer)
+
+Same question, but with retrieved context from Milvus:
+
+```bash
+# 1. Retrieve context
+oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST \
+  http://localhost:8321/v1/vector_stores/$(oc exec deploy/lsd-rag -n private-ai -- \
+    curl -s http://localhost:8321/v1/vector_stores | python3 -c "
+import json,sys; [print(v['id']) for v in json.load(sys.stdin)['data'] if v['name']=='acme_corporate']")/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "ACME products standards", "max_num_results": 3}'
+
+# 2. LLM answers with context (shown in notebook or chatbot)
+```
+
+**Expected:** "ACME specializes in precision-engineered tools for advanced lithography... L-900 EUV Calibration Suite... ISO 9001:2015... SEMI standards."
+
+### Step 3: Quantify the Difference (Llama Stack Eval API)
+
+Run from the **rag-wb workbench** or the lsd-rag pod. The flow follows the
+[fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) pattern:
+
+```python
+from llama_stack_client import LlamaStackClient
+client = LlamaStackClient(base_url='http://lsd-rag-service:8321')
+
+# 1. Register datasets (pre-RAG and post-RAG answers)
+client.beta.datasets.register(dataset_id='pre-rag', purpose='eval/question-answer',
+    source={'type':'rows', 'rows':[...]}, extra_body={'provider_id':'localfs'})
+
+# 2. Register scoring function (LLM-as-judge)
+client.scoring_functions.register(scoring_fn_id='rag-quality-judge',
+    provider_id='llm-as-judge', provider_scoring_fn_id='llm-as-judge-base',
+    params={'type':'llm_as_judge', 'judge_model':'vllm-granite-agent/granite-8b-agent',
+            'prompt_template':'...'}, return_type={'type':'string'})
+
+# 3. Register benchmarks
+client.alpha.benchmarks.register(benchmark_id='pre-rag-bm', dataset_id='pre-rag',
+    scoring_functions=['rag-quality-judge'], extra_body={'provider_id':'meta-reference'})
+
+# 4. Run evaluation
+job = client.alpha.eval.run_eval('pre-rag-bm', benchmark_config={...})
+result = client.alpha.eval.jobs.retrieve(job_id=job.job_id, benchmark_id='pre-rag-bm')
+```
+
+### Expected Results
+
+| Metric | Pre-RAG | Post-RAG | Interpretation |
+|--------|---------|----------|---------------|
+| `basic::subset_of` | 0.0 | 0.0–1.0 | Exact match (strict) |
+| `llm-as-judge` | **(D)** disagrees or **(E)** | **(C)** same or **(B)** superset | Semantic quality |
+| Judge feedback | "does not align with expected" | "accurately reflects expected response" | Human-readable |
+
+### Interactive Notebook
+
+For a full interactive walkthrough with all 3 scenarios, open `notebooks/llama_stack_eval.ipynb`
+in the rag-wb workbench. It runs the complete dataset→benchmark→eval→compare flow.
+
+---
+
 ## Next Steps
 
 - **CI/CD Quality Gates**: Schedule eval runs as CronJobs and fail builds when scores drop below thresholds
