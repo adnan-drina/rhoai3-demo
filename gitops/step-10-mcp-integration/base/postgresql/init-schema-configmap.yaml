@@ -12,9 +12,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 data:
   init.sql: |
-    -- ACME Equipment Database Schema
-    -- Production schema for lithography equipment management
-
+    -- Equipment table
     CREATE TABLE IF NOT EXISTS equipment (
       equipment_id VARCHAR(50) PRIMARY KEY,
       equipment_type VARCHAR(100) NOT NULL,
@@ -33,11 +31,12 @@ data:
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Service history table
     CREATE TABLE IF NOT EXISTS service_history (
       service_id SERIAL PRIMARY KEY,
       equipment_id VARCHAR(50) NOT NULL REFERENCES equipment(equipment_id) ON DELETE CASCADE,
       service_date DATE NOT NULL,
-      service_type VARCHAR(100) NOT NULL CHECK (service_type IN ('Preventive Maintenance', 'Corrective Maintenance', 'Calibration', 'Upgrade', 'Inspection')),
+      service_type VARCHAR(100) NOT NULL,
       technician VARCHAR(50) NOT NULL,
       notes TEXT NOT NULL,
       parts_used TEXT[],
@@ -46,6 +45,7 @@ data:
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Parts inventory table
     CREATE TABLE IF NOT EXISTS parts_inventory (
       part_number VARCHAR(50) PRIMARY KEY,
       part_name VARCHAR(200) NOT NULL,
@@ -60,6 +60,7 @@ data:
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Calibration records table
     CREATE TABLE IF NOT EXISTS calibration_records (
       calibration_id SERIAL PRIMARY KEY,
       equipment_id VARCHAR(50) NOT NULL REFERENCES equipment(equipment_id) ON DELETE CASCADE,
@@ -74,23 +75,20 @@ data:
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Pod-to-equipment mapping
     CREATE TABLE IF NOT EXISTS acme_pod_equipment_map (
-      pod_name VARCHAR(50) PRIMARY KEY
-        CHECK (pod_name ~ '^acme-equipment-\d{4}$'),
+      pod_name VARCHAR(50) PRIMARY KEY,
       equipment_id VARCHAR(50) NOT NULL REFERENCES equipment(equipment_id) ON DELETE CASCADE,
       equipment_name VARCHAR(200) NOT NULL,
       product_name VARCHAR(200) NOT NULL,
       effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      effective_to TIMESTAMPTZ,
-      CONSTRAINT uq_acme_pod_equipment UNIQUE (equipment_id)
+      effective_to TIMESTAMPTZ
     );
 
-    -- Indexes for performance
+    -- Indexes
     CREATE INDEX IF NOT EXISTS idx_service_history_equipment ON service_history(equipment_id, service_date DESC);
     CREATE INDEX IF NOT EXISTS idx_calibration_records_equipment ON calibration_records(equipment_id, calibration_date DESC);
-    CREATE INDEX IF NOT EXISTS idx_parts_category ON parts_inventory(category);
     CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
-    CREATE INDEX IF NOT EXISTS idx_acme_pod_equipment_product ON acme_pod_equipment_map(product_name);
 
     -- Seed equipment data
     INSERT INTO equipment (equipment_id, equipment_type, model, status, location, customer, serial_number,
@@ -152,41 +150,4 @@ data:
       ('acme-equipment-0001', 'LITHO-001', 'LITHO-001 EUV Scanner', 'L-900 EUV Calibration Suite'),
       ('acme-equipment-0005', 'L-900-07', 'L-900 EUV Scanner 07', 'L-900 EUV Calibration Suite'),
       ('acme-equipment-0007', 'L-900-08', 'L-900 EUV Scanner 08', 'L-900 EUV Calibration Suite')
-    ON CONFLICT (pod_name) DO UPDATE
-    SET equipment_id = EXCLUDED.equipment_id,
-        equipment_name = EXCLUDED.equipment_name,
-        product_name = EXCLUDED.product_name,
-        effective_from = CURRENT_TIMESTAMP,
-        effective_to = NULL;
-
-    -- Views for reporting
-    CREATE OR REPLACE VIEW acme_pod_equipment_map_v AS
-    SELECT pod_name, equipment_id, equipment_name, product_name,
-      CASE
-        WHEN product_name ILIKE 'l-900%' THEN 'L-900 EUV Calibration Suite'
-        ELSE product_name
-      END AS product_name_canonical,
-      effective_from, effective_to
-    FROM acme_pod_equipment_map;
-
-    CREATE OR REPLACE VIEW equipment_status_summary AS
-    SELECT
-      e.equipment_id, e.model, e.status, e.location,
-      e.last_pm, e.next_pm, e.last_calibration, e.next_calibration_due,
-      COALESCE(sh.last_service_date, e.install_date) as last_service_date,
-      COALESCE(sh.last_service_type, 'Installation') as last_service_type,
-      COALESCE(cr.last_calibration_status, 'Unknown') as last_calibration_status
-    FROM equipment e
-    LEFT JOIN (
-      SELECT equipment_id, MAX(service_date) as last_service_date,
-        (ARRAY_AGG(service_type ORDER BY service_date DESC))[1] as last_service_type
-      FROM service_history GROUP BY equipment_id
-    ) sh ON e.equipment_id = sh.equipment_id
-    LEFT JOIN (
-      SELECT equipment_id, (ARRAY_AGG(status ORDER BY calibration_date DESC))[1] as last_calibration_status
-      FROM calibration_records GROUP BY equipment_id
-    ) cr ON e.equipment_id = cr.equipment_id;
-
-    -- Grant permissions
-    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO acmeadmin;
-    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO acmeadmin;
+    ON CONFLICT (pod_name) DO NOTHING;

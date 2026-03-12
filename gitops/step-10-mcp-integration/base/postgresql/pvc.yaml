@@ -4,7 +4,6 @@ metadata:
   name: postgresql-pvc
   namespace: private-ai
   labels:
-    app: postgresql
     app.kubernetes.io/part-of: mcp-integration
     app.kubernetes.io/component: database
   annotations:
