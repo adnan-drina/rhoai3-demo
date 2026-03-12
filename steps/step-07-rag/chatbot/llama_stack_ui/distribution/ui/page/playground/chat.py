@@ -239,21 +239,16 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             on_toolgroup_change, reset_agent
         )
 
-    # Security Shields (Agent-based mode only)
+    # Security Shields (Agent-based mode only — always active when orchestrator is deployed)
     shields_enabled = False
     if processing_mode == "Agent-based":
         from llama_stack_ui.distribution.ui.modules import guardrails
         guardrails_available = guardrails.is_available()
         st.subheader("🛡️ Security Shields")
         if guardrails_available:
-            shields_enabled = st.toggle(
-                "Enable Guardrails",
-                value=False,
-                key="guardrails_enabled",
-                help="When enabled, user messages are checked for hate/abuse and prompt injection before reaching the LLM. Model responses are checked for PII leakage.",
-            )
-            if shields_enabled:
-                st.caption("Active shields: HAP, Prompt Injection (input) · HAP, PII Regex (output)")
+            shields_enabled = True
+            st.success("Guardrails active")
+            st.caption("Input: HAP + Prompt Injection · Output: HAP + PII Regex")
         else:
             st.caption("⚠️ Guardrails Orchestrator not available. Deploy step-09 to enable.")
 

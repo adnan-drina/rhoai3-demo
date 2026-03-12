@@ -348,11 +348,9 @@ def agent_process_prompt(prompt, state, config):
     """Agent-based mode: Use Responses API with automatic tool calling + guardrails."""
     from llama_stack_ui.distribution.ui.modules import guardrails
 
-    # --- Input guardrails (HAP + prompt injection) ---
-    shields_on = getattr(config, 'shields_enabled', False) or st.session_state.get("guardrails_enabled", False)
-    import logging as _log
-    _log.warning("[GUARDRAILS] shields_on=%s config=%s session=%s", shields_on, getattr(config, 'shields_enabled', 'N/A'), st.session_state.get('guardrails_enabled', 'N/A'))
-    if shields_on and guardrails.is_available():
+    # --- Input guardrails (always active in Agent-based mode when orchestrator is available) ---
+    shields_on = guardrails.is_available()
+    if shields_on:
         with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
             violation = guardrails.check_input(prompt)
             if violation:
@@ -405,7 +403,7 @@ def agent_process_prompt(prompt, state, config):
     stream_agent_response(response, state, config.selected_vector_dbs)
 
     # --- Output guardrails (HAP + PII regex) ---
-    if shields_on and guardrails.is_available() and state.full_response:
+    if shields_on and state.full_response:
         violation = guardrails.check_output(state.full_response)
         if violation:
             detector = violation['detector']
