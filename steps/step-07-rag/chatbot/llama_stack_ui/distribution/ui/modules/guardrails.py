@@ -34,6 +34,7 @@ def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
         else:
             detector_config[d] = {}
 
+    logger.info("Guardrails input check: detectors=%s text='%s...'", list(detector_config.keys()), text[:50])
     try:
         resp = requests.post(
             f"{ORCHESTRATOR_URL}/api/v2/text/detection/content",
@@ -42,16 +43,19 @@ def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
         )
         resp.raise_for_status()
         data = resp.json()
+        logger.info("Guardrails input response: %s", str(data)[:200])
 
         detections = data.get("detections", [])
         if detections:
             top = detections[0]
+            logger.info("VIOLATION detected: %s score=%s", top.get("detector_id"), top.get("score"))
             return {
                 "detector": top.get("detector_id", "unknown"),
                 "score": top.get("score", 0),
                 "text": top.get("text", ""),
                 "type": top.get("detection_type", ""),
             }
+        logger.info("Guardrails input: SAFE")
     except Exception as e:
         logger.warning("Guardrails input check failed: %s", e)
 

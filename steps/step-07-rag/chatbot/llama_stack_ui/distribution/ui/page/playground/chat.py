@@ -249,6 +249,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             shields_enabled = st.toggle(
                 "Enable Guardrails",
                 value=False,
+                key="guardrails_enabled",
                 help="When enabled, user messages are checked for hate/abuse and prompt injection before reaching the LLM. Model responses are checked for PII leakage.",
             )
             if shields_enabled:
