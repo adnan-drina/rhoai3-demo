@@ -214,9 +214,22 @@ data:
             backend: kv_default
       safety:
       - provider_id: fms-guardrails
-        provider_type: remote::fms-guardrails-orchestrator
+        provider_type: remote::trustyai_fms
         config:
-          base_url: http://guardrails-orchestrator.private-ai.svc:8080
+          orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
+          verify_ssl: false
+          shields:
+            hap:
+              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
+            prompt_injection:
+              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
+            regex:
+              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
+              detector_params:
+                regex:
+                  - email
+                  - us-phone-number
+                  - credit-card
       scoring:
       - provider_id: basic
         provider_type: inline::basic
