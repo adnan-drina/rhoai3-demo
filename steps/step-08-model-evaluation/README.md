@@ -1,39 +1,71 @@
 # Step 08: RAG Evaluation
 
-**"Trust but Verify"** - Automated quality gates for RAG answer grounding and tool-use correctness.
+**"Trust but Verify"** — Quantify the value of RAG by comparing LLM answers with and without document context.
 
 ## The Business Story
 
-Step-07 proved your RAG system can retrieve and answer. But how do you know the answers stay grounded after you change chunk sizes, swap embedding models, or ingest new documents? Step-08 adds a repeatable evaluation pipeline that scores faithfulness, relevancy, and tool behavior -- then publishes human-readable reports.
+Step-07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? Step-08 runs the same questions in two modes — **Pre-RAG** (LLM only, no documents) and **Post-RAG** (with Milvus retrieval) — then uses a separate, larger model as judge to score the quality difference. HTML reports are published to MinIO for team review.
 
 | Component | Purpose | Persona |
 |-----------|---------|---------|
-| **Test YAMLs** | Version-controlled Q&A pairs with expected answers | QA Engineer, AI Engineer |
-| **KFP Eval Pipeline** | Discover tests, execute RAG agent, score, report | MLOps Engineer |
-| **Llama Stack Scoring** | `llm-as-judge` for answer quality assessment | Platform (invisible) |
-| **Custom Tool Scorer** | Verify `knowledge_search` was invoked correctly | AI Engineer |
-| **HTML Reports** | Per-scenario results in S3 for team review | Everyone |
+| **Test YAMLs** | Version-controlled Q&A pairs with expected answers (GitOps-managed) | QA Engineer |
+| **`run-eval-report.sh`** | Generate + score + upload HTML reports | MLOps Engineer |
+| **Candidate model** | `granite-8b-agent` (8B) — generates answers | AI Engineer |
+| **Judge model** | `mistral-3-bf16` (24B) — evaluates answer quality | Platform |
+| **HTML Reports** | Per-scenario pre/post RAG results in MinIO | Everyone |
 
 ## Architecture
 
 ```
-Test Configs            KFP Eval Pipeline              Results
-(*_tests.yaml)    ┌──────────────────────────┐
-                  │  1. Scan: discover YAMLs  │
-  eval-configs/ ──│  2. For each test:        │── HTML reports
-                  │     a. Call RAG agent      │   s3://pipelines/
-                  │     b. Score via LlamaStack│   eval-results/
-                  │     c. Score tool_choice   │   {run_id}/
-                  │  3. Generate HTML          │
-                  │  4. Upload to S3           │
-                  └──────────────────────────┘
-                         │           │
-                    lsd-rag      granite-8b-agent
-                    (step-07)      (step-05)
+eval-configs/              run-eval-report.sh                     MinIO
+(*_tests.yaml)    ┌─────────────────────────────────────┐
+                  │  For each scenario (pre + post RAG): │
+  GitOps ────────►│  1. Generate answers (granite-8b)    │──► HTML reports
+  (ArgoCD)        │  2. Retrieve context (Milvus)        │    s3://rhoai-storage/
+                  │  3. Judge quality (mistral-3-bf16)    │    eval-results/{run-id}/
+                  │  4. Generate HTML report              │
+                  │  5. Upload to MinIO                   │
+                  └─────────────────────────────────────┘
+                         │              │            │
+                    lsd-rag        Milvus      mistral-3-bf16
+                    (step-07)    (step-07)      (step-05)
 ```
 
-No new infrastructure is deployed. This step reuses `lsd-rag` (step-07) for both
-RAG execution and scoring, and `dspa-rag` (step-07) for pipeline orchestration.
+**Two models, two roles:**
+- **Candidate** (`granite-8b-agent` via lsd-rag): generates the answers being evaluated
+- **Judge** (`mistral-3-bf16` via direct vLLM): evaluates quality by comparing generated vs expected
+
+> **Why separate models?** Using the same model as both candidate and judge causes bias — granite-8b thinks ACME is a cartoon company and hallucinates in its judge role too. A larger model (24B mistral) is a much more faithful text comparator.
+
+## Scoring Scale
+
+| Score | Meaning | Color | Quality |
+|-------|---------|-------|---------|
+| **(A)** | Exact match — same key facts | Green | Best |
+| **(B)** | Superset — all expected points plus additional correct detail | Green | Great |
+| **(C)** | Subset — covers some but not all expected points | Yellow | Partial |
+| **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
+| **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
+
+## Observed Results
+
+### Post-RAG (with documents) — should score A/B
+
+| Scenario | Scores | Summary |
+|----------|--------|---------|
+| **ACME Corporate** | B, B, B, B, C, B | 5/6 excellent — grounded in semiconductor docs |
+| **EU AI Act** | B, B, B | 3/3 excellent — grounded in official EU documents |
+| **Whoami** | B, B, B, **A** | 4/4 excellent — grounded in actual CV |
+
+### Pre-RAG (no documents) — should score D/E
+
+| Scenario | Scores | Summary |
+|----------|--------|---------|
+| **ACME Corporate** | **E, E, E, E**, C, D | 4/6 fail — thinks ACME is a Looney Tunes company |
+| **EU AI Act** | B, B, C | LLM has general EU AI Act knowledge from training |
+| **Whoami** | **E, E**, B, **E** | 3/4 fail — thinks Adnan Drina is a football coach |
+
+> ACME and Whoami show the strongest RAG value: private/fictional data that the LLM cannot answer from training alone.
 
 ## Prerequisites
 
@@ -41,12 +73,13 @@ RAG execution and scoring, and `dspa-rag` (step-07) for pipeline orchestration.
 # Step-07 RAG infrastructure must be deployed and healthy
 oc get llamastackdistribution lsd-rag -n private-ai
 oc get dspa dspa-rag -n private-ai
-oc get pvc rag-pipeline-workspace -n private-ai
 
-# At least one Milvus collection should be populated
-oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector-io/query \
-  -H "Content-Type: application/json" \
-  -d '{"vector_db_id":"acme_corporate","query":"test"}' | jq '.chunks | length'
+# Both models must be running
+oc get inferenceservice granite-8b-agent mistral-3-bf16 -n private-ai
+
+# Vector stores must have data
+oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector_stores | \
+  python3 -c "import json,sys; [print(f'{v[\"name\"]}: {v[\"file_counts\"][\"completed\"]} files') for v in json.load(sys.stdin)['data']]"
 ```
 
 ## Deployment
@@ -54,189 +87,115 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector-
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-08-rag-evaluation/deploy.sh
+./steps/step-08-model-evaluation/deploy.sh
 ```
 
 This will:
-1. Copy eval configs to the cluster PVC
-2. Compile the eval pipeline
-3. Launch an evaluation run against all 3 scenarios
-4. Print the S3 location of HTML reports
+1. Apply the ArgoCD Application (deploys ConfigMaps + sync Job)
+2. Copy eval configs to the PVC
+3. Compile the eval pipeline
+4. Launch an evaluation run
 
-### B) Run evaluation manually
+### B) Generate reports only
 
 ```bash
-# Copy configs to cluster (first time only)
-./steps/step-08-rag-evaluation/deploy.sh  # or manually oc cp
-
-# Trigger a new eval run
-./steps/step-08-rag-evaluation/run-eval.sh my-run-id
+./steps/step-08-model-evaluation/run-eval-report.sh
 ```
+
+Runs pre/post RAG evaluation for all 3 scenarios and uploads HTML reports to MinIO. No KFP pipeline needed — runs directly on the lsd-rag pod.
 
 ### C) Re-run after changing tests
 
-Edit files in `eval-configs/`, then:
+Edit files in `eval-configs/`, commit, push, then:
 ```bash
-./steps/step-08-rag-evaluation/deploy.sh
+./steps/step-08-model-evaluation/run-eval-report.sh
 ```
-
-The deploy script re-copies configs and launches a fresh run.
 
 ## Validation
 
 ```bash
-./steps/step-08-rag-evaluation/validate.sh
-```
-
-### Manual checks
-
-```bash
-# Pipeline run status
-oc get pods -n private-ai -l pipeline/runid --sort-by=.metadata.creationTimestamp | tail -5
-
-# List HTML reports in MinIO
-oc exec deploy/minio -n minio-storage -- \
-  mc ls --recursive myminio/pipelines/eval-results/
+./steps/step-08-model-evaluation/validate.sh
+# Expected: 12/12 PASS
 ```
 
 ## Test YAML Format
 
-Each `*_tests.yaml` file defines a set of evaluation cases for one RAG scenario:
+Each `*_tests.yaml` defines a scenario with pre-RAG or post-RAG mode:
 
 ```yaml
-name: "ACME Corporate RAG Quality"
-description: "Evaluate RAG answers against ACME documentation"
-vector_db_id: acme_corporate
+name: "ACME Corporate — Post-RAG Evaluation"
+description: "With RAG, the LLM answers from semiconductor docs — not the cartoon company."
+vector_db_id: acme_corporate    # null for pre-rag
 model_id: granite-8b-agent
-llamastack_url: http://lsd-rag.private-ai.svc:8321
+mode: post-rag                  # or pre-rag
 
 scoring_params:
-  llm-as-judge::answer-correctness:
+  "llm-as-judge::base":
+    type: llm_as_judge
     judge_model: granite-8b-agent
-    prompt_template: scoring-templates/answer_correctness.txt
-  llm-as-judge::answer-groundedness:
-    judge_model: granite-8b-agent
-    prompt_template: scoring-templates/answer_groundedness.txt
-  basic::tool_choice: null
+    prompt_template: scoring-templates/judge_prompt.txt
+    judge_score_regexes: ["Answer: (A|B|C|D|E)"]
+  "basic::subset_of": null
+  "basic::tool_choice": null    # post-rag only
 
 tests:
-  - prompt: "What are the key calibration procedures?"
-    expected_result: "Calibration involves alignment, dose, and focus."
+  - prompt: "What is ACME Corp?"
+    expected_result: "ACME Corp is a technology solutions provider..."
     expected_tools:
-      - builtin::rag/knowledge_search
+      - builtin::rag/knowledge_search   # post-rag only
 ```
 
-### Fields
+## Demo Walkthrough: Pre-RAG vs Post-RAG
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Human-readable scenario name |
-| `vector_db_id` | Yes | Milvus collection to query |
-| `model_id` | Yes | LLM for RAG agent (must support tool-calling) |
-| `scoring_params` | Yes | Map of scorer name to config (null for defaults) |
-| `tests[].prompt` | Yes | Question to ask the RAG agent |
-| `tests[].expected_result` | Yes | Reference answer for scoring |
-| `tests[].expected_tools` | No | List of tools the agent should invoke |
+### Step 1: Show the Problem (Pre-RAG Hallucination)
 
-### Scoring prompt templates
-
-Long prompts are stored as `.txt` files in `scoring-templates/` and referenced by relative path in the YAML. The pipeline resolves these automatically.
-
-## Scoring Model
-
-| Scorer | What it measures | Scale |
-|--------|-----------------|-------|
-| `llm-as-judge::answer-correctness` | Factual accuracy vs expected answer | 0.0 - 1.0 |
-| `llm-as-judge::answer-groundedness` | Whether the answer is grounded (not hallucinated) | 0.0 - 1.0 |
-| `basic::tool_choice` | Whether expected RAG tools were invoked | 0.0 - 1.0 |
-
-### Tool Choice Scoring
-
-| Score | Meaning |
-|-------|---------|
-| 1.0 | All expected tools called, no extras |
-| 0.8 | All expected tools called, plus extra tools |
-| 0.5 | Some expected tools called |
-| 0.0 | No expected tools called |
-
-## Adding New Tests
-
-1. Create a new file in `eval-configs/` ending in `_tests.yaml`
-2. Set the `vector_db_id` to the Milvus collection to query
-3. Add test cases with `prompt`, `expected_result`, and optionally `expected_tools`
-4. Re-run `deploy.sh` to copy and execute
-
-The pipeline discovers tests by globbing `**/*_tests.yaml` -- no manifest to update.
-
-## Interpreting Results
-
-### Recommended Thresholds
-
-| Metric | Excellent | Acceptable | Needs Work |
-|--------|-----------|------------|------------|
-| answer-correctness | > 0.8 | 0.6 - 0.8 | < 0.6 |
-| answer-groundedness | > 0.8 | 0.6 - 0.8 | < 0.6 |
-| tool_choice | 1.0 | 0.8 | < 0.8 |
-
-### Common patterns
-
-- **High correctness, low groundedness**: Model is getting the right answer but may be hallucinating details not in the source documents. Check chunk quality.
-- **Low correctness, high groundedness**: Retrieval is working but the wrong chunks are being retrieved. Check Milvus collection content and embedding quality.
-- **tool_choice < 1.0**: The agent is not consistently invoking `knowledge_search`. Check if the model supports tool-calling and if the system prompt is correct.
-
-## Troubleshooting
-
-### Pipeline run fails immediately
-
-**Symptom:** Pod exits with error.
-
-**Solution:**
 ```bash
-oc logs <pod-name> -n private-ai
-# Common: eval configs not copied to PVC, or lsd-rag not reachable
+oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"vllm-granite-agent/granite-8b-agent",
+       "messages":[{"role":"user","content":"What is ACME Corp?"}],
+       "max_tokens":200,"temperature":0,"stream":false}' | \
+  python3 -c "import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
 ```
 
-### LlamaStack scoring timeout
+**Result:** "ACME Corp is a fictional company often used in cartoons and comedies, most notably in the Road Runner cartoons."
 
-**Symptom:** `scoring.score()` times out after 600s.
+### Step 2: Show the Solution (Post-RAG Grounded Answer)
 
-**Solution:** The `llm-as-judge` scorer calls the LLM for each test row. If `granite-8b-agent` InferenceService is not running (minReplicas: 0), scale it up first.
-
-### All scores are ERROR
-
-**Symptom:** HTML report shows ERROR for all scoring functions.
-
-**Solution:** Check that lsd-rag has the `scoring` providers configured:
 ```bash
-oc get configmap llama-stack-rag-config -n private-ai -o yaml | grep -A5 scoring
+# Same question, with retrieved context from Milvus → LLM answers from documents
+./steps/step-08-model-evaluation/run-eval-report.sh
 ```
 
-### Empty Milvus collections
+**Result:** "ACME Corp is a technology solutions provider specializing in lithography optimization, metrology calibration... headquartered in Amsterdam, The Netherlands."
 
-**Symptom:** RAG answers are generic (not grounded in documents).
+### Step 3: Review Reports in MinIO
 
-**Solution:** Run the step-07 ingestion pipeline first to populate Milvus collections.
+Open the MinIO Console and navigate to `rhoai-storage/eval-results/{run-id}/`.
+
+Reports show side-by-side: question, generated answer, expected answer, and judge score (A-E with color coding).
 
 ## Directory Structure
 
 ```
 steps/step-08-model-evaluation/
-├── deploy.sh                          # Full deployment + run
-├── run-eval.sh                        # Standalone eval trigger
-├── validate.sh                        # Check results
+├── deploy.sh                          # ArgoCD app + eval pipeline
+├── run-eval-report.sh                 # Generate HTML reports (recommended)
+├── validate.sh                        # 12-check validation
 ├── eval-configs/                      # Test definitions (canonical source)
 │   ├── acme_corporate_pre_rag_tests.yaml   # ACME baseline (6 tests)
 │   ├── acme_corporate_post_rag_tests.yaml  # ACME with RAG (6 tests)
-│   ├── eu_ai_act_pre_rag_tests.yaml        # EU AI Act baseline (5 tests)
-│   ├── eu_ai_act_post_rag_tests.yaml       # EU AI Act with RAG (5 tests)
-│   ├── whoami_pre_rag_tests.yaml            # Whoami baseline (2 tests)
-│   ├── whoami_post_rag_tests.yaml           # Whoami with RAG (2 tests)
+│   ├── eu_ai_act_pre_rag_tests.yaml        # EU AI Act baseline (3 tests)
+│   ├── eu_ai_act_post_rag_tests.yaml       # EU AI Act with RAG (3 tests)
+│   ├── whoami_pre_rag_tests.yaml            # Whoami baseline (4 tests)
+│   ├── whoami_post_rag_tests.yaml           # Whoami with RAG (4 tests)
 │   └── scoring-templates/
-│       └── judge_prompt.txt                 # A/B/C/D/E judge prompt
+│       └── judge_prompt.txt                 # A=best, E=worst judge prompt
 ├── notebooks/
+│   ├── llama_stack_eval.ipynb         # Llama Stack eval API notebook
 │   └── deepeval_rag.ipynb             # DeepEval interactive evaluation
 ├── kfp/
-│   ├── eval_pipeline.py               # Pipeline orchestration
+│   ├── eval_pipeline.py               # KFP pipeline (alternative)
 │   └── components/
 │       ├── scan_tests.py              # Test discovery
 │       └── run_and_score_tests.py     # Execute + score + report
@@ -245,175 +204,31 @@ steps/step-08-model-evaluation/
 gitops/step-08-model-evaluation/
 └── base/
     ├── kustomization.yaml
-    └── eval-configs/
-        ├── kustomization.yaml                  # configMapGenerator
-        ├── configmap-eval-configs.yaml          # Scoring templates
-        ├── job-copy-configs.yaml                # PostSync: sync to PVC
-        └── *_tests.yaml                         # Copies of test configs
+    └── eval-configs/                       # ArgoCD-managed copies
+        ├── kustomization.yaml              # configMapGenerator
+        ├── configmap-eval-configs.yaml     # Scoring templates
+        ├── job-copy-configs.yaml           # PostSync: sync to PVC
+        ├── scoring-templates/judge_prompt.txt
+        └── *_tests.yaml
 
 gitops/argocd/app-of-apps/
-└── step-08-rag-evaluation.yaml                  # ArgoCD Application
+└── step-08-rag-evaluation.yaml             # ArgoCD Application
 ```
 
 ## Key Design Decisions
 
-> **Design Decision:** We implement two complementary evaluation approaches: (1) LlamaStack `scoring.score()` with `basic` + `llm-as-judge` providers for custom metrics and tool-choice validation, and (2) the official RHOAI 3.3 TrustyAI Ragas integration for standardized RAG metrics (`answer_relevancy`, `faithfulness`, `context_precision`). Both run through KFP via the step-07 DSPA.
+> **Design Decision:** We use two separate models — `granite-8b-agent` as the candidate and `mistral-3-bf16` as the judge. Using the same small model for both roles causes hallucinated judgments (the model injects its own biases instead of faithfully comparing texts).
 
-> **Design Decision:** Tests live in-tree in `eval-configs/` and are deployed to the cluster as ConfigMaps via ArgoCD. A PostSync Job syncs them to the shared PVC. This keeps configs GitOps-managed while allowing the pipeline to read from PVC.
+> **Design Decision:** Tests live in-tree in `eval-configs/` and are deployed to the cluster as ConfigMaps via ArgoCD. The `run-eval-report.sh` script copies them to the lsd-rag pod and executes locally (localhost access to the eval API, no DNS issues from KFP pods).
 
-> **Design Decision (RHOAI 3.3):** Ragas is a Technology Preview feature. We configure both inline provider (for development) and remote provider (for production-scale evaluations via KFP). See [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate).
+> **Design Decision:** Pre-RAG vs Post-RAG evaluation uses identical questions and expected answers. Pre-RAG calls the LLM without document context (baseline). Post-RAG retrieves from Milvus and injects context into the system prompt. The score difference quantifies RAG value.
 
-> **Design Decision:** Pre-RAG vs Post-RAG evaluation uses identical questions. Pre-RAG calls the LLM without document context (baseline). Post-RAG retrieves from Milvus and injects context. The score difference demonstrates RAG value quantitatively.
+> **Design Decision (Ragas):** Ragas inline provider requires `rh-dev` auto-wiring without `userConfig`. Since we use `userConfig` for remote Milvus, Ragas providers cannot be activated on `lsd-rag`. We use the Llama Stack eval API with `basic` + `llm-as-judge` scoring — the same pattern as [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) and [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack).
 
 ## Official Documentation
 
-- [RHOAI 3.3 -- Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
-- [RHOAI 3.3 -- Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
-- [Llama Stack Scoring API](https://llama-stack.readthedocs.io/en/latest/references/api_reference/)
-- [TrustyAI Ragas Provider](https://github.com/trustyai-explainability/llama-stack-provider-ragas)
-- [KFP v2 User Guides](https://www.kubeflow.org/docs/components/pipelines/user-guides/)
-
----
-
-## Evaluation Approaches
-
-### Approach 1: TrustyAI Ragas (Official RHOAI 3.3)
-
-The recommended approach per [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate).
-
-**Inline provider** (development): `ENABLE_RAGAS=true` + `EMBEDDING_MODEL=granite-embedding-125m` on the LSD. Runs Ragas metrics in-process.
-
-**Remote provider** (production): Ragas evaluations submitted as KFP pipeline runs. Requires `kubeflow-ragas-config` ConfigMap and `kubeflow-pipelines-token` Secret.
-
-**Ragas metrics:**
-
-| Metric | What it measures |
-|--------|-----------------|
-| `answer_relevancy` | Whether the answer matches the question |
-| `faithfulness` | Consistency with retrieved context (hallucination detection) |
-| `context_precision` | Precision of retrieved chunks |
-| `context_recall` | Whether all needed info is in retrieved contexts |
-| `answer_correctness` | Accuracy vs reference answer |
-
-**API flow:**
-1. Register dataset via `/v1beta/datasets` (Ragas format: `user_input`, `response`, `retrieved_contexts`, `reference`)
-2. Register benchmark via `/v1alpha/eval/benchmarks` with scoring functions
-3. Run evaluation via `/v1alpha/eval/benchmarks/<id>/jobs`
-4. Retrieve results
-
-**Demo notebook:** Clone [trustyai-explainability/llama-stack-provider-ragas](https://github.com/trustyai-explainability/llama-stack-provider-ragas) and run `demos/basic_demo.ipynb`.
-
-> **Note (RHOAI 3.3):** Ragas is a Technology Preview feature.
-
-### Approach 2: Custom KFP Pipeline (LlamaStack Scoring + Tool Choice)
-
-Complementary approach using the stable LlamaStack scoring API:
-
-- **`basic::subset_of`** — exact substring matching
-- **`llm-as-judge::base`** — LLM-as-judge with A/B/C/D/E comparison (from [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals))
-- **`basic::tool_choice`** — custom scorer verifying RAG tool invocation
-
-Runs pre-RAG and post-RAG tests for all 3 scenarios. HTML reports uploaded to S3.
-
-### Approach 3: DeepEval Notebook (Developer)
-
-Interactive notebook (`notebooks/deepeval_rag.ipynb`) for per-conversation analysis using DeepEval metrics with the vLLM endpoint as judge model.
-
-> **Source:** Adapted from [rh-ai-quickstart/RAG evaluations](https://github.com/rh-ai-quickstart/RAG/tree/main/evaluations)
-
----
-
-## Demo Walkthrough: Pre-RAG vs Post-RAG
-
-This walkthrough demonstrates that RAG adds measurable value by comparing LLM answers
-with and without document context using the Llama Stack Eval API.
-
-### Prerequisites
-
-```bash
-# Validate step-08 is deployed and healthy
-./steps/step-08-model-evaluation/validate.sh
-# Expected: 12/12 PASS
-```
-
-### Step 1: Show the Problem (Pre-RAG Hallucination)
-
-Ask the LLM about ACME without any document context:
-
-```bash
-oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "vllm-granite-agent/granite-8b-agent",
-       "messages": [{"role": "user", "content": "What products and standards does ACME cover?"}],
-       "max_tokens": 200, "temperature": 0, "stream": false}' | python3 -c "
-import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
-```
-
-**Expected:** Generic/hallucinated answer (e.g., "automotive communication standards", "industrial automation").
-
-### Step 2: Show the Solution (Post-RAG Grounded Answer)
-
-Same question, but with retrieved context from Milvus:
-
-```bash
-# 1. Retrieve context
-oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST \
-  http://localhost:8321/v1/vector_stores/$(oc exec deploy/lsd-rag -n private-ai -- \
-    curl -s http://localhost:8321/v1/vector_stores | python3 -c "
-import json,sys; [print(v['id']) for v in json.load(sys.stdin)['data'] if v['name']=='acme_corporate']")/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "ACME products standards", "max_num_results": 3}'
-
-# 2. LLM answers with context (shown in notebook or chatbot)
-```
-
-**Expected:** "ACME specializes in precision-engineered tools for advanced lithography... L-900 EUV Calibration Suite... ISO 9001:2015... SEMI standards."
-
-### Step 3: Quantify the Difference (Llama Stack Eval API)
-
-Run from the **rag-wb workbench** or the lsd-rag pod. The flow follows the
-[fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) pattern:
-
-```python
-from llama_stack_client import LlamaStackClient
-client = LlamaStackClient(base_url='http://lsd-rag-service:8321')
-
-# 1. Register datasets (pre-RAG and post-RAG answers)
-client.beta.datasets.register(dataset_id='pre-rag', purpose='eval/question-answer',
-    source={'type':'rows', 'rows':[...]}, extra_body={'provider_id':'localfs'})
-
-# 2. Register scoring function (LLM-as-judge)
-client.scoring_functions.register(scoring_fn_id='rag-quality-judge',
-    provider_id='llm-as-judge', provider_scoring_fn_id='llm-as-judge-base',
-    params={'type':'llm_as_judge', 'judge_model':'vllm-granite-agent/granite-8b-agent',
-            'prompt_template':'...'}, return_type={'type':'string'})
-
-# 3. Register benchmarks
-client.alpha.benchmarks.register(benchmark_id='pre-rag-bm', dataset_id='pre-rag',
-    scoring_functions=['rag-quality-judge'], extra_body={'provider_id':'meta-reference'})
-
-# 4. Run evaluation
-job = client.alpha.eval.run_eval('pre-rag-bm', benchmark_config={...})
-result = client.alpha.eval.jobs.retrieve(job_id=job.job_id, benchmark_id='pre-rag-bm')
-```
-
-### Expected Results
-
-| Metric | Pre-RAG | Post-RAG | Interpretation |
-|--------|---------|----------|---------------|
-| `basic::subset_of` | 0.0 | 0.0–1.0 | Exact match (strict) |
-| `llm-as-judge` | **(D)** disagrees or **(E)** | **(C)** same or **(B)** superset | Semantic quality |
-| Judge feedback | "does not align with expected" | "accurately reflects expected response" | Human-readable |
-
-### Interactive Notebook
-
-For a full interactive walkthrough with all 3 scenarios, open `notebooks/llama_stack_eval.ipynb`
-in the rag-wb workbench. It runs the complete dataset→benchmark→eval→compare flow.
-
----
-
-## Next Steps
-
-- **CI/CD Quality Gates**: Schedule eval runs as CronJobs and fail builds when scores drop below thresholds
-- **Grafana Dashboard**: Publish eval metrics to Prometheus and visualize score trends over time
-- **Comparative Evaluations**: Run the same tests against different chunk sizes or embedding models to optimize RAG configuration
+- [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
+- [RHOAI 3.3 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
+- [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — KFP pipeline pattern for LlamaStack scoring
+- [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples
+- [rhoai-genaiops/lab-instructions RAG eval](https://github.com/rhoai-genaiops/lab-instructions/blob/main/docs/5-grounded-ai/6-eval-rag.md) — Workshop eval configs
