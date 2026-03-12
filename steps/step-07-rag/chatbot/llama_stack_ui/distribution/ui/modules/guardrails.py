@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = os.getenv(
     "GUARDRAILS_ORCHESTRATOR_URL",
+    "http://guardrails-orchestrator-service.private-ai.svc:8032"
+)
+HEALTH_URL = os.getenv(
+    "GUARDRAILS_HEALTH_URL",
     "http://guardrails-orchestrator-service.private-ai.svc:8034"
 )
 
@@ -109,7 +113,7 @@ def check_output(text: str, detectors: list[str] | None = None) -> dict | None:
 def is_available() -> bool:
     """Check if the guardrails orchestrator is reachable."""
     try:
-        resp = requests.get(f"{ORCHESTRATOR_URL}/health", timeout=3)
+        resp = requests.get(f"{HEALTH_URL}/health", timeout=3)
         return resp.status_code == 200
     except Exception:
         return False
