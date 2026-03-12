@@ -128,7 +128,7 @@ def generate_html(name, mode, results, run_id):
     rows = ''
     for i, r in enumerate(results, 1):
         letter = r.get('judge_letter', '?')
-        lcolor = {'A':'#17a2b8','B':'#28a745','C':'#28a745','D':'#dc3545','E':'#ffc107'}.get(letter,'#6c757d')
+        lcolor = {'A':'#28a745','B':'#28a745','C':'#ffc107','D':'#6c757d','E':'#dc3545'}.get(letter,'#6c757d')
         rows += f'''<tr>
           <td>{i}</td><td>{r['q'][:250]}</td>
           <td>{r['answer'][:500]}</td><td>{r['expected'][:500]}</td>
