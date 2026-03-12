@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step 09: RAG Pipeline — Deploy Script
+# Step 07: RAG Pipeline — Deploy Script
 # Deploys Milvus, Docling, DSPA, LlamaStack (RAG), uploads documents,
 # compiles pipeline, and launches ingestion for all 3 scenarios.
 
@@ -8,12 +8,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="private-ai"
-STEP_NAME="step-07-rag-pipeline"
+STEP_NAME="step-07-rag"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 09: RAG Pipeline (Llama Stack + Milvus + Docling + DSPA) ║"
+echo "║  Step 07: RAG Pipeline (Llama Stack + Milvus + Docling + DSPA) ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -83,7 +83,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 2: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Deploying Step 09 via ArgoCD..."
+log_step "Deploying Step 07 via ArgoCD..."
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
@@ -157,7 +157,7 @@ echo ""
 # Step 4b: Restart GenAI Playground to connect to remote Milvus
 # ═══════════════════════════════════════════════════════════════════════════
 # Step-06's lsd-genai-playground is configured to use remote::milvus
-# (same Milvus deployed by step-09). A restart ensures it connects now
+# (same Milvus deployed by step-07). A restart ensures it connects now
 # that Milvus is available. This enables RAG queries from the Playground UI.
 log_step "Restarting GenAI Playground to connect to Milvus..."
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
@@ -244,7 +244,7 @@ echo ""
 # Step 8: Validation output
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 09 deployment initiated!                                  ║"
+echo "║  Step 07 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
 echo "║  Monitor progress:                                              ║"
@@ -253,6 +253,6 @@ echo "║    oc get dspa dspa-rag -n $NAMESPACE                          ║"
 echo "║    oc get llamastackdistribution lsd-rag -n $NAMESPACE         ║"
 echo "║                                                                 ║"
 echo "║  Validate RAG:                                                  ║"
-echo "║    ./steps/step-07-rag-pipeline/validate.sh                    ║"
+echo "║    ./steps/step-07-rag/validate.sh                    ║"
 echo "║                                                                 ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"

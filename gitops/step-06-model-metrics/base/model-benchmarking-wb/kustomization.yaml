@@ -13,7 +13,7 @@ kind: Kustomization
 #   - Compare INT4 vs BF16 model performance
 #
 # Usage:
-#   1. Apply with: oc apply -k gitops/step-06-model-performance-metrics/base/model-benchmarking-wb/
+#   1. Apply with: oc apply -k gitops/step-06-model-metrics/base/model-benchmarking-wb/
 #   2. Access via RHOAI Dashboard → private-ai → model-benchmarking-wb
 #   3. Open Model-Benchmarking.ipynb and run cells
 #

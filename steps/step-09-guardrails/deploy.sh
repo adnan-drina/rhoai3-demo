@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step 11: AI Safety with Guardrails — Deploy Script
+# Step 09: AI Safety with Guardrails — Deploy Script
 # Deploys the Guardrails Orchestrator, HAP detector, prompt injection detector,
 # and Gateway with preset safety routes. Restarts LlamaStack pods to connect.
 
@@ -13,7 +13,7 @@ STEP_NAME="step-09-guardrails"
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 11: AI Safety with Guardrails                             ║"
+echo "║  Step 09: AI Safety with Guardrails                             ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -48,7 +48,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 1: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Deploying Step 11 via ArgoCD..."
+log_step "Deploying Step 09 via ArgoCD..."
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
@@ -138,7 +138,7 @@ echo ""
 # Step 6: Validation output
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 11 deployment initiated!                                  ║"
+echo "║  Step 09 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
 echo "║  Components:                                                    ║"

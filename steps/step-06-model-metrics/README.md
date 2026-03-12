@@ -234,13 +234,13 @@ Both models have been tuned using Red Hat AI Field Engineering recommendations:
 ### Option A: Direct Deploy (Recommended for Demo)
 
 ```bash
-./steps/step-06-model-performance-metrics/deploy.sh
+./steps/step-06-model-metrics/deploy.sh
 ```
 
 ### Option B: ArgoCD (GitOps)
 
 ```bash
-oc apply -f gitops/argocd/app-of-apps/step-06-model-performance-metrics.yaml
+oc apply -f gitops/argocd/app-of-apps/step-06-model-metrics.yaml
 ```
 
 ## Demo Walkthrough
@@ -253,8 +253,8 @@ GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}
 echo "https://${GRAFANA_URL}"
 
 # 2. Run benchmarks to generate live Grafana data
-oc create -f gitops/step-06-model-performance-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
-oc create -f gitops/step-06-model-performance-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
+oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
+oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
 
 # 3. Monitor progress
 oc get pods -n private-ai -l app=guidellm -w
@@ -298,10 +298,10 @@ Switch `model_name` to `mistral-3-bf16` and compare the same panels.
 
 ```bash
 # Benchmark granite-8b-agent (1-GPU, ~5 min)
-oc create -f gitops/step-06-model-performance-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
+oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
 
 # Benchmark mistral-3-bf16 (4-GPU, ~8 min)
-oc create -f gitops/step-06-model-performance-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
+oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
 
 # Monitor
 oc get pods -n private-ai -l app=guidellm -w
@@ -351,7 +351,7 @@ rate(vllm:generation_tokens_total{namespace="private-ai"}[1m])
 ## GitOps Structure
 
 ```
-gitops/step-06-model-performance-metrics/
+gitops/step-06-model-metrics/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── pipelines-operator/                # Red Hat OpenShift Pipelines (for step-07)
@@ -523,5 +523,5 @@ spec:
 > **Ref:** [RHOAI 3.3 — Configuring metrics-based autoscaling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/managing_and_monitoring_models#configuring-metrics-based-autoscaling_monitor-model)
 
 ### Related Steps
-- [Step 07: RAG Pipeline](../step-07-rag-pipeline/README.md) — Document ingestion and vector search
+- [Step 07: RAG Pipeline](../step-07-rag/README.md) — Document ingestion and vector search
 - [llm-d Workshop](https://rhpds.github.io/llm-d-showroom/) — Distributed inference with intelligent routing (separate demo)

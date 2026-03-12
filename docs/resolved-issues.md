@@ -259,163 +259,85 @@
 
 ---
 
-## Step 05b: LiteMaaS (Experimental)
-
-### OAuth "Authentication failed"
-
-- **Component:** LiteMaaS / OpenShift OAuth
-- **Root Cause:** OpenShift OAuth doesn't provide standard OIDC `sub` claim
-- **Fix:** `ALTER TABLE users ALTER COLUMN oauth_id DROP NOT NULL;` via PostgreSQL
-- **Details:** [Step 06b README — OAuth Authentication Failed](../steps/step-06b-private-ai-litemaas/README.md#oauth-authentication-failed)
-
-### Subscription "Failed to subscribe"
-
-- **Component:** LiteMaaS Backend
-- **Root Cause:** Models not registered in backend database
-- **Fix:** Run model registration SQL from Post-Deployment Setup
-- **Details:** [Step 06b README — Subscription Failed](../steps/step-06b-private-ai-litemaas/README.md#subscription-failed-to-subscribe)
-
-### Chatbot "Network Error"
-
-- **Component:** LiteMaaS Frontend / LiteLLM
-- **Root Cause:** Backend returning internal LiteLLM URL instead of public URL
-- **Fix:** Set `LITELLM_API_URL` in backend-secret to the **public** route URL
-- **Details:** [Step 06b README — Chatbot Network Error](../steps/step-06b-private-ai-litemaas/README.md#chatbot-network-error)
-
-### LiteLLM "Database not connected"
-
-- **Component:** LiteLLM
-- **Root Cause:** Wrong image or missing DATABASE_URL
-- **Fix:** Use `ghcr.io/berriai/litellm-non_root:main-v1.74.7-stable` with `DATABASE_URL` env var
-- **Details:** [Step 06b README — LiteLLM Database Not Connected](../steps/step-06b-private-ai-litemaas/README.md#litellm-database-not-connected)
-
----
-
-## Step 06: Model Performance Metrics
+## Step 06: Model Metrics
 
 ### GuideLLM job failing
 
 - **Component:** GuideLLM CronJob
 - **Root Cause:** Model not responding or benchmark rate too high
 - **Fix:** Check logs: `oc logs job/<job-name> -n private-ai`
-- **Details:** [Step 06 README — GuideLLM Job Failing](../steps/step-06-model-performance-metrics/README.md#guidellm-job-failing)
+- **Details:** [Step 06 README — GuideLLM Job Failing](../steps/step-06-model-metrics/README.md#guidellm-job-failing)
 
 ### No data in Grafana
 
 - **Component:** Grafana / Prometheus
 - **Root Cause:** Prometheus targets not scraping or ServiceMonitor misconfigured
 - **Fix:** Verify targets: `oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- curl -s 'localhost:9090/api/v1/targets'`
-- **Details:** [Step 06 README — No Data in Grafana](../steps/step-06-model-performance-metrics/README.md#no-data-in-grafana)
+- **Details:** [Step 06 README — No Data in Grafana](../steps/step-06-model-metrics/README.md#no-data-in-grafana)
 
 ---
 
-## Distributed Inference (llm-d) — removed, see [llm-d workshop](https://rhpds.github.io/llm-d-showroom/)
-
-### Pods not scheduling
-
-- **Component:** LeaderWorkerSet / Kueue
-- **Root Cause:** Insufficient GPU nodes, quota exceeded, or missing tolerations
-- **Fix:** Check node capacity and Kueue workload status
-- **Details:** [Step 08 README — Pods Not Scheduling](../steps/step-08-llm-d/README.md#pods-not-scheduling)
-
-### Router not ready
-
-- **Component:** llm-d Router
-- **Root Cause:** Router pod not starting or misconfigured
-- **Fix:** Check router pods: `oc get pods -n private-ai | grep router`
-- **Details:** [Step 08 README — Router Not Ready](../steps/step-08-llm-d/README.md#router-not-ready)
-
-### OpenShift Console / Routes unavailable after creating Gateway
-
-- **Component:** Gateway API / DNSRecord
-- **Root Cause:** Gateway listener hostname `*.apps.<domain>` overwrites default wildcard DNS record
-- **Fix:** Remove stale gateway stack; patch default-wildcard DNSRecord
-- **Details:** [Step 08 README — Routes Unavailable After Gateway](../steps/step-08-llm-d/README.md#openshift-console--routes-unavailable-after-creating-openshift-ai-inference-gateway)
-
-### Gateway TLS origination issues (known limitation)
-
-- **Component:** Gateway API / Envoy
-- **Root Cause:** HTTPRoute TLS origination from Gateway Envoy to HTTPS backend fails
-- **Fix:** Use OpenShift Route (passthrough TLS) instead of Gateway endpoint
-- **Details:** [Step 08 README — Gateway TLS Issues](../steps/step-08-llm-d/README.md#gateway-tls-origination-issues-known-limitation)
-
-### Gateway connection issues (general)
-
-- **Component:** Gateway API
-- **Root Cause:** Gateway or HTTPRoute misconfigured
-- **Fix:** Check gateway: `oc get gateway -n openshift-ingress`
-- **Details:** [Step 08 README — Gateway Connection Issues](../steps/step-08-llm-d/README.md#gateway-connection-issues-general)
-
-### Missing Kueue label
-
-- **Component:** Kueue Admission Webhook
-- **Root Cause:** CR rejected for missing required label
-- **Fix:** Add `kueue.x-k8s.io/queue-name: default` to metadata.labels
-- **Details:** [Step 08 README — Missing Kueue Label](../steps/step-08-llm-d/README.md#missing-kueue-label)
-
----
-
-## Step 07: RAG Pipeline
+## Step 07: RAG
 
 ### Milvus pod not starting
 
 - **Component:** Milvus Standalone
 - **Root Cause:** PVC or resource issue
 - **Fix:** Describe pod: `oc describe pod -l app=milvus -n private-ai`
-- **Details:** [Step 07 README — Milvus Pod Not Starting](../steps/step-07-rag-pipeline/README.md#milvus-pod-not-starting)
+- **Details:** [Step 07 README — Milvus Pod Not Starting](../steps/step-07-rag/README.md#milvus-pod-not-starting)
 
 ### LlamaStack lsd-rag CrashLoopBackOff
 
 - **Component:** LlamaStackDistribution
 - **Root Cause:** ConfigMap syntax error or Milvus not reachable
 - **Fix:** Check logs: `oc logs deploy/lsd-rag -n private-ai --tail=100`
-- **Details:** [Step 07 README — lsd-rag CrashLoopBackOff](../steps/step-07-rag-pipeline/README.md#llamastack-lsd-rag-crashloopbackoff)
+- **Details:** [Step 07 README — lsd-rag CrashLoopBackOff](../steps/step-07-rag/README.md#llamastack-lsd-rag-crashloopbackoff)
 
 ### DSPA not ready
 
 - **Component:** DataSciencePipelinesApplication
 - **Root Cause:** Pipeline server or database issue
 - **Fix:** Check DSPA: `oc get dspa dspa-rag -n private-ai -o yaml`
-- **Details:** [Step 07 README — DSPA Not Ready](../steps/step-07-rag-pipeline/README.md#dspa-not-ready)
+- **Details:** [Step 07 README — DSPA Not Ready](../steps/step-07-rag/README.md#dspa-not-ready)
 
 ### Pipeline run fails
 
 - **Component:** Kubeflow Pipelines
 - **Root Cause:** Compilation error, missing PVC, or component failure
 - **Fix:** Check pipeline pods: `oc get pods -n private-ai -l pipeline/runid --sort-by=.metadata.creationTimestamp`
-- **Details:** [Step 07 README — Pipeline Run Fails](../steps/step-07-rag-pipeline/README.md#pipeline-run-fails)
+- **Details:** [Step 07 README — Pipeline Run Fails](../steps/step-07-rag/README.md#pipeline-run-fails)
 
 ---
 
-## Step 08: RAG Evaluation
+## Step 08: Model Evaluation
 
 ### Pipeline run fails immediately
 
 - **Component:** Kubeflow Pipelines
 - **Root Cause:** Eval configs not copied to PVC or lsd-rag not reachable
 - **Fix:** Check pod logs: `oc logs <pod-name> -n private-ai`
-- **Details:** [Step 08 README — Pipeline Run Fails Immediately](../steps/step-08-rag-evaluation/README.md#pipeline-run-fails-immediately)
+- **Details:** [Step 08 README — Pipeline Run Fails Immediately](../steps/step-08-model-evaluation/README.md#pipeline-run-fails-immediately)
 
 ### LlamaStack scoring timeout
 
 - **Component:** LlamaStack Scoring API
 - **Root Cause:** granite-8b-agent InferenceService not running (minReplicas: 0)
 - **Fix:** Scale up granite-8b-agent InferenceService
-- **Details:** [Step 08 README — Scoring Timeout](../steps/step-08-rag-evaluation/README.md#llamastack-scoring-timeout)
+- **Details:** [Step 08 README — Scoring Timeout](../steps/step-08-model-evaluation/README.md#llamastack-scoring-timeout)
 
 ### All scores are ERROR
 
 - **Component:** LlamaStack Scoring
 - **Root Cause:** Missing scoring providers in lsd-rag configuration
 - **Fix:** Check scoring config: `oc get configmap llama-stack-rag-config -n private-ai -o yaml | grep -A5 scoring`
-- **Details:** [Step 08 README — All Scores ERROR](../steps/step-08-rag-evaluation/README.md#all-scores-are-error)
+- **Details:** [Step 08 README — All Scores ERROR](../steps/step-08-model-evaluation/README.md#all-scores-are-error)
 
 ### Empty Milvus collections
 
 - **Component:** Milvus / RAG Pipeline
 - **Root Cause:** Ingestion pipeline not run
-- **Fix:** Run ingestion: `cd steps/step-07-rag-pipeline && ./run-batch-ingestion.sh acme`
-- **Details:** [Step 08 README — Empty Milvus Collections](../steps/step-08-rag-evaluation/README.md#empty-milvus-collections)
+- **Fix:** Run ingestion: `cd steps/step-07-rag && ./run-batch-ingestion.sh acme`
+- **Details:** [Step 08 README — Empty Milvus Collections](../steps/step-08-model-evaluation/README.md#empty-milvus-collections)
 
 ---
 

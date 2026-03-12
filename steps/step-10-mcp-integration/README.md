@@ -121,7 +121,7 @@ The agent calls `query_pod_equipment(pod_name="acme-equipment-0007")` via the Da
 
 The agent calls `knowledge_search` (RAG) against the `acme_corporate` Milvus collection with a query about L-900 EUV issues. Returns relevant calibration procedure documentation from the ingested ACME PDFs.
 
-> **Note:** This step requires that ACME PDFs have been ingested via step 07. See `steps/step-07-rag-pipeline/scenario-docs/README.md`.
+> **Note:** This step requires that ACME PDFs have been ingested via step 07. See `steps/step-07-rag/scenario-docs/README.md`.
 
 **Q4: "Send a Slack message with the summary to the platform team"**
 

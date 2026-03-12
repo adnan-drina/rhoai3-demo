@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-STEP_NAME="step-08-rag-evaluation"
+STEP_NAME="step-08-model-evaluation"
 NAMESPACE="private-ai"
 PVC_NAME="rag-pipeline-workspace"
 RUN_ID="eval-$(date +%s)"

@@ -95,7 +95,7 @@ Place PDF files in `scenario-docs/` subdirectories. See `scenario-docs/README.md
 ### A) One-shot (recommended)
 
 ```bash
-./steps/step-07-rag-pipeline/deploy.sh
+./steps/step-07-rag/deploy.sh
 ```
 
 ### B) Step-by-step (manual)
@@ -110,14 +110,14 @@ oc create secret generic dspa-minio-credentials -n private-ai \
   --dry-run=client -o yaml | oc apply -f -
 
 # 2. Apply ArgoCD application
-oc apply -f gitops/argocd/app-of-apps/step-07-rag-pipeline.yaml
+oc apply -f gitops/argocd/app-of-apps/step-07-rag.yaml
 
 # 3. Wait for components
 oc wait deploy/milvus-standalone -n private-ai --for=condition=Available --timeout=180s
 oc wait llamastackdistribution/lsd-rag -n private-ai --for=jsonpath='{.status.phase}'=Ready --timeout=300s
 
 # 4. Upload documents and run pipelines
-cd steps/step-07-rag-pipeline
+cd steps/step-07-rag
 ./upload-to-minio.sh scenario-docs/scenario2-acme/sample.pdf rag-documents/scenario2-acme/sample.pdf
 ./run-batch-ingestion.sh acme
 ```
@@ -125,7 +125,7 @@ cd steps/step-07-rag-pipeline
 ## Validation
 
 ```bash
-./steps/step-07-rag-pipeline/validate.sh
+./steps/step-07-rag/validate.sh
 ```
 
 ### Manual checks
@@ -375,7 +375,7 @@ pip install "llama-stack-client>=0.4,<0.5"
 ## GitOps Structure
 
 ```
-gitops/step-07-rag-pipeline/
+gitops/step-07-rag/
 ├── base/
 │   ├── kustomization.yaml
 │   ├── milvus/                    # Milvus standalone (embedded etcd)
@@ -394,7 +394,7 @@ gitops/step-07-rag-pipeline/
 │   └── llamastack-rag/            # LSD with remote Milvus
 │       └── llamastack-rag.yaml
 
-steps/step-07-rag-pipeline/
+steps/step-07-rag/
 ├── deploy.sh
 ├── validate.sh
 ├── run-batch-ingestion.sh
@@ -411,7 +411,7 @@ steps/step-07-rag-pipeline/
 
 ```bash
 # Delete ArgoCD Application (cascading delete of all resources)
-oc delete application step-07-rag-pipeline -n openshift-gitops
+oc delete application step-07-rag -n openshift-gitops
 
 # Or delete individual components
 oc delete llamastackdistribution lsd-rag -n private-ai

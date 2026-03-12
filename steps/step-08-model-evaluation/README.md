@@ -1,4 +1,4 @@
-# Step 08: RAG Evaluation
+# Step 08: Model Evaluation
 
 **"Trust but Verify"** — Quantify the value of RAG by comparing LLM answers with and without document context.
 
@@ -212,7 +212,7 @@ gitops/step-08-model-evaluation/
         └── *_tests.yaml
 
 gitops/argocd/app-of-apps/
-└── step-08-rag-evaluation.yaml             # ArgoCD Application
+└── step-08-model-evaluation.yaml             # ArgoCD Application
 ```
 
 ## Key Design Decisions

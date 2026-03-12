@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step 12: MCP Integration — Deploy Script
+# Step 10: MCP Integration — Deploy Script
 # Deploys PostgreSQL, builds 3 MCP server images, deploys MCP servers,
 # registers them in the Playground, and restarts LlamaStack pods.
 
@@ -13,7 +13,7 @@ STEP_NAME="step-10-mcp-integration"
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 12: MCP Integration (Database + OpenShift + Slack)        ║"
+echo "║  Step 10: MCP Integration (Database + OpenShift + Slack)        ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -40,7 +40,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 1: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Deploying Step 12 via ArgoCD..."
+log_step "Deploying Step 10 via ArgoCD..."
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
@@ -134,7 +134,7 @@ echo ""
 # Step 6: Validation output
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 12 deployment complete!                                   ║"
+echo "║  Step 10 deployment complete!                                   ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
 echo "║  MCP Servers:                                                   ║"

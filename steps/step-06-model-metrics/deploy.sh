@@ -1,5 +1,5 @@
 #!/bin/bash
-# Step 07: Model Performance Metrics - Deployment Script
+# Step 06: Model Performance Metrics - Deployment Script
 # ============================================================================
 # "The ROI of Quantization" - Comprehensive observability and benchmarking
 #
@@ -15,7 +15,7 @@
 # Usage:
 #   ./deploy.sh              # Direct deploy
 #   ./deploy.sh --argocd     # Deploy via ArgoCD
-#   ./deploy.sh --cleanup    # Remove all Step 07 resources
+#   ./deploy.sh --cleanup    # Remove all Step 06 resources
 #   ./deploy.sh --benchmark  # Run ROI efficiency comparison
 #   ./deploy.sh --validate   # Only validate, don't deploy
 # ============================================================================
@@ -35,14 +35,14 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Step 07: Model Performance Metrics${NC}"
+echo -e "${BLUE}  Step 06: Model Performance Metrics${NC}"
 echo -e "${CYAN}  \"The ROI of Quantization\" Demo${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════════${NC}"
 
 # --- Cleanup Mode ---
 if [ "$1" == "--cleanup" ]; then
     echo ""
-    echo -e "${YELLOW}▶ Cleaning up Step 07 resources...${NC}"
+    echo -e "${YELLOW}▶ Cleaning up Step 06 resources...${NC}"
     
     # Grafana resources
     oc delete deployment grafana -n ${NAMESPACE} --ignore-not-found
@@ -59,7 +59,7 @@ if [ "$1" == "--cleanup" ]; then
     oc delete job -l app=guidellm -n ${NAMESPACE} --ignore-not-found
     
     # ArgoCD Application
-    oc delete application step-06-model-performance-metrics -n openshift-gitops --ignore-not-found
+    oc delete application step-06-model-metrics -n openshift-gitops --ignore-not-found
     
     echo -e "${GREEN}  ✓ Cleanup complete${NC}"
     exit 0
@@ -108,7 +108,7 @@ if [ "$1" == "--benchmark" ]; then
         echo -e "${GREEN}▶ Benchmark job completed. View results in Grafana or:${NC}"
         echo -e "  oc logs job/${JOB_NAME} -n ${NAMESPACE}"
     else
-        echo -e "${RED}❌ GuideLLM CronJob not found. Deploy Step 07 first.${NC}"
+        echo -e "${RED}❌ GuideLLM CronJob not found. Deploy Step 06 first.${NC}"
         exit 1
     fi
     exit 0
@@ -185,9 +185,9 @@ fi
 # Validate kustomize build
 echo ""
 echo -e "${YELLOW}▶ Validating Kustomize build...${NC}"
-if ! kustomize build "${PROJECT_ROOT}/gitops/step-06-model-performance-metrics/base" > /dev/null 2>&1; then
+if ! kustomize build "${PROJECT_ROOT}/gitops/step-06-model-metrics/base" > /dev/null 2>&1; then
     echo -e "${RED}❌ Kustomize build failed${NC}"
-    kustomize build "${PROJECT_ROOT}/gitops/step-06-model-performance-metrics/base"
+    kustomize build "${PROJECT_ROOT}/gitops/step-06-model-metrics/base"
     exit 1
 fi
 echo -e "${GREEN}  ✓ Kustomize build validated${NC}"
@@ -200,19 +200,19 @@ fi
 
 # --- Deployment ---
 echo ""
-echo -e "${YELLOW}▶ Deploying Step 07 components...${NC}"
+echo -e "${YELLOW}▶ Deploying Step 06 components...${NC}"
 
 if [ "$1" == "--argocd" ]; then
     echo "  Deploying via ArgoCD..."
-    oc apply -f "${PROJECT_ROOT}/gitops/argocd/app-of-apps/step-06-model-performance-metrics.yaml"
+    oc apply -f "${PROJECT_ROOT}/gitops/argocd/app-of-apps/step-06-model-metrics.yaml"
     echo -e "${GREEN}  ✓ ArgoCD Application created${NC}"
     echo ""
     echo "  Waiting for sync..."
     sleep 10
-    oc wait --for=condition=Healthy application/step-06-model-performance-metrics -n openshift-gitops --timeout=120s || true
+    oc wait --for=condition=Healthy application/step-06-model-metrics -n openshift-gitops --timeout=120s || true
 else
     echo "  Applying Kustomize manifests..."
-    oc apply -k "${PROJECT_ROOT}/gitops/step-06-model-performance-metrics/base"
+    oc apply -k "${PROJECT_ROOT}/gitops/step-06-model-metrics/base"
     echo -e "${GREEN}  ✓ Manifests applied${NC}"
 fi
 
@@ -307,5 +307,5 @@ echo -e "  ${GREEN}Additional Monitoring:${NC}"
 echo "     • GPU Metrics: OpenShift Console → Observe → Dashboards → NVIDIA DCGM"
 echo "     • Raw Metrics: OpenShift Console → Observe → Metrics"
 echo ""
-echo -e "  📚 Documentation: steps/step-06-model-performance-metrics/README.md"
+echo -e "  📚 Documentation: steps/step-06-model-metrics/README.md"
 echo ""

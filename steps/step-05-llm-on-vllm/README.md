@@ -113,7 +113,7 @@ Model Registry provides governance."
 
 | Name | GPUs | Hardware | Storage | Provider | Description |
 |------|------|----------|---------|----------|-------------|
-| **granite-8b-agent** | 1 | g6.4xlarge | S3 | IBM/Red Hat | RAG, MCP tools, Guardrails (Steps 06, 09-12) |
+| **granite-8b-agent** | 1 | g6.4xlarge | S3 | IBM/Red Hat | RAG, MCP tools, Guardrails, Eval (Steps 06-10) |
 | **mistral-3-bf16** | 4 | g6.12xlarge | S3 | Mistral AI | Full-precision 24B LLM, Playground chat |
 
 ### Queued Models (Swap to Activate)

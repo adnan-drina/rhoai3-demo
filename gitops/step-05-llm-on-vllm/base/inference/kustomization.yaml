@@ -39,7 +39,7 @@ resources:
   # ACTIVE MODELS (minReplicas: 1)
   # ═══════════════════════════════════════════════════════════════════════════
   
-  # Workhorse: 1-GPU FP8 — RAG, MCP tools, Guardrails (Steps 06, 09-12)
+  # Workhorse: 1-GPU FP8 — RAG, MCP tools, Guardrails, Eval (Steps 06-10)
   - granite-8b-agent.yaml
   
   # Full Precision: 4-GPU BF16 — Playground chat, Benchmarking (Steps 06, 07)

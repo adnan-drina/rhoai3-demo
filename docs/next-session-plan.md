@@ -6,7 +6,7 @@
 
 | Component | Status |
 |-----------|--------|
-| **ArgoCD Application** | `step-08-rag-evaluation` — Synced, Healthy |
+| **ArgoCD Application** | `step-08-model-evaluation` — Synced, Healthy |
 | **ConfigMaps** | `eval-configs` (judge prompt) + `eval-test-cases` (6 test YAMLs) |
 | **Validation** | 12/12 PASS (`validate.sh`) |
 | **Pre/Post RAG reports** | 12 HTML reports in MinIO |
@@ -47,7 +47,7 @@
 | step-01 through step-05 | Synced, Healthy |
 | step-06-model-metrics | OutOfSync, Healthy |
 | step-07-rag | Unknown, Healthy (DO NOT sync) |
-| **step-08-rag-evaluation** | **Synced, Healthy** |
+| **step-08-model-evaluation** | **Synced, Healthy** |
 
 ### Critical Warnings
 - **step-07 ArgoCD: DO NOT sync** — ConfigMap changes restart lsd-rag → vector store data loss

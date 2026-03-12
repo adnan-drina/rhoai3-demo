@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: step-08-rag-evaluation
+  name: step-08-model-evaluation
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo

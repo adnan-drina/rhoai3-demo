@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 11: AI Safety with Guardrails
+# Step 09: AI Safety with Guardrails
 # Deploys the TrustyAI Guardrails Orchestrator with:
 #   1. Shared HF detector ServingRuntime
 #   2. HAP detector (granite-guardian-hap-38m)
