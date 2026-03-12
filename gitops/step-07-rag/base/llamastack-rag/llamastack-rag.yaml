@@ -242,7 +242,19 @@ data:
         model_type: llm
         metadata: {}
       shields: []
-      vector_stores: []
+      vector_stores:
+      - vector_store_id: acme_corporate
+        provider_id: milvus-shared
+        embedding_model: sentence-transformers/ibm-granite/granite-embedding-125m-english
+        embedding_dimension: 768
+      - vector_store_id: eu_ai_act
+        provider_id: milvus-shared
+        embedding_model: sentence-transformers/ibm-granite/granite-embedding-125m-english
+        embedding_dimension: 768
+      - vector_store_id: whoami
+        provider_id: milvus-shared
+        embedding_model: sentence-transformers/ibm-granite/granite-embedding-125m-english
+        embedding_dimension: 768
       datasets: []
       scoring_fns: []
       benchmarks: []
