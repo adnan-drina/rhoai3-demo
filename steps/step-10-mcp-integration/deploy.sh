@@ -51,7 +51,6 @@ if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
 else
     oc create secret generic slack-mcp-credentials \
         --from-literal=SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" \
-        --from-literal=SLACK_TEAM_ID="${SLACK_TEAM_ID:-T09J4PGJHNK}" \
         -n "$NAMESPACE" \
         --dry-run=client -o yaml | oc apply -f -
     log_success "slack-mcp-credentials Secret created/updated"
