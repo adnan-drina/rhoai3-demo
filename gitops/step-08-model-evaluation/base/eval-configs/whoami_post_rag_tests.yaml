@@ -1,5 +1,5 @@
 name: "Whoami (CV) — Post-RAG Evaluation"
-description: "Evaluation WITH document retrieval. Expected answers from actual CV content."
+description: "Evaluation WITH document retrieval. With RAG, the LLM answers from the actual CV — not the football coach hallucination."
 vector_db_id: whoami
 model_id: granite-8b-agent
 mode: post-rag
@@ -15,17 +15,22 @@ scoring_params:
   "basic::tool_choice": null
 
 tests:
-  - prompt: "What is Adnan Drina's current job title and company?"
-    expected_result: "Principal Solution Architect at Red Hat, focused on AI, Application Development, and Developer Experience."
+  - prompt: "Who is Adnan Drina?"
+    expected_result: "Adnan Drina is a Principal Solution Architect at Red Hat, specializing in application development, artificial intelligence, and developer experience. He is known for transforming ideas into practical software architectures that aid organizations in adopting open, scalable AI/ML platforms and modern cloud-native development workflows."
     expected_tools:
       - builtin::rag/knowledge_search
 
-  - prompt: "What are Adnan Drina's main areas of expertise?"
-    expected_result: "AI and ML platform adoption, application development strategy and solution architecture, developer experience and workflow modernization, OpenShift and Kubernetes platforms, cloud-native architectures and GitOps."
+  - prompt: "What is Adnan Drina's current employment status?"
+    expected_result: "Adnan Drina is currently employed as a Principal Solution Architect at Red Hat."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What is Adnan Drina's educational background?"
+    expected_result: "Adnan Drina attended the University of Sarajevo."
     expected_tools:
       - builtin::rag/knowledge_search
 
   - prompt: "Where is Adnan Drina based?"
-    expected_result: "Netherlands."
+    expected_result: "Adnan Drina is based in the Netherlands."
     expected_tools:
       - builtin::rag/knowledge_search
