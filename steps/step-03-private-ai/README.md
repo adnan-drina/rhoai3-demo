@@ -656,7 +656,7 @@ gitops/step-03-private-ai/
 │   │   ├── project-editor.yaml     # ai-developer → edit role
 │   │   └── kueue-admin-access.yaml # Kueue ClusterRole binding
 │   │
-│   ├── namespace.yaml              # private-ai namespace with Kueue labels
+│   ├── namespace.yaml              # private-ai namespace (explicit Kueue labeling)
 │   ├── data-connection.yaml        # MinIO S3 connection for RHOAI
 │   ├── resource-flavors.yaml       # GPU node flavors
 │   ├── cluster-queue.yaml          # Cluster-wide GPU quota pool
@@ -672,6 +672,22 @@ gitops/step-03-private-ai/
 
 > **Note**: The `demo/` folder is NOT included in ArgoCD sync.
 > Apply manually with `oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/` to demonstrate queuing.
+
+---
+
+## Design Decisions
+
+### Explicit Kueue Queue Labeling (not namespace-wide managed)
+
+> **Design Decision:** We do **not** set `kueue.openshift.io/managed: "true"` on the `private-ai` namespace.
+> Instead, only workloads that carry `kueue.x-k8s.io/queue-name: default` are managed by Kueue.
+>
+> **Why:** Namespace-wide management gates *all* pods — including BuildConfig builds, chatbot
+> deployments, and KFP pipeline executor pods — causing them to stay in `SchedulingGated` state.
+> With explicit labeling, InferenceService, Notebook, and benchmark Job pods are Kueue-managed
+> (RHOAI and our manifests add the label), while non-GPU pods bypass Kueue entirely.
+>
+> **Ref:** [RHOAI 3.3 — Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue)
 
 ---
 

@@ -1,0 +1,35 @@
+name: "EU AI Act — Pre-RAG Baseline"
+description: "Baseline evaluation WITHOUT document retrieval. Tests LLM knowledge only."
+vector_db_id: null
+model_id: granite-8b-agent
+mode: pre-rag
+
+scoring_params:
+  "llm-as-judge::base":
+    type: llm_as_judge
+    judge_model: granite-8b-agent
+    prompt_template: scoring-templates/judge_prompt.txt
+    judge_score_regexes:
+      - "Answer: (A|B|C|D|E)"
+  "basic::subset_of": null
+
+tests:
+  - prompt: "What are the main risk categories defined by the EU AI Act?"
+    expected_result: "The EU AI Act defines four risk categories: unacceptable risk (banned), high risk (strict requirements), limited risk (transparency obligations), and minimal risk (voluntary codes)."
+    expected_tools: []
+
+  - prompt: "What obligations do providers of high-risk AI systems have under the EU AI Act?"
+    expected_result: "Providers must implement risk management systems, ensure data governance and quality, maintain technical documentation, enable human oversight, and ensure accuracy, robustness, and cybersecurity."
+    expected_tools: []
+
+  - prompt: "When did the EU AI Act enter into force and what is the implementation timeline?"
+    expected_result: "The EU AI Act was published in the Official Journal in July 2024 and entered into force in August 2024, with phased implementation through 2027."
+    expected_tools: []
+
+  - prompt: "What AI practices are prohibited under the EU AI Act?"
+    expected_result: "Prohibited practices include social scoring by governments, real-time biometric identification in public spaces (with exceptions), manipulation of vulnerable groups, and emotion recognition in workplaces and schools."
+    expected_tools: []
+
+  - prompt: "How does the EU AI Act define general-purpose AI models?"
+    expected_result: "General-purpose AI (GPAI) models are defined as models trained on broad data that can perform a wide range of tasks. Providers of GPAI models with systemic risk face additional obligations."
+    expected_tools: []

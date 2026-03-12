@@ -1,0 +1,27 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: rag-ingestion-service
+  namespace: private-ai
+  labels:
+    app: rag-ingestion-service
+    app.kubernetes.io/name: rag-ingestion-service
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/rh-ai-quickstart/RAG.git
+      ref: main
+    contextDir: ingestion-service
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: rag-ingestion-service:latest
+  triggers:
+    - type: ConfigChange

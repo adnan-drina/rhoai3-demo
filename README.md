@@ -44,7 +44,7 @@ oc login --token=<your-token> --server=<api-server>
 | 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | Deploy 5 models + GenAI Playground validation |
 | 06 | [Model Metrics](steps/step-06-model-metrics/README.md) | Grafana, GuideLLM benchmarks |
 | 07 | [RAG](steps/step-07-rag/README.md) | Milvus, Docling, DSPA, LlamaStack RAG, RAG workbench |
-| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | RAG evaluation with TrustyAI/Ragas |
+| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | Pre/Post RAG evaluation (TrustyAI/Ragas, LLM-as-Judge) |
 | 09 | [Guardrails](steps/step-09-guardrails/README.md) | FMS Guardrails Orchestrator |
 | 10 | [MCP Integration](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers |
 
@@ -94,6 +94,7 @@ rhoai3-demo/
 │   │       ├── step-05-llm-on-vllm.yaml
 │   │       ├── step-06-model-metrics.yaml
 │   │       ├── step-07-rag.yaml
+│   │       ├── step-08-rag-evaluation.yaml
 │   │       ├── step-09-guardrails.yaml
 │   │       └── step-10-mcp-integration.yaml
 │   │
@@ -116,7 +117,10 @@ rhoai3-demo/
 │   ├── step-06-model-metrics/    # Grafana + GuideLLM
 │   │   └── base/
 │   │
-│   ├── step-07-rag/              # Milvus, Docling, DSPA, LlamaStack
+│   ├── step-07-rag/              # Milvus, Docling, DSPA, LlamaStack, Ingestion Service
+│   │   └── base/
+│   │
+│   ├── step-08-model-evaluation/ # Eval configs (ConfigMaps), sync Job
 │   │   └── base/
 │   │
 │   ├── step-09-guardrails/       # FMS Guardrails Orchestrator

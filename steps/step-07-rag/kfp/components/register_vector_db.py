@@ -2,7 +2,7 @@
 Register Vector DB Component — creates (or re-uses) a Milvus collection
 through the Llama Stack vector_stores API.
 
-Adopted from rhoai-genaiops. Idempotent: catches 'already exists' errors.
+Idempotent: looks up existing stores by name before creating.
 """
 
 from typing import NamedTuple, Dict, Any, List
@@ -33,29 +33,42 @@ def register_vector_db_component(
 
     client = LlamaStackClient(base_url=base_url)
 
+    # Look up existing vector store by name before attempting to create
+    created_id = None
     try:
-        vs = client.vector_stores.create(
-            name=vector_db_id,
-            extra_body={
-                "embedding_model": doc_config["embedding_model"],
-                "embedding_dimension": doc_config["embedding_dimension"],
-                "provider_id": doc_config["vector_provider"],
-                "vector_db_id": vector_db_id,
-            },
-        )
-        created_id = vs.id
-        print(f"  [OK] Vector store created: {created_id}")
+        existing = client.vector_stores.list()
+        for vs in existing.data if hasattr(existing, "data") else existing:
+            if getattr(vs, "name", None) == vector_db_id:
+                created_id = vs.id
+                print(f"  [OK] Found existing vector store: {created_id} (name={vector_db_id})")
+                break
     except Exception as e:
-        if "already exists" in str(e).lower():
-            print(f"  [OK] Vector store '{vector_db_id}' already exists — reusing")
-            created_id = vector_db_id
-        else:
-            print(f"  [FAIL] {e}")
-            VectorDBOutput = namedtuple("VectorDBOutput", ["vector_db_status", "vector_db_ids"])
-            return VectorDBOutput(
-                vector_db_status={"status": "error", "error": str(e), "ready": False},
-                vector_db_ids=[],
+        print(f"  [WARN] Could not list stores: {e}")
+
+    if not created_id:
+        try:
+            vs = client.vector_stores.create(
+                name=vector_db_id,
+                extra_body={
+                    "embedding_model": doc_config["embedding_model"],
+                    "embedding_dimension": doc_config["embedding_dimension"],
+                    "provider_id": doc_config["vector_provider"],
+                    "vector_db_id": vector_db_id,
+                },
             )
+            created_id = vs.id
+            print(f"  [OK] Vector store created: {created_id}")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                created_id = vector_db_id
+                print(f"  [OK] Already exists, using name as ID: {created_id}")
+            else:
+                print(f"  [FAIL] {e}")
+                VectorDBOutput = namedtuple("VectorDBOutput", ["vector_db_status", "vector_db_ids"])
+                return VectorDBOutput(
+                    vector_db_status={"status": "error", "error": str(e), "ready": False},
+                    vector_db_ids=[],
+                )
 
     status = {
         "status": "success",

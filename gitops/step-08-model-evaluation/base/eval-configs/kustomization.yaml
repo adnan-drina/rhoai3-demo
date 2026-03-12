@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - configmap-eval-configs.yaml
+  - job-copy-configs.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: eval-test-cases
+    namespace: private-ai
+    options:
+      labels:
+        app.kubernetes.io/name: rag-evaluation
+        app.kubernetes.io/part-of: rag-evaluation
+    files:
+      - acme_corporate_pre_rag_tests.yaml
+      - acme_corporate_post_rag_tests.yaml
+      - eu_ai_act_pre_rag_tests.yaml
+      - eu_ai_act_post_rag_tests.yaml
+      - whoami_pre_rag_tests.yaml
+      - whoami_post_rag_tests.yaml

@@ -220,32 +220,50 @@ oc get configmap llama-stack-rag-config -n private-ai -o yaml | grep -A5 scoring
 ## Directory Structure
 
 ```
-steps/step-08-rag-evaluation/
+steps/step-08-model-evaluation/
 ├── deploy.sh                          # Full deployment + run
 ├── run-eval.sh                        # Standalone eval trigger
 ├── validate.sh                        # Check results
-├── eval-configs/                      # Test definitions
-│   ├── acme_corporate_tests.yaml      # ACME scenario (6 tests)
-│   ├── red_hat_docs_tests.yaml        # Red Hat scenario (6 tests)
-│   ├── eu_ai_act_tests.yaml           # EU AI Act scenario (8 tests)
+├── eval-configs/                      # Test definitions (canonical source)
+│   ├── acme_corporate_pre_rag_tests.yaml   # ACME baseline (6 tests)
+│   ├── acme_corporate_post_rag_tests.yaml  # ACME with RAG (6 tests)
+│   ├── eu_ai_act_pre_rag_tests.yaml        # EU AI Act baseline (5 tests)
+│   ├── eu_ai_act_post_rag_tests.yaml       # EU AI Act with RAG (5 tests)
+│   ├── whoami_pre_rag_tests.yaml            # Whoami baseline (2 tests)
+│   ├── whoami_post_rag_tests.yaml           # Whoami with RAG (2 tests)
 │   └── scoring-templates/
-│       ├── answer_correctness.txt     # LLM-as-judge prompt
-│       └── answer_groundedness.txt    # LLM-as-judge prompt
+│       └── judge_prompt.txt                 # A/B/C/D/E judge prompt
+├── notebooks/
+│   └── deepeval_rag.ipynb             # DeepEval interactive evaluation
 ├── kfp/
 │   ├── eval_pipeline.py               # Pipeline orchestration
 │   └── components/
 │       ├── scan_tests.py              # Test discovery
 │       └── run_and_score_tests.py     # Execute + score + report
 └── README.md
+
+gitops/step-08-model-evaluation/
+└── base/
+    ├── kustomization.yaml
+    └── eval-configs/
+        ├── kustomization.yaml                  # configMapGenerator
+        ├── configmap-eval-configs.yaml          # Scoring templates
+        ├── job-copy-configs.yaml                # PostSync: sync to PVC
+        └── *_tests.yaml                         # Copies of test configs
+
+gitops/argocd/app-of-apps/
+└── step-08-rag-evaluation.yaml                  # ArgoCD Application
 ```
 
 ## Key Design Decisions
 
-> **Design Decision:** We use Llama Stack `scoring.score()` (stable v1 API) instead of the alpha Ragas `eval` API. This avoids adding Ragas providers to the LSD and uses the `basic` + `llm-as-judge` providers already configured in lsd-rag. Ragas can be layered on later when the API stabilizes.
+> **Design Decision:** We implement two complementary evaluation approaches: (1) LlamaStack `scoring.score()` with `basic` + `llm-as-judge` providers for custom metrics and tool-choice validation, and (2) the official RHOAI 3.3 TrustyAI Ragas integration for standardized RAG metrics (`answer_relevancy`, `faithfulness`, `context_precision`). Both run through KFP via the step-07 DSPA.
 
-> **Design Decision:** Tests live in-tree in `eval-configs/` rather than a separate Git repo. This keeps the demo self-contained. Migrating to a Git-cloned test repo is a trivial change later (add a `git_clone_op` step).
+> **Design Decision:** Tests live in-tree in `eval-configs/` and are deployed to the cluster as ConfigMaps via ArgoCD. A PostSync Job syncs them to the shared PVC. This keeps configs GitOps-managed while allowing the pipeline to read from PVC.
 
-> **Design Decision:** We evaluate the full RAG chain (Agent API) rather than just the model. The eval calls `agent.create_turn()` which triggers retrieval, tool calling, and generation -- testing the entire pipeline.
+> **Design Decision (RHOAI 3.3):** Ragas is a Technology Preview feature. We configure both inline provider (for development) and remote provider (for production-scale evaluations via KFP). See [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate).
+
+> **Design Decision:** Pre-RAG vs Post-RAG evaluation uses identical questions. Pre-RAG calls the LLM without document context (baseline). Post-RAG retrieves from Milvus and injects context. The score difference demonstrates RAG value quantitatively.
 
 ## Official Documentation
 
@@ -257,9 +275,56 @@ steps/step-08-rag-evaluation/
 
 ---
 
+## Evaluation Approaches
+
+### Approach 1: TrustyAI Ragas (Official RHOAI 3.3)
+
+The recommended approach per [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate).
+
+**Inline provider** (development): `ENABLE_RAGAS=true` + `EMBEDDING_MODEL=granite-embedding-125m` on the LSD. Runs Ragas metrics in-process.
+
+**Remote provider** (production): Ragas evaluations submitted as KFP pipeline runs. Requires `kubeflow-ragas-config` ConfigMap and `kubeflow-pipelines-token` Secret.
+
+**Ragas metrics:**
+
+| Metric | What it measures |
+|--------|-----------------|
+| `answer_relevancy` | Whether the answer matches the question |
+| `faithfulness` | Consistency with retrieved context (hallucination detection) |
+| `context_precision` | Precision of retrieved chunks |
+| `context_recall` | Whether all needed info is in retrieved contexts |
+| `answer_correctness` | Accuracy vs reference answer |
+
+**API flow:**
+1. Register dataset via `/v1beta/datasets` (Ragas format: `user_input`, `response`, `retrieved_contexts`, `reference`)
+2. Register benchmark via `/v1alpha/eval/benchmarks` with scoring functions
+3. Run evaluation via `/v1alpha/eval/benchmarks/<id>/jobs`
+4. Retrieve results
+
+**Demo notebook:** Clone [trustyai-explainability/llama-stack-provider-ragas](https://github.com/trustyai-explainability/llama-stack-provider-ragas) and run `demos/basic_demo.ipynb`.
+
+> **Note (RHOAI 3.3):** Ragas is a Technology Preview feature.
+
+### Approach 2: Custom KFP Pipeline (LlamaStack Scoring + Tool Choice)
+
+Complementary approach using the stable LlamaStack scoring API:
+
+- **`basic::subset_of`** — exact substring matching
+- **`llm-as-judge::base`** — LLM-as-judge with A/B/C/D/E comparison (from [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals))
+- **`basic::tool_choice`** — custom scorer verifying RAG tool invocation
+
+Runs pre-RAG and post-RAG tests for all 3 scenarios. HTML reports uploaded to S3.
+
+### Approach 3: DeepEval Notebook (Developer)
+
+Interactive notebook (`notebooks/deepeval_rag.ipynb`) for per-conversation analysis using DeepEval metrics with the vLLM endpoint as judge model.
+
+> **Source:** Adapted from [rh-ai-quickstart/RAG evaluations](https://github.com/rh-ai-quickstart/RAG/tree/main/evaluations)
+
+---
+
 ## Next Steps
 
-- **Ragas Integration**: Add Ragas providers (`trustyai_ragas_inline`, `trustyai_ragas_remote`) to lsd-rag for faithfulness and context_precision metrics
 - **CI/CD Quality Gates**: Schedule eval runs as CronJobs and fail builds when scores drop below thresholds
 - **Grafana Dashboard**: Publish eval metrics to Prometheus and visualize score trends over time
 - **Comparative Evaluations**: Run the same tests against different chunk sizes or embedding models to optimize RAG configuration

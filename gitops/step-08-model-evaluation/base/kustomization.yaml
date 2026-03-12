@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 08: RAG Evaluation
+# Deploys evaluation configuration and sync job.
+# Reuses step-07 infrastructure (lsd-rag, dspa-rag, Milvus, PVC).
+# No new operators or services are deployed.
+
+resources:
+  - eval-configs/   # ConfigMaps with test cases + scoring templates, sync Job

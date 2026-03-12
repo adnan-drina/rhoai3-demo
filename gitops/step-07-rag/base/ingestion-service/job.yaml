@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rag-ingestion
+  namespace: private-ai
+  labels:
+    app: rag-ingestion-service
+    app.kubernetes.io/name: rag-ingestion-service
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: rag-ingestion-service
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: ingest
+          image: image-registry.openshift-image-registry.svc:5000/private-ai/rag-ingestion-service:latest
+          env:
+            - name: INGESTION_CONFIG
+              value: /config/ingestion-config.yaml
+          envFrom:
+            - secretRef:
+                name: minio-connection
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: ingestion-config

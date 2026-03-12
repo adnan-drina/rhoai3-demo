@@ -1,0 +1,10 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: rag-ingestion-service
+  namespace: private-ai
+  labels:
+    app: rag-ingestion-service
+    app.kubernetes.io/name: rag-ingestion-service
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/part-of: rag-pipeline

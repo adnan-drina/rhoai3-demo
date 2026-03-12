@@ -36,6 +36,11 @@ spec:
         # --- Inline embeddings (RHOAI 3.3 recommended for CPU-only) ---
         - name: ENABLE_SENTENCE_TRANSFORMERS
           value: "true"
+        # --- Ragas evaluation support (RHOAI 3.3) ---
+        - name: ENABLE_RAGAS
+          value: "true"
+        - name: EMBEDDING_MODEL
+          value: "granite-embedding-125m"
         # --- Remote LLM configuration (all from Secret per RHOAI 3.3 pattern) ---
         - name: INFERENCE_MODEL
           valueFrom:
@@ -141,6 +146,7 @@ data:
     apis:
     - agents
     - datasetio
+    - eval
     - files
     - inference
     - safety
@@ -178,7 +184,13 @@ data:
             responses:
               table_name: agent_responses
               backend: sql_default
-      eval: []
+      eval:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          kvstore:
+            namespace: eval
+            backend: kv_default
       files:
       - provider_id: meta-reference-files
         provider_type: inline::localfs
@@ -188,6 +200,12 @@ data:
             backend: sql_default
           storage_dir: /opt/app-root/src/.llama/distributions/rh/files
       datasetio:
+      - provider_id: localfs
+        provider_type: inline::localfs
+        config:
+          kvstore:
+            namespace: localfs_datasetio
+            backend: kv_default
       - provider_id: huggingface
         provider_type: remote::huggingface
         config:

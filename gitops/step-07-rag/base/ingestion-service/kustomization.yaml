@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - imagestream.yaml
+  - buildconfig.yaml
+  - configmap.yaml
+  # Job is applied manually: oc create -f job.yaml
+  # (not included here to avoid re-running on every sync)

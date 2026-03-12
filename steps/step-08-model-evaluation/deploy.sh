@@ -1,12 +1,14 @@
 #!/bin/bash
-# Step 10: RAG Evaluation — Deploy Script
-# Copies eval configs to the cluster PVC, compiles the eval pipeline,
-# and launches an evaluation run against all 3 RAG scenarios.
+# Step 08: RAG Evaluation — Deploy Script
+# 1. Applies ArgoCD Application (deploys ConfigMaps + sync Job)
+# 2. Compiles the eval pipeline
+# 3. Launches an evaluation run against all 3 RAG scenarios (pre + post RAG)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+STEP_NAME="step-08-rag-evaluation"
 NAMESPACE="private-ai"
 PVC_NAME="rag-pipeline-workspace"
 RUN_ID="eval-$(date +%s)"
@@ -14,108 +16,146 @@ RUN_ID="eval-$(date +%s)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 10: RAG Evaluation Pipeline                               ║"
+echo "║  Step 08: RAG Evaluation Pipeline                               ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 0: Prerequisites
+# Step 0: Prerequisites (step-07 must be deployed)
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Checking prerequisites..."
 
 check_oc_logged_in
 
 if ! oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
-    log_error "lsd-rag not found. Deploy step-09 first."
+    log_error "lsd-rag not found. Deploy step-07 first."
     exit 1
 fi
 log_success "lsd-rag present"
 
 if ! oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
-    log_error "dspa-rag not found. Deploy step-09 first."
+    log_error "dspa-rag not found. Deploy step-07 first."
     exit 1
 fi
 log_success "dspa-rag present"
 
 if ! oc get pvc "$PVC_NAME" -n "$NAMESPACE" &>/dev/null; then
-    log_error "PVC $PVC_NAME not found. Deploy step-09 first."
+    log_error "PVC $PVC_NAME not found. Deploy step-07 first."
     exit 1
 fi
 log_success "PVC $PVC_NAME present"
+echo ""
 
-# Verify at least one Milvus collection has data
-LSD_POD=$(oc get pods -n "$NAMESPACE" -l app.kubernetes.io/name=llamastack-rag \
-    --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1)
-if [ -n "$LSD_POD" ]; then
-    CHUNK_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/vector-io/query \
-        -H "Content-Type: application/json" \
-        -d '{"vector_db_id":"acme_corporate","query":"test"}' 2>/dev/null | \
-        python3 -c "import sys,json; print(len(json.load(sys.stdin).get('chunks',[])))" 2>/dev/null || echo "0")
-    if [ "$CHUNK_COUNT" -gt 0 ]; then
-        log_success "Milvus has data (acme_corporate: $CHUNK_COUNT chunks)"
-    else
-        log_info "Milvus may be empty — eval will still run but RAG answers may be generic"
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 1: Deploy via ArgoCD
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Deploying Step 08 via ArgoCD..."
+
+ARGOCD_APP="$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
+if [ ! -f "$ARGOCD_APP" ]; then
+    log_error "ArgoCD Application not found: $ARGOCD_APP"
+    exit 1
+fi
+
+oc apply -f "$ARGOCD_APP"
+log_success "ArgoCD Application applied: $STEP_NAME"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 2: Wait for ArgoCD sync (ConfigMaps + PostSync Job)
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Waiting for ArgoCD sync..."
+sleep 5
+
+TIMEOUT=120
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    SYNC_STATUS=$(oc get application "$STEP_NAME" -n openshift-gitops \
+        -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+    HEALTH=$(oc get application "$STEP_NAME" -n openshift-gitops \
+        -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+
+    if [ "$SYNC_STATUS" = "Synced" ] && [ "$HEALTH" = "Healthy" ]; then
+        log_success "ArgoCD sync complete: $SYNC_STATUS / $HEALTH"
+        break
     fi
-else
-    log_info "Could not verify Milvus data — lsd-rag pod not found"
+
+    log_info "  Status: $SYNC_STATUS / $HEALTH (${ELAPSED}s / ${TIMEOUT}s)"
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+done
+
+if [ "$SYNC_STATUS" != "Synced" ]; then
+    log_info "ArgoCD not fully synced yet — continuing (eval configs may sync in background)"
 fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 1: Copy eval configs to cluster PVC
+# Step 3: Verify eval configs on PVC (from PostSync Job or manual fallback)
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Copying eval configs to cluster PVC..."
+log_step "Verifying eval configs on PVC..."
 
-HELPER_POD="eval-config-copy-$(date +%s)"
-oc run "$HELPER_POD" -n "$NAMESPACE" \
-    --image=busybox --restart=Never \
-    --overrides="{
-      \"spec\": {
-        \"containers\": [{
-          \"name\": \"copy\",
-          \"image\": \"busybox\",
-          \"command\": [\"sleep\", \"300\"],
-          \"volumeMounts\": [{
-            \"name\": \"workspace\",
-            \"mountPath\": \"/eval-configs\"
-          }]
-        }],
-        \"volumes\": [{
-          \"name\": \"workspace\",
-          \"persistentVolumeClaim\": {
-            \"claimName\": \"$PVC_NAME\"
+# Check if the PostSync Job already copied the configs
+LSD_POD=$(oc get pods -n "$NAMESPACE" -l app.kubernetes.io/name=llamastack-rag \
+    --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1)
+
+CONFIG_COUNT=0
+if [ -n "$LSD_POD" ]; then
+    CONFIG_COUNT=$(oc exec -n "$NAMESPACE" deploy/rag-wb -- ls /opt/app-root/src/ 2>/dev/null | grep -c "_tests.yaml" || echo "0")
+fi
+
+if [ "$CONFIG_COUNT" -lt 2 ]; then
+    log_info "Eval configs not yet on PVC — copying manually..."
+
+    HELPER_POD="eval-cfg-copy-$(date +%s)"
+    oc run "$HELPER_POD" -n "$NAMESPACE" \
+        --image=busybox --restart=Never \
+        --overrides="{
+          \"spec\": {
+            \"containers\": [{
+              \"name\": \"copy\",
+              \"image\": \"busybox\",
+              \"command\": [\"sleep\", \"120\"],
+              \"volumeMounts\": [{
+                \"name\": \"workspace\",
+                \"mountPath\": \"/workspace\"
+              }]
+            }],
+            \"volumes\": [{
+              \"name\": \"workspace\",
+              \"persistentVolumeClaim\": {
+                \"claimName\": \"$PVC_NAME\"
+              }
+            }]
           }
-        }]
-      }
-    }" 2>/dev/null
+        }" 2>/dev/null
 
-log_info "  Waiting for helper pod..."
-oc wait pod/"$HELPER_POD" -n "$NAMESPACE" --for=condition=Ready --timeout=60s 2>/dev/null
+    oc wait pod/"$HELPER_POD" -n "$NAMESPACE" --for=condition=Ready --timeout=60s 2>/dev/null
+    oc exec "$HELPER_POD" -n "$NAMESPACE" -- mkdir -p /workspace/eval-configs/scoring-templates 2>/dev/null
 
-log_info "  Uploading eval-configs/..."
-oc exec "$HELPER_POD" -n "$NAMESPACE" -- mkdir -p /eval-configs/scoring-templates 2>/dev/null
+    for yaml_file in "$SCRIPT_DIR"/eval-configs/*_tests.yaml; do
+        [ -f "$yaml_file" ] || continue
+        filename=$(basename "$yaml_file")
+        oc cp "$yaml_file" "$NAMESPACE/$HELPER_POD:/workspace/eval-configs/$filename" 2>/dev/null
+        log_info "    Copied $filename"
+    done
 
-for yaml_file in "$SCRIPT_DIR"/eval-configs/*_tests.yaml; do
-    [ -f "$yaml_file" ] || continue
-    filename=$(basename "$yaml_file")
-    oc cp "$yaml_file" "$NAMESPACE/$HELPER_POD:/eval-configs/$filename" 2>/dev/null
-    log_info "    Copied $filename"
-done
+    for txt_file in "$SCRIPT_DIR"/eval-configs/scoring-templates/*.txt; do
+        [ -f "$txt_file" ] || continue
+        filename=$(basename "$txt_file")
+        oc cp "$txt_file" "$NAMESPACE/$HELPER_POD:/workspace/eval-configs/scoring-templates/$filename" 2>/dev/null
+        log_info "    Copied scoring-templates/$filename"
+    done
 
-for txt_file in "$SCRIPT_DIR"/eval-configs/scoring-templates/*.txt; do
-    [ -f "$txt_file" ] || continue
-    filename=$(basename "$txt_file")
-    oc cp "$txt_file" "$NAMESPACE/$HELPER_POD:/eval-configs/scoring-templates/$filename" 2>/dev/null
-    log_info "    Copied scoring-templates/$filename"
-done
-
-oc delete pod "$HELPER_POD" -n "$NAMESPACE" --wait=false 2>/dev/null
-log_success "Eval configs uploaded to PVC"
+    oc delete pod "$HELPER_POD" -n "$NAMESPACE" --wait=false 2>/dev/null
+    log_success "Eval configs copied to PVC"
+else
+    log_success "Eval configs already on PVC ($CONFIG_COUNT test files)"
+fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Compile eval pipeline
+# Step 4: Compile eval pipeline
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Compiling eval pipeline..."
 
@@ -138,7 +178,7 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Upload and run pipeline
+# Step 5: Upload and run pipeline
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Launching eval pipeline run (run_id=$RUN_ID)..."
 
@@ -151,10 +191,10 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Show results location
+# Summary
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 10 evaluation launched!                                   ║"
+echo "║  Step 08 evaluation launched!                                   ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
 echo "║  Monitor:                                                       ║"
@@ -164,6 +204,6 @@ echo "║  Reports will be at:                                            ║"
 echo "║    s3://pipelines/eval-results/$RUN_ID/                    ║"
 echo "║                                                                 ║"
 echo "║  Validate:                                                      ║"
-echo "║    ./steps/step-08-rag-evaluation/validate.sh                  ║"
+echo "║    ./steps/step-08-model-evaluation/validate.sh                 ║"
 echo "║                                                                 ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"

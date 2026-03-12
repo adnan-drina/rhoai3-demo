@@ -11,9 +11,13 @@ metadata:
     # IMPORTANT: Set to "false" to enable Single-model (KServe) platform
     # "true" would enable Multi-model (ModelMesh) platform
     modelmesh-enabled: "false"
-    # Enable Kueue workload management for this namespace
-    kueue.openshift.io/managed: "true"
+    # Kueue visibility (does NOT gate pods; only enables queue-visibility metrics)
     kueue.x-k8s.io/queue-visibility: "ClusterQueue"
+    # NOTE: kueue.openshift.io/managed is intentionally NOT set.
+    # With explicit queue labeling, only pods that carry
+    # kueue.x-k8s.io/queue-name are managed by Kueue (InferenceService,
+    # Notebook, benchmark Jobs). Build pods, chatbot pods, and pipeline
+    # executor pods bypass Kueue entirely.
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Private AI - GPU as a Service"

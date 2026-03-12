@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingestion-config
+  namespace: private-ai
+  labels:
+    app: rag-ingestion-service
+    app.kubernetes.io/name: rag-ingestion-service
+    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/part-of: rag-pipeline
+data:
+  ingestion-config.yaml: |
+    llamastack:
+      base_url: http://lsd-rag-service.private-ai.svc.cluster.local:8321
+
+    vector_db:
+      embedding_model: sentence-transformers/ibm-granite/granite-embedding-125m-english
+      embedding_dimension: 768
+      provider_id: milvus-shared
+      chunk_size_tokens: 512
+
+    pipelines:
+      acme_corporate:
+        enabled: true
+        vector_store_name: acme_corporate
+        source: S3
+        config:
+          endpoint: http://minio.minio-storage.svc.cluster.local:9000
+          bucket: rag-documents
+          prefix: scenario2-acme/
+
+      eu_ai_act:
+        enabled: true
+        vector_store_name: eu_ai_act
+        source: S3
+        config:
+          endpoint: http://minio.minio-storage.svc.cluster.local:9000
+          bucket: rag-documents
+          prefix: scenario3-eu-ai-act/
+
+      whoami:
+        enabled: true
+        vector_store_name: whoami
+        source: S3
+        config:
+          endpoint: http://minio.minio-storage.svc.cluster.local:9000
+          bucket: rag-documents
+          prefix: scenario4-whoami/

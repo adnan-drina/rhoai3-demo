@@ -1,0 +1,15 @@
+You are comparing a GENERATED RESPONSE to an EXPECTED RESPONSE for a given question.
+
+Question: {input_query}
+Expected Response: {expected_answer}
+Generated Response: {generated_answer}
+
+Compare the Generated Response to the Expected Response and select the most appropriate option:
+
+(A) The generated response is a subset of the expected response and is fully consistent with it.
+(B) The generated response is a superset of the expected response and is fully consistent with it.
+(C) The generated response contains all the same details as the expected response.
+(D) There is a disagreement between the generated response and the expected response.
+(E) The responses differ, but the differences are not significant or do not affect factual accuracy.
+
+Answer: 

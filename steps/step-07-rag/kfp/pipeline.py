@@ -66,7 +66,7 @@ def docling_rag_pipeline(
     vector_db_id: str = "acme_corporate",
     temperature: float = 0.0,
     max_tokens: int = 4096,
-    processing_timeout: int = 180,
+    processing_timeout: int = 600,
 ):
     pvc_name = "rag-pipeline-workspace"
 
@@ -135,7 +135,7 @@ def batch_docling_rag_pipeline(
     vector_db_id: str = "acme_corporate",
     temperature: float = 0.0,
     max_tokens: int = 4096,
-    processing_timeout: int = 180,
+    processing_timeout: int = 600,
     num_splits: int = 2,
     cache_buster: str = "",
 ):

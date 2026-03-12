@@ -1,0 +1,26 @@
+name: "Whoami (CV) — Post-RAG Evaluation"
+description: "Evaluation WITH document retrieval. Tests RAG grounding against ingested CV."
+vector_db_id: whoami
+model_id: granite-8b-agent
+mode: post-rag
+
+scoring_params:
+  "llm-as-judge::base":
+    type: llm_as_judge
+    judge_model: granite-8b-agent
+    prompt_template: scoring-templates/judge_prompt.txt
+    judge_score_regexes:
+      - "Answer: (A|B|C|D|E)"
+  "basic::subset_of": null
+  "basic::tool_choice": null
+
+tests:
+  - prompt: "What is Adnan Drina's professional background?"
+    expected_result: "Adnan Drina is a technology professional with experience in cloud computing, Kubernetes, and AI/ML platforms."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "What certifications or skills does the candidate have?"
+    expected_result: "The candidate has skills in Red Hat OpenShift, Kubernetes, cloud-native development, and AI/ML engineering."
+    expected_tools:
+      - builtin::rag/knowledge_search

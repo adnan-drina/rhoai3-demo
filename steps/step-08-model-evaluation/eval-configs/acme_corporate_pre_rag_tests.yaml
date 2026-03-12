@@ -1,0 +1,39 @@
+name: "ACME Corporate — Pre-RAG Baseline"
+description: "Baseline evaluation WITHOUT document retrieval. Tests LLM knowledge only."
+vector_db_id: null
+model_id: granite-8b-agent
+mode: pre-rag
+
+scoring_params:
+  "llm-as-judge::base":
+    type: llm_as_judge
+    judge_model: granite-8b-agent
+    prompt_template: scoring-templates/judge_prompt.txt
+    judge_score_regexes:
+      - "Answer: (A|B|C|D|E)"
+  "basic::subset_of": null
+
+tests:
+  - prompt: "What are the key calibration procedures for DFO lithography?"
+    expected_result: "DFO calibration involves alignment verification, dose calibration, focus optimization, and overlay measurement to ensure pattern accuracy."
+    expected_tools: []
+
+  - prompt: "What SPC limits apply to the PX-7 lithography control plan?"
+    expected_result: "The PX-7 control plan defines SPC limits for critical dimension, overlay, and focus parameters with control charts and out-of-spec escalation procedures."
+    expected_tools: []
+
+  - prompt: "What predictive maintenance rules apply to the L-900 tool?"
+    expected_result: "L-900 predictive rules include FMEA-based failure mode monitoring, vibration analysis, and temperature trending with automated alerts."
+    expected_tools: []
+
+  - prompt: "Describe the Tier-1 and Tier-2 trouble response procedures."
+    expected_result: "Tier-1 covers initial triage and standard fixes. Tier-2 escalation involves engineering analysis and root cause investigation."
+    expected_tools: []
+
+  - prompt: "What is ACME's reliability performance for Q3 FY25?"
+    expected_result: "The Q3 FY25 reliability summary covers tool uptime, mean time between failures, and yield impact metrics."
+    expected_tools: []
+
+  - prompt: "What products and standards does ACME cover?"
+    expected_result: "ACME covers EUV and DUV lithography products aligned with SEMI and ISO standards for semiconductor manufacturing."
+    expected_tools: []

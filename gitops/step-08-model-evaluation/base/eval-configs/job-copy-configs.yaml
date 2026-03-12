@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eval-config-sync
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: rag-evaluation
+    app.kubernetes.io/component: eval-config-sync
+    app.kubernetes.io/part-of: rag-evaluation
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: eval-config-sync
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: copy
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Syncing eval configs to PVC..."
+              mkdir -p /workspace/eval-configs/scoring-templates
+
+              # Copy scoring templates from ConfigMap
+              cp /config/judge_prompt.txt /workspace/eval-configs/scoring-templates/
+
+              # Copy test YAMLs from ConfigMap
+              for f in /test-configs/*.yaml; do
+                [ -f "$f" ] && cp "$f" /workspace/eval-configs/
+                echo "  Copied $(basename $f)"
+              done
+
+              echo "Eval configs synced to PVC."
+              ls -la /workspace/eval-configs/
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: scoring-templates
+              mountPath: /config
+            - name: test-configs
+              mountPath: /test-configs
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: rag-pipeline-workspace
+        - name: scoring-templates
+          configMap:
+            name: eval-configs
+        - name: test-configs
+          configMap:
+            name: eval-test-cases
