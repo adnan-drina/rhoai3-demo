@@ -349,7 +349,9 @@ def agent_process_prompt(prompt, state, config):
     from llama_stack_ui.distribution.ui.modules import guardrails
 
     # --- Input guardrails (HAP + prompt injection) ---
-    if getattr(config, 'shields_enabled', False) and guardrails.is_available():
+    shields_on = st.session_state.get("guardrails_enabled", False)
+    logger.debug("Shields enabled: %s", shields_on)
+    if shields_on and guardrails.is_available():
         with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
             violation = guardrails.check_input(prompt)
             if violation:
@@ -402,7 +404,7 @@ def agent_process_prompt(prompt, state, config):
     stream_agent_response(response, state, config.selected_vector_dbs)
 
     # --- Output guardrails (HAP + PII regex) ---
-    if getattr(config, 'shields_enabled', False) and guardrails.is_available() and state.full_response:
+    if shields_on and guardrails.is_available() and state.full_response:
         violation = guardrails.check_output(state.full_response)
         if violation:
             detector = violation['detector']
