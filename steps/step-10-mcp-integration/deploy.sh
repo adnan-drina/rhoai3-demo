@@ -1,7 +1,7 @@
 #!/bin/bash
 # Step 10: MCP Integration — Deploy Script
-# Deploys PostgreSQL, builds 3 MCP server images, deploys MCP servers,
-# registers them in the Playground, and restarts LlamaStack pods.
+# All 3 MCP servers use prebuilt images from Red Hat Ecosystem Catalog (quay.io/mcp-servers/).
+# Zero on-cluster builds required.
 
 set -euo pipefail
 
@@ -13,7 +13,8 @@ STEP_NAME="step-10-mcp-integration"
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 10: MCP Integration (Database + OpenShift + Slack)        ║"
+echo "║  Step 10: MCP Integration (All Red Hat Catalog Images)          ║"
+echo "║  Database + OpenShift + Slack — Zero on-cluster builds          ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -31,51 +32,43 @@ fi
 log_success "granite-8b-agent present"
 
 if ! oc get llamastackdistribution -n "$NAMESPACE" &>/dev/null 2>&1; then
-    log_error "No LlamaStackDistribution found. Deploy step-06 first."
+    log_error "No LlamaStackDistribution found. Deploy step-05/07 first."
     exit 1
 fi
 log_success "LlamaStack present"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 1: Deploy via ArgoCD
+# Step 1: Create Slack credentials Secret from .env (not in git)
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Creating Slack MCP credentials Secret..."
+load_env
+
+if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
+    log_error "SLACK_BOT_TOKEN not set in .env — Slack MCP will not work."
+    log_info "  Create a Slack App at https://api.slack.com/apps with scopes:"
+    log_info "  channels:history, channels:read, chat:write, reactions:write, users:read"
+else
+    oc create secret generic slack-mcp-credentials \
+        --from-literal=SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" \
+        --from-literal=SLACK_TEAM_ID="${SLACK_TEAM_ID:-T09J4PGJHNK}" \
+        -n "$NAMESPACE" \
+        --dry-run=client -o yaml | oc apply -f -
+    log_success "slack-mcp-credentials Secret created/updated"
+fi
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 2: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Deploying Step 10 via ArgoCD..."
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Wait for builds
+# Step 3: Wait for ArgoCD sync
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for MCP server image builds..."
-sleep 10
-
-BUILD_TIMEOUT=300
-BUILD_ELAPSED=0
-while [ $BUILD_ELAPSED -lt $BUILD_TIMEOUT ]; do
-    COMPLETE=$(oc get builds -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c "Complete" || echo "0")
-    TOTAL=$(oc get builds -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-
-    log_info "  Builds: $COMPLETE/$TOTAL complete"
-
-    if [ "$COMPLETE" -ge 3 ]; then
-        break
-    fi
-    sleep 15
-    BUILD_ELAPSED=$((BUILD_ELAPSED + 15))
-done
-
-if [ "$COMPLETE" -ge 3 ]; then
-    log_success "All 3 MCP server images built"
-else
-    log_error "Build timeout. Check: oc get builds -n $NAMESPACE"
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Wait for ArgoCD sync + components
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for ArgoCD sync..."
+log_step "Waiting for ArgoCD sync (no builds — all catalog images)..."
 TIMEOUT=300
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -100,22 +93,25 @@ oc wait deploy/postgresql -n "$NAMESPACE" --for=condition=Available --timeout=12
 
 log_step "Waiting for MCP servers..."
 for server in database-mcp openshift-mcp slack-mcp; do
-    oc wait deploy/$server -n "$NAMESPACE" --for=condition=Available --timeout=120s 2>/dev/null || \
+    oc wait deploy/$server -n "$NAMESPACE" --for=condition=Available --timeout=180s 2>/dev/null || \
         log_error "$server did not become available"
 done
 log_success "All MCP servers running"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Apply Playground MCP ConfigMap
+# Step 4: Verify Playground ConfigMap
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Registering MCP servers in GenAI Playground..."
-oc apply -f "$SCRIPT_DIR/mcp-playground-config.yaml"
-log_success "gen-ai-aa-mcp-servers ConfigMap applied to redhat-ods-applications"
+log_step "Verifying MCP servers ConfigMap in redhat-ods-applications..."
+if oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications &>/dev/null; then
+    log_success "gen-ai-aa-mcp-servers ConfigMap present"
+else
+    log_error "gen-ai-aa-mcp-servers ConfigMap not found — check ArgoCD sync"
+fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Restart LlamaStack pods
+# Step 5: Restart LlamaStack pods to discover MCP tools
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Restarting LlamaStack pods to discover MCP tool_groups..."
 
@@ -131,18 +127,16 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 6: Validation output
+# Done
 # ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 10 deployment complete!                                   ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
-echo "║  MCP Servers:                                                   ║"
-echo "║    database-mcp  :8080/sse (PostgreSQL equipment queries)      ║"
-echo "║    openshift-mcp :8000/sse (cluster inspection)                ║"
-echo "║    slack-mcp     :8080/sse (team notifications, demo mode)     ║"
-echo "║                                                                 ║"
-echo "║  Playground: MCP servers visible in GenAI Studio > AI Assets   ║"
+echo "║  All MCP Servers from Red Hat Ecosystem Catalog:                ║"
+echo "║    database-mcp  :8080 (edb-postgres-mcp)                      ║"
+echo "║    openshift-mcp :8000 (kubernetes-mcp-server)                 ║"
+echo "║    slack-mcp     :8080 (slack-mcp-server)                      ║"
 echo "║                                                                 ║"
 echo "║  Validate:                                                      ║"
 echo "║    ./steps/step-10-mcp-integration/validate.sh                 ║"
