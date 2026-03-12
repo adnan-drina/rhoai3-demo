@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/component: mcp-server
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"database-mcp:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"database-mcp\")].image"}]'
 spec:
   replicas: 1
   selector:
@@ -26,15 +25,27 @@ spec:
         runAsNonRoot: true
       containers:
         - name: database-mcp
-          image: image-registry.openshift-image-registry.svc:5000/private-ai/database-mcp:latest
+          image: quay.io/mcp-servers/edb-postgres-mcp:latest
           ports:
             - containerPort: 8080
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: database-mcp-config
           env:
-            - name: POSTGRES_PASSWORD
+            - name: PGEDGE_HTTP_ENABLED
+              value: "true"
+            - name: PGEDGE_HTTP_ADDRESS
+              value: ":8080"
+            - name: PGHOST
+              value: postgresql.private-ai.svc.cluster.local
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: acme_equipment
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRESQL_USER
+            - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
                   name: postgresql-credentials
@@ -45,8 +56,8 @@ spec:
               drop: ["ALL"]
           resources:
             requests:
-              cpu: 250m
-              memory: 256Mi
+              cpu: 100m
+              memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi

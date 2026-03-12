@@ -1,21 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 10: MCP Integration
-# Deploys the Model Context Protocol infrastructure:
-#   0. MCP server discovery ConfigMap (gen-ai-aa-mcp-servers in redhat-ods-applications)
-#      — RHOAI Dashboard Playground uses this to discover available MCP servers in the UI
-#   1. PostgreSQL (ACME equipment database)
-#   2. BuildConfigs for 3 MCP server images
-#   3. database-mcp (equipment queries via PostgreSQL)
-#   4. openshift-mcp (cluster inspection via K8s API)
-#   5. slack-mcp (team notifications in demo mode)
+# Step 10: MCP Integration — All prebuilt images from Red Hat Ecosystem Catalog
+# No on-cluster builds required. All 3 MCP servers use trusted quay.io/mcp-servers/ images:
+#   1. database-mcp  (quay.io/mcp-servers/edb-postgres-mcp — generic SQL access)
+#   2. openshift-mcp (quay.io/mcp-servers/kubernetes-mcp-server — read-only cluster)
+#   3. slack-mcp     (quay.io/mcp-servers/slack-mcp-server — Slack API integration)
+# Supporting resources: PostgreSQL (RHEL9), acme-corp demo namespace, MCP ConfigMap
 
 resources:
   - mcp-servers-configmap.yaml
   - acme-corp/
   - postgresql/
-  - mcp-builds/
   - database-mcp/
   - openshift-mcp/
   - slack-mcp/

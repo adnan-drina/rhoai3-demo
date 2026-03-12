@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/component: mcp-server
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"slack-mcp:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"slack-mcp\")].image"}]'
 spec:
   replicas: 1
   selector:
@@ -26,21 +25,35 @@ spec:
         runAsNonRoot: true
       containers:
         - name: slack-mcp
-          image: image-registry.openshift-image-registry.svc:5000/private-ai/slack-mcp:latest
+          image: quay.io/mcp-servers/slack-mcp-server:latest
           ports:
             - containerPort: 8080
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: slack-mcp-config
+          env:
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: slack-mcp-credentials
+                  key: SLACK_BOT_TOKEN
+            - name: SLACK_TEAM_ID
+              valueFrom:
+                secretKeyRef:
+                  name: slack-mcp-credentials
+                  key: SLACK_TEAM_ID
+            - name: SLACK_MCP_PORT
+              value: "8080"
+            - name: SLACK_MCP_HOST
+              value: "0.0.0.0"
+            - name: SLACK_MCP_ADD_MESSAGE_TOOL
+              value: "true"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
           resources:
             requests:
-              cpu: 250m
-              memory: 256Mi
+              cpu: 100m
+              memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi

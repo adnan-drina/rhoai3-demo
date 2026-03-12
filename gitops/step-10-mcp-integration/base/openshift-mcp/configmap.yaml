@@ -8,4 +8,4 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 data:
-  MCP_TRANSPORT: sse
+  LOG_LEVEL: info

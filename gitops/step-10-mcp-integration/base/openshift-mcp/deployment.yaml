@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/component: mcp-server
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"openshift-mcp:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"openshift-mcp\")].image"}]'
 spec:
   replicas: 1
   selector:
@@ -27,26 +26,32 @@ spec:
         runAsNonRoot: true
       containers:
         - name: openshift-mcp
-          image: image-registry.openshift-image-registry.svc:5000/private-ai/openshift-mcp:latest
+          image: quay.io/mcp-servers/kubernetes-mcp-server:latest
+          args:
+            - --transport=sse
+            - --sse-port=8000
+            - --read-only
           ports:
             - containerPort: 8000
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: openshift-mcp-config
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
           resources:
             requests:
-              cpu: 250m
-              memory: 256Mi
+              cpu: 100m
+              memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi
           readinessProbe:
             tcpSocket:
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30

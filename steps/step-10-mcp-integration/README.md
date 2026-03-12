@@ -12,13 +12,13 @@ This completes the **four pillars of Red Hat AI**:
 3. Trust and Governance (step 09)
 4. **Integration and Automation (step 10)**
 
-| Component | Purpose | Persona |
-|-----------|---------|---------|
-| **database-mcp** | Equipment queries via PostgreSQL | Manufacturing Engineer |
-| **openshift-mcp** | Cluster inspection via K8s API | Platform Engineer |
-| **slack-mcp** | Team notifications (demo mode) | Operations Team |
-| **PostgreSQL** | ACME equipment/calibration data | Data layer |
-| **Playground ConfigMap** | MCP server discovery in UI | Platform Admin |
+| Component | Image Source | Purpose | Persona |
+|-----------|-------------|---------|---------|
+| **database-mcp** | [Red Hat Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) (`awslabs/postgres-mcp-server`) | Generic SQL access to ACME equipment DB | Manufacturing Engineer |
+| **openshift-mcp** | [Red Hat Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) (`kubernetes-mcp-server`) | Read-only cluster inspection | Platform Engineer |
+| **slack-mcp** | Custom build (webhook-based) | Real Slack notifications via webhook | Operations Team |
+| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data | Data layer |
+| **Playground ConfigMap** | N/A | MCP server discovery in UI | Platform Admin |
 
 ## Architecture
 
@@ -34,10 +34,24 @@ LlamaStack (lsd-genai-playground / lsd-rag)
     |
     v
 MCP Servers (SSE endpoints in private-ai)
-    |--- database-mcp:8080/sse  -> PostgreSQL (equipment data)
-    |--- openshift-mcp:8000/sse -> Kubernetes API (read-only)
-    |--- slack-mcp:8080/sse     -> Demo logger (no webhook)
+    |--- database-mcp:8080/sse  -> PostgreSQL (Red Hat Catalog: awslabs/postgres-mcp-server)
+    |--- openshift-mcp:8000/sse -> Kubernetes API (Red Hat Catalog: kubernetes-mcp-server)
+    |--- slack-mcp:8080/sse     -> Slack webhook (custom build)
 ```
+
+## Prebuilt Images from Red Hat Ecosystem Catalog
+
+Two of three MCP servers use prebuilt container images from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers), eliminating the need for on-cluster builds:
+
+| Server | Catalog Image | Source |
+|--------|--------------|--------|
+| database-mcp | `quay.io/mcp-servers/awslabs/postgres-mcp-server:latest` | [AWS Labs PostgreSQL MCP](https://github.com/awslabs/mcp/tree/main/src/postgres-mcp-server) |
+| openshift-mcp | `quay.io/mcp-servers/kubernetes-mcp-server:latest` | [containers/kubernetes-mcp-server](https://github.com/containers/kubernetes-mcp-server) |
+| slack-mcp | Custom BuildConfig (UBI9 Node.js) | Webhook-based, no catalog equivalent |
+
+> **Reference projects:**
+> - [burrsutter/fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/mcp-examples) — LlamaStack + MCP registration patterns
+> - [rhoai-genaiops/experiments/8-agents](https://github.com/rhoai-genaiops/experiments/tree/20b537e60c35e4ffdd5df34a611a2a41fc119d3b/8-agents) — MCP server notebooks
 
 ## Prerequisites
 
@@ -59,9 +73,9 @@ oc get llamastackdistribution -n private-ai
 
 This will:
 1. Deploy PostgreSQL with ACME equipment data
-2. Trigger BuildConfigs for 3 MCP server images
-3. Deploy the MCP servers once images are built
-4. Register MCP servers in the GenAI Playground
+2. Trigger BuildConfig for slack-mcp image (only custom build)
+3. Deploy 3 MCP servers (2 prebuilt from catalog + 1 custom build)
+4. Register MCP servers in the GenAI Playground via ArgoCD-managed ConfigMap
 5. Restart LlamaStack pods to discover MCP tools
 
 ### B) Step-by-step (manual)
@@ -70,14 +84,14 @@ This will:
 # 1. Deploy via ArgoCD
 oc apply -f gitops/argocd/app-of-apps/step-10-mcp-integration.yaml
 
-# 2. Wait for builds
-oc get builds -n private-ai -w
+# 2. Wait for slack-mcp build (only custom build)
+oc get builds -n private-ai -l buildconfig=slack-mcp -w
 
-# 3. Wait for servers
+# 3. Wait for servers (database-mcp and openshift-mcp start immediately from catalog images)
 oc get deploy database-mcp openshift-mcp slack-mcp -n private-ai
 
-# 4. Register in Playground
-oc apply -f steps/step-10-mcp-integration/mcp-playground-config.yaml
+# 4. Verify Playground ConfigMap (managed by ArgoCD)
+oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
 
 # 5. Restart LlamaStack
 oc rollout restart deploy/lsd-genai-playground -n private-ai
@@ -111,11 +125,13 @@ This is a 4-question agentic workflow that chains all three MCP servers plus RAG
 
 **Q1: "List pods in acme-corp project"**
 
-The agent calls `list_pods_summary(namespace="acme-corp")` via the OpenShift MCP server. Returns 3 pods -- two Running, one in CrashLoopBackOff (`acme-equipment-0007`).
+The agent uses the Kubernetes MCP server to list pods in the `acme-corp` namespace. Returns 3 pods -- two Running, one in CrashLoopBackOff (`acme-equipment-0007`).
 
 **Q2: "Fetch the equipment name for the failed pod"**
 
-The agent calls `query_pod_equipment(pod_name="acme-equipment-0007")` via the Database MCP server. Returns: "Pod acme-equipment-0007 monitors equipment L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite."
+The agent uses the PostgreSQL MCP server to query the `acme_pod_equipment_map` table. The LLM discovers the schema and writes SQL to look up pod `acme-equipment-0007`. Returns: equipment L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite.
+
+> **Note (generic SQL MCP):** The PostgreSQL MCP server provides generic SQL access. The LLM discovers the database schema via `list_tables` and `describe_table` tools, then writes targeted SQL queries. This is more flexible than hard-coded tool endpoints.
 
 **Q3: "Search for known issues for the mentioned product"**
 
@@ -125,7 +141,7 @@ The agent calls `knowledge_search` (RAG) against the `acme_corporate` Milvus col
 
 **Q4: "Send a Slack message with the summary to the platform team"**
 
-The agent calls `send_slack_message` or `send_equipment_alert` via the Slack MCP server with a summary of findings. In demo mode, the message is logged (not sent to Slack).
+The agent calls `send_slack_message` or `send_equipment_alert` via the Slack MCP server. Messages are delivered to the real `#acme-litho` Slack channel via webhook.
 
 ### Additional Scenarios
 
@@ -133,7 +149,7 @@ The agent calls `send_slack_message` or `send_equipment_alert` via the Slack MCP
 
 > "What lithography equipment do we have and when was LITHO-001 last calibrated?"
 
-The agent calls `query_equipment` and returns structured equipment data with calibration dates.
+The agent queries the PostgreSQL database for equipment records and calibration dates.
 
 #### Combined RAG + MCP
 
@@ -141,39 +157,41 @@ Enable both RAG and Database MCP:
 
 > "Based on our calibration documentation, what procedure should I follow for LITHO-001, and when was it last calibrated?"
 
-The agent uses `knowledge_search` (RAG) for the procedure docs AND `query_equipment` (MCP) for the actual calibration date -- combining document knowledge with live system data.
+The agent uses `knowledge_search` (RAG) for the procedure docs AND SQL queries (MCP) for the actual calibration date -- combining document knowledge with live system data.
 
 #### Cluster Events
 
 > "Check for any warning events in the acme-corp namespace."
 
-The agent calls `get_recent_events(namespace="acme-corp")` to surface Kubernetes events related to the failing pod.
+The agent uses the Kubernetes MCP server to surface events related to the failing pod.
 
 ## MCP Server Details
 
-### database-mcp (Node.js)
+### database-mcp (Red Hat Catalog: awslabs/postgres-mcp-server)
+
+Generic PostgreSQL MCP server providing read-only SQL access. The LLM autonomously discovers the schema and writes queries.
 
 | Tool | Description |
 |------|-------------|
-| `query_pod_equipment` | Map a pod name to its monitored equipment |
-| `query_equipment` | Get equipment details by ID |
-| `query_service_history` | Get recent service/maintenance records |
-| `query_parts_inventory` | Look up spare parts by part number |
+| `list_tables` | List all tables in the database |
+| `describe_table` | Get column details for a table |
+| `query` | Execute read-only SQL queries |
 
-Backend: PostgreSQL with 4 tables (equipment, service_history, parts_inventory, calibration_records) seeded with ACME semiconductor data.
+Backend: PostgreSQL with tables `equipment`, `service_history`, `parts_inventory`, `calibration_records`, `acme_pod_equipment_map` seeded with ACME semiconductor data.
 
-### openshift-mcp (Python)
+### openshift-mcp (Red Hat Catalog: kubernetes-mcp-server)
 
-| Tool | Description |
-|------|-------------|
-| `get_pod_status` | Summarized pod status (phase, ready, restarts) |
-| `get_pod_logs` | Pod logs (last N lines) |
-| `list_pods_summary` | All pods in a namespace with status |
-| `get_recent_events` | Recent events (warnings, errors) |
+Read-only Kubernetes/OpenShift MCP server. Single Go binary, no external dependencies.
 
-Backend: Kubernetes API via `view` ClusterRole (read-only).
+| Capability | Description |
+|------------|-------------|
+| Pod operations | List, get status, logs, events |
+| Resource CRUD | Read any K8s resource including CRDs |
+| Safety mode | `--read-only` enforced |
 
-### slack-mcp (Node.js)
+Backend: Kubernetes API via `view` ClusterRole. See [kubernetes-mcp-server docs](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management).
+
+### slack-mcp (Custom Build)
 
 | Tool | Description |
 |------|-------------|
@@ -181,36 +199,32 @@ Backend: Kubernetes API via `view` ClusterRole (read-only).
 | `send_equipment_alert` | Formatted equipment alert with severity |
 | `send_maintenance_plan` | Maintenance plan with priority |
 
-Backend: Demo mode (logged only). Set `SLACK_WEBHOOK_URL` in ConfigMap for real Slack delivery.
-
-## Image Builds
-
-MCP server images are built on-cluster via OpenShift BuildConfigs:
-
-```bash
-# Check build status
-oc get builds -n private-ai
-
-# Trigger a rebuild
-oc start-build database-mcp -n private-ai
-```
-
-Source code is committed in `steps/step-10-mcp-integration/mcp-servers/`. BuildConfigs pull from the Git repo and build using the Dockerfiles in each server directory.
+Backend: Real Slack webhook. Messages delivered to `#acme-litho` channel.
 
 ## Troubleshooting
 
-### Build fails
+### Catalog image not pulling
 
 ```bash
-oc logs build/database-mcp-1 -n private-ai
-# Common: Git URL not reachable, npm install failure
+# Verify images are accessible from the cluster
+oc debug node/<node-name> -- chroot /host podman pull quay.io/mcp-servers/kubernetes-mcp-server:latest
+oc debug node/<node-name> -- chroot /host podman pull quay.io/mcp-servers/awslabs/postgres-mcp-server:latest
+```
+
+> **Known Limitation:** If catalog images are not yet available on quay.io, fall back to custom BuildConfigs. Restore `database-mcp-bc.yaml` and `openshift-mcp-bc.yaml` from git history.
+
+### slack-mcp build fails
+
+```bash
+oc logs build/slack-mcp-1 -n private-ai
 ```
 
 ### MCP server not starting
 
 ```bash
 oc logs deploy/database-mcp -n private-ai
-# Common: PostgreSQL not ready, image not built yet
+oc logs deploy/openshift-mcp -n private-ai
+oc logs deploy/slack-mcp -n private-ai
 ```
 
 ### MCP tools not visible in Playground
@@ -239,21 +253,19 @@ oc get isvc granite-8b-agent -n private-ai \
 gitops/step-10-mcp-integration/
 ├── base/
 │   ├── kustomization.yaml
-│   ├── acme-corp/               # Demo namespace + 3 pods + RBAC
-│   ├── postgresql/              # Equipment database
-│   ├── mcp-builds/              # 3x BuildConfig + ImageStream
-│   ├── database-mcp/            # Deployment + ConfigMap + Service
-│   ├── openshift-mcp/           # Deployment + SA + ClusterRoleBinding
-│   └── slack-mcp/               # Deployment + ConfigMap + Service
+│   ├── mcp-servers-configmap.yaml  # gen-ai-aa-mcp-servers (redhat-ods-applications)
+│   ├── acme-corp/                  # Demo namespace + 3 pods + RBAC
+│   ├── postgresql/                 # RHEL9 PostgreSQL 15 + init schema
+│   ├── mcp-builds/                 # BuildConfig for slack-mcp only
+│   ├── database-mcp/              # Deployment (catalog image) + ConfigMap + Service
+│   ├── openshift-mcp/             # Deployment (catalog image) + SA + ClusterRoleBinding
+│   └── slack-mcp/                 # Deployment (custom build) + Secret + Service
 
 steps/step-10-mcp-integration/
 ├── deploy.sh
 ├── validate.sh
-├── mcp-playground-config.yaml   # gen-ai-aa-mcp-servers ConfigMap
-├── mcp-servers/                 # Source code for BuildConfigs
-│   ├── database-mcp/
-│   ├── openshift-mcp/
-│   └── slack-mcp/
+├── mcp-servers/                    # Source code for custom builds
+│   └── slack-mcp/                  # Only slack-mcp still needs source
 └── README.md
 ```
 
@@ -272,15 +284,21 @@ oc delete clusterrolebinding openshift-mcp-view
 
 ## Key Design Decisions
 
-> **Design Decision:** MCP servers are built on-cluster via BuildConfigs rather than pre-published images. This keeps the demo self-contained and reproducible without external registry dependencies.
+> **Design Decision:** We use prebuilt MCP server images from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) where possible. This eliminates on-cluster builds for 2 of 3 servers, reduces deployment time, and leverages community-maintained implementations built on Red Hat UBI images.
 
-> **Design Decision:** MCP as one tool source among several. The LlamaStack agent combines RAG tools (`builtin::rag`) with MCP tools (`mcp::database`, `mcp::openshift`, `mcp::slack`) -- the agent decides which tools to invoke based on the user's question.
+> **Design Decision:** The PostgreSQL MCP server uses generic SQL access rather than custom tool endpoints. The LLM discovers the schema autonomously and writes targeted SQL queries. This is more flexible and demonstrates real-world MCP patterns (matching the [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/mcp-examples) approach).
 
-> **Design Decision:** Playground ConfigMap in `redhat-ods-applications` is applied by `deploy.sh` (not GitOps) because ArgoCD targets the `private-ai` namespace. This is consistent with the RHOAI 3.3 documentation pattern.
+> **Design Decision:** The Kubernetes MCP server runs in `--read-only` mode with a `view` ClusterRole, following the [Red Hat developer preview guidance](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management).
+
+> **Design Decision:** Slack MCP keeps a custom build because no catalog MCP server supports simple webhook-based posting. Real messages are delivered via the configured `SLACK_WEBHOOK_URL`.
+
+> **Design Decision:** The MCP servers ConfigMap (`gen-ai-aa-mcp-servers`) is managed by ArgoCD in `redhat-ods-applications`, matching the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
 ## Official Documentation
 
 - [RHOAI 3.3 -- Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
 - [RHOAI 3.3 -- Testing with MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/testing-with-model-control-protocol-servers_rhoai-user)
+- [Red Hat Ecosystem Catalog -- MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
+- [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Llama Stack Agents](https://llama-stack.readthedocs.io/en/latest/concepts/agents.html)

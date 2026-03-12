@@ -4,6 +4,7 @@ metadata:
   name: postgresql-pvc
   namespace: private-ai
   labels:
+    app: postgresql
     app.kubernetes.io/part-of: mcp-integration
     app.kubernetes.io/component: database
   annotations:
@@ -11,6 +12,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: gp3-csi
   resources:
     requests:
-      storage: 1Gi
+      storage: 5Gi
