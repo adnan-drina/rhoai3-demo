@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = os.getenv(
     "GUARDRAILS_ORCHESTRATOR_URL",
-    "http://guardrails-orchestrator-service.private-ai.svc:8032"
+    "https://guardrails-orchestrator-service.private-ai.svc:8032"
 )
+VERIFY_SSL = False
 HEALTH_URL = os.getenv(
     "GUARDRAILS_HEALTH_URL",
     "http://guardrails-orchestrator-service.private-ai.svc:8034"
@@ -44,6 +45,7 @@ def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
             f"{ORCHESTRATOR_URL}/api/v2/text/detection/content",
             json={"content": text, "detectors": detector_config},
             timeout=10,
+            verify=VERIFY_SSL,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -91,6 +93,7 @@ def check_output(text: str, detectors: list[str] | None = None) -> dict | None:
             f"{ORCHESTRATOR_URL}/api/v2/text/detection/content",
             json={"content": text, "detectors": detector_config},
             timeout=10,
+            verify=VERIFY_SSL,
         )
         resp.raise_for_status()
         data = resp.json()
