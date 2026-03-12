@@ -350,7 +350,8 @@ def agent_process_prompt(prompt, state, config):
 
     # --- Input guardrails (HAP + prompt injection) ---
     shields_on = getattr(config, 'shields_enabled', False) or st.session_state.get("guardrails_enabled", False)
-    print(f"[GUARDRAILS] shields_on={shields_on}, config.shields_enabled={getattr(config, 'shields_enabled', 'N/A')}, session_state={st.session_state.get('guardrails_enabled', 'N/A')}")
+    import logging as _log
+    _log.warning("[GUARDRAILS] shields_on=%s config=%s session=%s", shields_on, getattr(config, 'shields_enabled', 'N/A'), st.session_state.get('guardrails_enabled', 'N/A'))
     if shields_on and guardrails.is_available():
         with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
             violation = guardrails.check_input(prompt)
