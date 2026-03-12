@@ -212,24 +212,9 @@ data:
           kvstore:
             namespace: huggingface_datasetio
             backend: kv_default
-      safety:
-      - provider_id: fms-guardrails
-        provider_type: remote::trustyai_fms
-        config:
-          orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
-          verify_ssl: false
-          shields:
-            hap:
-              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
-            prompt_injection:
-              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
-            regex:
-              orchestrator_url: http://guardrails-orchestrator-service.private-ai.svc:8034
-              detector_params:
-                regex:
-                  - email
-                  - us-phone-number
-                  - credit-card
+      # Safety: The fms-guardrails provider (remote::trustyai_fms) requires
+      # rh-dev auto-wiring which is incompatible with userConfig.
+      # Guardrails are accessed directly via the orchestrator API from the chatbot.
       scoring:
       - provider_id: basic
         provider_type: inline::basic
@@ -256,16 +241,7 @@ data:
         model_id: granite-8b-agent
         model_type: llm
         metadata: {}
-      shields:
-      - shield_id: hap
-        provider_id: fms-guardrails
-        provider_shield_id: hap
-      - shield_id: prompt_injection
-        provider_id: fms-guardrails
-        provider_shield_id: prompt_injection
-      - shield_id: regex_pii
-        provider_id: fms-guardrails
-        provider_shield_id: regex
+      shields: []
       vector_stores: []
       datasets: []
       scoring_fns: []
