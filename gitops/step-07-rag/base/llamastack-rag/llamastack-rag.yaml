@@ -212,6 +212,11 @@ data:
           kvstore:
             namespace: huggingface_datasetio
             backend: kv_default
+      safety:
+      - provider_id: fms-guardrails
+        provider_type: remote::fms-guardrails-orchestrator
+        config:
+          base_url: http://guardrails-orchestrator.private-ai.svc:8080
       scoring:
       - provider_id: basic
         provider_type: inline::basic
@@ -238,7 +243,16 @@ data:
         model_id: granite-8b-agent
         model_type: llm
         metadata: {}
-      shields: []
+      shields:
+      - shield_id: hap
+        provider_id: fms-guardrails
+        provider_shield_id: hap
+      - shield_id: prompt_injection
+        provider_id: fms-guardrails
+        provider_shield_id: prompt_injection
+      - shield_id: regex_pii
+        provider_id: fms-guardrails
+        provider_shield_id: regex
       vector_stores: []
       datasets: []
       scoring_fns: []
