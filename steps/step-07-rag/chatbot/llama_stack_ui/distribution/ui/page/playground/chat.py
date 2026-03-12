@@ -239,6 +239,23 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             on_toolgroup_change, reset_agent
         )
 
+    # Security Shields (Agent-based mode only)
+    shields_enabled = False
+    if processing_mode == "Agent-based":
+        from llama_stack_ui.distribution.ui.modules import guardrails
+        guardrails_available = guardrails.is_available()
+        st.subheader("🛡️ Security Shields")
+        if guardrails_available:
+            shields_enabled = st.toggle(
+                "Enable Guardrails",
+                value=False,
+                help="When enabled, user messages are checked for hate/abuse and prompt injection before reaching the LLM. Model responses are checked for PII leakage.",
+            )
+            if shields_enabled:
+                st.caption("Active shields: HAP, Prompt Injection (input) · HAP, PII Regex (output)")
+        else:
+            st.caption("⚠️ Guardrails Orchestrator not available. Deploy step-09 to enable.")
+
     # Sampling Parameters
     st.subheader("Sampling Parameters")
     temperature = st.slider(
@@ -287,6 +304,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         'max_infer_iters': max_infer_iters,
         'max_tokens': max_tokens,
         'system_prompt': system_prompt,
+        'shields_enabled': shields_enabled,
     }
 
 
@@ -374,6 +392,7 @@ class ChatConfig:
     toolgroup_selection: list
     selected_vector_dbs: list
     sampling: SamplingParams
+    shields_enabled: bool = False
 
 
 # ============================================================================
@@ -576,7 +595,8 @@ def tool_chat_page():
             top_k=sidebar_config['top_k'],
             max_infer_iters=sidebar_config['max_infer_iters'],
             max_tokens=sidebar_config['max_tokens'],
-        )
+        ),
+        shields_enabled=sidebar_config.get('shields_enabled', False),
     )
 
     # Display chat history

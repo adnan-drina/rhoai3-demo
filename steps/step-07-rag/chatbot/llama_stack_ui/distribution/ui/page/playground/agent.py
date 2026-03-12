@@ -345,7 +345,29 @@ def save_agent_response_to_session(state):
 
 
 def agent_process_prompt(prompt, state, config):
-    """Agent-based mode: Use Responses API with automatic tool calling."""
+    """Agent-based mode: Use Responses API with automatic tool calling + guardrails."""
+    from llama_stack_ui.distribution.ui.modules import guardrails
+
+    # --- Input guardrails (HAP + prompt injection) ---
+    if getattr(config, 'shields_enabled', False) and guardrails.is_available():
+        with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
+            violation = guardrails.check_input(prompt)
+            if violation:
+                shield_status.update(label="🛡️ Input blocked", state="error")
+                detector = violation['detector']
+                score = violation['score']
+                st.error(
+                    f"🛡️ **Safety Shield Activated** — Your message was blocked by the "
+                    f"**{detector}** detector (confidence: {score:.2f}).\n\n"
+                    f"Please rephrase your message."
+                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). Please rephrase.",
+                })
+                return
+            shield_status.update(label="🛡️ Input safe", state="complete")
+
     # Build tools list from selected toolgroups
     tools = build_response_tools(
         config.toolgroup_selection,
@@ -363,11 +385,8 @@ def agent_process_prompt(prompt, state, config):
         "temperature": config.sampling.temperature,
         "max_infer_iters": config.sampling.max_infer_iters,
         "stream": True,
-       # "max_output_tokens": config.sampling.max_tokens,
-
     }
 
-    # Add tools if available
     if tools:
         request_kwargs["tools"] = tools
 
@@ -381,6 +400,23 @@ def agent_process_prompt(prompt, state, config):
 
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
+
+    # --- Output guardrails (HAP + PII regex) ---
+    if getattr(config, 'shields_enabled', False) and guardrails.is_available() and state.full_response:
+        violation = guardrails.check_output(state.full_response)
+        if violation:
+            detector = violation['detector']
+            score = violation['score']
+            blocked_text = violation.get('text', '')
+            st.warning(
+                f"🛡️ **Output filtered** — The {detector} detector found sensitive content "
+                f"(confidence: {score:.2f}). The detected content has been flagged."
+            )
+            state.tool_results.append({
+                'title': f'🛡️ Output Shield: {detector}',
+                'type': 'code',
+                'content': f'Detected: {blocked_text}\nScore: {score:.2f}\nType: {violation.get("type", "")}'
+            })
 
     # Save response to session
     save_agent_response_to_session(state)
