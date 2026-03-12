@@ -1,5 +1,5 @@
 name: "Whoami (CV) — Pre-RAG Baseline"
-description: "Baseline evaluation WITHOUT document retrieval. Personal info not in training data."
+description: "Baseline WITHOUT document retrieval. Personal info is NOT in the LLM training data — pre-RAG should fail completely."
 vector_db_id: null
 model_id: granite-8b-agent
 mode: pre-rag
@@ -14,10 +14,14 @@ scoring_params:
   "basic::subset_of": null
 
 tests:
-  - prompt: "What is Adnan Drina's professional background?"
-    expected_result: "Adnan Drina is a technology professional with experience in cloud computing, Kubernetes, and AI/ML platforms."
+  - prompt: "What is Adnan Drina's current job title and company?"
+    expected_result: "Principal Solution Architect at Red Hat, focused on AI, Application Development, and Developer Experience."
     expected_tools: []
 
-  - prompt: "What certifications or skills does the candidate have?"
-    expected_result: "The candidate has skills in Red Hat OpenShift, Kubernetes, cloud-native development, and AI/ML engineering."
+  - prompt: "What are Adnan Drina's main areas of expertise?"
+    expected_result: "AI and ML platform adoption, application development strategy and solution architecture, developer experience and workflow modernization, OpenShift and Kubernetes platforms, cloud-native architectures and GitOps."
+    expected_tools: []
+
+  - prompt: "Where is Adnan Drina based?"
+    expected_result: "Netherlands."
     expected_tools: []

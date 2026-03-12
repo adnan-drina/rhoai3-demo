@@ -1,5 +1,5 @@
 name: "EU AI Act — Pre-RAG Baseline"
-description: "Baseline evaluation WITHOUT document retrieval. Tests LLM knowledge only."
+description: "Baseline WITHOUT document retrieval. The LLM may have general EU AI Act knowledge from training but not the specific document language."
 vector_db_id: null
 model_id: granite-8b-agent
 mode: pre-rag
@@ -14,22 +14,14 @@ scoring_params:
   "basic::subset_of": null
 
 tests:
+  - prompt: "How does the EU AI Act classify AI systems as high-risk?"
+    expected_result: "AI systems classify as high-risk in two cases: when embedded as a safety component in products covered by existing product legislation (Annex I), or when intended for a high-risk use case listed in Annex III covering areas such as education, employment, law enforcement, or migration."
+    expected_tools: []
+
+  - prompt: "What risk management obligations does the EU AI Act impose on providers?"
+    expected_result: "Providers must establish a risk management system that identifies and mitigates risks through development or design of the AI system or provision of technical information. Measures must consider effects and interactions of combined requirements to minimise risks effectively."
+    expected_tools: []
+
   - prompt: "What are the main risk categories defined by the EU AI Act?"
-    expected_result: "The EU AI Act defines four risk categories: unacceptable risk (banned), high risk (strict requirements), limited risk (transparency obligations), and minimal risk (voluntary codes)."
-    expected_tools: []
-
-  - prompt: "What obligations do providers of high-risk AI systems have under the EU AI Act?"
-    expected_result: "Providers must implement risk management systems, ensure data governance and quality, maintain technical documentation, enable human oversight, and ensure accuracy, robustness, and cybersecurity."
-    expected_tools: []
-
-  - prompt: "When did the EU AI Act enter into force and what is the implementation timeline?"
-    expected_result: "The EU AI Act was published in the Official Journal in July 2024 and entered into force in August 2024, with phased implementation through 2027."
-    expected_tools: []
-
-  - prompt: "What AI practices are prohibited under the EU AI Act?"
-    expected_result: "Prohibited practices include social scoring by governments, real-time biometric identification in public spaces (with exceptions), manipulation of vulnerable groups, and emotion recognition in workplaces and schools."
-    expected_tools: []
-
-  - prompt: "How does the EU AI Act define general-purpose AI models?"
-    expected_result: "General-purpose AI (GPAI) models are defined as models trained on broad data that can perform a wide range of tasks. Providers of GPAI models with systemic risk face additional obligations."
+    expected_result: "The EU AI Act defines four risk categories: unacceptable risk (prohibited practices), high risk (strict regulatory requirements including conformity assessment), limited risk (transparency obligations), and minimal risk (voluntary codes of conduct)."
     expected_tools: []

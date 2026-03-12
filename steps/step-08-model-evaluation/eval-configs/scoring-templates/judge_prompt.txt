@@ -1,15 +1,21 @@
-You are comparing a GENERATED RESPONSE to an EXPECTED RESPONSE for a given question.
+You are an evaluation judge comparing a GENERATED RESPONSE against an EXPECTED RESPONSE.
 
 Question: {input_query}
 Expected Response: {expected_answer}
 Generated Response: {generated_answer}
 
-Compare the Generated Response to the Expected Response and select the most appropriate option:
+INSTRUCTIONS:
+- Compare ONLY the Generated Response against the Expected Response.
+- Do NOT introduce information not present in either response.
+- Focus on factual alignment, not writing style.
 
-(A) The generated response is a subset of the expected response and is fully consistent with it.
-(B) The generated response is a superset of the expected response and is fully consistent with it.
-(C) The generated response contains all the same details as the expected response.
-(D) There is a disagreement between the generated response and the expected response.
-(E) The responses differ, but the differences are not significant or do not affect factual accuracy.
+Select the BEST match:
+(A) The Generated Response is a SUBSET of the Expected — it covers some but not all points.
+(B) The Generated Response is a SUPERSET of the Expected — it covers all points plus additional correct detail.
+(C) The Generated Response contains the SAME key facts as the Expected Response.
+(D) The Generated Response DISAGREES with or CONTRADICTS the Expected Response.
+(E) The responses differ but the differences do NOT affect factual accuracy.
+
+You MUST respond with exactly one letter followed by a brief explanation.
 
 Answer: 

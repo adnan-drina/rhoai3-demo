@@ -1,5 +1,5 @@
 name: "Whoami (CV) — Post-RAG Evaluation"
-description: "Evaluation WITH document retrieval. Tests RAG grounding against ingested CV."
+description: "Evaluation WITH document retrieval. Expected answers from actual CV content."
 vector_db_id: whoami
 model_id: granite-8b-agent
 mode: post-rag
@@ -15,12 +15,17 @@ scoring_params:
   "basic::tool_choice": null
 
 tests:
-  - prompt: "What is Adnan Drina's professional background?"
-    expected_result: "Adnan Drina is a technology professional with experience in cloud computing, Kubernetes, and AI/ML platforms."
+  - prompt: "What is Adnan Drina's current job title and company?"
+    expected_result: "Principal Solution Architect at Red Hat, focused on AI, Application Development, and Developer Experience."
     expected_tools:
       - builtin::rag/knowledge_search
 
-  - prompt: "What certifications or skills does the candidate have?"
-    expected_result: "The candidate has skills in Red Hat OpenShift, Kubernetes, cloud-native development, and AI/ML engineering."
+  - prompt: "What are Adnan Drina's main areas of expertise?"
+    expected_result: "AI and ML platform adoption, application development strategy and solution architecture, developer experience and workflow modernization, OpenShift and Kubernetes platforms, cloud-native architectures and GitOps."
+    expected_tools:
+      - builtin::rag/knowledge_search
+
+  - prompt: "Where is Adnan Drina based?"
+    expected_result: "Netherlands."
     expected_tools:
       - builtin::rag/knowledge_search
