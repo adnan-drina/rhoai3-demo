@@ -1,5 +1,5 @@
 name: "ACME Corporate — Pre-RAG Baseline"
-description: "Baseline evaluation WITHOUT document retrieval. Same questions as post-RAG, same expected answers. Pre-RAG should score lower because the LLM has no access to ACME internal documents."
+description: "Baseline WITHOUT document retrieval. The LLM only knows ACME as a fictional cartoon company — it has no access to ACME's internal semiconductor documents."
 vector_db_id: null
 model_id: granite-8b-agent
 mode: pre-rag
@@ -14,26 +14,26 @@ scoring_params:
   "basic::subset_of": null
 
 tests:
+  - prompt: "What is ACME Corp?"
+    expected_result: "ACME Corp is a technology solutions provider specializing in lithography optimization, metrology calibration, and predictive reliability frameworks for advanced semiconductor manufacturing, headquartered in Amsterdam, The Netherlands."
+    expected_tools: []
+
+  - prompt: "Who is the Managing Director of ACME Corp?"
+    expected_result: "The Managing Director of ACME Corp is Adnan Drina."
+    expected_tools: []
+
+  - prompt: "What are ACME Corp's core products and services?"
+    expected_result: "ACME Corp's core products include the L-900 EUV Calibration Suite, PX-7 Lithography Control System, Metrix Analyzer, ScanGuard, and TierLink Response Platform. Services include 24/7 global technical support."
+    expected_tools: []
+
   - prompt: "What are the key calibration procedures in the ACME DFO Calibration SOP?"
     expected_result: "The DFO Calibration SOP v1.9 for the L-900 EUV tool covers Pre-Checks (interlocks, reticle verification, stage delta-T), Dose Uniformity Procedure, Best Focus measurement, and Overlay verification."
     expected_tools: []
 
-  - prompt: "What are ACME's primary product lines?"
-    expected_result: "ACME's primary products include the L-900 EUV Calibration Suite for DFO and optical field uniformity tuning, and the PX-7 Lithography Control System for SPC and process analytics."
-    expected_tools: []
-
-  - prompt: "What is ACME's corporate profile?"
-    expected_result: "ACME Corporate is a technology solutions provider specializing in lithography optimization, metrology calibration, and predictive reliability frameworks for advanced semiconductor manufacturing, headquartered in Amsterdam, The Netherlands."
-    expected_tools: []
-
-  - prompt: "What are the Tier-1 trouble response procedures in the ACME Trouble Response Playbook?"
-    expected_result: "Tier-1 procedures cover Pre-Check Failures (TR-1), Dose Drift (TR-2), and initial troubleshooting. Tier-1 focuses on handling common equipment issues before escalating to Tier-2 for engineering root cause analysis."
-    expected_tools: []
-
   - prompt: "What SPC limits does the PX-7 Lithography Control Plan define?"
-    expected_result: "The PX-7 Control Plan v2.3 defines SPC limits by layer, with sections covering Overview, Limits by Layer, Escalation Rules, and Documentation requirements."
+    expected_result: "The PX-7 Control Plan v2.3 defines SPC limits by layer for Dose, Focus, and Overlay parameters, with escalation rules and documentation requirements."
     expected_tools: []
 
   - prompt: "What predictive maintenance rules apply to the L-900 tool?"
-    expected_result: "The L-900 FMEA Extract covers Subsystems and Failure Modes, Predictive Triggers based on sensor data trends, and recommended Actions and Parts for each failure mode."
+    expected_result: "The L-900 FMEA Extract v0.9 covers Subsystems and Failure Modes, Predictive Triggers based on sensor data trends, and recommended Actions and Parts for each failure mode."
     expected_tools: []
