@@ -349,8 +349,8 @@ def agent_process_prompt(prompt, state, config):
     from llama_stack_ui.distribution.ui.modules import guardrails
 
     # --- Input guardrails (HAP + prompt injection) ---
-    shields_on = st.session_state.get("guardrails_enabled", False)
-    logger.debug("Shields enabled: %s", shields_on)
+    shields_on = getattr(config, 'shields_enabled', False) or st.session_state.get("guardrails_enabled", False)
+    print(f"[GUARDRAILS] shields_on={shields_on}, config.shields_enabled={getattr(config, 'shields_enabled', 'N/A')}, session_state={st.session_state.get('guardrails_enabled', 'N/A')}")
     if shields_on and guardrails.is_available():
         with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
             violation = guardrails.check_input(prompt)
