@@ -247,7 +247,7 @@ oc delete secret slack-mcp-credentials -n private-ai
 
 > **Design Decision:** The Database MCP uses generic SQL access (EDB Postgres MCP) rather than custom tool endpoints. The LLM discovers the schema autonomously and writes targeted SQL.
 
-> **Design Decision:** deploy.sh does NOT restart lsd-rag to preserve vector store data. MCP tool_groups are registered via lsd-rag config, so no restart is needed. Only the Dashboard Playground LSD is restarted.
+> **Design Decision:** deploy.sh does NOT restart lsd-rag. MCP tool_groups are registered via the LlamaStack API (not in config files) and persist in PostgreSQL across restarts. Only the Dashboard Playground LSD is restarted. Vector store data persists via pgvector.
 
 > **Design Decision:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD (not applied manually by deploy.sh), following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
