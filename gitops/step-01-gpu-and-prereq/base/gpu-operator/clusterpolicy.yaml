@@ -1,9 +1,8 @@
 # ClusterPolicy configures NVIDIA GPU Operator components
 # Ref: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/contents.html
 #
-# IMPORTANT: Driver version pinned to 570.195.03 for RHOAI 3.3 compatibility
-# GPU Operator 25.10.1 defaults to driver 580.105.08 (CUDA 13.0) which is incompatible
-# with RHOAI 3.3 vLLM images (built with CUDA 12.8)
+# RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), compatible with
+# GPU Operator 25.10 default driver 580.x. No driver pin needed.
 # See: https://access.redhat.com/solutions/7134740
 apiVersion: nvidia.com/v1
 kind: ClusterPolicy
@@ -28,12 +27,8 @@ spec:
         effect: "NoSchedule"
   
   # Driver version pinned for RHOAI 3.3 / vLLM CUDA 12.8 compatibility
-  # Ref: https://access.redhat.com/solutions/7134740
   driver:
     enabled: true
-    repository: nvcr.io/nvidia
-    image: driver
-    version: "570.195.03"
   
   dcgm:
     enabled: true

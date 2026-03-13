@@ -44,7 +44,7 @@ OpenShift 4.20 Cluster
 
 ## Design Decisions
 
-> **Driver pinned to 570.195.03 (pending re-validation):** GPU Operator 25.10 ships driver 580.105.08 with CUDA 13.0. RHOAI 3.3 AI Inference Server now also uses CUDA 13.0 (vLLM v0.13.0), so the conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) may be resolved. We retain the pin and `installPlanApproval: Manual` until validated on a fresh cluster. Once confirmed, remove the pin and switch to `Automatic` approval.
+> **Default GPU driver (no pin):** RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.
 
 > **Driver Toolkit over RHEL entitlements:** OCP 4.20 uses DTK for pre-compiled driver images, eliminating RHEL entitlement secrets on GPU nodes.
 
