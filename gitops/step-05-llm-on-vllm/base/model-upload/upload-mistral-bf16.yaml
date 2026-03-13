@@ -62,7 +62,7 @@ spec:
               set -e
               export HOME=/tmp
               export PYTHONUNBUFFERED=1
-              export HF_HUB_OFFLINE=1
+              export HF_HUB_OFFLINE=0
               MODEL_NAME="Mistral-Small-24B-BF16"
               HF_REPO="mistralai/Mistral-Small-24B-Instruct-2501"
               S3_PREFIX="mistral-small-24b"

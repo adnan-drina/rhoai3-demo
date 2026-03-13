@@ -67,7 +67,7 @@ spec:
               set -e
               export HOME=/tmp
               export PYTHONUNBUFFERED=1
-              export HF_HUB_OFFLINE=1
+              export HF_HUB_OFFLINE=0
               MODEL_NAME="Granite-3.1-8B-Instruct-FP8"
               HF_REPO="RedHatAI/granite-3.1-8b-instruct-FP8-dynamic"
               S3_PREFIX="granite-3.1-8b-instruct-fp8"

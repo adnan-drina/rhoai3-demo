@@ -64,15 +64,22 @@ if [ -z "$OC_TOKEN" ]; then
 fi
 echo -e "${GREEN}  oc token acquired${NC}"
 
+VENV_PATH="$REPO_ROOT/.venv-kfp"
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Creating Python venv..."
+    python3 -m venv "$VENV_PATH"
+fi
+"$VENV_PATH/bin/pip" install -q --upgrade pip kfp "kfp-server-api>=2.0,<3.0" 2>/dev/null
+
 PIPELINE_YAML="$REPO_ROOT/artifacts/rag-ingestion-batch.yaml"
 if [ ! -f "$PIPELINE_YAML" ]; then
     echo "Compiling pipeline..."
-    VENV_PATH="$REPO_ROOT/.venv-kfp"
-    if [ ! -d "$VENV_PATH" ]; then
-        python3 -m venv "$VENV_PATH"
-        "$VENV_PATH/bin/pip" install -q --upgrade pip kfp
-    fi
+    mkdir -p "$REPO_ROOT/artifacts"
     (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
+    if [ ! -f "$PIPELINE_YAML" ]; then
+        echo -e "${RED}Pipeline compilation failed — $PIPELINE_YAML not found${NC}"
+        exit 1
+    fi
 fi
 
 echo "Launching pipeline run via KFP client..."

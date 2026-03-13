@@ -20,6 +20,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - ServerSideApply.ForceConflicts=true
+      - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
     retry:

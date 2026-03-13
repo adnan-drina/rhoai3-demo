@@ -70,7 +70,7 @@ spec:
               set -e
               export HOME=/tmp
               export PYTHONUNBUFFERED=1
-              export HF_HUB_OFFLINE=1
+              export HF_HUB_OFFLINE=0
               MODEL_NAME="GPT-OSS-20B"
               HF_REPO="RedHatAI/gpt-oss-20b"
               S3_PREFIX="gpt-oss-20b"

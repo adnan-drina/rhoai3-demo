@@ -108,6 +108,7 @@ echo ""
 # =============================================================================
 log_step "Applying AI Asset labels for GenAI Playground..."
 
+set +u
 declare -A MODEL_USE_CASES=(
     ["mistral-3-int4"]="chat assistant"
     ["mistral-3-bf16"]="enterprise chat assistant"
@@ -134,6 +135,7 @@ for model in "${!MODEL_USE_CASES[@]}"; do
         log_success "${model} labeled (${use_case})"
     fi
 done
+set -u
 echo ""
 
 # =============================================================================
