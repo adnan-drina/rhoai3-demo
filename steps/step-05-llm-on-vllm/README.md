@@ -1,71 +1,57 @@
-# Step 05: GPU-as-a-Service
-**Five models, five GPUs, two active at a time — swappable on demand.**
+# Step 05: LLM Serving on vLLM
+
+**Deploy LLMs on vLLM inference servers and validate them in the GenAI Playground.**
 
 ## The Business Story
 
-GPUs are the scarcest resource in the enterprise. Teams can't hoard them. **GPU-as-a-Service** means fair allocation via quotas, dynamic handover when workloads finish, and a model portfolio where multiple specialized LLMs share a fixed GPU budget. Kueue enforces the rules; the platform handles the rest.
+The models are registered. The GPUs are provisioned. Now we serve them. Step-05 deploys five Red Hat-validated models on vLLM using KServe RawDeployment mode, makes them accessible through the GenAI Playground for rapid evaluation, and demonstrates live model swapping across GPU nodes — all governed by the Kueue quotas from step-03.
 
 ## What It Does
 
-Deploys an **enterprise model portfolio** of 5 Red Hat-validated models on a 5-GPU cluster. Two models run active at baseline; three sit queued at zero replicas, ready to swap in when GPU capacity frees up.
-
 | Component | Purpose |
 |-----------|---------|
-| **vLLM ServingRuntime** | KServe runtime (v0.13.0, RHOAI 3.3 default) |
-| **Kueue ClusterQueue** | Enforces 5-GPU quota across all workloads |
-| **ResourceFlavors** | `nvidia-l4-1gpu` (g6.4xlarge) + `nvidia-l4-4gpu` (g6.12xlarge) |
-| **InferenceServices** (×5) | 2 active + 3 queued, all in `private-ai` namespace |
+| **vLLM ServingRuntime** | KServe runtime (vLLM v0.13.0, RHOAI 3.3) |
+| **5 InferenceServices** | 2 active + 3 standby (see table below) |
+| **GenAI Playground** | Browser-based chat UI for model evaluation |
+| **AI Asset Labels** | `opendatahub.io/genai-asset: true` for Playground discovery |
 
 | Model | GPUs | Status | Use Case |
 |-------|------|--------|----------|
 | **granite-8b-agent** | 1 | Active | RAG, MCP tools, Guardrails, Playground |
-| **mistral-3-bf16** | 4 | Active | Full-precision 24B LLM, Playground chat |
-| **mistral-3-int4** | 1 | Queued | Cost-efficient chat (75% memory savings) |
-| **devstral-2** | 4 | Queued | Agentic tool-calling |
-| **gpt-oss-20b** | 4 | Queued | High-reasoning tasks |
+| **mistral-3-bf16** | 4 | Active | Full-precision 24B LLM, Playground, eval judge |
+| **mistral-3-int4** | 1 | Standby | Cost-efficient chat (75% memory savings) |
+| **devstral-2** | 4 | Standby | Agentic tool-calling |
+| **gpt-oss-20b** | 4 | Standby | High-reasoning tasks |
 
-**Total registered:** 14 GPUs · **Quota limit:** 5 GPUs · **Active at any time:** 5/5
+> **Standby models** are deployed with `minReplicas: 0` in the manifest. Since KServe RawDeployment does not support native scale-to-zero, `deploy.sh` explicitly scales their Deployments to 0 replicas after ArgoCD sync. Activate them via `oc patch inferenceservice <name> --type merge -p '{"spec":{"predictor":{"minReplicas":1}}}'`. Ref: [RawDeployment scaling limitations](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/deploying_models).
 
 ## Demo Walkthrough
 
-> **Login as** `ai-admin` / `redhat123` for all scenes.
+> **Login as** `ai-admin` / `redhat123`
 
----
+### Scene 1 — Model Portfolio
 
-### Scene 1 — Model Portfolio (Active vs. Queued)
-
-**Do:** Open the RHOAI Dashboard → **Observe & Monitor → Workload Metrics → Distributed workload status**. Then navigate to **GenAI Studio** → select the **Private AI - GPU as a Service** project.
-
-**Expect:** The workload metrics page shows 5 InferenceServices — 2 admitted (green), 3 queued (yellow). The GenAI Studio project view lists the active models with green status indicators.
-
-*"We have five models registered but only five GPUs. The platform is running Granite on one GPU and Mistral BF16 across four — that's our full budget. Three more models are queued at zero replicas. They're defined, governed, and ready to go — but Kueue won't let them start until GPU capacity frees up. This is GPU-as-a-Service: fair sharing, not first-come-first-served."*
-
-**CLI shortcut:**
+**Do:** Navigate to **GenAI Studio → AI Asset Endpoints** in the RHOAI Dashboard. Then check CLI:
 
 ```bash
 oc get inferenceservice -n private-ai
-# granite-8b-agent   Ready    (1 GPU)
-# mistral-3-bf16     Ready    (4 GPUs)
-# mistral-3-int4     —        (0 replicas)
-# devstral-2         —        (0 replicas)
-# gpt-oss-20b        —        (0 replicas)
 ```
 
----
+**Expect:** 5 InferenceServices listed. `granite-8b-agent` and `mistral-3-bf16` show Ready. The other 3 show no status (0 replicas).
+
+*"We have five models defined but only five GPUs. Granite uses one, Mistral BF16 uses four — that's our full budget. The other three are ready to activate but won't consume resources until we explicitly scale them up."*
 
 ### Scene 2 — GenAI Playground (Chat with Granite)
 
-**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground** and select `granite-8b-agent`. Send a prompt: *"Explain Kubernetes operators in three sentences."*
+**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground** and select `granite-8b-agent`. Send: *"Explain Kubernetes operators in three sentences."*
 
-**Expect:** A streaming response within 2–3 seconds. The model answers coherently — this is the same Granite that was registered in Step 04, now live on a GPU.
+**Expect:** Streaming response within 2–3 seconds.
 
-*"This is the model we registered in the Model Registry, now served through vLLM on a single L4 GPU. Developers don't need API keys, external accounts, or curl commands — they open the Playground and start experimenting. The model runs entirely on our infrastructure, behind our firewall."*
+*"This is the Granite model we registered in the Model Registry, now live on a single L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
 
----
+### Scene 3 — Live Model Swapping
 
-### Scene 3 — Model Swapping (4-GPU Swap)
-
-**Do:** In a terminal, run the swap commands live. Scale down Mistral BF16 and scale up GPT-OSS-20B:
+**Do:** Swap Mistral BF16 for GPT-OSS-20B live:
 
 ```bash
 oc patch inferenceservice mistral-3-bf16 -n private-ai --type merge \
@@ -77,59 +63,45 @@ oc patch inferenceservice gpt-oss-20b -n private-ai --type merge \
 oc get inferenceservice -n private-ai -w
 ```
 
-**Expect:** Mistral BF16 scales to zero. After 60–90 seconds, GPT-OSS-20B starts loading on the 4-GPU node. Kueue automatically admits the new workload once the old one releases its quota.
+**Expect:** Mistral scales down. GPT-OSS-20B starts loading on the 4-GPU node within 60–90 seconds.
 
-*"Watch what happens — we scale Mistral down, freeing four GPUs. Kueue immediately notices the freed capacity and admits GPT-OSS. No manual scheduling, no ticket to the infra team. The platform handles the handover. Same hardware, different model, zero downtime for the rest of the portfolio."*
+*"We freed four GPUs by scaling Mistral down. Kueue immediately admits GPT-OSS — no tickets, no manual scheduling. Same hardware, different model."*
 
-**Reset to baseline after the demo:**
-
-```bash
-oc patch inferenceservice gpt-oss-20b -n private-ai --type merge \
-  -p '{"spec":{"predictor":{"minReplicas":0}}}'
-oc patch inferenceservice mistral-3-bf16 -n private-ai --type merge \
-  -p '{"spec":{"predictor":{"minReplicas":1}}}'
-```
-
----
+**Reset:** `oc patch inferenceservice gpt-oss-20b -n private-ai --type merge -p '{"spec":{"predictor":{"minReplicas":0}}}'` then scale mistral-3-bf16 back to 1.
 
 ### Scene 4 — GenAI Playground with RAG
 
-**Do:** Return to the Playground. Select `granite-8b-agent`. Toggle **RAG ON**. Upload a PDF (product spec, internal doc, etc.). Set the system instructions:
+**Do:** In the Playground, select `granite-8b-agent`. Toggle **RAG ON**, upload a PDF. Set system instructions:
 
-> *"You are a knowledgeable AI assistant. When documents are available, always use the knowledge_search tool before answering. Ground your response in the retrieved content."*
+> *"You MUST use the knowledge_search tool to answer. Ground your response in the retrieved content."*
 
-Ask a question about the uploaded document.
-
-**Expect:** The model retrieves relevant chunks from the PDF and grounds its answer in the document content. Responses cite specific sections rather than hallucinating.
-
-*"Same model, same GPU — but now it's grounded in your private data. The Playground handles chunking and retrieval behind the scenes via LlamaStack. This is the simplest RAG experience you can get: upload a PDF, ask a question, get a sourced answer. No vector database setup, no pipeline code — just toggle RAG on."*
+*"Same model, same GPU — but now grounded in your private data. Upload a PDF, ask a question, get a sourced answer. No vector database setup, no pipeline code."*
 
 > **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Granite for RAG demos.
 
 ## Design Decisions
 
+> **KServe RawDeployment mode:** RHOAI 3.3 uses RawDeployment (not Knative Serverless) for model serving. RawDeployment does not support native scale-to-zero — `deploy.sh` handles this by explicitly scaling standby model Deployments to 0 replicas after ArgoCD sync. Ref: [Deploying models on the model serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/deploying_models).
+
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to prevent Kueue admission deadlocks — rolling updates would hold GPU quota on two pods simultaneously.
 
-> **Active-before-queued deploy order:** Kueue admits in creation order. Active models (minReplicas: 1) must be created first, or a queued model may grab the quota.
+> **Toleration injection from ResourceFlavor:** Workloads must NOT define GPU tolerations in their manifests. Kueue injects them from ResourceFlavor when admitting the workload. Defining tolerations causes `SchedulingGated` conflicts. Requires `Deployment` in Kueue `integrations.frameworks`.
 
-> **Automatic toleration injection:** Workloads must NOT define GPU tolerations. Kueue injects them from ResourceFlavor — defining them in the manifest causes a `SchedulingGated` conflict.
+> **S3 for large models, OCI ModelCar for small:** Models over 20 GB use S3/MinIO. Mistral INT4 (~13.5 GB) uses OCI ModelCar from Red Hat Registry for faster cold starts. Future improvement: migrate all catalog models to OCI ModelCar.
 
-> **S3 for large models, OCI ModelCar for small:** Models over 20 GB use S3/MinIO to avoid `no space left on device` in CRI-O overlay. Mistral INT4 (~13.5 GB) uses OCI for faster cold starts.
-
-> **vLLM memory tuning:** vLLM v0.13.0 uses more VRAM during warmup than earlier versions. Models set `--max-model-len=16384` and `--gpu-memory-utilization=0.85` to avoid CUDA OOM on L4 GPUs.
+> **vLLM memory tuning:** `--max-model-len=16384` and `--gpu-memory-utilization=0.85` prevent CUDA OOM on L4 GPUs with vLLM v0.13.0.
 
 ## References
 
-- [RHOAI 3.3 Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
-- [RHOAI 3.3 Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index)
-- [RHOAI 3.3 GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
-- [Kueue ResourceFlavor](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/)
+- [RHOAI 3.3 — Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
+- [RHOAI 3.3 — GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+- [RHOAI 3.3 — Model and Runtime Requirements for Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user)
 
 ## Operations
 
 ```bash
-CONFIRM=true ./steps/step-05-llm-on-vllm/deploy.sh      # Deploy runtime, 5 models, seed registry
-./steps/step-05-llm-on-vllm/validate.sh                  # Verify InferenceServices + Kueue status
+CONFIRM=true ./steps/step-05-llm-on-vllm/deploy.sh    # Deploy runtime + 5 models + scale standby to 0
+./steps/step-05-llm-on-vllm/validate.sh                # Verify InferenceServices + Kueue status
 ```
 
 ## Next Steps
