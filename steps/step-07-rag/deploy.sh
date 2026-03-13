@@ -225,7 +225,7 @@ log_step "Launching batch ingestion pipelines..."
 
 if [ -f "$SCRIPT_DIR/run-batch-ingestion.sh" ]; then
     chmod +x "$SCRIPT_DIR/run-batch-ingestion.sh"
-    for scenario in whoami acme eu-ai-act; do
+    for scenario in whoami acme; do
         log_info "  Launching: $scenario"
         "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" || \
             log_error "  Pipeline launch failed for $scenario (may need manual retry)"

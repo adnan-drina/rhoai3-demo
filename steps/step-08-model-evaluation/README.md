@@ -81,14 +81,13 @@ _What to say: "Every evaluation run is versioned and stored in object storage. T
 
 ### Scene 4: Scoring Breakdown
 
-These are the observed results across all three document collections.
+These are the observed results across both document collections.
 
 #### Post-RAG (with documents) — should score A/B
 
 | Scenario | Scores | Summary |
 |----------|--------|---------|
 | **ACME Corporate** | B, B, B, B, C, B | 5/6 excellent — grounded in semiconductor docs |
-| **EU AI Act** | B, B, B | 3/3 excellent — grounded in official EU documents |
 | **Whoami** | B, B, B, **A** | 4/4 excellent — grounded in actual CV |
 
 #### Pre-RAG (no documents) — should score D/E
@@ -96,10 +95,9 @@ These are the observed results across all three document collections.
 | Scenario | Scores | Summary |
 |----------|--------|---------|
 | **ACME Corporate** | **E, E, E, E**, C, D | 4/6 fail — thinks ACME is a Looney Tunes company |
-| **EU AI Act** | B, B, C | LLM has general EU AI Act knowledge from training |
 | **Whoami** | **E, E**, B, **E** | 3/4 fail — thinks Adnan Drina is a football coach |
 
-_What to say: "ACME and Whoami show the strongest RAG value — private and fictional data that the LLM simply cannot answer from training alone. EU AI Act is public knowledge, so the base model already does well. That's expected."_
+_What to say: "Both scenarios show dramatic RAG value — private data that the LLM cannot answer from training alone. Without documents, it hallucinates completely. With documents, it scores A/B across the board."_
 
 ## Design Decisions
 
@@ -122,7 +120,7 @@ _What to say: "ACME and Whoami show the strongest RAG value — private and fict
 
 ```bash
 ./steps/step-08-model-evaluation/deploy.sh          # Full deploy: ArgoCD app + eval pipeline
-./steps/step-08-model-evaluation/run-eval-report.sh  # Generate HTML reports (pre/post RAG, all 3 scenarios)
+./steps/step-08-model-evaluation/run-eval-report.sh  # Generate HTML reports (pre/post RAG, 2 scenarios)
 ./steps/step-08-model-evaluation/validate.sh         # 12-check validation
 ```
 

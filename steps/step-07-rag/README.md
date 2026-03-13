@@ -45,15 +45,14 @@ oc exec deploy/lsd-rag -n private-ai -- \
   curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
 ```
 
-**What to expect:** Three vector stores — `whoami` (simple identity doc), `acme_corporate` (5 manufacturing/lithography PDFs), and `eu_ai_act` (EU AI Act regulatory text).
+**What to expect:** Two vector stores — `acme_corporate` (semiconductor manufacturing docs) and `whoami` (personal CV for identity queries).
 
 | Scenario | Collection | Documents | Description |
 |----------|------------|-----------|-------------|
-| **whoami** | `whoami` | 1 file | Simple identity doc — fast ingestion, pipeline validation |
-| **acme_corporate** | `acme_corporate` | 5 files | Manufacturing/lithography internal docs |
-| **eu_ai_act** | `eu_ai_act` | 1 file | EU AI Act regulatory text |
+| **acme_corporate** | `acme_corporate` | 8 files | Manufacturing/lithography internal docs (ACME Semiconductor) |
+| **whoami** | `whoami` | 1 file | Personal CV — strong pre/post RAG contrast |
 
-*What to say: "All three document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. Let me show you what querying them looks like."*
+*What to say: "Both document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. Let me show you what querying them looks like."*
 
 ---
 
@@ -79,11 +78,11 @@ Switch to **Agent-based** mode in the chatbot. Ask the same question.
 
 *What to say: "Agent-based mode is where it gets interesting. Instead of us hardcoding the retrieval, we give the model a `file_search` tool and let it decide when to search. It can make multiple searches, refine its query, and combine results. This is the pattern you'd use in production — the model becomes an autonomous retriever."*
 
-Ask a follow-up: *"What are their compliance requirements under the EU AI Act?"*
+Ask a follow-up: *"Who is the Managing Director of ACME Corp?"*
 
-**What to expect:** The agent searches across both the `acme_corporate` and `eu_ai_act` vector stores to synthesize an answer that connects ACME's products to EU regulatory requirements.
+**What to expect:** The agent searches the `acme_corporate` vector store and returns the name and role from the corporate profile document.
 
-*What to say: "Notice it searched across two different vector stores to answer that. The agent figured out it needed both the company docs and the regulatory text. That cross-collection reasoning is why agent-based RAG matters for enterprise use cases."*
+*What to say: "The agent autonomously decided to search the corporate docs to find the answer. In step 09 we'll add guardrails so the response doesn't leak personal contact details like phone numbers and emails."*
 
 ---
 

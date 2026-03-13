@@ -6,11 +6,9 @@ Place PDF files in the appropriate scenario subdirectory before running `deploy.
 
 ```
 scenario-docs/
-├── scenario2-acme/        # ACME Corporate lithography docs (~6 PDFs)
+├── scenario2-acme/        # ACME Corporate lithography docs (~8 PDFs)
 │   └── *.pdf
-├── scenario3-eu-ai-act/   # EU AI Act official documents (~3 PDFs)
-│   └── *.pdf
-└── whoami/                # Personal CV / identity doc (1 PDF)
+└── scenario4-whoami/      # Personal CV / identity doc (1 PDF)
     └── *.pdf
 ```
 
@@ -23,9 +21,6 @@ git clone https://github.com/adnan-drina/private-ai-demo.git /tmp/private-ai-dem
 
 cp /tmp/private-ai-demo/stages/stage2-model-alignment/scenario-docs/scenario2-acme/*.pdf \
    scenario-docs/scenario2-acme/
-
-cp /tmp/private-ai-demo/stages/stage2-model-alignment/scenario-docs/scenario3-eu-ai-act/*.pdf \
-   scenario-docs/scenario3-eu-ai-act/
 ```
 
 The `deploy.sh` script will automatically upload any PDFs found in these directories

@@ -17,15 +17,6 @@ pipelines:
       bucket: rag-documents
       prefix: scenario2-acme/
 
-  eu_ai_act:
-    enabled: true
-    vector_store_name: eu_ai_act
-    source: S3
-    config:
-      endpoint: http://minio.minio-storage.svc.cluster.local:9000
-      bucket: rag-documents
-      prefix: scenario3-eu-ai-act/
-
   whoami:
     enabled: true
     vector_store_name: whoami
