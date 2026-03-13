@@ -53,7 +53,7 @@ def _set_resources(
     description="RAG single-document ingestion via Docling + LlamaStack Vector IO (v1.0.0)",
 )
 def docling_rag_pipeline(
-    input_uri: str = "s3://rag-documents/scenario2-acme/sample.pdf",
+    input_uri: str = "s3://rag-documents/acme/sample.pdf",
     minio_secret_name: str = "minio-connection",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
@@ -122,7 +122,7 @@ def docling_rag_pipeline(
     pipeline_root="s3://pipelines/",
 )
 def batch_docling_rag_pipeline(
-    s3_prefix: str = "s3://rag-documents/scenario2-acme/",
+    s3_prefix: str = "s3://rag-documents/acme/",
     minio_secret_name: str = "minio-connection",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",

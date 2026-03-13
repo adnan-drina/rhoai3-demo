@@ -15,7 +15,7 @@ pipelines:
     config:
       endpoint: http://minio.minio-storage.svc.cluster.local:9000
       bucket: rag-documents
-      prefix: scenario2-acme/
+      prefix: acme/
 
   whoami:
     enabled: true
@@ -24,4 +24,4 @@ pipelines:
     config:
       endpoint: http://minio.minio-storage.svc.cluster.local:9000
       bucket: rag-documents
-      prefix: scenario4-whoami/
+      prefix: whoami/

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Upload a local file to MinIO via a temporary pod.
 # Usage: ./upload-to-minio.sh <local-file> <s3-path>
-#   e.g. ./upload-to-minio.sh scenario-docs/scenario2-acme/doc.pdf rag-documents/scenario2-acme/doc.pdf
+#   e.g. ./upload-to-minio.sh scenario-docs/acme/doc.pdf rag-documents/acme/doc.pdf
 
 set -euo pipefail
 

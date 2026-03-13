@@ -32,7 +32,7 @@ fi
 
 case "$SCENARIO" in
     acme)
-        S3_PREFIX="s3://rag-documents/scenario2-acme/"
+        S3_PREFIX="s3://rag-documents/acme/"
         VECTOR_DB_ID="acme_corporate"
         DESCRIPTION="ACME Corporate Lithography Documentation"
         ;;
@@ -42,7 +42,7 @@ case "$SCENARIO" in
         DESCRIPTION="EU AI Act Official Documents"
         ;;
     whoami)
-        S3_PREFIX="s3://rag-documents/scenario4-whoami/"
+        S3_PREFIX="s3://rag-documents/whoami/"
         VECTOR_DB_ID="whoami"
         DESCRIPTION="Personal CV"
         ;;
