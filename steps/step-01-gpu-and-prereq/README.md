@@ -16,6 +16,7 @@ OpenShift 4.20 Cluster
 ├── OpenShift Serverless  → KnativeServing for KServe networking
 ├── LeaderWorkerSet       → Multi-node GPU orchestration for llm-d
 ├── RHCL Stack            → Authorino, Limitador, DNS, RHCL (Inference Gateway)
+├── cert-manager          → TLS certificates for Kueue webhooks
 ├── Kueue Operator        → GPU quota management and workload queuing
 └── User Workload Mon.    → Prometheus scraping for GPU telemetry
 ```
@@ -29,6 +30,7 @@ OpenShift 4.20 Cluster
 | LeaderWorkerSet (LWS) | Multi-node GPU orchestration for llm-d | `openshift-lws-operator` |
 | Authorino + Limitador | AuthZ and rate limiting for Inference Gateway | `openshift-authorino` / `openshift-limitador-operator` |
 | DNS Operator + RHCL | Endpoint DNS and AuthPolicy CRD for llm-d | `openshift-dns-operator` / `rhcl-operator` |
+| cert-manager | TLS certificates for Kueue webhook endpoints | `cert-manager-operator` |
 | Kueue | Workload queuing and GPU quota management | `openshift-kueue-operator` |
 | User Workload Monitoring | Prometheus scraping for DCGM metrics | `openshift-monitoring` |
 

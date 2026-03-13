@@ -85,7 +85,7 @@ oc get inferenceservice -n private-ai -w
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to prevent Kueue admission deadlocks — rolling updates would hold GPU quota on two pods simultaneously.
 
-> **Toleration injection from ResourceFlavor:** Workloads must NOT define GPU tolerations in their manifests. Kueue injects them from ResourceFlavor when admitting the workload. Defining tolerations causes `SchedulingGated` conflicts. Requires `Deployment` in Kueue `integrations.frameworks`.
+> **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations. This is required because the `private-ai` namespace does not use `kueue.openshift.io/managed=true` (see step-03 design decisions), so Kueue does not inject tolerations from ResourceFlavors. The `deploy.sh` also creates the `hf-token` secret in `minio-storage` before ArgoCD sync to ensure S3 upload jobs can authenticate with HuggingFace.
 
 > **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. This includes Granite 8B FP8 (~8 GB) and Mistral INT4 (~13.5 GB). Models over 20 GB use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits on nodes with limited ephemeral storage. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
