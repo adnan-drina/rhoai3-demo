@@ -1,13 +1,15 @@
 # =============================================================================
-# LlamaStackDistribution - RAG Backend (RHOAI 3.3 Production Pattern)
+# LlamaStackDistribution - RAG Backend (RHOAI 3.3 — pgvector, no userConfig)
 # =============================================================================
-# Aligned with RHOAI 3.3 "Example B: Remote Milvus + Inline Embeddings":
-#   - All credentials via Secrets (INFERENCE_MODEL, VLLM_URL, PostgreSQL)
-#   - ENABLE_SENTENCE_TRANSFORMERS for inline embeddings (no GPU needed)
-#   - INFERENCE_MODEL env var (required by rh-dev template)
-#   - PostgreSQL for metadata persistence
-#   - storage spec for persistent data
-#   - userConfig for remote Milvus (env-var-only doesn't support remote Milvus)
+# Aligned with RHOAI 3.3 "Example D: Remote PostgreSQL with pgvector":
+#   - Pure rh-dev template — NO userConfig (enables auto-wired persistence,
+#     Ragas evaluation, safety providers, and state management)
+#   - pgvector for vector store (same PostgreSQL instance as metadata)
+#   - Sentence-transformers for inline embeddings (no GPU needed)
+#   - All credentials via Secrets
+#
+# MCP tool_groups are registered at runtime via the LlamaStack API
+# (see step-10 deploy.sh) — they persist in PostgreSQL across restarts.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag
 # =============================================================================
@@ -33,15 +35,17 @@ spec:
       name: llama-stack
       port: 8321
       env:
-        # --- Inline embeddings (RHOAI 3.3 recommended for CPU-only) ---
+        # --- Inline embeddings (sentence-transformers, CPU only) ---
         - name: ENABLE_SENTENCE_TRANSFORMERS
           value: "true"
-        # --- Ragas evaluation support (RHOAI 3.3) ---
+        - name: EMBEDDING_PROVIDER
+          value: "sentence-transformers"
+
+        # --- Ragas evaluation (auto-wired by rh-dev without userConfig) ---
         - name: ENABLE_RAGAS
           value: "true"
-        - name: EMBEDDING_MODEL
-          value: "granite-embedding-125m"
-        # --- Remote LLM configuration (all from Secret per RHOAI 3.3 pattern) ---
+
+        # --- Remote LLM (granite-8b-agent via vLLM) ---
         - name: INFERENCE_MODEL
           valueFrom:
             secretKeyRef:
@@ -67,7 +71,8 @@ spec:
             secretKeyRef:
               name: llamastack-vllm-secret
               key: VLLM_MAX_TOKENS
-        # --- PostgreSQL metadata store (all from Secret per RHOAI 3.3 pattern) ---
+
+        # --- PostgreSQL metadata store ---
         - name: POSTGRES_HOST
           valueFrom:
             secretKeyRef:
@@ -93,20 +98,40 @@ spec:
             secretKeyRef:
               name: llamastack-postgres-secret
               key: POSTGRES_PASSWORD
-        # --- Remote Milvus (from Secret) ---
-        - name: MILVUS_ENDPOINT
+
+        # --- pgvector vector store (same PostgreSQL instance) ---
+        - name: ENABLE_PGVECTOR
+          value: "true"
+        - name: PGVECTOR_HOST
           valueFrom:
             secretKeyRef:
-              name: llamastack-milvus-secret
-              key: MILVUS_ENDPOINT
-        - name: MILVUS_TOKEN
+              name: llamastack-pgvector-secret
+              key: PGVECTOR_HOST
+        - name: PGVECTOR_PORT
           valueFrom:
             secretKeyRef:
-              name: llamastack-milvus-secret
-              key: MILVUS_TOKEN
-        # --- Guardrails (activates when step-09 is deployed) ---
+              name: llamastack-pgvector-secret
+              key: PGVECTOR_PORT
+        - name: PGVECTOR_DB
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-pgvector-secret
+              key: PGVECTOR_DB
+        - name: PGVECTOR_USER
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-pgvector-secret
+              key: PGVECTOR_USER
+        - name: PGVECTOR_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: llamastack-pgvector-secret
+              key: PGVECTOR_PASSWORD
+
+        # --- Guardrails (auto-wired by rh-dev when FMS_ORCHESTRATOR_URL is set) ---
         - name: FMS_ORCHESTRATOR_URL
-          value: http://guardrails-orchestrator.private-ai.svc:8080
+          value: "http://guardrails-orchestrator.private-ai.svc:8080"
+
       resources:
         requests:
           cpu: 250m
@@ -114,155 +139,6 @@ spec:
         limits:
           cpu: "4"
           memory: 12Gi
-    # Persistent storage for vector data and file cache (RHOAI 3.3 recommended)
     storage:
       size: 5Gi
-    # Custom config required for remote Milvus (rh-dev env vars only support inline Milvus)
-    userConfig:
-      configMapName: llama-stack-rag-config
----
-# =============================================================================
-# LlamaStack RAG Configuration — v0.4.2.1+rhai0 Schema
-# =============================================================================
-# userConfig is needed ONLY because we use remote Milvus (remote::milvus).
-# The rh-dev template's env-var-only pattern supports inline Milvus (MILVUS_DB_PATH)
-# but not remote Milvus endpoints. For inline Milvus or pgvector, remove userConfig
-# entirely and use env vars only.
-# =============================================================================
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: llama-stack-rag-config
-  namespace: private-ai
-  labels:
-    llamastack.io/distribution: lsd-rag
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/sync-options: Replace=true
-data:
-  config.yaml: |
-    version: 2
-    image_name: custom
-    apis:
-    - agents
-    - datasetio
-    - eval
-    - files
-    - inference
-    - safety
-    - scoring
-    - tool_runtime
-    - vector_io
-    providers:
-      inference:
-      - provider_id: sentence-transformers
-        provider_type: inline::sentence-transformers
-        config: {}
-      - provider_id: vllm-granite-agent
-        provider_type: remote::vllm
-        config:
-          base_url: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1
-          max_tokens: 4096
-          tls_verify: false
-      vector_io:
-      - provider_id: milvus-shared
-        provider_type: remote::milvus
-        config:
-          uri: http://milvus-standalone.private-ai.svc.cluster.local:19530
-          token: ""
-          persistence:
-            namespace: milvus_vectors
-            backend: kv_default
-      agents:
-      - provider_id: meta-reference
-        provider_type: inline::meta-reference
-        config:
-          persistence:
-            agent_state:
-              namespace: agents
-              backend: kv_default
-            responses:
-              table_name: agent_responses
-              backend: sql_default
-      eval:
-      - provider_id: meta-reference
-        provider_type: inline::meta-reference
-        config:
-          kvstore:
-            namespace: eval
-            backend: kv_default
-      files:
-      - provider_id: meta-reference-files
-        provider_type: inline::localfs
-        config:
-          metadata_store:
-            table_name: files_metadata
-            backend: sql_default
-          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
-      datasetio:
-      - provider_id: localfs
-        provider_type: inline::localfs
-        config:
-          kvstore:
-            namespace: localfs_datasetio
-            backend: kv_default
-      - provider_id: huggingface
-        provider_type: remote::huggingface
-        config:
-          kvstore:
-            namespace: huggingface_datasetio
-            backend: kv_default
-      # Safety: The fms-guardrails provider (remote::trustyai_fms) requires
-      # rh-dev auto-wiring which is incompatible with userConfig.
-      # Guardrails are accessed directly via the orchestrator API from the chatbot.
-      scoring:
-      - provider_id: basic
-        provider_type: inline::basic
-        config: {}
-      - provider_id: llm-as-judge
-        provider_type: inline::llm-as-judge
-        config: {}
-      tool_runtime:
-      - provider_id: rag-runtime
-        provider_type: inline::rag-runtime
-        config: {}
-      - provider_id: model-context-protocol
-        provider_type: remote::model-context-protocol
-        config: {}
-    registered_resources:
-      models:
-      - provider_id: sentence-transformers
-        model_id: granite-embedding-125m
-        provider_model_id: ibm-granite/granite-embedding-125m-english
-        model_type: embedding
-        metadata:
-          embedding_dimension: 768
-      - provider_id: vllm-granite-agent
-        model_id: granite-8b-agent
-        model_type: llm
-        metadata: {}
-      shields: []
-      # Vector stores are created dynamically by the ingestion pipeline.
-      # After an LSD restart, re-ingest data: ./steps/step-07-rag/run-batch-ingestion.sh
-      vector_stores: []
-      datasets: []
-      scoring_fns: []
-      benchmarks: []
-      tool_groups:
-      - toolgroup_id: builtin::rag
-        provider_id: rag-runtime
-      - toolgroup_id: mcp::database
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://database-mcp.private-ai.svc:8080/sse"
-      - toolgroup_id: mcp::openshift
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://openshift-mcp.private-ai.svc:8000/sse"
-      - toolgroup_id: mcp::slack
-        provider_id: model-context-protocol
-        mcp_endpoint:
-          uri: "http://slack-mcp.private-ai.svc:8080/sse"
-      connectors: []
-    server:
-      port: 8321
+    # NO userConfig — rh-dev template handles everything

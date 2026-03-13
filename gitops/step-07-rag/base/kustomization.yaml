@@ -1,23 +1,22 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 08: RAG Pipeline
+# Step 07: RAG Pipeline
 # Deploys the full document-ingestion-and-retrieval stack:
-#   1. Milvus vector database (persistent, embedded etcd)
+#   1. PostgreSQL with pgvector (metadata + vector store in one instance)
 #   2. Docling document processing service
 #   3. MinIO bucket for RAG documents
 #   4. DSPA (Kubeflow Pipelines v2) for pipeline orchestration
-#   5. LlamaStackDistribution configured for RAG with remote Milvus
+#   5. LlamaStackDistribution configured for RAG with pgvector (no userConfig)
 
 resources:
   # Infrastructure (sync-wave 1-2)
-  - postgresql/          # PostgreSQL for LlamaStack metadata (RHOAI 3.3 production)
-  - milvus/              # Milvus vector database
+  - postgresql/          # PostgreSQL with pgvector (metadata + vector store)
   - docling/             # PDF→Markdown document processor
   - minio-rag-bucket/    # MinIO bucket for RAG documents
   # Platform (sync-wave 3-4)
   - dspa/                # Kubeflow Pipelines v2
-  - llamastack-rag/      # LlamaStack RAG backend (PostgreSQL + Milvus + granite-8b)
+  - llamastack-rag/      # LlamaStack RAG backend (pgvector + granite-8b, no userConfig)
   # Ingestion (sync-wave 5)
   - ingestion-service/   # Docling-based ingestion (BuildConfig + ConfigMap)
   # Workbench & UI (sync-wave 5-10)

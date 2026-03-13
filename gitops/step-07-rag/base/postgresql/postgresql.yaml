@@ -1,18 +1,11 @@
-# PostgreSQL for LlamaStack Metadata (RHOAI 3.3 Production Recommendation)
+# PostgreSQL with pgvector for LlamaStack (Metadata + Vector Store)
 # ============================================================================
-# "Starting with OpenShift AI 3.2, PostgreSQL is the default backend for
-# production-grade deployments." — RHOAI 3.3 LlamaStack docs
+# Serves dual purpose:
+#   1. LlamaStack metadata store (agent state, file references, config)
+#   2. pgvector vector store (RAG embeddings, similarity search)
 #
-# This PostgreSQL instance stores:
-#   - Vector store metadata
-#   - File references
-#   - Agent state and responses
-#   - Configuration state
-#
-# LlamaStack automatically creates the database specified by POSTGRES_DB
-# if it does not already exist.
-#
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/
+# Image: pgvector/pgvector:pg16 — official PostgreSQL 16 with pgvector extension
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag
 # ============================================================================
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -27,9 +20,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: gp3-csi
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,6 +33,7 @@ metadata:
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag-pipeline
+    app.openshift.io/runtime: postgresql
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
@@ -46,53 +41,75 @@ spec:
   selector:
     matchLabels:
       app: llamastack-postgres
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: llamastack-postgres
+        kueue.x-k8s.io/queue-name: default
     spec:
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: postgresql
-          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql:15-el9
+          image: pgvector/pgvector:pg16
           ports:
             - containerPort: 5432
               protocol: TCP
           env:
-            - name: POSTGRESQL_DATABASE
+            - name: POSTGRES_DB
               value: llamastack
-            - name: POSTGRESQL_USER
+            - name: POSTGRES_USER
               value: llamastack
-            - name: POSTGRESQL_PASSWORD
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: llamastack-postgres-secret
                   key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
-              mountPath: /var/lib/pgsql/data
+              mountPath: /var/lib/postgresql/data
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
+              cpu: 250m
               memory: 512Mi
-          livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - pg_isready -U llamastack -d llamastack
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    until pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" 2>/dev/null; do sleep 2; done
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
           readinessProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U llamastack -d llamastack
-            initialDelaySeconds: 5
-            periodSeconds: 5
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
       volumes:
         - name: data
           persistentVolumeClaim:
