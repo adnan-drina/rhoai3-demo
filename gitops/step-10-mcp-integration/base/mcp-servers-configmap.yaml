@@ -26,15 +26,15 @@ data:
   Database-MCP: |
     {
       "url": "http://database-mcp.private-ai.svc:8080/sse",
-      "description": "Query the ACME corporate MariaDB database. Provides read access to customer records, orders, and product inventory for natural language SQL queries."
+      "description": "Query the ACME corporate PostgreSQL database (EDB Postgres MCP). Provides SQL access to equipment records, service history, calibration data, and pod-equipment mappings."
     }
   OpenShift-MCP: |
     {
       "url": "http://openshift-mcp.private-ai.svc:8000/sse",
-      "description": "Interact with the OpenShift cluster. Query pod status, deployments, and cluster resources using natural language."
+      "description": "Interact with the OpenShift cluster (Kubernetes MCP Server). Query pod status, logs, events, deployments, and cluster resources. Read-only mode."
     }
   Slack-MCP: |
     {
       "url": "http://slack-mcp.private-ai.svc:8080/sse",
-      "description": "Post messages and notifications to Slack channels. Useful for automated reporting and team communication workflows."
+      "description": "Post messages and notifications to Slack channels (Slack MCP Server). Send equipment alerts and updates to the #all-acme-mcp-demo channel."
     }

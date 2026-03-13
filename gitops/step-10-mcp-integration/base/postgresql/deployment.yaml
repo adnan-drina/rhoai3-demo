@@ -43,6 +43,15 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    until pg_isready -U $POSTGRESQL_USER -d $POSTGRESQL_DATABASE -q; do sleep 2; done
+                    psql -U $POSTGRESQL_USER -d $POSTGRESQL_DATABASE -f /opt/app-root/src/postgresql-start/init.sql 2>/dev/null || true
           readinessProbe:
             exec:
               command:
