@@ -28,8 +28,7 @@ spec:
         - name: openshift-mcp
           image: quay.io/mcp-servers/kubernetes-mcp-server:2025-11-24
           args:
-            - --transport=sse
-            - --sse-port=8000
+            - --port=8000
             - --read-only
           ports:
             - containerPort: 8000
