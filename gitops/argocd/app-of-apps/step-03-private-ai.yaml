@@ -47,11 +47,12 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /metadata/labels
-    # Secrets may have additional annotations
+    # Secrets: ignore annotations (operator-managed) and data (stringData→data encoding diff)
     - group: ""
       kind: Secret
       jsonPointers:
         - /metadata/annotations
+        - /data
     # LocalQueue status managed by Kueue
     - group: kueue.x-k8s.io
       kind: LocalQueue
