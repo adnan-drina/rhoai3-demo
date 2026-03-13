@@ -1,25 +1,34 @@
 # Red Hat OpenShift AI 3.3 Demo
 
-Adopting open-source LLMs on private infrastructure — from GPU provisioning through RAG, evaluation, guardrails, and enterprise tool orchestration. All managed by ArgoCD and Kustomize on **OpenShift 4.20**.
+A GitOps-driven demo showing how enterprises adopt open-source LLMs on private infrastructure — from GPU provisioning through RAG, evaluation, guardrails, and agentic tool orchestration. Built on **RHOAI 3.3** and **OpenShift 4.20**, managed entirely by ArgoCD.
+
+**Target audience:** Solution Architects, Platform Engineers, AI Engineers evaluating Red Hat's AI platform.
 
 ## The Demo Story
 
-This demo walks through the **four pillars of enterprise AI** in 10 progressive steps:
+An AI agent investigates a failing piece of equipment at **ACME Semiconductor**. It inspects the OpenShift cluster, queries an equipment database, searches internal documentation via RAG, and sends a Slack notification — all in a single agentic conversation. Getting there requires 10 progressive steps across the four pillars of enterprise AI:
 
 | Pillar | Steps | What You Show |
 |--------|-------|---------------|
-| **Flexible Foundation** | 01-05 | GPU infrastructure, RHOAI platform, GPU-as-a-Service queuing, model registry, model serving with live swapping |
+| **AI-Ready Infrastructure** | 01-05 | GPU nodes, RHOAI platform, GPU-as-a-Service queuing, model registry, model serving with live swapping |
 | **Data & AI Integration** | 06-08 | Performance benchmarks with ROI analysis, RAG pipeline with pgvector, pre/post RAG evaluation |
 | **Trust & Governance** | 09 | Guardrails: hate speech, prompt injection, PII detection |
-| **Integration & Automation** | 10 | MCP servers: database queries, cluster inspection, Slack notifications — the 4-question E2E flow |
+| **Integration & Automation** | 10 | MCP servers: database + cluster + Slack — the 4-question E2E flow |
 
 ### The Climax: 4-Question E2E Demo (Step 10)
 
-The demo builds to a single agentic conversation where the AI:
-1. Inspects an OpenShift cluster and finds a failing pod
-2. Queries a database to identify the equipment
-3. Searches RAG documents for known issues
-4. Sends a Slack notification to the platform team
+The demo builds to a single conversation where `granite-8b-agent` autonomously:
+1. **Inspects the cluster** — finds `acme-equipment-0007` in CrashLoopBackOff
+2. **Queries the database** — identifies equipment L-900-08 (EUV Scanner)
+3. **Searches RAG documents** — finds DFO calibration drift procedure
+4. **Sends a Slack alert** — notifies the platform team with a summary
+
+## What You Need
+
+- OpenShift 4.20+ cluster on AWS
+- 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) — 5 GPUs total
+- Cluster admin access
+- `oc` CLI installed
 
 ## Quick Start
 
@@ -31,11 +40,15 @@ oc login --token=<token> --server=<api>
 ```
 
 Then deploy each step in order:
-
 ```bash
 ./steps/step-01-gpu-and-prereq/deploy.sh
 ./steps/step-02-rhoai/deploy.sh
 # ... through step-10
+```
+
+Validate the full demo works:
+```bash
+./scripts/validate-demo-flow.sh   # 4-question E2E test
 ```
 
 ## Demo Steps
