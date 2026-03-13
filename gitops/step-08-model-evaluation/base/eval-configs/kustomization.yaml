@@ -18,7 +18,5 @@ configMapGenerator:
     files:
       - acme_corporate_pre_rag_tests.yaml
       - acme_corporate_post_rag_tests.yaml
-      - eu_ai_act_pre_rag_tests.yaml
-      - eu_ai_act_post_rag_tests.yaml
       - whoami_pre_rag_tests.yaml
       - whoami_post_rag_tests.yaml

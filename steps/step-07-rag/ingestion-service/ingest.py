@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 RAG Ingestion Service — processes PDFs from S3/MinIO using Docling (local, no REST API)
-and stores embeddings in Milvus via LlamaStack 0.4.x vector_stores API.
+and stores embeddings in pgvector via LlamaStack 0.4.x vector_stores API.
 
 Adapted from: https://github.com/rh-ai-quickstart/RAG/tree/main/ingestion-service
 """
@@ -160,7 +160,7 @@ class IngestionService:
 
         embedding_model = self.vector_db_config["embedding_model"]
         embedding_dim = self.vector_db_config["embedding_dimension"]
-        provider_id = self.vector_db_config.get("provider_id", "milvus-shared")
+        provider_id = self.vector_db_config.get("provider_id", "pgvector")
 
         vs = self.client.vector_stores.create(
             name=store_name,

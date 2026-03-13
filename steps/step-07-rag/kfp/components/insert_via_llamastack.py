@@ -1,6 +1,6 @@
 """
 Insert via LlamaStack Component — reads processed markdown from the shared PVC
-and ingests it into Milvus through LlamaStack's vector_stores.files.create() API.
+and ingests it into pgvector through LlamaStack's vector_stores.files.create() API.
 
 Server-side chunking and embedding: LlamaStack handles both using the
 granite-embedding-125m model registered in the LSD configuration.

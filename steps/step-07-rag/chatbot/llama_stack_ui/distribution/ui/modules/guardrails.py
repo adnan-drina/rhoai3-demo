@@ -4,7 +4,7 @@ for input/output safety checks (HAP, prompt injection, PII regex).
 
 The orchestrator is deployed by step-09 and accessed directly via HTTP,
 bypassing LlamaStack's safety API (which requires rh-dev auto-wiring
-incompatible with our userConfig for remote Milvus).
+the chatbot uses the orchestrator API for fine-grained detector control).
 """
 
 import os

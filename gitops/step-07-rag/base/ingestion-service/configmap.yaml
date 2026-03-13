@@ -16,7 +16,7 @@ data:
     vector_db:
       embedding_model: sentence-transformers/ibm-granite/granite-embedding-125m-english
       embedding_dimension: 768
-      provider_id: milvus-shared
+      provider_id: pgvector
       chunk_size_tokens: 512
 
     pipelines:

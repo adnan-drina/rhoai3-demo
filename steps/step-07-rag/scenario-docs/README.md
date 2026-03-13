@@ -21,6 +21,7 @@ git clone https://github.com/adnan-drina/private-ai-demo.git /tmp/private-ai-dem
 
 cp /tmp/private-ai-demo/stages/stage2-model-alignment/scenario-docs/scenario2-acme/*.pdf \
    scenario-docs/acme/
+# Source uses old naming (scenario2-acme) — our directory is just 'acme'
 ```
 
 The `deploy.sh` script will automatically upload any PDFs found in these directories

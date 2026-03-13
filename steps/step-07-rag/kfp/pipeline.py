@@ -62,7 +62,7 @@ def docling_rag_pipeline(
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
-    vector_provider: str = "milvus-shared",
+    vector_provider: str = "pgvector",
     vector_db_id: str = "acme_corporate",
     temperature: float = 0.0,
     max_tokens: int = 4096,
@@ -131,7 +131,7 @@ def batch_docling_rag_pipeline(
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
-    vector_provider: str = "milvus-shared",
+    vector_provider: str = "pgvector",
     vector_db_id: str = "acme_corporate",
     temperature: float = 0.0,
     max_tokens: int = 4096,
@@ -209,7 +209,7 @@ def batch_docling_rag_pipeline(
             _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
             kubernetes.mount_pvc(docling, pvc_name=pvc_name, mount_path="/shared-data")
 
-            # Insert into Milvus via LlamaStack
+            # Insert into pgvector via LlamaStack
             insert = insert_via_llamastack_component(
                 setup_config=setup.outputs["setup_config"],
                 processed_file=docling.outputs["processed_file"],

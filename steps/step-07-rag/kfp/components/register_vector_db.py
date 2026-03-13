@@ -1,5 +1,5 @@
 """
-Register Vector DB Component — creates (or re-uses) a Milvus collection
+Register Vector DB Component — creates (or re-uses) a pgvector vector store
 through the Llama Stack vector_stores API.
 
 Idempotent: looks up existing stores by name before creating.

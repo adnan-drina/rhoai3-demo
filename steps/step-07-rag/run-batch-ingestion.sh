@@ -1,7 +1,7 @@
 #!/bin/bash
 # Launch a batch RAG ingestion pipeline run for a given scenario.
 # Usage: ./run-batch-ingestion.sh <scenario>
-#   scenario: acme | eu-ai-act | whoami
+#   scenario: acme | whoami
 
 set -euo pipefail
 
@@ -23,10 +23,9 @@ if [ -z "$SCENARIO" ]; then
     echo ""
     echo "Available scenarios:"
     echo "  acme       - ACME Corporate lithography docs (8 PDFs)"
-    echo "  eu-ai-act  - EU AI Act official documents (3 PDFs)"
     echo "  whoami     - Personal CV (1 PDF)"
     echo ""
-    echo "Run all: for s in acme eu-ai-act whoami; do $0 \$s; done"
+    echo "Run all: for s in acme whoami; do $0 \$s; done"
     exit 1
 fi
 
@@ -36,11 +35,6 @@ case "$SCENARIO" in
         VECTOR_DB_ID="acme_corporate"
         DESCRIPTION="ACME Corporate Lithography Documentation"
         ;;
-    eu-ai-act)
-        S3_PREFIX="s3://rag-documents/scenario3-eu-ai-act/"
-        VECTOR_DB_ID="eu_ai_act"
-        DESCRIPTION="EU AI Act Official Documents"
-        ;;
     whoami)
         S3_PREFIX="s3://rag-documents/whoami/"
         VECTOR_DB_ID="whoami"
@@ -48,7 +42,7 @@ case "$SCENARIO" in
         ;;
     *)
         echo -e "${RED}Error: Invalid scenario: $SCENARIO${NC}"
-        echo "Valid options: acme, eu-ai-act, whoami"
+        echo "Valid options: acme, whoami"
         exit 1
         ;;
 esac
