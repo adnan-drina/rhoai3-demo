@@ -93,9 +93,9 @@ Show the buckets: `rhoai-storage`, `models`, `pipelines`. These are where all su
 
 ## Design Decisions
 
-> **Design Decision:** We do **not** set `kueue.openshift.io/managed: "true"` on the namespace. Only workloads with `kueue.x-k8s.io/queue-name: default` are managed by Kueue. Namespace-wide management gates all pods — including builds, chatbot deployments, and pipeline executors.
+> **Explicit Kueue labeling (deviates from RHOAI docs):** The RHOAI 3.3 documentation recommends `kueue.openshift.io/managed: "true"` on the namespace for Kueue to manage all workloads. We intentionally do **not** set this label. Instead, only workloads with `kueue.x-k8s.io/queue-name: default` are managed by Kueue. Reason: namespace-wide management gates ALL pods via SchedulingGates — including BuildConfig builds, chatbot Deployments, KFP pipeline executors, and Docling service pods. These non-GPU workloads would be gated indefinitely since the ClusterQueue only covers GPU resources. The explicit labeling approach is a practical workaround for mixed-workload namespaces. Ref: [Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue).
 
-> **Design Decision:** Queue separation — `default` for vLLM workloads (5 GPUs) and `llmd` for llm-d distributed inference (2 GPUs reserved). This ensures llm-d can always start even when vLLM saturates the main queue.
+> **Queue separation:** `default` for vLLM workloads (5 GPUs) and `llmd` for llm-d distributed inference (2 GPUs reserved). This follows the RHOAI pattern of hardware-specific quota separation — llm-d always has guaranteed capacity even when vLLM saturates the main queue.
 
 > **Design Decision:** OpenShift Groups are created by `deploy.sh` (not ArgoCD) because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema.
 

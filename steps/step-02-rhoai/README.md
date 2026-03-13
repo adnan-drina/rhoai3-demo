@@ -37,7 +37,7 @@ RHOAI 3.3 Platform
 
 | Profile | Display Name | Scheduling |
 |---------|-------------|------------|
-| cpu-small | Small (CPU Only) | Queue → `default` |
+| cpu-small | Small (CPU Only) | Node (direct) |
 | default-profile | NVIDIA L4 1GPU (Default) | Queue → `default` |
 | nvidia-l4-1gpu | NVIDIA L4 1GPU | Queue → `default` |
 | nvidia-l4-4gpu | NVIDIA L4 4GPUs | Queue → `default` |
@@ -52,9 +52,11 @@ RHOAI 3.3 Platform
 
 ## Design Decisions
 
-> **Kueue as standalone operator:** The DSC sets `kueue.managementState: Unmanaged` because Kueue is installed as a standalone operator in step-01. A `Kueue` component CR plus `disableKueue: false` in `OdhDashboardConfig` provides Dashboard integration without RHOAI managing the operator lifecycle.
+> **Kueue as standalone operator (RHOAI 3.3 recommended):** The DSC sets `kueue.managementState: Unmanaged` because Kueue is installed as the Red Hat Build of Kueue Operator in step-01. The embedded Kueue component is deprecated since RHOAI 2.24 — the standalone operator is the official path. A `Kueue` component CR plus `disableKueue: false` in `OdhDashboardConfig` provides Dashboard integration. Ref: [Installing distributed workloads components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install).
 
-> **Queue-based Hardware Profiles:** All profiles use `scheduling.type: Queue` so Kueue governs GPU allocation. Each user project needs a matching `LocalQueue` named `default` (created in step-03).
+> **GPU profiles use Queue scheduling, CPU uses Node:** GPU Hardware Profiles use `scheduling.type: Queue` so Kueue governs GPU allocation via ClusterQueue quotas. The CPU-only profile (`cpu-small`) uses direct Node scheduling — CPU workloads don't need GPU quota management and shouldn't be gated by Kueue. Each user project needs a `LocalQueue` named `default` for GPU profiles (created in step-03).
+
+> **Two ClusterQueues for resource reservation:** `rhoai-main-queue` (5 GPUs for vLLM) and `rhoai-llmd-queue` (2 GPUs reserved for llm-d). This follows the RHOAI pattern of hardware-specific quota separation — llm-d always has guaranteed capacity even when vLLM workloads saturate the main queue.
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users.
 
@@ -62,7 +64,9 @@ RHOAI 3.3 Platform
 
 - [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
 - [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
+- [Managing Workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue)
 
 ## Operations
 

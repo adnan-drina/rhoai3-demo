@@ -1,5 +1,6 @@
-# HardwareProfile - Small CPU-only (Global, Queue-based)
-# Works with any Kueue-managed project that has a LocalQueue named "default"
+# HardwareProfile - Small CPU-only (Global, Node-based)
+# CPU-only workloads bypass Kueue — no GPU quota management needed.
+# Ref: RHOAI 3.3 Hardware Profiles support Node and Queue scheduling types.
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:
@@ -15,11 +16,6 @@ metadata:
     app.kubernetes.io/part-of: hardwareprofile
     app.opendatahub.io/hardwareprofile: "true"
 spec:
-  # Queue-based scheduling - requires LocalQueue named "default" in user project
-  scheduling:
-    type: Queue
-    kueue:
-      localQueueName: default
   identifiers:
     - identifier: cpu
       displayName: CPU
