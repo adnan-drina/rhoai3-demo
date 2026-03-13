@@ -52,21 +52,21 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
             # Convert search tools to web_search format
             agent_tools.append({"type": "web_search"})
         elif toolgroup_name.startswith("mcp::"):
-            # For MCP tools, get server info
             try:
                 toolgroups = client.toolgroups.list()
                 for toolgroup in toolgroups:
                     if str(toolgroup.identifier) == toolgroup_name:
+                        args = toolgroup.args or {}
+                        label = args.get("name", str(toolgroup.identifier)) if isinstance(args, dict) else str(toolgroup.identifier)
                         agent_tools.append({
                             "type": "mcp",
-                            "server_label": toolgroup.args.get(
-                                "name", str(toolgroup.identifier)
-                            ),
+                            "server_label": label,
                             "server_url": toolgroup.mcp_endpoint.uri,
+                            "require_approval": "never",
                         })
                         break
             except Exception as e:
-                logger.logger.debug("Failed to get MCP server info for %s: %s", toolgroup_name, e)
+                logger.debug("Failed to get MCP server info for %s: %s", toolgroup_name, e)
         else:
             # For other toolgroups, get individual tools and convert to function format
             try:
