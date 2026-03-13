@@ -36,6 +36,11 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  # LlamaStack CRD schema omits .spec.template.metadata, causing ArgoCD
+  # ComparisonError during structured merge diff. Ignoring entire /spec is
+  # required because the error occurs BEFORE ignoreDifferences filtering.
+  # The LSD is reconciled by the LlamaStack operator; GitOps source of
+  # truth is maintained via the llamastack-rag.yaml manifest in git.
   ignoreDifferences:
     - group: llamastack.io
       kind: LlamaStackDistribution
