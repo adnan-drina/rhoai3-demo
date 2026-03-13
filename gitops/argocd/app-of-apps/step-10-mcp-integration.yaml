@@ -39,3 +39,8 @@ spec:
       kind: Deployment
       jsonPointers:
         - /spec/template/spec/containers/0/env
+    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec

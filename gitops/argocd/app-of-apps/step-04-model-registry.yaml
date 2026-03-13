@@ -34,8 +34,10 @@ spec:
         factor: 2
         maxDuration: 3m
   # Ignore PVC status differences (WaitForFirstConsumer causes Pending state)
+  # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
   ignoreDifferences:
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:
         - /status
+        - /spec

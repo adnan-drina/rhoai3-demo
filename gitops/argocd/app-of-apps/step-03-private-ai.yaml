@@ -57,3 +57,8 @@ spec:
       kind: LocalQueue
       jsonPointers:
         - /status
+    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec

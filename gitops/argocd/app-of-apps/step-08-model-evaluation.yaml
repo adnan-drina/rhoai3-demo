@@ -34,3 +34,9 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec
