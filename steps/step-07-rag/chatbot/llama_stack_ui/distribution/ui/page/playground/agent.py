@@ -65,8 +65,8 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
                             "require_approval": "never",
                         })
                         break
-            except Exception as e:
-                logger.debug("Failed to get MCP server info for %s: %s", toolgroup_name, e)
+            except Exception:
+                pass
         else:
             # For other toolgroups, get individual tools and convert to function format
             try:
