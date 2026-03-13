@@ -112,31 +112,23 @@ To trigger a new run from the CLI:
 
 > **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
 
-### RHOAI 3.3 Alignment
+### LlamaStack Configuration (RHOAI 3.3 Example D — pgvector with `rh-dev`)
 
-| Pattern | Status | Notes |
-|---------|--------|-------|
-| `ENABLE_PGVECTOR=true` with `PGVECTOR_*` env vars | Aligned | RHOAI 3.3 Example D |
-| `EMBEDDING_PROVIDER=sentence-transformers` | Aligned | Required for inline embeddings |
-| `POSTGRES_*` from Secret | Aligned | RHOAI 3.3 production pattern |
-| `FMS_ORCHESTRATOR_URL` for guardrails | Aligned | Auto-wired by `rh-dev` |
-| `ENABLE_RAGAS=true` | Aligned | Auto-wired by `rh-dev` |
-| No `userConfig` | Aligned | RHOAI 3.3 recommended for pgvector |
-| `pgvector/pgvector:pg16` image | Aligned | RHOAI 3.3 documented image |
+| Env Var | Value / Source | Purpose | RHOAI 3.3 Ref |
+|---------|---------------|---------|---------------|
+| `ENABLE_PGVECTOR` | `true` | Activates pgvector vector store provider | Example D |
+| `PGVECTOR_HOST/PORT/DB/USER/PASSWORD` | `llamastack-pgvector-secret` | pgvector connection (same PostgreSQL instance) | Example D |
+| `POSTGRES_HOST/PORT/DB/USER/PASSWORD` | `llamastack-postgres-secret` | Metadata store | Production pattern |
+| `ENABLE_SENTENCE_TRANSFORMERS` | `true` | Inline embeddings (no GPU needed) | Example D |
+| `EMBEDDING_PROVIDER` | `sentence-transformers` | Routes to sentence-transformers (not vllm-embedding) | Required |
+| `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
+| `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
+| `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
+| `FMS_ORCHESTRATOR_URL` | Service URL | Guardrails safety (auto-wired by `rh-dev`) | Guardrails docs |
+| No `userConfig` | — | `rh-dev` template manages all provider wiring | Recommended for pgvector |
+| PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 
-### LlamaStack Environment Variables
-
-| Env Var | Value | Purpose |
-|---------|-------|---------|
-| `ENABLE_SENTENCE_TRANSFORMERS` | `true` | Inline embeddings (no GPU) |
-| `EMBEDDING_PROVIDER` | `sentence-transformers` | Routes embeddings to sentence-transformers |
-| `ENABLE_PGVECTOR` | `true` | Activates pgvector vector store provider |
-| `PGVECTOR_HOST/PORT/DB/USER/PASSWORD` | From `llamastack-pgvector-secret` | pgvector connection |
-| `POSTGRES_HOST/PORT/DB/USER/PASSWORD` | From `llamastack-postgres-secret` | Metadata store |
-| `INFERENCE_MODEL` | From `llamastack-vllm-secret` | granite-8b-agent |
-| `VLLM_URL` | From `llamastack-vllm-secret` | vLLM endpoint |
-| `ENABLE_RAGAS` | `true` | Ragas evaluation providers |
-| `FMS_ORCHESTRATOR_URL` | Service URL | Guardrails (auto-wired by `rh-dev`) |
+> Ref: [RHOAI 3.3 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 
 ## References
 
