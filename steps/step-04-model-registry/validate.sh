@@ -36,7 +36,7 @@ fi
 
 # --- Seed Job ---
 log_step "Seed Job"
-check "Seed job completed" \
+check_warn "Seed job completed (may be cleaned up by TTL)" \
     "oc get job model-registry-seed -n rhoai-model-registries -o jsonpath='{.status.succeeded}'" \
     "1"
 

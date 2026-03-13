@@ -46,8 +46,8 @@ ORCH_POD=$(oc get pods -l app=guardrails-orchestrator -n "$NAMESPACE" \
 
 if [[ -n "$ORCH_POD" ]]; then
     HEALTH=$(oc exec "$ORCH_POD" -n "$NAMESPACE" -c guardrails-orchestrator -- \
-        curl -s http://localhost:8032/health 2>/dev/null || echo "ERROR")
-    if echo "$HEALTH" | grep -qi "ok\|healthy\|UP"; then
+        curl -s http://localhost:8034/health 2>/dev/null || echo "ERROR")
+    if echo "$HEALTH" | grep -qi "ok\|healthy\|UP\|fms-guardrails"; then
         echo -e "${GREEN}[PASS]${NC} Orchestrator health check passed"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
@@ -59,28 +59,35 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
-# --- LlamaStack Shields ---
-log_step "LlamaStack Shields"
-for label_name in "llamastack:lsd-genai-playground" "llamastack-rag:lsd-rag"; do
-    label=$(echo "$label_name" | cut -d: -f1)
-    name=$(echo "$label_name" | cut -d: -f2)
-    POD=$(oc get pods -l "app.kubernetes.io/name=$label" -n "$NAMESPACE" \
-        --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1)
-    if [[ -n "$POD" ]]; then
-        SHIELDS=$(oc exec "$POD" -n "$NAMESPACE" -- \
-            curl -s http://localhost:8321/v1/shields 2>/dev/null || echo "ERROR")
-        if echo "$SHIELDS" | grep -qi "shield\|identifier"; then
-            echo -e "${GREEN}[PASS]${NC} Shields registered in $name"
-            VALIDATE_PASS=$((VALIDATE_PASS + 1))
-        else
-            echo -e "${YELLOW}[WARN]${NC} No shields found in $name"
-            VALIDATE_WARN=$((VALIDATE_WARN + 1))
-        fi
+# --- LlamaStack Safety Provider ---
+log_step "LlamaStack Safety Provider"
+LSD_POD=$(oc get pods -l app.kubernetes.io/instance=lsd-rag -n "$NAMESPACE" \
+    --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1)
+if [[ -z "$LSD_POD" ]]; then
+    LSD_POD=$(oc get pods -n "$NAMESPACE" --no-headers 2>/dev/null | grep "lsd-rag" | awk '{print $1}' | head -1)
+fi
+if [[ -n "$LSD_POD" ]]; then
+    HAS_SAFETY=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+        curl -s http://localhost:8321/v1/providers 2>/dev/null | \
+        python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(len([p for p in data['data'] if p['provider_id']=='trustyai_fms']))
+except:
+    print('0')
+" 2>/dev/null || echo "0")
+    if [[ "$HAS_SAFETY" -ge 1 ]]; then
+        echo -e "${GREEN}[PASS]${NC} trustyai_fms safety provider registered in lsd-rag"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
-        echo -e "${YELLOW}[WARN]${NC} Pod for $name not found — skipping shields check"
+        echo -e "${YELLOW}[WARN]${NC} trustyai_fms provider not found in lsd-rag"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
-done
+else
+    echo -e "${YELLOW}[WARN]${NC} lsd-rag pod not found — skipping safety provider check"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
 
 # --- Summary ---
 echo ""

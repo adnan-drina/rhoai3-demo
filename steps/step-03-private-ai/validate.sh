@@ -38,7 +38,7 @@ check "MinIO deployment ready" \
     "oc get deploy minio -n minio-storage -o jsonpath='{.status.readyReplicas}'" \
     "1"
 
-check "MinIO init job completed" \
+check_warn "MinIO init job completed (may be cleaned up by TTL)" \
     "oc get job minio-init -n minio-storage -o jsonpath='{.status.succeeded}'" \
     "1"
 
