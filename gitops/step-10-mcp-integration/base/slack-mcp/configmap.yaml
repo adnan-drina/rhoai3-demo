@@ -8,6 +8,4 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 data:
-  SLACK_WEBHOOK_URL: ""
   DEFAULT_CHANNEL: "#all-acme-mcp-demo"
-  DEFAULT_USERNAME: "ACME LithoOps Agent"

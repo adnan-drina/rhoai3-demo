@@ -45,9 +45,10 @@ log_step "Creating Slack MCP credentials Secret..."
 load_env
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
-    log_error "SLACK_BOT_TOKEN not set in .env — Slack MCP will not work."
-    log_info "  Create a Slack App at https://api.slack.com/apps with scopes:"
-    log_info "  channels:history, channels:read, chat:write, reactions:write, users:read"
+    log_info "⚠️  SLACK_BOT_TOKEN not set in .env — Slack MCP will start but posting will fail."
+    log_info "   To enable Slack: add SLACK_BOT_TOKEN=xoxb-... to .env"
+    log_info "   Create a Slack App at https://api.slack.com/apps with scopes:"
+    log_info "   channels:history, channels:read, chat:write, reactions:write, users:read"
 else
     oc create secret generic slack-mcp-credentials \
         --from-literal=SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" \
@@ -78,7 +79,7 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
 
     log_info "  Sync: $SYNC | Health: $HEALTH"
 
-    if [ "$SYNC" = "Synced" ] && [ "$HEALTH" = "Healthy" ]; then
+    if [ "$SYNC" = "Synced" ]; then
         break
     fi
     sleep 10
@@ -110,18 +111,23 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Restart LlamaStack pods to discover MCP tools
+# Step 5: Restart Playground LSD (safe — no RAG data)
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Restarting LlamaStack pods to discover MCP tool_groups..."
+log_step "Restarting Playground LSD to discover MCP tool_groups..."
 
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
     oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
     log_success "lsd-genai-playground restart triggered"
 fi
 
+# WARNING: lsd-rag restart causes vector store data loss (file associations lost).
+# The MCP tool_groups are already registered in lsd-rag config, so a restart is
+# only needed if MCP endpoints changed. Skip by default to preserve RAG data.
 if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
-    oc rollout restart deployment/lsd-rag -n "$NAMESPACE" 2>/dev/null || true
-    log_success "lsd-rag restart triggered"
+    log_info "⚠️  Skipping lsd-rag restart to preserve vector store data."
+    log_info "   MCP tool_groups are registered via lsd-rag config (no restart needed)."
+    log_info "   If MCP endpoints changed, manually: oc rollout restart deploy/lsd-rag -n $NAMESPACE"
+    log_info "   Then re-ingest RAG data: ./steps/step-07-rag/run-batch-ingestion.sh acme"
 fi
 echo ""
 

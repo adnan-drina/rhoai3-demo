@@ -26,6 +26,7 @@ spec:
     syncOptions:
       - CreateNamespace=false
       - ServerSideApply=true
+      - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
     retry:
@@ -35,11 +36,7 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    - group: build.openshift.io
-      kind: BuildConfig
+    - group: apps
+      kind: Deployment
       jsonPointers:
-        - /status
-    - group: serving.kserve.io
-      kind: InferenceService
-      jsonPointers:
-        - /status
+        - /spec/template/spec/containers/0/env
