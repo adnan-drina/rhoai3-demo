@@ -104,7 +104,7 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
 
     log_info "  Sync: $SYNC | Health: $HEALTH"
 
-    if [ "$SYNC" = "Synced" ] && [ "$HEALTH" = "Healthy" ]; then
+    if [ "$HEALTH" = "Healthy" ]; then
         break
     fi
     sleep 10
@@ -170,7 +170,22 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Uploading scenario documents to MinIO..."
 
-if [ -f "$SCRIPT_DIR/upload-to-minio.sh" ]; then
+# Wait for MinIO to be ready before uploading
+log_info "  Checking MinIO readiness..."
+MINIO_READY=false
+for i in $(seq 1 12); do
+    if oc get deployment minio -n minio-storage -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1"; then
+        MINIO_READY=true
+        break
+    fi
+    sleep 5
+done
+if [ "$MINIO_READY" != "true" ]; then
+    log_warn "MinIO not ready — skipping document upload. Run manually later:"
+    log_info "  ./steps/step-07-rag/deploy.sh  (or upload-to-minio.sh)"
+fi
+
+if [ "$MINIO_READY" = "true" ] && [ -f "$SCRIPT_DIR/upload-to-minio.sh" ]; then
     chmod +x "$SCRIPT_DIR/upload-to-minio.sh"
 
     for scenario_dir in "$SCRIPT_DIR"/scenario-docs/*/; do
@@ -191,7 +206,7 @@ if [ -f "$SCRIPT_DIR/upload-to-minio.sh" ]; then
                 log_error "  Failed to upload $filename"
         done
     done
-else
+elif [ "$MINIO_READY" = "true" ]; then
     log_info "  upload-to-minio.sh not found — upload documents manually"
 fi
 echo ""

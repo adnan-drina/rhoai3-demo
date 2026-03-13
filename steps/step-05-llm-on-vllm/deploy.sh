@@ -139,6 +139,28 @@ set -u
 echo ""
 
 # =============================================================================
+# Scale down queued models
+# =============================================================================
+# KServe RawDeployment creates Deployments at replicas=1 regardless of
+# minReplicas:0. We must explicitly scale down queued models to avoid
+# consuming GPU resources before the user activates them.
+log_step "Scaling down queued models (minReplicas:0 → replicas:0)..."
+
+for model in mistral-3-int4 devstral-2 gpt-oss-20b; do
+    DEPLOY_NAME=$(oc get deployment -n "$NAMESPACE" --no-headers 2>/dev/null | grep "${model}-predictor" | awk '{print $1}' | head -1)
+    if [[ -n "$DEPLOY_NAME" ]]; then
+        CURRENT=$(oc get deployment "$DEPLOY_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "?")
+        if [[ "$CURRENT" != "0" ]]; then
+            oc scale deployment/"$DEPLOY_NAME" -n "$NAMESPACE" --replicas=0 2>/dev/null || true
+            log_success "$model scaled to 0 (was $CURRENT)"
+        else
+            log_success "$model already at 0 replicas"
+        fi
+    fi
+done
+echo ""
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
