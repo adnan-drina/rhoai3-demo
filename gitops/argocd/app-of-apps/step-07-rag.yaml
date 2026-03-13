@@ -41,6 +41,7 @@ spec:
       kind: LlamaStackDistribution
       jsonPointers:
         - /status
+        - /spec
     - group: datasciencepipelinesapplications.opendatahub.io
       kind: DataSciencePipelinesApplication
       jsonPointers:
