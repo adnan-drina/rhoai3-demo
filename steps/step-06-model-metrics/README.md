@@ -1,143 +1,89 @@
 # Step 06: Model Performance Metrics
 
-**"The ROI of Quantization"** — Comprehensive observability and benchmarking to prove that Inference Efficiency is the most important metric for enterprise AI.
+**"The ROI of Quantization"** — Prove that a $0.85/hr INT4 model beats a $3.40/hr BF16 model on cost-per-token.
 
 ## The Business Story
 
-In enterprise AI deployments, the question isn't just *"How fast is my model?"* but *"How much value per GPU-hour?"* This step demonstrates the **Economics of Precision**: a 1-GPU INT4 model at $0.85/hr vs a 4-GPU BF16 model at $3.40/hr. We use GuideLLM stress tests and Grafana dashboards to find each model's "Breaking Point" — the concurrency level where latency degrades beyond acceptable SLOs. The punchline: 4 INT4 instances cost the same as 1 BF16 instance but serve 60% more users.
+In enterprise AI, the question isn't *"How fast is my model?"* but *"How much value per GPU-hour?"* This step puts two models head-to-head: a 1-GPU INT4 deployment at $0.85/hr vs a 4-GPU BF16 deployment at $3.40/hr. GuideLLM stress tests generate load while three Grafana dashboards visualize latency, throughput, GPU saturation, and cost efficiency in real time. The punchline: 4 INT4 instances cost the same as 1 BF16 instance but serve **60% more users**.
 
-## Architecture
+## What It Does
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│              Step 06: The "ROI of Quantization" Demo             │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   Grafana Dashboards          OpenShift Console (DCGM)           │
-│        │                              │                          │
-│        ▼                              ▼                          │
-│   OpenShift User Workload Monitoring (Thanos + Prometheus)       │
-│                          ▲                                       │
-│                          │                                       │
-│   GuideLLM Benchmark Jobs (CronJob + on-demand)                  │
-│        │                              │                          │
-│        ▼                              ▼                          │
-│   mistral-3-int4 (1-GPU, $)    mistral-3-bf16 (4-GPU, $$$$)     │
-│                                                                  │
-│   ServiceMonitors auto-created by KServe per InferenceService    │
-└──────────────────────────────────────────────────────────────────┘
+GuideLLM Benchmark Jobs
+    │                          ┌─────────────────────────────────┐
+    ├───► mistral-3-int4       │  Grafana Dashboards             │
+    │     (1 GPU, $0.85/hr)    │  1. vLLM Latency/Throughput     │
+    │                          │  2. NVIDIA DCGM GPU Metrics     │
+    └───► mistral-3-bf16       │  3. Mistral ROI Comparison      │
+          (4 GPU, $3.40/hr)    └────────────┬────────────────────┘
+                                            │
+                               OpenShift User Workload Monitoring
+                               (Prometheus + Thanos)
 ```
 
-## What Gets Deployed
-
-| Component | Description | Official/Community |
-|-----------|-------------|-------------------|
-| **Grafana Operator** | Kubernetes-native Grafana management from OperatorHub | Community |
-| **Grafana Instance** | Dashboard with anonymous access in `private-ai` | Community (OSS) |
-| **GrafanaDatasource** | Prometheus datasource pointing to UWM Thanos Querier | — |
-| **3 GrafanaDashboards** | vLLM metrics, GPU hardware, ROI comparison | — |
-| **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC | Community (OSS) |
-| **Job Templates** | On-demand benchmark Jobs per model (`oc create -f`) | Community (OSS) |
+| Component | Description |
+|-----------|-------------|
+| **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) |
+| **Grafana Instance** | Anonymous-access dashboards in `private-ai` |
+| **3 GrafanaDashboards** | vLLM metrics, GPU hardware, ROI comparison |
+| **GuideLLM CronJob** | Daily parallel benchmarks at 2:00 AM UTC |
+| **Job Templates** | On-demand benchmark per model via `oc create -f` |
 
 > **Community Tooling Disclaimer:** Grafana Operator and GuideLLM are community-driven tools and are NOT officially supported by Red Hat OpenShift AI 3.3. See [Red Hat's Third Party Software Support Policy](https://access.redhat.com/third-party-software-support).
 
-## Prerequisites
-
-| Requirement | How to Verify |
-|-------------|---------------|
-| **Step 01 Complete** | User Workload Monitoring enabled, DCGM Dashboard |
-| **Step 05 Complete** | At least one vLLM InferenceService running |
-| **Recommended** | Both `mistral-3-int4` and `mistral-3-bf16` for ROI comparison |
-
-```bash
-oc get cm cluster-monitoring-config -n openshift-monitoring -o yaml | grep enableUserWorkload
-oc get inferenceservice -n private-ai | grep -E "mistral-3-int4|mistral-3-bf16"
-oc get servicemonitor -n private-ai | grep metrics
-```
-
-## Deployment
-
-### Option A: Direct Deploy (Recommended for Demo)
-
-```bash
-./steps/step-06-model-metrics/deploy.sh
-```
-
-### Option B: ArgoCD (GitOps)
-
-```bash
-oc apply -f gitops/argocd/app-of-apps/step-06-model-metrics.yaml
-```
-
-The deploy uses a **CronJob + Job template** pattern instead of Tekton Pipelines (Tekton's affinity assistants deadlock in Kueue-managed namespaces). The CronJob checks which models are running and creates a GuideLLM Job per active model. Metrics flow to Prometheus automatically via KServe ServiceMonitors.
-
-## Validation
-
-```bash
-# 1. Grafana Operator installed
-oc get csv -n grafana-operator | grep grafana
-# Expected: grafana-operator.v5.x ... Succeeded
-
-# 2. Grafana instance ready
-oc get grafana -n private-ai
-# Expected: grafana   12.x.x   complete   success
-
-# 3. Three dashboards exist
-oc get grafanadashboard -n private-ai
-# Expected: vllm-latency-throughput-cache, dcgm-gpu-metrics, mistral-roi-comparison
-
-# 4. Datasource configured
-oc get grafanadatasource -n private-ai
-# Expected: prometheus-uwm
-
-# 5. Grafana route healthy
-curl -k -s -o /dev/null -w "%{http_code}" \
-  https://$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')/api/health
-# Expected: 200
-
-# 6. CronJob scheduled
-oc get cronjob guidellm-daily -n private-ai
-# Expected: guidellm-daily   0 2 * * *
-```
-
 ## Demo Walkthrough
 
-### Before the Demo (~5 min)
+### Scene 1: Fire a Benchmark
+
+Kick off a GuideLLM stress test against a running model so the dashboards have live data.
 
 ```bash
 GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${GRAFANA_URL}"
 
-oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
 oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
 oc get pods -n private-ai -l app=guidellm -w
 ```
 
-### During the Demo (3-Dashboard Narrative)
+**What to expect:** A GuideLLM pod starts and ramps concurrency from 1 to 32 users against the model endpoint. Runs for 5-10 minutes.
 
-**Dashboard 1: vLLM Latency, Throughput & Cache** (primary — show live)
+*What to say: "GuideLLM is an open-source tool from the vLLM project. It sends graduated concurrency — 1, 2, 4, 8, 16, 32 users — while measuring latency and throughput at each level. Every request flows through KServe's metrics endpoint straight into Prometheus."*
 
-Open Grafana, select `namespace=private-ai` and `model_name=granite-8b-agent`. Walk through: E2E Request Latency ("P99 stays under 40s at 10 concurrent users"), Token Throughput ("80-120 tok/s on a single $0.85/hr GPU"), Scheduler State ("zero queue backlog"), Cache Utilization ("healthy, no memory pressure"), and Time To First Token ("P95 under 95ms"). Then switch to `mistral-3-bf16` and compare the same panels.
+---
 
-**Dashboard 2: NVIDIA DCGM GPU Metrics** (hardware story)
+### Scene 2: Grafana — vLLM Latency, Throughput & Cache
 
-Show GPU utilization hitting 100% during benchmarks — "This is the capacity ceiling; when we need more, Kueue queues the request."
+Open Grafana and select `namespace=private-ai`. Walk through the panels while the benchmark runs.
 
-**Dashboard 3: Mistral ROI Comparison** (closing — business story)
+**What to expect:** Five live panel groups — E2E Request Latency, Token Throughput, Scheduler State, KV Cache Utilization, and Time To First Token — all updating in real time as GuideLLM increases load.
 
-Side-by-side BF16 vs INT4 metrics. Key message: *"The 1-GPU model delivers 60% of the 4-GPU throughput at 25% of the cost."*
+*What to say: "This single dashboard replaces three separate vLLM dashboards. Notice the P99 latency stays under 40 seconds at 10 concurrent users, throughput holds at 80-120 tokens per second, and the cache shows zero memory pressure. These metrics come directly from vLLM's built-in Prometheus endpoint — KServe auto-creates the ServiceMonitors."*
 
-### Demo Talking Points
+Switch the `model_name` dropdown from one model to the other and compare the same panels.
 
-> *"On a single $0.85/hr L4 GPU, granite-8b-agent handles 10 concurrent users with sub-100ms TTFT and zero queue backlog. The 4-GPU BF16 model costs 4x more but only delivers 2x the throughput. For cost-sensitive workloads, running 4 instances of the 1-GPU model gives you more total capacity at the same price."*
+*What to say: "Same dashboard, different model. You can instantly compare any model deployed through KServe — no config changes needed."*
 
-> *"When the GPU hits 100% utilization, Kueue's quota management kicks in — new models queue until resources free up. This is exactly the GPU-as-a-Service pattern we demonstrated in Step 03."*
+---
 
-## Benchmark Results
+### Scene 3: NVIDIA DCGM GPU Dashboard
 
-Based on GuideLLM graduated concurrency testing (256 input, 256 output tokens). Both models tuned with `--kv-cache-dtype=fp8` and `--enable-chunked-prefill` per Red Hat AI Field Engineering recommendations.
+Switch to the DCGM dashboard to show the hardware layer.
 
-### Summary Comparison
+**What to expect:** GPU utilization hitting 95-100% during the active benchmark, with memory utilization and temperature alongside it.
+
+*What to say: "This is the capacity ceiling. When GPU utilization hits 100%, that's when Kueue's quota management from Step 03 kicks in — new model requests queue until resources free up. This is exactly the GPU-as-a-Service pattern we built earlier."*
+
+---
+
+### Scene 4: Mistral ROI Comparison — The Business Case
+
+Open the ROI Comparison dashboard. This is the closer — the business story.
+
+**What to expect:** Side-by-side panels showing INT4 vs BF16 latency, throughput, and cost metrics.
+
+*What to say: "Here's the business case. The 1-GPU INT4 model delivers 60% of the 4-GPU throughput at 25% of the cost. For the price of one BF16 deployment, you can run four INT4 instances and serve 60% more total users."*
+
+### ROI Summary
 
 | Metric | INT4 (1-GPU) | BF16 (4-GPU) | Ratio |
 |--------|--------------|--------------|-------|
@@ -148,10 +94,6 @@ Based on GuideLLM graduated concurrency testing (256 input, 256 output tokens). 
 | **Efficiency (tok/s/$)** | 353 tok/s/$ | 206 tok/s/$ | **INT4 1.7x better** |
 | **TTFT at Sweet Spot** | 874ms (p95) | 594ms (p95) | BF16 faster |
 
-> **INT4 Sweet Spot:** 3-5 concurrent users (TTFT < 1.5s) | **Breaking Point:** 8-10 users (TTFT > 2s)
->
-> **BF16 Sweet Spot:** 5-15 concurrent users (TTFT < 1.7s) | **Breaking Point:** 20 users (TTFT > 2s)
-
 ### Key Findings
 
 1. **FP8 KV Cache is Critical for INT4**: Without FP8 cache, INT4 broke at 5 users. With optimization, it handles 8+ users (60% improvement).
@@ -160,74 +102,9 @@ Based on GuideLLM graduated concurrency testing (256 input, 256 output tokens). 
 
 3. **BF16 Scales Better**: For high-concurrency workloads (15+ users), BF16's 4-GPU parallelism provides more stable latency.
 
-4. **The "4x INT4" Strategy**: Running 4 INT4 instances (4 x 8 = 32 concurrent users) costs the same as 1 BF16 instance (20 concurrent users), providing 60% more capacity.
+4. **The "4x INT4" Strategy**: Running 4 INT4 instances costs the same as 1 BF16 instance but serves 60% more users with 98.9% accuracy recovery.
 
-### Demo Storyline
-
-> *"With Red Hat AI memory optimizations, a single $0.85/hr L4 GPU running INT4 quantization handles 8 concurrent users with sub-100ms per-token latency. For the cost of one 4-GPU BF16 deployment, you can run 4 INT4 instances serving 60% more users with 98.9% accuracy recovery."*
-
-## Troubleshooting
-
-### GuideLLM Job Failing
-
-**Symptom:** Benchmark job exits with error
-
-```bash
-oc logs job/<job-name> -n private-ai
-```
-
-Check that the target InferenceService is ready. If the rate is too high, lower `MAX_RATE` in the job template.
-
-### No Data in Grafana
-
-**Symptom:** Dashboard shows "No data"
-
-```bash
-oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
-  curl -s 'localhost:9090/api/v1/targets' | jq '.data.activeTargets[] | select(.labels.job | contains("metrics")) | {job: .labels.job, health: .health}'
-```
-
-Verify the ServiceMonitors exist (`oc get servicemonitor -n private-ai`) and that User Workload Monitoring is enabled.
-
-### vLLM Metrics Use Colon Separator
-
-vLLM metrics use `:` not `_` (e.g., `vllm:num_requests_running`). If PromQL queries return empty, check the separator. See [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html) for the full metric reference.
-
-## GitOps Structure
-
-```
-gitops/step-06-model-metrics/
-├── base/
-│   ├── kustomization.yaml
-│   ├── pipelines-operator/                # Red Hat OpenShift Pipelines (for step-07)
-│   │   ├── kustomization.yaml
-│   │   └── subscription.yaml
-│   ├── grafana-operator/
-│   │   ├── kustomization.yaml
-│   │   ├── operator/                      # Grafana Operator from OperatorHub
-│   │   │   ├── kustomization.yaml
-│   │   │   ├── namespace.yaml
-│   │   │   ├── operatorgroup.yaml
-│   │   │   └── subscription.yaml
-│   │   ├── instance/                      # Grafana instance in private-ai
-│   │   │   ├── kustomization.yaml
-│   │   │   ├── grafana.yaml
-│   │   │   └── datasource.yaml
-│   │   └── dashboards/                    # 3 GrafanaDashboard CRs
-│   │       ├── kustomization.yaml
-│   │       ├── vllm-latency-throughput-cache.yaml
-│   │       ├── vllm-ltc-configmap.yaml
-│   │       ├── dcgm-gpu-metrics.yaml
-│   │       └── mistral-roi-comparison.yaml
-│   ├── guidellm/                          # Benchmarking
-│   │   ├── kustomization.yaml
-│   │   ├── rbac.yaml
-│   │   ├── cronjob.yaml
-│   │   └── job-templates/
-│   │       ├── granite-8b-agent.yaml
-│   │       └── mistral-3-bf16.yaml
-└── kustomization.yaml
-```
+*What to say: "With Red Hat AI memory optimizations, a single $0.85/hr L4 GPU running INT4 handles 8 concurrent users with sub-100ms per-token latency. For the cost of one 4-GPU BF16 deployment, you can run 4 INT4 instances serving 60% more users."*
 
 ## Design Decisions
 
@@ -246,11 +123,17 @@ gitops/step-06-model-metrics/
 - [How to Deploy and Benchmark vLLM with GuideLLM (Red Hat Developers)](https://developers.redhat.com/articles/2025/12/24/how-deploy-and-benchmark-vllm-guidellm-kubernetes)
 
 ### Community / Open Source
-- [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html) (includes PromQL examples)
+- [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html)
 - [Grafana Operator](https://github.com/grafana/grafana-operator) | [Docs](https://grafana.github.io/grafana-operator/docs/)
 - [GuideLLM (vllm-project)](https://github.com/vllm-project/guidellm)
-- [NeuralNav — SLO-Driven Capacity Planning](https://github.com/redhat-et/neuralnav) (traffic profiles + experience-driven SLOs)
 - [llm-d-deployer vLLM Dashboard](https://github.com/llm-d/llm-d-deployer/tree/main/quickstart/grafana/dashboards)
+
+## Operations
+
+```bash
+./steps/step-06-model-metrics/deploy.sh     # Deploy Grafana + GuideLLM + dashboards
+./steps/step-06-model-metrics/validate.sh   # Verify Grafana health, dashboards, datasource
+```
 
 ## Next Steps
 

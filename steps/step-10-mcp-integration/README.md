@@ -1,10 +1,9 @@
 # Step 10: MCP Integration
-
-**"Enterprise Tool Orchestration"** - Give the AI agent access to live enterprise systems through Model Context Protocol.
+**"Enterprise Tool Orchestration"** — Give the AI agent access to live enterprise systems through Model Context Protocol.
 
 ## The Business Story
 
-Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A. Step 10 adds MCP (Model Context Protocol) servers that give the LLM agent access to live systems: query an equipment database, inspect an OpenShift cluster, or send team notifications -- all through standardized tool interfaces that the model invokes autonomously.
+Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A. Step 10 adds MCP (Model Context Protocol) servers that give the LLM agent access to live systems: query an equipment database, inspect an OpenShift cluster, or send team notifications — all through standardized tool interfaces that the model invokes autonomously.
 
 This completes the **four pillars of Red Hat AI**:
 1. Flexible Foundation (steps 01-05)
@@ -12,16 +11,7 @@ This completes the **four pillars of Red Hat AI**:
 3. Trust and Governance (step 09)
 4. **Integration and Automation (step 10)**
 
-| Component | Image Source | Purpose |
-|-----------|-------------|---------|
-| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp:10-03-2025` | Generic SQL access to ACME equipment DB |
-| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server:2025-11-24` | Read-only cluster inspection |
-| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server:10-03-2025` | Slack workspace messaging |
-| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data |
-
-All MCP server images come from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers). Zero on-cluster builds required.
-
-## Architecture
+## What It Does
 
 ```
 GenAI Playground / Chatbot
@@ -40,51 +30,16 @@ MCP Servers (SSE endpoints in private-ai)
     |--- slack-mcp:8080/sse     -> Slack API (slack-mcp-server)
 ```
 
-## Prerequisites
+| Component | Image Source | Purpose |
+|-----------|-------------|---------|
+| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp:10-03-2025` | Generic SQL access to ACME equipment DB |
+| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server:2025-11-24` | Read-only cluster inspection |
+| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server:10-03-2025` | Slack workspace messaging |
+| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data |
 
-```bash
-# granite-8b-agent with tool-calling enabled (step-05)
-oc get isvc granite-8b-agent -n private-ai
+All MCP server images come from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers). Zero on-cluster builds required.
 
-# LlamaStack running (step-05 or step-07)
-oc get llamastackdistribution -n private-ai
-```
-
-## Deployment
-
-### A) One-shot (recommended)
-
-```bash
-./steps/step-10-mcp-integration/deploy.sh
-```
-
-This will:
-1. Create Slack credentials Secret from `.env` (if `SLACK_BOT_TOKEN` is set)
-2. Deploy via ArgoCD (all catalog images, no builds)
-3. Wait for PostgreSQL and MCP servers
-4. Verify MCP ConfigMap in Dashboard namespace
-5. Restart Playground LSD (safe, no RAG data loss)
-
-### B) Step-by-step (manual)
-
-```bash
-# 1. Create Slack credentials (from .env)
-source .env
-oc create secret generic slack-mcp-credentials \
-  --from-literal=SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" \
-  -n private-ai --dry-run=client -o yaml | oc apply -f -
-
-# 2. Deploy via ArgoCD
-oc apply -f gitops/argocd/app-of-apps/step-10-mcp-integration.yaml
-
-# 3. Wait for servers (all use prebuilt images — start in seconds)
-oc get deploy database-mcp openshift-mcp slack-mcp -n private-ai -w
-
-# 4. Verify Playground ConfigMap (managed by ArgoCD)
-oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
-```
-
-## ACME Corp Demo Environment
+### ACME Corp Demo Environment
 
 Step 10 deploys an `acme-corp` namespace with three simulated equipment monitoring pods:
 
@@ -96,35 +51,9 @@ Step 10 deploys an `acme-corp` namespace with three simulated equipment monitori
 
 Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates this failure.
 
-## Demo Scenarios
+### MCP Server Tools
 
-### The End-to-End Demo (4-question flow)
-
-In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack):
-
-**Q1: "List pods in acme-corp project"**
-Agent calls `pods_list_in_namespace(namespace="acme-corp")` via OpenShift MCP.
-Returns 3 pods — `acme-equipment-0007` in CrashLoopBackOff.
-
-**Q2: "Fetch the equipment name for the failed pod"**
-Agent calls `execute_sql` via Database MCP with a query on `acme_pod_equipment_map`.
-Returns: L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite.
-
-**Q3: "Search for known issues for the mentioned product"**
-Agent calls `knowledge_search` (RAG) against the `acme_corporate` vector store.
-Returns: DFO calibration procedure documentation.
-
-> **Note:** Requires ACME PDFs ingested via step-07.
-
-**Q4: "Send a Slack message with the summary to the platform team"**
-Agent calls `conversations_add_message` via Slack MCP to `#all-acme-mcp-demo`.
-Message delivered to real Slack workspace.
-
-## MCP Server Details
-
-### database-mcp (EDB Postgres MCP)
-
-Generic PostgreSQL MCP server providing read-only SQL access. The LLM discovers the schema and writes queries autonomously.
+**database-mcp** (EDB Postgres MCP) — generic SQL access, LLM discovers schema autonomously:
 
 | Tool | Description |
 |------|-------------|
@@ -135,9 +64,7 @@ Generic PostgreSQL MCP server providing read-only SQL access. The LLM discovers 
 | `explain_query` | Query execution plan |
 | `analyze_db_health` | Database health checks |
 
-### openshift-mcp (Kubernetes MCP Server)
-
-Read-only Kubernetes/OpenShift MCP server. Single Go binary from [containers/kubernetes-mcp-server](https://github.com/containers/kubernetes-mcp-server).
+**openshift-mcp** (Kubernetes MCP Server) — read-only cluster inspection:
 
 | Tool | Description |
 |------|-------------|
@@ -148,9 +75,7 @@ Read-only Kubernetes/OpenShift MCP server. Single Go binary from [containers/kub
 | `namespaces_list` | List namespaces |
 | `resources_list` / `resources_get` | Generic resource operations |
 
-### slack-mcp (Slack MCP Server)
-
-Slack workspace integration via [korotovsky/slack-mcp-server](https://github.com/korotovsky/slack-mcp-server). Requires bot token from [api.slack.com/apps](https://api.slack.com/apps).
+**slack-mcp** (Slack MCP Server) — workspace messaging:
 
 | Tool | Description |
 |------|-------------|
@@ -159,103 +84,72 @@ Slack workspace integration via [korotovsky/slack-mcp-server](https://github.com
 | `conversations_history` | Get channel message history |
 | `conversations_search_messages` | Search messages |
 
-Required Slack App scopes: `channels:read`, `channels:history`, `chat:write`, `users:read`
+## Demo Walkthrough
 
-## Troubleshooting
+In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).
 
-### MCP server not starting
+### Scene 1: List Pods in acme-corp (openshift-mcp)
 
-```bash
-oc logs deploy/database-mcp -n private-ai
-oc logs deploy/openshift-mcp -n private-ai
-oc logs deploy/slack-mcp -n private-ai
-```
+**Prompt:** "List pods in acme-corp project"
 
-### Slack MCP: `not_in_channel`
+The agent calls `pods_list_in_namespace(namespace="acme-corp")` via the OpenShift MCP server.
 
-The bot app must be invited to the target channel:
-```
-/invite @<bot-name>
-```
-in the Slack channel.
+**Expected result:** Returns 3 pods — two healthy, one (`acme-equipment-0007`) in CrashLoopBackOff.
 
-### Slack MCP: `missing_scope`
+_What to say: "The agent just queried the live OpenShift cluster through MCP. No kubectl, no scripts — the LLM decided which API to call and parsed the response. It immediately spots the failing pod."_
 
-Add required scopes to the Slack App at [api.slack.com/apps](https://api.slack.com/apps) → OAuth & Permissions → Bot Token Scopes.
+### Scene 2: Fetch Equipment Name (database-mcp)
 
-### MCP tools not visible in chatbot
+**Prompt:** "Fetch the equipment name for the failed pod"
 
-```bash
-# Verify ConfigMap
-oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o yaml
+The agent calls `execute_sql` via the Database MCP server, querying the `acme_pod_equipment_map` table.
 
-# Verify LlamaStack tool_groups
-oc exec deploy/lsd-rag -n private-ai -- \
-  curl -s http://localhost:8321/v1/toolgroups | python3 -m json.tool
-```
+**Expected result:** Returns L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite.
 
-### Agent doesn't call MCP tools
+_What to say: "Now it pivots to the equipment database. The LLM discovered the schema on its own, wrote a SQL query joining the pod name to equipment records, and returned the specific scanner model. No one taught it this query."_
 
-1. Ensure **Agent-based** mode is selected in the chatbot
-2. Toggle ON the MCP servers (database, openshift, slack) in the sidebar
-3. Verify granite-8b-agent has tool-calling enabled:
+### Scene 3: Search Known Issues (RAG)
 
-```bash
-oc get isvc granite-8b-agent -n private-ai \
-  -o jsonpath='{.spec.predictor.model.args}' | tr ',' '\n' | grep tool
-```
+**Prompt:** "Search for known issues for the mentioned product"
 
-### PostgreSQL tables empty
+The agent calls `knowledge_search` against the `acme_corporate` vector store (RAG from step-07).
 
-The init schema runs via a `postStart` lifecycle hook. If tables are missing:
-```bash
-oc exec deploy/postgresql -n private-ai -- \
-  psql -U acmeadmin -d acme_equipment -f /opt/app-root/src/postgresql-start/init.sql
-```
+**Expected result:** Returns DFO calibration procedure documentation for the L-900 product line.
 
-## GitOps Structure
+_What to say: "This is where it all comes together — the agent combines live cluster data, database lookups, and document retrieval in a single conversation. It found the calibration procedure for the exact scanner that's failing."_
 
-```
-gitops/step-10-mcp-integration/
-├── base/
-│   ├── kustomization.yaml
-│   ├── mcp-servers-configmap.yaml  # gen-ai-aa-mcp-servers (redhat-ods-applications)
-│   ├── acme-corp/                  # Demo namespace + 3 pods + RBAC
-│   ├── postgresql/                 # RHEL9 PostgreSQL 15 + init schema
-│   ├── database-mcp/              # Deployment (catalog) + Service
-│   ├── openshift-mcp/             # Deployment (catalog) + SA + ClusterRoleBinding
-│   └── slack-mcp/                 # Deployment (catalog) + ConfigMap + Service
+### Scene 4: Send Slack Message (slack-mcp)
 
-steps/step-10-mcp-integration/
-├── deploy.sh                       # ArgoCD deploy + Slack secret from .env
-├── validate.sh
-└── README.md
-```
+**Prompt:** "Send a Slack message with the summary to the platform team"
 
-## Rollback / Cleanup
+The agent calls `conversations_add_message` via the Slack MCP server, posting to `#all-acme-mcp-demo`.
 
-```bash
-oc delete application step-10-mcp-integration -n openshift-gitops
-oc delete configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
-oc delete clusterrolebinding openshift-mcp-view
-oc delete secret slack-mcp-credentials -n private-ai
-```
+**Expected result:** A structured summary — pod name, equipment ID, product line, known issue, and recommended procedure — delivered to the real Slack workspace.
+
+_What to say: "Four questions, four different systems — OpenShift cluster, PostgreSQL database, RAG document store, and Slack. The LLM orchestrated all of it autonomously through MCP. This is what enterprise AI integration looks like."_
 
 ## Design Decisions
 
-> **Design Decision:** All 3 MCP servers use prebuilt images from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) (`quay.io/mcp-servers/`). Zero on-cluster builds, faster deployment, trusted supply chain.
+> **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.
 
-> **Design Decision:** The Database MCP uses generic SQL access (EDB Postgres MCP) rather than custom tool endpoints. The LLM discovers the schema autonomously and writes targeted SQL.
+> **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
 
-> **Design Decision:** deploy.sh does NOT restart lsd-rag. MCP tool_groups are registered via the LlamaStack API (not in config files) and persist in PostgreSQL across restarts. Only the Dashboard Playground LSD is restarted. Vector store data persists via pgvector.
+> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
 
-> **Design Decision:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD (not applied manually by deploy.sh), following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
+> **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
-> **Design Decision:** Slack credentials are created from `.env` at deploy time (not in git). The bot token is required for the catalog Slack MCP server.
+> **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
 
 ## References
 
-- [RHOAI 3.3 -- Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
-- [Red Hat Ecosystem Catalog -- MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
+- [RHOAI 3.3 — Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
+- [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
+
+## Operations
+
+```bash
+./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret from .env
+./steps/step-10-mcp-integration/validate.sh   # MCP server health + tool registration
+```
