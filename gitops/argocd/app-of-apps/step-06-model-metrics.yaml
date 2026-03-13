@@ -71,15 +71,6 @@ spec:
         - /metadata/labels
         - /status
         - /spec/template
-    # Tekton Pipeline/Task — operator adds status and managed fields
-    - group: tekton.dev
-      kind: Pipeline
-      jsonPointers:
-        - /status
-    - group: tekton.dev
-      kind: Task
-      jsonPointers:
-        - /status
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim

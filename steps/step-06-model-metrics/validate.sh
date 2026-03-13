@@ -17,10 +17,6 @@ echo ""
 log_step "Grafana Operator"
 check_csv_succeeded "grafana-operator" "grafana"
 
-# --- OpenShift Pipelines ---
-log_step "OpenShift Pipelines Operator"
-check_csv_succeeded "openshift-operators" "pipelines"
-
 # --- Grafana Instance ---
 log_step "Grafana Instance"
 check "Grafana instance exists" \

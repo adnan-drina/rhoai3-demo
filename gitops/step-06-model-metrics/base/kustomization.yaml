@@ -12,27 +12,19 @@ kind: Kustomization
 #   - Goal: Find the "Efficiency Delta" - where does each model saturate?
 #
 # Components:
-#   1. OpenShift Pipelines Operator (pipelines-operator/)
-#      - Red Hat OpenShift Pipelines (Tekton) for CI/CD pipelines
-#      - Channel: latest, Version: 1.20.2
-#      - Enables self-service GuideLLM benchmark runs via Pipelines
-#
-#   2. Grafana Operator (grafana-operator/)
+#   1. Grafana Operator (grafana-operator/)
 #      - Installs community Grafana Operator from OperatorHub
 #      - Deploys Grafana instance in private-ai namespace
 #      - Official vLLM Performance Statistics dashboard (auto-updated from GitHub)
 #      - DCGM GPU Metrics dashboard
 #      - Mistral 3 (BF16 vs INT4) comparison dashboard
 #
-#   3. GuideLLM Benchmarking (guidellm/)
+#   2. GuideLLM Benchmarking (guidellm/)
 #      - CronJob for daily automated benchmarks
 #      - Poisson distribution for realistic human traffic simulation
 #      - Rate sweep from 0.1 to 5.0 req/s
 #
-#   4. GuideLLM Pipeline (guidellm-pipeline/)
-#      - Tekton Task and Pipeline for self-service benchmarks
-#      - Pre-configured PipelineRuns for each model
-#      - Results stored in persistent volume
+#   3. Model Benchmarking Workbench (model-benchmarking-wb/)
 #
 # Dashboards (managed by Grafana Operator):
 #   - vLLM Performance Statistics (official from vLLM GitHub)
@@ -49,19 +41,12 @@ kind: Kustomization
 # For interactive benchmark UI, see Step 07B (vLLM-Playground - future).
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.20
 # Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
 # Ref: https://github.com/neuralmagic/guidellm
-# Ref: https://github.com/rh-aiservices-bu/guidellm-pipeline
 # Ref: https://github.com/grafana/grafana-operator
-# Ref: https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-pipelines-operator
-# Ref: https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator
 # ============================================================================
 
 resources:
-  # OpenShift Pipelines Operator (used by step-09 RAG pipeline)
-  - pipelines-operator/
-
   # Grafana Operator: Operator + Instance + Dashboards
   - grafana-operator/
 

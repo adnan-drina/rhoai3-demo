@@ -71,26 +71,6 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
-# PVC: Pipeline Results
-# -----------------------------------------------------------------------------
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: guidellm-pipeline-results
-  namespace: private-ai
-  labels:
-    app: model-benchmarking-wb
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: gp3-csi
----
-# -----------------------------------------------------------------------------
 # Notebook: Model Benchmarking Workbench
 # -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
@@ -239,9 +219,6 @@ spec:
             - name: guidellm-results
               mountPath: /results
               readOnly: true
-            - name: pipeline-results
-              mountPath: /pipeline-results
-              readOnly: true
             - name: shm
               mountPath: /dev/shm
             - name: trusted-ca
@@ -255,9 +232,6 @@ spec:
         - name: guidellm-results
           persistentVolumeClaim:
             claimName: guidellm-results
-        - name: pipeline-results
-          persistentVolumeClaim:
-            claimName: guidellm-pipeline-results
         - name: shm
           emptyDir:
             medium: Memory
@@ -288,10 +262,6 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs", "cronjobs"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  # View PipelineRuns
-  - apiGroups: ["tekton.dev"]
-    resources: ["pipelineruns", "taskruns"]
-    verbs: ["get", "list", "watch", "create"]
   # View Pods for log access
   - apiGroups: [""]
     resources: ["pods", "pods/log"]
