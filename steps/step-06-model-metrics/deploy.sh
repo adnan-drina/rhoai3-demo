@@ -5,7 +5,6 @@
 # Deploys via ArgoCD:
 #   - Grafana Operator + Instance + 3 Dashboards
 #   - GuideLLM CronJob (daily benchmarks) + Job templates
-#   - OpenShift Pipelines Operator
 #   - Model Benchmarking Workbench
 # =============================================================================
 set -euo pipefail
