@@ -130,7 +130,7 @@ spec:
 
         # --- Guardrails (auto-wired by rh-dev when FMS_ORCHESTRATOR_URL is set) ---
         - name: FMS_ORCHESTRATOR_URL
-          value: "http://guardrails-orchestrator.private-ai.svc:8080"
+          value: "http://guardrails-orchestrator-service.private-ai.svc:8034"
 
       resources:
         requests:
