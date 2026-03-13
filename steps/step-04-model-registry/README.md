@@ -1,12 +1,12 @@
-# Step 04: Enterprise Model Governance
+# Step 04: Model Registry
 
-Implements the **Model Registry** as a governance layer for enterprise AI deployments. This step establishes the "Secure Gateway" pattern where only vetted, validated models are available for deployment.
+Establishes the **Model Registry** as a governance layer — the "Gatekeeper Pattern" — so only vetted models reach production.
 
 ---
 
-## The Gatekeeper Pattern
+## The Business Story
 
-In enterprise environments, developers should **not** pull models directly from the public internet (Hugging Face) into production. The Model Registry acts as the organization's "Secure Gateway":
+In enterprise environments, developers should **not** pull models directly from Hugging Face into production. The Model Registry acts as the organization's **Gatekeeper**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -38,152 +38,54 @@ In enterprise environments, developers should **not** pull models directly from 
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Benefits:**
-- **Governance**: Only models approved by `ai-admin` appear in the catalog
-- **Versioning**: Track model updates without breaking existing applications
-- **Discovery**: Developers find models in GenAI Studio, not external sources
-- **Hardware Alignment**: Models are tagged with optimal hardware requirements
+**Key benefits:** governance (only admin-approved models appear), versioning (track updates without breaking consumers), discovery (developers find models in GenAI Studio, not external sources), and hardware alignment (models tagged with optimal GPU requirements).
 
 ---
 
 ## Architecture
 
-All Model Registry components are deployed in the `rhoai-model-registries` namespace:
+All components live in the `rhoai-model-registries` namespace. The operator creates an OAuth-protected service on `:8443` for Dashboard/UI access. We add a second **internal** service on `:8080` (unauthenticated) so seed jobs and automation can register models without an OAuth token.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     rhoai-model-registries namespace                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                 ModelRegistry Pod (private-ai-registry)             │   │
-│   │  ┌────────────────────┐    ┌────────────────────┐                   │   │
-│   │  │   OAuth Proxy      │    │   REST API         │                   │   │
-│   │  │   (kube-rbac)      │    │   (model-registry) │                   │   │
-│   │  │   :8443            │    │   :8080            │                   │   │
-│   │  └────────────────────┘    └────────────────────┘                   │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                ▲                            ▲                               │
-│                │                            │                               │
-│   ┌────────────┴────────────┐   ┌──────────┴──────────────────────┐        │
-│   │ private-ai-registry     │   │ private-ai-registry-internal    │        │
-│   │ :8443 (operator)        │   │ :8080 (GitOps)                  │        │
-│   │ OAuth-protected         │   │ Internal automation             │        │
-│   │ Dashboard/UI access     │   │ Seed job access                 │        │
-│   └─────────────────────────┘   └─────────────────────────────────┘        │
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                         MariaDB                                     │   │
-│   │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │   │
-│   │  │ Deployment   │    │   Service    │    │     PVC      │          │   │
-│   │  │ mariadb-105  │◀───│   :3306      │    │    5Gi       │          │   │
-│   │  └──────────────┘    └──────────────┘    └──────────────┘          │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| Service | Port | Purpose |
+|---------|------|---------|
+| `private-ai-registry` | 8443 | OAuth-protected — Dashboard, external clients |
+| `private-ai-registry-internal` | 8080 | Unauthenticated — seed jobs, automation |
 
-**Service Architecture:**
-| Service | Port | Purpose | Access |
-|---------|------|---------|--------|
-| `private-ai-registry` | 8443 | OAuth-protected API | Dashboard, external clients |
-| `private-ai-registry-internal` | 8080 | Unauthenticated API | Seed jobs, automation |
+MariaDB 10.5 provides metadata storage (5 Gi PVC, same namespace).
 
 ---
 
-## Model Catalog
-
-RHOAI 3.3 includes a pre-bundled **Model Catalog** with 48+ validated models:
-
-| Provider | Models |
-|----------|--------|
-| **IBM** | Granite 3.1 (8B variants, FP8, W4A16, W8A8) |
-| **Meta** | Llama 3.1/3.3/4 (8B-70B, Maverick, Scout) |
-| **Mistral** | Mistral Small 24B, Mixtral 8x7B |
-| **Alibaba** | Qwen 2.5/3 (7B-8B variants) |
-| **Microsoft** | phi-4 (all quantizations) |
-| **DeepSeek** | DeepSeek-R1 |
-| **Google** | Gemma 2/3n |
-
-Access via: **GenAI Studio → AI Available Assets**
-
----
-
-## Registered Model (Seed Job)
-
-This step registers the **Granite 3.1 8B Instruct FP8** model:
-
-| Property | Value |
-|----------|-------|
-| **Model** | `Granite-3.1-8b-Instruct-FP8` |
-| **Version** | `3.1-May2025-Validated` |
-| **Owner** | `ai-admin` |
-| **Provider** | IBM |
-| **License** | Apache 2.0 |
-| **Quantization** | FP8-dynamic |
-| **Hardware Target** | NVIDIA L4 (AWS G6) |
-| **Tags** | `granite`, `fp8`, `validated`, `vllm` |
-| **Artifact URI** | `s3://rhoai-artifacts/granite-3.1-8b-instruct-FP8-dynamic/` |
-
-> **Note**: The seed job uses proper RHOAI metadata format with `metadataType: MetadataStringValue`.
-
----
-
-## Demo Credentials
-
-| Username | Password | Registry Access |
-|----------|----------|-----------------|
-| `ai-admin` | `redhat123` | Full access - register, archive, delete models |
-| `ai-developer` | `redhat123` | Read-only - discover and deploy models |
-
----
-
-## What Gets Installed
-
-All resources in `rhoai-model-registries` namespace:
-
-### Database (MariaDB)
+## What Gets Deployed
 
 | Resource | Name | Purpose |
 |----------|------|---------|
-| **Secret** | `model-registry-db-creds` | MariaDB credentials |
-| **PVC** | `model-registry-db-pvc` | 5Gi persistent storage |
-| **Deployment** | `model-registry-db` | MariaDB 10.5 |
-| **Service** | `model-registry-db` | Port 3306 |
+| Secret | `model-registry-db-creds` | MariaDB credentials |
+| PVC | `model-registry-db-pvc` | 5 Gi persistent storage |
+| Deployment | `model-registry-db` | MariaDB 10.5 |
+| Service | `model-registry-db` | DB port 3306 |
+| ModelRegistry | `private-ai-registry` | Registry CR (v1beta1) |
+| Service | `private-ai-registry` | OAuth API (8443) |
+| Service | `private-ai-registry-internal` | Internal API (8080) |
+| NetworkPolicy | `private-ai-registry-internal-access` | Allow seed job traffic |
+| RoleBinding | `ai-admin-registry-admin` | Full admin access |
+| RoleBinding | `ai-developer-registry-user` | Read-only access |
+| Job | `model-registry-seed` | Register Granite 3.1 8B |
 
-### Model Registry
+**Seed job registers:** Granite 3.1 8B Instruct FP8 — owner `ai-admin`, artifact at `s3://rhoai-artifacts/granite-3.1-8b-instruct-FP8-dynamic/`, tagged for NVIDIA L4 (AWS G6).
 
-| Resource | Name | Purpose |
-|----------|------|---------|
-| **ModelRegistry** | `private-ai-registry` | Registry instance (v1beta1) |
-| **Service** | `private-ai-registry` | OAuth-protected API (8443) |
-| **Service** | `private-ai-registry-internal` | Internal API (8080) |
-| **NetworkPolicy** | `private-ai-registry-internal-access` | Allow seed job access |
-
-### RBAC
-
-| Resource | Name | Purpose |
-|----------|------|---------|
-| **RoleBinding** | `ai-admin-registry-admin` | Full admin access |
-| **RoleBinding** | `ai-developer-registry-user` | Read-only access |
-
-### Seed Job
-
-| Resource | Name | Purpose |
-|----------|------|---------|
-| **Job** | `model-registry-seed` | Register Granite 3.1 model |
+> RHOAI 3.3 also ships a **Model Catalog** with 48+ pre-bundled validated models (IBM Granite, Meta Llama, Mistral, Qwen, phi-4, DeepSeek, Gemma). Browse them in **GenAI Studio → AI Available Assets**.
 
 ---
 
 ## Prerequisites
 
-- [x] Step 01 completed (GPU infrastructure)
-- [x] Step 02 completed (RHOAI 3.3 with ModelRegistry component)
-- [x] Step 03 completed (MinIO for artifact storage)
+- Step 01 completed (GPU infrastructure)
+- Step 02 completed (RHOAI 3.3 with ModelRegistry component enabled)
+- Step 03 completed (MinIO for artifact storage)
 
 ---
 
-## Deploy
+## Deployment
 
 ### A) One-shot (recommended)
 
@@ -191,280 +93,155 @@ All resources in `rhoai-model-registries` namespace:
 ./steps/step-04-model-registry/deploy.sh
 ```
 
-The script will:
-1. Deploy MariaDB database in `rhoai-model-registries`
-2. Create ModelRegistry CR `private-ai-registry`
-3. Create internal service for API access
-4. Configure RBAC for ai-admin and ai-developer
-5. Register the Granite 3.1 FP8 model (metadata only)
+Deploys MariaDB, creates the ModelRegistry CR, configures RBAC for `ai-admin` / `ai-developer`, and runs the Granite seed job.
 
-### B) Step-by-step (exact commands)
-
-For manual deployment or debugging:
+### B) Step-by-step
 
 ```bash
-# 1. Validate manifests (dry-run)
+# Dry-run
 kustomize build gitops/step-04-model-registry/base | oc apply --dry-run=server -f -
 
-# 2. Apply Argo CD Application
+# Apply Argo CD Application
 oc apply -f gitops/argocd/app-of-apps/step-04-model-registry.yaml
 
-# 3. Wait for namespace
-until oc get namespace rhoai-model-registries &>/dev/null; do sleep 5; done
-
-# 4. Wait for MariaDB deployment
+# Wait for MariaDB
 oc rollout status deployment/model-registry-db -n rhoai-model-registries --timeout=120s
 
-# 5. Wait for ModelRegistry to be available
+# Wait for ModelRegistry Available
 until oc get modelregistry.modelregistry.opendatahub.io private-ai-registry \
       -n rhoai-model-registries -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null | grep -q True; do
-    echo "Waiting for ModelRegistry to become available..."
-    sleep 10
+    echo "Waiting for ModelRegistry..."; sleep 10
 done
-echo "ModelRegistry is available"
 
-# 6. Wait for seed job to complete
+# Wait for seed job
 oc wait --for=condition=complete job/model-registry-seed -n rhoai-model-registries --timeout=120s
-
-# 7. Verify model was registered
-oc run test-api --rm -i --restart=Never \
-  --image=curlimages/curl -n rhoai-model-registries -- \
-  curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models
 ```
 
-> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
+> For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands.
 
 ---
 
-## Validation Commands
-
-### 1. Check Model Registry
+## Validation
 
 ```bash
-# Verify ModelRegistry CR
+# ModelRegistry CR ready?
 oc get modelregistry.modelregistry.opendatahub.io -n rhoai-model-registries
-
-# Expected output:
 # NAME                  AVAILABLE   AGE
 # private-ai-registry   True        5m
 
-# Check registry pods
-oc get pods -n rhoai-model-registries -l app=private-ai-registry
-```
-
-### 2. Check Database
-
-```bash
-# Verify MariaDB is running
+# MariaDB running?
 oc get pods -n rhoai-model-registries -l app=model-registry-db
 
-# Check database connectivity
-oc exec -n rhoai-model-registries deployment/model-registry-db -- \
-  mysql -u mlmd -pmlmd-secret-123 -e "SHOW DATABASES;"
-```
-
-### 3. Check Seed Job
-
-```bash
-# Verify seed job completed
+# Seed job completed?
 oc get job model-registry-seed -n rhoai-model-registries
-
-# Check logs
 oc logs job/model-registry-seed -n rhoai-model-registries
-```
 
-### 4. Query Registry API
-
-```bash
-# List registered models via internal service
+# Query the registry API
 oc run test-api --rm -i --restart=Never \
   --image=curlimages/curl -n rhoai-model-registries -- \
   curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models
 ```
 
-### 5. Verify in Dashboard
+**Dashboard check (ai-admin):** Settings → Model registries → `private-ai-registry` → verify Granite model appears.
 
-**As ai-admin (Registry View):**
-1. Login to RHOAI Dashboard
-2. Go to **Settings** → **Model registries**
-3. Click **private-ai-registry**
-4. Verify **Granite-3.1-8b-Instruct-FP8** appears
+**Dashboard check (ai-developer):** GenAI Studio → AI Available Assets → browse validated models.
 
-**As ai-developer (Catalog View):**
-1. Login to RHOAI Dashboard
-2. Go to **GenAI Studio** → **AI Available Assets**
-3. Find models under "Red Hat AI validated" filter
-4. Browse 48+ validated models
+| Username | Password | Access |
+|----------|----------|--------|
+| `ai-admin` | `redhat123` | Register, archive, delete |
+| `ai-developer` | `redhat123` | Read-only discovery |
 
 ---
 
-## Kustomize Structure
+## Demo Walkthrough
+
+1. **Login as `ai-admin`** — navigate to Settings → Model registries. Show `private-ai-registry` with the Granite model registered by the seed job.
+2. **Switch to `ai-developer`** — navigate to GenAI Studio → AI Available Assets. Show the 48+ pre-bundled catalog models and explain that the registry gates what reaches production.
+3. **Highlight the Gatekeeper** — `ai-admin` controls what enters the registry; `ai-developer` consumes only vetted models. No "Shadow AI."
+
+---
+
+## Troubleshooting
+
+### ModelRegistry not becoming Available
+
+```bash
+oc describe modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries
+oc logs -n redhat-ods-operator -l app=rhods-operator --tail=50
+```
+
+### Database connection failed
+
+```bash
+oc exec -n rhoai-model-registries deployment/model-registry-db -- \
+  mysql -u mlmd -pmlmd-secret-123 -e "SELECT 1"
+```
+
+### Seed job failed
+
+```bash
+oc logs job/model-registry-seed -n rhoai-model-registries
+# Re-run:
+oc delete job model-registry-seed -n rhoai-model-registries
+oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
+```
+
+### Internal service unreachable
+
+```bash
+oc get svc private-ai-registry-internal -n rhoai-model-registries
+oc get networkpolicy -n rhoai-model-registries
+```
+
+---
+
+## GitOps Structure
 
 ```
 gitops/step-04-model-registry/
 ├── base/
 │   ├── kustomization.yaml
-│   │
 │   ├── database/                    # MariaDB for metadata
 │   │   ├── kustomization.yaml
 │   │   ├── credentials-secret.yaml
 │   │   ├── pvc.yaml
 │   │   ├── deployment.yaml
 │   │   └── service.yaml
-│   │
 │   ├── registry/                    # ModelRegistry CR + services
 │   │   ├── kustomization.yaml
-│   │   ├── model-registry.yaml      # v1beta1 CR
-│   │   ├── internal-service.yaml    # Port 8080 for automation
+│   │   ├── model-registry.yaml
+│   │   ├── internal-service.yaml
 │   │   └── internal-networkpolicy.yaml
-│   │
 │   ├── rbac/                        # Access control
 │   │   ├── kustomization.yaml
 │   │   ├── registry-user-rolebinding.yaml
 │   │   └── registry-admin-rolebinding.yaml
-│   │
 │   └── seed-job.yaml                # Register Granite 3.1 model
 ```
 
 ---
 
-## Registry vs. Catalog
+## Design Decisions
 
-| Component | Purpose | Location | Access |
-|-----------|---------|----------|--------|
-| **Model Registry** | Backend storage for metadata | Settings → Model registries | ai-admin |
-| **Model Catalog** | Discovery UI (48+ pre-bundled models) | GenAI Studio → AI Available Assets | ai-developer |
+> **External MariaDB instead of embedded:** The ModelRegistry CR supports an embedded database, but an external MariaDB gives us explicit PVC control and simpler backup/restore for the demo.
 
-The **Model Catalog** uses pre-bundled YAML files from Red Hat - no external sync required.
+> **Internal service on port 8080:** The operator-managed service requires OAuth. A second headless service bypasses auth so Kubernetes Jobs can seed models without token negotiation.
 
----
+> **Registry vs. Catalog:** The Model Registry stores custom metadata (our registered models). The Model Catalog is a pre-bundled read-only UI of 48+ Red Hat-validated models — no external sync required.
 
-## Model Lifecycle Management
-
-### Archiving Models (Compliance)
-
-When a model version is superseded or deprecated:
-
-```bash
-# Archive a model via internal API
-oc run archive-model --rm -i --restart=Never \
-  --image=curlimages/curl -n rhoai-model-registries -- \
-  curl -sf -X PATCH "http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models/{MODEL_ID}" \
-  -H "Content-Type: application/json" \
-  -d '{"state": "ARCHIVED"}'
-```
-
-> **Note**: Archived models are hidden from the catalog but preserved for regulatory audit.
+> **Seed job uses `metadataType: MetadataStringValue`:** This is the format expected by the RHOAI 3.3 registry API. Omitting the type wrapper causes silent metadata loss.
 
 ---
 
-## Troubleshooting
+## References
 
-### ModelRegistry Not Ready
-
-```bash
-# Check operator logs
-oc logs -n redhat-ods-operator -l app=rhods-operator --tail=50
-
-# Check ModelRegistry status
-oc describe modelregistry.modelregistry.opendatahub.io private-ai-registry -n rhoai-model-registries
-```
-
-### Database Connection Failed
-
-```bash
-# Test database connectivity
-oc exec -n rhoai-model-registries deployment/model-registry-db -- \
-  mysql -u mlmd -pmlmd-secret-123 -e "SELECT 1"
-
-# Check credentials secret
-oc get secret model-registry-db-creds -n rhoai-model-registries -o yaml
-```
-
-### Seed Job Failed
-
-```bash
-# Check job logs
-oc logs job/model-registry-seed -n rhoai-model-registries
-
-# Re-run seed job
-oc delete job model-registry-seed -n rhoai-model-registries
-oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
-```
-
-### Internal Service Not Accessible
-
-```bash
-# Check internal service exists
-oc get svc private-ai-registry-internal -n rhoai-model-registries
-
-# Check network policy
-oc get networkpolicy -n rhoai-model-registries
-
-# Test from debug pod
-oc run debug --rm -i --restart=Never --image=curlimages/curl -n rhoai-model-registries -- \
-  curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models
-```
-
----
-
-## Rollback / Cleanup
-
-### Remove Model Registry Infrastructure
-
-> **⚠️ Warning**: This will delete all registered models, versions, and metadata. The Model Catalog (pre-bundled models) is not affected.
-
-```bash
-# 1. Delete Argo CD Application (cascades to managed resources)
-oc delete application step-04-model-registry -n openshift-gitops
-
-# 2. Wait for resources to be removed
-oc get pods -n rhoai-model-registries -w
-
-# 3. Optional: Delete namespace manually if not cleaned up
-oc delete namespace rhoai-model-registries
-```
-
-### GitOps Revert (alternative)
-
-```bash
-# Remove from Git and let Argo CD prune
-git revert <commit-with-step-04>
-git push
-
-# Or delete Argo CD Application with cascade
-oc delete application step-04-model-registry -n openshift-gitops --cascade=foreground
-```
-
----
-
-## Documentation Links
-
-### Official Red Hat Documentation
 - [Enabling Model Registry Component](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/enabling_the_model_registry_component/index)
 - [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index)
 - [Working with Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_model_registries/index)
-
-### Model Reference
-- [Red Hat AI Validated Models](https://huggingface.co/collections/RedHatAI)
 - [Granite 3.1 8B Instruct FP8](https://huggingface.co/RedHatAI/granite-3.1-8b-instruct-FP8-dynamic)
 
 ---
 
-## Summary
+## Next Steps
 
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| **MariaDB** | Metadata storage | ✅ Deployed |
-| **ModelRegistry** | Registry instance | ✅ Deployed |
-| **Internal Service** | API access for automation | ✅ Deployed |
-| **Granite 3.1 FP8** | Validated model | ✅ Registered |
-| **Model Catalog** | 48+ pre-bundled models | ✅ Available |
-| **KServe Deployment** | Inference endpoint | ⏳ Step 05 |
-
-**This step establishes the "Model Warehouse":**
-- ✅ Registry infrastructure deployed
-- ✅ Database connected (same namespace)
-- ✅ Granite model registered with proper metadata
-- ✅ Model Catalog with 48+ validated models
-- ⏳ Ready for Step 05: Deploy to inference endpoint
+Proceed to **[Step 05: LLM on vLLM](../step-05-llm-on-vllm/README.md)** to deploy the registered Granite model as a live inference endpoint using KServe + vLLM.

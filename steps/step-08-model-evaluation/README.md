@@ -4,7 +4,7 @@
 
 ## The Business Story
 
-Step-07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? Step-08 runs the same questions in two modes — **Pre-RAG** (LLM only, no documents) and **Post-RAG** (with Milvus retrieval) — then uses a separate, larger model as judge to score the quality difference. HTML reports are published to MinIO for team review.
+Step-07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? Step-08 runs the same questions in two modes — **Pre-RAG** (LLM only, no documents) and **Post-RAG** (with pgvector retrieval) — then uses a separate, larger model as judge to score the quality difference. HTML reports are published to MinIO for team review.
 
 | Component | Purpose | Persona |
 |-----------|---------|---------|
@@ -21,13 +21,13 @@ eval-configs/              run-eval-report.sh                     MinIO
 (*_tests.yaml)    ┌─────────────────────────────────────┐
                   │  For each scenario (pre + post RAG): │
   GitOps ────────►│  1. Generate answers (granite-8b)    │──► HTML reports
-  (ArgoCD)        │  2. Retrieve context (Milvus)        │    s3://rhoai-storage/
+  (ArgoCD)        │  2. Retrieve context (pgvector)      │    s3://rhoai-storage/
                   │  3. Judge quality (mistral-3-bf16)    │    eval-results/{run-id}/
                   │  4. Generate HTML report              │
                   │  5. Upload to MinIO                   │
                   └─────────────────────────────────────┘
                          │              │            │
-                    lsd-rag        Milvus      mistral-3-bf16
+                    lsd-rag        pgvector     mistral-3-bf16
                     (step-07)    (step-07)      (step-05)
 ```
 
@@ -163,7 +163,7 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1
 ### Step 2: Show the Solution (Post-RAG Grounded Answer)
 
 ```bash
-# Same question, with retrieved context from Milvus → LLM answers from documents
+# Same question, with retrieved context from pgvector → LLM answers from documents
 ./steps/step-08-model-evaluation/run-eval-report.sh
 ```
 
@@ -175,7 +175,7 @@ Open the MinIO Console and navigate to `rhoai-storage/eval-results/{run-id}/`.
 
 Reports show side-by-side: question, generated answer, expected answer, and judge score (A-E with color coding).
 
-## Directory Structure
+## GitOps Structure
 
 ```
 steps/step-08-model-evaluation/
@@ -215,20 +215,24 @@ gitops/argocd/app-of-apps/
 └── step-08-model-evaluation.yaml             # ArgoCD Application
 ```
 
-## Key Design Decisions
+## Design Decisions
 
 > **Design Decision:** We use two separate models — `granite-8b-agent` as the candidate and `mistral-3-bf16` as the judge. Using the same small model for both roles causes hallucinated judgments (the model injects its own biases instead of faithfully comparing texts).
 
 > **Design Decision:** Tests live in-tree in `eval-configs/` and are deployed to the cluster as ConfigMaps via ArgoCD. The `run-eval-report.sh` script copies them to the lsd-rag pod and executes locally (localhost access to the eval API, no DNS issues from KFP pods).
 
-> **Design Decision:** Pre-RAG vs Post-RAG evaluation uses identical questions and expected answers. Pre-RAG calls the LLM without document context (baseline). Post-RAG retrieves from Milvus and injects context into the system prompt. The score difference quantifies RAG value.
+> **Design Decision:** Pre-RAG vs Post-RAG evaluation uses identical questions and expected answers. Pre-RAG calls the LLM without document context (baseline). Post-RAG retrieves from pgvector and injects context into the system prompt. The score difference quantifies RAG value.
 
-> **Design Decision (Ragas):** Ragas inline provider requires `rh-dev` auto-wiring without `userConfig`. Since we use `userConfig` for remote Milvus, Ragas providers cannot be activated on `lsd-rag`. We use the Llama Stack eval API with `basic` + `llm-as-judge` scoring — the same pattern as [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) and [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack).
+> **Design Decision (Scoring):** We use the Llama Stack eval API with `basic` + `llm-as-judge` scoring — the same pattern as [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) and [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack). Ragas providers are also available via `rh-dev` auto-wiring (`ENABLE_RAGAS=true`).
 
-## Official Documentation
+## References
 
 - [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
 - [RHOAI 3.3 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
 - [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — KFP pipeline pattern for LlamaStack scoring
 - [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples
 - [rhoai-genaiops/lab-instructions RAG eval](https://github.com/rhoai-genaiops/lab-instructions/blob/main/docs/5-grounded-ai/6-eval-rag.md) — Workshop eval configs
+
+## Next Steps
+
+- **Step 09**: [Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI detectors

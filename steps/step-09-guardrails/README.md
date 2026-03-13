@@ -103,7 +103,7 @@ The chatbot has two processing modes:
 - **Direct mode**: No guardrails — demonstrates the "before" state
 - **Agent-based mode**: Has a **"🛡️ Security Shields"** toggle — when enabled, routes input/output through the Guardrails Orchestrator
 
-The integration uses the orchestrator API directly (not LlamaStack safety API, which requires `rh-dev` auto-wiring incompatible with our `userConfig` for remote Milvus).
+The chatbot calls the orchestrator API directly for fine-grained control over which detectors run on input vs output. The LlamaStack `remote::trustyai_fms` safety provider is also auto-wired by the `rh-dev` template.
 
 ## Gateway Routes
 
@@ -115,17 +115,21 @@ The orchestrator exposes preset pipelines via the gateway:
 | `/pii/v1/chat/completions` | Regex PII (email, phone, SSN, credit card, LinkedIn, GitHub) | Output filtering |
 | `/safe/v1/chat/completions` | PII + HAP + Prompt injection | Full protection |
 
-## Key Design Decisions
+## Design Decisions
 
 > **Design Decision:** Detectors run on CPU-only (granite-guardian-hap-38m is 38M params, deberta-v3 is 86M params). No GPU needed — they use 1 CPU core and 2GB RAM each.
 
-> **Design Decision:** The `remote::trustyai_fms` LlamaStack safety provider requires `rh-dev` distribution auto-wiring without `userConfig`. Since we use `userConfig` for remote Milvus, shields are integrated via the orchestrator API directly from the chatbot.
+> **Design Decision:** The chatbot uses the orchestrator API directly rather than the LlamaStack safety API. This gives fine-grained control over detector selection (HAP on input, PII regex on output) and avoids coupling the chatbot to LlamaStack shield registration. The `remote::trustyai_fms` provider is auto-wired by the `rh-dev` template and available for other consumers.
 
 > **Design Decision:** Custom ACME regex patterns block Dutch phone numbers (`+31...`), LinkedIn URLs, and GitHub URLs — specifically targeting our demo data.
 
-## Official Documentation
+## References
 
 - [RHOAI 3.3 — Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails)
 - [RHOAI 3.3 — Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
 - [rhoai-genaiops/lab-instructions — Guardrails](https://github.com/rhoai-genaiops/lab-instructions/tree/main/docs/7-honor-code)
 - [burrsutter/fantaco — Shields](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/shields-llama-stack)
+
+## Next Steps
+
+- **Step 10**: [MCP Integration](../step-10-mcp-integration/README.md) — Enterprise tool orchestration with MCP servers

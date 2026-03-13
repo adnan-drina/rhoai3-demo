@@ -241,7 +241,7 @@ oc delete clusterrolebinding openshift-mcp-view
 oc delete secret slack-mcp-credentials -n private-ai
 ```
 
-## Key Design Decisions
+## Design Decisions
 
 > **Design Decision:** All 3 MCP servers use prebuilt images from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) (`quay.io/mcp-servers/`). Zero on-cluster builds, faster deployment, trusted supply chain.
 

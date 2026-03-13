@@ -341,7 +341,7 @@ gitops/step-05-llm-on-vllm/base/
     └── upload-granite-8b.yaml         # Granite (~8GB)
 ```
 
-## Key RHOAI 3.3 Design Patterns
+## Design Decisions
 
 ### Kueue Tolerations (Automatic Injection)
 
@@ -358,17 +358,13 @@ gitops/step-05-llm-on-vllm/base/
 
 ---
 
-## Official Documentation
+## References
 
 - [RHOAI 3.3 Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
 - [RHOAI 3.3 Distributed Workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_distributed_workloads/index)
 - [Kueue ResourceFlavor](https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/)
 - [Red Hat KB: NVIDIA Driver Compatibility](https://access.redhat.com/solutions/7134740)
-
-## Next Steps
-
-- **Step 06**: Model Performance & Benchmarks (Grafana dashboards, GuideLLM)
-- **Step 07**: RAG Pipeline (Milvus, Docling, document ingestion)
+- [RHOAI 3.3 — Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
 
 ## GenAI Playground Validation
 
@@ -388,4 +384,7 @@ After deploying models, validate them in the RHOAI GenAI Playground:
 > **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall
 > `index` field validation error. Use Granite for RAG demos, Mistral for basic chat.
 
-> **Ref:** [RHOAI 3.3 — Experimenting with Models in the GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+## Next Steps
+
+- **Step 06**: [Model Performance Metrics](../step-06-model-metrics/README.md) — Grafana dashboards, GuideLLM benchmarks
+- **Step 07**: [RAG Pipeline](../step-07-rag/README.md) — pgvector, Docling, document ingestion

@@ -1,6 +1,6 @@
 # Red Hat OpenShift AI 3.3 Demo
 
-GitOps-driven demo for deploying **Red Hat OpenShift AI (RHOAI) 3.3** on OpenShift 4.20 using OpenShift GitOps (Argo CD) and Kustomize.
+A GitOps-driven demo for deploying **Red Hat OpenShift AI (RHOAI) 3.3** on OpenShift 4.20. Demonstrates adopting open-source LLMs on private infrastructure — from GPU provisioning through RAG, evaluation, guardrails, and enterprise tool orchestration via MCP — all managed by ArgoCD and Kustomize.
 
 ## Prerequisites
 
@@ -12,179 +12,91 @@ GitOps-driven demo for deploying **Red Hat OpenShift AI (RHOAI) 3.3** on OpenShi
 ## Quick Start
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/adnan-drina/rhoai3-demo.git
 cd rhoai3-demo
 
-# 2. Configure environment
-cp env.example .env
-# Edit .env with your Git repository URL if forked
+cp env.example .env    # Edit with your config
 
-# 3. Login to OpenShift
 oc login --token=<your-token> --server=<api-server>
 
-# 4. Bootstrap GitOps (installs Argo CD)
-./scripts/bootstrap.sh
-
-# 5. Deploy Step 1: GPU Infrastructure & Prerequisites
-./steps/step-01-gpu-and-prereq/deploy.sh
-
-# 6. Deploy Step 2: RHOAI 3.3
-./steps/step-02-rhoai/deploy.sh
+./scripts/bootstrap.sh                      # Install ArgoCD
+./steps/step-01-gpu-and-prereq/deploy.sh    # GPU infrastructure
+./steps/step-02-rhoai/deploy.sh             # RHOAI 3.3 platform
 ```
 
 ## Demo Steps
 
 | Step | Name | Description |
 |------|------|-------------|
-| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL stack |
+| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LWS, RHCL, Kueue |
 | 02 | [RHOAI 3.3](steps/step-02-rhoai/README.md) | RHOAI Operator, DataScienceCluster, GenAI Studio |
-| 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue, MinIO, User Auth |
+| 03 | [Private AI](steps/step-03-private-ai/README.md) | GPU-as-a-Service, Kueue quotas, MinIO, user auth |
 | 04 | [Model Registry](steps/step-04-model-registry/README.md) | Enterprise model governance (registry + seed) |
-| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | Deploy 5 models + GenAI Playground validation |
-| 06 | [Model Metrics](steps/step-06-model-metrics/README.md) | Grafana, GuideLLM benchmarks |
-| 07 | [RAG](steps/step-07-rag/README.md) | pgvector, Docling, DSPA, LlamaStack RAG, RAG workbench |
-| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | Pre/Post RAG evaluation (TrustyAI/Ragas, LLM-as-Judge) |
-| 09 | [Guardrails](steps/step-09-guardrails/README.md) | FMS Guardrails Orchestrator |
+| 05 | [LLM on vLLM](steps/step-05-llm-on-vllm/README.md) | Deploy 5 models, GPU swapping, GenAI Playground |
+| 06 | [Model Metrics](steps/step-06-model-metrics/README.md) | Grafana dashboards, GuideLLM benchmarks, ROI analysis |
+| 07 | [RAG](steps/step-07-rag/README.md) | pgvector, Docling, KFP pipelines, LlamaStack RAG |
+| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | Pre/Post RAG evaluation with LLM-as-Judge |
+| 09 | [Guardrails](steps/step-09-guardrails/README.md) | TrustyAI: HAP, prompt injection, PII detection |
 | 10 | [MCP Integration](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers |
 
-## What Gets Deployed
+### Demo Narrative Arc
 
-### Step 1: GPU Infrastructure & RHOAI Prerequisites
+```
+Foundation          → Data & AI         → Trust & Governance → Integration
+(steps 01-05)         (steps 06-08)       (step 09)            (step 10)
 
-- **User Workload Monitoring** - Metrics scraping for user projects
-- **Node Feature Discovery (NFD)** - Hardware feature detection
-- **NVIDIA GPU Operator** - GPU drivers, device plugin, DCGM metrics
-- **OpenShift Serverless** - KnativeServing for KServe autoscaling
-- **LeaderWorkerSet (LWS)** - Multi-node GPU orchestration for llm-d
-- **Red Hat Connectivity Link (RHCL)** - AuthPolicy, rate limiting, DNS for inference gateway
-- **Authorino/Limitador/DNS Operators** - RHCL component operators
-- **GPU MachineSets** - AWS g6.4xlarge, g6.12xlarge instances
-
-### Step 2: RHOAI 3.3 Platform
-
-- **RHOAI Operator** (stable-3.x channel)
-- **DSCInitialization** - Global operator configuration
-- **DataScienceCluster** with components:
-  - Dashboard, Workbenches
-  - KServe, LlamaStackOperator
-  - ModelRegistry, TrainingOperator
-- **GenAI Studio** - Playground and Model Catalog UI
-- **Auto-installed**: Service Mesh 3, Kueue
+GPU nodes +         Grafana metrics +   Guardrails:          MCP servers:
+RHOAI platform +    RAG pipeline +      HAP, injection,      database, k8s,
+model serving +     pre/post RAG        PII detection        Slack → 4-question
+GPU-as-a-Service    evaluation                               E2E demo flow
+```
 
 ## Repository Structure
 
 ```
 rhoai3-demo/
-├── README.md                    # This file
-├── env.example                  # Environment template
-├── .env                         # Your config (gitignored)
-│
 ├── scripts/
-│   ├── bootstrap.sh             # Install OpenShift GitOps
-│   └── lib.sh                   # Shared shell functions
-│
+│   ├── bootstrap.sh              # Install OpenShift GitOps
+│   └── lib.sh                    # Shared shell functions
 ├── gitops/
-│   ├── argocd/
-│   │   └── app-of-apps/         # Argo CD Application definitions
-│   │       ├── step-01-gpu-and-prereq.yaml
-│   │       ├── step-02-rhoai.yaml
-│   │       ├── step-03-private-ai.yaml
-│   │       ├── step-04-model-registry.yaml
-│   │       ├── step-05-llm-on-vllm.yaml
-│   │       ├── step-06-model-metrics.yaml
-│   │       ├── step-07-rag.yaml
-│   │       ├── step-08-model-evaluation.yaml
-│   │       ├── step-09-guardrails.yaml
-│   │       └── step-10-mcp-integration.yaml
-│   │
-│   ├── step-01-gpu-and-prereq/  # GPU + prerequisites
-│   │   └── base/
-│   │
-│   ├── step-02-rhoai/           # RHOAI 3.3 platform
-│   │   └── base/
-│   │
-│   ├── step-03-private-ai/      # GPU-as-a-Service
-│   │   ├── base/
-│   │   └── gpu-as-a-service-demo/
-│   │
-│   ├── step-04-model-registry/  # Model Registry
-│   │   └── base/
-│   │
-│   ├── step-05-llm-on-vllm/     # LLM serving + Playground
-│   │   └── base/
-│   │
+│   ├── argocd/app-of-apps/       # ArgoCD Application per step
+│   ├── step-01-gpu-and-prereq/   # GPU + prerequisites
+│   ├── step-02-rhoai/            # RHOAI 3.3 platform
+│   ├── step-03-private-ai/       # GPU-as-a-Service
+│   ├── step-04-model-registry/   # Model Registry
+│   ├── step-05-llm-on-vllm/     # LLM serving
 │   ├── step-06-model-metrics/    # Grafana + GuideLLM
-│   │   └── base/
-│   │
-│   ├── step-07-rag/              # pgvector, Docling, DSPA, LlamaStack, Ingestion Service
-│   │   └── base/
-│   │
-│   ├── step-08-model-evaluation/ # Eval configs (ConfigMaps), sync Job
-│   │   └── base/
-│   │
-│   ├── step-09-guardrails/       # FMS Guardrails Orchestrator
-│   │   └── base/
-│   │
+│   ├── step-07-rag/              # pgvector, Docling, DSPA, LlamaStack
+│   ├── step-08-model-evaluation/ # Eval configs (ConfigMaps)
+│   ├── step-09-guardrails/       # TrustyAI Guardrails Orchestrator
 │   └── step-10-mcp-integration/  # MCP servers
-│       └── base/
-│
 └── steps/
-    ├── step-01-gpu-and-prereq/
-    │   ├── deploy.sh
-    │   └── README.md
-    │
-    ├── step-02-rhoai/
-    │   ├── deploy.sh
-    │   └── README.md
-    │
-    ├── step-03-private-ai/
-    │   ├── deploy.sh
-    │   └── README.md
-    │
-    ├── step-04-model-registry/
-    │   ├── deploy.sh
-    │   └── README.md
-    ├── step-05-llm-on-vllm/
-    │   ├── deploy.sh
-    │   └── README.md
-    ├── step-06-model-metrics/
-    │   ├── deploy.sh
-    │   └── README.md
-    ├── step-07-rag/
-    │   ├── deploy.sh
-    │   └── README.md
-    ├── step-08-model-evaluation/
-    │   ├── deploy.sh
-    │   └── README.md
-    ├── step-09-guardrails/
-    │   ├── deploy.sh
-    │   └── README.md
-    └── step-10-mcp-integration/
-        ├── deploy.sh
-        └── README.md
+    └── step-XX-name/
+        ├── deploy.sh             # ArgoCD deploy + validation
+        ├── validate.sh           # Automated checks
+        └── README.md             # Step documentation
 ```
 
-## Validation Commands
+## Validation
 
 ```bash
-# Check Argo CD Applications
+# ArgoCD applications
 oc get applications -n openshift-gitops
 
-# Check GPU nodes
+# GPU nodes
 oc get nodes -l node-role.kubernetes.io/gpu
 
-# Check RHOAI status
+# RHOAI status
 oc get datasciencecluster default-dsc
-oc get pods -n redhat-ods-applications
 
-# Access RHOAI Dashboard
-oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}'
+# RHOAI Dashboard
+oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='https://{.spec.host}'
 ```
 
-## Documentation References
+## References
 
 - [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.3 Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
 - [OpenShift 4.20 GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [NVIDIA GPU Operator on OpenShift](https://docs.nvidia.com/datacenter/cloud-native/openshift/24.9.1/install-gpu-ocp.html)
 

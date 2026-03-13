@@ -1,155 +1,43 @@
-# Step 02: Red Hat OpenShift AI 3.0 Platform
+# Step 02: Red Hat OpenShift AI 3.3 Platform
 
-Installs the **RHOAI 3.3 Platform Layer**, transitioning from the infrastructure layer (GPUs/Operators) to the AI Platform with GenAI Studio, Hardware Profiles, and full component stack.
+Installs the full RHOAI 3.3 AI Platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on top of the GPU infrastructure from step-01.
 
-> **⚠️ Important**: RHOAI 3.3 is for **new installations only**. You cannot upgrade from 2.x. See the [Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index) for details.
+## The Business Story
 
----
+RHOAI 3.3 is a **new-installation-only** release (no upgrade path from 2.x). It replaces Accelerator Profiles with **Hardware Profiles**, introduces **GenAI Studio** (Agent Playground + Model Catalog), renames `datasciencepipelines` to `aipipelines`, and moves user/admin group management from `OdhDashboardConfig` to a dedicated **Auth** resource. Service Mesh 3 is auto-installed by the DSC.
 
-## What's New in RHOAI 3.3
+> **Warning**: You cannot upgrade from OpenShift AI 2.x to 3.x. Install fresh on OCP 4.19+ using the `stable-3.x` channel. See the [Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index).
 
-### Key Changes from 2.x
-
-| Change | 2.x | 3.0 |
-|--------|-----|-----|
-| **Component Naming** | `datasciencepipelines` | `aipipelines` |
-| **User/Admin Groups** | `OdhDashboardConfig` | **`Auth` resource** |
-| **Resource Targeting** | Accelerator Profiles | **Hardware Profiles** |
-| **GenAI Features** | N/A | **GenAI Studio** (Playground + Model Catalog) |
-| **LLM Agents** | N/A | **`llamastackoperator`** |
-| **Service Mesh** | SM 2.x | SM 3 (auto-installed by DSC) |
-
----
-
-## What Gets Installed
-
-### Core Platform Components
+## What Gets Deployed
 
 | Component | State | Purpose |
 |-----------|-------|---------|
 | Dashboard | Managed | RHOAI web console |
 | Workbenches | Managed | Jupyter notebooks, VS Code, RStudio |
 | AI Pipelines | Managed | ML Pipelines (formerly `datasciencepipelines`) |
-
-### Generative AI Stack (New in 3.0)
-
-| Component | State | Purpose |
-|-----------|-------|---------|
-| **LlamaStack Operator** | Managed | GenAI Playground, Agentic workflows |
-| **GenAI Studio** | Enabled | Agent Playground + Model Catalog UI |
-
-### Model Serving
-
-| Component | State | Purpose |
-|-----------|-------|---------|
+| LlamaStack Operator | Managed | GenAI Playground, agentic workflows |
+| GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
 | KServe | Managed | Primary model serving (RawDeployment mode) |
 | Model Registry | Managed | Model versioning and catalog |
-
-### Distributed Workloads
-
-| Component | State | Purpose |
-|-----------|-------|---------|
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
-| **Kueue** | **Unmanaged** | External standalone operator (step-01-gpu-and-prereq) |
-| **Kueue Component** | Created | Dashboard integration for standalone Kueue |
-
-### AI Governance & Feature Store
-
-| Component | State | Purpose |
-|-----------|-------|---------|
-| TrustyAI | Managed | Model explainability, bias detection, drift monitoring |
+| Kueue | **Unmanaged** | Standalone operator from step-01 |
+| Kueue Component | Created | Dashboard integration for standalone Kueue |
+| TrustyAI | Managed | Explainability, bias detection, drift monitoring |
 | Feast Operator | Managed | Feature store for ML features |
 
----
+## Hardware Profiles
 
-## Hardware Profiles (Global, Queue-Based)
+Profiles are **global** (in `redhat-ods-applications`) and use **Queue-based scheduling** so Kueue controls node placement.
 
-Hardware Profiles are **global** (in `redhat-ods-applications`) and use **Queue-based scheduling** for Kueue integration.
+| Profile | Display Name | LocalQueue |
+|---------|-------------|------------|
+| cpu-small | Small (CPU Only) | `default` |
+| default-profile | NVIDIA L4 1GPU (Default) | `default` |
+| nvidia-l4-1gpu | NVIDIA L4 1GPU | `default` |
+| nvidia-l4-4gpu | NVIDIA L4 4GPUs | `default` |
 
-| Profile | Display Name | Scheduling | LocalQueue |
-|---------|-------------|------------|------------|
-| **cpu-small** | Small (CPU Only) | Queue | `default` |
-| **default-profile** | NVIDIA L4 1GPU (Default) | Queue | `default` |
-| nvidia-l4-1gpu | NVIDIA L4 1GPU | Queue | `default` |
-| nvidia-l4-4gpu | NVIDIA L4 4GPUs | Queue | `default` |
-
-### Queue-Based Scheduling Architecture
-
-```yaml
-spec:
-  scheduling:
-    type: Queue  # NOT Node
-    kueue:
-      localQueueName: default  # Must exist in user projects
-```
-
-**How It Works:**
-1. **Profiles are global** - defined once in `redhat-ods-applications`
-2. **Profiles reference `localQueueName: default`**
-3. **Each user project** needs a `LocalQueue` named `default`
-4. **Kueue handles node selection** via ClusterQueue/ResourceFlavor (step-03)
-
-> **Note**: Profiles with `scheduling.type: Node` won't work in Kueue-managed projects.
-
----
-
-## RHOAI 3.3 Resources
-
-| Resource | Purpose |
-|----------|---------|
-| **Subscription** | Uses `stable-3.x` channel (required for 3.0) |
-| **DSCInitialization** | Global operator configuration (Service Mesh: Managed) |
-| **DataScienceCluster** | Core RHOAI components |
-| **Auth** | User/Admin group management (`rhoai-admins`, `rhoai-users`) |
-| **OdhDashboardConfig** | Feature toggles (GenAI Studio, Hardware Profiles) |
-| **HardwareProfile** | GPU resource targeting for AWS G6 nodes |
-
----
-
-## Kueue Integration (RHOAI 3.3 Architecture)
-
-RHOAI 3.3 uses a **standalone Kueue operator** (installed in step-01-gpu-and-prereq) instead of an embedded version.
-
-### Configuration
-
-**DataScienceCluster (DSC):**
-```yaml
-spec:
-  components:
-    kueue:
-      managementState: Unmanaged  # External standalone operator
-```
-
-**ODH Kueue Component (for Dashboard integration):**
-```yaml
-apiVersion: components.platform.opendatahub.io/v1alpha1
-kind: Kueue
-metadata:
-  name: default-kueue
-spec:
-  managementState: Unmanaged
-  defaultClusterQueueName: default
-  defaultLocalQueueName: default
-```
-
-**OdhDashboardConfig:**
-```yaml
-spec:
-  dashboardConfig:
-    disableKueue: false  # Enable UI integration
-    disableDistributedWorkloads: false  # Show queues in sidebar
-```
-
-### Auto-installed Dependencies
-
-| Component | Purpose |
-|-----------|---------|
-| OpenShift Service Mesh 3 | Service mesh for KServe traffic management |
-
-> **Note**: Service Mesh is configured in DSCInitialization with `serviceMesh.managementState: Managed`.
-
----
+All profiles set `scheduling.type: Queue` with `localQueueName: default`. Each user project needs a matching `LocalQueue` named `default` (created in step-03). Kueue handles node selection via ClusterQueue/ResourceFlavor.
 
 ## Prerequisites
 
@@ -158,9 +46,7 @@ spec:
 - [x] `oc` CLI installed and logged in
 - [x] OpenShift 4.19+ (4.20 recommended)
 
----
-
-## Deploy
+## Deployment
 
 ### A) One-shot (recommended)
 
@@ -168,227 +54,130 @@ spec:
 ./steps/step-02-rhoai/deploy.sh
 ```
 
-The script will:
-1. Verify step-01-gpu-and-prereq prerequisites (KnativeServing, etc.)
-2. Create Argo CD Application for RHOAI
-3. Wait for operator installation
-4. Verify DataScienceCluster is ready
+The script verifies step-01 prerequisites, creates the Argo CD Application, waits for the operator, and confirms the DataScienceCluster is Ready.
 
-### B) Step-by-step (exact commands)
-
-For manual deployment or debugging:
+### B) Step-by-step
 
 ```bash
-# 1. Validate manifests (dry-run)
+# Validate manifests
 kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server -f -
 
-# 2. Apply Argo CD Application
+# Apply Argo CD Application
 oc apply -f gitops/argocd/app-of-apps/step-02-rhoai.yaml
 
-# 3. Wait for RHOAI operator namespace
+# Wait for operator CSV to succeed (2-5 min)
 until oc get namespace redhat-ods-operator &>/dev/null; do sleep 5; done
-
-# 4. Wait for operator CSV to succeed (2-5 minutes)
 oc get csv -n redhat-ods-operator -w
-# Wait until STATUS shows "Succeeded"
 
-# 5. Wait for DSCInitialization CRD
+# Wait for DSCInitialization CRD
 until oc get crd dscinitializations.dscinitialization.opendatahub.io &>/dev/null; do sleep 5; done
 
-# 6. Wait for DataScienceCluster to be created
+# Wait for DataScienceCluster to become Ready (5-10 min)
 until oc get datasciencecluster default-dsc &>/dev/null; do sleep 10; done
-
-# 7. Wait for DataScienceCluster to become Ready (5-10 minutes)
 oc get datasciencecluster default-dsc -w
-# Wait until PHASE shows "Ready"
 
-# 8. Verify Hardware Profiles are available
+# Verify Hardware Profiles
 oc get hardwareprofiles -n redhat-ods-applications
 ```
 
-> **Note**: For self-signed clusters, add `--insecure-skip-tls-verify=true` to `oc` commands if needed.
-
----
-
-## Verification Checklist
-
-### 1. DataScienceCluster Status
+## Validation
 
 ```bash
-# Check DSC is Ready
+# DSC phase
 oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
 # Expected: Ready
 
-# List enabled components
+# Enabled components
 oc get datasciencecluster default-dsc -o jsonpath='{.spec.components}' | \
   jq -r 'to_entries | .[] | "\(.key): \(.value.managementState)"'
-```
 
-### 2. Application Pods
-
-```bash
-# Check RHOAI application pods
-oc get pods -n redhat-ods-applications
-
-# Check for key pods
+# Key pods running
 oc get pods -n redhat-ods-applications | grep -E "dashboard|kserve|llama"
-```
 
-### 3. Dashboard Access
-
-```bash
-# Get RHOAI Dashboard URL
+# Dashboard URL
 oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='https://{.spec.host}'
-```
 
-### 4. Hardware Profiles
-
-```bash
-# List available Hardware Profiles
+# Hardware Profiles
 oc get hardwareprofiles -n redhat-ods-applications
 
-# Check profile order
-oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
-  -o jsonpath='{.spec.hardwareProfileOrder}'
-```
-
-### 5. GenAI Studio
-
-```bash
-# Verify GenAI Studio is enabled
+# GenAI Studio enabled
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.genAiStudio}'
 # Expected: true
 ```
-
----
-
-## Kustomize Structure
-
-```
-gitops/step-02-rhoai/
-└── base/
-    ├── kustomization.yaml
-    └── rhoai-operator/
-        ├── namespace.yaml                  # redhat-ods-operator namespace
-        ├── operatorgroup.yaml              # Operator group
-        ├── subscription.yaml               # stable-3.x channel
-        ├── dsci.yaml                       # DSCInitialization (Service Mesh: Managed)
-        ├── datasciencecluster.yaml         # Full 3.0 component stack (kueue: Unmanaged)
-        ├── kueue-component.yaml            # ODH Kueue for Dashboard integration
-        ├── auth.yaml                       # User/Admin groups
-        ├── dashboard-config.yaml           # GenAI Studio + disableKueue: false
-        ├── hardware-profile-cpu-small.yaml # CPU only (Queue-based)
-        ├── hardware-profile-default.yaml   # Default L4 1GPU (Queue-based)
-        ├── hardware-profile-l4-1gpu.yaml   # NVIDIA L4 1GPU (Queue-based)
-        └── hardware-profile-l4-4gpu.yaml   # NVIDIA L4 4GPUs (Queue-based)
-```
-
----
 
 ## Troubleshooting
 
 ### Operator Not Installing
 
 ```bash
-# Check subscription status
 oc get subscription rhods-operator -n redhat-ods-operator -o yaml
-
-# Check install plan
 oc get installplan -n redhat-ods-operator
-
-# Verify stable-3.x channel is available
 oc get packagemanifest rhods-operator -o jsonpath='{.status.channels[*].name}'
 ```
 
 ### DataScienceCluster Not Ready
 
 ```bash
-# Check DSC conditions
 oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions}' | jq .
-
-# Check operator logs
 oc logs -n redhat-ods-operator -l name=rhods-operator --tail=100
 ```
 
 ### GenAI Studio Not Visible
 
-1. Verify `genAiStudio: true` in `OdhDashboardConfig`
-2. Check `llamastackoperator` is `Managed` in DSC
-3. Restart dashboard pod if needed:
-   ```bash
-   oc delete pod -n redhat-ods-applications -l app=rhods-dashboard
-   ```
+Verify `genAiStudio: true` in `OdhDashboardConfig`, confirm `llamastackoperator` is `Managed` in DSC, and restart the dashboard pod if needed:
+
+```bash
+oc delete pod -n redhat-ods-applications -l app=rhods-dashboard
+```
 
 ### Hardware Profile Not Appearing
 
-1. Verify profiles exist: `oc get hardwareprofile -n redhat-ods-applications`
-2. Check profile order in dashboard config
-3. Ensure GPU nodes have matching labels:
-   ```bash
-   oc get nodes -l node-role.kubernetes.io/gpu -o custom-columns=NAME:.metadata.name,INSTANCE:.metadata.labels."node\.kubernetes\.io/instance-type"
-   ```
-
----
-
-## Rollback / Cleanup
-
-> **⚠️ Warning**: Removing RHOAI will delete all workbenches, pipelines, model deployments, and associated data in RHOAI-managed namespaces. Back up any critical data before proceeding.
-
-### Remove RHOAI 3.3 Platform
-
 ```bash
-# 1. Delete DataScienceCluster first (allows graceful component cleanup)
-oc delete datasciencecluster default-dsc
-
-# 2. Wait for components to be removed (watch pods disappear)
-oc get pods -n redhat-ods-applications -w
-
-# 3. Delete DSCInitialization
-oc delete dscinitializations default-dsci
-
-# 4. Delete Argo CD Application (removes remaining resources)
-oc delete application step-02-rhoai -n openshift-gitops
-
-# 5. Optional: Delete operator subscription
-oc delete subscription rhods-operator -n redhat-ods-operator
-oc delete csv -n redhat-ods-operator -l operators.coreos.com/rhods-operator.redhat-ods-operator
-
-# 6. Optional: Delete namespace
-oc delete namespace redhat-ods-operator
+oc get hardwareprofile -n redhat-ods-applications
+oc get nodes -l node-role.kubernetes.io/gpu -o custom-columns=NAME:.metadata.name,INSTANCE:.metadata.labels."node\.kubernetes\.io/instance-type"
 ```
 
-### GitOps Revert (alternative)
+## GitOps Structure
 
-```bash
-# Remove from Git and let Argo CD prune
-git revert <commit-with-step-02>
-git push
-
-# Or delete Argo CD Application with cascade
-oc delete application step-02-rhoai -n openshift-gitops --cascade=foreground
+```
+gitops/step-02-rhoai/
+└── base/
+    ├── kustomization.yaml
+    └── rhoai-operator/
+        ├── namespace.yaml
+        ├── operatorgroup.yaml
+        ├── subscription.yaml               # stable-3.x channel
+        ├── dsci.yaml                       # DSCInitialization (Service Mesh: Managed)
+        ├── datasciencecluster.yaml         # Full component stack (kueue: Unmanaged)
+        ├── kueue-component.yaml            # ODH Kueue for Dashboard integration
+        ├── auth.yaml                       # User/Admin groups
+        ├── dashboard-config.yaml           # GenAI Studio + disableKueue: false
+        ├── hardware-profile-cpu-small.yaml
+        ├── hardware-profile-default.yaml
+        ├── hardware-profile-l4-1gpu.yaml
+        └── hardware-profile-l4-4gpu.yaml
 ```
 
----
+## Design Decisions
 
-## Documentation Links
+> **Kueue as standalone operator**: RHOAI 3.3 sets `kueue.managementState: Unmanaged` in the DSC because Kueue is installed as a standalone operator in step-01. The `Kueue` component CR and `disableKueue: false` in `OdhDashboardConfig` provide Dashboard integration without RHOAI managing the operator lifecycle.
 
-### Official Red Hat Documentation
+> **GenAI Studio enabled by default**: `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog UI for all users.
+
+> **Queue-based Hardware Profiles**: All profiles use `scheduling.type: Queue` instead of `Node` so Kueue governs GPU allocation. Profiles with `type: Node` will not work in Kueue-managed projects.
+
+> **Service Mesh auto-managed**: `DSCInitialization` sets `serviceMesh.managementState: Managed`, so Service Mesh 3 is installed automatically by the DSC for KServe traffic management.
+
+## References
+
 - [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
 - [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [Installing RHOAI Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-rhoai-components)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
-
-### Community Resources
 - [RHOAI 3.3 Showroom](https://rhpds.github.io/redhat-openshift-ai-3-showroom/)
 - [Red Hat CoP GitOps Catalog](https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai)
 
----
+## Next Steps
 
-## Important Notes
-
-> **⚠️ Warning**: You cannot upgrade from OpenShift AI 2.25 or any earlier version to 3.0. OpenShift AI 3.0 introduces significant technology and component changes and is intended for **new installations only**.
->
-> To use OpenShift AI 3.0, install the Red Hat OpenShift AI Operator on a cluster running OpenShift Container Platform 4.19 or later and select the `stable-3.x` channel.
->
-> — [Red Hat Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+Continue to [Step 03 — Private AI Infrastructure](../step-03-private-ai/README.md) to configure Kueue queues, resource flavors, and per-project LocalQueues.

@@ -287,7 +287,7 @@ oc delete deploy llamastack-postgres docling-service -n private-ai
 oc delete pvc llamastack-postgres-pvc rag-pipeline-workspace -n private-ai
 ```
 
-## Key Design Decisions
+## Design Decisions
 
 > **Design Decision:** pgvector replaces Milvus. A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database, configured via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and the need for `userConfig`.
 
@@ -309,9 +309,14 @@ oc delete pvc llamastack-postgres-pvc rag-pipeline-workspace -n private-ai
 | No `userConfig` | Aligned | RHOAI 3.3 recommended for pgvector |
 | `pgvector/pgvector:pg16` image | Aligned | RHOAI 3.3 documented image |
 
-## Official Documentation
+## References
 
 - [RHOAI 3.3 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
 - [RHOAI 3.3 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 - [RHOAI 3.3 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
+
+## Next Steps
+
+- **Step 08**: [Model Evaluation](../step-08-model-evaluation/README.md) — Pre/Post RAG evaluation with LLM-as-Judge
+- **Step 09**: [Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI
