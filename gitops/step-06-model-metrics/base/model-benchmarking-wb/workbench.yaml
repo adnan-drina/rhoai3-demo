@@ -51,6 +51,46 @@ spec:
   storageClassName: gp3-csi
 ---
 # -----------------------------------------------------------------------------
+# PVC: GuideLLM Results (shared with CronJob/Job benchmarks)
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: guidellm-results
+  namespace: private-ai
+  labels:
+    app: model-benchmarking-wb
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp3-csi
+---
+# -----------------------------------------------------------------------------
+# PVC: Pipeline Results
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: guidellm-pipeline-results
+  namespace: private-ai
+  labels:
+    app: model-benchmarking-wb
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp3-csi
+---
+# -----------------------------------------------------------------------------
 # Notebook: Model Benchmarking Workbench
 # -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
