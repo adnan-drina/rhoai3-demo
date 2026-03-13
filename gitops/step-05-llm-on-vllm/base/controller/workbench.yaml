@@ -76,6 +76,7 @@ metadata:
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "10"
     # CRITICAL: Use inject-auth (NOT inject-oauth) for RHOAI 3.3
     # This triggers controller to inject kube-rbac-proxy sidecar

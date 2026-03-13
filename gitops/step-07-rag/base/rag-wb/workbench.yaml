@@ -59,6 +59,7 @@ metadata:
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "10"
     notebooks.opendatahub.io/inject-auth: "true"
     opendatahub.io/hardware-profile-name: cpu-small

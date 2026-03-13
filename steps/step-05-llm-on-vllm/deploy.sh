@@ -95,6 +95,20 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # =============================================================================
+# Create HF token secret (upload jobs need this before ArgoCD sync)
+# =============================================================================
+log_step "Ensuring HuggingFace token secret exists..."
+
+if [[ -n "${HF_TOKEN:-}" ]]; then
+    oc create secret generic hf-token -n minio-storage \
+        --from-literal=token="$HF_TOKEN" \
+        --dry-run=client -o yaml | oc apply -f - 2>/dev/null
+    log_success "hf-token secret ready in minio-storage"
+else
+    log_warn "HF_TOKEN not set in .env — uploads will use unauthenticated HF access (slower)"
+fi
+
+# =============================================================================
 # Deploy via ArgoCD
 # =============================================================================
 log_step "Creating ArgoCD Application for Step 05..."
@@ -108,17 +122,20 @@ echo ""
 # =============================================================================
 log_step "Applying AI Asset labels for GenAI Playground..."
 
-set +u
-declare -A MODEL_USE_CASES=(
-    ["mistral-3-int4"]="chat assistant"
-    ["mistral-3-bf16"]="enterprise chat assistant"
-    ["devstral-2"]="agentic coding assistant"
-    ["gpt-oss-20b"]="complex reasoning"
-    ["granite-8b-agent"]="agentic tool-calling"
-)
+MODELS="mistral-3-int4 mistral-3-bf16 devstral-2 gpt-oss-20b granite-8b-agent"
 
-for model in "${!MODEL_USE_CASES[@]}"; do
-    use_case="${MODEL_USE_CASES[$model]}"
+get_use_case() {
+    case "$1" in
+        mistral-3-int4)     echo "chat assistant" ;;
+        mistral-3-bf16)     echo "enterprise chat assistant" ;;
+        devstral-2)         echo "agentic coding assistant" ;;
+        gpt-oss-20b)        echo "complex reasoning" ;;
+        granite-8b-agent)   echo "agentic tool-calling" ;;
+    esac
+}
+
+for model in $MODELS; do
+    use_case="$(get_use_case "$model")"
     if oc get inferenceservice "${model}" -n "$NAMESPACE" &>/dev/null; then
         oc patch inferenceservice "${model}" -n "$NAMESPACE" --type=merge -p "{
           \"metadata\": {

@@ -96,12 +96,13 @@ echo ""
 log_step "Verifying eval configs on PVC..."
 
 # Check if the PostSync Job already copied the configs
-LSD_POD=$(oc get pods -n "$NAMESPACE" -l app.kubernetes.io/name=llamastack-rag \
+LSD_POD=$(oc get pods -n "$NAMESPACE" -l app.kubernetes.io/instance=lsd-rag \
     --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1)
 
 CONFIG_COUNT=0
 if [ -n "$LSD_POD" ]; then
-    CONFIG_COUNT=$(oc exec -n "$NAMESPACE" deploy/rag-wb -- ls /opt/app-root/src/ 2>/dev/null | grep -c "_tests.yaml" || echo "0")
+    CONFIG_COUNT=$(oc exec -n "$NAMESPACE" deploy/rag-wb -- ls /opt/app-root/src/ 2>/dev/null | grep -c "_tests.yaml" || true)
+    CONFIG_COUNT=${CONFIG_COUNT:-0}
 fi
 
 if [ "$CONFIG_COUNT" -lt 2 ]; then
@@ -130,8 +131,8 @@ if [ "$CONFIG_COUNT" -lt 2 ]; then
           }
         }" 2>/dev/null
 
-    oc wait pod/"$HELPER_POD" -n "$NAMESPACE" --for=condition=Ready --timeout=60s 2>/dev/null
-    oc exec "$HELPER_POD" -n "$NAMESPACE" -- mkdir -p /workspace/eval-configs/scoring-templates 2>/dev/null
+    oc wait pod/"$HELPER_POD" -n "$NAMESPACE" --for=condition=Ready --timeout=60s 2>/dev/null || true
+    oc exec "$HELPER_POD" -n "$NAMESPACE" -- mkdir -p /workspace/eval-configs/scoring-templates 2>/dev/null || true
 
     for yaml_file in "$SCRIPT_DIR"/eval-configs/*_tests.yaml; do
         [ -f "$yaml_file" ] || continue

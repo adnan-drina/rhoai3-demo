@@ -40,7 +40,7 @@ fi
 log_step "Infrastructure"
 check_pods_ready "$NAMESPACE" "app=llamastack-postgres" 1
 DOCLING_READY=$(oc get pods -n "$NAMESPACE" -l app=docling-service --no-headers 2>/dev/null \
-    | grep -c "Running" | head -1 | tr -d ' ' || echo "0")
+    | grep -c "Running" || true)
 if [[ "$DOCLING_READY" -ge 1 ]]; then
     echo -e "${GREEN}[PASS]${NC} Docling service running"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))

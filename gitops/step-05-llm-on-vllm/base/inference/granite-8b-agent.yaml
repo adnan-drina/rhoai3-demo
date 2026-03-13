@@ -62,10 +62,13 @@ spec:
     # hold GPU quota, causing a deadlock. Recreate terminates old pods first.
     deploymentStrategy:
       type: Recreate
-    # NOTE (RHOAI 3.3 / Kueue 1.2): Tolerations injected by Kueue from ResourceFlavor.
-    # Do NOT define tolerations here — causes "existing toleration can not be modified" error.
     nodeSelector:
       node.kubernetes.io/instance-type: g6.4xlarge
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
     model:
       modelFormat:
         name: vLLM

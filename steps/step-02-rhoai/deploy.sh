@@ -121,6 +121,35 @@ PROFILES=$(oc get hardwareprofiles -n redhat-ods-applications -o custom-columns=
 log_success "Hardware Profiles available: $PROFILES"
 
 # =============================================================================
+# Patch DSCI with cluster CA bundle (required for LlamaStack TLS)
+# =============================================================================
+log_step "Patching DSCI with cluster CA bundle..."
+
+CA_BUNDLE=$(oc get configmap kube-root-ca.crt -n openshift-config -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
+if [[ -n "$CA_BUNDLE" ]]; then
+    CA_JSON=$(echo "$CA_BUNDLE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+    oc patch dscinitializations default-dsci --type merge \
+        -p "{\"spec\":{\"trustedCABundle\":{\"managementState\":\"Managed\",\"customCABundle\":${CA_JSON}}}}" 2>/dev/null \
+        && log_success "DSCI CA bundle patched" \
+        || log_warn "DSCI CA bundle patch failed (may not exist yet)"
+else
+    log_warn "Could not read cluster CA bundle"
+fi
+
+# =============================================================================
+# Ensure GenAI Studio is enabled in Dashboard config
+# =============================================================================
+log_step "Ensuring GenAI Studio is enabled..."
+
+until oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications &>/dev/null; do
+    sleep 5
+done
+oc patch odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+    --type merge -p '{"spec":{"dashboardConfig":{"genAiStudio":true}}}' 2>/dev/null \
+    && log_success "GenAI Studio enabled" \
+    || log_warn "GenAI Studio patch failed"
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"

@@ -58,7 +58,12 @@ resources:
   - rhcl-operator/operatorgroup.yaml
   - rhcl-operator/subscription.yaml
 
-  # 9. Red Hat Build of Kueue (required for GPU-as-a-Service / Distributed Workloads)
+  # 9. cert-manager (required by Kueue for webhook TLS)
+  - cert-manager-operator/namespace.yaml
+  - cert-manager-operator/operatorgroup.yaml
+  - cert-manager-operator/subscription.yaml
+
+  # 10. Red Hat Build of Kueue (required for GPU-as-a-Service / Distributed Workloads)
   - kueue-operator/namespace.yaml
   - kueue-operator/operatorgroup.yaml
   - kueue-operator/subscription.yaml

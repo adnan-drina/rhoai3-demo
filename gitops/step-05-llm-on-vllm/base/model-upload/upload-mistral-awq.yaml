@@ -104,9 +104,10 @@ spec:
 
               # Check if already in MinIO
               try:
-                  resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"{S3_PREFIX}/", MaxKeys=5)
-                  if resp.get('KeyCount', 0) >= 5:
-                      print(f"✓ Model already in MinIO - skipping")
+                  resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"{S3_PREFIX}/", MaxKeys=100)
+                  safetensors = [o['Key'] for o in resp.get('Contents', []) if o['Key'].endswith('.safetensors')]
+                  if len(safetensors) >= 1 and resp.get('KeyCount', 0) >= 5:
+                      print(f"✓ Model already in MinIO ({len(safetensors)} safetensors, {resp['KeyCount']} total files) - skipping")
                       sys.exit(0)
               except Exception: pass
 
