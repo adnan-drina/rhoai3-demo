@@ -63,14 +63,14 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /metadata/resourceVersion
-    # Notebook: labels/annotations added by RHOAI controllers, status, undeclared spec fields
+    # Notebook: RHOAI controller injects kube-rbac-proxy sidecar, volumes, labels, annotations
     - group: kubeflow.org
       kind: Notebook
       jsonPointers:
         - /metadata/annotations
         - /metadata/labels
         - /status
-        - /spec/template/metadata
+        - /spec/template
     # Tekton Pipeline/Task — operator adds status and managed fields
     - group: tekton.dev
       kind: Pipeline

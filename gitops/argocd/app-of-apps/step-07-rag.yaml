@@ -49,14 +49,14 @@ spec:
       kind: DataSciencePipelinesApplication
       jsonPointers:
         - /status
-    # Notebook: labels/annotations added by RHOAI controllers, status, undeclared spec fields
+    # Notebook: RHOAI controller injects kube-rbac-proxy sidecar, volumes, labels, annotations
     - group: kubeflow.org
       kind: Notebook
       jsonPointers:
         - /metadata/annotations
         - /metadata/labels
         - /status
-        - /spec/template/metadata
+        - /spec/template
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim
