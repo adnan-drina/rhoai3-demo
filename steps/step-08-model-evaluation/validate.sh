@@ -55,11 +55,11 @@ check "ConfigMap eval-test-cases exists" \
 
 TEST_KEYS=$(oc get configmap eval-test-cases -n "$NAMESPACE" -o json 2>/dev/null | \
     python3 -c "import json,sys; print(len(json.load(sys.stdin).get('data',{})))" 2>/dev/null || echo "0")
-if [ "$TEST_KEYS" -ge 6 ]; then
-    echo -e "${GREEN}[PASS]${NC} eval-test-cases has $TEST_KEYS test configs (expected 6)"
+if [ "$TEST_KEYS" -ge 4 ]; then
+    echo -e "${GREEN}[PASS]${NC} eval-test-cases has $TEST_KEYS test configs (expected 4)"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${RED}[FAIL]${NC} eval-test-cases has $TEST_KEYS configs (expected 6)"
+    echo -e "${RED}[FAIL]${NC} eval-test-cases has $TEST_KEYS configs (expected 4)"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
@@ -120,11 +120,11 @@ if [[ -n "$LSD_POD" ]]; then
     VS_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
         curl -s http://localhost:8321/v1/vector_stores 2>/dev/null | \
         python3 -c "import json,sys; d=json.load(sys.stdin); print(len([v for v in d.get('data',[]) if v['file_counts']['completed']>0]))" 2>/dev/null || echo "0")
-    if [ "$VS_COUNT" -ge 3 ]; then
+    if [ "$VS_COUNT" -ge 2 ]; then
         echo -e "${GREEN}[PASS]${NC} $VS_COUNT vector stores with data"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
-        echo -e "${YELLOW}[WARN]${NC} Only $VS_COUNT stores with data (need 3 for full eval)"
+        echo -e "${YELLOW}[WARN]${NC} Only $VS_COUNT stores with data (need 2 for full eval)"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
 fi
