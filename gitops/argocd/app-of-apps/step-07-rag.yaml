@@ -49,6 +49,14 @@ spec:
       kind: DataSciencePipelinesApplication
       jsonPointers:
         - /status
+    # Notebook: labels/annotations added by RHOAI controllers, status, undeclared spec fields
+    - group: kubeflow.org
+      kind: Notebook
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+        - /status
+        - /spec/template/metadata
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim

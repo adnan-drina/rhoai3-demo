@@ -25,9 +25,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
-      - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
-      - RespectIgnoreDifferences=true
     retry:
       limit: 10
       backoff:
@@ -41,12 +39,14 @@ spec:
       jsonPointers:
         - /status
         - /spec/predictor/model/runtime
-    # Notebook controller-managed annotations
+    # Notebook: labels/annotations added by RHOAI controllers, status, undeclared spec fields
     - group: kubeflow.org
       kind: Notebook
       jsonPointers:
         - /metadata/annotations
+        - /metadata/labels
         - /status
+        - /spec/template/metadata
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim
