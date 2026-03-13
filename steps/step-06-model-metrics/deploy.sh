@@ -228,7 +228,7 @@ echo ""
 echo -e "${YELLOW}▶ Validation...${NC}"
 
 # Get Grafana URL
-GRAFANA_URL=$(oc get route grafana -n ${NAMESPACE} -o jsonpath='{.spec.host}' 2>/dev/null)
+GRAFANA_URL=$(oc get route grafana-route -n ${NAMESPACE} -o jsonpath='{.spec.host}' 2>/dev/null)
 if [ -n "${GRAFANA_URL}" ]; then
     echo -e "${GREEN}  ✓ Grafana Route: https://${GRAFANA_URL}${NC}"
 else

@@ -120,14 +120,10 @@ if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/nul
     log_success "lsd-genai-playground restart triggered"
 fi
 
-# WARNING: lsd-rag restart causes vector store data loss (file associations lost).
-# The MCP tool_groups are already registered in lsd-rag config, so a restart is
-# only needed if MCP endpoints changed. Skip by default to preserve RAG data.
+# MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL.
+# No lsd-rag restart needed — tool_groups survive restarts with pgvector.
 if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
-    log_info "⚠️  Skipping lsd-rag restart to preserve vector store data."
-    log_info "   MCP tool_groups are registered via lsd-rag config (no restart needed)."
-    log_info "   If MCP endpoints changed, manually: oc rollout restart deploy/lsd-rag -n $NAMESPACE"
-    log_info "   Then re-ingest RAG data: ./steps/step-07-rag/run-batch-ingestion.sh acme"
+    log_info "lsd-rag: MCP tool_groups persist in PostgreSQL — no restart needed."
 fi
 echo ""
 

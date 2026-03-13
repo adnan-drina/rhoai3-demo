@@ -1,6 +1,6 @@
 #!/bin/bash
 # Step 07: RAG Pipeline — Deploy Script
-# Deploys Milvus, Docling, DSPA, LlamaStack (RAG), uploads documents,
+# Deploys PostgreSQL+pgvector, Docling, DSPA, LlamaStack (RAG), uploads documents,
 # compiles pipeline, and launches ingestion for all 3 scenarios.
 
 set -euo pipefail
@@ -13,7 +13,7 @@ STEP_NAME="step-07-rag"
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 07: RAG Pipeline (Llama Stack + Milvus + Docling + DSPA) ║"
+echo "║  Step 07: RAG Pipeline (Llama Stack + pgvector + Docling + DSPA)║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -120,10 +120,10 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 4: Wait for components
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for Milvus..."
-oc wait deploy/milvus-standalone -n "$NAMESPACE" \
+log_step "Waiting for PostgreSQL+pgvector..."
+oc wait deploy/llamastack-postgres -n "$NAMESPACE" \
     --for=condition=Available --timeout=180s 2>/dev/null || \
-    log_error "Milvus did not become available in 180s"
+    log_error "PostgreSQL did not become available in 180s"
 
 log_step "Waiting for Docling..."
 oc wait deploy/docling-service -n "$NAMESPACE" \
@@ -154,18 +154,14 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4b: Restart GenAI Playground to connect to remote Milvus
+# Step 4b: Restart GenAI Playground to discover pgvector providers
 # ═══════════════════════════════════════════════════════════════════════════
-# Step-06's lsd-genai-playground is configured to use remote::milvus
-# (same Milvus deployed by step-07). A restart ensures it connects now
-# that Milvus is available. This enables RAG queries from the Playground UI.
-log_step "Restarting GenAI Playground to connect to Milvus..."
+log_step "Restarting GenAI Playground to discover RAG providers..."
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
     oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
     log_success "lsd-genai-playground restart triggered"
-    log_info "  Playground will reconnect to remote Milvus on startup"
 else
-    log_info "  lsd-genai-playground not found (step-06 not deployed) — skipping"
+    log_info "  lsd-genai-playground not found — skipping"
 fi
 echo ""
 
@@ -229,7 +225,7 @@ log_step "Launching batch ingestion pipelines..."
 
 if [ -f "$SCRIPT_DIR/run-batch-ingestion.sh" ]; then
     chmod +x "$SCRIPT_DIR/run-batch-ingestion.sh"
-    for scenario in redhat acme eu-ai-act; do
+    for scenario in whoami acme eu-ai-act; do
         log_info "  Launching: $scenario"
         "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" || \
             log_error "  Pipeline launch failed for $scenario (may need manual retry)"
@@ -248,7 +244,7 @@ echo "║  Step 07 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║                                                                 ║"
 echo "║  Monitor progress:                                              ║"
-echo "║    oc get deploy milvus-standalone -n $NAMESPACE                ║"
+echo "║    oc get deploy llamastack-postgres -n $NAMESPACE               ║"
 echo "║    oc get dspa dspa-rag -n $NAMESPACE                          ║"
 echo "║    oc get llamastackdistribution lsd-rag -n $NAMESPACE         ║"
 echo "║                                                                 ║"
