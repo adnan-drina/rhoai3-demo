@@ -5,7 +5,7 @@
 # Deploys 5 Red Hat Validated models with Kueue-managed GPU allocation:
 #
 #   Active (minReplicas: 1):
-#     1. granite-8b-agent   (1-GPU, S3, FP8 — RAG, MCP, Guardrails workhorse)
+#     1. granite-8b-agent   (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails workhorse)
 #     2. mistral-3-bf16     (4-GPU, S3, BF16 full precision)
 #
 #   Queued (minReplicas: 0):
@@ -71,7 +71,7 @@ echo ""
 log_step "Model Portfolio (5 GPUs Total)"
 echo ""
 echo "  Active (minReplicas: 1):"
-echo "    granite-8b-agent   1-GPU  S3   FP8   RAG/MCP/Guardrails"
+echo "    granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails"
 echo "    mistral-3-bf16     4-GPU  S3   BF16  Enterprise chat"
 echo ""
 echo "  Queued (minReplicas: 0):"

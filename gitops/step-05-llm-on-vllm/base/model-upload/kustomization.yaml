@@ -7,7 +7,11 @@ kind: Kustomization
 # These jobs download Red Hat Validated models from HuggingFace and upload
 # to MinIO for KServe storage-initializer to stream at pod startup.
 #
-# S3 Storage Strategy (Official RHOAI 3.3 Recommendation):
+# NOTE: Small models (Granite-8B FP8, Mistral-INT4) use OCI ModelCar from
+# Red Hat Registry — no upload jobs needed. Only large BF16 models (>20GB)
+# use S3/MinIO because OCI image layers may hit CRI-O overlay limits.
+#
+# S3 Storage Strategy (for large models):
 #   - Avoids CRI-O overlay extraction failures for large images
 #   - KServe storage-initializer streams directly to ephemeral storage
 #   - 300GB EBS nodes can handle 50GB+ model weights
@@ -28,5 +32,5 @@ resources:
   - upload-mistral-bf16.yaml      # Mistral-Small-24B BF16 (~48GB, 4-GPU)
   - upload-gpt-oss-20b.yaml       # GPT-OSS-20B BF16 (~44GB, 4-GPU)
   
-  # FP8 Models (Quantized, Single-GPU)
-  - upload-granite-8b.yaml        # Granite-3.1-8B-Instruct-FP8 (~8GB, 1-GPU)
+  # NOTE: Granite-3.1-8B-Instruct-FP8 migrated to OCI ModelCar (no upload needed)
+  # Image: registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5

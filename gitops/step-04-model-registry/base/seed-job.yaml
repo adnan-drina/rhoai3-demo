@@ -42,7 +42,7 @@ spec:
             - name: MODEL_VERSION
               value: "3.1-May2025-Validated"
             - name: MODEL_URI
-              value: "s3://rhoai-artifacts/granite-3.1-8b-instruct-FP8-dynamic/"
+              value: "oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5"
             - name: MODEL_DESCRIPTION
               value: "IBM Granite 3.1 8B Instruct - Red Hat AI Validated (May 2025) - FP8 Dynamic Quantization"
           command:

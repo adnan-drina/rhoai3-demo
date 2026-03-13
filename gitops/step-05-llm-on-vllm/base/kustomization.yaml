@@ -2,34 +2,15 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Step 05: High-Efficiency LLM Inference with vLLM
-# Deploys Mistral-Small-24B using RHOAI 3.3 OFFICIAL S3 Storage Approach
+# Deploys 5 Red Hat Validated models using mixed storage: OCI ModelCar + S3
 #
-# Architecture:
-#   ┌─────────────────────────────────────────────────────────────────────────┐
-#   │                          private-ai namespace                           │
-#   ├─────────────────────────────────────────────────────────────────────────┤
-#   │                                                                         │
-#   │   Deployment A: Full Precision (BF16)       Deployment B: FP8 Quantized │
-#   │   ════════════════════════════════          ════════════════════════════│
-#   │   ┌─────────────────────────────┐           ┌─────────────────────────┐ │
-#   │   │ mistral-small-24b-tp4       │           │ mistral-small-24b       │ │
-#   │   │                             │           │                         │ │
-#   │   │ ┌───┐ ┌───┐ ┌───┐ ┌───┐    │           │ ┌───┐                   │ │
-#   │   │ │L4 │ │L4 │ │L4 │ │L4 │    │           │ │L4 │  ~15GB VRAM       │ │
-#   │   │ └───┘ └───┘ └───┘ └───┘    │           │ └───┘                   │ │
-#   │   │ 4x GPU (96GB total)         │           │ 1x GPU (24GB)           │ │
-#   │   │ tensor-parallel-size=4      │           │ --quantization fp8      │ │
-#   │   │ --dtype bfloat16            │           │ --kv-cache-dtype fp8    │ │
-#   │   └─────────────────────────────┘           └─────────────────────────┘ │
-#   │                                                                         │
-#   │   Use Case: Maximum quality      Use Case: Cost-efficient inference    │
-#   │                                                                         │
-#   └─────────────────────────────────────────────────────────────────────────┘
-#
-# Storage Strategy (OFFICIAL Red Hat Approach):
-#   - Model weights stored in MinIO (S3-compatible)
-#   - KServe storage-initializer downloads weights at pod startup
-#   - Avoids CRI-O image extraction issues with 90GB+ model images
+# Storage Strategy (Hybrid):
+#   - Small models (≤13GB): OCI ModelCar from Red Hat Registry
+#     → granite-8b-agent (FP8, ~8GB), mistral-3-int4 (W4A16, ~13.5GB)
+#     → Pulled via cluster pull secret, faster cold starts
+#   - Large models (>20GB): S3/MinIO via KServe storage-initializer
+#     → mistral-3-bf16 (~48GB), devstral-2 (~48GB), gpt-oss-20b (~44GB)
+#     → Avoids CRI-O overlay extraction issues with large OCI images
 #
 # FP8 Advantage on NVIDIA L4:
 #   - Ada Lovelace architecture has native FP8 hardware acceleration
@@ -38,9 +19,10 @@ kind: Kustomization
 #   - Red Hat validated through collaboration with Neural Magic
 #
 # Prerequisites:
-#   1. Step-03 deployed (MinIO storage)
-#   2. Model weights uploaded to rhoai-artifacts bucket
-#   3. storage-config secret in private-ai namespace
+#   1. Step-03 deployed (MinIO storage for large models)
+#   2. Large model weights uploaded to MinIO (via deploy.sh upload jobs)
+#   3. storage-config secret in private-ai namespace (for S3-based models)
+#   4. Cluster pull secret configured for registry.redhat.io (for OCI models)
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
 

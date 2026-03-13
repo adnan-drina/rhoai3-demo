@@ -87,7 +87,7 @@ oc get inferenceservice -n private-ai -w
 
 > **Toleration injection from ResourceFlavor:** Workloads must NOT define GPU tolerations in their manifests. Kueue injects them from ResourceFlavor when admitting the workload. Defining tolerations causes `SchedulingGated` conflicts. Requires `Deployment` in Kueue `integrations.frameworks`.
 
-> **S3 for large models, OCI ModelCar for small:** Models over 20 GB use S3/MinIO. Mistral INT4 (~13.5 GB) uses OCI ModelCar from Red Hat Registry for faster cold starts. Future improvement: migrate all catalog models to OCI ModelCar.
+> **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. This includes Granite 8B FP8 (~8 GB) and Mistral INT4 (~13.5 GB). Models over 20 GB use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits on nodes with limited ephemeral storage. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
 > **vLLM memory tuning:** `--max-model-len=16384` and `--gpu-memory-utilization=0.85` prevent CUDA OOM on L4 GPUs with vLLM v0.13.0.
 

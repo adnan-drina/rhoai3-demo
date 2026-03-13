@@ -1,11 +1,17 @@
 # =============================================================================
-# InferenceService: Granite-3.1-8B-Agent (1-GPU FP8)
+# InferenceService: Granite-3.1-8B-Agent (1-GPU FP8) — OCI ModelCar
 # =============================================================================
 # Red Hat Validated Model (May 2025 Collection)
 #
 # Model: RedHatAI/granite-3.1-8b-instruct-FP8-dynamic
+# Source: registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
 # Precision: FP8 Dynamic - 8B parameters, ~8GB VRAM
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+#
+# Storage: OCI ModelCar (Red Hat Model Catalog)
+#   - Pulled via cluster pull secret — no S3/MinIO or HuggingFace download needed
+#   - KServe modelcar sidecar mounts the OCI image as an emptyDir volume
+#   - Faster cold start vs S3 (no storage-initializer download)
 #
 # Use Case: The Agentic Core - Tool-calling, Function-calling, and RAG.
 # "Small but Mighty" - optimized for multi-step reasoning and API orchestration.
@@ -16,6 +22,7 @@
 #   - 16k context window for long RAG contexts
 #
 # Demo Role: "Queued Asset" - Key model for Step 06 (Agent Playground)
+# Ref: https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images
 # =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
@@ -63,10 +70,9 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # S3 Storage - FP8 model (~8GB) could use OCI, but S3 for consistency
-      storageUri: s3://models/granite-3.1-8b-instruct-fp8/
-      storage:
-        key: minio-connection
+      # Red Hat Validated ModelCar - Granite 3.1 8B Instruct FP8 (~8GB)
+      # Pulled via cluster pull secret from registry.redhat.io (no S3/MinIO needed)
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
       args:
         # FP8 Dynamic (compressed-tensors format, auto-detected by vLLM)
         # 8B model = ~8GB, leaving 16GB for KV cache (16k+ context)

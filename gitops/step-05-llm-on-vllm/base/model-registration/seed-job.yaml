@@ -10,7 +10,7 @@
 # QUEUED MODELS (minReplicas: 0):
 #   3. Devstral-2        → 4-GPU, S3 storage (agentic)
 #   4. GPT-OSS-20B       → 4-GPU, S3 storage (high-reasoning)
-#   5. Granite-8B-Agent  → 1-GPU, S3 storage (tool-calling)
+#   5. Granite-8B-Agent  → 1-GPU, OCI ModelCar (tool-calling)
 #
 # Demo Scenarios:
 #   1. Resource Handover: Swap BF16 for Devstral
@@ -205,15 +205,15 @@ spec:
                 "vLLM"
               
               # ═══════════════════════════════════════════════════════════════════
-              # Model 5: Granite-3.1-8B-Agent (1-GPU, Tool-Calling) - May 2025 Collection
+              # Model 5: Granite-3.1-8B-Agent (1-GPU, OCI ModelCar) - May 2025 Collection
               # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "Granite-3.1-8B-Agent" \
-                "Granite 3.1 8B Instruct FP8 - The Agentic Core. Red Hat flagship for tool-calling, function-calling, and RAG workflows." \
-                '{"granite":{"metadataType":"MetadataStringValue","string_value":""},"redhat-validated":{"metadataType":"MetadataStringValue","string_value":""},"may-2025":{"metadataType":"MetadataStringValue","string_value":""},"agentic":{"metadataType":"MetadataStringValue","string_value":""},"fp8":{"metadataType":"MetadataStringValue","string_value":""},"tool-calling":{"metadataType":"MetadataStringValue","string_value":""}}' \
+                "Granite 3.1 8B Instruct FP8 - The Agentic Core. Red Hat flagship for tool-calling, function-calling, and RAG workflows. OCI ModelCar from Red Hat Model Catalog." \
+                '{"granite":{"metadataType":"MetadataStringValue","string_value":""},"redhat-validated":{"metadataType":"MetadataStringValue","string_value":""},"may-2025":{"metadataType":"MetadataStringValue","string_value":""},"agentic":{"metadataType":"MetadataStringValue","string_value":""},"fp8":{"metadataType":"MetadataStringValue","string_value":""},"tool-calling":{"metadataType":"MetadataStringValue","string_value":""},"modelcar":{"metadataType":"MetadataStringValue","string_value":""}}' \
                 "v3.1-FP8-May2025" \
-                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"IBM / Red Hat"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8-dynamic"},"collection":{"metadataType":"MetadataStringValue","string_value":"May 2025"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"context_length":{"metadataType":"MetadataStringValue","string_value":"16384"},"features":{"metadataType":"MetadataStringValue","string_value":"tool-calling,rag,agentic"},"demo_role":{"metadataType":"MetadataStringValue","string_value":"Small but Mighty"}}' \
-                "granite-3.1-8b-instruct-fp8/" \
+                '{"License":{"metadataType":"MetadataStringValue","string_value":"Apache-2.0"},"Provider":{"metadataType":"MetadataStringValue","string_value":"IBM / Red Hat"},"quantization":{"metadataType":"MetadataStringValue","string_value":"fp8-dynamic"},"collection":{"metadataType":"MetadataStringValue","string_value":"May 2025"},"gpu_requirement":{"metadataType":"MetadataStringValue","string_value":"1x NVIDIA L4 (g6.4xlarge)"},"context_length":{"metadataType":"MetadataStringValue","string_value":"16384"},"features":{"metadataType":"MetadataStringValue","string_value":"tool-calling,rag,agentic"},"demo_role":{"metadataType":"MetadataStringValue","string_value":"Small but Mighty"},"storage":{"metadataType":"MetadataStringValue","string_value":"oci-modelcar"}}' \
+                "oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5" \
                 "RedHatAI/granite-3.1-8b-instruct-FP8-dynamic" \
                 "vLLM"
               
