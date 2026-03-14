@@ -1,6 +1,3 @@
-# =============================================================================
-# InferenceService: Granite-3.1-8B-Agent (1-GPU FP8) — OCI ModelCar
-# =============================================================================
 # Red Hat Validated Model (May 2025 Collection)
 #
 # Model: RedHatAI/granite-3.1-8b-instruct-FP8-dynamic
@@ -21,24 +18,20 @@
 #   - Auto tool choice via --tool-call-parser=granite for Agent Playground
 #   - 16k context window for long RAG contexts
 #
-# Demo Role: "Queued Asset" - Key model for Step 06 (Agent Playground)
+# Demo Role: Key model for Step 06 (Agent Playground)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images
-# =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: granite-8b-agent
   namespace: private-ai
   labels:
-    # Kubernetes recommended labels
     app.kubernetes.io/name: granite-8b-agent
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: llm-serving
     app.kubernetes.io/managed-by: argocd
-    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
-    # Kueue/KServe labels
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -47,14 +40,12 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Granite-3.1-8B Agent (1-GPU FP8)"
     serving.kserve.io/deploymentMode: RawDeployment
-    # AI Asset / Playground metadata
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "agentic tool-calling"
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # PRIMARY 1-GPU MODEL: Always running — workhorse for RAG, MCP, Guardrails
-    # Used by Steps 06 (Playground), 09 (RAG), 10 (Eval), 11 (Guardrails), 12 (MCP)
+    # Always running — workhorse for RAG, MCP, Guardrails (Steps 06-12)
     minReplicas: 1
     maxReplicas: 1
     # Deployment Strategy: Recreate prevents Kueue deadlock
@@ -73,7 +64,6 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # Red Hat Validated ModelCar - Granite 3.1 8B Instruct FP8 (~8GB)
       # Pulled via cluster pull secret from registry.redhat.io (no S3/MinIO needed)
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
       args:

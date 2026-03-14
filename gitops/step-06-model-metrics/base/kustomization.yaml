@@ -1,8 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 07: Model Performance Metrics - "The ROI of Quantization"
-# ============================================================================
 # Demonstrates why Inference Efficiency is the most important metric for
 # enterprise AI deployments.
 #
@@ -13,24 +11,8 @@ kind: Kustomization
 #
 # Components:
 #   1. Grafana Operator (grafana-operator/)
-#      - Installs community Grafana Operator from OperatorHub
-#      - Deploys Grafana instance in private-ai namespace
-#      - Official vLLM Performance Statistics dashboard (auto-updated from GitHub)
-#      - DCGM GPU Metrics dashboard
-#      - Mistral 3 (BF16 vs INT4) comparison dashboard
-#
 #   2. GuideLLM Benchmarking (guidellm/)
-#      - CronJob for daily automated benchmarks
-#      - Poisson distribution for realistic human traffic simulation
-#      - Rate sweep from 0.1 to 5.0 req/s
-#
 #   3. Model Benchmarking Workbench (model-benchmarking-wb/)
-#
-# Dashboards (managed by Grafana Operator):
-#   - vLLM Performance Statistics (official from vLLM GitHub)
-#   - vLLM Query Statistics (official from vLLM GitHub)
-#   - NVIDIA DCGM GPU Metrics
-#   - Mistral 3 (BF16 vs INT4) - ROI of Quantization
 #
 # SLA Targets:
 #   - TTFT: < 500ms (excellent), < 1.0s (acceptable), > 2.0s (breaking)
@@ -38,27 +20,15 @@ kind: Kustomization
 #   - KV Cache: < 70% (excellent), 70-85% (acceptable), > 95% (breaking)
 #   - Queue Depth: 0 (excellent), 0-1 (acceptable), > 5 (breaking)
 #
-# For interactive benchmark UI, see Step 07B (vLLM-Playground - future).
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index
 # Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
 # Ref: https://github.com/neuralmagic/guidellm
 # Ref: https://github.com/grafana/grafana-operator
-# ============================================================================
 
 resources:
-  # Grafana Operator: Operator + Instance + Dashboards
   - grafana-operator/
-
-  # GuideLLM: CronJob for automated benchmarks + Job templates for on-demand
   - guidellm/
-
-  # Model Benchmarking Workbench (Jupyter notebook for analysis)
   - model-benchmarking-wb/
-
-  # REMOVED (simplified):
-  # - guidellm-pipeline/   → Replaced by simple Job templates in guidellm/
-  # - guidellm-workbench/  → Broken Streamlit image; use Grafana dashboards instead
 
 # Note: Removed commonLabels to avoid Service selector mismatch issues.
 # Labels are applied directly in individual manifests instead.

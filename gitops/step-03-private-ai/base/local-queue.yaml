@@ -1,27 +1,15 @@
-# LocalQueue 'default' - Standardized Queue Strategy
-# ============================================================================
 # RHOAI 3.3 Best Practice: "Local Mapping to Global Pool"
-#
 # The LocalQueue named 'default' acts as a logical redirector to your
 # high-governance global resource pool (rhoai-main-queue).
-#
 # Why this naming convention:
 # 1. Hardware Profile Portability: Global Hardware Profiles look for
 #    LocalQueue named 'default' - this makes them usable in ANY namespace
 # 2. Dashboard Integration: RHOAI Dashboard expects 'default' queue
 # 3. Automation: OdhDashboardConfig uses defaultLocalQueueName: "default"
-#
-# Configuration:
-#   DataScienceCluster.spec.components.kueue:
-#     defaultClusterQueueName: rhoai-main-queue  # Your custom global pool
-#     defaultLocalQueueName: default              # Standardized name
-#     managementState: Unmanaged
-#
 # This ensures:
-#   - LocalQueue 'default' → ClusterQueue 'rhoai-main-queue'
-#   - Your 5-GPU quota and AWS G6 ResourceFlavors are used
-#   - Hardware Profiles work in any namespace with this pattern
-# ============================================================================
+#   LocalQueue 'default' -> ClusterQueue 'rhoai-main-queue'
+#   Your 5-GPU quota and AWS G6 ResourceFlavors are used
+#   Hardware Profiles work in any namespace with this pattern
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue
 metadata:

@@ -1,14 +1,10 @@
-# ClusterQueue for llm-d Distributed Inference
-# 
-# This ClusterQueue provides a HARD RESERVATION of 2× g6.4xlarge GPUs
+# This ClusterQueue provides a HARD RESERVATION of 2x g6.4xlarge GPUs
 # exclusively for llm-d workloads, ensuring they can always start
 # even when the main vLLM queue is saturated.
-#
 # Design Decision:
 #   - Step 05/07 (vLLM): Uses rhoai-main-queue (1× g6.4xlarge + 1× g6.12xlarge = 5 GPUs)
-#   - Step 08 (llm-d):   Uses rhoai-llmd-queue (2× g6.4xlarge = 2 GPUs reserved)
-#
-# GPU Node Allocation (total 3× g6.4xlarge + 1× g6.12xlarge):
+#   - Step 08 (llm-d):   Uses rhoai-llmd-queue (2x g6.4xlarge = 2 GPUs reserved)
+# GPU Node Allocation (total 3x g6.4xlarge + 1x g6.12xlarge):
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │  g6.12xlarge (4 GPUs)  │  Mistral-3 BF16 vLLM (Step 05)                │
 #   ├─────────────────────────────────────────────────────────────────────────┤
@@ -18,7 +14,6 @@
 #   ├─────────────────────────────────────────────────────────────────────────┤
 #   │  g6.4xlarge #3 (1 GPU) │  llm-d Worker 1 (Step 08) ← RESERVED          │
 #   └─────────────────────────────────────────────────────────────────────────┘
-#
 # Ref: https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: ClusterQueue
@@ -34,17 +29,14 @@ metadata:
     openshift.io/display-name: "llm-d Reserved GPU Queue"
     openshift.io/description: "Hard reservation of 2× g6.4xlarge GPUs for distributed inference"
 spec:
-  # Namespace selector - only accept workloads from private-ai
   namespaceSelector:
     matchLabels:
       kubernetes.io/metadata.name: private-ai
   
-  # Preemption policy - llm-d workloads can preempt lower priority work
   preemption:
     reclaimWithinCohort: Any
     withinClusterQueue: LowerPriority
   
-  # Resource quota - 2× nvidia-l4-1gpu (g6.4xlarge) reserved for llm-d
   resourceGroups:
     - coveredResources:
         - nvidia.com/gpu

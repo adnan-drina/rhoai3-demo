@@ -1,4 +1,3 @@
-# Kueue Instance - Enables Kueue workload management
 # Creates the core Kueue CRDs (ClusterQueue, LocalQueue, ResourceFlavor)
 # Ref: Red Hat Build of Kueue 1.2 documentation
 apiVersion: kueue.openshift.io/v1
@@ -9,10 +8,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
 spec:
   config:
-    # Frameworks that Kueue will manage
-    # Supported: BatchJob, RayJob, RayCluster, JobSet, MPIJob, PaddleJob,
-    #            PyTorchJob, TFJob, TrainJob, XGBoostJob, JaxJob, AppWrapper,
-    #            Pod, Deployment, StatefulSet, LeaderWorkerSet
     integrations:
       frameworks:
         - BatchJob           # Standard Kubernetes Jobs

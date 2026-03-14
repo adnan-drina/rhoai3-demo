@@ -1,4 +1,3 @@
-# RoleBinding: ai-developer as Project Editor
 # Can create Workbenches, deploy models, but cannot modify quotas
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

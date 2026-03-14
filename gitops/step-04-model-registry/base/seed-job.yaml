@@ -58,8 +58,6 @@ spec:
               API_BASE="${REGISTRY_URL}/api/model_registry/v1alpha3"
               
               echo "Waiting for Model Registry API at ${REGISTRY_URL}..."
-              
-              # Wait for API to be ready
               for i in $(seq 1 30); do
                 if curl -sf "${API_BASE}/registered_models" > /dev/null 2>&1; then
                   echo "✓ Model Registry API is ready!"

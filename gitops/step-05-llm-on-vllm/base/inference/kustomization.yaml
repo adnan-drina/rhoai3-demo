@@ -1,10 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# =============================================================================
-# GPU-as-a-Service Demo: Enterprise Model Portfolio
-# =============================================================================
-#
 # Optimized for 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5 GPUs
 #
 # BASELINE STATE:
@@ -31,23 +27,13 @@ kind: Kustomization
 # 2. "Model Swap" - Switch granite-8b for mistral-3-int4
 #    Action: mistral-3-int4 minReplicas→1, granite-8b minReplicas→0
 #    Shows different model capabilities on same hardware
-#
-# =============================================================================
 
 resources:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # ACTIVE MODELS (minReplicas: 1)
-  # ═══════════════════════════════════════════════════════════════════════════
-  
   # Workhorse: 1-GPU FP8 OCI ModelCar — RAG, MCP tools, Guardrails, Eval (Steps 06-10)
   - granite-8b-agent.yaml
   
   # Full Precision: 4-GPU BF16 — Playground chat, Benchmarking (Steps 06, 07)
   - mistral-3-bf16.yaml
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # QUEUED MODELS (minReplicas: 0) - Ready for Demo Activation
-  # ═══════════════════════════════════════════════════════════════════════════
   
   # INT4 Quantized: 1-GPU (shares g6.4xlarge with granite-8b — swap to activate)
   - mistral-3-int4.yaml

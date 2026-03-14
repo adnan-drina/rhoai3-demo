@@ -1,8 +1,5 @@
-# NVIDIA DCGM Exporter Dashboard for OpenShift Console
+# Exposes GPU metrics dashboard in OpenShift Console: Observe -> Dashboards -> NVIDIA DCGM Exporter Dashboard
 # Ref: https://docs.nvidia.com/datacenter/cloud-native/openshift/24.9.1/enable-gpu-monitoring-dashboard.html
-#
-# This ConfigMap exposes GPU metrics dashboard in OpenShift Console:
-# Observe → Dashboards → NVIDIA DCGM Exporter Dashboard
 apiVersion: v1
 kind: ConfigMap
 metadata:

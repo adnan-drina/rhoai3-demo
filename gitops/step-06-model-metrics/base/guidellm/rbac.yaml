@@ -1,7 +1,3 @@
-# GuideLLM Job Dispatcher RBAC
-# ============================================================================
-# Allows the dispatcher CronJob to create parallel benchmark Jobs.
-# ============================================================================
 apiVersion: v1
 kind: ServiceAccount
 metadata:

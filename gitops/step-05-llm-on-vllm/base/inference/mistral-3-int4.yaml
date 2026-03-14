@@ -1,6 +1,3 @@
-# =============================================================================
-# InferenceService: Mistral-3 INT4 (1-GPU Secondary Load)
-# =============================================================================
 # The SECONDARY model in the "Resource Handover" demo.
 #
 # Model: Red Hat Validated ModelCar - Mistral Small 3.1 24B INT4 W4A16
@@ -22,22 +19,18 @@
 #
 # Demo Role: This model consumes 1/5 of the cluster's GPU quota.
 # Combined with mistral-3-bf16 (4 GPUs), achieves 100% saturation (5/5).
-# =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: mistral-3-int4
   namespace: private-ai
   labels:
-    # Kubernetes recommended labels
     app.kubernetes.io/name: mistral-3-int4
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: llm-serving
     app.kubernetes.io/managed-by: argocd
-    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
-    opendatahub.io/genai-asset: "true"  # Makes model available in AI Asset Endpoints for Playground
-    # Kueue/KServe labels
+    opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -46,13 +39,11 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Mistral-3 INT4 (1-GPU)"
     serving.kserve.io/deploymentMode: RawDeployment
-    # AI Asset / Playground metadata
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "chat assistant"
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # QUEUED: Needs 1 GPU but g6.4xlarge is used by granite-8b-agent
     # Activate by scaling granite-8b-agent to 0, or add a 2nd g6.4xlarge node
     minReplicas: 0
     maxReplicas: 1
@@ -72,13 +63,10 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # Red Hat Validated ModelCar - Mistral Small 3.1 INT4 (~13.5GB)
       # Upgraded from 2501 (v3.0) to 2503 (v3.1) — improved tool-calling
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-3-1-24b-instruct-2503-quantized-w4a16:1.5
       args:
         - --served-model-name=mistral-3-int4
-        # Memory-optimized config for 1x L4 (24GB) - Red Hat AI Field Engineering
-        # 8K context = sweet spot for 24B models on L4 hardware
         - --max-model-len=8192
         # FP8 KV cache doubles effective cache capacity (10.5GB → 20GB effective)
         - --kv-cache-dtype=fp8

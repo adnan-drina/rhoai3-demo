@@ -3,7 +3,6 @@ kind: Kustomization
 
 # Step 04: Enterprise Model Governance
 # Implements the "Gatekeeper" pattern for AI model management
-#
 # All components in rhoai-model-registries namespace:
 #   ┌─────────────────────────────────────────────────────────────────────────┐
 #   │                    rhoai-model-registries namespace                     │
@@ -15,41 +14,19 @@ kind: Kustomization
 #   │   └─────────────────┘     └─────────────────┘                          │
 #   │                                                                         │
 #   └─────────────────────────────────────────────────────────────────────────┘
-#
 # Model Registration: Done via RHOAI Dashboard (Settings → Model registries)
 # This is the recommended governance workflow for ai-admin.
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index
 
 resources:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 1. Metadata Database (sync-wave: 1-2)
-  # ═══════════════════════════════════════════════════════════════════════════
   - database/
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 2. Model Registry Instance (sync-wave: 5)
-  # ═══════════════════════════════════════════════════════════════════════════
   - registry/
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 3. Governance RBAC (sync-wave: 10)
-  # ═══════════════════════════════════════════════════════════════════════════
   - rbac/
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Model Registration Seed Job (sync-wave: 15)
-  # ═══════════════════════════════════════════════════════════════════════════
   - seed-job.yaml
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Architecture Notes
-# ═══════════════════════════════════════════════════════════════════════════════
-#
 # Service Architecture:
 #   - private-ai-registry:8443          → OAuth-protected (Dashboard, UI, external)
 #   - private-ai-registry-internal:8080 → Internal API (automation, seed jobs)
-#
 # The seed job uses the internal service (8080) to register the
 # May 2025 Validated Granite model. The primary OAuth-protected
 # service (8443) remains the entry point for all user traffic.

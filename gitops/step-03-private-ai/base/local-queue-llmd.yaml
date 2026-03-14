@@ -1,13 +1,9 @@
-# LocalQueue for llm-d in private-ai namespace
-#
-# This LocalQueue routes llm-d workloads to the reserved rhoai-llmd-queue,
+# Routes llm-d workloads to the reserved rhoai-llmd-queue,
 # ensuring they get dedicated GPU capacity.
-#
 # Usage: Add label to llm-d workloads:
 #   metadata:
 #     labels:
 #       kueue.x-k8s.io/queue-name: llmd
-#
 # Ref: https://kueue.sigs.k8s.io/docs/concepts/local_queue/
 apiVersion: kueue.x-k8s.io/v1beta1
 kind: LocalQueue

@@ -1,7 +1,5 @@
-# GPU MachineSet: g6.4xlarge (1x NVIDIA L4, 16 vCPU, 64GB RAM)
-# Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/modifying-machineset
-#
 # IMPORTANT: Update CLUSTER_ID placeholders before applying
+# Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/modifying-machineset
 # Get your cluster ID: oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}'
 apiVersion: machine.openshift.io/v1beta1
 kind: MachineSet

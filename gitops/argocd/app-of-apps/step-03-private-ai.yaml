@@ -39,7 +39,6 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  # Ignore differences managed by operators
   ignoreDifferences:
     # Namespaces may have additional annotations/labels from OLM/operators
     - group: ""

@@ -1,5 +1,3 @@
-# Updated for RHOAI 3.3 — Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/release_notes/index
-# DataScienceCluster - RHOAI 3.3
 # Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/02-02-deploy-dsc.html
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 apiVersion: datasciencecluster.opendatahub.io/v2
@@ -11,75 +9,41 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   components:
-
-    # Dashboard - RHOAI Web UI
     dashboard:
       managementState: Managed
-    
-    # Workbenches - JupyterLab, VS Code, RStudio environments
     workbenches:
       managementState: Managed
-    
-    # ML PIPELINES (Renamed in 3.0: datasciencepipelines → aipipelines)
+    # Renamed in 3.0: datasciencepipelines -> aipipelines
     aipipelines:
       managementState: Managed
-    
-    # MODEL SERVING
     # KServe - Primary model serving platform (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
-    
-    # Model Registry - Model versioning and catalog
     modelregistry:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # GENERATIVE AI STACK (New in 3.0)
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # LlamaStack Operator - Enables GenAI Playground and Agentic workflows
     llamastackoperator:
       managementState: Managed
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # DISTRIBUTED WORKLOADS
-    # Note: distributedinference is NOT a valid DSC v2 component
-    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu-and-prereq)
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # Training Operator - Kubernetes-native distributed training
     # NOTE (RHOAI 3.3): Kubeflow Trainer v2 is Generally Available (GA).
+    # distributedinference is NOT a valid DSC v2 component;
+    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu-and-prereq)
     trainingoperator:
       managementState: Managed
-    
-    # Ray - Distributed computing framework
     ray:
       managementState: Managed
-    
-    # Kueue - Workload queuing for GPU-as-a-Service
     # Set to Unmanaged because we use standalone Red Hat Build of Kueue operator
     # (installed in step-01-gpu-and-prereq). Unmanaged tells RHOAI to recognize Kueue exists
     # but not manage its installation.
-    #
     # Standardized Queue Strategy:
-    # - defaultLocalQueueName: "default" → Standard name for Hardware Profile portability
-    # - defaultClusterQueueName: "rhoai-main-queue" → Your custom GPU quota pool
-    # This enables: LocalQueue "default" (per namespace) → ClusterQueue "rhoai-main-queue" (global)
+    # - defaultLocalQueueName: "default" -> Standard name for Hardware Profile portability
+    # - defaultClusterQueueName: "rhoai-main-queue" -> Your custom GPU quota pool
+    # This enables: LocalQueue "default" (per namespace) -> ClusterQueue "rhoai-main-queue" (global)
     # NOTE (RHOAI 3.3): Embedded Kueue removed. Standalone Red Hat Build of Kueue required.
     kueue:
       managementState: Unmanaged
       defaultLocalQueueName: default
       defaultClusterQueueName: rhoai-main-queue
-    
-    # ═══════════════════════════════════════════════════════════════════
-    # AI GOVERNANCE & ADDITIONAL COMPONENTS
-    # ═══════════════════════════════════════════════════════════════════
-    
-    # TrustyAI - Model explainability, bias detection, drift monitoring
     trustyai:
       managementState: Managed
-    
-    # Feast Operator - Feature store
     feastoperator:
       managementState: Managed

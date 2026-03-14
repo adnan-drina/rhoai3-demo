@@ -1,4 +1,3 @@
-# Limitador Operator Subscription
 # Part of Red Hat Connectivity Link (RHCL) - provides rate limiting for inference endpoints
 # Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/
 apiVersion: operators.coreos.com/v1alpha1

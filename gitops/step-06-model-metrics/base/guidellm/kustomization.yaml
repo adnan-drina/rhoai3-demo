@@ -1,30 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# GuideLLM Parallel Benchmark Automation
-# ============================================================================
-# Automated stress testing for vLLM models using GuideLLM v0.5.0 (stable).
-#
-# Architecture:
-#   The CronJob acts as a "dispatcher" that spawns parallel Jobs for each model.
-#   Each model benchmark runs in its own container for true parallelism.
-#
-# Components:
-#   - RBAC: ServiceAccount + Role for creating Jobs
-#   - PVC: Persistent storage for benchmark results
-#   - CronJob: Dispatcher that creates parallel benchmark Jobs
-#
-# Spawned Jobs (per run):
-#   - guidellm-mistral-3-int4-<timestamp>
-#   - guidellm-mistral-3-bf16-<timestamp>
-#
-# Manual trigger:
-#   oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M) -n private-ai
-#
-# Image: ghcr.io/vllm-project/guidellm:stable
+# Manual trigger: oc create job --from=cronjob/guidellm-daily benchmark-$(date +%H%M) -n private-ai
 # Ref: https://github.com/vllm-project/guidellm
-# Ref: https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference
-# ============================================================================
 
 resources:
   - rbac.yaml

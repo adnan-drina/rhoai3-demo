@@ -20,69 +20,29 @@ kind: Kustomization
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/
 
 resources:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 1. MinIO Storage Provider (sync-wave: 1-5)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # S3-compatible storage for models, data, and pipelines
-  # Provides the storage backbone for RHOAI workloads
   - minio/
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 2. Authentication (sync-wave: 0-2)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # HTPasswd secret for demo users
   - auth/htpasswd-secret.yaml
-  # OAuth identity provider configuration
   - auth/oauth.yaml
   # NOTE: OpenShift Groups (auth/groups.yaml) are created via deploy.sh
   # because ArgoCD cannot parse user.openshift.io/v1 Group schema
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 3. Namespace (sync-wave: 3)
-  # ═══════════════════════════════════════════════════════════════════════════
   - namespace.yaml
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 4. Data Connection (sync-wave: 5-6)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # RHOAI-recognized S3 connection that appears in Dashboard dropdowns
   - data-connection.yaml
   # KServe storage-config secret for model downloads (required by storage-initializer)
   - storage-config-secret.yaml
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 5. Kueue Resources (sync-wave: 4-5)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # ResourceFlavors - Define GPU node types
   - resource-flavors.yaml
-  # ClusterQueue - Cluster-wide quota pool
   - cluster-queue.yaml
-  # ClusterQueue - Reserved llm-d quota pool (2 GPUs reserved)
+  # Reserved llm-d quota pool (2 GPUs reserved)
   - cluster-queue-llmd.yaml
-  # LocalQueue - Project entry point (named 'default' for HardwareProfile compat)
+  # Named 'default' for HardwareProfile compat
   - local-queue.yaml
-  # LocalQueue - Dedicated llm-d queue (maps to rhoai-llmd-queue)
+  # Dedicated llm-d queue (maps to rhoai-llmd-queue)
   - local-queue-llmd.yaml
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 6. Project RBAC (sync-wave: 5)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # ai-admin as project admin
   - rbac/project-admin.yaml
-  # ai-developer as project editor
   - rbac/project-editor.yaml
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # 7. Kueue Admin Access (sync-wave: 10)
-  # ═══════════════════════════════════════════════════════════════════════════
   # Grant rhoai-admins ClusterRole for Distributed Workloads dashboard
   - rbac/kueue-admin-access.yaml
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Architecture Notes
-# ═══════════════════════════════════════════════════════════════════════════════
-# 
-# Hardware Profiles are GLOBAL (in redhat-ods-applications)
+# Hardware Profiles are GLOBAL (in redhat-ods-applications).
 # They reference localQueueName: "default" which must exist in each project.
 # The LocalQueue named "default" is created above in local-queue.yaml.
 # See step-02-rhoai for Hardware Profile definitions.

@@ -1,18 +1,11 @@
-# =============================================================================
-# MachineConfig: Disable ComposeFS for GPU nodes
-# =============================================================================
 # ComposeFS is a new feature in OpenShift 4.20 that optimizes container image
 # storage, but it can cause issues with 94GB+ AI model images.
-#
 # This MachineConfig disables composefs for GPU worker nodes to fix:
 # - "image does not resolve to an image ID" errors
 # - "ImageVolumeMountFailed" errors after successful 94GB pulls
-#
 # The root cause is that composefs metadata creation for very large images
 # (90GB+) can timeout or fail during the final registration step.
-#
 # Ref: https://docs.openshift.com/container-platform/4.20/post_installation_configuration/machine-configuration-tasks.html
-# =============================================================================
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:

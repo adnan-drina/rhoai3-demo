@@ -1,7 +1,6 @@
 # RoleBinding for ai-developer to access Model Registry
 # The operator creates a 'registry-user-<registry-name>' role automatically
 # We bind ai-developer to this role for model registration/deployment
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index#managing-model-registry-permissions_model-reg
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

@@ -30,7 +30,6 @@ spec:
       containers:
         - name: mc
           image: quay.io/minio/mc:latest
-          # OpenShift SCC requirements
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -48,9 +47,6 @@ spec:
             - |
               mkdir -p /tmp/.mc
               
-              # ═══════════════════════════════════════════════════════════════════
-              # 1. Wait for MinIO service to be reachable (AWS can take 30-60s)
-              # ═══════════════════════════════════════════════════════════════════
               echo "Waiting for MinIO at http://minio.minio-storage.svc:9000..."
               # Use mc alias with retry instead of curl (mc image doesn't include curl)
               until mc alias set myminio http://minio.minio-storage.svc:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
@@ -59,32 +55,18 @@ spec:
               done
               echo "MinIO is ready!"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # 2. Verify the mc alias (already set in wait loop above)
-              # ═══════════════════════════════════════════════════════════════════
               echo "Verifying MinIO connection..."
               mc admin info myminio >/dev/null
               
-              # ═══════════════════════════════════════════════════════════════════
-              # 3. Create buckets for RHOAI workloads
-              # ═══════════════════════════════════════════════════════════════════
               echo "Creating buckets..."
               mc mb --ignore-existing myminio/rhoai-storage
               mc mb --ignore-existing myminio/models
               mc mb --ignore-existing myminio/pipelines
               
-              # ═══════════════════════════════════════════════════════════════════
-              # 4. Create RHOAI service account (for Data Connections)
-              # ═══════════════════════════════════════════════════════════════════
-              # This creates a dedicated access key for RHOAI workloads
-              # The Data Connection Secret in private-ai uses these credentials
               echo "Creating RHOAI service account..."
               mc admin user add myminio ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} || echo "User already exists"
               mc admin policy attach myminio readwrite --user ${AWS_ACCESS_KEY_ID} || echo "Policy already attached"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # 5. Verify setup
-              # ═══════════════════════════════════════════════════════════════════
               echo ""
               echo "=== MinIO Initialization Complete ==="
               mc admin info myminio

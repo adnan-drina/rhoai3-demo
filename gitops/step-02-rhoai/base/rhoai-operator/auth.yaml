@@ -1,4 +1,3 @@
-# Auth - RHOAI 3.3 User/Admin Group Management
 # New in 3.0: Group management moved from OdhDashboardConfig to Auth resource
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index
 apiVersion: services.platform.opendatahub.io/v1alpha1
@@ -10,12 +9,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "12"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  # Admin groups - full access to RHOAI Dashboard and settings
-  # system:cluster-admins is the OpenShift built-in admin group
   adminGroups:
     - rhoai-admins
     - system:cluster-admins
-  # User groups - can use RHOAI workbenches and model serving
   allowedGroups:
     - rhoai-users
     - system:authenticated

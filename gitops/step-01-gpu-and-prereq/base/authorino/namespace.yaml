@@ -1,4 +1,3 @@
-# Authorino Operator Namespace
 # Required for KServe authentication/authorization in RHOAI 3.3
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-the-authorino-operator_install-kserve
 apiVersion: v1

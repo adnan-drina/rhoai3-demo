@@ -1,4 +1,3 @@
-# OperatorGroup for RHOAI Operator
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -7,4 +6,3 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-5"
 spec: {}
-

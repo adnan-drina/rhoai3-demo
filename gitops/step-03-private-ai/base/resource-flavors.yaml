@@ -1,11 +1,7 @@
-# ResourceFlavors - Define GPU "flavors" available in the cluster
-# These map to physical node types (AWS G6 instances)
-#
 # Kueue uses ResourceFlavors to:
 # 1. Match pods to appropriate nodes via nodeLabels
 # 2. Inject tolerations into pods when unsuspending (from tolerations field)
 # 3. Understand node taints for admission decisions via nodeTaints
-#
 # IMPORTANT (RHOAI 3.3 / Kueue 1.2): Workloads managed by Kueue must NOT
 # define their own GPU tolerations. Kueue injects tolerations from the
 # ResourceFlavor when unsuspending pods. If the pod already has tolerations,

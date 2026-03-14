@@ -1,27 +1,12 @@
-# GuideLLM Daily Benchmark CronJob
-# ============================================================================
-# Dispatches parallel benchmark Jobs for each active model.
-# Metrics flow through vLLM → ServiceMonitor → Prometheus → Grafana.
-# No PVC needed — the value is in the Grafana dashboards, not JSON files.
+# Metrics flow through vLLM → ServiceMonitor → Prometheus → Grafana (no PVC).
 #
-# Traffic Profiles (aligned with NeuralNav/GuideLLM standards):
-#   512→256   Chatbot/Q&A (default — matches our demo prompts)
-#   1024→1024 Content generation (for BF16 capacity testing)
+# Traffic Profiles: 512→256 (Chatbot/Q&A), 1024→1024 (Content generation)
+# SLO Targets: Conversational TTFT ≤150ms; Interactive TTFT ≤500ms
 #
-# SLO Targets (experience-driven):
-#   Conversational: TTFT ≤150ms, ITL ≤25ms (granite-8b)
-#   Interactive:    TTFT ≤500ms, ITL ≤35ms (mistral-bf16)
-#
-# Manual trigger:
-#   oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n private-ai
-#
-# On-demand single model (from job-templates/):
-#   oc create -f gitops/step-07-.../base/guidellm/job-templates/granite-8b-agent.yaml
+# Manual trigger: oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n private-ai
 #
 # Ref: https://github.com/vllm-project/guidellm
 # Ref: https://github.com/redhat-et/neuralnav (traffic profiles + SLOs)
-# Ref: https://developers.redhat.com/articles/2025/12/24/how-deploy-and-benchmark-vllm-guidellm-kubernetes
-# ============================================================================
 apiVersion: batch/v1
 kind: CronJob
 metadata:

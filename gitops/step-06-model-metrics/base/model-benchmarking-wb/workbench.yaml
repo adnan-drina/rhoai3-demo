@@ -1,22 +1,4 @@
-# =============================================================================
-# Model Benchmarking Workbench - RHOAI 3.3 GitOps Pattern
-# =============================================================================
-# Interactive Jupyter workbench for running and analyzing GuideLLM benchmarks.
-#
-# Features:
-#   - Run GuideLLM benchmarks directly from notebook
-#   - Analyze benchmark results stored in PVC
-#   - Visualize TTFT, TPOT, throughput metrics
-#   - Compare INT4 vs BF16 model performance
-#
-# This workbench uses the RHOAI 3.3 controller-managed authentication pattern:
-#   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
-#   - Controller injects: kube-rbac-proxy sidecar for authentication
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# ServiceAccount: Workbench Identity
-# -----------------------------------------------------------------------------
+# RHOAI 3.3: Uses notebooks.opendatahub.io/inject-auth: "true" for kube-rbac-proxy sidecar
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -28,9 +10,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 ---
-# -----------------------------------------------------------------------------
-# PVC: Workbench Storage
-# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -50,9 +29,6 @@ spec:
       storage: 20Gi
   storageClassName: gp3-csi
 ---
-# -----------------------------------------------------------------------------
-# PVC: GuideLLM Results (shared with CronJob/Job benchmarks)
-# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -70,9 +46,6 @@ spec:
       storage: 5Gi
   storageClassName: gp3-csi
 ---
-# -----------------------------------------------------------------------------
-# Notebook: Model Benchmarking Workbench
-# -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -107,9 +80,6 @@ spec:
       enableServiceLinks: false
       serviceAccountName: model-benchmarking-wb
       affinity: {}
-      # =========================================================================
-      # Git-Sync Init Container: Pre-load benchmarking notebook from Git
-      # =========================================================================
       initContainers:
         - name: git-sync
           image: alpine/git:latest
@@ -151,9 +121,6 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
-      # =========================================================================
-      # Container: Jupyter Notebook
-      # =========================================================================
       containers:
         - name: model-benchmarking-wb
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
@@ -243,11 +210,6 @@ spec:
               - key: ca-bundle.crt
                 path: ca-bundle.crt
 ---
-# =============================================================================
-# RBAC: Model Benchmarking Permissions
-# =============================================================================
-# Permissions to run benchmarks and view results
-# =============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -258,19 +220,15 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 rules:
-  # Create and monitor benchmark Jobs
   - apiGroups: ["batch"]
     resources: ["jobs", "cronjobs"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  # View Pods for log access
   - apiGroups: [""]
     resources: ["pods", "pods/log"]
     verbs: ["get", "list", "watch"]
-  # View InferenceServices (to get model endpoints)
   - apiGroups: ["serving.kserve.io"]
     resources: ["inferenceservices"]
     verbs: ["get", "list", "watch"]
-  # View ConfigMaps (for GuideLLM config)
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]

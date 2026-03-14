@@ -1,8 +1,6 @@
-# ClusterPolicy configures NVIDIA GPU Operator components
-# Ref: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/contents.html
-#
 # RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), compatible with
 # GPU Operator 25.10 default driver 580.x. No driver pin needed.
+# Ref: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/contents.html
 # See: https://access.redhat.com/solutions/7134740
 apiVersion: nvidia.com/v1
 kind: ClusterPolicy

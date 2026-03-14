@@ -1,4 +1,3 @@
-# RoleBinding: ai-admin as Project Admin
 # Can manage the private-ai project, view LocalQueue status, see all workloads
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

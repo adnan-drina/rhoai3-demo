@@ -1,11 +1,8 @@
-# ModelRegistry Custom Resource
 # Enterprise Model Governance - The "Secure Gateway" for AI models
-#
 # This registry implements the Gatekeeper pattern:
 # - Only ai-admin can register models
 # - Models are vetted and validated before catalog visibility
 # - Developers discover models via GenAI Studio, not Hugging Face
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index
 apiVersion: modelregistry.opendatahub.io/v1beta1
 kind: ModelRegistry
@@ -17,30 +14,15 @@ metadata:
     openshift.io/display-name: "Private AI Registry"
     openshift.io/description: "Enterprise model governance for the Private AI project. Only Red Hat Validated models are registered here."
 spec:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # gRPC Configuration (internal model metadata API)
-  # ═══════════════════════════════════════════════════════════════════════════
   grpc:
     port: 9090
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # REST API Configuration
-  # ═══════════════════════════════════════════════════════════════════════════
   rest:
     port: 8080
     serviceRoute: enabled  # Enable internal REST API service for seed job
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Kube RBAC Proxy (authentication/authorization)
-  # ═══════════════════════════════════════════════════════════════════════════
   kubeRBACProxy:
     port: 8443
     routePort: 443
     serviceRoute: enabled
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Database Configuration (MariaDB in same namespace - simplified)
-  # ═══════════════════════════════════════════════════════════════════════════
   mysql:
     host: model-registry-db.rhoai-model-registries.svc.cluster.local
     port: 3306

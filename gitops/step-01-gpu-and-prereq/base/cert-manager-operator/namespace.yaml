@@ -1,4 +1,3 @@
-# Namespace for cert-manager Operator
 # Required by Kueue operator for webhook TLS certificates
 apiVersion: v1
 kind: Namespace

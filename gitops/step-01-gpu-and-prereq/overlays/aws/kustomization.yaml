@@ -4,11 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
   
-  # AWS GPU MachineSets
   - machinesets/gpu-g6-4xlarge.yaml
   - machinesets/gpu-g6-12xlarge.yaml
 
-# AWS-specific patches can be added here
-# patches:
-#   - path: patches/gpu-toleration.yaml
 

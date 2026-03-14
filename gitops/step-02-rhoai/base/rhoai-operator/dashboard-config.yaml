@@ -1,4 +1,3 @@
-# OdhDashboardConfig - RHOAI 3.3 Dashboard Feature Toggles
 # Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-01-odh-dashboard.html
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config
 apiVersion: opendatahub.io/v1alpha
@@ -11,66 +10,27 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   dashboardConfig:
-    # ═══════════════════════════════════════════════════════════════════════════
-    # Feature Toggles
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    # Tracking / Telemetry
     disableTracking: false
-    
-    # Model Registry UI
     disableModelRegistry: false
-    
-    # Model Catalog UI
     disableModelCatalog: false
-    
-    # KServe Metrics in Dashboard
     disableKServeMetrics: false
-    
-    # GenAI Studio (Agent Playground + Model Catalog)
     genAiStudio: true
-    
-    # Model as a Service (MaaS)
     modelAsService: true
-    
-    # LM Eval (Language Model Evaluation)
     disableLMEval: false
-    
-    # Distributed Workloads (Kueue queues visible in sidebar)
     disableDistributedWorkloads: false
-    
-    # Kueue UI Integration (RHOAI 3.3 Standalone Kueue)
     # Required for dashboard to recognize external Kueue operator
     disableKueue: false
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Hardware Profile Order (first is default in dropdown)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # cpu-small: CPU-only for development
-  # default-profile: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Default GPU selection
-  # nvidia-l4-1gpu: g6.4xlarge (16 vCPU, 64GB, 1x L4) - Same as default
-  # nvidia-l4-4gpu: g6.12xlarge (48 vCPU, 192GB, 4x L4) - Multi-GPU
   hardwareProfileOrder:
     - cpu-small
     - default-profile
     - nvidia-l4-1gpu
     - nvidia-l4-4gpu
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Notebook Controller Configuration (Cost Control)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # These settings prevent GPU waste by:
-  # 1. Automatically stopping idle workbenches (no running code)
-  # 2. Standardizing storage sizes for cost predictability
+  # Prevents GPU waste by automatically stopping idle workbenches
+  # and standardizing storage sizes for cost predictability
   notebookController:
     enabled: true
     notebookNamespace: rhods-notebooks
-    # Default PVC size for new workbenches
     pvcSize: 40Gi
-  
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Idle Notebook Culling (GPU Cost Optimization)
-  # ═══════════════════════════════════════════════════════════════════════════
   # CRITICAL for AWS GPU demos: Prevents "zombie" notebooks from hoarding GPUs
   # After 1 hour of inactivity (no kernel activity), notebooks are stopped
   # Users can restart them instantly, but GPUs are released back to the pool
