@@ -109,6 +109,10 @@ _What to say: "Both scenarios show dramatic RAG value — private data that the 
 
 > **Llama Stack eval API:** Same scoring pattern as [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — `basic` + `llm-as-judge` scoring with A–E grades.
 
+> **KFP v2 `version_id` required.** `run-eval.sh` uses `list_pipeline_versions()` to obtain the version ID — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
+
+> **Depends on step-07 vector stores.** Post-RAG evaluation retrieves context from `acme_corporate` and `whoami` vector stores. If step-07 ingestion pipelines haven't completed, post-RAG scores will be empty or zero.
+
 ## References
 
 - [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)

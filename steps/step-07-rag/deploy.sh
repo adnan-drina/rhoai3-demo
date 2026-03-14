@@ -1,7 +1,7 @@
 #!/bin/bash
 # Step 07: RAG Pipeline — Deploy Script
 # Deploys PostgreSQL+pgvector, Docling, DSPA, LlamaStack (RAG), uploads documents,
-# compiles pipeline, and launches ingestion for all 3 scenarios.
+# compiles pipeline, and launches ingestion for acme and whoami scenarios.
 
 set -euo pipefail
 
