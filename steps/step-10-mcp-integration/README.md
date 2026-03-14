@@ -147,9 +147,27 @@ _What to say: "Four questions, four different systems — OpenShift cluster, Pos
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 
+## What to Verify After Deployment
+
+`validate.sh` runs 19 checks: 12 infrastructure + 7 functional MCP tests.
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ArgoCD sync/health | App is Synced (Degraded expected — 0007 CrashLoop) | Synced |
+| MCP deployments | database-mcp, openshift-mcp, slack-mcp | All available |
+| PostgreSQL | Pod running | Ready |
+| ConfigMap | `gen-ai-aa-mcp-servers` in `redhat-ods-applications` | Exists |
+| ACME environment | acme-corp namespace, 3 equipment pods | Namespace + 3 pods |
+| MCP connectivity | Pod found for each server | 3 pods |
+| **Tool_group registration** | mcp::openshift, mcp::database, mcp::slack | All registered in lsd-rag |
+| **OpenShift MCP** | `pods_list_in_namespace(acme-corp)` | Returns acme-equipment pods |
+| **Database MCP** | `list_schemas` | Returns public schema |
+| **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
+| **Slack MCP** | `channels_list` | Returns demo channel |
+
 ## Operations
 
 ```bash
-./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret from .env
-./steps/step-10-mcp-integration/validate.sh   # MCP server health + tool registration
+./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP tool_group registration
+./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
 ```
