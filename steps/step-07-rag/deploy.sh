@@ -248,16 +248,49 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Launching batch ingestion pipelines..."
 
+KFP_SUCCESS=false
 if [ -f "$SCRIPT_DIR/run-batch-ingestion.sh" ]; then
     chmod +x "$SCRIPT_DIR/run-batch-ingestion.sh"
+    KFP_FAIL=0
     for scenario in whoami acme; do
         log_info "  Launching: $scenario"
-        "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" || \
-            log_error "  Pipeline launch failed for $scenario (may need manual retry)"
+        if "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" 2>/dev/null; then
+            log_success "  $scenario pipeline launched"
+        else
+            log_warn "  $scenario pipeline launch failed"
+            KFP_FAIL=$((KFP_FAIL + 1))
+        fi
         sleep 2
     done
+    [[ $KFP_FAIL -eq 0 ]] && KFP_SUCCESS=true
 else
-    log_info "  run-batch-ingestion.sh not found — launch pipelines via RHOAI Dashboard"
+    log_info "  run-batch-ingestion.sh not found"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 7b: Fallback — direct ingestion via LlamaStack API
+# ═══════════════════════════════════════════════════════════════════════════
+if [ "$KFP_SUCCESS" != "true" ]; then
+    log_step "KFP pipeline failed — falling back to direct LlamaStack ingestion..."
+
+    VENV_PATH="$REPO_ROOT/.venv-kfp"
+    [ -d "$VENV_PATH" ] || python3 -m venv "$VENV_PATH"
+    "$VENV_PATH/bin/pip" install -q "llama-stack-client>=0.4,<0.5" requests 2>/dev/null
+
+    log_info "Starting port-forwards to LlamaStack and MinIO..."
+    oc port-forward svc/lsd-rag-service -n "$NAMESPACE" 8321:8321 &>/dev/null &
+    PF_LSD=$!
+    oc port-forward svc/minio -n minio-storage 19000:9000 &>/dev/null &
+    PF_MINIO=$!
+    sleep 3
+
+    LLAMA_STACK_URL="http://localhost:8321" \
+    MINIO_URL="http://localhost:19000" \
+        "$VENV_PATH/bin/python3" "$REPO_ROOT/scripts/rag-ingest.py" && \
+        log_success "Direct ingestion completed" || \
+        log_error "Direct ingestion failed — populate vector stores manually"
+
+    kill $PF_LSD $PF_MINIO 2>/dev/null || true
 fi
 echo ""
 
