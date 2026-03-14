@@ -1,5 +1,5 @@
 #!/bin/bash
-# Upload a local file to MinIO via a temporary pod.
+# Upload a local file to MinIO S3 via port-forward + Python boto3.
 # Usage: ./upload-to-minio.sh <local-file> <s3-path>
 #   e.g. ./upload-to-minio.sh scenario-docs/acme/doc.pdf rag-documents/acme/doc.pdf
 
@@ -7,7 +7,6 @@ set -euo pipefail
 
 LOCAL_FILE="${1:?Usage: $0 <local-file> <s3-path>}"
 S3_PATH="${2:?Usage: $0 <local-file> <s3-path>}"
-NAMESPACE="private-ai"
 MINIO_NS="minio-storage"
 
 if [ ! -f "$LOCAL_FILE" ]; then
@@ -17,6 +16,10 @@ fi
 
 BUCKET=$(echo "$S3_PATH" | cut -d/ -f1)
 OBJECT_KEY=$(echo "$S3_PATH" | cut -d/ -f2-)
+FILENAME=$(basename "$LOCAL_FILE")
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 MINIO_KEY=$(oc -n "$MINIO_NS" get secret minio-credentials \
     -o jsonpath='{.data.MINIO_ROOT_USER}' | base64 -d 2>/dev/null)
@@ -28,32 +31,37 @@ if [ -z "$MINIO_KEY" ] || [ -z "$MINIO_SECRET" ]; then
     exit 1
 fi
 
-FILENAME=$(basename "$LOCAL_FILE")
-ENDPOINT="http://minio.$MINIO_NS.svc:9000"
+# Ensure port-forward is running (reuse if already active)
+if ! lsof -i :19000 &>/dev/null; then
+    oc port-forward svc/minio -n "$MINIO_NS" 19000:9000 &>/dev/null &
+    PF_PID=$!
+    sleep 2
+    # Store PID for cleanup by caller
+    echo "$PF_PID" > /tmp/.minio-pf-pid
+else
+    PF_PID=""
+fi
+
+VENV_PATH="$REPO_ROOT/.venv-kfp"
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
+fi
+"$VENV_PATH/bin/pip" install -q boto3 2>/dev/null
 
 echo "Uploading $FILENAME -> s3://$S3_PATH"
 
-# Base64-encode file content for transport via env var in small pod
-FILE_B64=$(base64 < "$LOCAL_FILE")
-
-oc -n "$MINIO_NS" run "mc-upload-$(date +%s)" \
-    --rm -i --restart=Never \
-    --image=quay.io/minio/mc \
-    --env="HOME=/tmp" \
-    --env="AK=$MINIO_KEY" \
-    --env="SK=$MINIO_SECRET" \
-    --env="ENDPOINT=$ENDPOINT" \
-    --env="BUCKET=$BUCKET" \
-    --env="OBJECT_KEY=$OBJECT_KEY" \
-    --env="FILE_B64=$FILE_B64" \
-    -- sh -c '
-mkdir -p /tmp/.mc
-export MC_CONFIG_DIR=/tmp/.mc
-echo "$FILE_B64" | base64 -d > /tmp/upload_file
-mc alias set myminio "$ENDPOINT" "$AK" "$SK" --api S3v4 >/dev/null 2>&1
-mc mb --ignore-existing myminio/"$BUCKET" >/dev/null 2>&1
-mc cp /tmp/upload_file myminio/"$BUCKET"/"$OBJECT_KEY"
-echo "OK"
-' 2>/dev/null
-
-echo "  Done: s3://$S3_PATH"
+"$VENV_PATH/bin/python3" -c "
+import boto3
+from botocore.config import Config
+s3 = boto3.client('s3',
+    endpoint_url='http://localhost:19000',
+    aws_access_key_id='$MINIO_KEY',
+    aws_secret_access_key='$MINIO_SECRET',
+    config=Config(signature_version='s3v4'))
+try:
+    s3.head_bucket(Bucket='$BUCKET')
+except:
+    s3.create_bucket(Bucket='$BUCKET')
+s3.upload_file('$LOCAL_FILE', '$BUCKET', '$OBJECT_KEY')
+print('  Done: s3://$S3_PATH')
+"

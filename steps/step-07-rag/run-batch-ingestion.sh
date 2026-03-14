@@ -135,6 +135,7 @@ try:
         pipeline_name=PIPELINE_NAME,
     )
     pipeline_id = pipeline.pipeline_id
+    print(f"Pipeline details: {DSPA_URL}/#/pipelines/details/{pipeline_id}")
     print(f"Pipeline uploaded: {pipeline_id}")
 except Exception as e:
     if "already exists" in str(e):
@@ -150,10 +151,26 @@ except Exception as e:
         print(f"Pipeline upload failed: {e}")
         sys.exit(1)
 
+# Get the latest pipeline version (required by KFP v2)
+versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=10)
+if versions.pipeline_versions:
+    version_id = versions.pipeline_versions[0].pipeline_version_id
+    print(f"Pipeline version: {version_id}")
+else:
+    # Upload creates the first version — try uploading a version explicitly
+    version = kfp_client.upload_pipeline_version(
+        pipeline_package_path=PIPELINE_YAML,
+        pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
+        pipeline_id=pipeline_id,
+    )
+    version_id = version.pipeline_version_id
+    print(f"Pipeline version created: {version_id}")
+
 experiment_name = f"rag-ingestion-{SCENARIO}"
 try:
     experiment = kfp_client.create_experiment(name=experiment_name, namespace=NAMESPACE)
     experiment_id = experiment.experiment_id
+    print(f"Experiment details: {DSPA_URL}/#/experiments/details/{experiment_id}")
 except Exception:
     experiments = kfp_client.list_experiments(page_size=100).experiments or []
     experiment = next((e for e in experiments if e.display_name == experiment_name), None)
@@ -174,6 +191,7 @@ run = kfp_client.run_pipeline(
     experiment_id=experiment_id,
     job_name=run_name,
     pipeline_id=pipeline_id,
+    version_id=version_id,
     params=params,
     enable_caching=False,
 )
