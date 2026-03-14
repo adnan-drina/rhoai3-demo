@@ -7,6 +7,9 @@ kind: Kustomization
 # NOTE: Service Mesh 3 is installed automatically via DataScienceCluster CR
 
 resources:
+  # 0. GitOps RBAC (survives operator reconciliation when ArgoCD-managed)
+  - gitops-rbac/cluster-admin-binding.yaml
+
   # 0. User Workload Monitoring (required for RHOAI observability)
   - monitoring/cluster-monitoring-config.yaml
 

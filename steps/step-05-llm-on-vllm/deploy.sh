@@ -164,7 +164,7 @@ echo ""
 log_step "Scaling down queued models (minReplicas:0 → replicas:0)..."
 
 for model in mistral-3-int4 devstral-2 gpt-oss-20b; do
-    DEPLOY_NAME=$(oc get deployment -n "$NAMESPACE" --no-headers 2>/dev/null | grep "${model}-predictor" | awk '{print $1}' | head -1)
+    DEPLOY_NAME=$(oc get deployment -n "$NAMESPACE" --no-headers 2>/dev/null | grep "${model}-predictor" | awk '{print $1}' | head -1 || true)
     if [[ -n "$DEPLOY_NAME" ]]; then
         CURRENT=$(oc get deployment "$DEPLOY_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "?")
         if [[ "$CURRENT" != "0" ]]; then

@@ -46,7 +46,7 @@ oc -n "$MINIO_NS" run "mc-upload-$(date +%s)" \
     --env="BUCKET=$BUCKET" \
     --env="OBJECT_KEY=$OBJECT_KEY" \
     --env="FILE_B64=$FILE_B64" \
-    -- bash -c '
+    -- sh -c '
 mkdir -p /tmp/.mc
 export MC_CONFIG_DIR=/tmp/.mc
 echo "$FILE_B64" | base64 -d > /tmp/upload_file

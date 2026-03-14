@@ -120,10 +120,31 @@ if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/nul
     log_success "lsd-genai-playground restart triggered"
 fi
 
-# MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL.
-# No lsd-rag restart needed — tool_groups survive restarts with pgvector.
+# Register MCP tool_groups in lsd-rag (required on fresh clusters — persists in PostgreSQL)
 if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
-    log_info "lsd-rag: MCP tool_groups persist in PostgreSQL — no restart needed."
+    LSD_POD=$(oc get pods -l app.kubernetes.io/instance=lsd-rag -n "$NAMESPACE" \
+        --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1 || true)
+    if [[ -n "$LSD_POD" ]]; then
+        log_step "Registering MCP tool_groups in lsd-rag..."
+        for tg in openshift database slack; do
+            MCP_URL="http://${tg}-mcp.${NAMESPACE}.svc:8080/sse"
+            [[ "$tg" == "openshift" ]] && MCP_URL="http://openshift-mcp.${NAMESPACE}.svc:8000/sse"
+            EXISTING=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+                curl -sf "http://localhost:8321/v1/toolgroups/mcp::${tg}" 2>/dev/null || true)
+            if [[ -n "$EXISTING" ]] && echo "$EXISTING" | grep -q "identifier"; then
+                log_success "  mcp::${tg} already registered"
+            else
+                oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+                    curl -sf -X POST "http://localhost:8321/v1/toolgroups" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"toolgroup_id\":\"mcp::${tg}\",\"provider_id\":\"model-context-protocol\",\"mcp_endpoint\":{\"uri\":\"${MCP_URL}\"}}" \
+                    2>/dev/null && log_success "  mcp::${tg} registered" \
+                    || log_warn "  mcp::${tg} registration failed"
+            fi
+        done
+    else
+        log_warn "lsd-rag pod not found — register tool_groups manually"
+    fi
 fi
 echo ""
 

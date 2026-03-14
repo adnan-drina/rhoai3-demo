@@ -135,6 +135,16 @@ oc wait llamastackdistribution/lsd-rag -n "$NAMESPACE" \
     --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null || \
     log_error "LlamaStack lsd-rag did not reach Ready state"
 
+log_step "Triggering rag-chatbot build..."
+if oc get buildconfig rag-chatbot -n "$NAMESPACE" &>/dev/null; then
+    LAST_VER=$(oc get buildconfig rag-chatbot -n "$NAMESPACE" -o jsonpath='{.status.lastVersion}' 2>/dev/null || echo "0")
+    if [[ "$LAST_VER" == "0" ]]; then
+        oc start-build rag-chatbot -n "$NAMESPACE" 2>/dev/null && log_success "rag-chatbot build started" || log_warn "rag-chatbot build trigger failed"
+    else
+        log_success "rag-chatbot already built (version $LAST_VER)"
+    fi
+fi
+
 log_step "Waiting for DSPA..."
 DSPA_READY=false
 for i in $(seq 1 30); do
