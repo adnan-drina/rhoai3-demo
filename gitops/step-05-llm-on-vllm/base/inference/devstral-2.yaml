@@ -1,20 +1,16 @@
 # The "WAITING" model in the "Resource Handover" demo.
-#
 # Model: Mistral Small 24B Instruct (placeholder for Devstral-2)
 # Storage: s3://models/mistral-small-24b/ (shares weights with BF16 for demo)
 # Hardware: g6.12xlarge (4x NVIDIA L4, 96GB total VRAM)
-#
 # Demo Role: This model is INTENTIONALLY set to minReplicas: 0
 # When activated via the GPU Orchestrator, it will be QUEUED by Kueue
 # because the cluster is already at 100% GPU capacity (5/5).
-#
 # The Demo Flow:
 #   1. Start: mistral-3-bf16 (4) + mistral-3-int4 (1) = 5/5 GPUs used
 #   2. Action: Set devstral-2 minReplicas → 1
 #   3. Result: Devstral-2 stays PENDING (4 + 1 + 4 > 5)
 #   4. Resolution: Set mistral-3-bf16 minReplicas → 0
 #   5. Climax: Devstral-2 INSTANTLY starts as 4 GPUs become available
-#
 # NOTE: Uses same S3 weights as BF16 for demo simplicity.
 # In production, this would point to dedicated Devstral-2 weights.
 apiVersion: serving.kserve.io/v1beta1

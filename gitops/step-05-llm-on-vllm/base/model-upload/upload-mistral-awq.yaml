@@ -1,11 +1,9 @@
 # For 1-GPU deployment on g6.4xlarge (24GB VRAM)
-#
 # AWQ (Activation-aware Weight Quantization) provides:
 #   - 4-bit weights (~13.5GB vs 21.5GB FP8 vs 48GB BF16)
 #   - High accuracy (superior to GPTQ)
 #   - Native vLLM kernel support
 #   - Recommended by Red Hat/Neural Magic for 24GB GPUs
-#
 # Usage:
 #   oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-awq.yaml

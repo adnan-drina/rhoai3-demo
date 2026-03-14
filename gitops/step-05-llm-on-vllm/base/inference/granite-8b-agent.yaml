@@ -7,15 +7,12 @@
 #   - Pulled via cluster pull secret — no S3/MinIO or HuggingFace download needed
 #   - KServe modelcar sidecar mounts the OCI image as an emptyDir volume
 #   - Faster cold start vs S3 (no storage-initializer download)
-#
 # Use Case: The Agentic Core - Tool-calling, Function-calling, and RAG.
 # "Small but Mighty" - optimized for multi-step reasoning and API orchestration.
-#
 # Features:
 #   - Native tool-calling support (built-in chat template in tokenizer_config.json)
 #   - Auto tool choice via --tool-call-parser=granite for Agent Playground
 #   - 16k context window for long RAG contexts
-#
 # Demo Role: Key model for Step 06 (Agent Playground)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images
 apiVersion: serving.kserve.io/v1beta1

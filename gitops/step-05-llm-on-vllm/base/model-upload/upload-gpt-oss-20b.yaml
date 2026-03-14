@@ -1,9 +1,7 @@
 # Downloads RedHatAI/gpt-oss-20b from HuggingFace and uploads to MinIO.
-#
 # Model: RedHatAI/gpt-oss-20b (October 2025 Collection)
 # Size: ~44GB (BF16)
 # Target: s3://models/gpt-oss-20b/
-#
 # Usage:
 #   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   2. Apply job: oc apply -f upload-gpt-oss-20b.yaml

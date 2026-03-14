@@ -1,5 +1,4 @@
 # Pod naming convention: acme-equipment-XXXX (matches database acme_pod_equipment_map table)
-#
 # Pod 0001 and 0005: healthy, running
 # Pod 0007: FAILING with DFO calibration error (CrashLoopBackOff)
 #   -> This is the "failed pod" the demo agent will investigate

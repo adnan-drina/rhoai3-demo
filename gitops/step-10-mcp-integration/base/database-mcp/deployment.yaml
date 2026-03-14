@@ -35,8 +35,6 @@ spec:
             - containerPort: 8080
               protocol: TCP
           env:
-            - name: DATABASE_URI
-              value: "postgresql://$(PGUSER):$(PGPASSWORD)@postgresql.private-ai.svc.cluster.local:5432/acme_equipment"
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
@@ -47,6 +45,8 @@ spec:
                 secretKeyRef:
                   name: postgresql-credentials
                   key: POSTGRESQL_PASSWORD
+            - name: DATABASE_URI
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@postgresql.private-ai.svc.cluster.local:5432/acme_equipment"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

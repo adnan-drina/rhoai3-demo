@@ -1,22 +1,18 @@
 # The SECONDARY model in the "Resource Handover" demo.
-#
 # Model: Red Hat Validated ModelCar - Mistral Small 3.1 24B INT4 W4A16
 # Source: registry.redhat.io/rhelai1/modelcar-mistral-small-3-1-24b-instruct-2503-quantized-w4a16:1.5
 # Quantization: INT4 weights, FP16 activations (March 2025 collection)
 #   - 4-bit weights: ~12GB (75% reduction from BF16)
 #   - 98.9% accuracy recovery vs full precision
-#
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
 #   - Weights: 12GB
 #   - System overhead: ~1.5GB
 #   - KV Cache headroom: ~10.5GB (doubled with FP8 cache → ~20GB effective)
-#
 # Memory Optimization (Red Hat AI Field Engineering):
 #   --kv-cache-dtype=fp8     → Doubles KV cache capacity
 #   --max-model-len=8192     → Sweet spot for 24B on L4
 #   --enable-chunked-prefill → Prevents prefill spikes blocking users
 #   --gpu-memory-utilization=0.85 → Driver breathing room
-#
 # Demo Role: This model consumes 1/5 of the cluster's GPU quota.
 # Combined with mistral-3-bf16 (4 GPUs), achieves 100% saturation (5/5).
 apiVersion: serving.kserve.io/v1beta1

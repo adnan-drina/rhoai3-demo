@@ -1,12 +1,10 @@
 # ClusterQueue - Cluster-wide GPU quota pool
 # Defines total GPU/CPU/Memory available for RHOAI workloads
-#
 # Quota Strategy (GPU-as-a-Service Demo):
 #   - 1x g6.4xlarge (1 GPU) = 1 GPU for granite-8b-agent (RAG, MCP, Guardrails)
 #   - 1x g6.12xlarge (4 GPUs) = 4 GPUs for mistral-3-bf16 (full precision)
 #   - Total: 5 GPUs available for the private-ai project
 #   - Fits within 64 GPU vCPU sandbox limit (16 + 48 = 64)
-#
 # IMPORTANT: default-flavor MUST be first so CPU-only pods (LlamaStack, Grafana)
 # get scheduled on worker nodes, not GPU nodes.
 apiVersion: kueue.x-k8s.io/v1beta1

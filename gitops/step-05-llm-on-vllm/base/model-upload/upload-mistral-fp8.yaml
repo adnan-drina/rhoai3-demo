@@ -1,6 +1,5 @@
 # For 1-GPU cost-efficient deployment on g6.4xlarge
 # 75% cost savings vs BF16
-#
 # Usage:
 #   oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-fp8.yaml

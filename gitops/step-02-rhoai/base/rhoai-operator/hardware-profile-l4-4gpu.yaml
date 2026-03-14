@@ -1,7 +1,6 @@
 # HardwareProfile - NVIDIA L4 4GPUs (AWS g6.12xlarge)
 # Global profile with Queue-based scheduling for Kueue integration
 # Node specs: 48 vCPU, 192 GB RAM, 4x NVIDIA L4 GPU
-#
 # Uses standardized 'default' LocalQueue name (RHOAI 3.3 best practice)
 # Each namespace defines its own 'default' LocalQueue → ClusterQueue mapping
 apiVersion: infrastructure.opendatahub.io/v1

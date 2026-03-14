@@ -1,5 +1,4 @@
 # For 4-GPU tensor parallel deployment on g6.12xlarge
-#
 # Usage:
 #   oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-bf16.yaml

@@ -4,7 +4,6 @@ kind: Kustomization
 # Step 03: Private AI - GPU as a Service (GPUaaS)
 # Implements dynamic GPU allocation with Kueue integration,
 # S3 storage via MinIO, and proper user authentication/RBAC
-#
 # Architecture:
 #   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 #   │    Users    │───▶│    Auth     │───▶│ LocalQueue  │───▶│  GPU Nodes  │
@@ -16,7 +15,6 @@ kind: Kustomization
 #                      │   MinIO     │
 #                      │  (S3 Data)  │
 #                      └─────────────┘
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/
 
 resources:
@@ -46,9 +44,7 @@ resources:
 # They reference localQueueName: "default" which must exist in each project.
 # The LocalQueue named "default" is created above in local-queue.yaml.
 # See step-02-rhoai for Hardware Profile definitions.
-#
 # MinIO provides S3-compatible storage that appears in the RHOAI Dashboard
 # as a selectable "Data Connection" for workbenches and model serving.
-#
 # Idle Culling is configured in step-02-rhoai OdhDashboardConfig to
 # automatically stop inactive workbenches and release GPUs.

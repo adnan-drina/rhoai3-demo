@@ -2,7 +2,6 @@
 #   - Annotation: notebooks.opendatahub.io/inject-auth: "true"
 #   - Controller injects: kube-rbac-proxy sidecar for authentication
 #   - Controller creates: {name}-kube-rbac-proxy Service + HTTPRoute
-#
 # This pattern matches Dashboard-created workbenches exactly, ensuring:
 #   - No port mismatch issues (controller manages all routing)
 #   - No manual oauth-proxy configuration needed

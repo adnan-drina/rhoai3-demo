@@ -1,6 +1,5 @@
 # MinIO Bucket Initialization Job
 # Creates buckets and RHOAI service account for Data Connections
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#using-connections
 # Pattern: https://github.com/rhoai-genaiops/deploy-lab
 apiVersion: batch/v1
