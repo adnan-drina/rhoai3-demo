@@ -1,17 +1,5 @@
-# Grafana Operator Subscription
-# ============================================================================
-# Community Operator from OperatorHub
-# Channel: v5
-# Version: 5.21.2+ (latest in channel)
-#
-# ⚠️ COMMUNITY OPERATOR DISCLAIMER:
-# This is a community-provided Operator. Community Operators have not been
-# vetted or verified by Red Hat. Red Hat provides no support for community
-# Operators.
-#
+# IMPORTANT: Community Operator - not vetted by Red Hat, no Red Hat support.
 # Ref: https://github.com/grafana/grafana-operator
-# Ref: https://grafana.github.io/grafana-operator/docs/
-# ============================================================================
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

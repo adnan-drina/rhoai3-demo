@@ -1,4 +1,3 @@
-# RBAC to allow OpenShift MCP server (in private-ai) to access acme-corp namespace.
 # The MCP server needs to list pods, get logs, and read events.
 ---
 apiVersion: rbac.authorization.k8s.io/v1

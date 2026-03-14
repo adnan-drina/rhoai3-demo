@@ -31,10 +31,8 @@ spec:
               echo "Syncing eval configs to PVC..."
               mkdir -p /workspace/eval-configs/scoring-templates
 
-              # Copy scoring templates from ConfigMap
               cp /config/judge_prompt.txt /workspace/eval-configs/scoring-templates/
 
-              # Copy test YAMLs from ConfigMap
               for f in /test-configs/*.yaml; do
                 [ -f "$f" ] && cp "$f" /workspace/eval-configs/
                 echo "  Copied $(basename $f)"

@@ -2,11 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Optimized for 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5 GPUs
-#
 # BASELINE STATE:
 #   - granite-8b-agent (1 GPU) + mistral-3-bf16 (4 GPUs) = 5/5 GPUs
 #   - All other models at minReplicas: 0 (queued, ready to activate)
-#
 # GPU ALLOCATION:
 # ┌─────────────────────┬──────┬─────────┬───────────────────────────────────┐
 # │ Model               │ GPUs │ Status  │ Use Case                          │
@@ -17,13 +15,10 @@ kind: Kustomization
 # │ devstral-2          │ 4    │ Queued  │ Agentic tool-calling              │
 # │ gpt-oss-20b         │ 4    │ Queued  │ High-reasoning                    │
 # └─────────────────────┴──────┴─────────┴───────────────────────────────────┘
-#
 # DEMO SCENARIOS:
-#
 # 1. "Resource Handover" - Swap BF16 for Devstral-2
 #    Action: devstral-2 minReplicas→1, mistral-3-bf16 minReplicas→0
 #    Shows Kueue preemption and GPU reallocation
-#
 # 2. "Model Swap" - Switch granite-8b for mistral-3-int4
 #    Action: mistral-3-int4 minReplicas→1, granite-8b minReplicas→0
 #    Shows different model capabilities on same hardware

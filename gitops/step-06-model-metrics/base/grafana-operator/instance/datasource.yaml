@@ -1,13 +1,5 @@
-# Grafana Datasource CR - OpenShift User Workload Monitoring
-# ============================================================================
-# Connects Grafana to OpenShift's Thanos Querier for vLLM metrics.
-#
-# Authentication: ServiceAccount token from the operator-managed SA
-# The Grafana Operator creates a SA named "grafana-sa" for this instance.
-# We just need to bind it to cluster-monitoring-view for UWM access.
-#
+# Connects Grafana to Thanos Querier (UWM). SA token from operator-managed grafana-sa.
 # Ref: https://grafana.github.io/grafana-operator/docs/datasources/
-# ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
@@ -27,8 +19,6 @@ spec:
   
   datasource:
     name: Prometheus-UWM
-    # Set explicit UID to match dashboard references
-    # GrafanaDashboard datasources mapping sets uid to datasource name
     uid: Prometheus-UWM
     type: prometheus
     access: proxy
@@ -41,9 +31,6 @@ spec:
       tlsSkipVerify: true
     secureJsonData:
       httpHeaderValue1: "Bearer ${token}"
-  
-  # Use ServiceAccount token for authentication to OpenShift Monitoring
-  # The SA is created by the operator, we reference the auto-created token secret
   valuesFrom:
     - targetPath: "secureJsonData.httpHeaderValue1"
       valueFrom:
@@ -51,8 +38,6 @@ spec:
           name: grafana-sa-token
           key: token
 ---
-# Secret to hold the ServiceAccount token (for the operator-managed SA)
-# The SA is created by the Grafana Operator, we create this token secret
 apiVersion: v1
 kind: Secret
 metadata:
@@ -62,13 +47,10 @@ metadata:
     app: grafana
     app.kubernetes.io/part-of: observability
   annotations:
-    # References the SA created by the operator
     kubernetes.io/service-account.name: grafana-sa
     argocd.argoproj.io/sync-wave: "10"
 type: kubernetes.io/service-account-token
 ---
-# ClusterRoleBinding for accessing User Workload Monitoring
-# Binds the operator-created SA to cluster-monitoring-view
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

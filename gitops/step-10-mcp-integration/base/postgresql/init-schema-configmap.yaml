@@ -1,4 +1,3 @@
-# ACME Equipment Database Schema and Seed Data
 # Mounted at /opt/app-root/src/postgresql-start/ for auto-init.
 apiVersion: v1
 kind: ConfigMap

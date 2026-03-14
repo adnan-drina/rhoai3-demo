@@ -1,18 +1,12 @@
-# =============================================================================
-# LlamaStackDistribution - RAG Backend (RHOAI 3.3 — pgvector, no userConfig)
-# =============================================================================
 # Aligned with RHOAI 3.3 "Example D: Remote PostgreSQL with pgvector":
 #   - Pure rh-dev template — NO userConfig (enables auto-wired persistence,
 #     Ragas evaluation, safety providers, and state management)
 #   - pgvector for vector store (same PostgreSQL instance as metadata)
 #   - Sentence-transformers for inline embeddings (no GPU needed)
 #   - All credentials via Secrets
-#
 # MCP tool_groups are registered at runtime via the LlamaStack API
 # (see step-10 deploy.sh) — they persist in PostgreSQL across restarts.
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag
-# =============================================================================
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
 metadata:
@@ -35,17 +29,12 @@ spec:
       name: llama-stack
       port: 8321
       env:
-        # --- Inline embeddings (sentence-transformers, CPU only) ---
         - name: ENABLE_SENTENCE_TRANSFORMERS
           value: "true"
         - name: EMBEDDING_PROVIDER
           value: "sentence-transformers"
-
-        # --- Ragas evaluation (auto-wired by rh-dev without userConfig) ---
         - name: ENABLE_RAGAS
           value: "true"
-
-        # --- Remote LLM (granite-8b-agent via vLLM) ---
         - name: INFERENCE_MODEL
           valueFrom:
             secretKeyRef:
@@ -71,8 +60,6 @@ spec:
             secretKeyRef:
               name: llamastack-vllm-secret
               key: VLLM_MAX_TOKENS
-
-        # --- PostgreSQL metadata store ---
         - name: POSTGRES_HOST
           valueFrom:
             secretKeyRef:
@@ -98,8 +85,6 @@ spec:
             secretKeyRef:
               name: llamastack-postgres-secret
               key: POSTGRES_PASSWORD
-
-        # --- pgvector vector store (same PostgreSQL instance) ---
         - name: ENABLE_PGVECTOR
           value: "true"
         - name: PGVECTOR_HOST
@@ -127,8 +112,6 @@ spec:
             secretKeyRef:
               name: llamastack-pgvector-secret
               key: PGVECTOR_PASSWORD
-
-        # --- Guardrails (auto-wired by rh-dev when FMS_ORCHESTRATOR_URL is set) ---
         - name: FMS_ORCHESTRATOR_URL
           value: "http://guardrails-orchestrator-service.private-ai.svc:8034"
 

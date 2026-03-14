@@ -1,6 +1,3 @@
-# =============================================================================
-# MCP Servers ConfigMap — Dashboard Playground Discovery
-# =============================================================================
 # The RHOAI Dashboard Playground discovers MCP servers from this ConfigMap
 # in the redhat-ods-applications namespace.
 #
@@ -12,7 +9,6 @@
 # Users authorize and enable MCP servers in the Playground UI per session.
 #
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user
-# =============================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,6 +1,3 @@
-# =============================================================================
-# InferenceService: GPT-OSS-20B (4-GPU BF16)
-# =============================================================================
 # Red Hat Validated Model (October 2025 Collection)
 #
 # Model: RedHatAI/gpt-oss-20b
@@ -10,26 +7,22 @@
 # Use Case: High-reasoning OpenAI-alternative for complex instruction following.
 # Enterprise-vetted model for sophisticated reasoning and multi-step tasks.
 #
-# Demo Role: "Queued Asset" - Shows the Efficiency Story:
+# Demo Role: Shows the Efficiency Story:
 #   "Trade one 4-GPU general model for a suite of 4x 1-GPU specialists"
 #
 # Note: Uses S3 storage to avoid OCI overlay limits.
-# =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: gpt-oss-20b
   namespace: private-ai
   labels:
-    # Kubernetes recommended labels
     app.kubernetes.io/name: gpt-oss-20b
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: llm-serving
     app.kubernetes.io/managed-by: argocd
-    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
-    # Kueue/KServe labels
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -38,13 +31,11 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "GPT-OSS-20B (4-GPU BF16)"
     serving.kserve.io/deploymentMode: RawDeployment
-    # AI Asset / Playground metadata
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "complex reasoning"
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # QUEUED ASSET: Starts at 0 replicas
     # Toggle via GPU Orchestrator to demonstrate Efficiency Story
     minReplicas: 0
     maxReplicas: 1
@@ -64,13 +55,10 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # S3 Storage - KServe storage-initializer downloads weights at startup
       storageUri: s3://models/gpt-oss-20b/
       storage:
         key: minio-connection
       args:
-        # BF16 Full Precision on 4x L4 (96GB total VRAM)
-        # 20B model = ~44GB, leaving 50GB+ for KV cache
         - --served-model-name=gpt-oss-20b
         - --tensor-parallel-size=4
         - --dtype=bfloat16

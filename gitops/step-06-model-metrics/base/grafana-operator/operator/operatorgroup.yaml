@@ -1,8 +1,4 @@
-# Grafana Operator OperatorGroup
-# ============================================================================
-# AllNamespaces mode allows the operator to manage Grafana instances
-# in any namespace across the cluster.
-# ============================================================================
+# Empty targetNamespaces = AllNamespaces mode (manage Grafana in any namespace)
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -11,7 +7,5 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  # Empty targetNamespaces = AllNamespaces mode
-  # This allows managing Grafana instances in any namespace
   targetNamespaces: []
 

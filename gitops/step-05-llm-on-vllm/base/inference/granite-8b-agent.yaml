@@ -1,10 +1,8 @@
 # Red Hat Validated Model (May 2025 Collection)
-#
 # Model: RedHatAI/granite-3.1-8b-instruct-FP8-dynamic
 # Source: registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
 # Precision: FP8 Dynamic - 8B parameters, ~8GB VRAM
 # Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
-#
 # Storage: OCI ModelCar (Red Hat Model Catalog)
 #   - Pulled via cluster pull secret — no S3/MinIO or HuggingFace download needed
 #   - KServe modelcar sidecar mounts the OCI image as an emptyDir volume

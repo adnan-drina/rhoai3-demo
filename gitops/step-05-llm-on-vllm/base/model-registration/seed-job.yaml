@@ -1,24 +1,16 @@
-# =============================================================================
-# Step 05: Enterprise Model Portfolio Registration
-# =============================================================================
 # Registers the complete model portfolio for the GPU-as-a-Service demo.
-#
 # ACTIVE MODELS (minReplicas: 1):
 #   1. Mistral-3-BF16    → 4-GPU, S3 storage (primary load)
 #   2. Mistral-3-INT4    → 1-GPU, OCI ModelCar (secondary load)
-#
 # QUEUED MODELS (minReplicas: 0):
 #   3. Devstral-2        → 4-GPU, S3 storage (agentic)
 #   4. GPT-OSS-20B       → 4-GPU, S3 storage (high-reasoning)
 #   5. Granite-8B-Agent  → 1-GPU, OCI ModelCar (tool-calling)
-#
 # Demo Scenarios:
 #   1. Resource Handover: Swap BF16 for Devstral
 #   2. Efficiency Story: Trade 1x 4-GPU for 4x 1-GPU specialists
 #   3. Model Portfolio: Show all 5 Red Hat Validated models
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_model_registries/index
-# =============================================================================
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -80,9 +72,6 @@ spec:
                 sleep 10
               done
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Function to register a model with S3 URI
-              # ═══════════════════════════════════════════════════════════════════
               register_model() {
                 local MODEL_NAME="$1"
                 local MODEL_DESC="$2"
@@ -152,9 +141,6 @@ spec:
                 echo "✓ Registered: ${MODEL_NAME} → ${ARTIFACT_URI}"
               }
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 1: Mistral-3-BF16 (4-GPU, Primary Load)
-              # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "Mistral-3-BF16" \
                 "Mistral Small 24B Instruct - BF16 Full Precision. Primary 4-GPU model for high-throughput production." \
@@ -165,9 +151,6 @@ spec:
                 "mistralai/Mistral-Small-24B-Instruct-2501" \
                 "vLLM"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 2: Mistral-3-INT4 (1-GPU, Secondary Load)
-              # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "Mistral-3-INT4" \
                 "Mistral Small 24B Instruct - INT4 W4A16 quantized by Neural Magic. Cost-efficient 1-GPU deployment." \
@@ -178,9 +161,6 @@ spec:
                 "neuralmagic/Mistral-Small-24B-Instruct-2501-quantized.w4a16" \
                 "vLLM"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 3: Devstral-2 (4-GPU, Queued Asset)
-              # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "Devstral-2" \
                 "Devstral 2 24B - Agentic model optimized for tool use and function calling. The 'waiting' model in the Resource Handover demo." \
@@ -191,9 +171,6 @@ spec:
                 "mistralai/Mistral-Small-24B-Instruct-2501" \
                 "vLLM"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 4: GPT-OSS-20B (4-GPU, High-Reasoning) - October 2025 Collection
-              # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "GPT-OSS-20B" \
                 "GPT-OSS-20B - Red Hat Validated enterprise reasoning model (October 2025). OpenAI-alternative for complex instruction following." \
@@ -204,9 +181,6 @@ spec:
                 "RedHatAI/gpt-oss-20b" \
                 "vLLM"
               
-              # ═══════════════════════════════════════════════════════════════════
-              # Model 5: Granite-3.1-8B-Agent (1-GPU, OCI ModelCar) - May 2025 Collection
-              # ═══════════════════════════════════════════════════════════════════
               register_model \
                 "Granite-3.1-8B-Agent" \
                 "Granite 3.1 8B Instruct FP8 - The Agentic Core. Red Hat flagship for tool-calling, function-calling, and RAG workflows. OCI ModelCar from Red Hat Model Catalog." \

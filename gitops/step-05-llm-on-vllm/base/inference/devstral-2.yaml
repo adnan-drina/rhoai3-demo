@@ -1,6 +1,3 @@
-# =============================================================================
-# InferenceService: Devstral-2 (4-GPU Queued Asset)
-# =============================================================================
 # The "WAITING" model in the "Resource Handover" demo.
 #
 # Model: Mistral Small 24B Instruct (placeholder for Devstral-2)
@@ -20,22 +17,18 @@
 #
 # NOTE: Uses same S3 weights as BF16 for demo simplicity.
 # In production, this would point to dedicated Devstral-2 weights.
-# =============================================================================
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: devstral-2
   namespace: private-ai
   labels:
-    # Kubernetes recommended labels
     app.kubernetes.io/name: devstral-2
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: llm-serving
     app.kubernetes.io/managed-by: argocd
-    # OpenShift AI Dashboard labels
     opendatahub.io/dashboard: "true"
-    opendatahub.io/genai-asset: "true"  # Makes model available in AI Asset Endpoints for Playground
-    # Kueue/KServe labels
+    opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
     kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
@@ -44,13 +37,11 @@ metadata:
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Devstral-2 (4-GPU Agentic)"
     serving.kserve.io/deploymentMode: RawDeployment
-    # AI Asset / Playground metadata
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "agentic coding assistant"
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
-    # QUEUED ASSET: Starts at 0 replicas
     # Toggle to 1 via GPU Orchestrator to demonstrate queueing
     minReplicas: 0
     maxReplicas: 1
@@ -70,7 +61,6 @@ spec:
       modelFormat:
         name: vLLM
       runtime: vllm-runtime
-      # S3 Storage - shares BF16 weights for demo (Devstral-2 is same base model)
       storageUri: s3://models/mistral-small-24b/
       storage:
         key: minio-connection
@@ -81,7 +71,6 @@ spec:
         - --max-model-len=32768
         - --gpu-memory-utilization=0.9
         - --trust-remote-code
-        # Agentic features - optimized for tool use
         - --tool-call-parser=mistral
         - --enable-auto-tool-choice
       env:

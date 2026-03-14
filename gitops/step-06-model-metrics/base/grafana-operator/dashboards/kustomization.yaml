@@ -1,44 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Grafana Dashboards (GrafanaDashboard CRs)
-# ============================================================================
-# Declarative dashboards managed by Grafana Operator.
-#
-# Benefits over ConfigMap provisioning:
-#   - Auto-sync without Grafana restart
-#   - Kubernetes-native resource management
-#   - GitOps-friendly with ArgoCD
-#   - Can reference external URLs (auto-updated)
-#
-# Dashboard Sources:
-#   - Official upstream dashboards from GitHub (auto-updated)
-#   - RHOAI community dashboards (rh-aiservices-bu)
-#   - Custom dashboards for this demo
-# ============================================================================
-
 resources:
-  # ═══════════════════════════════════════════════════════════════════════════
-  # PRIMARY: vLLM Latency, Throughput & Cache (12 panels)
-  # ═══════════════════════════════════════════════════════════════════════════
-  # Source: llm-d-deployer (pre-processed with namespace=private-ai default)
-  # Covers: E2E P50/P95/P99, TTFT, TPOT, throughput, scheduler state,
-  #         KV cache utilization, queue time, prefill/decode time
   - vllm-ltc-configmap.yaml
   - vllm-latency-throughput-cache.yaml
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # GPU HARDWARE: NVIDIA DCGM GPU Metrics
-  # ═══════════════════════════════════════════════════════════════════════════
   - dcgm-gpu-metrics.yaml
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # ROI STORY: Mistral BF16 vs INT4 Comparison
-  # ═══════════════════════════════════════════════════════════════════════════
   - mistral-roi-comparison.yaml
-
-  # REMOVED (consolidated into vllm-latency-throughput-cache):
-  # - vllm-performance-statistics.yaml  → E2E/TTFT/ITL/TPS covered
-  # - vllm-query-statistics.yaml        → Request/token stats covered
-  # - rhoai-vllm-model-metrics.yaml     → Per-model KV cache covered
 

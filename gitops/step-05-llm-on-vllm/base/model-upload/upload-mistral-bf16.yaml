@@ -1,13 +1,9 @@
-# =============================================================================
-# Model Upload: Mistral Small 24B BF16 (Full Precision)
-# =============================================================================
 # For 4-GPU tensor parallel deployment on g6.12xlarge
 #
 # Usage:
 #   oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-bf16.yaml
 #   oc logs -f job/upload-mistral-bf16 -n minio-storage
-# =============================================================================
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

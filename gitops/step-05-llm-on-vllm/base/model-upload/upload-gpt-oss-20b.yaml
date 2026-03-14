@@ -1,6 +1,3 @@
-# =============================================================================
-# Model Upload Job: GPT-OSS-20B
-# =============================================================================
 # Downloads RedHatAI/gpt-oss-20b from HuggingFace and uploads to MinIO.
 #
 # Model: RedHatAI/gpt-oss-20b (October 2025 Collection)
@@ -11,7 +8,6 @@
 #   1. Create HF token: oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   2. Apply job: oc apply -f upload-gpt-oss-20b.yaml
 #   3. Monitor: oc logs -f job/upload-gpt-oss-20b -n minio-storage
-# =============================================================================
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

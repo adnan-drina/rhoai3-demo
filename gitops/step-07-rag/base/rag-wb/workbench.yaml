@@ -1,18 +1,3 @@
-# =============================================================================
-# RAG Workbench - RHOAI 3.3 GitOps Pattern
-# =============================================================================
-# Interactive Jupyter workbench for RAG development and testing:
-#   - Query LlamaStack RAG backend with file_search
-#   - Compare answers with/without vector store context
-#   - Debug vector search results directly
-#   - Run RAG ingestion pipelines
-#
-# Pre-configured env vars point to lsd-rag and pgvector services.
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# ServiceAccount
-# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -24,9 +9,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 ---
-# -----------------------------------------------------------------------------
-# PVC: Workbench Storage
-# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -46,9 +28,6 @@ spec:
       storage: 10Gi
   storageClassName: gp3-csi
 ---
-# -----------------------------------------------------------------------------
-# Notebook: RAG Workbench
-# -----------------------------------------------------------------------------
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
@@ -82,9 +61,6 @@ spec:
       enableServiceLinks: false
       serviceAccountName: rag-wb
       affinity: {}
-      # =========================================================================
-      # Git-Sync Init Container: Pre-load RAG notebook from Git
-      # =========================================================================
       initContainers:
         - name: git-sync
           image: alpine/git:latest
@@ -126,9 +102,6 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
-      # =========================================================================
-      # Container: Jupyter Notebook
-      # =========================================================================
       containers:
         - name: rag-wb
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
@@ -220,9 +193,6 @@ spec:
               - key: ca-bundle.crt
                 path: ca-bundle.crt
 ---
-# =============================================================================
-# RBAC: RAG Workbench Permissions
-# =============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

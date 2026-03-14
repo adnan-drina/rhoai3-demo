@@ -1,10 +1,7 @@
 # Metrics flow through vLLM → ServiceMonitor → Prometheus → Grafana (no PVC).
-#
 # Traffic Profiles: 512→256 (Chatbot/Q&A), 1024→1024 (Content generation)
 # SLO Targets: Conversational TTFT ≤150ms; Interactive TTFT ≤500ms
-#
 # Manual trigger: oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n private-ai
-#
 # Ref: https://github.com/vllm-project/guidellm
 # Ref: https://github.com/redhat-et/neuralnav (traffic profiles + SLOs)
 apiVersion: batch/v1

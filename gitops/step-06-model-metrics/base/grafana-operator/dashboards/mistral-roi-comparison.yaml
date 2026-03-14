@@ -1,16 +1,4 @@
-# Mistral 3 (BF16 vs INT4) Dashboard
-# ============================================================================
-# Side-by-side comparison with SLA thresholds and breaking point detection:
-#   - Mistral-3-BF16 (4 GPUs, full precision)
-#   - Mistral-3-INT4 (1 GPU, quantized)
-#
-# SLA Thresholds:
-#   TTFT:       < 500ms (Excellent) | < 1.0s (SLA) | > 2.0s (Breaking)
-#   TPOT:       < 50ms (Excellent) | < 75ms (SLA) | > 100ms (Breaking)
-#   Throughput: > 50 tok/s (Excellent) | > 20 tok/s (SLA) | < 10 tok/s (Breaking)
-#   KV Cache:   < 70% (Excellent) | < 85% (SLA) | > 95% (Breaking)
-#   Queue:      0 (Excellent) | 0-1 (SLA) | > 5 (Breaking)
-# ============================================================================
+# SLA Thresholds: TTFT <500ms/<1.0s/>2.0s | TPOT <50/<75/>100ms | KV Cache <70/<85/>95% | Queue 0/0-1/>5
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:

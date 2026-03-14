@@ -1,14 +1,4 @@
-# Grafana Instance CR
-# ============================================================================
-# Managed by Grafana Operator - deploys Grafana in private-ai namespace
-#
-# Configuration:
-#   - Anonymous access enabled (for demo simplicity)
-#   - No login required
-#   - OpenShift Route with edge TLS termination
-#
 # Ref: https://grafana.github.io/grafana-operator/docs/grafana/
-# ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: Grafana
 metadata:
@@ -23,18 +13,12 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "10"
 spec:
-  # Note: instanceSelector is used on GrafanaDashboard/GrafanaDatasource CRs
-  # to select which Grafana instance to sync to. The "dashboards: grafana"
-  # label on this Grafana CR is what dashboards will match against.
-  
-  # Route configuration for OpenShift
+  # instanceSelector on GrafanaDashboard/GrafanaDatasource CRs matches dashboards: "grafana" label
   route:
     spec:
       tls:
         termination: edge
         insecureEdgeTerminationPolicy: Redirect
-  
-  # Deployment customization
   deployment:
     spec:
       replicas: 1
@@ -49,14 +33,10 @@ spec:
                 limits:
                   cpu: 500m
                   memory: 512Mi
-  
-  # Grafana configuration
   config:
     log:
       mode: "console"
       level: "info"
-    
-    # Anonymous access for demo (no login required)
     auth.anonymous:
       enabled: "true"
       org_role: "Admin"
@@ -64,12 +44,8 @@ spec:
     auth:
       disable_login_form: "true"
       disable_signout_menu: "true"
-    
-    # Server settings
     server:
       root_url: "%(protocol)s://%(domain)s/"
-    
-    # Security (allow embedding in iframes if needed)
     security:
       allow_embedding: "true"
 

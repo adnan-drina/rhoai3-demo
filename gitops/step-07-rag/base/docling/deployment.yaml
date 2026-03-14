@@ -1,9 +1,6 @@
-# Docling Document Processing Service
 # Standalone deployment for PDF-to-Markdown conversion via REST API.
 # The KFP pipeline calls POST /v1alpha/convert/file with PDF payloads.
-#
 # Docling takes ~5-10 minutes for first startup (model download).
-#
 # Ref: https://github.com/docling-project/docling-serve
 apiVersion: apps/v1
 kind: Deployment

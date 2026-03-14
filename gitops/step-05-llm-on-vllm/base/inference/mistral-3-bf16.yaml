@@ -75,7 +75,6 @@ spec:
         - --gpu-memory-utilization=0.85
         - --max-num-seqs=128
         - --trust-remote-code
-        # Agentic features
         - --tool-call-parser=mistral
         - --enable-auto-tool-choice
       env:

@@ -1,16 +1,9 @@
-# =============================================================================
-# vLLM ServingRuntime for RHOAI 3.3 — Aligned with Platform Default
-# =============================================================================
-# This ServingRuntime uses the SAME image and configuration as the
-# RHOAI 3.3 platform-provided vllm-cuda-runtime-template.
-#
+# Uses the SAME image and configuration as RHOAI 3.3 platform-provided vllm-cuda-runtime-template.
 # Image: vLLM v0.13.0 (RHOAI 3.3)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
-#
 # To verify alignment with the platform default:
 #   oc get template vllm-cuda-runtime-template -n redhat-ods-applications \
 #     -o jsonpath='{.objects[0].spec.containers[0].image}'
-# =============================================================================
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:

@@ -3,7 +3,6 @@ kind: Kustomization
 
 # Step 05: High-Efficiency LLM Inference with vLLM
 # Deploys 5 Red Hat Validated models using mixed storage: OCI ModelCar + S3
-#
 # Storage Strategy (Hybrid):
 #   - Small models (≤13GB): OCI ModelCar from Red Hat Registry
 #     → granite-8b-agent (FP8, ~8GB), mistral-3-int4 (W4A16, ~13.5GB)
@@ -11,19 +10,16 @@ kind: Kustomization
 #   - Large models (>20GB): S3/MinIO via KServe storage-initializer
 #     → mistral-3-bf16 (~48GB), devstral-2 (~48GB), gpt-oss-20b (~44GB)
 #     → Avoids CRI-O overlay extraction issues with large OCI images
-#
 # FP8 Advantage on NVIDIA L4:
 #   - Ada Lovelace architecture has native FP8 hardware acceleration
 #   - 50% memory reduction vs BF16
 #   - Near-identical accuracy (Neural Magic optimized kernels)
 #   - Red Hat validated through collaboration with Neural Magic
-#
 # Prerequisites:
 #   1. Step-03 deployed (MinIO storage for large models)
 #   2. Large model weights uploaded to MinIO (via deploy.sh upload jobs)
 #   3. storage-config secret in private-ai namespace (for S3-based models)
 #   4. Cluster pull secret configured for registry.redhat.io (for OCI models)
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/deploying_models/index
 
 resources:

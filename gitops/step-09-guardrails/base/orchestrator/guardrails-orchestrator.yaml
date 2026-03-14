@@ -1,10 +1,7 @@
-# GuardrailsOrchestrator CR — deploys the FMS Guardrails Orchestrator service.
 # The TrustyAI operator creates a Deployment, Service, and Route from this CR.
-#
 # Verification:
 #   oc get guardrailsorchestrator -n private-ai
 #   oc get pods -l app=guardrails-orchestrator -n private-ai
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: GuardrailsOrchestrator

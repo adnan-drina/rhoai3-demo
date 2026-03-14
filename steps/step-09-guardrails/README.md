@@ -73,11 +73,27 @@ _What to say: "This is the most common attack vector against LLM applications. T
 - [RHOAI 3.3 — Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
 - [rhoai-genaiops/lab-instructions — Guardrails](https://github.com/rhoai-genaiops/lab-instructions/tree/main/docs/7-honor-code)
 
+## What to Verify After Deployment
+
+`validate.sh` runs 12 checks: 8 infrastructure + 4 functional detector tests.
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ArgoCD sync/health | App is Synced and Healthy | Synced + Healthy |
+| GuardrailsOrchestrator | CR exists and pods ready | 1+ pods running |
+| Detector ISVCs | hap-detector and prompt-injection-detector | Both Ready |
+| Orchestrator health | `/health` endpoint responds | HTTP 200 |
+| **HAP functional** | "I hate you stupid bot!" | Score > 0.9 |
+| **Prompt injection functional** | "Ignore all previous instructions..." | Score > 0.9 |
+| **PII regex functional** | Email + Dutch phone number | >= 2 detections |
+| **Clean input functional** | Normal question | 0 detections (no false positives) |
+| LlamaStack safety provider | `trustyai_fms` registered in lsd-rag | Provider found |
+
 ## Operations
 
 ```bash
 ./steps/step-09-guardrails/deploy.sh     # ArgoCD app: detectors + orchestrator
-./steps/step-09-guardrails/validate.sh   # Health + detector checks
+./steps/step-09-guardrails/validate.sh   # 12 checks: infrastructure + functional detector tests
 ```
 
 ## Next Steps

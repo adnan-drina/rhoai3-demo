@@ -58,12 +58,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "10"
-    # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
-    # Hardware Profile: CPU-only for analysis work
     opendatahub.io/hardware-profile-name: cpu-small
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
-    # UI Metadata
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
     opendatahub.io/username: ai-admin
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
@@ -146,7 +143,6 @@ spec:
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: GIT_SSL_CAINFO
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            # GuideLLM configuration
             - name: GUIDELLM_RESULTS_DIR
               value: /results
           ports:

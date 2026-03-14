@@ -1,6 +1,3 @@
-# =============================================================================
-# Model Upload: Mistral Small 24B AWQ (4-bit Quantized)
-# =============================================================================
 # For 1-GPU deployment on g6.4xlarge (24GB VRAM)
 #
 # AWQ (Activation-aware Weight Quantization) provides:
@@ -13,7 +10,6 @@
 #   oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
 #   oc apply -f upload-mistral-awq.yaml
 #   oc logs -f job/upload-mistral-awq -n minio-storage
-# =============================================================================
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

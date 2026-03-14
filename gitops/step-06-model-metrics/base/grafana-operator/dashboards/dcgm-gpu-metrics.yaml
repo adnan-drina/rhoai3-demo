@@ -1,22 +1,5 @@
-# Official NVIDIA DCGM Exporter Dashboard
-# ============================================================================
 # Source: https://github.com/NVIDIA/dcgm-exporter/blob/main/grafana/dcgm-exporter-dashboard.json
-#
-# This is the OFFICIAL NVIDIA dashboard for GPU monitoring.
-#
-# Panels include:
-#   - GPU Temperature
-#   - GPU Avg. Temp
-#   - GPU Power Usage
-#   - GPU Power Total
-#   - GPU SM Clocks
-#   - GPU Utilization
-#   - GPU Framebuffer Mem Used
-#   - Tensor Core Utilization
-#
 # Ref: https://docs.nvidia.com/datacenter/cloud-native/openshift/latest/enable-gpu-monitoring-dashboard.html
-# Ref: https://github.com/NVIDIA/dcgm-exporter
-# ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
@@ -34,9 +17,5 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: "grafana"
-  
-  # Reference the official NVIDIA DCGM dashboard from GitHub (raw URL to avoid redirects)
   url: "https://raw.githubusercontent.com/NVIDIA/dcgm-exporter/main/grafana/dcgm-exporter-dashboard.json"
-  
-  # Resync every 5 minutes to pick up any upstream updates
   resyncPeriod: 5m

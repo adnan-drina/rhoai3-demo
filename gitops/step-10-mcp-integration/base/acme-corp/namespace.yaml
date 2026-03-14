@@ -1,4 +1,3 @@
-# ACME Corp Demo Namespace
 # Simulates a production environment with equipment monitoring pods.
 # Used for the MCP Tools demo workflow (list pods -> lookup equipment -> RAG -> Slack).
 apiVersion: v1

@@ -1,31 +1,23 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# =============================================================================
-# Model Upload Jobs - Enterprise Portfolio
-# =============================================================================
 # These jobs download Red Hat Validated models from HuggingFace and upload
 # to MinIO for KServe storage-initializer to stream at pod startup.
-#
 # NOTE: Small models (Granite-8B FP8, Mistral-INT4) use OCI ModelCar from
 # Red Hat Registry — no upload jobs needed. Only large BF16 models (>20GB)
 # use S3/MinIO because OCI image layers may hit CRI-O overlay limits.
-#
 # S3 Storage Strategy (for large models):
 #   - Avoids CRI-O overlay extraction failures for large images
 #   - KServe storage-initializer streams directly to ephemeral storage
 #   - 300GB EBS nodes can handle 50GB+ model weights
-#
 # ArgoCD Sync Behavior:
 #   - PVCs are managed by ArgoCD (persistent storage for model cache)
 #   - Jobs use argocd.argoproj.io/hook: Skip — ArgoCD ignores them
 #   - Jobs are run by deploy.sh (oc apply -f) only, not by ArgoCD
 #   - Jobs are idempotent - they skip if model already exists in MinIO
-#
 # Prerequisites:
-#   - HF token (optional for public models): 
+#   - HF token (optional for public models):
 #     oc create secret generic hf-token -n minio-storage --from-literal=token=hf_xxx
-# =============================================================================
 
 resources:
   # BF16 Models (Full Precision, Multi-GPU)

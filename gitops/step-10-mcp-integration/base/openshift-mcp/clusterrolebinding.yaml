@@ -1,4 +1,3 @@
-# Read-only cluster access for the OpenShift MCP server.
 # Uses the built-in 'view' ClusterRole for safe read operations.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

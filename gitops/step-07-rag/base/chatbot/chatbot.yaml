@@ -1,4 +1,3 @@
-# RAG Chatbot — Streamlit frontend for LlamaStack RAG queries
 # Built from steps/step-07-rag/chatbot/ via OpenShift BuildConfig
 apiVersion: image.openshift.io/v1
 kind: ImageStream

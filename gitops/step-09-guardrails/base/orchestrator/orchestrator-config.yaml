@@ -1,11 +1,8 @@
-# Guardrails Orchestrator Configuration
 # Defines the LLM to guardrail and the available detector services.
-#
 # Detectors:
 #   regex           — built-in PII detection (email, SSN, credit-card, phone, IP)
 #   hap             — granite-guardian-hap-38m for hate/abuse/profanity
 #   prompt_injection — deberta-v3 for prompt injection attacks
-#
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety
 kind: ConfigMap
 apiVersion: v1

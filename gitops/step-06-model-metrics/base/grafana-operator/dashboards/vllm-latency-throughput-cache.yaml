@@ -1,21 +1,9 @@
-# vLLM Latency, Throughput & Cache Dashboard (from llm-d-deployer)
-# ============================================================================
 # Source: https://github.com/llm-d/llm-d-deployer/blob/main/quickstart/grafana/dashboards/llm-d-dashboard.json
-#
-# Modified from upstream:
-#   - namespace variable default: private-ai (was: first alphabetical)
-#   - model_name variable default: granite-8b-agent
-#   - DS_PROMETHEUS replaced with Prometheus-UWM datasource UID
-#
+# Modified: namespace=private-ai, model_name=granite-8b-agent, DS_PROMETHEUS→Prometheus-UWM
 # To update from upstream:
 #   curl -sL https://raw.githubusercontent.com/llm-d/llm-d-deployer/main/quickstart/grafana/dashboards/llm-d-dashboard.json \
 #     | sed 's/${DS_PROMETHEUS}/Prometheus-UWM/g' > llm-d-dashboard.json
 #   # Then fix namespace/model_name defaults in templating.list
-#
-# 12 panels: E2E Latency, Token Throughput, TPOT, Scheduler State,
-# TTFT, Cache Utilization, Prompt/Generation Length, Finish Reason,
-# Queue Time, Prefill/Decode Time, Max Generation Tokens
-# ============================================================================
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:

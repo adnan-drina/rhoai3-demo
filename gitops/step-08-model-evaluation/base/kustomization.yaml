@@ -7,4 +7,4 @@ kind: Kustomization
 # No new operators or services are deployed.
 
 resources:
-  - eval-configs/   # ConfigMaps with test cases + scoring templates, sync Job
+  - eval-configs/

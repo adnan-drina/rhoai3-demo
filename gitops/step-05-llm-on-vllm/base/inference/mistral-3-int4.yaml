@@ -67,20 +67,19 @@ spec:
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-mistral-small-3-1-24b-instruct-2503-quantized-w4a16:1.5
       args:
         - --served-model-name=mistral-3-int4
+        # 8K context = sweet spot for 24B models on L4 hardware
         - --max-model-len=8192
         # FP8 KV cache doubles effective cache capacity (10.5GB → 20GB effective)
         - --kv-cache-dtype=fp8
-        # Chunked prefill prevents long prompts from blocking other users
         - --enable-chunked-prefill
         # 85% utilization gives driver breathing room under high load
         - --gpu-memory-utilization=0.85
         - --trust-remote-code
-        # Tool calling — REQUIRED for Playground RAG and MCP
+        # REQUIRED for Playground RAG and MCP
         - --tool-call-parser=mistral
         - --enable-auto-tool-choice
       env:
         # RHOAI 3.3 GA: V1 engine required
-        # Driver 570.195.03 provides CUDA 12.x compatibility
         - name: VLLM_USE_V1
           value: "1"
         - name: VLLM_NO_HW_METRICS
