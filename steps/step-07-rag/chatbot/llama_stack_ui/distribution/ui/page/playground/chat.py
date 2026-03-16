@@ -294,7 +294,9 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         )
     else:
         default_prompt = (
-            "You are a helpful assistant. You MUST use your tools to answer questions.\n\n"
+            "You are a helpful assistant. You MUST use your tools to answer questions. "
+            "Base your answer on the tool results, not prior knowledge. "
+            "If a tool call fails, retry with corrected parameters.\n\n"
             "When citing sources, use this format:\n"
             "Sources:\n"
             "- ACME_07_Corporate_Profile.md\n"
