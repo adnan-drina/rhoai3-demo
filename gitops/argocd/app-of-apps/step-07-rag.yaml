@@ -63,3 +63,9 @@ spec:
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec
+    # Route: OpenShift router controller adds host, status.ingress, and other fields
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status

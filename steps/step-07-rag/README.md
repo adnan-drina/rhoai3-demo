@@ -120,6 +120,8 @@ To trigger a new run from the CLI:
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.
 
+> **DSPA readiness gates pipeline steps.** `deploy.sh` waits up to 600s for DSPA to reach Ready. If DSPA is not ready, it skips PDF upload, pipeline compilation, and batch ingestion — these can be run manually later. This prevents silent failures where the KFP API server isn't available but the script continues to launch pipelines.
+
 > **DSPA readiness check uses condition status, not type.** `deploy.sh` checks `status.conditions[?(@.type=="Ready")].status == "True"` rather than `conditions[0].type == "Ready"`. The first condition in the array is not guaranteed to be the Ready condition, and even if it is, the type name "Ready" does not indicate readiness — the `status` field does.
 
 > **PostgreSQL PVC sync wave aligned with Deployment.** The `llamastack-postgres-pvc` PVC uses sync wave `"2"` (same as the Deployment) to avoid the `WaitForFirstConsumer` deadlock where ArgoCD waits for the PVC to bind before creating the pod that triggers binding.

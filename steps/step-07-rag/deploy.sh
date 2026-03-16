@@ -147,7 +147,7 @@ fi
 
 log_step "Waiting for DSPA..."
 DSPA_READY=false
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
     STATUS=$(oc get dspa dspa-rag -n "$NAMESPACE" \
         -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
     if [ "$STATUS" = "True" ]; then
@@ -159,7 +159,10 @@ done
 if [ "$DSPA_READY" = "true" ]; then
     log_success "DSPA dspa-rag is Ready"
 else
-    log_error "DSPA did not reach Ready state"
+    log_error "DSPA did not reach Ready state — skipping pipeline compilation and ingestion"
+    log_info "Run manually after DSPA is ready:"
+    log_info "  ./steps/step-07-rag/run-batch-ingestion.sh acme"
+    log_info "  ./steps/step-07-rag/run-batch-ingestion.sh whoami"
 fi
 echo ""
 
@@ -176,90 +179,81 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Upload scenario PDFs to MinIO
+# Steps 5-7: Upload, compile, and launch (only if DSPA is ready)
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Uploading scenario documents to MinIO..."
+if [ "$DSPA_READY" = "true" ]; then
 
-# Wait for MinIO to be ready before uploading
-log_info "  Checking MinIO readiness..."
-MINIO_READY=false
-for i in $(seq 1 12); do
-    if oc get deployment minio -n minio-storage -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1"; then
-        MINIO_READY=true
-        break
-    fi
-    sleep 5
-done
-if [ "$MINIO_READY" != "true" ]; then
-    log_warn "MinIO not ready — skipping document upload. Run manually later:"
-    log_info "  ./steps/step-07-rag/deploy.sh  (or upload-to-minio.sh)"
-fi
-
-if [ "$MINIO_READY" = "true" ] && [ -f "$SCRIPT_DIR/upload-to-minio.sh" ]; then
-    chmod +x "$SCRIPT_DIR/upload-to-minio.sh"
-
-    for scenario_dir in "$SCRIPT_DIR"/scenario-docs/*/; do
-        [ -d "$scenario_dir" ] || continue
-        scenario=$(basename "$scenario_dir")
-        pdf_count=$(find "$scenario_dir" -name "*.pdf" 2>/dev/null | wc -l | tr -d ' ')
-
-        if [ "$pdf_count" -eq 0 ]; then
-            log_info "  No PDFs in $scenario (placeholder directory)"
-            continue
+    # --- Upload scenario PDFs to MinIO ---
+    log_step "Uploading scenario documents to MinIO..."
+    MINIO_READY=false
+    for i in $(seq 1 12); do
+        if oc get deployment minio -n minio-storage -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1"; then
+            MINIO_READY=true
+            break
         fi
+        sleep 5
+    done
 
-        log_info "  Uploading $pdf_count PDF(s) for $scenario..."
-        for pdf in "$scenario_dir"*.pdf; do
-            [ -f "$pdf" ] || continue
-            filename=$(basename "$pdf")
-            "$SCRIPT_DIR/upload-to-minio.sh" "$pdf" "rag-documents/$scenario/$filename" || \
-                log_error "  Failed to upload $filename"
+    if [ "$MINIO_READY" = "true" ] && [ -f "$SCRIPT_DIR/upload-to-minio.sh" ]; then
+        chmod +x "$SCRIPT_DIR/upload-to-minio.sh"
+        for scenario_dir in "$SCRIPT_DIR"/scenario-docs/*/; do
+            [ -d "$scenario_dir" ] || continue
+            scenario=$(basename "$scenario_dir")
+            pdf_count=$(find "$scenario_dir" -name "*.pdf" 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$pdf_count" -eq 0 ]; then
+                log_info "  No PDFs in $scenario (placeholder directory)"
+                continue
+            fi
+            log_info "  Uploading $pdf_count PDF(s) for $scenario..."
+            for pdf in "$scenario_dir"*.pdf; do
+                [ -f "$pdf" ] || continue
+                filename=$(basename "$pdf")
+                "$SCRIPT_DIR/upload-to-minio.sh" "$pdf" "rag-documents/$scenario/$filename" || \
+                    log_error "  Failed to upload $filename"
+            done
         done
-    done
-elif [ "$MINIO_READY" = "true" ]; then
-    log_info "  upload-to-minio.sh not found — upload documents manually"
+    elif [ "$MINIO_READY" = "true" ]; then
+        log_info "  upload-to-minio.sh not found — upload documents manually"
+    else
+        log_warn "MinIO not ready — skipping document upload"
+    fi
+    echo ""
+
+    # --- Compile KFP pipeline ---
+    log_step "Compiling KFP pipeline..."
+    VENV_PATH="$REPO_ROOT/.venv-kfp"
+    if [ ! -d "$VENV_PATH" ]; then
+        python3 -m venv "$VENV_PATH"
+    fi
+    "$VENV_PATH/bin/pip" install -q --upgrade pip
+    "$VENV_PATH/bin/pip" install -q kfp
+
+    mkdir -p "$REPO_ROOT/artifacts"
+    (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
+
+    if [ -f "$REPO_ROOT/artifacts/rag-ingestion-batch.yaml" ]; then
+        log_success "Pipeline compiled: artifacts/rag-ingestion-batch.yaml"
+    else
+        log_error "Pipeline compilation failed"
+    fi
+    echo ""
+
+    # --- Launch batch ingestion ---
+    log_step "Launching batch ingestion pipelines..."
+    if [ -f "$SCRIPT_DIR/run-batch-ingestion.sh" ]; then
+        chmod +x "$SCRIPT_DIR/run-batch-ingestion.sh"
+        for scenario in whoami acme; do
+            log_info "  Launching: $scenario"
+            "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" || \
+                log_error "  Pipeline launch failed for $scenario"
+            sleep 2
+        done
+    else
+        log_error "  run-batch-ingestion.sh not found — KFP pipelines cannot be launched"
+    fi
+    echo ""
+
 fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 6: Compile KFP pipeline
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Compiling KFP pipeline..."
-
-VENV_PATH="$REPO_ROOT/.venv-kfp"
-if [ ! -d "$VENV_PATH" ]; then
-    python3 -m venv "$VENV_PATH"
-fi
-"$VENV_PATH/bin/pip" install -q --upgrade pip
-"$VENV_PATH/bin/pip" install -q kfp
-
-mkdir -p "$REPO_ROOT/artifacts"
-(cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
-
-if [ -f "$REPO_ROOT/artifacts/rag-ingestion-batch.yaml" ]; then
-    log_success "Pipeline compiled: artifacts/rag-ingestion-batch.yaml"
-else
-    log_error "Pipeline compilation failed"
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 7: Launch batch ingestion (if run-batch-ingestion.sh exists)
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Launching batch ingestion pipelines..."
-
-if [ -f "$SCRIPT_DIR/run-batch-ingestion.sh" ]; then
-    chmod +x "$SCRIPT_DIR/run-batch-ingestion.sh"
-    for scenario in whoami acme; do
-        log_info "  Launching: $scenario"
-        "$SCRIPT_DIR/run-batch-ingestion.sh" "$scenario" || \
-            log_error "  Pipeline launch failed for $scenario"
-        sleep 2
-    done
-else
-    log_error "  run-batch-ingestion.sh not found — KFP pipelines cannot be launched"
-fi
-echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 8: Validation output

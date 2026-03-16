@@ -93,11 +93,11 @@ except:
     print('0')
 " 2>/dev/null || echo "0")
 
-    if [[ "$VS_COUNT" -ge 3 ]]; then
+    if [[ "$VS_COUNT" -ge 2 ]]; then
         echo -e "${GREEN}[PASS]${NC} $VS_COUNT vector stores with data"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     elif [[ "$VS_COUNT" -ge 1 ]]; then
-        echo -e "${YELLOW}[WARN]${NC} $VS_COUNT vector store(s) with data (expected 3)"
+        echo -e "${YELLOW}[WARN]${NC} $VS_COUNT vector store(s) with data (expected 2: acme + whoami)"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     else
         echo -e "${RED}[FAIL]${NC} No vector stores with data"
