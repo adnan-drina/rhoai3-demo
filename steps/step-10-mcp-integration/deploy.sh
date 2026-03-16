@@ -104,22 +104,23 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Configuring MCP servers in Dashboard..."
 
-OPENSHIFT_MCP_URL="https://$(oc get route openshift-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
+# OpenShift-MCP supports streamable-http on /mcp; Database and Slack use SSE on /sse
+OPENSHIFT_MCP_URL="https://$(oc get route openshift-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/mcp"
 DATABASE_MCP_URL="https://$(oc get route database-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
 SLACK_MCP_URL="https://$(oc get route slack-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
 
-if [[ "$OPENSHIFT_MCP_URL" != "https:///sse" ]]; then
+if [[ "$OPENSHIFT_MCP_URL" != "https:///mcp" ]]; then
     oc patch configmap gen-ai-aa-mcp-servers -n redhat-ods-applications --type merge -p "{
       \"data\": {
         \"OpenShift-MCP\": \"{\\n  \\\"url\\\": \\\"${OPENSHIFT_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Interact with the OpenShift cluster (Kubernetes MCP Server). Query pod status, logs, events, deployments, and cluster resources. Read-only mode.\\\"\\n}\\n\",
-        \"Database-MCP\": \"{\\n  \\\"url\\\": \\\"${DATABASE_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Query the ACME corporate PostgreSQL database (EDB Postgres MCP). Provides SQL access to equipment records, service history, calibration data, and pod-equipment mappings.\\\"\\n}\\n\",
-        \"Slack-MCP\": \"{\\n  \\\"url\\\": \\\"${SLACK_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Post messages and notifications to Slack channels (Slack MCP Server). Send equipment alerts and updates to the #all-acme-mcp-demo channel.\\\"\\n}\\n\"
+        \"Database-MCP\": \"{\\n  \\\"url\\\": \\\"${DATABASE_MCP_URL}\\\",\\n  \\\"transport\\\": \\\"sse\\\",\\n  \\\"description\\\": \\\"Query the ACME corporate PostgreSQL database (EDB Postgres MCP). Provides SQL access to equipment records, service history, calibration data, and pod-equipment mappings.\\\"\\n}\\n\",
+        \"Slack-MCP\": \"{\\n  \\\"url\\\": \\\"${SLACK_MCP_URL}\\\",\\n  \\\"transport\\\": \\\"sse\\\",\\n  \\\"description\\\": \\\"Post messages and notifications to Slack channels (Slack MCP Server). Send equipment alerts and updates to the #all-acme-mcp-demo channel.\\\"\\n}\\n\"
       }
     }" 2>/dev/null
     log_success "Dashboard ConfigMap updated with route URLs"
-    log_info "  OpenShift: $OPENSHIFT_MCP_URL"
-    log_info "  Database:  $DATABASE_MCP_URL"
-    log_info "  Slack:     $SLACK_MCP_URL"
+    log_info "  OpenShift: $OPENSHIFT_MCP_URL (streamable-http)"
+    log_info "  Database:  $DATABASE_MCP_URL (sse)"
+    log_info "  Slack:     $SLACK_MCP_URL (sse)"
 else
     log_warn "MCP routes not found — Dashboard will show errors"
 fi

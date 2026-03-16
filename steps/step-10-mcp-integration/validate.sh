@@ -35,6 +35,19 @@ check "ConfigMap gen-ai-aa-mcp-servers exists" \
     "oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o jsonpath='{.metadata.name}'" \
     "gen-ai-aa-mcp-servers"
 
+# Verify SSE-only servers have transport:sse (gen-ai backend defaults to streamable-http)
+for mcp_key in "Database-MCP" "Slack-MCP"; do
+    TRANSPORT=$(oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications \
+        -o jsonpath="{.data.${mcp_key}}" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('transport',''))" 2>/dev/null || true)
+    if [[ "$TRANSPORT" == "sse" ]]; then
+        echo -e "${GREEN}[PASS]${NC} $mcp_key has transport: sse"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} $mcp_key missing transport: sse — Dashboard may show Error"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+done
+
 # --- ACME Demo Namespace ---
 log_step "ACME Demo Environment"
 check "acme-corp namespace exists" \

@@ -24,10 +24,10 @@ LlamaStack (lsd-genai-playground / lsd-rag)
     |--- granite-8b-agent decides which tools to invoke
     |
     v
-MCP Servers (SSE endpoints in private-ai)
-    |--- database-mcp:8080/sse  -> PostgreSQL (EDB Postgres MCP)
-    |--- openshift-mcp:8000/sse -> Kubernetes API (kubernetes-mcp-server)
-    |--- slack-mcp:8080/sse     -> Slack API (slack-mcp-server)
+MCP Servers (private-ai namespace)
+    |--- database-mcp:8080/sse  -> PostgreSQL (EDB Postgres MCP)       [SSE transport]
+    |--- openshift-mcp:8000/mcp -> Kubernetes API (kubernetes-mcp-server) [streamable-http]
+    |--- slack-mcp:8080/sse     -> Slack API (slack-mcp-server)        [SSE transport]
 ```
 
 | Component | Image Source | Purpose |
@@ -136,9 +136,49 @@ _What to say: "Four questions, four different systems — OpenShift cluster, Pos
 
 > **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
 
+> **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
+
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
 > **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
+
+## Troubleshooting
+
+### Dashboard shows "Error" for MCP servers
+
+**Symptom:** MCP servers show "Error" status in Gen AI Studio > AI asset endpoints > MCP servers tab, despite pods running and responding correctly.
+
+**Root Cause:** The RHOAI 3.3 gen-ai backend defaults to `streamable-http` transport, which POSTs an `initialize` JSON-RPC call directly to the configured URL. MCP servers using SSE transport return `405 Method Not Allowed` because their `/sse` endpoint only accepts GET.
+
+**Diagnosis:**
+```bash
+TOKEN=$(oc whoami -t)
+curl -sk -H "Authorization: Bearer $TOKEN" \
+  "https://$(oc get route data-science-gateway -n redhat-ods-applications -o jsonpath='{.spec.host}' 2>/dev/null || echo 'data-science-gateway.apps.<cluster>')/gen-ai/api/v1/mcp/status?namespace=acme-corp&server_url=<url-encoded-mcp-url>"
+```
+
+**Solution:** Add `"transport": "sse"` to the ConfigMap JSON for servers that only support SSE:
+```json
+{
+  "url": "https://<route>/sse",
+  "transport": "sse",
+  "description": "..."
+}
+```
+
+### Dashboard shows "Token Required" for OpenShift-MCP
+
+**Symptom:** OpenShift-MCP shows "Token Required" in the Dashboard.
+
+**Root Cause:** The gen-ai backend POSTs to `/sse` using streamable-http transport, but `/sse` on kubernetes-mcp-server expects a session ID from a prior SSE handshake. The error message `"sessionid must be provided"` is misinterpreted as a token issue.
+
+**Solution:** Change the URL to `/mcp` which supports streamable-http natively:
+```json
+{
+  "url": "https://<route>/mcp",
+  "description": "..."
+}
+```
 
 ## References
 
