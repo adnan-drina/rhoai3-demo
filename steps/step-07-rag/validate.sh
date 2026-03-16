@@ -80,29 +80,27 @@ if [[ -z "$LSD_POD" ]]; then
 fi
 
 if [[ -n "$LSD_POD" ]]; then
-    VS_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/vector_stores 2>/dev/null | \
-        python3 -c "
+    VS_JSON=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+        curl -s http://localhost:8321/v1/vector_stores 2>/dev/null || echo '{"data":[]}')
+
+    for vs_name in acme_corporate whoami; do
+        VS_FILES=$(echo "$VS_JSON" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
-    stores = data.get('data', [])
-    populated = [v for v in stores if v['file_counts']['completed'] > 0]
-    print(len(populated))
+    store = next((v for v in data.get('data', []) if v['name'] == '$vs_name'), None)
+    print(store['file_counts']['completed'] if store else 0)
 except:
-    print('0')
+    print(0)
 " 2>/dev/null || echo "0")
-
-    if [[ "$VS_COUNT" -ge 2 ]]; then
-        echo -e "${GREEN}[PASS]${NC} $VS_COUNT vector stores with data"
-        VALIDATE_PASS=$((VALIDATE_PASS + 1))
-    elif [[ "$VS_COUNT" -ge 1 ]]; then
-        echo -e "${YELLOW}[WARN]${NC} $VS_COUNT vector store(s) with data (expected 2: acme + whoami)"
-        VALIDATE_WARN=$((VALIDATE_WARN + 1))
-    else
-        echo -e "${RED}[FAIL]${NC} No vector stores with data"
-        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
-    fi
+        if [[ "$VS_FILES" -ge 1 ]]; then
+            echo -e "${GREEN}[PASS]${NC} Vector store '$vs_name' has $VS_FILES file(s)"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} Vector store '$vs_name' missing or empty — run: ./steps/step-07-rag/run-batch-ingestion.sh $vs_name"
+            VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        fi
+    done
 
     # --- Providers ---
     log_step "LlamaStack Providers"
