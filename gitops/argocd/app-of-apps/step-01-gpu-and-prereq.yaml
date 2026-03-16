@@ -3,10 +3,15 @@ kind: Application
 metadata:
   name: step-01-gpu-and-prereq
   namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "01"
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: gitops/step-01-gpu-and-prereq
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: rhoai-demo
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main

@@ -8,10 +8,11 @@ metadata:
     demo.rhoai.io/step: "09"
   annotations:
     argocd.argoproj.io/sync-wave: "90"
+    argocd.argoproj.io/manifest-generate-paths: gitops/step-09-guardrails
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: rhoai-demo
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main

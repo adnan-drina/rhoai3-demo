@@ -6,6 +6,16 @@ alwaysApply: false
 
 # OpenShift + RHOAI Manifest Rules
 
+## YAML formatting
+
+- Use 2-space indentation — never tabs
+- Use `.yaml` extension (not `.yml`)
+- One resource per file — name the file after the resource kind or purpose (e.g., `deployment.yaml`, `cluster-queue.yaml`)
+- Order top-level keys: `apiVersion` > `kind` > `metadata` > `spec` > `data`/`stringData`
+- Use block style for multi-line strings (`|` for literal, `>` for folded)
+- End files with a single newline
+- Use `true`/`false` for booleans — never `yes`/`no`
+
 ## Doc-validated schemas only
 - If editing/creating CRs (Operators, CRDs, custom resources), verify the schema first:
   - `oc explain <kind>`
@@ -55,3 +65,13 @@ resources:
   # Must be created before DataScienceCluster
   - dsci.yaml
 ```
+
+## Agent Behavior
+
+After modifying Kubernetes/OpenShift YAML manifests:
+- Verify the manifest has correct key ordering (`apiVersion` > `kind` > `metadata` > `spec`)
+- If the file is part of a Kustomize base, run `kustomize build <base-path>` to verify it renders
+- For new or significantly changed manifests, validate with `kustomize build <path> | oc apply --dry-run=server -f -`
+- Verify the target cluster context before suggesting `oc apply` commands: `oc whoami` and `oc project`
+- Scope operations to an explicit namespace — never rely on the default namespace
+- After mutations, confirm resource state: `oc get <resource> -n <namespace>`

@@ -1,6 +1,6 @@
 # Red Hat OpenShift AI 3.3 Demo
 
-A production-like deployment of **Generative AI on Red Hat OpenShift AI (RHOAI) 3.3**, demonstrating each platform component following Red Hat's best practices and official documentation. Deployed on **OpenShift 4.20** using GitOps (ArgoCD + Kustomize).
+A production-like deployment of **Generative AI on Red Hat OpenShift AI (RHOAI) 3.3** on **Red Hat OpenShift Container Platform (RHOCP) 4.20**, demonstrating each platform component following Red Hat's best practices and official documentation. Deployed using GitOps (ArgoCD + Kustomize).
 
 **Target audience:** Solution Architects, Platform Engineers, AI Engineers evaluating Red Hat's AI platform.
 

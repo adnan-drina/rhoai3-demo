@@ -19,6 +19,8 @@ All resources MUST include these labels:
 | `app.kubernetes.io/name` | Identifies the application name | `mistral-3-int4` |
 | `app.kubernetes.io/component` | Identifies the component role | `inference`, `monitoring`, `storage` |
 
+Label values MUST be under 63 characters and valid per [Kubernetes naming rules](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set).
+
 ## Naming Convention for `app.kubernetes.io/part-of`
 
 Use **short, functional group names** (not step numbers):
@@ -79,6 +81,19 @@ Use `app.kubernetes.io/version` for:
 ❌ **Step numbers in labels**: `app.kubernetes.io/part-of: step-07-model-performance-metrics`
 ❌ **Overly long names**: `app.kubernetes.io/part-of: guidellm-model-performance-metrics-observability`
 ❌ **Generic names**: `app.kubernetes.io/part-of: app` or `app.kubernetes.io/part-of: demo`
+
+## ArgoCD Application Labels
+
+ArgoCD Application objects in `gitops/argocd/app-of-apps/` use a separate label set from workload resources:
+
+```yaml
+metadata:
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "XX"
+```
+
+These labels group all demo Applications in the ArgoCD UI. Do not use workload `part-of` values (like `llm-serving`) on Application objects.
 
 ## Migration
 

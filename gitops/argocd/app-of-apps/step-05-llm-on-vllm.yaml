@@ -8,10 +8,11 @@ metadata:
     demo.rhoai.io/step: "05"
   annotations:
     argocd.argoproj.io/sync-wave: "50"
+    argocd.argoproj.io/manifest-generate-paths: gitops/step-05-llm-on-vllm
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: rhoai-demo
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
