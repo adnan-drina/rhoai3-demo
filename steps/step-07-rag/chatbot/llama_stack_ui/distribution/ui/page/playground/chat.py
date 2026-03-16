@@ -280,7 +280,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
     )
     max_infer_iters = st.slider(
         "Max Inference Iterations",
-        1, 50, 10, 1,
+        1, 50, 20, 1,
         on_change=reset_agent,
         help="Maximum number of inference iterations before stopping",
     )
