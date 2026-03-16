@@ -118,6 +118,10 @@ To trigger a new run from the CLI:
 
 > **Agent-based system prompt uses few-shot examples, not negative instructions.** Granite 8B ignores negative instructions like "Do not include file IDs" and verbose prompts cause it to narrate tool usage instead of acting. The optimal prompt demonstrates the exact desired citation format with example filenames. See `docs/prompt-engineering-session.md` for full test results.
 
+> **Max inference iterations default is 20.** MCP multi-step chains (e.g., `list_schemas` → `list_objects` → `get_object_details` → `execute_sql`) require 4-5 iterations. The original default of 10 caused the model to stop mid-chain before reaching the final SQL execution. 20 provides headroom without excessive runtime.
+
+> **pgvector requires `anyuid` SCC via a dedicated ServiceAccount.** The `pgvector/pgvector:pg16` image entrypoint runs `chown`/`chmod` as root to set data directory ownership. OpenShift's restricted SCC blocks this. A dedicated `llamastack-postgres` ServiceAccount with `anyuid` SCC is used instead of granting `anyuid` to the default SA (which would break KServe modelcar FUSE mounts on inference pods sharing the namespace).
+
 > **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. `deploy.sh` checks `lastVersion` and runs `oc start-build` if needed.
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.
@@ -145,6 +149,38 @@ To trigger a new run from the CLI:
 | PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 
 > Ref: [RHOAI 3.3 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
+
+## Troubleshooting
+
+### pgvector pod CrashLoopBackOff: "data directory has wrong ownership"
+
+**Symptom:** `llamastack-postgres` pod crashes with:
+```
+chmod: changing permissions of '/var/lib/postgresql/data/pgdata': Operation not permitted
+FATAL: data directory "/var/lib/postgresql/data/pgdata" has wrong ownership
+```
+
+**Root Cause:** The `pgvector/pgvector:pg16` image runs its entrypoint as root (UID 0) to set data directory permissions. OpenShift's restricted SCC blocks this.
+
+**Solution:** The deployment uses a dedicated `llamastack-postgres` ServiceAccount with `anyuid` SCC. Verify:
+```bash
+oc get sa llamastack-postgres -n private-ai
+oc adm policy who-can use scc anyuid -n private-ai | grep llamastack-postgres
+```
+If the SCC grant is missing (fresh cluster), run:
+```bash
+oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
+```
+
+> **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (granite-8b-agent, etc.) in the same namespace.
+
+### Agent stops mid-chain without completing MCP multi-step queries
+
+**Symptom:** Database MCP queries call `list_schemas` and `list_objects` but never reach `execute_sql`. The response describes what it would do next instead of executing.
+
+**Root Cause:** `max_infer_iters` was too low. Each tool call + response consumes one iteration.
+
+**Solution:** Increase the "Max Inference Iterations" slider to 20+ in the chatbot sidebar. The default is 20.
 
 ## References
 

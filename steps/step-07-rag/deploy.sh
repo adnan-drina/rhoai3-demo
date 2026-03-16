@@ -81,6 +81,16 @@ log_success "dspa-minio-credentials secret ready"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Step 1b: Grant anyuid SCC to llamastack-postgres SA
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Ensuring llamastack-postgres SA has anyuid SCC..."
+
+oc create serviceaccount llamastack-postgres -n "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
+oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n "$NAMESPACE" 2>/dev/null || true
+log_success "llamastack-postgres SA with anyuid SCC ready"
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Step 2: Deploy via ArgoCD
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Deploying Step 07 via ArgoCD..."
