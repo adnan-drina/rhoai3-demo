@@ -1,3 +1,15 @@
+# pgvector/pgvector:pg16 needs anyuid SCC (entrypoint runs chown/chmod as root)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llamastack-postgres
+  namespace: private-ai
+  labels:
+    app: llamastack-postgres
+    app.kubernetes.io/part-of: rag-pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
 # Serves dual purpose:
 #   1. LlamaStack metadata store (agent state, file references, config)
 #   2. pgvector vector store (RAG embeddings, similarity search)
@@ -44,6 +56,7 @@ spec:
       labels:
         app: llamastack-postgres
     spec:
+      serviceAccountName: llamastack-postgres
       securityContext:
         runAsNonRoot: false
       containers:
