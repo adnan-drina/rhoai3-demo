@@ -68,10 +68,10 @@ def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
     return None
 
 
-def check_output(text: str, detectors: list[str] | None = None) -> dict | None:
+def check_output(text: str, detectors: list[str] | None = None) -> list[dict]:
     """
     Check model output for safety violations (HAP, PII leakage).
-    Returns violation dict if detected, None if safe.
+    Returns list of violation dicts (empty if safe).
     """
     if not detectors:
         detectors = ["hap", "regex"]
@@ -98,19 +98,19 @@ def check_output(text: str, detectors: list[str] | None = None) -> dict | None:
         resp.raise_for_status()
         data = resp.json()
 
-        detections = data.get("detections", [])
-        if detections:
-            top = detections[0]
-            return {
-                "detector": top.get("detector_id", "unknown"),
-                "score": top.get("score", 0),
-                "text": top.get("text", ""),
-                "type": top.get("detection_type", ""),
+        return [
+            {
+                "detector": d.get("detector_id", "unknown"),
+                "score": d.get("score", 0),
+                "text": d.get("text", ""),
+                "type": d.get("detection_type", ""),
             }
+            for d in data.get("detections", [])
+        ]
     except Exception as e:
         logger.warning("Guardrails output check failed: %s", e)
 
-    return None
+    return []
 
 
 def is_available() -> bool:

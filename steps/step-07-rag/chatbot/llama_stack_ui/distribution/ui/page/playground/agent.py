@@ -403,19 +403,27 @@ def agent_process_prompt(prompt, state, config):
 
     # --- Output guardrails (HAP + PII regex) ---
     if shields_on and state.full_response:
-        violation = guardrails.check_output(state.full_response)
-        if violation:
-            detector = violation['detector']
-            score = violation['score']
-            blocked_text = violation.get('text', '')
+        violations = guardrails.check_output(state.full_response)
+        if violations:
+            redacted = state.full_response
+            details = []
+            for v in violations:
+                matched = v.get('text', '')
+                if matched and matched in redacted:
+                    redacted = redacted.replace(matched, '█' * min(len(matched), 12))
+                details.append(f"  • {v['detector']}: \"{matched}\" (score: {v['score']:.2f})")
+
+            state.full_response = redacted
+            state.containers.message.markdown(redacted)
+
             st.warning(
-                f"🛡️ **Output filtered** — The {detector} detector found sensitive content "
-                f"(confidence: {score:.2f}). The detected content has been flagged."
+                f"🛡️ **Output filtered** — {len(violations)} detection(s) redacted:\n\n"
+                + "\n".join(details)
             )
             state.tool_results.append({
-                'title': f'🛡️ Output Shield: {detector}',
+                'title': f'🛡️ Output Shield: {len(violations)} redaction(s)',
                 'type': 'code',
-                'content': f'Detected: {blocked_text}\nScore: {score:.2f}\nType: {violation.get("type", "")}'
+                'content': "\n".join(details),
             })
 
     # Save response to session
