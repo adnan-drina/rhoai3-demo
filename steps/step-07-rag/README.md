@@ -116,6 +116,8 @@ To trigger a new run from the CLI:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
+> **Agent-based system prompt uses few-shot examples, not negative instructions.** Granite 8B ignores negative instructions like "Do not include file IDs" and verbose prompts cause it to narrate tool usage instead of acting. The optimal prompt demonstrates the exact desired citation format with example filenames. See `docs/prompt-engineering-session.md` for full test results.
+
 > **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. `deploy.sh` checks `lastVersion` and runs `oc start-build` if needed.
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.

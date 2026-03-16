@@ -46,7 +46,7 @@ spec:
         kueue.x-k8s.io/queue-name: default
     spec:
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
       containers:
         - name: postgresql
           image: pgvector/pgvector:pg16
