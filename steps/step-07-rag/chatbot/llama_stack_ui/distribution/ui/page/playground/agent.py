@@ -233,6 +233,38 @@ def handle_chunk_completed(chunk):
         logger.debug("Stop reason: %s", chunk.stop_reason)
 
 
+def _clean_filename(raw: str) -> str:
+    """Convert internal filenames like '_shared-data_documents_acme_ACME_07_...' to readable names."""
+    import re
+    name = raw
+    name = re.sub(r'^_shared-data_documents_[^_]+_', '', name)
+    name = name.replace('.md', '').replace('_', ' ').replace('&amp;', '&')
+    return name.strip() or raw
+
+
+def _resolve_citations(text: str, response) -> str:
+    """Replace <|file-...|> tokens with human-readable document names using annotations."""
+    import re
+    citations = {}
+    for output_item in getattr(response, 'output', []):
+        for content_part in getattr(output_item, 'content', []):
+            for ann in getattr(content_part, 'annotations', []):
+                if getattr(ann, 'type', '') == 'file_citation':
+                    fid = getattr(ann, 'file_id', '')
+                    fname = getattr(ann, 'filename', '')
+                    if fid and fname:
+                        citations[fid] = _clean_filename(fname)
+
+    if not citations:
+        text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
+        return text.strip()
+
+    for fid, display_name in citations.items():
+        text = text.replace(f'<|{fid}|>', f'*{display_name}*')
+    text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
+    return text.strip()
+
+
 def handle_chunk_done(chunk, state):
     """Handle done chunk and finalize response."""
     has_output = (
@@ -241,7 +273,9 @@ def handle_chunk_done(chunk, state):
         chunk.response.output_text
     )
     if has_output:
-        state.full_response = chunk.response.output_text
+        state.full_response = _resolve_citations(
+            chunk.response.output_text, chunk.response
+        )
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):
