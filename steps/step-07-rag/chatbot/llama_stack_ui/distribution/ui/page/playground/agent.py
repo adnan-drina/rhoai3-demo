@@ -238,31 +238,44 @@ def handle_chunk_completed(chunk):
         logger.debug("Stop reason: %s", chunk.stop_reason)
 
 
-def _strip_model_artifacts(text: str) -> str:
-    """Remove model-generated artifacts that aren't useful to users."""
+def _clean_response(text: str) -> str:
+    """Remove all model-generated artifacts from the response text."""
     import re
-    text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
     text = re.sub(r'</?tool_call>', '', text)
+    text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
+    text = re.sub(r'(?i)\n+#{0,3}\s*(?:references|sources|citations)\s*:?\s*(?:\n\s*[-*]\s*\n?)*', '\n', text)
     return text.strip()
 
 
 def _clean_doc_name(raw: str) -> str:
-    """Convert internal path like '_shared-data_documents_acme_ACME_07_...' to readable name."""
+    """Convert internal path to readable name."""
     import re
     name = re.sub(r'^_shared-data_documents_[^_]+_', '', raw)
     name = name.replace('.md', '').replace('_', ' ').replace('&amp;', '&')
     return name.strip() or raw
 
 
+def _build_sources_section(source_documents: list) -> str:
+    """Build a markdown sources section from collected document names."""
+    unique = list(dict.fromkeys(source_documents))
+    if not unique:
+        return ""
+    label = f"{len(unique)} source{'s' if len(unique) != 1 else ''}"
+    lines = [f"\n\n---\n**{label}**\n"]
+    for doc in unique:
+        lines.append(f"📄 {_clean_doc_name(doc)}")
+    return "\n\n".join(lines)
+
+
 def handle_chunk_done(chunk, state):
-    """Handle done chunk — use final output_text and strip file tokens."""
+    """Handle done chunk — use final output_text."""
     has_output = (
         hasattr(chunk, 'response') and
         hasattr(chunk.response, 'output_text') and
         chunk.response.output_text
     )
     if has_output:
-        state.full_response = _strip_model_artifacts(chunk.response.output_text)
+        state.full_response = chunk.response.output_text
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):
@@ -422,44 +435,34 @@ def agent_process_prompt(prompt, state, config):
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
 
-    # Strip model artifacts and append source documents
+    # === Post-streaming: clean up, guardrails, sources ===
     if state.full_response:
-        cleaned = _strip_model_artifacts(state.full_response)
-        if state.source_documents:
-            unique_docs = list(dict.fromkeys(state.source_documents))
-            sources_md = "\n\n---\n"
-            sources_md += f"**{len(unique_docs)} source{'s' if len(unique_docs) != 1 else ''}**\n\n"
-            for doc in unique_docs:
-                sources_md += f"📄 {_clean_doc_name(doc)}\n\n"
-            cleaned += sources_md
-        if cleaned != state.full_response:
-            state.full_response = cleaned
-            state.containers.message.markdown(cleaned)
+        # 1. Clean model artifacts (file tokens, tool_call tags, empty references section)
+        state.full_response = _clean_response(state.full_response)
 
-    # --- Output guardrails (HAP + PII regex) ---
-    if shields_on and state.full_response:
-        violations = guardrails.check_output(state.full_response)
-        if violations:
-            redacted = state.full_response
-            details = []
-            for v in violations:
-                matched = v.get('text', '')
-                if matched and matched in redacted:
-                    redacted = redacted.replace(matched, '█' * min(len(matched), 12))
-                details.append(f"  • {v['detector']}: \"{matched}\" (score: {v['score']:.2f})")
+        # 2. Output guardrails (runs on clean answer text, before sources are appended)
+        if shields_on:
+            violations = guardrails.check_output(state.full_response)
+            if violations:
+                details = []
+                for v in violations:
+                    matched = v.get('text', '')
+                    if matched and matched in state.full_response:
+                        state.full_response = state.full_response.replace(
+                            matched, '█' * min(len(matched), 12)
+                        )
+                    details.append(f"  • {v['detector']}: \"{matched}\" (score: {v['score']:.2f})")
+                state.tool_results.append({
+                    'title': f'🛡️ Output Shield: {len(violations)} redaction(s)',
+                    'type': 'code',
+                    'content': "\n".join(details),
+                })
 
-            state.full_response = redacted
-            state.containers.message.markdown(redacted)
+        # 3. Append source documents (after guardrails so they aren't scanned)
+        state.full_response += _build_sources_section(state.source_documents)
 
-            st.warning(
-                f"🛡️ **Output filtered** — {len(violations)} detection(s) redacted:\n\n"
-                + "\n".join(details)
-            )
-            state.tool_results.append({
-                'title': f'🛡️ Output Shield: {len(violations)} redaction(s)',
-                'type': 'code',
-                'content': "\n".join(details),
-            })
+        # 4. Re-render the final clean response
+        state.containers.message.markdown(state.full_response)
 
     # Save response to session
     save_agent_response_to_session(state)
