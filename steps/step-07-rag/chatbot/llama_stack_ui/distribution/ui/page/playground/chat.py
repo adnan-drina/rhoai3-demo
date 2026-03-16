@@ -294,11 +294,9 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         )
     else:
         default_prompt = (
-            "You are a helpful AI assistant with access to document search and external tools. "
-            "Use the file_search tool to find relevant information in documents before answering knowledge questions. "
-            "When asked about infrastructure, databases, or communication channels, use the available MCP tools to fetch live data. "
-            "Always ground your answers in retrieved documents or tool outputs rather than general knowledge. "
-            "List source documents at the end of your response under a 'Sources:' heading, using the document filename only."
+            "You are a helpful assistant. "
+            "You MUST use your tools to answer questions. "
+            "List source document filenames at the end under a Sources heading."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
