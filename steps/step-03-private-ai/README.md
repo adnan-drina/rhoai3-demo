@@ -93,13 +93,36 @@ Show the buckets: `rhoai-storage`, `models`, `pipelines`. These are where all su
 
 ## Design Decisions
 
-> **No namespace-level Kueue management:** The `private-ai` namespace does **not** have `kueue.openshift.io/managed: "true"`. Tested 3 times with different configurations (`Pod`-only, `Deployment`-only, `labelPolicy: QueueName`): the Kueue mutating webhook always gates **all** pods from managed frameworks in managed namespaces, regardless of `labelPolicy`/`manageJobsWithoutQueueName`. Build pods fail SCC validation during unsuspend; DSPA pipeline pods get gated; the `kueue.x-k8s.io/topology` SchedulingGate never clears on pods without node affinity. GPU tolerations are defined directly in InferenceService manifests (step-05). The `kueue.x-k8s.io/queue-name: default` label on ISVCs enables CLI tracking (`oc get isvc`). Dashboard "Distributed workload status" requires a dedicated GPU-only namespace (future work). Ref: [Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue).
+> **Known Limitation (RHOAI 3.3): No Kueue Dashboard workload visibility in mixed-workload namespaces.** The `private-ai` namespace does **not** have `kueue.openshift.io/managed: "true"`. Without this label, the Dashboard's "Distributed workload status" page is empty (no Workload objects created). However, adding the label causes ALL pods in the namespace to be SchedulingGated — not just GPU pods. This is because RHOAI 3.3 auto-injects `kueue.x-k8s.io/queue-name: default` on every pod in managed namespaces via two mechanisms: (1) the `defaultLocalQueueName: "default"` in the DataScienceCluster Kueue config, and (2) the `kueue.x-k8s.io/default-queue: "true"` annotation on the LocalQueue. Neither can be disabled without breaking Dashboard integration. Tested 4 times with different configurations (`Pod`-only frameworks, `Deployment`-only, `labelPolicy: QueueName`, default-queue annotation removal) — all result in non-GPU pods being gated (build pods, DSPA pipelines, chatbot, MCP servers). The `kueue.x-k8s.io/topology` SchedulingGate never clears on pods without node affinity. **Workaround:** GPU tolerations are defined directly in InferenceService manifests (step-05). The `kueue.x-k8s.io/queue-name: default` label on ISVCs still enables CLI tracking. **Future fix:** Separate GPU workloads into a dedicated namespace with the managed label, keeping non-GPU workloads in `private-ai`. Ref: [Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue).
 
 > **Queue separation:** `default` for vLLM workloads (5 GPUs) and `llmd` for llm-d distributed inference (2 GPUs reserved). This follows the RHOAI pattern of hardware-specific quota separation — llm-d always has guaranteed capacity even when vLLM saturates the main queue.
 
 > **Design Decision:** OpenShift Groups are created by `deploy.sh` (not ArgoCD) because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema.
 
 > **No `opendatahub.io/managed` label on `storage-config`:** The ODH model controller watches for secrets with `opendatahub.io/managed: "true"` and deletes any it did not create. Since ArgoCD creates `storage-config`, the controller deletes it within seconds, causing an infinite create-delete loop. This label is only needed on `minio-connection` (the Data Connection that appears in Dashboard dropdowns), not on `storage-config` (the KServe credential used by storage-initializer). See also: `.cursor/rules/30-secrets-and-certs.mdc`.
+
+## Troubleshooting
+
+### Dashboard "Distributed workload status" is empty
+
+**Symptom:** Observe & monitor > Distributed workload status shows no workloads, even though GPU models are running.
+
+**Root Cause:** The `private-ai` namespace does not have `kueue.openshift.io/managed: "true"`. Without this label, Kueue creates no Workload objects.
+
+**Why we can't add the label:** RHOAI 3.3 auto-injects `kueue.x-k8s.io/queue-name: default` on ALL pods in managed namespaces (via DSC `defaultLocalQueueName` and LocalQueue `default-queue` annotation). This gates every pod — including build pods, DSPA pipeline executors, chatbot, Docling, MCP servers, and Grafana. The `kueue.x-k8s.io/topology` SchedulingGate never clears on pods without GPU node affinity, permanently blocking them.
+
+**Tested configurations (all failed):**
+
+| Attempt | Configuration | Result |
+|---------|--------------|--------|
+| 1 | Namespace label + Deployment framework | All Deployments gated |
+| 2 | Namespace label + Pod framework only | All pods gated, build pods stuck permanently |
+| 3 | Namespace label + `labelPolicy: QueueName` | Webhook still auto-labels all pods via default-queue |
+| 4 | Namespace label + default-queue annotation removed | DSC `defaultLocalQueueName` still auto-labels all pods |
+
+**Workaround:** GPU workloads function correctly without Dashboard visibility. Use CLI: `oc get inferenceservice -n private-ai` and `oc get pods -l kueue.x-k8s.io/queue-name -n private-ai`.
+
+**Future fix:** Separate GPU InferenceServices into a dedicated `gpu-workloads` namespace with the managed label. Keep non-GPU workloads (DSPA, chatbot, MCP, etc.) in `private-ai` without it.
 
 ## References
 
