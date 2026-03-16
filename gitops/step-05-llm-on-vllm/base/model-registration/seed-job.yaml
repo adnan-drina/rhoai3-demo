@@ -1,15 +1,11 @@
-# Registers the complete model portfolio for the GPU-as-a-Service demo.
-# ACTIVE MODELS (minReplicas: 1):
-#   1. Mistral-3-BF16    → 4-GPU, S3 storage (primary load)
-#   2. Mistral-3-INT4    → 1-GPU, OCI ModelCar (secondary load)
-# QUEUED MODELS (minReplicas: 0):
-#   3. Devstral-2        → 4-GPU, S3 storage (agentic)
-#   4. GPT-OSS-20B       → 4-GPU, S3 storage (high-reasoning)
-#   5. Granite-8B-Agent  → 1-GPU, OCI ModelCar (tool-calling)
-# Demo Scenarios:
-#   1. Resource Handover: Swap BF16 for Devstral
-#   2. Efficiency Story: Trade 1x 4-GPU for 4x 1-GPU specialists
-#   3. Model Portfolio: Show all 5 Red Hat Validated models
+# Registers 5 Red Hat Validated models in the Model Registry.
+# DEPLOYED (via GitOps InferenceServices):
+#   1. Granite-8B-Agent  → 1-GPU, OCI ModelCar (RAG, MCP, Guardrails)
+#   2. Mistral-3-BF16    → 4-GPU, S3 storage (Playground, Eval judge)
+# REGISTERED ONLY (deploy from GenAI Studio when needed):
+#   3. Mistral-3-INT4    → 1-GPU, OCI ModelCar (cost-efficient chat)
+#   4. Devstral-2        → 4-GPU, agentic tool-calling
+#   5. GPT-OSS-20B       → 4-GPU, high-reasoning
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_model_registries/index
 apiVersion: batch/v1
 kind: Job
@@ -193,25 +189,14 @@ spec:
               
               echo ""
               echo "════════════════════════════════════════════════════════════════"
-              echo "✓ Enterprise Model Portfolio Registered (5 Models)"
+              echo "Model Portfolio Registered (5 Models)"
               echo ""
-              echo "  📊 ACTIVE (5/5 GPUs saturated):"
-              echo "  ┌─────────────────────────────────────────────────────────────┐"
-              echo "  │  mistral-3-bf16   │ 4 GPUs │ 🟢 ON  │ Primary Load          │"
-              echo "  │  mistral-3-int4   │ 1 GPU  │ 🟢 ON  │ Secondary Load        │"
-              echo "  └─────────────────────────────────────────────────────────────┘"
+              echo "  DEPLOYED:"
+              echo "    granite-8b-agent  1 GPU   RAG/MCP/Guardrails/Eval"
+              echo "    mistral-3-bf16    4 GPUs  Playground/Eval judge"
               echo ""
-              echo "  📋 QUEUED (Ready to activate):"
-              echo "  ┌─────────────────────────────────────────────────────────────┐"
-              echo "  │  devstral-2       │ 4 GPUs │ ⏸️ OFF │ Agentic               │"
-              echo "  │  gpt-oss-20b      │ 4 GPUs │ ⏸️ OFF │ High-Reasoning        │"
-              echo "  │  granite-8b-agent │ 1 GPU  │ ⏸️ OFF │ Tool-Calling          │"
-              echo "  └─────────────────────────────────────────────────────────────┘"
-              echo ""
-              echo "  🎬 Demo Scenarios:"
-              echo "    1. Resource Handover: Swap mistral-3-bf16 → devstral-2"
-              echo "    2. Efficiency Story: 1x 4-GPU → 4x 1-GPU specialists"
-              echo "    3. Model Portfolio: Show all 5 Red Hat Validated models"
-              echo ""
-              echo "  Total Potential: 14 GPUs | Quota Limit: 5 GPUs"
+              echo "  REGISTERED (deploy from GenAI Studio):"
+              echo "    mistral-3-int4    1 GPU   Cost-efficient chat"
+              echo "    devstral-2        4 GPUs  Agentic tool-calling"
+              echo "    gpt-oss-20b       4 GPUs  High-reasoning"
               echo "════════════════════════════════════════════════════════════════"

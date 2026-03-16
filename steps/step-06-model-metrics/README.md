@@ -14,7 +14,7 @@ GuideLLM Benchmark Jobs
     ├───► granite-8b-agent     │  Grafana Dashboards             │
     │     (1 GPU)              │  1. vLLM Latency/Throughput     │
     │                          │  2. NVIDIA DCGM GPU Metrics     │
-    └───► mistral-3-bf16       │  3. ROI Comparison              │
+    └───► mistral-3-bf16       │                                 │
           (4 GPU)              └────────────┬────────────────────┘
                                             │
                                OpenShift User Workload Monitoring
@@ -24,7 +24,7 @@ GuideLLM Benchmark Jobs
 | Component | Description |
 |-----------|-------------|
 | **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) |
-| **3 GrafanaDashboards** | vLLM metrics, GPU hardware, model comparison |
+| **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) |
 | **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC |
 | **Job Templates** | On-demand: `granite-8b-agent` (1,3,5,8,10 req/s) and `mistral-3-bf16` (1,3,5,8,10,15 req/s) |
 | **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis |
@@ -86,7 +86,7 @@ After both benchmarks complete, compare the results:
 
 > **Prometheus/Grafana metrics over file-based results:** vLLM automatically exposes production metrics via ServiceMonitors. Grafana dashboards visualize real-time performance without custom result parsing.
 
-> **Three focused dashboards:** vLLM Latency/Throughput/Cache (operational), DCGM GPU Metrics (hardware), and Model Comparison (business). The vLLM dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) covers E2E latency, TTFT, TPOT, scheduler, and KV cache in one view.
+> **Two focused dashboards:** vLLM Latency/Throughput/Cache (operational) and DCGM GPU Metrics (hardware). The vLLM dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) covers E2E latency, TTFT, TPOT, scheduler, and KV cache in one view.
 
 ## References
 

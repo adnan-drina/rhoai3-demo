@@ -5,5 +5,4 @@ resources:
   - vllm-ltc-configmap.yaml
   - vllm-latency-throughput-cache.yaml
   - dcgm-gpu-metrics.yaml
-  - mistral-roi-comparison.yaml
 

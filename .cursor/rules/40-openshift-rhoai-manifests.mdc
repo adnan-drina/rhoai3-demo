@@ -75,3 +75,4 @@ After modifying Kubernetes/OpenShift YAML manifests:
 - Verify the target cluster context before suggesting `oc apply` commands: `oc whoami` and `oc project`
 - Scope operations to an explicit namespace — never rely on the default namespace
 - After mutations, confirm resource state: `oc get <resource> -n <namespace>`
+- When removing a resource from `kustomization.yaml`, also delete the unreferenced file to prevent orphaned manifests

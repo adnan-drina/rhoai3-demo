@@ -1,17 +1,13 @@
 #!/bin/bash
 # =============================================================================
-# Step 05: GPU-as-a-Service Demo
+# Step 05: LLM Serving on vLLM
 # =============================================================================
-# Deploys 5 Red Hat Validated models with Kueue-managed GPU allocation:
+# Deploys 2 Red Hat Validated models with Kueue-managed GPU allocation:
+#   1. granite-8b-agent  (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails)
+#   2. mistral-3-bf16    (4-GPU, S3/MinIO, BF16 — Playground, Eval judge)
 #
-#   Active (minReplicas: 1):
-#     1. granite-8b-agent   (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails workhorse)
-#     2. mistral-3-bf16     (4-GPU, S3, BF16 full precision)
-#
-#   Queued (minReplicas: 0):
-#     3. mistral-3-int4     (1-GPU, OCI ModelCar, INT4 W4A16)
-#     4. devstral-2         (4-GPU, S3, Agentic tool-calling)
-#     5. gpt-oss-20b        (4-GPU, S3, High-reasoning)
+# 3 additional models are registered in the Model Registry (seed job) and
+# can be deployed from GenAI Studio when needed.
 # =============================================================================
 
 set -euo pipefail
@@ -27,8 +23,8 @@ load_env
 check_oc_logged_in
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║  Step 05: GPU-as-a-Service Demo                                      ║"
-echo "║  5 Red Hat Validated Models with Kueue Quota Management              ║"
+echo "║  Step 05: LLM Serving on vLLM                                        ║"
+echo "║  2 Active Models with Kueue Quota Management                         ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -70,29 +66,9 @@ echo ""
 # =============================================================================
 log_step "Model Portfolio (5 GPUs Total)"
 echo ""
-echo "  Active (minReplicas: 1):"
-echo "    granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails"
-echo "    mistral-3-bf16     4-GPU  S3   BF16  Enterprise chat"
+echo "  granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
+echo "  mistral-3-bf16     4-GPU  S3   BF16  Playground chat/Eval judge"
 echo ""
-echo "  Queued (minReplicas: 0):"
-echo "    mistral-3-int4     1-GPU  OCI  INT4  Cost-optimized chat"
-echo "    devstral-2         4-GPU  S3   BF16  Agentic coding"
-echo "    gpt-oss-20b        4-GPU  S3   BF16  Complex reasoning"
-echo ""
-
-# =============================================================================
-# Confirmation
-# =============================================================================
-if [[ "${CONFIRM:-}" == "true" ]]; then
-    REPLY=y
-else
-    read -p "Continue with deployment? (y/n) " -n 1 -r
-    echo ""
-fi
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    log_info "Deployment cancelled."
-    exit 0
-fi
 
 # =============================================================================
 # Create HF token secret (upload jobs need this before ArgoCD sync)
@@ -122,14 +98,11 @@ echo ""
 # =============================================================================
 log_step "Applying AI Asset labels for GenAI Playground..."
 
-MODELS="mistral-3-int4 mistral-3-bf16 devstral-2 gpt-oss-20b granite-8b-agent"
+MODELS="mistral-3-bf16 granite-8b-agent"
 
 get_use_case() {
     case "$1" in
-        mistral-3-int4)     echo "chat assistant" ;;
         mistral-3-bf16)     echo "enterprise chat assistant" ;;
-        devstral-2)         echo "agentic coding assistant" ;;
-        gpt-oss-20b)        echo "complex reasoning" ;;
         granite-8b-agent)   echo "agentic tool-calling" ;;
     esac
 }
@@ -153,28 +126,6 @@ for model in $MODELS; do
     fi
 done
 set -u
-echo ""
-
-# =============================================================================
-# Scale down queued models
-# =============================================================================
-# KServe RawDeployment creates Deployments at replicas=1 regardless of
-# minReplicas:0. We must explicitly scale down queued models to avoid
-# consuming GPU resources before the user activates them.
-log_step "Scaling down queued models (minReplicas:0 → replicas:0)..."
-
-for model in mistral-3-int4 devstral-2 gpt-oss-20b; do
-    DEPLOY_NAME=$(oc get deployment -n "$NAMESPACE" --no-headers 2>/dev/null | grep "${model}-predictor" | awk '{print $1}' | head -1 || true)
-    if [[ -n "$DEPLOY_NAME" ]]; then
-        CURRENT=$(oc get deployment "$DEPLOY_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "?")
-        if [[ "$CURRENT" != "0" ]]; then
-            oc scale deployment/"$DEPLOY_NAME" -n "$NAMESPACE" --replicas=0 2>/dev/null || true
-            log_success "$model scaled to 0 (was $CURRENT)"
-        else
-            log_success "$model already at 0 replicas"
-        fi
-    fi
-done
 echo ""
 
 # =============================================================================

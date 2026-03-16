@@ -34,21 +34,11 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    # InferenceService status and predictor fields managed by KServe
     - group: serving.kserve.io
       kind: InferenceService
       jsonPointers:
         - /status
         - /spec/predictor/model/runtime
-    # Notebook: RHOAI controller injects kube-rbac-proxy sidecar, volumes, labels, annotations
-    - group: kubeflow.org
-      kind: Notebook
-      jsonPointers:
-        - /metadata/annotations
-        - /metadata/labels
-        - /status
-        - /spec/template
-    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:

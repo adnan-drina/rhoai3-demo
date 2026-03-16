@@ -3,7 +3,7 @@
 # Step 06: Model Performance Metrics — Deploy Script
 # =============================================================================
 # Deploys via ArgoCD:
-#   - Grafana Operator + Instance + 3 Dashboards
+#   - Grafana Operator + Instance + 2 Dashboards
 #   - GuideLLM CronJob (daily benchmarks) + Job templates
 #   - Model Benchmarking Workbench
 # =============================================================================
@@ -89,7 +89,7 @@ log_step "Deployment Complete"
 echo ""
 echo "  Components deployed:"
 echo "    - Grafana Operator + Instance (anonymous access)"
-echo "    - 3 GrafanaDashboards (vLLM, DCGM, ROI Comparison)"
+echo "    - 2 GrafanaDashboards (vLLM Latency/Throughput/Cache, DCGM GPU Metrics)"
 echo "    - GuideLLM CronJob (daily at 2:00 AM UTC)"
 echo "    - Model Benchmarking Workbench"
 echo ""

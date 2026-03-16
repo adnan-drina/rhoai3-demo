@@ -1,40 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Optimized for 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5 GPUs
-# BASELINE STATE:
-#   - granite-8b-agent (1 GPU) + mistral-3-bf16 (4 GPUs) = 5/5 GPUs
-#   - All other models at minReplicas: 0 (queued, ready to activate)
-# GPU ALLOCATION:
-# ┌─────────────────────┬──────┬─────────┬───────────────────────────────────┐
-# │ Model               │ GPUs │ Status  │ Use Case                          │
-# ├─────────────────────┼──────┼─────────┼───────────────────────────────────┤
-# │ granite-8b-agent    │ 1    │ Active  │ RAG, MCP, Guardrails, Playground  │
-# │ mistral-3-bf16      │ 4    │ Active  │ Full-precision LLM, Playground    │
-# │ mistral-3-int4      │ 1    │ Queued  │ Cost-efficient chat (needs GPU)   │
-# │ devstral-2          │ 4    │ Queued  │ Agentic tool-calling              │
-# │ gpt-oss-20b         │ 4    │ Queued  │ High-reasoning                    │
-# └─────────────────────┴──────┴─────────┴───────────────────────────────────┘
-# DEMO SCENARIOS:
-# 1. "Resource Handover" - Swap BF16 for Devstral-2
-#    Action: devstral-2 minReplicas→1, mistral-3-bf16 minReplicas→0
-#    Shows Kueue preemption and GPU reallocation
-# 2. "Model Swap" - Switch granite-8b for mistral-3-int4
-#    Action: mistral-3-int4 minReplicas→1, granite-8b minReplicas→0
-#    Shows different model capabilities on same hardware
+# 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5/5 GPUs
+# granite-8b-agent (1 GPU): RAG, MCP tools, Guardrails, Eval (Steps 06-10)
+# mistral-3-bf16   (4 GPU): Playground chat, Benchmarking, Eval judge (Steps 06, 08)
+# 3 additional models (Mistral INT4, Devstral-2, GPT-OSS-20B) are registered in
+# the Model Registry and can be deployed from GenAI Studio when needed.
 
 resources:
-  # Workhorse: 1-GPU FP8 OCI ModelCar — RAG, MCP tools, Guardrails, Eval (Steps 06-10)
   - granite-8b-agent.yaml
-  
-  # Full Precision: 4-GPU BF16 — Playground chat, Benchmarking (Steps 06, 07)
   - mistral-3-bf16.yaml
-  
-  # INT4 Quantized: 1-GPU (shares g6.4xlarge with granite-8b — swap to activate)
-  - mistral-3-int4.yaml
-  
-  # Agentic Coding: 4-GPU BF16 (shares g6.12xlarge with mistral-bf16 — swap)
-  - devstral-2.yaml
-  
-  # High-Reasoning: 4-GPU BF16
-  - gpt-oss-20b.yaml
