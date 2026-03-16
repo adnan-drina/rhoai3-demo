@@ -43,7 +43,6 @@ spec:
     metadata:
       labels:
         app: llamastack-postgres
-        kueue.x-k8s.io/queue-name: default
     spec:
       securityContext:
         runAsNonRoot: false
