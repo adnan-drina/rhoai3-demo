@@ -54,6 +54,10 @@ OpenShift 4.20 Cluster
 
 > **RHCL stack for Inference Gateway:** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway in step-05.
 
+> **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
+
+> **cert-manager namespace annotation:** The `cert-manager-operator` namespace includes `olm.operatorframework.io/exclude-global-namespace-resolution: "true"` to prevent OLM from auto-creating a default OperatorGroup before ArgoCD's sync wave delivers the GitOps-managed one. Without this, two OperatorGroups coexist and the CSV fails to install.
+
 ## References
 
 - [RHOAI 3.3 — Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)

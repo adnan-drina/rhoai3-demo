@@ -92,8 +92,11 @@ log_success "RHCL AuthPolicy CRD available"
 # =============================================================================
 log_step "Deploying GPU MachineSets"
 
+AZ=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.placement.availabilityZone}')
+log_info "Detected availability zone: $AZ"
+
 for instance_type in "g6.4xlarge" "g6.12xlarge"; do
-    ms_name="${CLUSTER_ID}-gpu-${instance_type//./-}-${REGION}b"
+    ms_name="${CLUSTER_ID}-gpu-${instance_type//./-}-${AZ}"
     
     # Check if MachineSet already exists
     if oc get machineset -n openshift-machine-api "$ms_name" &>/dev/null; then
@@ -160,7 +163,7 @@ spec:
             id: ${AMI_ID}
           instanceType: ${instance_type}
           placement:
-            availabilityZone: ${REGION}b
+            availabilityZone: ${AZ}
             region: ${REGION}
           blockDevices:
             - ebs:
@@ -184,7 +187,7 @@ spec:
             filters:
               - name: tag:Name
                 values:
-                  - ${CLUSTER_ID}-subnet-private-${REGION}b
+                  - ${CLUSTER_ID}-subnet-private-${AZ}
           tags:
             - name: kubernetes.io/cluster/${CLUSTER_ID}
               value: owned
@@ -213,8 +216,8 @@ echo "  - DNS Operator (openshift-dns-operator)"
 echo "  - Red Hat Connectivity Link (rhcl-operator)"
 echo ""
 echo "MachineSets (replicas=1):"
-echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${REGION}b"
-echo "  - ${CLUSTER_ID}-gpu-g6-12xlarge-${REGION}b"
+echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${AZ}"
+echo "  - ${CLUSTER_ID}-gpu-g6-12xlarge-${AZ}"
 echo ""
 log_info "Check Argo CD Application status:"
 echo "  oc get applications -n openshift-gitops ${STEP_NAME}"

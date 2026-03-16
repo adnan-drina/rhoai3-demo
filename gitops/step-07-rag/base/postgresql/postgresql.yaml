@@ -12,7 +12,7 @@ metadata:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag-pipeline
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   accessModes:
     - ReadWriteOnce

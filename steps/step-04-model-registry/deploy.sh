@@ -113,7 +113,8 @@ log_info "Waiting for Model Registry pods..."
 TIMEOUT=180
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    READY=$(oc get pods -n ${REGISTRY_NS} -l app=private-ai-registry --no-headers 2>/dev/null | grep -c Running | head -1 | tr -d ' ' || echo "0")
+    READY=$(oc get pods -n ${REGISTRY_NS} -l app=private-ai-registry --no-headers 2>/dev/null | grep -c Running || true)
+    READY=${READY:-0}
     if [[ "$READY" -ge 1 ]]; then
         log_success "Model Registry pods ready"
         break

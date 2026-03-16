@@ -4,7 +4,7 @@ metadata:
   name: model-registry-db-pvc
   namespace: rhoai-model-registries
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "2"
     # Skip health check - PVC uses WaitForFirstConsumer
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:

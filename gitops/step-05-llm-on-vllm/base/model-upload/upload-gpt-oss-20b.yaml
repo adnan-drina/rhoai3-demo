@@ -13,8 +13,6 @@ metadata:
   namespace: minio-storage
   labels:
     opendatahub.io/dashboard: "true"
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes:
     - ReadWriteOnce

@@ -65,6 +65,8 @@ RHOAI 3.3 provides two complementary model management capabilities. The **Model 
 
 > **Internal service on port 8080:** Bypasses OAuth so Kubernetes Jobs can seed models without token negotiation.
 
+> **PVC sync wave aligned with consumer:** The MariaDB PVC (`model-registry-db-pvc`) uses sync wave `"2"` — the same wave as the MariaDB Deployment. With `WaitForFirstConsumer` storage class, a PVC in an earlier wave than its consumer creates a deadlock: ArgoCD waits for the PVC to become Healthy (Bound), but binding requires a pod to schedule, and the pod is in a later wave that hasn't started. Placing both in the same wave eliminates this.
+
 ## References
 
 - [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_the_model_catalog/)

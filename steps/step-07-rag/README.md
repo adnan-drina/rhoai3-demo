@@ -120,6 +120,10 @@ To trigger a new run from the CLI:
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.
 
+> **DSPA readiness check uses condition status, not type.** `deploy.sh` checks `status.conditions[?(@.type=="Ready")].status == "True"` rather than `conditions[0].type == "Ready"`. The first condition in the array is not guaranteed to be the Ready condition, and even if it is, the type name "Ready" does not indicate readiness — the `status` field does.
+
+> **PostgreSQL PVC sync wave aligned with Deployment.** The `llamastack-postgres-pvc` PVC uses sync wave `"2"` (same as the Deployment) to avoid the `WaitForFirstConsumer` deadlock where ArgoCD waits for the PVC to bind before creating the pod that triggers binding.
+
 ### LlamaStack Configuration (RHOAI 3.3 Example D — pgvector with `rh-dev`)
 
 | Env Var | Value / Source | Purpose | RHOAI 3.3 Ref |

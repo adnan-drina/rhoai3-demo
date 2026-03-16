@@ -149,8 +149,8 @@ log_step "Waiting for DSPA..."
 DSPA_READY=false
 for i in $(seq 1 30); do
     STATUS=$(oc get dspa dspa-rag -n "$NAMESPACE" \
-        -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo "")
-    if [ "$STATUS" = "Ready" ]; then
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+    if [ "$STATUS" = "True" ]; then
         DSPA_READY=true
         break
     fi
