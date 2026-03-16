@@ -75,11 +75,6 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-              add: ["CHOWN", "FOWNER", "DAC_OVERRIDE"]
           lifecycle:
             postStart:
               exec:
