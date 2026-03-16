@@ -226,62 +226,28 @@ def handle_chunk_error(chunk):
     return True  # Stop streaming
 
 
-def handle_chunk_completed(chunk, state):
-    """Handle completed chunk — extract citation annotations for later resolution."""
+def handle_chunk_completed(chunk):
+    """Handle completed chunk."""
     logger.debug("Response completed successfully")
     if hasattr(chunk, 'stop_reason'):
         logger.debug("Stop reason: %s", chunk.stop_reason)
 
-    response = getattr(chunk, 'response', None)
-    if response:
-        citations = {}
-        for output_item in getattr(response, 'output', []):
-            for content_part in getattr(output_item, 'content', []):
-                for ann in getattr(content_part, 'annotations', []):
-                    if getattr(ann, 'type', '') == 'file_citation':
-                        fid = getattr(ann, 'file_id', '')
-                        fname = getattr(ann, 'filename', '')
-                        if fid and fname:
-                            citations[fid] = fname
-        if citations:
-            state.file_citations = citations
-            logger.debug("Extracted %d file citations", len(citations))
 
-
-def _clean_filename(raw: str) -> str:
-    """Convert internal filenames like '_shared-data_documents_acme_ACME_07_...' to readable names."""
+def _strip_file_tokens(text: str) -> str:
+    """Remove <|file-...|> citation tokens the model emits."""
     import re
-    name = raw
-    name = re.sub(r'^_shared-data_documents_[^_]+_', '', name)
-    name = name.replace('.md', '').replace('_', ' ').replace('&amp;', '&')
-    return name.strip() or raw
-
-
-def _resolve_citations(text: str, citations: dict) -> str:
-    """Replace <|file-...|> tokens with human-readable document names."""
-    import re
-
-    if citations:
-        for fid, raw_name in citations.items():
-            display_name = _clean_filename(raw_name)
-            text = text.replace(f'<|{fid}|>', f'*{display_name}*')
-
-    text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
-    return text.strip()
+    return re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
 
 
 def handle_chunk_done(chunk, state):
-    """Handle done chunk and finalize response."""
+    """Handle done chunk — use final output_text and strip file tokens."""
     has_output = (
         hasattr(chunk, 'response') and
         hasattr(chunk.response, 'output_text') and
         chunk.response.output_text
     )
     if has_output:
-        citations = getattr(state, 'file_citations', {})
-        state.full_response = _resolve_citations(
-            chunk.response.output_text, citations
-        )
+        state.full_response = _strip_file_tokens(chunk.response.output_text)
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):
@@ -318,9 +284,9 @@ def process_chunk_by_type(chunk, state, selected_vector_dbs):
     elif chunk_type == "response.failed":
         return handle_chunk_error(chunk)
 
-    # Handle completion — extract file citations for resolution
+    # Handle completion
     elif chunk_type == "response.completed":
-        handle_chunk_completed(chunk, state)
+        handle_chunk_completed(chunk)
 
     # Handle done
     elif chunk_type == "response.done":
