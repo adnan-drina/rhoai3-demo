@@ -66,7 +66,7 @@ spec:
             - name: INFERENCE_MODEL
               value: "vllm-granite-agent/granite-8b-agent"
             - name: RAG_QUESTION_SUGGESTIONS
-              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is ACME Corp?", "What products and services does ACME Corp offer?", "Who is the Managing Director of ACME Corp, and how can I contact them?"]}'
+              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is ACME Corp?", "Who is the Managing Director of ACME Corp, and how can I contact them?", "List all pods in the acme-corp namespace", "Fetch the equipment name for pod acme-equipment-0007", "Search for known issues related to the L-900 EUV scanner", "Send a brief summary of the L-900-08 issue to Slack channel C09JL81TUQJ"]}'
           resources:
             requests:
               cpu: 100m
