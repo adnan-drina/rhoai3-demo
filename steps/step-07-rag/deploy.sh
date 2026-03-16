@@ -81,7 +81,9 @@ log_success "dspa-minio-credentials secret ready"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 1b: Grant anyuid SCC to llamastack-postgres SA
+# Step 1b: Ensure anyuid SCC for llamastack-postgres SA
+# The RoleBinding is GitOps-managed (scc-rolebinding.yaml) but we ensure
+# the SA exists before ArgoCD sync to avoid race conditions.
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Ensuring llamastack-postgres SA has anyuid SCC..."
 
