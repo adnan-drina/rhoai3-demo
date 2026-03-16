@@ -116,7 +116,7 @@ To trigger a new run from the CLI:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
-> **Agent-based system prompt uses few-shot examples, not negative instructions.** Granite 8B ignores negative instructions like "Do not include file IDs" and verbose prompts cause it to narrate tool usage instead of acting. The optimal prompt demonstrates the exact desired citation format with example filenames. See `docs/prompt-engineering-session.md` for full test results.
+> **Agent-based system prompt uses few-shot examples, grounding, and retry instructions.** Granite 8B ignores negative instructions like "Do not include file IDs" and verbose prompts cause it to narrate tool usage instead of acting. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, and (3) a concrete `Sources:` citation example with `.md` filenames. See `docs/prompt-engineering-session.md` for full test results.
 
 > **Max inference iterations default is 20.** MCP multi-step chains (e.g., `list_schemas` → `list_objects` → `get_object_details` → `execute_sql`) require 4-5 iterations. The original default of 10 caused the model to stop mid-chain before reaching the final SQL execution. 20 provides headroom without excessive runtime.
 
