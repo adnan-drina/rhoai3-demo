@@ -91,6 +91,46 @@ until oc get crd datascienceclusters.datasciencecluster.opendatahub.io &>/dev/nu
 done
 log_success "DataScienceCluster CRD available"
 
+# =============================================================================
+# Approve Service Mesh 3 install plans (RHOAI forces Manual approval)
+# The RHOAI operator auto-creates the servicemeshoperator3 Subscription with
+# installPlanApproval: Manual and reconciles it back if changed. We must
+# approve pending install plans explicitly to avoid the gateway getting stuck.
+# =============================================================================
+log_step "Checking Service Mesh 3 operator..."
+
+log_info "Waiting for servicemeshoperator3 Subscription..."
+until oc get subscription servicemeshoperator3 -n openshift-operators &>/dev/null; do
+    sleep 10
+done
+
+SM_INSTALL_PLAN=$(oc get subscription servicemeshoperator3 -n openshift-operators \
+    -o jsonpath='{.status.installplan.name}' 2>/dev/null || true)
+if [[ -n "$SM_INSTALL_PLAN" ]]; then
+    APPROVED=$(oc get installplan "$SM_INSTALL_PLAN" -n openshift-operators \
+        -o jsonpath='{.spec.approved}' 2>/dev/null || echo "true")
+    if [[ "$APPROVED" == "false" ]]; then
+        log_info "Approving Service Mesh 3 install plan: $SM_INSTALL_PLAN"
+        oc patch installplan "$SM_INSTALL_PLAN" -n openshift-operators \
+            --type merge -p '{"spec":{"approved":true}}'
+        log_success "Install plan approved"
+    else
+        log_success "Service Mesh 3 install plan already approved"
+    fi
+else
+    log_info "No pending Service Mesh install plan found"
+fi
+
+SM_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators \
+    -o jsonpath='{.status.installedCSV}' 2>/dev/null || true)
+if [[ -n "$SM_CSV" ]]; then
+    log_info "Waiting for Service Mesh CSV ($SM_CSV) to succeed..."
+    until [[ "$(oc get csv "$SM_CSV" -n openshift-operators -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
+        sleep 15
+    done
+    log_success "Service Mesh 3 operator ready"
+fi
+
 # Wait for DSC to be created
 log_info "Waiting for DataScienceCluster to be created..."
 until oc get datasciencecluster default-dsc &>/dev/null; do
@@ -179,6 +219,8 @@ echo "  oc get datasciencecluster default-dsc"
 echo "  oc get pods -n redhat-ods-applications"
 echo ""
 log_info "Dashboard URL:"
-DASHBOARD_URL=$(oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null || echo 'loading...')
+DASHBOARD_URL=$(oc get route -n openshift-ingress data-science-gateway -o jsonpath='{.spec.host}' 2>/dev/null \
+    || oc get route -n redhat-ods-applications rhods-dashboard -o jsonpath='{.spec.host}' 2>/dev/null \
+    || echo 'loading...')
 echo "  https://${DASHBOARD_URL}"
 echo ""
