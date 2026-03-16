@@ -441,6 +441,9 @@ class ResponseState:
         self.tool_status = None
         self.tool_results = []
 
+        # File citations (populated by response.completed, used by response.done)
+        self.file_citations = {}
+
         # Response content
         self.full_response = ""
 

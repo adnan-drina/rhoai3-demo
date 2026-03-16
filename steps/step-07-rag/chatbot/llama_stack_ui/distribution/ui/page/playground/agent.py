@@ -226,11 +226,26 @@ def handle_chunk_error(chunk):
     return True  # Stop streaming
 
 
-def handle_chunk_completed(chunk):
-    """Handle completed chunk."""
+def handle_chunk_completed(chunk, state):
+    """Handle completed chunk — extract citation annotations for later resolution."""
     logger.debug("Response completed successfully")
     if hasattr(chunk, 'stop_reason'):
         logger.debug("Stop reason: %s", chunk.stop_reason)
+
+    response = getattr(chunk, 'response', None)
+    if response:
+        citations = {}
+        for output_item in getattr(response, 'output', []):
+            for content_part in getattr(output_item, 'content', []):
+                for ann in getattr(content_part, 'annotations', []):
+                    if getattr(ann, 'type', '') == 'file_citation':
+                        fid = getattr(ann, 'file_id', '')
+                        fname = getattr(ann, 'filename', '')
+                        if fid and fname:
+                            citations[fid] = fname
+        if citations:
+            state.file_citations = citations
+            logger.debug("Extracted %d file citations", len(citations))
 
 
 def _clean_filename(raw: str) -> str:
@@ -242,25 +257,15 @@ def _clean_filename(raw: str) -> str:
     return name.strip() or raw
 
 
-def _resolve_citations(text: str, response) -> str:
-    """Replace <|file-...|> tokens with human-readable document names using annotations."""
+def _resolve_citations(text: str, citations: dict) -> str:
+    """Replace <|file-...|> tokens with human-readable document names."""
     import re
-    citations = {}
-    for output_item in getattr(response, 'output', []):
-        for content_part in getattr(output_item, 'content', []):
-            for ann in getattr(content_part, 'annotations', []):
-                if getattr(ann, 'type', '') == 'file_citation':
-                    fid = getattr(ann, 'file_id', '')
-                    fname = getattr(ann, 'filename', '')
-                    if fid and fname:
-                        citations[fid] = _clean_filename(fname)
 
-    if not citations:
-        text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
-        return text.strip()
+    if citations:
+        for fid, raw_name in citations.items():
+            display_name = _clean_filename(raw_name)
+            text = text.replace(f'<|{fid}|>', f'*{display_name}*')
 
-    for fid, display_name in citations.items():
-        text = text.replace(f'<|{fid}|>', f'*{display_name}*')
     text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
     return text.strip()
 
@@ -273,8 +278,9 @@ def handle_chunk_done(chunk, state):
         chunk.response.output_text
     )
     if has_output:
+        citations = getattr(state, 'file_citations', {})
         state.full_response = _resolve_citations(
-            chunk.response.output_text, chunk.response
+            chunk.response.output_text, citations
         )
 
 
@@ -312,9 +318,9 @@ def process_chunk_by_type(chunk, state, selected_vector_dbs):
     elif chunk_type == "response.failed":
         return handle_chunk_error(chunk)
 
-    # Handle completion
+    # Handle completion — extract file citations for resolution
     elif chunk_type == "response.completed":
-        handle_chunk_completed(chunk)
+        handle_chunk_completed(chunk, state)
 
     # Handle done
     elif chunk_type == "response.done":
