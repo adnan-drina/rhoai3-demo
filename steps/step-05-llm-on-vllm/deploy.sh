@@ -85,6 +85,46 @@ else
 fi
 
 # =============================================================================
+# Upload mistral-3-bf16 model to MinIO (must complete before ISVC creation)
+# =============================================================================
+log_step "Ensuring mistral-3-bf16 model is in MinIO..."
+
+UPLOAD_YAML="$REPO_ROOT/gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-bf16.yaml"
+UPLOAD_NS="minio-storage"
+
+EXISTING=$(oc get job upload-mistral-bf16 -n "$UPLOAD_NS" -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "")
+if [[ "$EXISTING" == "1" ]]; then
+    log_success "Upload job already completed — model in MinIO"
+else
+    oc delete job upload-mistral-bf16 -n "$UPLOAD_NS" 2>/dev/null || true
+    oc apply -f "$UPLOAD_YAML"
+    log_info "Upload job started — waiting for completion (15-25 min for 48GB model)..."
+    TIMEOUT=1800
+    ELAPSED=0
+    while [[ $ELAPSED -lt $TIMEOUT ]]; do
+        STATUS=$(oc get job upload-mistral-bf16 -n "$UPLOAD_NS" -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "")
+        if [[ "$STATUS" == "1" ]]; then
+            log_success "Model upload completed"
+            break
+        fi
+        FAILED=$(oc get job upload-mistral-bf16 -n "$UPLOAD_NS" -o jsonpath='{.status.failed}' 2>/dev/null || echo "0")
+        if [[ "${FAILED:-0}" -ge 3 ]]; then
+            log_error "Upload job failed after $FAILED attempts — check: oc logs job/upload-mistral-bf16 -n $UPLOAD_NS"
+            break
+        fi
+        sleep 30
+        ELAPSED=$((ELAPSED + 30))
+        if (( ELAPSED % 120 == 0 )); then
+            log_info "  Upload in progress... (${ELAPSED}s elapsed)"
+        fi
+    done
+    if [[ $ELAPSED -ge $TIMEOUT ]]; then
+        log_warn "Upload job did not complete within ${TIMEOUT}s — ISVC may CrashLoop until upload finishes"
+    fi
+fi
+echo ""
+
+# =============================================================================
 # Deploy via ArgoCD
 # =============================================================================
 log_step "Creating ArgoCD Application for Step 05..."

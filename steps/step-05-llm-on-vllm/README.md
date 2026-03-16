@@ -69,6 +69,8 @@ oc get inferenceservice -n private-ai
 
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
 
+> **Upload-before-serve ordering:** `deploy.sh` runs the S3 upload job for `mistral-3-bf16` and waits for completion **before** applying the ArgoCD Application. This prevents a race condition where KServe's `storage-initializer` lists S3 while the upload is still in progress, resulting in a partial download and vLLM `CrashLoopBackOff` ("Invalid repository ID or local directory"). The upload job is idempotent — it skips if the model is already in MinIO.
+
 ## References
 
 - [RHOAI 3.3 — Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
