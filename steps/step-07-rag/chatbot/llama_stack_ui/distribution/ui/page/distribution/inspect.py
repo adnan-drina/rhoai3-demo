@@ -14,6 +14,8 @@ from llama_stack_ui.distribution.ui.page.distribution.models import models
 from llama_stack_ui.distribution.ui.page.distribution.shields import shields
 from llama_stack_ui.distribution.ui.page.distribution.providers import providers
 from llama_stack_ui.distribution.ui.page.distribution.vector_dbs import vector_dbs
+from llama_stack_ui.distribution.ui.page.distribution.toolgroups import toolgroups
+from llama_stack_ui.distribution.ui.page.distribution.scoring_functions import scoring_functions
 
 def inspect_page():
     """
@@ -23,10 +25,12 @@ def inspect_page():
     options = [
         "API Providers",
         "Models",
-        "Vector Databases",
-        "Shields"
+        "Vector DBs",
+        "Tool Groups",
+        "Shields",
+        "Scoring",
     ]
-    icons = ["plug", "magic", "memory", "shield"]
+    icons = ["plug", "magic", "memory", "tools", "shield", "graph-up"]
     selected_resource = option_menu(
         None,
         options,
@@ -39,12 +43,16 @@ def inspect_page():
         },
     )
 
-    if selected_resource == "Vector Databases":
+    if selected_resource == "Vector DBs":
         vector_dbs()
     elif selected_resource == "Models":
         models()
+    elif selected_resource == "Tool Groups":
+        toolgroups()
     elif selected_resource == "Shields":
         shields()
+    elif selected_resource == "Scoring":
+        scoring_functions()
     elif selected_resource == "API Providers":
         providers()
 
