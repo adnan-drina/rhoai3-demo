@@ -441,9 +441,6 @@ class ResponseState:
         self.tool_status = None
         self.tool_results = []
 
-        # Source documents (collected from file_search results)
-        self.source_documents = []
-
         # Response content
         self.full_response = ""
 
