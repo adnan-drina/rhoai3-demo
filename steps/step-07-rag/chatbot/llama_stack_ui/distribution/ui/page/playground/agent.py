@@ -384,6 +384,7 @@ def agent_process_prompt(prompt, state, config):
         "conversation": config.conversation_id,
         "temperature": config.sampling.temperature,
         "max_infer_iters": config.sampling.max_infer_iters,
+        "max_output_tokens": config.sampling.max_tokens,
         "stream": True,
     }
 
