@@ -1,25 +1,36 @@
 ---
-description: Use when adding or updating Kubernetes labels on manifests. Enforce recommended labeling conventions for OpenShift Topology view.
+description: Use when adding or updating Kubernetes labels or OpenShift annotations on manifests. Enforce recommended labeling conventions for OpenShift Topology view.
 alwaysApply: false
 ---
 
-# Kubernetes Labeling Standards
+# Kubernetes & OpenShift Labeling Standards
 
 ## Overview
 
-This rule defines the labeling conventions for all Kubernetes resources in this project, following [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) and [OpenShift Topology View requirements](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view).
+This rule defines labeling and annotation conventions for all Kubernetes resources in this project, following:
+- [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)
+- [Guidelines for Labels and Annotations for OpenShift Applications](https://github.com/redhat-developer/app-labels/blob/master/labels-annotation-for-openshift.adoc)
+- [OpenShift 4.20 Topology View](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
 
-## Required Labels
+## Required Kubernetes Labels
 
-All resources MUST include these labels:
+All resources MUST include these labels (REC = Recommended per Red Hat guidelines):
+
+| Label | Status | Purpose | Example |
+|-------|--------|---------|---------|
+| `app.kubernetes.io/part-of` | REC | Groups resources in OpenShift Topology view | `llm-serving` |
+| `app.kubernetes.io/name` | REC | Identifies the component name | `mistral-3-int4` |
+| `app.kubernetes.io/component` | REC | Identifies the component role | `inference`, `database` |
+| `app.kubernetes.io/instance` | REC | Unique name identifying this instance (when different from `name`) | `mistral-3-int4-private-ai` |
+
+Label values MUST be under 63 characters and valid per [Kubernetes naming rules](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set).
+
+## Optional Kubernetes Labels
 
 | Label | Purpose | Example |
 |-------|---------|---------|
-| `app.kubernetes.io/part-of` | Groups resources in OpenShift Topology view | `llm-serving` |
-| `app.kubernetes.io/name` | Identifies the application name | `mistral-3-int4` |
-| `app.kubernetes.io/component` | Identifies the component role | `inference`, `monitoring`, `storage` |
-
-Label values MUST be under 63 characters and valid per [Kubernetes naming rules](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set).
+| `app.kubernetes.io/version` | Current version of the component | `"3.0"`, `"0.13.0"` |
+| `app.kubernetes.io/managed-by` | Tool managing the component | `argocd`, `kserve`, `odh` |
 
 ## Naming Convention for `app.kubernetes.io/part-of`
 
@@ -28,53 +39,124 @@ Use **short, functional group names** (not step numbers):
 | Group | Value | Resources |
 |-------|-------|-----------|
 | **LLM Serving** | `llm-serving` | InferenceService, ServingRuntime, vLLM pods |
+| **RAG** | `rag` | LlamaStack, PostgreSQL (pgvector), Docling, chatbot, ingestion |
+| **Guardrails** | `guardrails` | GuardrailsOrchestrator, HAP detector, prompt injection detector |
+| **MCP Integration** | `mcp-integration` | database-mcp, openshift-mcp, slack-mcp, MCP PostgreSQL |
 | **Observability** | `observability` | Grafana, ServiceMonitors, Dashboards |
 | **Benchmarking** | `benchmarking` | GuideLLM CronJob, Jobs, Pipelines, Workbench |
-| **Model Registry** | `model-registry` | ModelRegistry, PostgreSQL, S3 storage |
-| **Model-as-a-Service** | `maas` | LiteMaaS, LiteLLM, OAuth |
+| **Model Registry** | `model-registry` | ModelRegistry, MariaDB, seed jobs |
 | **GPU Infrastructure** | `gpu-infra` | NFD, GPU Operator, MachineSets |
 | **Kueue Quotas** | `kueue` | ClusterQueue, LocalQueue, ResourceFlavor |
+| **Storage** | `storage` | MinIO deployment, buckets, routes |
 
-## Full Label Example
+## Values for `app.kubernetes.io/component`
+
+Standard values from the [Red Hat app-labels guide](https://github.com/redhat-developer/app-labels/blob/master/labels-annotation-for-openshift.adoc), extended with AI-specific roles:
+
+| Value | Description | Examples in this demo |
+|-------|-------------|----------------------|
+| `inference` | Model serving endpoints | InferenceService, ServingRuntime |
+| `backend` | Application logic / API services | LlamaStack, chatbot, docling, MCP servers |
+| `database` | Data persistence | PostgreSQL, MariaDB, MinIO |
+| `frontend` | User-facing UI | Grafana dashboards, rag-chatbot |
+| `monitoring` | Observability components | Grafana operator, ServiceMonitors, DCGM dashboards |
+| `orchestrator` | Workflow coordination | GuardrailsOrchestrator, DSPA |
+| `detector` | Safety / classification models | HAP detector, prompt injection detector |
+| `integration` | API gateways, middleware | Ingestion service, MCP server proxies |
+| `cache` | Caching layer | (not used in this demo) |
+| `queue` | Message queuing | (not used in this demo) |
+
+## OpenShift-Specific Labels
+
+These labels power features in the OpenShift Console Topology view. Apply to Deployments, Services, Routes, BuildConfigs, and other visible resources.
+
+| Label | Status | Purpose | Example |
+|-------|--------|---------|---------|
+| `app.openshift.io/runtime` | REC | Displays a recognizable icon in Topology (matched against a [predefined icon set](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index)) | `postgresql`, `python`, `grafana` |
+| `app.openshift.io/runtime-version` | OPT | Runtime version display | `"16"`, `"3.12"` |
+
+### Runtime values for this demo
+
+| Component | `app.openshift.io/runtime` |
+|-----------|---------------------------|
+| PostgreSQL (steps 04, 07, 10) | `postgresql` |
+| MinIO (step-03) | `golang` |
+| Docling (step-07) | `python` |
+| rag-chatbot (step-07) | `python` |
+| ingestion-service (step-07) | `python` |
+| Grafana (step-06) | `grafana` |
+| vLLM InferenceServices (step-05) | `python` |
+| MCP servers (step-10) | `golang` |
+
+## OpenShift-Specific Annotations
+
+These annotations add interactivity to the Topology view. Apply to the primary resource of each component (typically the Deployment or DeploymentConfig).
+
+| Annotation | Status | Purpose | Example |
+|------------|--------|---------|---------|
+| `app.openshift.io/connects-to` | OPT | Draws dependency arrows between components in Topology | `'["postgresql","minio"]'` |
+| `app.openshift.io/vcs-uri` | REC | Links component to source code from Topology view | `https://github.com/adnan-drina/rhoai3-demo.git` |
+| `app.openshift.io/vcs-ref` | OPT | Branch, tag, or commit SHA for source link | `main` |
+
+### Dependency connections for this demo
+
+| Resource | `app.openshift.io/connects-to` |
+|----------|-------------------------------|
+| rag-chatbot Deployment | `'["lsd-rag"]'` |
+| lsd-rag LlamaStackDistribution | `'["llamastack-postgres","granite-8b-agent"]'` |
+| database-mcp Deployment | `'["mcp-postgresql"]'` |
+| guardrails-orchestrator | `'["hap-detector","prompt-injection-detector","granite-8b-agent"]'` |
+| model-registry | `'["model-registry-db"]'` |
+| ingestion-service Job | `'["docling","llamastack-postgres"]'` |
+
+### Source code annotation for custom-built components
+
+Apply `vcs-uri` and `vcs-ref` to components that have BuildConfigs or source in this repo:
+
+```yaml
+metadata:
+  annotations:
+    app.openshift.io/vcs-uri: https://github.com/adnan-drina/rhoai3-demo.git
+    app.openshift.io/vcs-ref: main
+```
+
+Applicable to: `rag-chatbot`, `ingestion-service`.
+
+## Full Label and Annotation Example
 
 ```yaml
 metadata:
   labels:
-    app.kubernetes.io/name: mistral-3-int4
-    app.kubernetes.io/instance: mistral-3-int4-private-ai
-    app.kubernetes.io/version: "3.0"
-    app.kubernetes.io/component: inference
-    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/name: llamastack-postgres
+    app.kubernetes.io/instance: llamastack-postgres
+    app.kubernetes.io/version: "16"
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: rag
     app.kubernetes.io/managed-by: argocd
-    opendatahub.io/dashboard: "true"
+    app.openshift.io/runtime: postgresql
+  annotations:
+    app.openshift.io/vcs-uri: https://github.com/adnan-drina/rhoai3-demo.git
 ```
 
 ## OpenShift Topology View
 
-The `app.kubernetes.io/part-of` label creates visual groupings in OpenShift Console Topology view:
+The `app.kubernetes.io/part-of` label creates visual groupings, `app.openshift.io/runtime` sets icons, and `app.openshift.io/connects-to` draws dependency arrows:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      llm-serving                            │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
-│  │mistral-3-int4│ │mistral-3-bf16│ │granite-8b   │           │
+│  │🐍mistral-int4│ │🐍mistral-bf16│ │🐍granite-8b  │           │
 │  └─────────────┘ └─────────────┘ └─────────────┘           │
 └─────────────────────────────────────────────────────────────┘
-
+         ↑ connects-to                    ↑ connects-to
 ┌─────────────────────────────────────────────────────────────┐
-│                      observability                          │
-│  ┌─────────────┐ ┌─────────────┐                           │
-│  │   grafana   │ │prometheus-uwm│                           │
-│  └─────────────┘ └─────────────┘                           │
+│                      rag                                     │
+│  ┌─────────────┐ ┌──────────────┐ ┌─────────────┐          │
+│  │🐍rag-chatbot │→│☸lsd-rag      │→│🐘postgres    │          │
+│  └─────────────┘ └──────────────┘ └─────────────┘          │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-## Version Labels
-
-Use `app.kubernetes.io/version` for:
-- Model versions (e.g., `"3.0"` for Mistral-3)
-- Operator versions (e.g., `"3.0.0"` for RHOAI)
-- Application versions
 
 ## Anti-Patterns (Avoid)
 
@@ -105,5 +187,6 @@ When updating existing resources:
 ## References
 
 - [Kubernetes Recommended Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)
-- [OpenShift Topology View](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
-- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/)
+- [Guidelines for Labels and Annotations for OpenShift Applications](https://github.com/redhat-developer/app-labels/blob/master/labels-annotation-for-openshift.adoc)
+- [OpenShift 4.20 Topology View — Labels and Annotations](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
+- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
