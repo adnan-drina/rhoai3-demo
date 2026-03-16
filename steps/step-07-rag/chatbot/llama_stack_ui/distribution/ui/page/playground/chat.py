@@ -294,10 +294,11 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         )
     else:
         default_prompt = (
-            "You are a helpful assistant. "
-            "You MUST use your tools to answer questions. "
-            "At the end of your response, list only the source document filenames under a Sources heading. "
-            "Do not include document IDs or file IDs in your response."
+            "You are a helpful assistant. You MUST use your tools to answer questions.\n\n"
+            "When citing sources, use this format:\n"
+            "Sources:\n"
+            "- ACME_07_Corporate_Profile.md\n"
+            "- ACME_08_Product_Overview.md"
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
