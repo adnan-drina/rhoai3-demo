@@ -279,9 +279,20 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         help="Maximum number of inference iterations before stopping",
     )
 
-    # System Prompt
+    # System Prompt (mode-specific defaults)
     st.subheader("System Prompt")
-    default_prompt = "You are a helpful AI assistant."
+    if processing_mode == "Direct":
+        default_prompt = (
+            "You are a helpful AI assistant. Answer questions using the provided context. "
+            "If the context doesn't contain enough information, say so clearly."
+        )
+    else:
+        default_prompt = (
+            "You are a helpful AI assistant with access to document search and external tools. "
+            "Use the file_search tool to find relevant information in documents before answering knowledge questions. "
+            "When asked about infrastructure, databases, or communication channels, use the available MCP tools to fetch live data. "
+            "Always ground your answers in retrieved documents or tool outputs rather than general knowledge."
+        )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
     )
