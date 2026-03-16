@@ -11,12 +11,9 @@ spec:
     integrations:
       frameworks:
         - BatchJob           # Standard Kubernetes Jobs
-        # Deployment is intentionally excluded — it SchedulingGates ALL
-        # Deployments in kueue-managed namespaces, breaking non-GPU pods
-        # (chatbot, Docling, DSPA, MCP servers). Pod integration below
-        # handles GPU workloads via kueue.x-k8s.io/queue-name label.
+        - Deployment         # KServe InferenceService predictor pods
         - RayJob             # Ray distributed jobs
         - RayCluster         # Ray clusters
         - PyTorchJob         # PyTorch Training Operator
-        - Pod                # GPU predictor pods + Workbenches (via queue label)
+        - Pod                # Standalone pods (Workbenches)
         - LeaderWorkerSet    # llm-d distributed inference
