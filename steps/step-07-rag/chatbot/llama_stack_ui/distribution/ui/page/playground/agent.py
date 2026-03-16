@@ -233,10 +233,12 @@ def handle_chunk_completed(chunk):
         logger.debug("Stop reason: %s", chunk.stop_reason)
 
 
-def _strip_file_tokens(text: str) -> str:
-    """Remove <|file-...|> citation tokens the model emits."""
+def _strip_model_artifacts(text: str) -> str:
+    """Remove model-generated artifacts that aren't useful to users."""
     import re
-    return re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
+    text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
+    text = re.sub(r'</?tool_call>', '', text)
+    return text
 
 
 def handle_chunk_done(chunk, state):
@@ -247,7 +249,7 @@ def handle_chunk_done(chunk, state):
         chunk.response.output_text
     )
     if has_output:
-        state.full_response = _strip_file_tokens(chunk.response.output_text)
+        state.full_response = _strip_model_artifacts(chunk.response.output_text)
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):
@@ -406,6 +408,13 @@ def agent_process_prompt(prompt, state, config):
 
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
+
+    # Strip model artifacts (file tokens, tool_call tags) not useful to users
+    if state.full_response:
+        cleaned = _strip_model_artifacts(state.full_response)
+        if cleaned != state.full_response:
+            state.full_response = cleaned
+            state.containers.message.markdown(cleaned)
 
     # --- Output guardrails (HAP + PII regex) ---
     if shields_on and state.full_response:
