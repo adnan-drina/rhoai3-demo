@@ -66,7 +66,7 @@ spec:
             - name: INFERENCE_MODEL
               value: "vllm-granite-agent/granite-8b-agent"
             - name: RAG_QUESTION_SUGGESTIONS
-              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is the recommended procedure for L-900 DFO calibration drift?", "What are the ACME reliability metrics for Q3 FY25?", "What products does ACME Lithography Systems offer?", "What is the Tier-1 trouble response playbook?"]}'
+              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is ACME Corp?", "What products and services does ACME Corp offer?", "Who is the Managing Director of ACME Corp, and how can I contact them?"]}'
           resources:
             requests:
               cpu: 100m
