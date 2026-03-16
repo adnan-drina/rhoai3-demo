@@ -100,9 +100,9 @@ log_success "All MCP servers running"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Patch Dashboard ConfigMap with external route URLs
+# Step 4: Populate Dashboard ConfigMap with route URLs
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Patching MCP ConfigMap with route URLs for Dashboard access..."
+log_step "Configuring MCP servers in Dashboard..."
 
 OPENSHIFT_MCP_URL="https://$(oc get route openshift-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
 DATABASE_MCP_URL="https://$(oc get route database-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
@@ -116,12 +116,12 @@ if [[ "$OPENSHIFT_MCP_URL" != "https:///sse" ]]; then
         \"Slack-MCP\": \"{\\n  \\\"url\\\": \\\"${SLACK_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Post messages and notifications to Slack channels (Slack MCP Server). Send equipment alerts and updates to the #all-acme-mcp-demo channel.\\\"\\n}\\n\"
       }
     }" 2>/dev/null
-    log_success "ConfigMap patched with route URLs"
+    log_success "Dashboard ConfigMap updated with route URLs"
     log_info "  OpenShift: $OPENSHIFT_MCP_URL"
     log_info "  Database:  $DATABASE_MCP_URL"
     log_info "  Slack:     $SLACK_MCP_URL"
 else
-    log_warn "MCP routes not found — Dashboard will show internal URLs"
+    log_warn "MCP routes not found — Dashboard will show errors"
 fi
 echo ""
 
@@ -135,15 +135,18 @@ if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/nul
     log_success "lsd-genai-playground restart triggered"
 fi
 
-# Register MCP tool_groups in lsd-rag (required on fresh clusters — persists in PostgreSQL)
+# Register MCP tool_groups in lsd-rag using route URLs (persists in PostgreSQL)
 if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
     LSD_POD=$(oc get pods -l app.kubernetes.io/instance=lsd-rag -n "$NAMESPACE" \
         --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1 || true)
     if [[ -n "$LSD_POD" ]]; then
-        log_step "Registering MCP tool_groups in lsd-rag..."
+        log_step "Registering MCP tool_groups in lsd-rag (via routes)..."
         for tg in openshift database slack; do
-            MCP_URL="http://${tg}-mcp.${NAMESPACE}.svc:8080/sse"
-            [[ "$tg" == "openshift" ]] && MCP_URL="http://openshift-mcp.${NAMESPACE}.svc:8000/sse"
+            MCP_URL="https://$(oc get route ${tg}-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
+            if [[ "$MCP_URL" == "https:///sse" ]]; then
+                log_warn "  mcp::${tg} — route not found, skipping"
+                continue
+            fi
             EXISTING=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
                 curl -sf "http://localhost:8321/v1/toolgroups/mcp::${tg}" 2>/dev/null || true)
             if [[ -n "$EXISTING" ]] && echo "$EXISTING" | grep -q "identifier"; then
@@ -153,7 +156,7 @@ if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
                     curl -sf -X POST "http://localhost:8321/v1/toolgroups" \
                     -H "Content-Type: application/json" \
                     -d "{\"toolgroup_id\":\"mcp::${tg}\",\"provider_id\":\"model-context-protocol\",\"mcp_endpoint\":{\"uri\":\"${MCP_URL}\"}}" \
-                    2>/dev/null && log_success "  mcp::${tg} registered" \
+                    2>/dev/null && log_success "  mcp::${tg} registered ($MCP_URL)" \
                     || log_warn "  mcp::${tg} registration failed"
             fi
         done
