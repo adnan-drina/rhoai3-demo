@@ -40,8 +40,13 @@ spec:
       kind: Deployment
       jsonPointers:
         - /spec/template/spec/containers/0/env
-    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec
+    # deploy.sh patches ConfigMap data with cluster-specific route URLs
+    - group: ""
+      kind: ConfigMap
+      name: gen-ai-aa-mcp-servers
+      jsonPointers:
+        - /data
