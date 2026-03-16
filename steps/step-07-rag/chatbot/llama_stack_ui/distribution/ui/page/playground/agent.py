@@ -134,11 +134,16 @@ def handle_agent_output_item_done(chunk, state):
         # File search results
         if hasattr(item, 'results') and item.results:
             display_results = []
+            seen_docs = set()
             for r in item.results:
                 text = getattr(r, 'text', '')
                 attrs = getattr(r, 'attributes', {})
+                raw_filename = attrs.get('filename', '')
                 source = attrs.get('source') or getattr(r, 'filename', 'unknown')
                 display_results.append({"source": source, "text": clean_text(text)})
+                if raw_filename and raw_filename not in seen_docs:
+                    seen_docs.add(raw_filename)
+                    state.source_documents.append(raw_filename)
             state.tool_results.append({
                 'title': '📄 File Search Results',
                 'type': 'json',
@@ -238,7 +243,15 @@ def _strip_model_artifacts(text: str) -> str:
     import re
     text = re.sub(r'<\|file-[a-f0-9]+\|>', '', text)
     text = re.sub(r'</?tool_call>', '', text)
-    return text
+    return text.strip()
+
+
+def _clean_doc_name(raw: str) -> str:
+    """Convert internal path like '_shared-data_documents_acme_ACME_07_...' to readable name."""
+    import re
+    name = re.sub(r'^_shared-data_documents_[^_]+_', '', raw)
+    name = name.replace('.md', '').replace('_', ' ').replace('&amp;', '&')
+    return name.strip() or raw
 
 
 def handle_chunk_done(chunk, state):
@@ -409,9 +422,16 @@ def agent_process_prompt(prompt, state, config):
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
 
-    # Strip model artifacts (file tokens, tool_call tags) not useful to users
+    # Strip model artifacts and append source documents
     if state.full_response:
         cleaned = _strip_model_artifacts(state.full_response)
+        if state.source_documents:
+            unique_docs = list(dict.fromkeys(state.source_documents))
+            sources_md = "\n\n---\n"
+            sources_md += f"**{len(unique_docs)} source{'s' if len(unique_docs) != 1 else ''}**\n\n"
+            for doc in unique_docs:
+                sources_md += f"📄 {_clean_doc_name(doc)}\n\n"
+            cleaned += sources_md
         if cleaned != state.full_response:
             state.full_response = cleaned
             state.containers.message.markdown(cleaned)
