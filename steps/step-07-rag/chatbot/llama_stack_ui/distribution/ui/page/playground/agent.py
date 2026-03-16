@@ -389,6 +389,7 @@ def agent_process_prompt(prompt, state, config):
 
     if tools:
         request_kwargs["tools"] = tools
+        request_kwargs["tool_choice"] = "required"
 
     logger.debug("Request: %s", request_kwargs)
     try:
