@@ -11,11 +11,11 @@ metadata:
     modelmesh-enabled: "false"
     # Kueue visibility (does NOT gate pods; only enables queue-visibility metrics)
     kueue.x-k8s.io/queue-visibility: "ClusterQueue"
-    # NOTE: kueue.openshift.io/managed is intentionally NOT set.
-    # With explicit queue labeling, only pods that carry
-    # kueue.x-k8s.io/queue-name are managed by Kueue (InferenceService,
-    # Notebook, benchmark Jobs). Build pods, chatbot pods, and pipeline
-    # executor pods bypass Kueue entirely.
+    # Required for Kueue Workload objects (Dashboard visibility).
+    # Safe because Deployment is excluded from Kueue frameworks — only
+    # pods with kueue.x-k8s.io/queue-name label are managed via Pod
+    # integration. Non-GPU pods (chatbot, Docling, DSPA) are unaffected.
+    kueue.openshift.io/managed: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Private AI - GPU as a Service"
