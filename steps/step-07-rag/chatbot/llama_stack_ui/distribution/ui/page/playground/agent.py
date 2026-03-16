@@ -348,8 +348,7 @@ def agent_process_prompt(prompt, state, config):
     """Agent-based mode: Use Responses API with automatic tool calling + guardrails."""
     from llama_stack_ui.distribution.ui.modules import guardrails
 
-    # --- Input guardrails (always active in Agent-based mode when orchestrator is available) ---
-    shields_on = guardrails.is_available()
+    shields_on = config.shields_enabled
     if shields_on:
         with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
             violation = guardrails.check_input(prompt)
