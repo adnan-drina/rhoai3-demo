@@ -100,13 +100,28 @@ log_success "All MCP servers running"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Verify Playground ConfigMap
+# Step 4: Patch Dashboard ConfigMap with external route URLs
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Verifying MCP servers ConfigMap in redhat-ods-applications..."
-if oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications &>/dev/null; then
-    log_success "gen-ai-aa-mcp-servers ConfigMap present"
+log_step "Patching MCP ConfigMap with route URLs for Dashboard access..."
+
+OPENSHIFT_MCP_URL="https://$(oc get route openshift-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
+DATABASE_MCP_URL="https://$(oc get route database-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
+SLACK_MCP_URL="https://$(oc get route slack-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
+
+if [[ "$OPENSHIFT_MCP_URL" != "https:///sse" ]]; then
+    oc patch configmap gen-ai-aa-mcp-servers -n redhat-ods-applications --type merge -p "{
+      \"data\": {
+        \"OpenShift-MCP\": \"{\\n  \\\"url\\\": \\\"${OPENSHIFT_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Interact with the OpenShift cluster (Kubernetes MCP Server). Query pod status, logs, events, deployments, and cluster resources. Read-only mode.\\\"\\n}\\n\",
+        \"Database-MCP\": \"{\\n  \\\"url\\\": \\\"${DATABASE_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Query the ACME corporate PostgreSQL database (EDB Postgres MCP). Provides SQL access to equipment records, service history, calibration data, and pod-equipment mappings.\\\"\\n}\\n\",
+        \"Slack-MCP\": \"{\\n  \\\"url\\\": \\\"${SLACK_MCP_URL}\\\",\\n  \\\"description\\\": \\\"Post messages and notifications to Slack channels (Slack MCP Server). Send equipment alerts and updates to the #all-acme-mcp-demo channel.\\\"\\n}\\n\"
+      }
+    }" 2>/dev/null
+    log_success "ConfigMap patched with route URLs"
+    log_info "  OpenShift: $OPENSHIFT_MCP_URL"
+    log_info "  Database:  $DATABASE_MCP_URL"
+    log_info "  Slack:     $SLACK_MCP_URL"
 else
-    log_error "gen-ai-aa-mcp-servers ConfigMap not found — check ArgoCD sync"
+    log_warn "MCP routes not found — Dashboard will show internal URLs"
 fi
 echo ""
 
