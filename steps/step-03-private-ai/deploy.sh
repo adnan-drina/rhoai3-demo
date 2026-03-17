@@ -152,7 +152,7 @@ fi
 log_success "Groups configured"
 
 # =============================================================================
-# Wait for namespace and Kueue resources
+# Wait for namespace and project resources
 # =============================================================================
 log_step "Waiting for project resources..."
 

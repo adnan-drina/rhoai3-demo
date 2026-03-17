@@ -4,7 +4,7 @@
 
 ## The Business Story
 
-ACME Corp is adopting open-source LLMs on private infrastructure. Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, workload queuing, and the networking primitives that power distributed inference. This step provisions NVIDIA L4 GPU nodes on AWS and installs every operator prerequisite defined in the RHOAI 3.3 installation guide — turning bare metal into an AI platform foundation.
+ACME Corp is adopting open-source LLMs on private infrastructure. Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power distributed inference. This step provisions NVIDIA L4 GPU nodes on AWS and installs every operator prerequisite defined in the RHOAI 3.3 installation guide — turning bare metal into an AI platform foundation.
 
 ## What It Does
 
@@ -16,8 +16,6 @@ OpenShift 4.20 Cluster
 ├── OpenShift Serverless  → KnativeServing for KServe networking
 ├── LeaderWorkerSet       → Multi-node GPU orchestration for llm-d
 ├── RHCL Stack            → Authorino, Limitador, DNS, RHCL (Inference Gateway)
-├── cert-manager          → TLS certificates for Kueue webhooks
-├── Kueue Operator        → GPU quota management and workload queuing
 └── User Workload Mon.    → Prometheus scraping for GPU telemetry
 ```
 
@@ -30,8 +28,6 @@ OpenShift 4.20 Cluster
 | LeaderWorkerSet (LWS) | Multi-node GPU orchestration for llm-d | `openshift-lws-operator` |
 | Authorino + Limitador | AuthZ and rate limiting for Inference Gateway | `openshift-authorino` / `openshift-limitador-operator` |
 | DNS Operator + RHCL | Endpoint DNS and AuthPolicy CRD for llm-d | `openshift-dns-operator` / `rhcl-operator` |
-| cert-manager | TLS certificates for Kueue webhook endpoints | `cert-manager-operator` |
-| Kueue | Workload queuing and GPU quota management | `openshift-kueue-operator` |
 | User Workload Monitoring | Prometheus scraping for DCGM metrics | `openshift-monitoring` |
 
 > **AWS Quota:** Requires "Running On-Demand G and VT instances" >= 64 vCPU (16 + 48). Sandbox accounts default to 64.
@@ -40,9 +36,8 @@ OpenShift 4.20 Cluster
 
 - **GPU nodes online** — two nodes with `nvidia.com/gpu` allocatable (1 GPU + 4 GPUs)
 - **DCGM dashboard** — GPU utilization, temperature, and memory visible in OpenShift Monitoring
-- **All operators Succeeded** — 10 CSVs across their respective namespaces
+- **All operators Succeeded** — 8 CSVs across their respective namespaces
 - **KnativeServing Ready** — control plane healthy in `knative-serving`
-- **Kueue instance** — `oc get kueue cluster` shows the singleton
 
 ## Design Decisions
 
@@ -55,8 +50,6 @@ OpenShift 4.20 Cluster
 > **RHCL stack for Inference Gateway:** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway in step-05.
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
-
-> **cert-manager namespace annotation:** The `cert-manager-operator` namespace includes `olm.operatorframework.io/exclude-global-namespace-resolution: "true"` to prevent OLM from auto-creating a default OperatorGroup before ArgoCD's sync wave delivers the GitOps-managed one. Without this, two OperatorGroups coexist and the CSV fails to install.
 
 ## References
 

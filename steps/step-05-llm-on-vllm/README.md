@@ -59,9 +59,9 @@ oc get inferenceservice -n private-ai
 
 ## Design Decisions
 
-> **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to prevent Kueue admission deadlocks — rolling updates would hold GPU quota on two pods simultaneously.
+> **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.
 
-> **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations. This is required because the `private-ai` namespace does not use `kueue.openshift.io/managed=true` (see step-03 design decisions), so Kueue does not inject tolerations from ResourceFlavors.
+> **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations and `nodeSelector` for GPU node targeting. GPU nodes are tainted with `nvidia.com/gpu=true:NoSchedule`; every GPU pod must tolerate this taint.
 
 > **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. Granite 8B FP8 (~8 GB) uses this path. Models over 20 GB (Mistral BF16 at ~48 GB) use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
@@ -81,7 +81,7 @@ oc get inferenceservice -n private-ai
 
 ```bash
 ./steps/step-05-llm-on-vllm/deploy.sh    # Deploy runtime + 2 models + register 5 in catalog
-./steps/step-05-llm-on-vllm/validate.sh  # Verify InferenceServices + Kueue status
+./steps/step-05-llm-on-vllm/validate.sh  # Verify InferenceServices + GPU scheduling
 ```
 
 ## Next Steps

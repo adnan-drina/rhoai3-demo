@@ -65,7 +65,7 @@ Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`.
 
 Switch to the DCGM dashboard.
 
-*"GPU utilization hits 95-100% during the benchmark — that's the capacity ceiling. When it stays here, Kueue's quota management from Step 03 ensures new models queue instead of crashing."*
+*"GPU utilization hits 95-100% during the benchmark — that's the capacity ceiling. When capacity is exhausted, new pods remain Pending until a GPU node has available resources."*
 
 ### Scene 4: Understanding Capacity Limits
 
@@ -82,7 +82,7 @@ After both benchmarks complete, compare the results:
 
 ## Design Decisions
 
-> **CronJob + Job templates instead of Tekton:** Tekton's affinity assistants create Kueue admission deadlocks in GPU-managed namespaces. Simple Jobs with `kueue.x-k8s.io/queue-name: default` work reliably.
+> **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.
 
 > **Prometheus/Grafana metrics over file-based results:** vLLM automatically exposes production metrics via ServiceMonitors. Grafana dashboards visualize real-time performance without custom result parsing.
 

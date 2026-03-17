@@ -13,7 +13,7 @@ echo ""
 
 # --- Argo CD Application ---
 log_step "Argo CD Application"
-# Note: RHOAI operator manages Kueue component, causing persistent OutOfSync on that resource.
+# Note: Operator-managed resources may show transient OutOfSync.
 # Treat sync as warn-only for step-02 since the operator owns the reconciliation.
 SYNC=$(oc get application step-02-rhoai -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
 HEALTH=$(oc get application step-02-rhoai -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
@@ -21,7 +21,7 @@ if [[ "$SYNC" == "Synced" ]]; then
     echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-02-rhoai' sync: Synced"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${YELLOW}[WARN]${NC} Argo CD app 'step-02-rhoai' sync: $SYNC (RHOAI operator manages Kueue component)"
+    echo -e "${YELLOW}[WARN]${NC} Argo CD app 'step-02-rhoai' sync: $SYNC (operator-managed resources may drift)"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 if [[ "$HEALTH" == "Healthy" ]]; then

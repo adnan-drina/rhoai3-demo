@@ -1,5 +1,5 @@
-# Demo Workbench 2 - Gets QUEUED (no GPU available)
-# This workbench will be QUEUED because workbench-1 already has the GPU
+# Demo Workbench 2 - Gets Pending (no GPU available)
+# This workbench will be Pending because workbench-1 already has the GPU
 # It will automatically start when workbench-1 is deleted
 # Uses nvidia-l4-1gpu Hardware Profile for resource allocation
 apiVersion: kubeflow.org/v1
@@ -12,8 +12,6 @@ metadata:
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
     opendatahub.io/user: ai-admin
-    # Kueue queue assignment (matches Hardware Profile's localQueueName)
-
   annotations:
     # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
@@ -30,7 +28,7 @@ metadata:
     opendatahub.io/workbench-image-namespace: ""
     opendatahub.io/username: "ai-admin"
     openshift.io/display-name: "Demo Workbench 2 (Queued)"
-    openshift.io/description: "GPU-as-a-Service Demo - demonstrates Kueue queuing when GPU unavailable"
+    openshift.io/description: "GPU-as-a-Service Demo - demonstrates GPU scheduling when GPU unavailable"
     # The notebook controller stops idle workbenches after the configured timeout.
     # For demo: 15 min to release GPUs quickly.
     notebooks.opendatahub.io/idle-culling-time: "15m"
@@ -94,10 +92,6 @@ spec:
               mountPath: /dev/shm
           workingDir: /opt/app-root/src
       enableServiceLinks: false
-      # NOTE (RHOAI 3.3 / Kueue 1.2): Do NOT define tolerations here.
-      # GPU node tolerations
-      # Defining them here causes "existing toleration can not be modified" error.
-      # Target g6.4xlarge nodes (single L4 GPU)
       nodeSelector:
         node.kubernetes.io/instance-type: g6.4xlarge
       volumes:

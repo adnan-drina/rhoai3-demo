@@ -1,5 +1,5 @@
 # Demo Workbench 1 - Gets the GPU first
-# This workbench will be ADMITTED immediately if GPU is available
+# This workbench will be scheduled immediately if GPU is available
 # Uses nvidia-l4-1gpu Hardware Profile for resource allocation
 apiVersion: kubeflow.org/v1
 kind: Notebook
@@ -11,8 +11,6 @@ metadata:
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
     opendatahub.io/user: ai-developer
-    # Kueue queue assignment (matches Hardware Profile's localQueueName)
-
   annotations:
     # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
@@ -29,7 +27,7 @@ metadata:
     opendatahub.io/workbench-image-namespace: ""
     opendatahub.io/username: "ai-developer"
     openshift.io/display-name: "Demo Workbench 1 (GPU)"
-    openshift.io/description: "GPU-as-a-Service Demo - demonstrates GPU allocation via Kueue"
+    openshift.io/description: "GPU-as-a-Service Demo - demonstrates GPU allocation via nodeSelector + tolerations"
     # The notebook controller stops idle workbenches after the configured timeout.
     # For demo: 15 min to release GPUs quickly.
     notebooks.opendatahub.io/idle-culling-time: "15m"
@@ -93,10 +91,6 @@ spec:
               mountPath: /dev/shm
           workingDir: /opt/app-root/src
       enableServiceLinks: false
-      # NOTE (RHOAI 3.3 / Kueue 1.2): Do NOT define tolerations here.
-      # GPU node tolerations
-      # Defining them here causes "existing toleration can not be modified" error.
-      # Target g6.4xlarge nodes (single L4 GPU)
       nodeSelector:
         node.kubernetes.io/instance-type: g6.4xlarge
       volumes:

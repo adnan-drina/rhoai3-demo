@@ -62,13 +62,13 @@ data:
           "source": [
             "# 🚀 GPU-as-a-Service Demo\n",
             "\n",
-            "This notebook demonstrates Kueue-managed GPU allocation in RHOAI 3.3.\n",
+            "This notebook demonstrates GPU allocation via Hardware Profiles in RHOAI 3.3.\n",
             "\n",
             "## What's happening behind the scenes:\n",
             "1. You selected a **Hardware Profile** (NVIDIA L4 1GPU)\n",
-            "2. RHOAI created a **Workload** request\n",
-            "3. **Kueue** checked the ClusterQueue quota\n",
-            "4. Your workload was **Admitted** (or queued if no GPU available)"
+            "2. RHOAI requested a GPU via **nodeSelector**\n",
+            "3. The **scheduler** found a GPU node with capacity\n",
+            "4. Your workbench was **Scheduled** (or Pending if no GPU available)"
           ]
         },
         {
@@ -113,17 +113,16 @@ data:
           "cell_type": "markdown",
           "metadata": {},
           "source": [
-            "## 🔍 Check Your Kueue Status\n",
+            "## 🔍 Check Your GPU Status\n",
             "\n",
-            "Run this in a terminal to see your workload's Kueue status:\n",
+            "Run this in a terminal to see your GPU pod status:\n",
             "```bash\n",
-            "oc get workloads -n private-ai\n",
+            "oc get pods -n private-ai -o wide | grep gpu\n",
             "```\n",
             "\n",
-            "**Columns explained:**\n",
-            "- `QUEUE`: The LocalQueue your workload is using\n",
-            "- `RESERVED IN`: The ClusterQueue that reserved resources\n",
-            "- `ADMITTED`: True = running, False/empty = queued"
+            "**Pod status explained:**\n",
+            "- `Running`: GPU allocated, workbench is active\n",
+            "- `Pending`: Waiting for a GPU node with available capacity"
           ]
         }
       ],

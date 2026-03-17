@@ -14,8 +14,7 @@ RHOAI 3.3 Platform
 ├── DSCInitialization      → Service Mesh 3 auto-installed
 ├── DataScienceCluster     → Full component stack (see table)
 ├── GenAI Studio           → Agent Playground + Model Catalog UI
-├── Hardware Profiles      → GPU/CPU profiles with Kueue scheduling
-└── Kueue Integration      → Dashboard integration (operator from step-01)
+└── Hardware Profiles      → GPU/CPU profiles with GPU node scheduling
 ```
 
 | Component | State | Purpose |
@@ -31,16 +30,15 @@ RHOAI 3.3 Platform
 | Ray | Managed | Distributed computing framework |
 | TrustyAI | Managed | Explainability, bias detection, drift monitoring |
 | Feast Operator | Managed | Feature store for ML features |
-| Kueue | **Unmanaged** | Standalone operator from step-01 |
 
 **Hardware Profiles** (global, in `redhat-ods-applications`):
 
 | Profile | Display Name | Scheduling |
 |---------|-------------|------------|
 | cpu-small | Small (CPU Only) | Node (direct) |
-| default-profile | NVIDIA L4 1GPU (Default) | Queue → `default` |
-| nvidia-l4-1gpu | NVIDIA L4 1GPU | Queue → `default` |
-| nvidia-l4-4gpu | NVIDIA L4 4GPUs | Queue → `default` |
+| default-profile | NVIDIA L4 1GPU (Default) | Node (direct) |
+| nvidia-l4-1gpu | NVIDIA L4 1GPU | Node (direct) |
+| nvidia-l4-4gpu | NVIDIA L4 4GPUs | Node (direct) |
 
 ## What to Verify After Deployment
 
@@ -52,11 +50,9 @@ RHOAI 3.3 Platform
 
 ## Design Decisions
 
-> **Kueue as standalone operator (RHOAI 3.3 recommended):** The DSC sets `kueue.managementState: Unmanaged` because Kueue is installed as the Red Hat Build of Kueue Operator in step-01. The embedded Kueue component is deprecated since RHOAI 2.24 — the standalone operator is the official path. A `Kueue` component CR plus `disableKueue: false` in `OdhDashboardConfig` provides Dashboard integration. Ref: [Installing distributed workloads components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install).
+> **Kueue removed (RHOAI 3.3):** Kueue was removed because its SchedulingGate mechanism gates ALL pods in managed namespaces (including build pods, DSPA, chatbot), not just GPU workloads. The DSC sets `kueue.managementState: Removed` and the Dashboard sets `disableKueue: true`. GPU scheduling uses direct `nodeSelector` + `tolerations` via Hardware Profiles.
 
-> **GPU profiles use Queue scheduling, CPU uses Node:** GPU Hardware Profiles use `scheduling.type: Queue` so Kueue governs GPU allocation via ClusterQueue quotas. The CPU-only profile (`cpu-small`) uses direct Node scheduling — CPU workloads don't need GPU quota management and shouldn't be gated by Kueue. Each user project needs a `LocalQueue` named `default` for GPU profiles (created in step-03).
-
-> **Two ClusterQueues for resource reservation:** `rhoai-main-queue` (5 GPUs for vLLM) and `rhoai-llmd-queue` (2 GPUs reserved for llm-d). This follows the RHOAI pattern of hardware-specific quota separation — llm-d always has guaranteed capacity even when vLLM workloads saturate the main queue.
+> **All profiles use Node scheduling:** Hardware Profiles use `scheduling.type: Node` with `nodeSelector` and `tolerations` for direct GPU node placement. No Kueue queues are needed.
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users. The RHOAI operator may reset this field during reconciliation, so `deploy.sh` patches it explicitly after DSC is Ready.
 
@@ -70,7 +66,6 @@ RHOAI 3.3 Platform
 - [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
-- [Managing Workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/managing-workloads-with-kueue)
 
 ## Troubleshooting
 
@@ -120,4 +115,4 @@ Deploy: `./steps/step-02-rhoai/deploy.sh` · Validate: `./steps/step-02-rhoai/va
 
 ## Next Steps
 
-Continue to [Step 03 — Private AI Infrastructure](../step-03-private-ai/README.md) to configure Kueue queues, resource flavors, and per-project LocalQueues.
+Continue to [Step 03 — Private AI Infrastructure](../step-03-private-ai/README.md) to configure MinIO storage, authentication, and RBAC for GPU-as-a-Service.
