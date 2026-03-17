@@ -27,6 +27,8 @@ spec:
       runtime: kserve-ovms
       modelFormat:
         name: onnx
+      storage:
+        key: minio-connection
       storageUri: s3://models/face-recognition/
       resources:
         requests:
