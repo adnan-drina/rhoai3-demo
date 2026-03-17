@@ -1,7 +1,7 @@
 # GuideLLM Benchmark: granite-8b-agent (1-GPU FP8)
 # Usage: oc create -f granite-8b-agent.yaml
 # Traffic profile: 512→256 (Chatbot/Q&A)
-# SLO target: Conversational — TTFT ≤150ms, ITL ≤25ms
+# SLO target: Conversational — TTFT ≤150ms, ITL ≤45ms (L4 hardware floor)
 apiVersion: batch/v1
 kind: Job
 metadata:

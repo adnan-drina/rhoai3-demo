@@ -1,7 +1,7 @@
 # GuideLLM Benchmark: mistral-3-bf16 (4-GPU BF16)
 # Usage: oc create -f mistral-3-bf16.yaml
 # Traffic profile: 1024→1024 (Enterprise chat / content generation)
-# SLO target: Interactive — TTFT ≤500ms, ITL ≤35ms
+# SLO target: Interactive — TTFT ≤500ms, ITL ≤55ms (L4 hardware floor)
 apiVersion: batch/v1
 kind: Job
 metadata:
