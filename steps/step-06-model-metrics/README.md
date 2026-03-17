@@ -28,6 +28,7 @@ GuideLLM Benchmark Jobs
 | **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC |
 | **Job Templates** | On-demand: `granite-8b-agent` (1,3,5,8,10 req/s) and `mistral-3-bf16` (1,3,5,8,10,15 req/s) |
 | **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis |
+| **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) |
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 
@@ -82,6 +83,20 @@ After both benchmarks complete, compare the results (tuned configuration):
 *"After tuning, Granite's KV cache doubled from 74K to 155K tokens — that's 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs at 40ms and 53ms respectively — that's the memory bandwidth floor. Moving to A100 or H100 GPUs would reduce ITL significantly."*
 
 > **Known Limitation (NVIDIA L4):** ITL is limited by memory bandwidth (~300 GB/s). An 8B FP8 model reads ~8 GB of weights per decode step, giving a theoretical minimum of ~27ms. Observed 40ms includes compute, KV cache attention, and CUDA overhead. This is near the hardware floor — not a tuning issue. See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
+
+### Scene 5: Dashboard Pipeline (no CLI needed)
+
+**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `guidellm-benchmark` pipeline. Click **Create run**.
+
+**Expect:** A form with parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id`.
+
+**Do:** Set `model_name=granite-8b-agent`, keep defaults, click **Start**. Watch the run in the **Runs** tab.
+
+**Expect:** Run completes in ~5 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
+
+*"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change."*
+
+> **Prerequisite:** The KFP pipeline requires `dspa-rag` from Step 07. If Step 07 hasn't been deployed yet, Scene 5 is not available — use the CLI approach from Scene 1.
 
 ## What to Verify After Deployment
 
@@ -141,9 +156,10 @@ Or run the validation script:
 ## Operations
 
 ```bash
-./steps/step-06-model-metrics/deploy.sh        # Deploy Grafana + GuideLLM via ArgoCD
-./steps/step-06-model-metrics/run-benchmark.sh  # Trigger benchmark (all models or specific)
-./steps/step-06-model-metrics/validate.sh      # Verify Grafana health, dashboards, CronJob
+./steps/step-06-model-metrics/deploy.sh         # Deploy Grafana + GuideLLM via ArgoCD
+./steps/step-06-model-metrics/run-benchmark.sh  # CLI benchmark (Job template or CronJob)
+./steps/step-06-model-metrics/run-pipeline.sh   # Dashboard benchmark (KFP pipeline via DSPA)
+./steps/step-06-model-metrics/validate.sh       # Verify Grafana health, dashboards, CronJob
 ```
 
 ## Next Steps

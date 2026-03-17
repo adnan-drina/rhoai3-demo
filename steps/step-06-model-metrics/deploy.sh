@@ -82,6 +82,31 @@ fi
 echo ""
 
 # =============================================================================
+# GuideLLM KFP Pipeline (optional — requires step-07 DSPA)
+# =============================================================================
+if oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
+    log_step "Compiling GuideLLM benchmark pipeline..."
+
+    VENV_PATH="$REPO_ROOT/.venv-kfp"
+    if [ ! -d "$VENV_PATH" ]; then
+        python3 -m venv "$VENV_PATH"
+        "$VENV_PATH/bin/pip" install -q --upgrade pip kfp
+    fi
+
+    (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" benchmark_pipeline.py) || true
+
+    if [ -f "$REPO_ROOT/artifacts/guidellm-benchmark.yaml" ]; then
+        log_success "Pipeline compiled: artifacts/guidellm-benchmark.yaml"
+        log_info "Upload via: ./steps/step-06-model-metrics/run-pipeline.sh"
+    else
+        log_warn "Pipeline compilation failed — dashboard benchmarking not available"
+    fi
+else
+    log_info "DSPA not found (deploy step-07 first for dashboard pipeline support)"
+fi
+echo ""
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
@@ -92,13 +117,14 @@ echo "    - Grafana Operator + Instance (anonymous access)"
 echo "    - 2 GrafanaDashboards (vLLM Latency/Throughput/Cache, DCGM GPU Metrics)"
 echo "    - GuideLLM CronJob (daily at 2:00 AM UTC)"
 echo "    - Model Benchmarking Workbench"
+echo "    - GuideLLM KFP Pipeline (if DSPA available)"
 echo ""
-echo "  Run a benchmark now:"
-echo "    ./steps/step-06-model-metrics/run-benchmark.sh"
+echo "  Run a benchmark:"
+echo "    ./steps/step-06-model-metrics/run-benchmark.sh           # CLI (Job template)"
+echo "    ./steps/step-06-model-metrics/run-pipeline.sh granite    # Dashboard (KFP pipeline)"
 echo ""
-echo "  Or manually:"
-echo "    oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml"
-echo "    oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml"
+echo "  Or from the RHOAI Dashboard:"
+echo "    Develop & train → Pipelines → guidellm-benchmark → Create run"
 echo ""
 log_info "Validate: ./steps/step-06-model-metrics/validate.sh"
 echo ""
