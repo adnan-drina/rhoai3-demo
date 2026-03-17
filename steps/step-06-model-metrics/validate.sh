@@ -26,7 +26,7 @@ check "Grafana instance exists" \
 # --- Grafana Dashboards ---
 log_step "Grafana Dashboards"
 DASH_COUNT=$(oc get grafanadashboard -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-if [[ "$DASH_COUNT" -ge 1 ]]; then
+if [[ "$DASH_COUNT" -ge 2 ]]; then
     echo -e "${GREEN}[PASS]${NC} GrafanaDashboards found: $DASH_COUNT"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else

@@ -86,13 +86,13 @@ After both benchmarks complete, compare the results (tuned configuration):
 
 ### Scene 5: Dashboard Pipeline (no CLI needed)
 
-**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `guidellm-benchmark` pipeline. Click **Create run**.
+**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `bench-granite-8b` (or `bench-mistral-bf16`). Click **Create run**.
 
-**Expect:** A form with parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id`.
+**Expect:** A form with pre-filled parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id` — each pipeline has model-specific defaults.
 
-**Do:** Set `model_name=granite-8b-agent`, keep defaults, click **Start**. Watch the run in the **Runs** tab.
+**Do:** Keep defaults, click **Start**. Watch the run in the **Runs** tab.
 
-**Expect:** Run completes in ~5 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
+**Expect:** Granite completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
 
 *"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change."*
 

@@ -95,9 +95,9 @@ if oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
 
     (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" benchmark_pipeline.py) || true
 
-    if [ -f "$REPO_ROOT/artifacts/guidellm-benchmark.yaml" ]; then
-        log_success "Pipeline compiled: artifacts/guidellm-benchmark.yaml"
-        log_info "Upload via: ./steps/step-06-model-metrics/run-pipeline.sh"
+    if [ -f "$REPO_ROOT/artifacts/bench-granite-8b.yaml" ] && [ -f "$REPO_ROOT/artifacts/bench-mistral-bf16.yaml" ]; then
+        log_success "Pipelines compiled: bench-granite-8b.yaml, bench-mistral-bf16.yaml"
+        log_info "Upload via: ./steps/step-06-model-metrics/run-pipeline.sh granite"
     else
         log_warn "Pipeline compilation failed — dashboard benchmarking not available"
     fi
@@ -124,7 +124,8 @@ echo "    ./steps/step-06-model-metrics/run-benchmark.sh           # CLI (Job te
 echo "    ./steps/step-06-model-metrics/run-pipeline.sh granite    # Dashboard (KFP pipeline)"
 echo ""
 echo "  Or from the RHOAI Dashboard:"
-echo "    Develop & train → Pipelines → guidellm-benchmark → Create run"
+echo "    Develop & train → Pipelines → bench-granite-8b → Create run"
+echo "    Develop & train → Pipelines → bench-mistral-bf16 → Create run"
 echo ""
 log_info "Validate: ./steps/step-06-model-metrics/validate.sh"
 echo ""
