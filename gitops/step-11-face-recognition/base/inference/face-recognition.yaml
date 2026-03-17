@@ -1,0 +1,39 @@
+# YOLO11 face recognition model exported to ONNX, served via OpenVINO.
+# CPU-only — no GPU required. OpenVINO is optimized for CPU inference.
+# The ONNX model must be at s3://models/face-recognition/1/model.onnx
+# (the 1/ subdirectory is required by OpenVINO for model versioning).
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: face-recognition
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: face-recognition
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/managed-by: argocd
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    openshift.io/display-name: "Face Recognition (YOLO11 ONNX)"
+    serving.kserve.io/deploymentMode: RawDeployment
+    security.opendatahub.io/enable-auth: "false"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      runtime: kserve-ovms
+      modelFormat:
+        name: onnx
+      storageUri: s3://models/face-recognition/
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+          nvidia.com/gpu: "0"
+        limits:
+          cpu: "2"
+          memory: 4Gi
+          nvidia.com/gpu: "0"

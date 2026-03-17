@@ -1,0 +1,111 @@
+# Downloads a pre-trained YOLO11n-face ONNX model from HuggingFace
+# and uploads it to MinIO at models/face-recognition/1/model.onnx.
+# The 1/ subdirectory is required by OpenVINO for model versioning.
+# This job is idempotent — it skips if the model already exists in MinIO.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upload-face-model
+  namespace: minio-storage
+  annotations:
+    argocd.argoproj.io/hook: Skip
+spec:
+  ttlSecondsAfterFinished: 3600
+  activeDeadlineSeconds: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: uploader
+          image: python:3.11-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              export HOME=/tmp
+              export PYTHONUNBUFFERED=1
+
+              BUCKET="models"
+              S3_PREFIX="face-recognition/1"
+              MODEL_FILE="model.onnx"
+              HF_REPO="ariakang/YOLOv11n-face-detection"
+
+              echo "╔══════════════════════════════════════════════════════════╗"
+              echo "║  Model Upload: YOLO11n Face Detection (ONNX)            ║"
+              echo "║  Source: HuggingFace ${HF_REPO}                         ║"
+              echo "║  Target: s3://${BUCKET}/${S3_PREFIX}/${MODEL_FILE}       ║"
+              echo "╚══════════════════════════════════════════════════════════╝"
+
+              pip install --user -q huggingface_hub boto3
+
+              python3 << 'PYTHON_SCRIPT'
+              import os, sys
+              from huggingface_hub import hf_hub_download
+              import boto3
+              from botocore.config import Config
+
+              BUCKET = "models"
+              S3_PREFIX = "face-recognition/1"
+              MODEL_FILE = "model.onnx"
+              HF_REPO = "ariakang/YOLOv11n-face-detection"
+
+              s3 = boto3.client('s3',
+                  endpoint_url=os.environ['MINIO_ENDPOINT'],
+                  aws_access_key_id=os.environ['MINIO_ACCESS_KEY'],
+                  aws_secret_access_key=os.environ['MINIO_SECRET_KEY'],
+                  config=Config(signature_version='s3v4'))
+
+              # Check if model already exists in MinIO
+              key = f"{S3_PREFIX}/{MODEL_FILE}"
+              try:
+                  s3.head_object(Bucket=BUCKET, Key=key)
+                  print(f"Model already in MinIO at s3://{BUCKET}/{key} - skipping")
+                  sys.exit(0)
+              except Exception:
+                  pass
+
+              # Ensure bucket exists
+              try:
+                  s3.head_bucket(Bucket=BUCKET)
+              except Exception:
+                  s3.create_bucket(Bucket=BUCKET)
+                  print(f"Created bucket: {BUCKET}")
+
+              # Download ONNX from HuggingFace
+              print(f"Downloading {MODEL_FILE} from {HF_REPO}...")
+              local_path = hf_hub_download(
+                  repo_id=HF_REPO,
+                  filename=MODEL_FILE,
+                  cache_dir="/tmp/hf_cache"
+              )
+              print(f"Downloaded to {local_path}")
+
+              # Upload to MinIO
+              print(f"Uploading to s3://{BUCKET}/{key}...")
+              s3.upload_file(local_path, BUCKET, key)
+              print(f"Done: s3://{BUCKET}/{key}")
+              PYTHON_SCRIPT
+          env:
+            - name: MINIO_ACCESS_KEY
+              value: "rhoai-access-key"
+            - name: MINIO_SECRET_KEY
+              value: "rhoai-secret-key-12345"
+            - name: MINIO_ENDPOINT
+              value: "http://minio:9000"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
