@@ -116,7 +116,9 @@ To trigger a new run from the CLI:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
-> **Agent-based system prompt uses few-shot examples, grounding, and retry instructions.** Granite 8B ignores negative instructions like "Do not include file IDs" and verbose prompts cause it to narrate tool usage instead of acting. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, and (3) a concrete `Sources:` citation example with `.md` filenames. See `docs/prompt-engineering-session.md` for full test results.
+> **Agent-based system prompt uses few-shot examples, grounding, retry, and tool hints.** Granite 8B ignores negative instructions and verbose prompts cause narration instead of action. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools, and (4) a concrete `Sources:` citation example with `.md` filenames. All 4 MCP demo scenes pass with all tools enabled simultaneously. See `docs/prompt-engineering-session.md` for full test results.
+
+> **`max_output_tokens=512` prevents vLLM context overflow.** MCP tool results (especially file_search with 5 document chunks + MCP tool schemas for 31 tools) consume 12-16K of the 16K context window. Without explicitly passing `max_output_tokens`, LlamaStack defaults to requesting 4096 tokens from vLLM, which exceeds the remaining context space and causes `response.failed: Unknown error`. The chatbot now passes `max_output_tokens` from the sidebar slider (default 512) to the Responses API.
 
 > **Max inference iterations default is 20.** MCP multi-step chains (e.g., `list_schemas` → `list_objects` → `get_object_details` → `execute_sql`) require 4-5 iterations. The original default of 10 caused the model to stop mid-chain before reaching the final SQL execution. 20 provides headroom without excessive runtime.
 
@@ -173,6 +175,18 @@ oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
 ```
 
 > **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (granite-8b-agent, etc.) in the same namespace.
+
+### Agent response empty or "Response failed: Unknown error" with MCP tools
+
+**Symptom:** The chatbot shows an empty bot response or the logs show `Response failed: Unknown error`. Tool calls (MCP or file_search) execute successfully but the model's text response never appears.
+
+**Root Cause:** vLLM's `max_tokens` defaults to 4096 when not specified. After MCP tool results and file_search chunks are injected into the context, the input tokens can reach 12-16K of the 16K context window. Requesting 4096 output tokens exceeds the remaining space: `ValueError: max_tokens is too large: 4096 > 16384 - 12356`.
+
+**Solution:** The chatbot passes `max_output_tokens` from the sidebar "Max Tokens" slider (default 512) to the Responses API. Verify in `agent.py`:
+```python
+"max_output_tokens": config.sampling.max_tokens,
+```
+If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 
 ### Agent stops mid-chain without completing MCP multi-step queries
 
