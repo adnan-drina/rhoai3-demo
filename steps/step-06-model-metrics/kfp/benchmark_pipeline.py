@@ -110,23 +110,8 @@ echo "Benchmark complete for {model_name}"
     return "Results printed (no S3 credentials configured)"
 
 
-@dsl.pipeline(
-    name="guidellm-benchmark",
-    description=(
-        "GuideLLM model benchmark: graduated concurrency stress test "
-        "with TTFT, ITL, throughput metrics. "
-        "SLO targets: Granite ITL <=45ms, Mistral ITL <=55ms (L4 hardware floor)."
-    ),
-    pipeline_root="s3://pipelines/",
-)
-def guidellm_benchmark_pipeline(
-    model_name: str = "granite-8b-agent",
-    rates: str = "1,3,5,8,10",
-    max_seconds: int = 60,
-    max_requests: int = 50,
-    run_id: str = "bench",
-    s3_report_secret: str = "minio-connection",
-):
+def _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_report_secret):
+    """Shared wiring for all benchmark pipelines."""
     bench = run_benchmark(
         model_name=model_name,
         rates=rates,
@@ -153,6 +138,44 @@ def guidellm_benchmark_pipeline(
     )
 
 
+@dsl.pipeline(
+    name="bench-granite-8b",
+    description=(
+        "Granite 8B Agent benchmark (1x L4 FP8). "
+        "Rates: 1,3,5,8,10 RPS. SLO: TTFT <=150ms, ITL <=45ms."
+    ),
+    pipeline_root="s3://pipelines/",
+)
+def granite_benchmark_pipeline(
+    model_name: str = "granite-8b-agent",
+    rates: str = "1,3,5,8,10",
+    max_seconds: int = 60,
+    max_requests: int = 50,
+    run_id: str = "bench-granite",
+    s3_report_secret: str = "minio-connection",
+):
+    _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_report_secret)
+
+
+@dsl.pipeline(
+    name="bench-mistral-bf16",
+    description=(
+        "Mistral Small 24B BF16 benchmark (4x L4 TP=4). "
+        "Rates: 1,3,5,8,10,15 RPS. SLO: TTFT <=500ms, ITL <=55ms."
+    ),
+    pipeline_root="s3://pipelines/",
+)
+def mistral_benchmark_pipeline(
+    model_name: str = "mistral-3-bf16",
+    rates: str = "1,3,5,8,10,15",
+    max_seconds: int = 60,
+    max_requests: int = 50,
+    run_id: str = "bench-mistral",
+    s3_report_secret: str = "minio-connection",
+):
+    _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_report_secret)
+
+
 if __name__ == "__main__":
     script_dir = Path(__file__).parent.resolve()
     step_dir = script_dir.parent
@@ -160,9 +183,12 @@ if __name__ == "__main__":
     artifacts_dir = repo_root / "artifacts"
     artifacts_dir.mkdir(exist_ok=True)
 
-    out = artifacts_dir / "guidellm-benchmark.yaml"
-    kfp.compiler.Compiler().compile(
-        pipeline_func=guidellm_benchmark_pipeline,
-        package_path=str(out),
-    )
-    print(f"Pipeline compiled: {out}")
+    compiler = kfp.compiler.Compiler()
+
+    for pipeline_func, filename in [
+        (granite_benchmark_pipeline, "bench-granite-8b.yaml"),
+        (mistral_benchmark_pipeline, "bench-mistral-bf16.yaml"),
+    ]:
+        out = artifacts_dir / filename
+        compiler.compile(pipeline_func=pipeline_func, package_path=str(out))
+        print(f"Pipeline compiled: {out}")

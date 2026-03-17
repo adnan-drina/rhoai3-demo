@@ -9,12 +9,28 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="private-ai"
-MODEL_NAME="${1:-granite-8b-agent}"
+MODEL_INPUT="${1:-granite}"
 RUN_ID="${2:-bench-$(date +%s)}"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
-PIPELINE_YAML="$REPO_ROOT/artifacts/guidellm-benchmark.yaml"
+case "$MODEL_INPUT" in
+    granite|granite-8b-agent)
+        MODEL_NAME="granite-8b-agent"
+        PIPELINE_NAME="bench-granite-8b"
+        PIPELINE_YAML="$REPO_ROOT/artifacts/bench-granite-8b.yaml"
+        ;;
+    mistral|mistral-bf16|mistral-3-bf16)
+        MODEL_NAME="mistral-3-bf16"
+        PIPELINE_NAME="bench-mistral-bf16"
+        PIPELINE_YAML="$REPO_ROOT/artifacts/bench-mistral-bf16.yaml"
+        ;;
+    *)
+        log_error "Unknown model: $MODEL_INPUT. Available: granite, mistral-bf16"
+        exit 1
+        ;;
+esac
+
 if [ ! -f "$PIPELINE_YAML" ]; then
     log_info "Compiling pipeline..."
     VENV_PATH="$REPO_ROOT/.venv-kfp"
@@ -39,7 +55,7 @@ if [ -z "$OC_TOKEN" ]; then
 fi
 
 VENV_PATH="$REPO_ROOT/.venv-kfp"
-export NAMESPACE MODEL_NAME RUN_ID PIPELINE_YAML
+export NAMESPACE MODEL_NAME RUN_ID PIPELINE_YAML PIPELINE_NAME
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys, time
@@ -67,7 +83,7 @@ if not DSPA_ROUTE:
 DSPA_URL = f"https://{DSPA_ROUTE}"
 print(f"DSPA: {DSPA_URL}")
 
-PIPELINE_NAME = "guidellm-benchmark"
+PIPELINE_NAME = os.environ["PIPELINE_NAME"]
 
 try:
     kfp_client = client.Client(
