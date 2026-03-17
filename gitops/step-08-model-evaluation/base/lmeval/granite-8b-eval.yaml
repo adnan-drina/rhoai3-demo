@@ -1,0 +1,53 @@
+# LMEvalJob template for granite-8b-agent
+# Evaluates reasoning, logic, and general knowledge via standard benchmarks.
+# Apply on demand: oc apply -f granite-8b-eval.yaml -n private-ai
+# Results visible in Dashboard: Develop & train > Evaluations
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-large-language-models_evaluate
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: LMEvalJob
+metadata:
+  name: granite-8b-agent-eval
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: granite-8b-eval
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+spec:
+  model: local-completions
+  modelArgs:
+    - name: model
+      value: granite-8b-agent
+    - name: base_url
+      value: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1/completions
+    - name: num_concurrent
+      value: "1"
+    - name: max_retries
+      value: "3"
+    - name: tokenized_requests
+      value: "false"
+    - name: tokenizer
+      value: ibm-granite/granite-3.1-8b-instruct
+  taskList:
+    taskNames:
+      - hellaswag
+      - arc_challenge
+      - winogrande
+      - boolq
+  # Default limit for demo — fast runs (~10 min). Remove or increase for full benchmarks.
+  limit: "50"
+  logSamples: true
+  batchSize: "1"
+  allowOnline: true
+  allowCodeExecution: true
+  pod:
+    container:
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+  outputs:
+    pvcManaged:
+      size: 2Gi

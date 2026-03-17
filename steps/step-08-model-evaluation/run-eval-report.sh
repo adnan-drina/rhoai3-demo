@@ -59,7 +59,7 @@ import requests as http
 
 # --- Config ---
 LLAMASTACK_URL = 'http://localhost:8321'
-CANDIDATE_MODEL = 'vllm-granite-agent/granite-8b-agent'
+CANDIDATE_MODEL = 'vllm-inference/granite-8b-agent'
 JUDGE_URL = 'http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions'
 JUDGE_MODEL = 'mistral-3-bf16'
 RUN_ID = '$RUN_ID'

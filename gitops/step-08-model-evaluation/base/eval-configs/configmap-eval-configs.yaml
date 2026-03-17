@@ -11,18 +11,24 @@ metadata:
     argocd.argoproj.io/sync-wave: "8"
 data:
   judge_prompt.txt: |
-    You are comparing a GENERATED RESPONSE to an EXPECTED RESPONSE for a given question.
+    You are an evaluation judge comparing a GENERATED RESPONSE against an EXPECTED RESPONSE.
 
     Question: {input_query}
     Expected Response: {expected_answer}
     Generated Response: {generated_answer}
 
-    Compare the Generated Response to the Expected Response and select the most appropriate option:
+    INSTRUCTIONS:
+    - Compare ONLY the Generated Response against the Expected Response.
+    - Do NOT introduce information not present in either response.
+    - Focus on factual alignment, not writing style.
 
-    (A) The generated response is a subset of the expected response and is fully consistent with it.
-    (B) The generated response is a superset of the expected response and is fully consistent with it.
-    (C) The generated response contains all the same details as the expected response.
-    (D) There is a disagreement between the generated response and the expected response.
-    (E) The responses differ, but the differences are not significant or do not affect factual accuracy.
+    Select the BEST match (A is best, E is worst):
+    (A) The Generated Response contains the SAME key facts as the Expected Response — full alignment.
+    (B) The Generated Response is a SUPERSET — it covers all expected points plus additional correct detail.
+    (C) The Generated Response is a SUBSET — it covers some but not all expected points.
+    (D) The responses differ but the differences do NOT affect factual accuracy.
+    (E) The Generated Response DISAGREES with or CONTRADICTS the Expected Response.
+
+    You MUST respond with exactly one letter in parentheses followed by a brief explanation.
 
     Answer:

@@ -1,13 +1,11 @@
 """
 Run and Score Tests Component — evaluation harness for pre-RAG and post-RAG tests.
 
-Inspired by: https://github.com/rhoai-genaiops/evals/blob/main/evals-pipeline/kfp_pipeline.py
-
 For each *_tests.yaml:
   1. Load config and resolve .txt template references
-  2. For pre-RAG (mode=pre-rag): call /v1/chat/completions without tools
-  3. For post-RAG (mode=post-rag): call /v1/chat/completions, then score tool_choice
-  4. Score via LlamaStack scoring.score() (basic + llm-as-judge)
+  2. For pre-RAG (mode=pre-rag): call model via LlamaStack /v1/chat/completions
+  3. For post-RAG (mode=post-rag): retrieve context, then call model with context
+  4. Score via mistral-3-bf16 as LLM-as-judge (direct vLLM endpoint)
   5. Generate per-scenario HTML reports
   6. Upload reports to S3
 """
@@ -19,7 +17,6 @@ from kfp.dsl import component
 @component(
     base_image="python:3.12",
     packages_to_install=[
-        "llama_stack_client==0.4.2",
         "boto3",
         "pyyaml",
         "requests",
@@ -31,14 +28,16 @@ def run_and_score_tests_component(
     run_id: str = "eval",
 ):
     import os
+    import re
     import yaml
-    import json
     import time
     import tempfile
     import requests as http
 
     EVAL_CONFIGS_DIR = "/shared-data/eval-configs"
-    OAI_MODEL_PREFIX = "vllm-granite-agent"
+    OAI_MODEL_PREFIX = "vllm-inference"
+    JUDGE_URL = "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions"
+    JUDGE_MODEL = "mistral-3-bf16"
 
     def replace_txt_files(obj, base_path="."):
         if isinstance(obj, dict):
@@ -66,7 +65,6 @@ def run_and_score_tests_component(
         return name
 
     def call_llm(base_url, model_id, prompt, system_prompt=None):
-        """Direct LLM call via OpenAI-compatible endpoint (pre-RAG mode)."""
         oai_model = f"{OAI_MODEL_PREFIX}/{model_id}"
         messages = []
         if system_prompt:
@@ -95,11 +93,9 @@ def run_and_score_tests_component(
         return {"answer": content, "tool_calls": []}
 
     def call_rag_agent(base_url, model_id, vector_db_id, prompt):
-        """RAG: retrieve context via vector_stores/search, then call chat/completions."""
         store_id = resolve_vector_store_id(base_url, vector_db_id)
         oai_model = f"{OAI_MODEL_PREFIX}/{model_id}"
 
-        # Step 1: Retrieve context from vector store
         context_text = ""
         tool_calls = []
         try:
@@ -120,7 +116,6 @@ def run_and_score_tests_component(
         except Exception as e:
             print(f"    Retrieval warning: {e}")
 
-        # Step 2: Call LLM with retrieved context
         system = "You are a helpful assistant. Answer based on the provided document context."
         if context_text:
             system += f"\n\nDocument context:\n{context_text[:4000]}"
@@ -148,6 +143,33 @@ def run_and_score_tests_component(
         content = choices[0].get("message", {}).get("content") or ""
         return {"answer": content, "tool_calls": tool_calls}
 
+    def call_judge(question, expected, generated, judge_template):
+        prompt = (
+            judge_template
+            .replace("{input_query}", question)
+            .replace("{expected_answer}", expected)
+            .replace("{generated_answer}", generated)
+        )
+        try:
+            r = http.post(
+                JUDGE_URL,
+                json={
+                    "model": JUDGE_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 300,
+                    "temperature": 0,
+                    "stream": False,
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            feedback = r.json()["choices"][0]["message"]["content"]
+            match = re.search(r"\(([A-E])\)", feedback)
+            letter = match.group(1) if match else feedback[:3]
+            return letter, feedback
+        except Exception as e:
+            return "?", f"Judge error: {e}"
+
     def score_tool_choice(eval_row):
         actual = set(eval_row.get("tool_calls", []))
         expected = set(eval_row.get("expected_tools", []))
@@ -166,49 +188,46 @@ def run_and_score_tests_component(
         return {"score": score, "tools_called": sorted(actual), "tools_expected": sorted(expected)}
 
     def generate_html_report(scenario_results, scenario_name, mode):
+        color = "#28a745" if mode == "post-rag" else "#6c757d"
+        alt_color = "#20c997" if mode == "post-rag" else "#495057"
         rows_html = ""
-        for i, result in enumerate(scenario_results, 1):
-            scores_parts = []
-            for scorer_name, score_data in result.get("scores", {}).items():
-                s = score_data.get("score", "N/A") if isinstance(score_data, dict) else "N/A"
-                scores_parts.append(f"<strong>{scorer_name}:</strong> {s}")
-            scores_cell = "<br>".join(scores_parts) if scores_parts else "N/A"
-            tools = ", ".join(result.get("tool_calls", [])) or "none"
-            mode_badge = f'<span style="background:{("#28a745" if mode=="post-rag" else "#6c757d")};color:#fff;padding:2px 8px;border-radius:4px;font-size:.75em">{mode}</span>'
+        for i, r in enumerate(scenario_results, 1):
+            letter = r.get("judge_letter", "?")
+            lcolor = {
+                "A": "#28a745", "B": "#28a745",
+                "C": "#ffc107", "D": "#6c757d", "E": "#dc3545",
+            }.get(letter, "#6c757d")
+            tools = ", ".join(r.get("tool_calls", [])) or "none"
 
             rows_html += f"""
             <tr>
               <td style="text-align:center">{i}</td>
-              <td>{result.get('prompt', '')}</td>
-              <td>{result.get('answer', '')[:500]}</td>
-              <td>{result.get('expected', '')[:500]}</td>
-              <td>{scores_cell}</td>
+              <td>{r['prompt'][:250]}</td>
+              <td>{r['answer'][:500]}</td>
+              <td>{r['expected'][:500]}</td>
+              <td><span style="display:inline-block;padding:2px 10px;border-radius:4px;background:{lcolor};color:#fff;font-weight:bold;font-size:1.1em">({letter})</span><br><small>{r.get('judge_feedback', '')[:300]}</small></td>
               <td>{tools}</td>
             </tr>"""
 
         return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>RAG Eval - {scenario_name}</title>
+<title>RAG Eval - {scenario_name} ({mode})</title>
 <style>
 body {{ font-family: -apple-system, sans-serif; margin: 20px; background: #f8f9fa; }}
 .container {{ max-width: 1400px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,.1); overflow: hidden; }}
-.header {{ background: linear-gradient(135deg, {"#28a745, #20c997" if mode=="post-rag" else "#6c757d, #495057"}); color: #fff; padding: 30px; text-align: center; }}
-.content {{ padding: 30px; }}
-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
-th {{ background: {"#28a745" if mode=="post-rag" else "#6c757d"}; color: #fff; padding: 12px 8px; text-align: left; font-size: .9em; }}
-td {{ padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; max-width: 300px; word-wrap: break-word; font-size: .85em; }}
+.header {{ background: linear-gradient(135deg, {color}, {alt_color}); color: #fff; padding: 30px; text-align: center; }}
+table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+th {{ background: {color}; color: #fff; padding: 12px 8px; text-align: left; font-size: .9em; }}
+td {{ padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; max-width: 350px; word-wrap: break-word; font-size: .85em; }}
 tr:nth-child(even) {{ background: #f8f9fa; }}
-.meta {{ color: #6c757d; margin: 10px 0; }}
+.meta {{ color: #6c757d; margin: 10px 30px; font-size: .9em; }}
+.badge {{ display: inline-block; padding: 4px 12px; border-radius: 4px; color: #fff; background: {color}; font-weight: bold; }}
 </style></head><body>
 <div class="container">
-  <div class="header"><h1>RAG Evaluation — {mode.upper()}</h1><p>{scenario_name}</p></div>
-  <div class="content">
-    <p class="meta">Run ID: {run_id} | Mode: {mode} | Generated: {time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())} | Tests: {len(scenario_results)}</p>
-    <table>
-      <thead><tr><th>#</th><th>Prompt</th><th>Generated Answer</th><th>Expected</th><th>Scores</th><th>Tools</th></tr></thead>
-      <tbody>{rows_html}</tbody>
-    </table>
-  </div>
+  <div class="header"><h1>RAG Evaluation Report</h1><p>{scenario_name}</p><span class="badge">{mode.upper()}</span></div>
+  <p class="meta">Run ID: {run_id} | Candidate: granite-8b-agent | Judge: {JUDGE_MODEL} | {time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())} | Tests: {len(scenario_results)}</p>
+  <div style="padding: 0 30px 30px;"><table><thead><tr><th>#</th><th>Question</th><th>Generated Answer</th><th>Expected</th><th>Judge Score</th><th>Tools</th></tr></thead>
+  <tbody>{rows_html}</tbody></table></div>
 </div></body></html>"""
 
     def upload_to_s3(html_content, s3_key):
@@ -241,6 +260,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
     print("RAG Evaluation Harness (Pre-RAG + Post-RAG)")
     print(f"  Configs: {len(test_configs)}")
     print(f"  Run ID: {run_id}")
+    print(f"  Judge: {JUDGE_MODEL} (direct vLLM endpoint)")
     print("=" * 60)
 
     for config_dict in test_configs:
@@ -264,13 +284,25 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
             os.path.join(EVAL_CONFIGS_DIR, os.path.dirname(config_path)),
         )
 
+        judge_template = ""
+        for scorer_name, scorer_config in scoring_params.items():
+            if isinstance(scorer_config, dict):
+                pt = scorer_config.get("prompt_template", "")
+                if pt and isinstance(pt, str) and len(pt) > 50:
+                    judge_template = pt
+                    break
+        if not judge_template:
+            judge_template_path = os.path.join(EVAL_CONFIGS_DIR, "scoring-templates", "judge_prompt.txt")
+            if os.path.exists(judge_template_path):
+                with open(judge_template_path, "r") as f:
+                    judge_template = f.read()
+
         tests = config.get("tests", [])
         print(f"  Scenario: {scenario_name}")
         print(f"  Mode: {mode}")
         print(f"  Collection: {vector_db_id or 'none (pre-rag)'}")
         print(f"  Tests: {len(tests)}")
 
-        eval_rows = []
         scenario_results = []
 
         for idx, test in enumerate(tests, 1):
@@ -290,80 +322,33 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
                 print(f"    ERROR: {e}")
                 result = {"answer": f"ERROR: {e}", "tool_calls": []}
 
-            eval_row = {
-                "input_query": prompt,
-                "generated_answer": result["answer"],
-                "expected_answer": expected,
+            letter, feedback = call_judge(prompt, expected, result["answer"], judge_template)
+            print(f"    Judge: ({letter})")
+
+            tool_score = score_tool_choice({
                 "tool_calls": result["tool_calls"],
                 "expected_tools": expected_tools,
-            }
-            eval_rows.append(eval_row)
+            })
+
             scenario_results.append({
                 "prompt": prompt,
                 "answer": result["answer"],
                 "expected": expected,
                 "tool_calls": result["tool_calls"],
-                "scores": {},
+                "judge_letter": letter,
+                "judge_feedback": feedback,
+                "tool_score": tool_score,
             })
-
-        # -- Scoring --
-        llama_stack_scorers = {}
-        custom_results = {}
-
-        for scorer_name, scorer_config in scoring_params.items():
-            if scorer_name == "basic::tool_choice":
-                print(f"  Scoring: {scorer_name} (custom)")
-                custom_results[scorer_name] = [score_tool_choice(r) for r in eval_rows]
-            else:
-                llama_stack_scorers[scorer_name] = scorer_config
-
-        if llama_stack_scorers:
-            print(f"  Scoring via LlamaStack: {list(llama_stack_scorers.keys())}")
-            try:
-                score_resp = http.post(
-                    f"{llamastack_url}/v1/scoring/score",
-                    json={
-                        "input_rows": [
-                            {k: v for k, v in r.items() if k in ("input_query", "generated_answer", "expected_answer")}
-                            for r in eval_rows
-                        ],
-                        "scoring_functions": llama_stack_scorers,
-                    },
-                    timeout=300,
-                )
-                score_resp.raise_for_status()
-                scoring_data = score_resp.json()
-
-                for scorer_name, result_data in scoring_data.get("results", {}).items():
-                    rows = result_data.get("score_rows", [])
-                    for i, sr in enumerate(rows):
-                        if i < len(scenario_results):
-                            scenario_results[i]["scores"][scorer_name] = sr
-                    agg = result_data.get("aggregated_results")
-                    if agg:
-                        print(f"    {scorer_name} aggregate: {agg}")
-
-            except Exception as e:
-                print(f"  Scoring error: {e}")
-                for i in range(len(scenario_results)):
-                    for sn in llama_stack_scorers:
-                        scenario_results[i]["scores"][sn] = {"score": "ERROR", "error": str(e)[:100]}
-
-        for scorer_name, scores in custom_results.items():
-            for i, sd in enumerate(scores):
-                if i < len(scenario_results):
-                    scenario_results[i]["scores"][scorer_name] = sd
 
         # Print summary
         print(f"\n  Results for {scenario_name} ({mode}):")
         for i, sr in enumerate(scenario_results, 1):
-            sp = [f"{k}={v.get('score','?')}" for k, v in sr["scores"].items() if isinstance(v, dict)]
-            print(f"    [{i}] {', '.join(sp)} | tools: {sr['tool_calls']}")
+            print(f"    [{i}] Judge: ({sr['judge_letter']}) | Tools: {sr['tool_calls']}")
 
-        # Generate and upload HTML
+        # Generate and upload HTML — correct naming: {scenario}_{mode}_report.html
         html = generate_html_report(scenario_results, scenario_name, mode)
-        safe_name = (vector_db_id or "baseline").replace("/", "_")
-        s3_key = f"eval-results/{run_id}/{safe_name}_{mode}_results.html"
+        safe_name = os.path.basename(config_path).replace(".yaml", "").replace("_tests", "")
+        s3_key = f"eval-results/{run_id}/{safe_name}_report.html"
         upload_to_s3(html, s3_key)
 
     print("\n" + "=" * 60)

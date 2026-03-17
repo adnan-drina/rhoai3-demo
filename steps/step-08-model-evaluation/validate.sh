@@ -72,7 +72,6 @@ if [[ -z "$LSD_POD" ]]; then
 fi
 
 if [[ -n "$LSD_POD" ]]; then
-    # Check eval provider
     EVAL_PROVIDER=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
         curl -s http://localhost:8321/v1/providers 2>/dev/null | \
         python3 -c "import json,sys; print(len([p for p in json.load(sys.stdin)['data'] if p['api']=='eval']))" 2>/dev/null || echo "0")
@@ -84,7 +83,6 @@ if [[ -n "$LSD_POD" ]]; then
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 
-    # Check scoring API
     SCORE_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
         curl -s http://localhost:8321/v1/scoring/score \
         -H "Content-Type: application/json" \
@@ -98,7 +96,6 @@ if [[ -n "$LSD_POD" ]]; then
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 
-    # Check localfs dataset provider
     DS_PROVIDER=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
         curl -s http://localhost:8321/v1/providers 2>/dev/null | \
         python3 -c "import json,sys; print(len([p for p in json.load(sys.stdin)['data'] if p['provider_id']=='localfs']))" 2>/dev/null || echo "0")
@@ -127,6 +124,96 @@ if [[ -n "$LSD_POD" ]]; then
         echo -e "${YELLOW}[WARN]${NC} Only $VS_COUNT stores with data (need 2 for full eval)"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
+fi
+
+# --- Judge Model (mistral-3-bf16) ---
+log_step "Judge Model (mistral-3-bf16)"
+JUDGE_READY=$(oc get inferenceservice mistral-3-bf16 -n "$NAMESPACE" \
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+if [ "$JUDGE_READY" = "True" ]; then
+    echo -e "${GREEN}[PASS]${NC} mistral-3-bf16 InferenceService is Ready"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} mistral-3-bf16 not ready (required as judge model)"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+# --- LM-Eval Configuration ---
+log_step "LM-Eval Configuration"
+
+PERMIT_ONLINE=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitOnline}' 2>/dev/null || echo "")
+if [ "$PERMIT_ONLINE" = "allow" ]; then
+    echo -e "${GREEN}[PASS]${NC} DSC permitOnline=allow (LM-Eval can download datasets)"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} DSC permitOnline not set — LM-Eval online tasks will fail"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+PERMIT_CODE=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitCodeExecution}' 2>/dev/null || echo "")
+if [ "$PERMIT_CODE" = "allow" ]; then
+    echo -e "${GREEN}[PASS]${NC} DSC permitCodeExecution=allow"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} DSC permitCodeExecution not set — some LM-Eval tasks will fail"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+LMEVAL_TEMPLATES_EXIST=0
+for tpl in granite-8b-eval.yaml mistral-bf16-eval.yaml; do
+    if [ -f "$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/$tpl" ]; then
+        LMEVAL_TEMPLATES_EXIST=$((LMEVAL_TEMPLATES_EXIST + 1))
+    fi
+done
+if [ "$LMEVAL_TEMPLATES_EXIST" -ge 2 ]; then
+    echo -e "${GREEN}[PASS]${NC} LMEvalJob templates present ($LMEVAL_TEMPLATES_EXIST)"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} LMEvalJob templates missing (found $LMEVAL_TEMPLATES_EXIST, expected 2)"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+# --- Dashboard LM-Eval UI ---
+DISABLE_LMEVAL=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+    -o jsonpath='{.spec.dashboardConfig.disableLMEval}' 2>/dev/null || echo "true")
+if [ "$DISABLE_LMEVAL" = "false" ]; then
+    echo -e "${GREEN}[PASS]${NC} Dashboard Evaluations page enabled"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Dashboard Evaluations page disabled (disableLMEval=$DISABLE_LMEVAL)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+# --- Eval Reports in MinIO ---
+log_step "Eval Reports (MinIO)"
+if [[ -n "$LSD_POD" ]]; then
+    REPORT_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- python3 -c "
+import boto3, os
+try:
+    s3 = boto3.client('s3',
+        endpoint_url=os.environ.get('AWS_S3_ENDPOINT','http://minio.minio-storage.svc:9000'),
+        aws_access_key_id='rhoai-access-key',
+        aws_secret_access_key='rhoai-secret-key-12345',
+        verify=False)
+    resp = s3.list_objects_v2(Bucket='rhoai-storage', Prefix='eval-results/', MaxKeys=100)
+    reports = [o['Key'] for o in resp.get('Contents',[]) if o['Key'].endswith('_report.html')]
+    print(len(reports))
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+    if [ "$REPORT_COUNT" -ge 4 ]; then
+        echo -e "${GREEN}[PASS]${NC} $REPORT_COUNT eval reports found in MinIO"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    elif [ "$REPORT_COUNT" -gt 0 ]; then
+        echo -e "${YELLOW}[WARN]${NC} Only $REPORT_COUNT reports in MinIO (expected 4 per run)"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} No eval reports in MinIO — run evaluation first"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+else
+    echo -e "${YELLOW}[WARN]${NC} Cannot check MinIO reports (lsd-rag pod not available)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
 # --- Summary ---

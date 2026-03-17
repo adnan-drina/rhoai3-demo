@@ -91,19 +91,14 @@ except Exception as e:
         print(f"Pipeline upload failed: {e}")
         sys.exit(1)
 
-# Get the latest pipeline version (required by KFP v2)
-versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=10)
-if versions.pipeline_versions:
-    version_id = versions.pipeline_versions[0].pipeline_version_id
-    print(f"Pipeline version: {version_id}")
-else:
-    version = kfp_client.upload_pipeline_version(
-        pipeline_package_path=PIPELINE_YAML,
-        pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
-        pipeline_id=pipeline_id,
-    )
-    version_id = version.pipeline_version_id
-    print(f"Pipeline version created: {version_id}")
+# Upload a new version each run to ensure latest code is used
+version = kfp_client.upload_pipeline_version(
+    pipeline_package_path=PIPELINE_YAML,
+    pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
+    pipeline_id=pipeline_id,
+)
+version_id = version.pipeline_version_id
+print(f"Pipeline version: {version_id}")
 
 experiment_name = "rag-evaluation"
 try:

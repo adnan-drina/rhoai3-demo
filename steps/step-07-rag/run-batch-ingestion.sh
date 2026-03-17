@@ -14,18 +14,31 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-SCENARIO="${1:-}"
+EVAL_AFTER=false
+SCENARIO=""
+for arg in "$@"; do
+    case "$arg" in
+        --eval) EVAL_AFTER=true ;;
+        *) SCENARIO="$arg" ;;
+    esac
+done
 
 if [ -z "$SCENARIO" ]; then
     echo -e "${RED}Error: Scenario parameter required${NC}"
     echo ""
-    echo "Usage: $0 <scenario>"
+    echo "Usage: $0 <scenario> [--eval]"
     echo ""
     echo "Available scenarios:"
     echo "  acme       - ACME Corporate lithography docs (8 PDFs)"
     echo "  whoami     - Personal CV (1 PDF)"
     echo ""
-    echo "Run all: for s in acme whoami; do $0 \$s; done"
+    echo "Options:"
+    echo "  --eval     - Trigger RAG evaluation after ingestion completes"
+    echo ""
+    echo "Examples:"
+    echo "  $0 acme                     # Ingest only"
+    echo "  $0 acme --eval              # Ingest then evaluate"
+    echo "  for s in acme whoami; do $0 \$s --eval; done"
     exit 1
 fi
 
@@ -202,6 +215,24 @@ PYTHON_SCRIPT
 if [ $? -eq 0 ]; then
     echo ""
     echo -e "${GREEN}Pipeline launched for scenario: $SCENARIO${NC}"
+
+    if [ "$EVAL_AFTER" = true ]; then
+        echo ""
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${BLUE} Triggering RAG evaluation after ingestion...${NC}"
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        EVAL_SCRIPT="$SCRIPT_DIR/../step-08-model-evaluation/run-eval.sh"
+        if [ -x "$EVAL_SCRIPT" ] || [ -f "$EVAL_SCRIPT" ]; then
+            echo -e "${GREEN}  Waiting 30s for ingestion to settle before evaluating...${NC}"
+            sleep 30
+            chmod +x "$EVAL_SCRIPT"
+            "$EVAL_SCRIPT" "eval-after-${SCENARIO}-$(date +%s)" || \
+                echo -e "${RED}  Eval pipeline launch failed — run manually: ./steps/step-08-model-evaluation/run-eval.sh${NC}"
+        else
+            echo -e "${RED}  Eval script not found: $EVAL_SCRIPT${NC}"
+            echo -e "${RED}  Run manually: ./steps/step-08-model-evaluation/run-eval.sh${NC}"
+        fi
+    fi
 else
     echo ""
     echo -e "${RED}Pipeline launch failed for $SCENARIO${NC}"

@@ -35,5 +35,9 @@ spec:
       managementState: Removed
     trustyai:
       managementState: Managed
+      eval:
+        lmeval:
+          permitOnline: allow
+          permitCodeExecution: allow
     feastoperator:
       managementState: Managed
