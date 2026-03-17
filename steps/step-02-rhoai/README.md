@@ -50,9 +50,7 @@ RHOAI 3.3 Platform
 
 ## Design Decisions
 
-> **Kueue removed (RHOAI 3.3):** Kueue was removed because its SchedulingGate mechanism gates ALL pods in managed namespaces (including build pods, DSPA, chatbot), not just GPU workloads. The DSC sets `kueue.managementState: Removed` and the Dashboard sets `disableKueue: true`. GPU scheduling uses direct `nodeSelector` + `tolerations` via Hardware Profiles.
-
-> **All profiles use Node scheduling:** Hardware Profiles use `scheduling.type: Node` with `nodeSelector` and `tolerations` for direct GPU node placement. No Kueue queues are needed.
+> **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users. The RHOAI operator may reset this field during reconciliation, so `deploy.sh` patches it explicitly after DSC is Ready.
 
