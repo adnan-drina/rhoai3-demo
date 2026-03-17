@@ -221,16 +221,16 @@ if [ $? -eq 0 ]; then
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${BLUE} Triggering RAG evaluation after ingestion...${NC}"
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        EVAL_SCRIPT="$SCRIPT_DIR/../step-08-model-evaluation/run-eval.sh"
+        EVAL_SCRIPT="$SCRIPT_DIR/../step-08-model-evaluation/run-rag-eval.sh"
         if [ -x "$EVAL_SCRIPT" ] || [ -f "$EVAL_SCRIPT" ]; then
             echo -e "${GREEN}  Waiting 30s for ingestion to settle before evaluating...${NC}"
             sleep 30
             chmod +x "$EVAL_SCRIPT"
             "$EVAL_SCRIPT" "eval-after-${SCENARIO}-$(date +%s)" || \
-                echo -e "${RED}  Eval pipeline launch failed — run manually: ./steps/step-08-model-evaluation/run-eval.sh${NC}"
+                echo -e "${RED}  Eval pipeline launch failed — run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh${NC}"
         else
             echo -e "${RED}  Eval script not found: $EVAL_SCRIPT${NC}"
-            echo -e "${RED}  Run manually: ./steps/step-08-model-evaluation/run-eval.sh${NC}"
+            echo -e "${RED}  Run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh${NC}"
         fi
     fi
 else

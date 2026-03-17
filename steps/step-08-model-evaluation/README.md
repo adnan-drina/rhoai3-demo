@@ -16,7 +16,7 @@ Step-08 provides two evaluation capabilities:
 ```text
                     RAG Evaluation (KFP Pipeline)              Standard Benchmarks (LM-Eval)
                     ─────────────────────────────              ─────────────────────────────
-eval-configs/       run-eval.sh / run-eval-report.sh           run-lmeval.sh / Dashboard UI
+eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / Dashboard UI
 (*_tests.yaml)      ┌──────────────────────────────┐           ┌──────────────────────────┐
                     │ For each scenario:            │           │ LMEvalJob CR             │
   GitOps ──────────►│  1. Generate answers (granite)│──► MinIO │  - hellaswag             │
@@ -32,7 +32,7 @@ eval-configs/       run-eval.sh / run-eval-report.sh           run-lmeval.sh / D
 | Component | Purpose | Persona |
 |-----------|---------|---------|
 | **Test YAMLs** | Version-controlled Q&A pairs with expected answers | QA Engineer |
-| **`run-eval.sh`** | Launch KFP RAG eval pipeline | MLOps Engineer |
+| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | MLOps Engineer |
 | **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | AI Engineer |
 | **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | AI Engineer |
 | **Candidate model** | `granite-8b-agent` (8B) — generates answers | Platform |
@@ -78,7 +78,7 @@ Run the evaluation pipeline to compare pre-RAG and post-RAG answers.
 ./steps/step-08-model-evaluation/run-eval-report.sh
 
 # Option B: KFP pipeline (platform-native, tracked in DSPA)
-./steps/step-08-model-evaluation/run-eval.sh
+./steps/step-08-model-evaluation/run-rag-eval.sh
 ```
 
 **Expected result:** 4 HTML reports in MinIO — `acme_corporate_pre_rag_report.html`, `acme_corporate_post_rag_report.html`, `whoami_pre_rag_report.html`, `whoami_post_rag_report.html`.
@@ -146,7 +146,7 @@ _What to say: "LM-Eval is RHOAI's built-in benchmarking service. It runs industr
 ./steps/step-08-model-evaluation/deploy.sh
 
 # KFP pipeline (tracked in DSPA, 4 reports to MinIO)
-./steps/step-08-model-evaluation/run-eval.sh [run_id]
+./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]
 
 # Quick eval (runs inside lsd-rag pod, good for debugging)
 ./steps/step-08-model-evaluation/run-eval-report.sh
@@ -217,7 +217,7 @@ Or run the validation script:
 
 > **Judge model hardcoded in pipeline:** `mistral-3-bf16` is called directly via its vLLM endpoint (`http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions`). This bypasses LlamaStack's scoring API for more reliable A–E grading.
 
-> **Two eval scripts coexist:** `run-eval.sh` (KFP pipeline, platform-native, tracked) and `run-eval-report.sh` (quick pod-based, localhost access, simpler debugging). KFP is the primary path; the shell script is the fast demo path.
+> **Two eval scripts coexist:** `run-rag-eval.sh` (KFP pipeline, platform-native, tracked) and `run-eval-report.sh` (quick pod-based, localhost access, simpler debugging). KFP is the primary path; the shell script is the fast demo path.
 
 > **Tests in GitOps:** Test YAMLs deploy as ConfigMaps via ArgoCD. A PostSync Job copies them to the shared PVC for the KFP pipeline. `run-eval-report.sh` copies them directly to the lsd-rag pod.
 

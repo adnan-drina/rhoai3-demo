@@ -1,6 +1,6 @@
 #!/bin/bash
 # Trigger a RAG evaluation pipeline run.
-# Usage: ./run-eval.sh [run_id]
+# Usage: ./run-rag-eval.sh [run_id]
 
 set -euo pipefail
 

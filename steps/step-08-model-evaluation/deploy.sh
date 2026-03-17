@@ -118,11 +118,11 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Launching RAG eval pipeline (run_id=$RUN_ID)..."
 
-if [ -f "$SCRIPT_DIR/run-eval.sh" ]; then
-    chmod +x "$SCRIPT_DIR/run-eval.sh"
-    "$SCRIPT_DIR/run-eval.sh" "$RUN_ID" || log_error "Pipeline launch failed — try manually via RHOAI Dashboard"
+if [ -f "$SCRIPT_DIR/run-rag-eval.sh" ]; then
+    chmod +x "$SCRIPT_DIR/run-rag-eval.sh"
+    "$SCRIPT_DIR/run-rag-eval.sh" "$RUN_ID" || log_error "Pipeline launch failed — try manually via RHOAI Dashboard"
 else
-    log_info "run-eval.sh not found — upload pipeline manually via RHOAI Dashboard"
+    log_info "run-rag-eval.sh not found — upload pipeline manually via RHOAI Dashboard"
 fi
 echo ""
 
@@ -136,7 +136,7 @@ echo "║                                                                ║"
 echo "║  RAG Evaluation (automated):                                   ║"
 echo "║    Reports: s3://rhoai-storage/eval-results/$RUN_ID/      ║"
 echo "║    Monitor: oc get pods -n $NAMESPACE -l pipeline/runid   ║"
-echo "║    Rerun:   ./run-eval.sh                                      ║"
+echo "║    Rerun:   ./run-rag-eval.sh                                  ║"
 echo "║    Quick:   ./run-eval-report.sh                               ║"
 echo "║                                                                ║"
 echo "║  Standard Benchmarks (on-demand):                              ║"
