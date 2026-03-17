@@ -8,11 +8,19 @@
 #   - KServe modelcar sidecar mounts the OCI image as an emptyDir volume
 #   - Faster cold start vs S3 (no storage-initializer download)
 # Use Case: The Agentic Core - Tool-calling, Function-calling, and RAG.
-# "Small but Mighty" - optimized for multi-step reasoning and API orchestration.
 # Features:
 #   - Native tool-calling support (built-in chat template in tokenizer_config.json)
 #   - Auto tool choice via --tool-call-parser=granite for Agent Playground
-#   - 16k context window for long RAG contexts
+#   - 16K context window (required for MCP + RAG with 31 tool schemas)
+# Performance Tuning (benchmarked with GuideLLM):
+#   --kv-cache-dtype=fp8  → Doubles KV cache: 74K→155K tokens (L4 Ada native FP8)
+#   --gpu-memory-util=0.92 → Safe maximum (0.95 OOMs during CUDA graph capture)
+#   --max-model-len=16384  → REQUIRED for MCP demo (31 tool schemas + file_search = 12-16K input)
+#   ITL: 40ms p95 (hardware-bound on L4, ~25 tok/s per request)
+#   TTFT: <90ms p95 (well within 150ms SLO)
+# WARNING: Do NOT reduce max-model-len below 16384.
+#   The RAG chatbot with all MCP tools enabled (step-10) produces 12-16K input tokens.
+#   See docs/prompt-engineering-session.md "Critical Findings #1" for details.
 # Demo Role: Key model for Step 06 (Agent Playground)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images
 apiVersion: serving.kserve.io/v1beta1
@@ -59,14 +67,16 @@ spec:
       # Pulled via cluster pull secret from registry.redhat.io (no S3/MinIO needed)
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
       args:
-        # FP8 Dynamic (compressed-tensors format, auto-detected by vLLM)
-        # 8B model = ~8GB, leaving 16GB for KV cache (16k+ context)
         - --served-model-name=granite-8b-agent
-        # Note: --quantization removed - model uses compressed-tensors, auto-detected
+        # 16K context REQUIRED: MCP tool schemas (31 tools) + file_search chunks = 12-16K input
+        # Do NOT reduce to 8192 — breaks step-10 MCP demo (4 scenes fail)
         - --max-model-len=16384
-        - --gpu-memory-utilization=0.9
+        # Tuned: 0.92 is the safe maximum before CUDA graph capture OOM (0.95 fails)
+        - --gpu-memory-utilization=0.92
+        # FP8 KV cache: L4 (Ada Lovelace) has native FP8 support.
+        # Doubles KV cache capacity: 74K→155K tokens, max concurrency 4.6x→18.9x
+        - --kv-cache-dtype=fp8
         - --trust-remote-code
-        # Agentic features - REQUIRED for tool-calling in Playground/RAG
         - --enable-auto-tool-choice
         - --tool-call-parser=granite
         - --chat-template=/opt/app-root/template/tool_chat_template_granite.jinja
