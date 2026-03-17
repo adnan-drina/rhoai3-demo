@@ -76,7 +76,7 @@ spec:
                         labels:
                           app: guidellm
                           model: ${MODEL}
-                          kueue.x-k8s.io/queue-name: default
+
                       spec:
                         restartPolicy: Never
                         containers:

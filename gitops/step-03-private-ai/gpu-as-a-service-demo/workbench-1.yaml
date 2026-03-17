@@ -12,7 +12,7 @@ metadata:
     opendatahub.io/odh-managed: "true"
     opendatahub.io/user: ai-developer
     # Kueue queue assignment (matches Hardware Profile's localQueueName)
-    kueue.x-k8s.io/queue-name: "default"
+
   annotations:
     # RHOAI 3.3: Use inject-auth for kube-rbac-proxy sidecar
     notebooks.opendatahub.io/inject-auth: "true"
@@ -94,7 +94,7 @@ spec:
           workingDir: /opt/app-root/src
       enableServiceLinks: false
       # NOTE (RHOAI 3.3 / Kueue 1.2): Do NOT define tolerations here.
-      # Kueue injects tolerations from the ResourceFlavor's nodeTaints.
+      # GPU node tolerations
       # Defining them here causes "existing toleration can not be modified" error.
       # Target g6.4xlarge nodes (single L4 GPU)
       nodeSelector:

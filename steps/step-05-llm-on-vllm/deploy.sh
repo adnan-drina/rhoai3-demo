@@ -2,7 +2,7 @@
 # =============================================================================
 # Step 05: LLM Serving on vLLM
 # =============================================================================
-# Deploys 2 Red Hat Validated models with Kueue-managed GPU allocation:
+# Deploys 2 Red Hat Validated models with GPU scheduling:
 #   1. granite-8b-agent  (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails)
 #   2. mistral-3-bf16    (4-GPU, S3/MinIO, BF16 — Playground, Eval judge)
 #
@@ -24,7 +24,7 @@ check_oc_logged_in
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 05: LLM Serving on vLLM                                        ║"
-echo "║  2 Active Models with Kueue Quota Management                         ║"
+echo "║  2 Active Models on GPU Nodes                                         ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -51,11 +51,8 @@ if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
 fi
 log_success "minio-connection secret exists"
 
-if oc get clusterqueue rhoai-main-queue &>/dev/null; then
-    log_success "Kueue ClusterQueue 'rhoai-main-queue' exists"
-else
-    log_warn "Kueue ClusterQueue not found (required for quota management)"
-fi
+GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l | tr -d ' ')
+log_info "GPU nodes available: ${GPU_NODES}"
 
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l | tr -d ' ')
 log_info "Current GPU nodes: ${GPU_NODES}"
@@ -176,7 +173,6 @@ log_step "Deployment Complete"
 echo ""
 echo "  Watch model status:"
 echo "    oc get inferenceservice -n $NAMESPACE -w"
-echo "    oc get workload -n $NAMESPACE -w"
 echo ""
 echo "  GenAI Playground:"
 echo "    1. RHOAI Dashboard → GenAI Studio → Playground"

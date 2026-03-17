@@ -66,13 +66,6 @@ else
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
-# --- Kueue Workloads ---
-log_step "Kueue Workloads"
-WL_COUNT=$(oc get workload -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-check_warn "Kueue workloads exist" \
-    "echo $WL_COUNT" \
-    "1"
-
 # --- Summary ---
 echo ""
 validation_summary

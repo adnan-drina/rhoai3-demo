@@ -1,6 +1,4 @@
 # HardwareProfile - Small CPU-only (Global, Node-based)
-# CPU-only workloads bypass Kueue — no GPU quota management needed.
-# Ref: RHOAI 3.3 Hardware Profiles support Node and Queue scheduling types.
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:

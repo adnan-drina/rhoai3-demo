@@ -16,8 +16,6 @@ resources:
   # Must be created before DataScienceCluster
   - rhoai-operator/dsci.yaml
   - rhoai-operator/datasciencecluster.yaml
-  # Required for Dashboard to recognize standalone Kueue operator
-  - rhoai-operator/kueue-component.yaml
   - rhoai-operator/auth.yaml
   - rhoai-operator/dashboard-config.yaml
   - rhoai-operator/hardware-profile-cpu-small.yaml

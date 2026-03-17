@@ -24,7 +24,6 @@ metadata:
     app.kubernetes.io/managed-by: argocd
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
-    kueue.x-k8s.io/queue-name: default
     networking.kserve.io/visibility: exposed
   annotations:
     argocd.argoproj.io/sync-wave: "10"
@@ -39,9 +38,7 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
-    # Deployment Strategy: Recreate prevents Kueue deadlock
-    # With RollingUpdate, new pods are SchedulingGated by Kueue while old pods
-    # hold GPU quota, causing a deadlock. Recreate terminates old pods first.
+    # Recreate avoids GPU resource contention during updates
     deploymentStrategy:
       type: Recreate
     nodeSelector:

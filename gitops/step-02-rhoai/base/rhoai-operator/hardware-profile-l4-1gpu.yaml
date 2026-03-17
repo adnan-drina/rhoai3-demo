@@ -1,8 +1,5 @@
 # HardwareProfile - NVIDIA L4 1GPU (AWS g6.4xlarge)
-# Global profile with Queue-based scheduling for Kueue integration
 # Node specs: 16 vCPU, 64 GB RAM, 1x NVIDIA L4 GPU
-# Uses standardized 'default' LocalQueue name (RHOAI 3.3 best practice)
-# Each namespace defines its own 'default' LocalQueue → ClusterQueue mapping
 apiVersion: infrastructure.opendatahub.io/v1
 kind: HardwareProfile
 metadata:
@@ -18,12 +15,13 @@ metadata:
     app.kubernetes.io/part-of: hardwareprofile
     app.opendatahub.io/hardwareprofile: "true"
 spec:
-  # Queue-based scheduling - uses 'default' LocalQueue in each namespace
-  # nodeSelector and tolerations are injected via namespace's LocalQueue → ClusterQueue → ResourceFlavor
-  scheduling:
-    type: Queue
-    kueue:
-      localQueueName: default
+  nodeSelectors:
+    node.kubernetes.io/instance-type: g6.4xlarge
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
   identifiers:
     - identifier: cpu
       displayName: CPU

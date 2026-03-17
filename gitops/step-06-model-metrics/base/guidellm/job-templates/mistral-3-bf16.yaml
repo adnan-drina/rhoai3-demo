@@ -19,7 +19,7 @@ spec:
       labels:
         app: guidellm
         model: mistral-3-bf16
-        kueue.x-k8s.io/queue-name: default
+
     spec:
       restartPolicy: Never
       containers:

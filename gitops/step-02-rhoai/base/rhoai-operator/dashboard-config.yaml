@@ -17,9 +17,8 @@ spec:
     genAiStudio: true
     modelAsService: true
     disableLMEval: false
-    disableDistributedWorkloads: false
-    # Required for dashboard to recognize external Kueue operator
-    disableKueue: false
+    disableDistributedWorkloads: true
+    disableKueue: true
   hardwareProfileOrder:
     - cpu-small
     - default-profile

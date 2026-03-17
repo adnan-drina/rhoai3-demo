@@ -6,9 +6,7 @@
 # - MinIO S3 storage provider
 # - Authentication (HTPasswd, OAuth, Groups)
 # - RHOAI Data Connection for MinIO
-# - Kueue resources (ResourceFlavors, ClusterQueue, LocalQueue)
 # - Project RBAC (ai-admin, ai-developer)
-# - Optional: Demo workbenches for queuing demonstration
 # =============================================================================
 set -euo pipefail
 
@@ -42,10 +40,9 @@ if [[ "$DSC_PHASE" != "Ready" ]]; then
     exit 1
 fi
 
-# Check Kueue operator is installed
-if ! oc get pods -n openshift-kueue-operator --no-headers 2>/dev/null | grep -q Running; then
-    log_warn "Kueue operator pods not running in openshift-kueue-operator namespace"
-    log_info "Make sure Step 01 deployed the Kueue operator"
+# Check GPU nodes
+if ! oc get nodes -l nvidia.com/gpu.product --no-headers 2>/dev/null | grep -q Ready; then
+    log_warn "No GPU nodes found — models will be pending until GPU MachineSets scale up"
 fi
 
 # Check GPU nodes exist
@@ -173,23 +170,6 @@ until oc get secret minio-connection -n private-ai &>/dev/null; do
 done
 log_success "Data Connection 'minio-connection' created"
 
-# Wait for Kueue resources (if CRDs available)
-if oc get crd clusterqueues.kueue.x-k8s.io &>/dev/null; then
-    log_info "Waiting for Kueue resources..."
-    
-    until oc get clusterqueue rhoai-main-queue &>/dev/null; do
-        sleep 5
-    done
-    log_success "ClusterQueue 'rhoai-main-queue' created"
-    
-    until oc get localqueue default -n private-ai &>/dev/null; do
-        sleep 5
-    done
-    log_success "LocalQueue 'default' created"
-else
-    log_warn "Kueue CRDs not available - skipping queue verification"
-fi
-
 # =============================================================================
 # Summary
 # =============================================================================
@@ -219,12 +199,6 @@ echo "  • Credentials:  minio-admin / minio-secret-123"
 echo "  • Buckets:      rhoai-storage, models, pipelines"
 echo "  • Data Conn:    minio-connection (appears in Dashboard)"
 echo ""
-echo "Kueue Resources:"
-echo "  • ResourceFlavor: nvidia-l4-1gpu (g6.4xlarge)"
-echo "  • ResourceFlavor: nvidia-l4-4gpu (g6.12xlarge)"
-echo "  • ClusterQueue:   rhoai-main-queue"
-echo "  • LocalQueue:     default (required for Hardware Profiles)"
-echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 log_info "Validation Commands:"
@@ -234,9 +208,6 @@ echo "  oc get pods -n minio-storage"
 echo ""
 echo "  # Verify RHOAI Data Connection"
 echo "  oc get secret -n private-ai -l opendatahub.io/connection-type=s3"
-echo ""
-echo "  # Verify Kueue Status"
-echo "  oc get localqueue default -n private-ai"
 echo ""
 log_info "Test login:"
 echo "  oc login -u ai-admin -p redhat123"
@@ -254,7 +225,6 @@ echo "  oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/"
 echo ""
 log_info "Watch the queuing behavior:"
 echo "  oc get pods -n private-ai -w"
-echo "  oc get workloads -n private-ai"
 echo ""
 log_info "Access workbenches via Gateway API:"
 echo "  https://${GATEWAY_HOST}/notebook/private-ai/demo-workbench-1/"

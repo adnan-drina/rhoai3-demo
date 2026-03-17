@@ -14,7 +14,7 @@ echo ""
 # --- Argo CD Application ---
 log_step "Argo CD Application"
 # Step-03 manages resources that may show OutOfSync due to operator-managed
-# secrets and manually-applied Kueue resources. Check health primarily.
+# secrets and manually-applied resources. Check health primarily.
 SYNC=$(oc get application step-03-private-ai -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
 HEALTH=$(oc get application step-03-private-ai -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
 if [[ "$SYNC" == "Synced" ]]; then
@@ -71,32 +71,6 @@ check "Group rhoai-admins exists" \
 check "Group rhoai-users exists" \
     "oc get group rhoai-users -o jsonpath='{.metadata.name}'" \
     "rhoai-users"
-
-# --- Kueue ---
-log_step "Kueue Configuration"
-check "ClusterQueue rhoai-main-queue exists" \
-    "oc get clusterqueue rhoai-main-queue -o jsonpath='{.metadata.name}'" \
-    "rhoai-main-queue"
-
-check "ClusterQueue rhoai-llmd-queue exists" \
-    "oc get clusterqueue rhoai-llmd-queue -o jsonpath='{.metadata.name}'" \
-    "rhoai-llmd-queue"
-
-check "LocalQueue default exists in private-ai" \
-    "oc get localqueue default -n private-ai -o jsonpath='{.spec.clusterQueue}'" \
-    "rhoai-main-queue"
-
-check "LocalQueue llmd exists in private-ai" \
-    "oc get localqueue llmd -n private-ai -o jsonpath='{.spec.clusterQueue}'" \
-    "rhoai-llmd-queue"
-
-check "ResourceFlavor nvidia-l4-1gpu exists" \
-    "oc get resourceflavor nvidia-l4-1gpu -o jsonpath='{.metadata.name}'" \
-    "nvidia-l4-1gpu"
-
-check "ResourceFlavor nvidia-l4-4gpu exists" \
-    "oc get resourceflavor nvidia-l4-4gpu -o jsonpath='{.metadata.name}'" \
-    "nvidia-l4-4gpu"
 
 # --- RBAC ---
 log_step "RBAC"

@@ -37,11 +37,4 @@ resources:
   - rhcl-operator/namespace.yaml
   - rhcl-operator/operatorgroup.yaml
   - rhcl-operator/subscription.yaml
-  - cert-manager-operator/namespace.yaml
-  - cert-manager-operator/operatorgroup.yaml
-  - cert-manager-operator/subscription.yaml
-  - kueue-operator/namespace.yaml
-  - kueue-operator/operatorgroup.yaml
-  - kueue-operator/subscription.yaml
-  - kueue-operator/kueue-instance.yaml
 

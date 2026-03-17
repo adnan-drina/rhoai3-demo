@@ -1,50 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 03: Private AI - GPU as a Service (GPUaaS)
-# Implements dynamic GPU allocation with Kueue integration,
-# S3 storage via MinIO, and proper user authentication/RBAC
-# Architecture:
-#   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-#   │    Users    │───▶│    Auth     │───▶│ LocalQueue  │───▶│  GPU Nodes  │
-#   │             │    │   + RBAC    │    │ ClusterQueue│    │             │
-#   └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-#                             │
-#                             ▼
-#                      ┌─────────────┐
-#                      │   MinIO     │
-#                      │  (S3 Data)  │
-#                      └─────────────┘
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/
+# Step 03: Private AI — GPU as a Service
+# S3 storage via MinIO, user authentication/RBAC, and GPU scheduling
+# via direct nodeSelector/tolerations on InferenceService manifests.
 
 resources:
   - minio/
   - auth/htpasswd-secret.yaml
   - auth/oauth.yaml
-  # NOTE: OpenShift Groups (auth/groups.yaml) are created via deploy.sh
-  # because ArgoCD cannot parse user.openshift.io/v1 Group schema
   - namespace.yaml
   - data-connection.yaml
-  # KServe storage-config secret for model downloads (required by storage-initializer)
   - storage-config-secret.yaml
-  - resource-flavors.yaml
-  - cluster-queue.yaml
-  # Reserved llm-d quota pool (2 GPUs reserved)
-  - cluster-queue-llmd.yaml
-  # Named 'default' for HardwareProfile compat
-  - local-queue.yaml
-  # Dedicated llm-d queue (maps to rhoai-llmd-queue)
-  - local-queue-llmd.yaml
   - rbac/project-admin.yaml
   - rbac/project-editor.yaml
-  # Grant rhoai-admins ClusterRole for Distributed Workloads dashboard
-  - rbac/kueue-admin-access.yaml
-
-# Hardware Profiles are GLOBAL (in redhat-ods-applications).
-# They reference localQueueName: "default" which must exist in each project.
-# The LocalQueue named "default" is created above in local-queue.yaml.
-# See step-02-rhoai for Hardware Profile definitions.
-# MinIO provides S3-compatible storage that appears in the RHOAI Dashboard
-# as a selectable "Data Connection" for workbenches and model serving.
-# Idle Culling is configured in step-02-rhoai OdhDashboardConfig to
-# automatically stop inactive workbenches and release GPUs.

@@ -1,24 +1,12 @@
-# GPU-as-a-Service enabled project with Kueue integration
-# Configured for Single-model serving (KServe/vLLM)
 apiVersion: v1
 kind: Namespace
 metadata:
   name: private-ai
   labels:
     opendatahub.io/dashboard: "true"
-    # IMPORTANT: Set to "false" to enable Single-model (KServe) platform
-    # "true" would enable Multi-model (ModelMesh) platform
     modelmesh-enabled: "false"
-    # Kueue visibility (does NOT gate pods; only enables queue-visibility metrics)
-    kueue.x-k8s.io/queue-visibility: "ClusterQueue"
-    # NOTE: kueue.openshift.io/managed is intentionally NOT set.
-    # Tested 3x: the Kueue mutating webhook gates ALL pods in managed
-    # namespaces regardless of labelPolicy/manageJobsWithoutQueueName.
-    # Build pods, DSPA pipeline pods, and other non-GPU workloads get
-    # permanently stuck. Dashboard visibility requires a dedicated
-    # GPU-only namespace (separate from private-ai).
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Private AI - GPU as a Service"
-    openshift.io/description: "GPU-managed project using Kueue for dynamic GPU allocation and KServe model serving"
+    openshift.io/description: "GPU-managed project with KServe model serving and direct GPU scheduling"
 
