@@ -59,7 +59,7 @@ Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`.
 - **Time To First Token** — responsiveness metric
 - **Scheduler State** — running vs waiting requests
 
-*"At 10 concurrent users, Granite's P95 latency stays under 100ms per token and throughput holds at 80-120 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels."*
+*"At 10 concurrent users, Granite's P95 inter-token latency stays at ~41ms and throughput holds at 130-170 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels."*
 
 ### Scene 3: GPU Hardware Dashboard (DCGM)
 
@@ -83,6 +83,41 @@ After both benchmarks complete, compare the results (tuned configuration):
 
 > **Known Limitation (NVIDIA L4):** ITL is limited by memory bandwidth (~300 GB/s). An 8B FP8 model reads ~8 GB of weights per decode step, giving a theoretical minimum of ~27ms. Observed 40ms includes compute, KV cache attention, and CUDA overhead. This is near the hardware floor — not a tuning issue. See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
+## What to Verify After Deployment
+
+```bash
+# Grafana health
+oc get grafana -n private-ai
+# Expected: 1 instance
+
+oc get grafanadashboard -n private-ai
+# Expected: 2 dashboards (vllm-latency-throughput-cache, dcgm-gpu-metrics)
+
+GRAFANA_HOST=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
+curl -sk "https://$GRAFANA_HOST/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin))"
+# Expected: {"commit":"...","database":"ok","version":"..."}
+
+# GuideLLM CronJob
+oc get cronjob guidellm-daily -n private-ai
+# Expected: SCHEDULE "0 2 * * *", not suspended
+
+# Tuned vLLM config (KV cache from pod startup logs)
+oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
+  | grep 'KV cache size'
+# Expected: 155,184 tokens (kv-cache-dtype=fp8, gpu-memory-utilization=0.92)
+
+oc logs deploy/mistral-3-bf16-predictor -n private-ai -c kserve-container \
+  | grep 'KV cache size'
+# Expected: 426,160 tokens (kv-cache-dtype=fp8, gpu-memory-utilization=0.90)
+```
+
+Or run the validation script:
+
+```bash
+./steps/step-06-model-metrics/validate.sh
+# Expected: 5 passed, 0 failed
+```
+
 ## Design Decisions
 
 > **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.
@@ -91,12 +126,16 @@ After both benchmarks complete, compare the results (tuned configuration):
 
 > **Two focused dashboards:** vLLM Latency/Throughput/Cache (operational) and DCGM GPU Metrics (hardware). The vLLM dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) covers E2E latency, TTFT, TPOT, scheduler, and KV cache in one view.
 
+> **CronJob uses 1,3,5,8,10 for both models:** The daily CronJob benchmarks all active models with 5 rate levels. Mistral's 15 RPS level is available only through the on-demand job template. This keeps daily runs shorter while still providing meaningful saturation data.
+
+> **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook parses GuideLLM JSON output from the CronJob results PVC.
+
 ## References
 
 - [RHOAI 3.3 — Managing and Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index)
 - [OpenShift User Workload Monitoring (4.20)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/enabling-monitoring-for-user-defined-projects)
 - [GuideLLM — Evaluate LLM Deployments (Red Hat Developers)](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference)
-- [vLLM Production Metrics](https://docs.vllm.ai/en/latest/serving/metrics.html)
+- [vLLM Production Metrics](https://docs.vllm.ai/en/latest/usage/metrics/)
 - [Grafana Operator](https://github.com/grafana/grafana-operator)
 
 ## Operations
