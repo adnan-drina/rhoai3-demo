@@ -3,13 +3,13 @@ KFP v2 RAG Evaluation Pipeline
 
 2-step pipeline:
   1. scan_tests      -- discover *_tests.yaml in /eval-configs
-  2. run_and_score   -- execute RAG agent, score, generate HTML, upload to S3
+  2. run_and_score   -- execute RAG agent, score via mistral-3-bf16 (direct vLLM judge),
+                        generate HTML reports, upload to MinIO
 
-Reuses lsd-rag (step-07) for both generation and scoring, and
-dspa-rag (step-07) for pipeline execution.
-No new infrastructure is deployed.
+Reuses lsd-rag (step-07) for generation and dspa-rag (step-07) for pipeline execution.
+Judge model (mistral-3-bf16) is called directly via its vLLM endpoint.
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate
 """
 
 import kfp
@@ -22,7 +22,7 @@ from components.run_and_score_tests import run_and_score_tests_component
 
 @dsl.pipeline(
     name="rag-eval",
-    description="RAG quality evaluation: discover tests, execute RAG agent, score via Llama Stack, publish HTML reports to S3",
+    description="RAG quality evaluation: discover tests, execute RAG agent, score via mistral-3-bf16, publish HTML reports to MinIO",
     pipeline_root="s3://pipelines/",
 )
 def rag_eval_pipeline(
