@@ -74,7 +74,7 @@ spec:
         # Tuned: 0.92 is the safe maximum before CUDA graph capture OOM (0.95 fails)
         - --gpu-memory-utilization=0.92
         # FP8 KV cache: L4 (Ada Lovelace) has native FP8 support.
-        # Doubles KV cache capacity: 74K→155K tokens, max concurrency 4.6x→18.9x
+        # Doubles KV cache capacity: 74K→155K tokens, max concurrency 4.6x→9.5x at 16K context
         - --kv-cache-dtype=fp8
         - --trust-remote-code
         - --enable-auto-tool-choice

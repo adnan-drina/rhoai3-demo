@@ -5,10 +5,13 @@
 #   - Weights: ~48GB (24B × 2 bytes)
 #   - System overhead: ~8GB (2GB per GPU × 4)
 #   - KV Cache headroom: ~40GB (doubled with FP8 → ~80GB effective)
-# Memory Optimization (Red Hat AI Field Engineering):
-#   --kv-cache-dtype=fp8     → Doubles KV cache capacity for high concurrency
-#   --enable-chunked-prefill → Prevents prefill spikes from blocking users
-#   --max-model-len=32768    → Full 32K context (native Mistral v3 support)
+# Memory Optimization (Red Hat AI Field Engineering + GuideLLM tuning):
+#   --kv-cache-dtype=fp8      → Doubles KV cache capacity for high concurrency
+#   --enable-chunked-prefill  → Prevents prefill spikes from blocking users
+#   --gpu-memory-util=0.90    → Tuned up from 0.85 (+16% KV cache: 368K→426K tokens)
+#   --max-model-len=16384     → Context reduced from 32K for vLLM v0.13.0 warmup memory
+#   ITL: 53ms p95 (hardware-bound on 4x L4 TP=4, ~19 tok/s per request)
+#   TTFT: <128ms p95 (within 300ms enterprise chat / 500ms eval judge SLOs)
 # Demo Role: This model consumes 4/5 of the cluster's GPU quota.
 # When combined with mistral-3-int4 (1 GPU), the cluster is at 100% capacity.
 # NOTE: Uses S3 storage because OCI ModelCar (48GB) exceeds CRI-O overlay limits.
@@ -65,7 +68,8 @@ spec:
         - --kv-cache-dtype=fp8
         # Chunked prefill prevents long prompts from blocking other users
         - --enable-chunked-prefill
-        - --gpu-memory-utilization=0.85
+        # Tuned: 0.90 reclaims 5% VRAM per GPU for KV cache (368K→426K tokens)
+        - --gpu-memory-utilization=0.90
         - --max-num-seqs=128
         - --trust-remote-code
         - --tool-call-parser=mistral

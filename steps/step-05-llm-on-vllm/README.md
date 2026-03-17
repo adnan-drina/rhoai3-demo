@@ -65,7 +65,20 @@ oc get inferenceservice -n private-ai
 
 > **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. Granite 8B FP8 (~8 GB) uses this path. Models over 20 GB (Mistral BF16 at ~48 GB) use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
-> **vLLM memory tuning:** `--max-model-len=16384` and `--gpu-memory-utilization=0.85` prevent CUDA OOM on L4 GPUs with vLLM v0.13.0.
+> **vLLM performance tuning (benchmarked with GuideLLM):**
+>
+> | Parameter | Granite (1x L4) | Mistral (4x L4 TP=4) | Rationale |
+> |-----------|----------------|----------------------|-----------|
+> | `--gpu-memory-utilization` | 0.92 | 0.90 | Safe maximum; 0.95 OOMs during CUDA graph capture on L4 |
+> | `--kv-cache-dtype` | fp8 | fp8 | L4 Ada Lovelace native FP8; doubles KV cache capacity |
+> | `--max-model-len` | 16384 | 16384 | Non-negotiable for both: MCP chatbot needs 12-16K input; eval judge needs long context |
+> | `--enable-chunked-prefill` | auto (V1) | explicit | V1 engine enables by default; prevents prefill blocking |
+>
+> **KV cache capacity after tuning:**
+> - Granite: 155K tokens (was 74K), max concurrency 9.5x at 16K context (+108% over baseline)
+> - Mistral: 426K tokens (was 368K), max concurrency 26.0x at 16K context
+>
+> **ITL is hardware-bound on L4 GPUs:** Granite ~40ms, Mistral ~53ms. These are near the L4 memory bandwidth floor (~300 GB/s). Reducing ITL further requires higher-bandwidth GPUs (e.g., A100, H100). See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
 

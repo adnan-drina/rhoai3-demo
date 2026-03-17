@@ -69,16 +69,19 @@ Switch to the DCGM dashboard.
 
 ### Scene 4: Understanding Capacity Limits
 
-After both benchmarks complete, compare the results:
+After both benchmarks complete, compare the results (tuned configuration):
 
 | Metric | granite-8b-agent (1 GPU) | mistral-3-bf16 (4 GPU) |
 |--------|--------------------------|------------------------|
-| **Sweet spot** | 3-5 concurrent users | 10-15 concurrent users |
-| **Breaking point** | 8-10 users (TTFT > 2s) | 20 users (TTFT > 2s) |
-| **Max throughput** | ~300 tok/s | ~700 tok/s |
-| **TTFT at sweet spot** | 874ms (p95) | 594ms (p95) |
+| **KV cache capacity** | 155K tokens (9.5x at 16K) | 426K tokens (26.0x at 16K) |
+| **TTFT p95** | <90ms | <128ms |
+| **ITL p95** | ~40ms (hardware-bound) | ~53ms (hardware-bound) |
+| **Output throughput** | ~130-170 tok/s | ~120-135 tok/s |
+| **Sweet spot** | 5-8 concurrent users | 10-15 concurrent users |
 
-*"Granite handles 5 concurrent users comfortably on a single L4 GPU. Mistral BF16 scales to 15 users across four GPUs. Beyond these sweet spots, latency degrades — that's when you either scale up or optimize with quantization."*
+*"After tuning, Granite's KV cache doubled from 74K to 155K tokens — that's 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs at 40ms and 53ms respectively — that's the memory bandwidth floor. Moving to A100 or H100 GPUs would reduce ITL significantly."*
+
+> **Known Limitation (NVIDIA L4):** ITL is limited by memory bandwidth (~300 GB/s). An 8B FP8 model reads ~8 GB of weights per decode step, giving a theoretical minimum of ~27ms. Observed 40ms includes compute, KV cache attention, and CUDA overhead. This is near the hardware floor — not a tuning issue. See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
 ## Design Decisions
 
