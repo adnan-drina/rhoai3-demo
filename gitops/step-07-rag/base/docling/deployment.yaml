@@ -11,7 +11,7 @@ metadata:
     app: docling
     app.kubernetes.io/name: docling
     app.kubernetes.io/component: document-processing
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
     app.kubernetes.io/managed-by: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -27,7 +27,7 @@ spec:
         app: docling
         app.kubernetes.io/name: docling
         app.kubernetes.io/component: document-processing
-        app.kubernetes.io/part-of: rag-pipeline
+        app.kubernetes.io/part-of: rag
     spec:
       containers:
         - name: docling

@@ -78,6 +78,7 @@ done
 
 if [ $ELAPSED -ge $TIMEOUT ]; then
     log_error "Timeout waiting for ArgoCD sync."
+    exit 1
 fi
 echo ""
 
@@ -85,14 +86,18 @@ echo ""
 # Step 3: Wait for detectors
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for HAP detector..."
-oc wait inferenceservice/hap-detector -n "$NAMESPACE" \
-    --for=condition=Ready --timeout=300s 2>/dev/null || \
+if ! oc wait inferenceservice/hap-detector -n "$NAMESPACE" \
+    --for=condition=Ready --timeout=300s 2>/dev/null; then
     log_error "HAP detector did not become ready"
+    exit 1
+fi
 
 log_step "Waiting for prompt injection detector..."
-oc wait inferenceservice/prompt-injection-detector -n "$NAMESPACE" \
-    --for=condition=Ready --timeout=300s 2>/dev/null || \
+if ! oc wait inferenceservice/prompt-injection-detector -n "$NAMESPACE" \
+    --for=condition=Ready --timeout=300s 2>/dev/null; then
     log_error "Prompt injection detector did not become ready"
+    exit 1
+fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -115,6 +120,7 @@ if [ "$ORCH_READY" = "true" ]; then
     log_success "Guardrails Orchestrator is running"
 else
     log_error "Guardrails Orchestrator did not reach Running state"
+    exit 1
 fi
 echo ""
 

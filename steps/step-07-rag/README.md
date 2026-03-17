@@ -8,7 +8,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 
 ## What It Does
 
-```
+```text
  DSPA (Kubeflow Pipelines v2)
    │  Docling Ingestion Pipeline
    │  1. Fetch PDFs from MinIO
@@ -101,6 +101,37 @@ To trigger a new run from the CLI:
 ```
 
 *What to say: "This is the repeatable part. Every time your team adds new documents to MinIO, this pipeline runs — Docling converts the PDFs to Markdown, LlamaStack chunks and embeds them, and pgvector stores the vectors. It's a standard Kubeflow Pipeline, so it shows up in the RHOAI Dashboard alongside your training pipelines."*
+
+## What to Verify After Deployment
+
+```bash
+# PostgreSQL + pgvector
+oc get deploy llamastack-postgres -n private-ai -o jsonpath='{.status.readyReplicas}'
+# Expected: 1
+
+# LlamaStack RAG
+oc get llamastackdistribution lsd-rag -n private-ai -o jsonpath='{.status.phase}'
+# Expected: Ready
+
+# DSPA
+oc get dspa dspa-rag -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+# Expected: True
+
+# Vector stores populated
+oc exec deploy/lsd-rag -n private-ai -- \
+  curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
+# Expected: acme_corporate (8 files) and whoami (1 file)
+
+# Chatbot accessible
+oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
+# Expected: HTTPS route URL
+```
+
+Or run the validation script:
+
+```bash
+./steps/step-07-rag/validate.sh
+```
 
 ## Design Decisions
 

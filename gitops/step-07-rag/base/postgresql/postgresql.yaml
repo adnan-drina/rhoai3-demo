@@ -6,7 +6,7 @@ metadata:
   namespace: private-ai
   labels:
     app: llamastack-postgres
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 ---
@@ -22,7 +22,7 @@ metadata:
   namespace: private-ai
   labels:
     app: llamastack-postgres
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
@@ -40,7 +40,7 @@ metadata:
   namespace: private-ai
   labels:
     app: llamastack-postgres
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
     app.openshift.io/runtime: postgresql
   annotations:
     argocd.argoproj.io/sync-wave: "2"
@@ -126,7 +126,7 @@ metadata:
   namespace: private-ai
   labels:
     app: llamastack-postgres
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:

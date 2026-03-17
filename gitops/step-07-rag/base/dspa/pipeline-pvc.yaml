@@ -7,7 +7,7 @@ metadata:
   name: rag-pipeline-workspace
   namespace: private-ai
   labels:
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
     app.kubernetes.io/component: pipeline-workspace
   annotations:
     argocd.argoproj.io/sync-wave: "3"

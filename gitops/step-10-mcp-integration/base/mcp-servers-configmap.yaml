@@ -10,7 +10,7 @@ metadata:
   name: gen-ai-aa-mcp-servers
   namespace: redhat-ods-applications
   labels:
-    app.kubernetes.io/part-of: private-ai-platform
+    app.kubernetes.io/part-of: mcp-integration
   annotations:
     argocd.argoproj.io/sync-wave: "3"
   # deploy.sh overwrites these with cluster-specific route URLs at deploy time.

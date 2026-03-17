@@ -8,7 +8,7 @@ ACME Corp is adopting open-source LLMs on private infrastructure. Before any mod
 
 ## What It Does
 
-```
+```text
 OpenShift 4.20 Cluster
 ├── NFD Operator          → Hardware labels for GPU discovery
 ├── NVIDIA GPU Operator   → Driver lifecycle (DTK, DCGM exporter)
@@ -50,6 +50,39 @@ OpenShift 4.20 Cluster
 > **RHCL stack for Inference Gateway:** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway in step-05.
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
+
+## Troubleshooting
+
+### GPU MachineSet stuck in Provisioning
+
+**Symptom:** MachineSet shows desired replicas but machines remain in `Provisioning` state.
+
+**Root Cause:** The hardcoded availability zone has no subnet in the sandbox cluster. AWS sandbox accounts may only have one AZ available.
+
+**Solution:** `deploy.sh` auto-detects the AZ from existing worker MachineSets. If deploying manually, check available AZs:
+```bash
+oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.placement.availabilityZone}'
+```
+
+### GPU Operator InstallPlan stuck on Manual approval
+
+**Symptom:** GPU Operator CSV not progressing, `oc get installplan` shows `RequiresApproval`.
+
+**Solution:**
+```bash
+oc get installplan -n nvidia-gpu-operator -o name | xargs -I {} oc patch {} -n nvidia-gpu-operator --type merge -p '{"spec":{"approved":true}}'
+```
+
+### NVIDIA driver pods CrashLoopBackOff after cluster restart
+
+**Symptom:** `nvidia-driver-daemonset` pods crash after a cluster stop/start cycle.
+
+**Root Cause:** Driver container image cache may be stale after node reprovisioning.
+
+**Solution:** Delete the driver pods to force re-pull:
+```bash
+oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
+```
 
 ## References
 

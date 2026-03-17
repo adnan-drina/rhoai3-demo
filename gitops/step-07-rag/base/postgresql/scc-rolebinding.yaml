@@ -5,7 +5,7 @@ metadata:
   namespace: private-ai
   labels:
     app: llamastack-postgres
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 roleRef:

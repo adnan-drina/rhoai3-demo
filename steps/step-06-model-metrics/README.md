@@ -8,7 +8,7 @@ Models are deployed. But how do they perform? Step-06 establishes observability:
 
 ## What It Does
 
-```
+```text
 GuideLLM Benchmark Jobs
     │                          ┌─────────────────────────────────┐
     ├───► granite-8b-agent     │  Grafana Dashboards             │
@@ -144,6 +144,50 @@ Or run the validation script:
 > **CronJob uses 1,3,5,8,10 for both models:** The daily CronJob benchmarks all active models with 5 rate levels. Mistral's 15 RPS level is available only through the on-demand job template. This keeps daily runs shorter while still providing meaningful saturation data.
 
 > **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook parses GuideLLM JSON output from the CronJob results PVC.
+
+## Troubleshooting
+
+### Grafana dashboard shows "No data"
+
+**Symptom:** Grafana panels show "No data" even though models are running.
+
+**Root Cause:** ServiceMonitors may not be targeting the correct namespace, or Prometheus User Workload Monitoring is not enabled.
+
+**Solution:**
+```bash
+# Verify User Workload Monitoring
+oc get pods -n openshift-user-workload-monitoring
+# Expected: prometheus-user-workload pods Running
+
+# Verify vLLM metrics are scraped
+oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
+  curl -s http://localhost:9090/api/v1/targets | python3 -c \
+  "import json,sys; [print(t['labels']['job']) for t in json.load(sys.stdin)['data']['activeTargets'] if 'vllm' in t['labels'].get('job','')]"
+```
+
+### GuideLLM job fails with "connection refused"
+
+**Symptom:** GuideLLM benchmark job exits with connection error to the model endpoint.
+
+**Root Cause:** InferenceService is not Ready or the internal service DNS is wrong.
+
+**Solution:**
+```bash
+oc get inferenceservice -n private-ai
+# Both models must show READY=True
+```
+
+### Grafana Operator OperatorGroup health empty
+
+**Symptom:** ArgoCD shows Grafana OperatorGroup as "Unknown" health.
+
+**Root Cause:** Multiple OperatorGroups in the namespace (e.g., from another operator). OLM only allows one OperatorGroup per namespace.
+
+**Solution:**
+```bash
+oc get operatorgroup -n private-ai
+# Should have exactly 1 OperatorGroup
+```
 
 ## References
 

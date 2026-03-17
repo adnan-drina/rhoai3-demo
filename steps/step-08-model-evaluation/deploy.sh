@@ -86,7 +86,7 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
 done
 
 if [ "$SYNC_STATUS" != "Synced" ]; then
-    log_info "ArgoCD not fully synced yet — continuing (eval configs may sync in background)"
+    log_warn "ArgoCD not fully synced ($SYNC_STATUS) — continuing, but eval configs may not be ready"
 fi
 echo ""
 

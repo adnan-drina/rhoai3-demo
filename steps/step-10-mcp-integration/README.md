@@ -13,7 +13,7 @@ This completes the **four pillars of Red Hat AI**:
 
 ## What It Does
 
-```
+```text
 GenAI Playground / Chatbot
     |
     |--- gen-ai-aa-mcp-servers ConfigMap -> lists 3 MCP servers

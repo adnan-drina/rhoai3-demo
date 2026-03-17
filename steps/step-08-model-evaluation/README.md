@@ -13,7 +13,7 @@ Step-08 provides two evaluation capabilities:
 
 ## What It Does
 
-```
+```text
                     RAG Evaluation (KFP Pipeline)              Standard Benchmarks (LM-Eval)
                     ─────────────────────────────              ─────────────────────────────
 eval-configs/       run-eval.sh / run-eval-report.sh           run-lmeval.sh / Dashboard UI
@@ -169,6 +169,41 @@ _What to say: "LM-Eval is RHOAI's built-in benchmarking service. It runs industr
 ```
 
 ### Validation
+
+```bash
+./steps/step-08-model-evaluation/validate.sh
+```
+
+## What to Verify After Deployment
+
+```bash
+# ArgoCD sync
+oc get application step-08-model-evaluation -n openshift-gitops \
+  -o jsonpath='{.status.sync.status} / {.status.health.status}'
+# Expected: Synced / Healthy
+
+# Eval ConfigMaps
+oc get configmap eval-configs eval-test-cases -n private-ai
+# Expected: both present
+
+# LlamaStack eval provider
+oc exec deploy/lsd-rag -n private-ai -- \
+  curl -s http://localhost:8321/v1/providers | \
+  python3 -c "import json,sys; print([p['provider_id'] for p in json.load(sys.stdin)['data'] if p['api']=='eval'])"
+# Expected: at least 1 eval provider
+
+# Judge model ready
+oc get inferenceservice mistral-3-bf16 -n private-ai \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+# Expected: True
+
+# LM-Eval configuration
+oc get datasciencecluster default-dsc \
+  -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitOnline}'
+# Expected: allow
+```
+
+Or run the validation script:
 
 ```bash
 ./steps/step-08-model-evaluation/validate.sh

@@ -187,13 +187,15 @@ fi
 # --- Eval Reports in MinIO ---
 log_step "Eval Reports (MinIO)"
 if [[ -n "$LSD_POD" ]]; then
+    MINIO_ACCESS=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null | base64 -d)
+    MINIO_SECRET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' 2>/dev/null | base64 -d)
     REPORT_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- python3 -c "
 import boto3, os
 try:
     s3 = boto3.client('s3',
         endpoint_url=os.environ.get('AWS_S3_ENDPOINT','http://minio.minio-storage.svc:9000'),
-        aws_access_key_id='rhoai-access-key',
-        aws_secret_access_key='rhoai-secret-key-12345',
+        aws_access_key_id='${MINIO_ACCESS}',
+        aws_secret_access_key='${MINIO_SECRET}',
         verify=False)
     resp = s3.list_objects_v2(Bucket='rhoai-storage', Prefix='eval-results/', MaxKeys=100)
     reports = [o['Key'] for o in resp.get('Contents',[]) if o['Key'].endswith('_report.html')]

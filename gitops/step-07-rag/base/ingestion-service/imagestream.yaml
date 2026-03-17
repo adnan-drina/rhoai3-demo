@@ -7,4 +7,4 @@ metadata:
     app: rag-ingestion-service
     app.kubernetes.io/name: rag-ingestion-service
     app.kubernetes.io/component: ingestion
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag

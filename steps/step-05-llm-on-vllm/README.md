@@ -57,6 +57,33 @@ oc get inferenceservice -n private-ai
 
 > **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Granite for RAG demos.
 
+## What to Verify After Deployment
+
+```bash
+# ServingRuntime exists
+oc get servingruntime -n private-ai
+# Expected: at least 1
+
+# InferenceServices Ready
+oc get inferenceservice -n private-ai
+# Expected: granite-8b-agent and mistral-3-bf16, both READY=True
+
+# GPU scheduling (pods on correct nodes)
+oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide
+# Expected: granite on g6.4xlarge, mistral on g6.12xlarge
+
+# Quick inference test
+oc exec deploy/granite-8b-agent-predictor -n private-ai -c kserve-container -- \
+  curl -s http://localhost:8080/v1/models
+# Expected: JSON with model ID
+```
+
+Or run the validation script:
+
+```bash
+./steps/step-05-llm-on-vllm/validate.sh
+```
+
 ## Design Decisions
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.
@@ -83,6 +110,40 @@ oc get inferenceservice -n private-ai
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
 
 > **Upload-before-serve ordering:** `deploy.sh` runs the S3 upload job for `mistral-3-bf16` and waits for completion **before** applying the ArgoCD Application. This prevents a race condition where KServe's `storage-initializer` lists S3 while the upload is still in progress, resulting in a partial download and vLLM `CrashLoopBackOff` ("Invalid repository ID or local directory"). The upload job is idempotent — it skips if the model is already in MinIO.
+
+## Troubleshooting
+
+### InferenceService stuck in Pending (untolerated taint)
+
+**Symptom:** Predictor pod is Pending with `node(s) had untolerated taint {nvidia.com/gpu: true}`.
+
+**Root Cause:** The InferenceService manifest is missing GPU tolerations.
+
+**Solution:** Verify the ISVC has the correct tolerations:
+```bash
+oc get inferenceservice granite-8b-agent -n private-ai -o jsonpath='{.spec.predictor.tolerations}' | python3 -m json.tool
+```
+Expected: toleration for `nvidia.com/gpu`.
+
+### mistral-3-bf16 CrashLoopBackOff ("Invalid repository ID")
+
+**Symptom:** vLLM container crashes with `ValueError: Invalid repository ID or local directory`.
+
+**Root Cause:** S3 upload was incomplete when KServe's `storage-initializer` downloaded the model. Partial model files cause vLLM to fail.
+
+**Solution:** `deploy.sh` now runs the upload job and waits for completion before applying the ArgoCD Application. If the model is already corrupted in the PVC:
+```bash
+oc delete pvc mistral-3-bf16-pvc -n private-ai
+# ArgoCD will recreate the PVC and trigger a fresh download
+```
+
+### vLLM OOMKilled during startup
+
+**Symptom:** Pod killed with `OOMKilled` during CUDA graph capture.
+
+**Root Cause:** `--gpu-memory-utilization` set too high (e.g., 0.95). CUDA graph capture needs headroom.
+
+**Solution:** Reduce to 0.92 (Granite) or 0.90 (Mistral). Current manifests already use these tuned values.
 
 ## References
 

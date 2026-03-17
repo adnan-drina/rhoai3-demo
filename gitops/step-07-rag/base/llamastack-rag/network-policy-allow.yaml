@@ -9,7 +9,7 @@ metadata:
   name: lsd-rag-allow-namespace
   namespace: private-ai
   labels:
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:

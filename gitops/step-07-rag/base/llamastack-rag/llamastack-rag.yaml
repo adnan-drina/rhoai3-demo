@@ -14,7 +14,7 @@ metadata:
   namespace: private-ai
   labels:
     app.kubernetes.io/name: llamastack-rag
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
     app.kubernetes.io/component: rag-backend
   annotations:
     argocd.argoproj.io/sync-wave: "4"

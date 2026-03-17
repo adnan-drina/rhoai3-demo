@@ -8,7 +8,7 @@ RHOAI 3.3 is a new-installation-only release with no upgrade path from 2.x. It r
 
 ## What It Does
 
-```
+```text
 RHOAI 3.3 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
 ├── DSCInitialization      → Service Mesh 3 auto-installed

@@ -8,7 +8,7 @@ Without guardrails, every user consumes every GPU. Step-03 transforms RHOAI into
 
 ## What It Does
 
-```
+```text
 ai-admin (Governor)     ai-developer (Consumer)     MinIO (S3)
        │                       │                       │
        ▼                       ▼                       ▼
@@ -90,6 +90,38 @@ echo "https://${MINIO_URL}"
 
 Show the buckets: `rhoai-storage`, `models`, `pipelines`. These are where all subsequent steps store their data.
 
+## What to Verify After Deployment
+
+```bash
+# MinIO ready
+oc get deploy minio -n minio-storage -o jsonpath='{.status.readyReplicas}'
+# Expected: 1
+
+# Data connections
+oc get secret minio-connection -n private-ai
+oc get secret storage-config -n private-ai
+# Expected: both present
+
+# Authentication
+oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
+# Expected: htpasswd or local-users provider
+
+# RBAC
+oc get rolebinding ai-admin-admin ai-developer-edit -n private-ai
+# Expected: both present
+
+# Groups
+oc get group rhoai-admins rhoai-users
+# Expected: ai-admin in rhoai-admins, ai-developer in rhoai-users
+```
+
+Or run the validation script:
+
+```bash
+./steps/step-03-private-ai/validate.sh
+# Expected: all passed, 0 failed
+```
+
 ## Design Decisions
 
 > **Direct GPU scheduling (no Kueue):** Kueue was evaluated and removed because its SchedulingGate mechanism gates ALL pods in managed namespaces — including build pods, DSPA pipeline executors, and chatbot Deployments — not just GPU workloads. GPU scheduling uses direct `nodeSelector` + `tolerations` defined in Hardware Profiles and InferenceService manifests. This provides reliable GPU placement without the SchedulingGate side effects.
@@ -97,6 +129,37 @@ Show the buckets: `rhoai-storage`, `models`, `pipelines`. These are where all su
 > **Design Decision:** OpenShift Groups are created by `deploy.sh` (not ArgoCD) because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema.
 
 > **No `opendatahub.io/managed` label on `storage-config`:** The ODH model controller watches for secrets with `opendatahub.io/managed: "true"` and deletes any it did not create. Since ArgoCD creates `storage-config`, the controller deletes it within seconds, causing an infinite create-delete loop. This label is only needed on `minio-connection` (the Data Connection that appears in Dashboard dropdowns), not on `storage-config` (the KServe credential used by storage-initializer). See also: `.cursor/rules/30-secrets-and-certs.mdc`.
+
+## Troubleshooting
+
+### MinIO init job fails or minio-connection secret missing
+
+**Symptom:** `minio-init` job shows `Failed` or `minio-connection` secret not found in `private-ai`.
+
+**Root Cause:** MinIO pod not ready when init job runs (race condition with `WaitForFirstConsumer` PVC binding).
+
+**Solution:** Wait for MinIO pod to be ready, then recreate the job:
+```bash
+oc wait deploy/minio -n minio-storage --for=condition=Available --timeout=180s
+oc delete job minio-init -n minio-storage 2>/dev/null
+oc apply -f gitops/step-03-private-ai/base/minio/init-job.yaml
+```
+
+### storage-config secret disappears after ArgoCD sync
+
+**Symptom:** `storage-config` secret is deleted shortly after ArgoCD creates it.
+
+**Root Cause:** The `opendatahub.io/managed: "true"` label was set on the secret. The ODH model controller watches for this label and deletes secrets it didn't create.
+
+**Solution:** Remove the label from the manifest. See Design Decisions section for details.
+
+### ArgoCD OutOfSync on operator-managed resources
+
+**Symptom:** Step-03 ArgoCD app shows OutOfSync but health is Healthy.
+
+**Root Cause:** Operators (OLM, OAuth) mutate secrets and ConfigMaps with additional annotations/fields. ArgoCD detects this as drift.
+
+**Solution:** The ArgoCD Application includes `ignoreDifferences` for Secret `/data` and operator-managed annotations. If drift persists, check the ArgoCD diff view for the specific field and add it to `ignoreDifferences`.
 
 ## References
 

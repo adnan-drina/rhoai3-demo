@@ -39,7 +39,7 @@ metadata:
   namespace: private-ai
   labels:
     app: rag-chatbot
-    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/part-of: rag
     app.kubernetes.io/component: chatbot-ui
   annotations:
     argocd.argoproj.io/sync-wave: "6"

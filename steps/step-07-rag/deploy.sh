@@ -126,6 +126,7 @@ done
 if [ $ELAPSED -ge $TIMEOUT ]; then
     log_error "Timeout waiting for ArgoCD sync. Check:"
     log_error "  oc get application $STEP_NAME -n openshift-gitops"
+    exit 1
 fi
 echo ""
 
@@ -133,19 +134,25 @@ echo ""
 # Step 4: Wait for components
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for PostgreSQL+pgvector..."
-oc wait deploy/llamastack-postgres -n "$NAMESPACE" \
-    --for=condition=Available --timeout=180s 2>/dev/null || \
+if ! oc wait deploy/llamastack-postgres -n "$NAMESPACE" \
+    --for=condition=Available --timeout=180s 2>/dev/null; then
     log_error "PostgreSQL did not become available in 180s"
+    exit 1
+fi
 
 log_step "Waiting for Docling..."
-oc wait deploy/docling-service -n "$NAMESPACE" \
-    --for=condition=Available --timeout=600s 2>/dev/null || \
+if ! oc wait deploy/docling-service -n "$NAMESPACE" \
+    --for=condition=Available --timeout=600s 2>/dev/null; then
     log_error "Docling did not become available (first start can take ~10min)"
+    exit 1
+fi
 
 log_step "Waiting for LlamaStack RAG..."
-oc wait llamastackdistribution/lsd-rag -n "$NAMESPACE" \
-    --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null || \
+if ! oc wait llamastackdistribution/lsd-rag -n "$NAMESPACE" \
+    --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null; then
     log_error "LlamaStack lsd-rag did not reach Ready state"
+    exit 1
+fi
 
 log_step "Triggering rag-chatbot build..."
 if oc get buildconfig rag-chatbot -n "$NAMESPACE" &>/dev/null; then
