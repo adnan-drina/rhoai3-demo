@@ -13,7 +13,7 @@ Key design choices (RHOAI 3.0 aligned):
   - Server-side chunking            via vector_stores.files.create()
   - Docling fallback logic          for API version tolerance
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 """
 
 import kfp
