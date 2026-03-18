@@ -122,12 +122,11 @@ def prepare_dataset(
         f"path: {DATASET_DIR}\ntrain: images/train\nval: images/val\n\nnc: 2\nnames:\n  0: adnan\n  1: unknown_face\n"
     )
 
-    # Pre-download YOLO11n base model via HuggingFace (GitHub is blocked in some clusters)
+    # Download YOLO11n base model from MinIO (GitHub is blocked in pipeline pods)
     base_model_path = SHARED / "yolo11n.pt"
     if not base_model_path.exists():
-        pt_path = hf_hub_download(repo_id="ultralytics/assets", filename="yolo11n.pt", cache_dir="/tmp/hf_yolo")
-        shutil.copy2(pt_path, base_model_path)
-        print(f"Pre-downloaded base model to {base_model_path}")
+        s3.download_file("models", "yolo11n.pt", str(base_model_path))
+        print(f"Downloaded base model from MinIO to {base_model_path}")
 
     print(f"Dataset: {total['train']} train, {total['val']} val")
     metrics.log_metric("train_images", total["train"])
