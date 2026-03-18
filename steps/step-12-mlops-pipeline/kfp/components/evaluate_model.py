@@ -61,18 +61,17 @@ def evaluate_model(
         "adnan_mAP50": adnan_map,
     }))
 
-    # Query previous model from registry
+    # Query previous model from registry (pattern from rhoai-mlops/jukebox)
     prev_mAP50 = 0.0
     try:
+        import os
         from model_registry import ModelRegistry
         from model_registry.exceptions import StoreError
 
-        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-        sa_token = Path(token_path).read_text() if Path(token_path).exists() else None
+        os.environ["KF_PIPELINES_SA_TOKEN_PATH"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
         registry = ModelRegistry(
             server_address=registry_url, port=443,
             author="eval-pipeline", is_secure=False,
-            custom_headers={"Authorization": f"Bearer {sa_token}"} if sa_token else None,
         )
         for v in registry.get_model_versions(model_name).order_by_id().descending():
             props = v.custom_properties

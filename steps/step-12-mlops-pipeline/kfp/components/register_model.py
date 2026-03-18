@@ -26,7 +26,6 @@ def register_model(
     SHARED = Path("/shared-data")
     METRICS_DIR = SHARED / "metrics"
 
-    # Load metrics
     metrics_data = json.loads((METRICS_DIR / "results.json").read_text())
 
     # Upload ONNX to MinIO
@@ -45,21 +44,27 @@ def register_model(
     obj = s3.head_object(Bucket=BUCKET, Key=KEY)
     print(f"Uploaded: {obj['ContentLength'] / (1024*1024):.1f} MB")
 
-    # Register in Model Registry
+    # Register in Model Registry (pattern from rhoai-mlops/jukebox)
     s3_endpoint = os.environ.get("AWS_S3_ENDPOINT", minio_endpoint)
-    s3_uri = f"s3://{BUCKET}/{KEY}?endpoint={s3_endpoint}"
+    s3_bucket = os.environ.get("AWS_S3_BUCKET", BUCKET)
 
     metadata = {k: str(v) for k, v in metrics_data.items()}
 
     try:
-        # Read ServiceAccount token for authentication
-        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-        sa_token = Path(token_path).read_text() if Path(token_path).exists() else None
+        # The model-registry SDK reads this env var for SA token auth
+        os.environ["KF_PIPELINES_SA_TOKEN_PATH"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
         registry = ModelRegistry(
-            server_address=registry_url, port=443,
-            author="face-recognition-pipeline", is_secure=False,
-            custom_headers={"Authorization": f"Bearer {sa_token}"} if sa_token else None,
+            server_address=registry_url,
+            port=443,
+            author="face-recognition-pipeline",
+            is_secure=False,
+        )
+
+        s3_uri = utils.s3_uri_from(
+            f"/models/{model_name}/1/model.onnx",
+            bucket=s3_bucket,
+            endpoint=s3_endpoint,
         )
 
         registry.register_model(
