@@ -11,15 +11,22 @@ from kfp.dsl import component, Output, Metrics
         "huggingface_hub>=0.20.0",
         "boto3>=1.34.0",
         "opencv-python-headless>=4.10.0",
+        "lapx>=0.5.2",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def prepare_dataset(
     photos_s3_prefix: str,
     minio_endpoint: str,
     metrics: Output[Metrics],
 ) -> int:
-    import os, shutil, random, zipfile
+    import subprocess, os, shutil, random, zipfile
     from pathlib import Path
+
+    # OpenCV needs libGL on the python:3.11 base image
+    subprocess.run(["apt-get", "update", "-qq"], check=True, capture_output=True)
+    subprocess.run(["apt-get", "install", "-y", "-qq", "libgl1-mesa-glx", "libglib2.0-0"], check=True, capture_output=True)
+
     from ultralytics import YOLO
     from huggingface_hub import hf_hub_download, snapshot_download
     import boto3
