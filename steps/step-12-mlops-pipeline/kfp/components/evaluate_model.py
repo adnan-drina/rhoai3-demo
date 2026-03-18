@@ -34,7 +34,10 @@ def evaluate_model(
     # Validate on the val set
     print(f"Evaluating {onnx_path}...")
     model = YOLO(onnx_path, task="detect")
-    results = model.val(data=str(DATASET_DIR / "data.yaml"), imgsz=640, batch=4)
+    results = model.val(
+        data=str(DATASET_DIR / "data.yaml"), imgsz=640, batch=4,
+        project=str(SHARED / "eval-runs"), name="val", exist_ok=True,
+    )
 
     mAP50 = float(results.box.map50)
     mAP50_95 = float(results.box.map)
