@@ -23,9 +23,8 @@ def prepare_dataset(
     import subprocess, os, shutil, random, zipfile
     from pathlib import Path
 
-    # OpenCV needs libGL on the python:3.11 base image
-    subprocess.run(["apt-get", "update", "-qq"], check=True, capture_output=True)
-    subprocess.run(["apt-get", "install", "-y", "-qq", "libgl1-mesa-glx", "libglib2.0-0"], check=True, capture_output=True)
+    # Force headless OpenCV (ultralytics pulls opencv-python which needs libGL)
+    subprocess.run(["pip", "install", "--force-reinstall", "--no-deps", "opencv-python-headless>=4.10.0"], check=True, capture_output=True)
 
     from ultralytics import YOLO
     from huggingface_hub import hf_hub_download, snapshot_download

@@ -22,8 +22,7 @@ def evaluate_model(
     import subprocess
     from pathlib import Path
 
-    subprocess.run(["apt-get", "update", "-qq"], check=True, capture_output=True)
-    subprocess.run(["apt-get", "install", "-y", "-qq", "libgl1-mesa-glx", "libglib2.0-0"], check=True, capture_output=True)
+    subprocess.run(["pip", "install", "--force-reinstall", "--no-deps", "opencv-python-headless>=4.10.0"], check=True, capture_output=True)
 
     from ultralytics import YOLO
 
