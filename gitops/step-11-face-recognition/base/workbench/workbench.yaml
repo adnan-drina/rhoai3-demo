@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: face-recognition-wb
+  namespace: private-ai
+  labels:
+    app: face-recognition-wb
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: face-recognition-wb-storage
+  namespace: private-ai
+  labels:
+    app: face-recognition-wb
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    openshift.io/display-name: face-recognition-wb-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp3-csi
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: face-recognition-wb
+  namespace: private-ai
+  labels:
+    app: face-recognition-wb
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "15"
+    notebooks.opendatahub.io/inject-auth: "true"
+    opendatahub.io/hardware-profile-name: cpu-small
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
+    opendatahub.io/username: ai-developer
+    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
+    notebooks.opendatahub.io/last-size-selection: Small
+    openshift.io/display-name: "Face Recognition (YOLO11)"
+    openshift.io/description: "Train YOLO11 face recognition, test on images/video, query OpenVINO model server"
+    notebooks.opendatahub.io/idle-culling-time: "15m"
+    notebooks.opendatahub.io/idle-culling-enabled: "true"
+spec:
+  template:
+    spec:
+      enableServiceLinks: false
+      serviceAccountName: face-recognition-wb
+      affinity: {}
+      initContainers:
+        - name: git-sync
+          image: alpine/git:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              REPO_URL="https://github.com/adnan-drina/rhoai3-demo.git"
+              WORKSPACE="/opt/app-root/src"
+              NOTEBOOKS_SRC="steps/step-11-face-recognition/notebooks"
+
+              echo "╔══════════════════════════════════════════════════════════════╗"
+              echo "║  Git-Sync: Loading Face Recognition Notebooks                ║"
+              echo "╚══════════════════════════════════════════════════════════════╝"
+
+              if [ ! -f "$WORKSPACE/01-explore-yolo11-face.ipynb" ]; then
+                echo "→ Cloning repository..."
+                git clone --depth 1 --single-branch "$REPO_URL" /tmp/repo
+
+                echo "→ Copying notebooks and helpers to workspace..."
+                cp /tmp/repo/$NOTEBOOKS_SRC/*.ipynb "$WORKSPACE/" 2>/dev/null || true
+                cp /tmp/repo/$NOTEBOOKS_SRC/*.py "$WORKSPACE/" 2>/dev/null || true
+                cp /tmp/repo/$NOTEBOOKS_SRC/*.txt "$WORKSPACE/" 2>/dev/null || true
+
+                rm -rf /tmp/repo
+                echo "✓ Notebooks synced successfully!"
+              else
+                echo "✓ Notebooks already exist - skipping sync"
+              fi
+
+              echo ""
+              echo "NOTE: Upload your test assets manually:"
+              echo "  images/     - test face and group photos"
+              echo "  videos/     - test video (you + another person)"
+              echo "  my_photos/  - ~50-100 selfies for training"
+
+              ls -la "$WORKSPACE/"
+          volumeMounts:
+            - name: face-recognition-wb-storage
+              mountPath: /opt/app-root/src
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: face-recognition-wb
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/private-ai/face-recognition-wb
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
+            - name: PIP_CERT
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: REQUESTS_CA_BUNDLE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: SSL_CERT_FILE
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: GIT_SSL_CAINFO
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            # Face recognition model server endpoint
+            - name: FACE_RECOGNITION_ENDPOINT
+              value: "http://face-recognition-predictor.private-ai.svc.cluster.local:8888"
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /notebook/private-ai/face-recognition-wb/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /notebook/private-ai/face-recognition-wb/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: face-recognition-wb-storage
+              mountPath: /opt/app-root/src
+            - name: shm
+              mountPath: /dev/shm
+            - name: trusted-ca
+              mountPath: /etc/pki/tls/custom-certs/ca-bundle.crt
+              subPath: ca-bundle.crt
+              readOnly: true
+      volumes:
+        - name: face-recognition-wb-storage
+          persistentVolumeClaim:
+            claimName: face-recognition-wb-storage
+        - name: shm
+          emptyDir:
+            medium: Memory
+        - name: trusted-ca
+          configMap:
+            name: workbench-trusted-ca-bundle
+            optional: true
+            items:
+              - key: ca-bundle.crt
+                path: ca-bundle.crt
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: face-recognition-wb-controller
+  namespace: private-ai
+  labels:
+    app: face-recognition-wb
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices", "servingruntimes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: face-recognition-wb-controller
+  namespace: private-ai
+  labels:
+    app: face-recognition-wb
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: face-recognition-wb-controller
+subjects:
+  - kind: ServiceAccount
+    name: face-recognition-wb
+    namespace: private-ai

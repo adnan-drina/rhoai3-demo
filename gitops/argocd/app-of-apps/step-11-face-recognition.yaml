@@ -41,6 +41,14 @@ spec:
       jsonPointers:
         - /status
         - /spec/predictor/model/runtime
+    # Notebook: RHOAI controller injects kube-rbac-proxy sidecar, volumes, labels, annotations
+    - group: kubeflow.org
+      kind: Notebook
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+        - /status
+        - /spec/template
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:

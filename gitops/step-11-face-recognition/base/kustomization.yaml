@@ -11,3 +11,4 @@ resources:
   - serving-runtime/
   - inference/
   - model-upload/
+  - workbench/
