@@ -1,0 +1,41 @@
+# The DSPA pipeline runner ServiceAccount needs permission to
+# delete pods (restart predictor) and read InferenceServices.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: face-pipeline-controller
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["inferenceservices"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: face-pipeline-controller
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: face-pipeline-controller
+subjects:
+  - kind: ServiceAccount
+    name: dspa-rag
+    namespace: private-ai
+  - kind: ServiceAccount
+    name: pipeline-runner-dspa-rag
+    namespace: private-ai

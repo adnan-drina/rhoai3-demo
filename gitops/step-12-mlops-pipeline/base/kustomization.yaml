@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 12: MLOps Training Pipeline
+# Provides shared PVC and RBAC for the face recognition KFP training pipeline.
+# The pipeline itself is compiled and uploaded to the existing DSPA (dspa-rag).
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+
+resources:
+  - pipeline-pvc.yaml
+  - pipeline-rbac.yaml

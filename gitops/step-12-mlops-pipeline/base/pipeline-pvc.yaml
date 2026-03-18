@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: face-pipeline-workspace
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp3-csi

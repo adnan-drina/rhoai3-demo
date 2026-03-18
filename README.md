@@ -21,6 +21,7 @@ Each step introduces a core RHOAI capability, deployed the way Red Hat recommend
 | 09 | **AI Safety & Guardrails** | TrustyAI: HAP detection, prompt injection, PII filtering — CPU-only | [Enabling AI safety with guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/) |
 | 10 | **Agentic AI & MCP** | Database, OpenShift, Slack MCP servers — autonomous tool orchestration | [Configuring MCP servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user) |
 | 11 | **Predictive AI / Computer Vision** | YOLO11 face recognition, KServe + OpenVINO Model Server — traditional ML workloads | [Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
+| 12 | **MLOps Training Pipeline** | KFP v2 pipeline: train, evaluate, register in Model Registry, deploy — automated ML lifecycle | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/) |
 
 ## The E2E Scenario: ACME Semiconductor
 
