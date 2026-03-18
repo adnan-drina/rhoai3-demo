@@ -49,18 +49,29 @@ def register_model(
     s3_endpoint = os.environ.get("AWS_S3_ENDPOINT", minio_endpoint)
     s3_uri = f"s3://{BUCKET}/{KEY}?endpoint={s3_endpoint}"
 
-    registry = ModelRegistry(
-        server_address=registry_url, port=443,
-        author="face-recognition-pipeline", is_secure=False)
-
     metadata = {k: str(v) for k, v in metrics_data.items()}
-    registry.register_model(
-        model_name, s3_uri,
-        model_format_name="onnx", model_format_version="1",
-        version=version,
-        version_description=f"YOLO11n face recognition trained with auto-annotated dataset. mAP50={metrics_data['mAP50']:.3f}",
-        metadata=metadata,
-    )
-    print(f"Registered {model_name} v{version} in Model Registry")
+
+    try:
+        # Read ServiceAccount token for authentication
+        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        sa_token = Path(token_path).read_text() if Path(token_path).exists() else None
+
+        registry = ModelRegistry(
+            server_address=registry_url, port=443,
+            author="face-recognition-pipeline", is_secure=False,
+            custom_headers={"Authorization": f"Bearer {sa_token}"} if sa_token else None,
+        )
+
+        registry.register_model(
+            model_name, s3_uri,
+            model_format_name="onnx", model_format_version="1",
+            version=version,
+            version_description=f"YOLO11n face recognition. mAP50={metrics_data['mAP50']:.3f}",
+            metadata=metadata,
+        )
+        print(f"Registered {model_name} v{version} in Model Registry")
+    except Exception as e:
+        print(f"WARNING: Model Registry registration failed: {e}")
+        print("The model is deployed to MinIO and serving -- registration can be done manually.")
 
     return version
