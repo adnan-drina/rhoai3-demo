@@ -23,8 +23,8 @@ Workbench (Notebooks)                  KServe RawDeployment
 |-----------|---------|-----------|
 | **kserve-ovms** ServingRuntime | OpenVINO Model Server for ONNX models | `private-ai` |
 | **face-recognition** InferenceService | Serves the YOLO11 ONNX model (CPU-only) | `private-ai` |
+| **face-recognition-wb** Notebook | JupyterLab workbench with git-synced notebooks | `private-ai` |
 | **upload-face-model** Job | Downloads pre-trained ONNX from HuggingFace to MinIO | `minio-storage` |
-| 5 Jupyter Notebooks | Interactive workshop: explore, retrain, test, serve | Workbench |
 
 Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-recognition/base/)
 
@@ -45,14 +45,34 @@ The script:
 1. Verifies MinIO and namespace prerequisites
 2. Checks for the `kserve-ovms` platform template
 3. Uploads the pre-trained YOLO11n-face ONNX model to MinIO
-4. Applies the ArgoCD Application
-5. Waits for InferenceService readiness
+4. Applies the ArgoCD Application (creates ServingRuntime, InferenceService, Workbench)
+5. Uploads notebook assets to the workbench (images, videos, training photos)
+
+The workbench (`face-recognition-wb`) is deployed via ArgoCD with a git-sync initContainer that clones notebooks, `remote_infer.py`, and `requirements.txt` from the repo. Binary assets (photos, test images, video) are uploaded separately via `upload-to-workbench.sh`.
+
+### Uploading notebook assets
+
+The deploy script automatically uploads assets from the local `notebooks/` directory if they exist. To upload or re-upload manually:
+
+```bash
+./steps/step-11-face-recognition/upload-to-workbench.sh
+```
+
+This copies three folders to the workbench pod via `oc cp`:
+
+| Folder | Contents | Purpose |
+|--------|----------|---------|
+| `notebooks/images/` | Test face and group photos (.jpg) | Used by notebooks 01, 02, 04, 05 |
+| `notebooks/videos/` | Test video (.mov) | Used by notebooks 04, 05 for video inference |
+| `notebooks/my_photos/` | ~50-120 selfie photos (.jpeg) | Training data for notebook 03 |
+
+These folders are gitignored (binary assets). The workbench PVC persists them across pod restarts.
 
 ## Demo Walkthrough
 
 ### Scene 1: Explore Face Detection (Notebooks 01-02)
 
-**Do:** Open a workbench in the `private-ai` project. Navigate to the notebooks folder. Run notebooks 01 and 02.
+**Do:** Open the workbench from the RHOAI Dashboard: **Data Science Projects** -> **private-ai** -> **Workbenches** -> **face-recognition-wb** -> **Open**. Run notebooks 01 and 02.
 
 **Expect:** YOLO11 detects faces in test images with bounding boxes and confidence scores.
 
@@ -60,7 +80,7 @@ The script:
 
 ### Scene 2: Retrain for Your Face (Notebook 03)
 
-**Do:** Place ~50 selfie photos in `my_photos/`. Run notebook 03.
+**Do:** Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`). Run notebook 03.
 
 **Expect:** The notebook auto-annotates your photos, downloads public faces for the "unknown" class, trains on CPU for ~10-15 minutes, and exports to ONNX.
 
@@ -68,7 +88,7 @@ The script:
 
 ### Scene 3: The Wow Moment — Video Recognition (Notebook 04)
 
-**Do:** Upload a short video of you with another person. Run notebook 04.
+**Do:** Verify `videos/test_group_video.mov` exists in the workbench. Run notebook 04.
 
 **Expect:** An annotated video plays inline — green boxes on your face ("adnan 0.94"), red boxes on others ("unknown_face 0.87").
 
@@ -95,6 +115,15 @@ oc get job upload-face-model -n minio-storage -o jsonpath='{.status.succeeded}'
 # InferenceService is Ready
 oc get inferenceservice face-recognition -n private-ai
 # Expected: READY = True
+
+# Workbench is Running
+oc get notebook face-recognition-wb -n private-ai
+oc get pod face-recognition-wb-0 -n private-ai
+# Expected: 2/2 Running
+
+# Notebook assets uploaded
+oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
+  bash -c 'for d in images videos my_photos; do [ -d $d ] && echo "$d: $(ls $d | wc -l) files"; done'
 
 # Validate all checks
 ./steps/step-11-face-recognition/validate.sh
@@ -146,9 +175,26 @@ oc process -n redhat-ods-applications kserve-ovms \
 
 ### Training notebook fails with "No photos found"
 
-**Root Cause:** No images in the `my_photos/` directory.
+**Root Cause:** No images in the `my_photos/` directory inside the workbench.
 
-**Solution:** Place ~50 selfie photos (.jpg, .jpeg, or .png) in `my_photos/` within the workbench.
+**Solution:**
+```bash
+# Upload from local machine
+./steps/step-11-face-recognition/upload-to-workbench.sh
+
+# Or verify they're already there
+oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- ls my_photos/ | head
+```
+
+### Workbench pod not starting
+
+**Root Cause:** PVC binding or image pull issue.
+
+**Solution:**
+```bash
+oc describe pod face-recognition-wb-0 -n private-ai | tail -20
+oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition | tail -10
+```
 
 ## References
 
