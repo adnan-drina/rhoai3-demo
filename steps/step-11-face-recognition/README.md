@@ -12,10 +12,9 @@ Generative AI gets the headlines, but enterprises also run traditional ML worklo
 Workbench (Notebooks)                  KServe RawDeployment
 ┌──────────────────────┐               ┌───────────────────────────┐
 │ 01 Explore YOLO11    │               │  OpenVINO Model Server    │
-│ 02 Bounding Boxes    │               │  (kserve-ovms runtime)    │
-│ 03 Retrain + Export  │──ONNX──►MinIO─│──►face-recognition ISVC   │
-│ 04 Test Locally      │               │     CPU-only, ~11MB       │
-│ 05 Query via REST    │◄──REST v2 API─│     v2/models/.../infer   │
+│ 02 Retrain + Export  │──ONNX──►MinIO─│──►face-recognition ISVC   │
+│ 03 Test Locally      │               │     CPU-only, ~11MB       │
+│ 04 Query via REST    │◄──REST v2 API─│     v2/models/.../infer   │
 └──────────────────────┘               └───────────────────────────┘
 ```
 
@@ -62,41 +61,41 @@ This copies three folders to the workbench pod via `oc cp`:
 
 | Folder | Contents | Purpose |
 |--------|----------|---------|
-| `notebooks/images/` | Test face and group photos (.jpg) | Used by notebooks 01, 02, 04, 05 |
-| `notebooks/videos/` | Test video (.mov) | Used by notebooks 04, 05 for video inference |
-| `notebooks/my_photos/` | ~50-120 selfie photos (.jpeg) | Training data for notebook 03 |
+| `notebooks/images/` | Test face and group photos (.jpg) | Used by notebooks 01, 03, 04 |
+| `notebooks/videos/` | Test video (.mov) | Used by notebooks 03, 04 for video inference |
+| `notebooks/my_photos/` | ~50-120 selfie photos (.jpeg) | Training data for notebook 02 |
 
 These folders are gitignored (binary assets). The workbench PVC persists them across pod restarts.
 
 ## Demo Walkthrough
 
-### Scene 1: Explore Face Detection (Notebooks 01-02)
+### Scene 1: Explore Face Detection (Notebook 01)
 
-**Do:** Open the workbench from the RHOAI Dashboard: **Data Science Projects** -> **private-ai** -> **Workbenches** -> **face-recognition-wb** -> **Open**. Run notebooks 01 and 02.
+**Do:** Open the workbench from the RHOAI Dashboard: **Data Science Projects** -> **private-ai** -> **Workbenches** -> **face-recognition-wb** -> **Open**. Run `01-explore-yolo11-face.ipynb`.
 
-**Expect:** YOLO11 detects faces in test images with bounding boxes and confidence scores.
+**Expect:** YOLO11 detects faces in test images with bounding boxes, confidence scores, and pixel coordinates. All detections are labelled as the generic class `face`.
 
-**Say:** *"YOLO11 is a state-of-the-art object detection model. Out of the box, it detects faces — but it can't tell whose face it is. We need to retrain it."*
+**Say:** *"YOLO11 is a state-of-the-art object detection model. Out of the box, it detects faces — but it can't tell whose face it is. All detections are just 'face'. We need to retrain it."*
 
-### Scene 2: Retrain for Your Face (Notebook 03)
+### Scene 2: Retrain for Your Face (Notebook 02)
 
-**Do:** Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`). Run notebook 03.
+**Do:** Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`). Run `02-retrain-face-model.ipynb`.
 
 **Expect:** The notebook auto-annotates your photos, downloads public faces for the "unknown" class, trains on CPU for ~10-15 minutes, and exports to ONNX.
 
 **Say:** *"With just 50 photos and 15 minutes of CPU training, we have a personalized face recognition model. YOLO11's built-in augmentation — mosaic, flips, rotation, color jitter — turns 50 images into thousands of training variations."*
 
-### Scene 3: The Wow Moment — Video Recognition (Notebook 04)
+### Scene 3: The Wow Moment — Video Recognition (Notebook 03)
 
-**Do:** Verify `videos/test_group_video.mov` exists in the workbench. Run notebook 04.
+**Do:** Run `03-test-retrained-model.ipynb`. Verify `videos/test_group_video.mov` exists.
 
 **Expect:** An annotated video plays inline — green boxes on your face ("adnan 0.94"), red boxes on others ("unknown_face 0.87").
 
 **Say:** *"The model processes every frame and correctly identifies me versus an unknown person. This ran locally on the ONNX model — now let's see it through the production serving platform."*
 
-### Scene 4: Production Inference via Model Server (Notebook 05)
+### Scene 4: Production Inference via Model Server (Notebook 04)
 
-**Do:** Run notebook 05 with the same images and video.
+**Do:** Run `04-query-model-server.ipynb`.
 
 **Expect:** Same results, but now coming from the KServe REST API endpoint.
 
