@@ -115,6 +115,19 @@ log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
 # =============================================================================
+# Upload notebook assets to workbench (if available locally)
+# =============================================================================
+NOTEBOOKS_DIR="$SCRIPT_DIR/notebooks"
+if [[ -d "$NOTEBOOKS_DIR/images" || -d "$NOTEBOOKS_DIR/my_photos" ]]; then
+    log_step "Uploading notebook assets to workbench..."
+    "$SCRIPT_DIR/upload-to-workbench.sh"
+else
+    log_info "No local notebook assets found — skip upload"
+    log_info "Upload images/, videos/, my_photos/ to the workbench manually"
+fi
+echo ""
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
@@ -127,9 +140,9 @@ echo "  Test model readiness:"
 echo "    oc exec -n $NAMESPACE deploy/face-recognition-predictor -- \\"
 echo "      curl -s localhost:8888/v2/models/face-recognition/ready"
 echo ""
-echo "  Notebooks:"
-echo "    1. Create a Workbench in RHOAI Dashboard (private-ai project)"
-echo "    2. Open notebooks from steps/step-11-face-recognition/notebooks/"
+echo "  Workbench:"
+echo "    Open JupyterLab from RHOAI Dashboard → private-ai → face-recognition-wb"
+echo "    Or upload assets manually: ./steps/step-11-face-recognition/upload-to-workbench.sh"
 echo ""
 log_info "Validate: ./steps/step-11-face-recognition/validate.sh"
 echo ""
