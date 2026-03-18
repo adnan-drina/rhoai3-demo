@@ -5,6 +5,8 @@ kind: Job
 metadata:
   name: minio-rag-bucket-init
   namespace: minio-storage
+  labels:
+    app.kubernetes.io/part-of: rag
   annotations:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/hook: Sync

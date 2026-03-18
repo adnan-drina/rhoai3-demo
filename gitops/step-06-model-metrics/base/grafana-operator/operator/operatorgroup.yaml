@@ -4,6 +4,8 @@ kind: OperatorGroup
 metadata:
   name: grafana-operator
   namespace: grafana-operator
+  labels:
+    app.kubernetes.io/part-of: observability
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:

@@ -7,6 +7,8 @@ kind: Job
 metadata:
   name: upload-face-model
   namespace: minio-storage
+  labels:
+    app.kubernetes.io/part-of: face-recognition
   annotations:
     argocd.argoproj.io/hook: Skip
 spec:

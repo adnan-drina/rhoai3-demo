@@ -9,6 +9,7 @@ metadata:
   namespace: private-ai
   labels:
     app: guidellm
+    app.kubernetes.io/part-of: benchmarking
     model: granite-8b-agent
 spec:
   backoffLimit: 0
