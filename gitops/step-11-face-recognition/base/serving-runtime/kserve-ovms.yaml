@@ -8,6 +8,7 @@ metadata:
   name: kserve-ovms
   namespace: private-ai
   labels:
+    app.kubernetes.io/part-of: face-recognition
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"

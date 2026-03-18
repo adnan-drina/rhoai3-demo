@@ -5,6 +5,7 @@ metadata:
   namespace: private-ai
   labels:
     app: face-recognition-wb
+    app.kubernetes.io/part-of: face-recognition
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -16,6 +17,7 @@ metadata:
   namespace: private-ai
   labels:
     app: face-recognition-wb
+    app.kubernetes.io/part-of: face-recognition
     opendatahub.io/dashboard: "true"
   annotations:
     # Same sync-wave as the Notebook to avoid WaitForFirstConsumer chicken-and-egg
@@ -27,7 +29,6 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: gp3-csi
 ---
 apiVersion: kubeflow.org/v1
 kind: Notebook
@@ -36,6 +37,7 @@ metadata:
   namespace: private-ai
   labels:
     app: face-recognition-wb
+    app.kubernetes.io/part-of: face-recognition
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
   annotations:
@@ -204,6 +206,7 @@ metadata:
   namespace: private-ai
   labels:
     app: face-recognition-wb
+    app.kubernetes.io/part-of: face-recognition
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 rules:
@@ -221,6 +224,7 @@ metadata:
   namespace: private-ai
   labels:
     app: face-recognition-wb
+    app.kubernetes.io/part-of: face-recognition
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 roleRef:

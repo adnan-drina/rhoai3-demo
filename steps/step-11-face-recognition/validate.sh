@@ -47,6 +47,26 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
+# --- Workbench ---
+log_step "Workbench"
+check_warn "face-recognition-wb Notebook exists" \
+    "oc get notebook face-recognition-wb -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "face-recognition-wb"
+
+check_pods_ready "$NAMESPACE" "app=face-recognition-wb" 1
+
+# --- Model Server Health ---
+log_step "Model Server Health"
+HEALTH_STATUS=$(oc exec -n "$NAMESPACE" deploy/face-recognition-predictor -c kserve-container -- \
+    bash -c 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/v2/health/ready 2>/dev/null' 2>/dev/null || echo "000")
+if [[ "$HEALTH_STATUS" == "200" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Model server health: HTTP 200"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Model server health: HTTP $HEALTH_STATUS (may still be starting)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
 # --- Summary ---
 echo ""
 validation_summary

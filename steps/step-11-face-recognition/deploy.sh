@@ -112,7 +112,8 @@ else
         fi
     done
     if [[ $ELAPSED -ge $TIMEOUT ]]; then
-        log_warn "Upload job did not complete within ${TIMEOUT}s"
+        log_error "Upload job did not complete within ${TIMEOUT}s"
+        exit 1
     fi
 fi
 echo ""
