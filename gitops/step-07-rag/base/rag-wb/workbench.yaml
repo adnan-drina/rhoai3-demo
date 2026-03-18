@@ -5,6 +5,7 @@ metadata:
   namespace: private-ai
   labels:
     app: rag-wb
+    app.kubernetes.io/part-of: rag
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -16,6 +17,7 @@ metadata:
   namespace: private-ai
   labels:
     app: rag-wb
+    app.kubernetes.io/part-of: rag
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -35,6 +37,7 @@ metadata:
   namespace: private-ai
   labels:
     app: rag-wb
+    app.kubernetes.io/part-of: rag
     opendatahub.io/dashboard: "true"
     opendatahub.io/odh-managed: "true"
   annotations:
