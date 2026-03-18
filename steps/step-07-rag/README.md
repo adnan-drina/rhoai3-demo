@@ -135,6 +135,8 @@ Or run the validation script:
 
 ## Design Decisions
 
+> **DSPA child Deployments labeled at deploy time.** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation. `deploy.sh` patches them with `part-of=rag` after DSPA reaches Ready, so they group correctly in the OpenShift Topology view. The labels survive until the DSPA CR is modified.
+
 > **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and the need for `userConfig`.
 
 > **No `userConfig`.** The `rh-dev` LlamaStack template auto-wires all providers (pgvector, trustyai_fms, Ragas scoring, MCP tool runtime) from environment variables alone. This ensures vector store persistence across restarts, working Ragas evaluation, and safety provider integration.
