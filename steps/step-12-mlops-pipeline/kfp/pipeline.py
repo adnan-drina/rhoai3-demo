@@ -88,7 +88,7 @@ def face_recognition_training_pipeline(
 
     # --- Step 3: Evaluate Model ---
     eval_task = evaluate_model(
-        onnx_path=train_task.output,
+        onnx_path=train_task.outputs["Output"],
         mAP_threshold=mAP_threshold,
         registry_url=registry_url,
         model_name=model_name,
@@ -99,7 +99,7 @@ def face_recognition_training_pipeline(
 
     # --- Step 4: Register Model ---
     reg_task = register_model(
-        onnx_path=train_task.output,
+        onnx_path=train_task.outputs["Output"],
         model_name=model_name,
         version=version,
         registry_url=registry_url,

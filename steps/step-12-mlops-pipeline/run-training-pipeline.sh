@@ -119,7 +119,8 @@ try:
     pipeline_id = pipeline.pipeline_id
     print(f"Pipeline uploaded: {pipeline_id}")
 except Exception:
-    pipelines = kfp_client.list_pipelines(filter=f'{"predicates":[{"key":"name","operation":"EQUALS","stringValue":"' + PIPELINE_NAME + '"}]}')
+    filter_json = '{"predicates":[{"key":"name","operation":"EQUALS","stringValue":"' + PIPELINE_NAME + '"}]}'
+    pipelines = kfp_client.list_pipelines(filter=filter_json)
     if pipelines.pipelines:
         pipeline_id = pipelines.pipelines[0].pipeline_id
         print(f"Pipeline exists: {pipeline_id}")
