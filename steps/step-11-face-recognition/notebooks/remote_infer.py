@@ -129,6 +129,20 @@ def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.25):
     return annotated, detections
 
 
+def _to_h264(input_path: str) -> str:
+    """Re-encode video to H.264 for HTML5 inline playback."""
+    import subprocess, os
+    h264_path = input_path.replace(".mp4", "_h264.mp4")
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", input_path, "-c:v", "libx264", "-preset", "fast",
+         "-crf", "23", "-c:a", "aac", "-movflags", "+faststart", h264_path],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0 and os.path.exists(h264_path):
+        os.replace(h264_path, input_path)
+    return input_path
+
+
 def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.5):
     """Process a video using a local YOLO model and save annotated output.
 
@@ -139,12 +153,12 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
         conf: Confidence threshold.
 
     Returns:
-        Path to the output video.
+        Path to the output video (H.264 encoded for browser playback).
     """
     import os
     if output_path is None:
-        base, ext = os.path.splitext(video_path)
-        output_path = f"{base}_annotated{ext}"
+        base = os.path.splitext(video_path)[0]
+        output_path = f"{base}_annotated.mp4"
 
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -171,5 +185,62 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
 
     cap.release()
     writer.release()
-    print(f"  Done: {frame_count} frames -> {output_path}")
+    print(f"  Done: {frame_count} frames")
+    print("  Converting to H.264 for browser playback...")
+    output_path = _to_h264(output_path)
+    print(f"  Saved: {output_path}")
+    return output_path
+
+
+def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.25):
+    """Process a video frame-by-frame via the KServe REST API.
+
+    Args:
+        video_path: Path to input video.
+        endpoint: KServe v2 infer endpoint URL.
+        output_path: Path for annotated output video. If None, auto-generated.
+        conf_threshold: Confidence threshold.
+
+    Returns:
+        Path to the output video (H.264 encoded for browser playback).
+    """
+    import os
+    if output_path is None:
+        base = os.path.splitext(video_path)[0]
+        output_path = f"{base}_server_annotated.mp4"
+
+    cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+
+    frame_count = 0
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        tmp_frame = "/tmp/current_frame.jpg"
+        cv2.imwrite(tmp_frame, frame)
+
+        try:
+            annotated, _ = process_image(tmp_frame, endpoint, conf_threshold)
+            writer.write(annotated)
+        except Exception:
+            writer.write(frame)
+
+        frame_count += 1
+        if frame_count % 30 == 0:
+            print(f"  Processed {frame_count}/{total} frames...")
+
+    cap.release()
+    writer.release()
+    print(f"  Done: {frame_count} frames")
+    print("  Converting to H.264 for browser playback...")
+    output_path = _to_h264(output_path)
+    print(f"  Saved: {output_path}")
     return output_path
