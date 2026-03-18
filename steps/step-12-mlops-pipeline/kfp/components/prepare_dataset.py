@@ -122,6 +122,15 @@ def prepare_dataset(
         f"path: {DATASET_DIR}\ntrain: images/train\nval: images/val\n\nnc: 2\nnames:\n  0: adnan\n  1: unknown_face\n"
     )
 
+    # Pre-download YOLO11n base model so train step doesn't need internet
+    from ultralytics import YOLO as _YOLO
+    base_model_path = SHARED / "yolo11n.pt"
+    if not base_model_path.exists():
+        _m = _YOLO("yolo11n.pt")
+        import shutil as _sh
+        _sh.copy2("yolo11n.pt", base_model_path)
+        print(f"Pre-downloaded base model to {base_model_path}")
+
     print(f"Dataset: {total['train']} train, {total['val']} val")
     metrics.log_metric("train_images", total["train"])
     metrics.log_metric("val_images", total["val"])

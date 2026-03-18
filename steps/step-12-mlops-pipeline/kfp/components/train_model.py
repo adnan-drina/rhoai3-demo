@@ -33,7 +33,10 @@ def train_model(
     print(f"Training YOLO11n for {epochs} epochs on CPU...")
     print(f"Dataset: {data_yaml}")
 
-    model = YOLO("yolo11n.pt")
+    # Use pre-downloaded base model from shared PVC (downloaded by prepare_dataset)
+    base_model = str(SHARED / "yolo11n.pt") if (SHARED / "yolo11n.pt").exists() else "yolo11n.pt"
+    print(f"Base model: {base_model}")
+    model = YOLO(base_model)
     results = model.train(
         data=data_yaml,
         epochs=epochs,
