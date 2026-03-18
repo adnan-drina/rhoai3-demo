@@ -9,7 +9,7 @@ from kfp.dsl import component, Output, Metrics
     packages_to_install=[
         "ultralytics>=8.3.0",
         "opencv-python-headless>=4.10.0",
-        "model-registry==0.3.7a1",
+        "model-registry>=0.3.7",
     ],
 )
 def evaluate_model(

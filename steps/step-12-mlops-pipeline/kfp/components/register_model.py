@@ -7,7 +7,7 @@ from kfp.dsl import component
     base_image="python:3.11",
     packages_to_install=[
         "boto3>=1.34.0",
-        "model-registry==0.3.7a1",
+        "model-registry>=0.3.7",
     ],
 )
 def register_model(
