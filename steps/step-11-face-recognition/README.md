@@ -202,6 +202,7 @@ oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition |
 - [Ultralytics YOLO11 documentation](https://docs.ultralytics.com/models/yolo11/)
 - [YOLO11 data augmentation](https://docs.ultralytics.com/guides/yolo-data-augmentation/)
 - [OpenVINO Model Server KServe-compatible API](https://docs.openvino.ai/2026/model-server/ovms_docs_rest_api_kfs.html)
-- [Pre-trained model: AdamCodd/YOLOv11n-face-detection](https://huggingface.co/AdamCodd/YOLOv11n-face-detection)
+- [Pre-trained model (PyTorch): AdamCodd/YOLOv11n-face-detection](https://huggingface.co/AdamCodd/YOLOv11n-face-detection) -- used by notebooks for exploration
+- [Pre-trained model (ONNX): ariakang/YOLOv11n-face-detection](https://huggingface.co/ariakang/YOLOv11n-face-detection) -- deployed to MinIO by `deploy.sh`
 
 > **See also:** [Step 05 — LLM Serving on vLLM](../step-05-llm-on-vllm/README.md) (GPU model serving pattern), [Step 09 — Guardrails](../step-09-guardrails/README.md) (CPU-only InferenceService pattern)

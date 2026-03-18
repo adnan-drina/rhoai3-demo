@@ -51,7 +51,7 @@ Deploy each step in order:
 ```bash
 ./steps/step-01-gpu-and-prereq/deploy.sh
 ./steps/step-02-rhoai/deploy.sh
-# ... through step-10
+# ... through step-12
 ```
 
 Validate the full demo:
