@@ -18,7 +18,8 @@ metadata:
     app: face-recognition-wb
     opendatahub.io/dashboard: "true"
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    # Same sync-wave as the Notebook to avoid WaitForFirstConsumer chicken-and-egg
+    argocd.argoproj.io/sync-wave: "15"
     openshift.io/display-name: face-recognition-wb-storage
 spec:
   accessModes:
