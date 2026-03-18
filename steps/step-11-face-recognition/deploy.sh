@@ -66,6 +66,18 @@ fi
 echo ""
 
 # =============================================================================
+# Create HF token secret (workbench uses this for faster HF downloads)
+# =============================================================================
+if [[ -n "${HF_TOKEN:-}" ]]; then
+    log_step "Ensuring HuggingFace token secret exists..."
+    oc create secret generic hf-token -n "$NAMESPACE" \
+        --from-literal=token="$HF_TOKEN" \
+        --dry-run=client -o yaml | oc apply -f - 2>/dev/null
+    log_success "hf-token secret ready in $NAMESPACE"
+    echo ""
+fi
+
+# =============================================================================
 # Upload YOLO11n-face ONNX model to MinIO
 # =============================================================================
 log_step "Ensuring face recognition model is in MinIO..."

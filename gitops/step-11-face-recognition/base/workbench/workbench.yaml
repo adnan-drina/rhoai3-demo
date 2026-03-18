@@ -135,6 +135,13 @@ spec:
             # Face recognition model server endpoint
             - name: FACE_RECOGNITION_ENDPOINT
               value: "http://face-recognition-predictor.private-ai.svc.cluster.local:8888"
+            # HuggingFace token for authenticated model downloads (optional)
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+                  optional: true
           ports:
             - containerPort: 8888
               name: notebook-port
