@@ -1,7 +1,7 @@
-"""Set up TrustyAI monitoring for the deployed face-recognition model.
+"""Set up TrustyAI monitoring for the face-recognition-metrics model.
 
-Uploads baseline inference results (confidence scores, class distribution)
-and subscribes to meanshift drift detection metrics.
+Uploads baseline inference data (confidence, class distribution, detection counts)
+to TrustyAI via the metrics proxy model, then subscribes to drift detection.
 """
 
 from kfp.dsl import component
@@ -23,7 +23,11 @@ def setup_monitoring(
     import requests
     import numpy as np
 
+    METRICS_MODEL = "face-recognition-metrics"
+    METRICS_URL = f"http://{METRICS_MODEL}-predictor.{namespace}.svc.cluster.local:8080"
     TRUSTYAI_URL = f"http://trustyai-service.{namespace}.svc.cluster.local"
+
+    headers = {"Content-Type": "application/json"}
 
     # Wait for TrustyAI to be ready
     print("Waiting for TrustyAI service...")
@@ -40,98 +44,83 @@ def setup_monitoring(
         print("WARNING: TrustyAI not reachable. Skipping monitoring setup.")
         return "trustyai-not-ready"
 
-    # Read SA token for auth
-    try:
-        with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as f:
-            token = f.read()
-    except Exception:
-        token = None
+    # Wait for metrics model to be ready
+    print("Waiting for metrics model...")
+    for i in range(12):
+        try:
+            r = requests.get(f"{METRICS_URL}/v2/health/ready", timeout=5)
+            if r.status_code == 200:
+                print(f"Metrics model ready")
+                break
+        except Exception:
+            pass
+        time.sleep(5)
+    else:
+        print("WARNING: Metrics model not reachable.")
+        return "metrics-model-not-ready"
 
-    headers = {"Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
-    # Generate synthetic baseline data representing normal inference
-    # For CV models, we monitor confidence scores and class predictions
-    # rather than raw image tensors
-    print(f"Generating {num_baseline_samples} baseline inference samples...")
-
+    # Generate baseline data representing normal face recognition results
+    print(f"Generating {num_baseline_samples} baseline samples...")
     np.random.seed(42)
-    baseline_confidences = np.random.normal(loc=0.85, scale=0.08, size=num_baseline_samples).clip(0.3, 1.0)
-    baseline_classes = np.random.choice([0, 1], size=num_baseline_samples, p=[0.4, 0.6])
+    confidence = np.random.normal(loc=0.85, scale=0.08, size=num_baseline_samples).clip(0.3, 1.0)
+    class_id = np.random.choice([0.0, 1.0], size=num_baseline_samples, p=[0.4, 0.6])
+    num_detections = np.random.poisson(lam=2.0, size=num_baseline_samples).astype(float)
+    quality = ((confidence > 0.6) & (num_detections >= 1)).astype(float)
 
-    # Format as KServe v2 request/response pairs for TrustyAI
-    input_data = {
-        "confidence": baseline_confidences.tolist(),
-        "class_id": baseline_classes.tolist(),
-        "detections_per_image": np.random.poisson(lam=2.0, size=num_baseline_samples).tolist(),
-    }
+    n = num_baseline_samples
 
-    output_data = {
-        "is_adnan": (baseline_classes == 0).astype(float).tolist(),
-    }
-
+    # Upload baseline to TrustyAI matching MLServer's I/O schema
     training_data = {
-        "model_name": model_name,
+        "model_name": METRICS_MODEL,
         "data_tag": "TRAINING",
         "request": {
-            "inputs": [
-                {
-                    "name": name,
-                    "shape": [len(values)],
-                    "datatype": "FP32",
-                    "data": values,
-                }
-                for name, values in input_data.items()
-            ]
+            "inputs": [{
+                "name": "predict",
+                "shape": [n, 3],
+                "datatype": "FP32",
+                "data": [[float(confidence[i]), float(class_id[i]), float(num_detections[i])] for i in range(n)]
+            }]
         },
         "response": {
-            "model_name": model_name,
+            "model_name": METRICS_MODEL,
             "model_version": "1",
-            "outputs": [
-                {
-                    "name": name,
-                    "datatype": "FP32",
-                    "shape": [len(values)],
-                    "data": values,
-                }
-                for name, values in output_data.items()
-            ]
-        },
+            "outputs": [{
+                "name": "predict",
+                "datatype": "INT64",
+                "shape": [n, 1],
+                "data": [[int(quality[i])] for i in range(n)]
+            }]
+        }
     }
 
-    # Upload baseline data
     print("Uploading baseline data to TrustyAI...")
     r = requests.post(f"{TRUSTYAI_URL}/data/upload", headers=headers, json=training_data, timeout=30)
-    print(f"  Upload response: {r.status_code} - {r.text[:200]}")
+    print(f"  Upload: {r.status_code} - {r.text[:200]}")
 
-    # Subscribe to meanshift drift on confidence scores
-    print("Subscribing to confidence drift metrics...")
-    drift_payload = {
-        "modelId": model_name,
-        "referenceTag": "TRAINING",
-        "fitColumns": ["confidence", "class_id", "detections_per_image"],
-    }
-    r = requests.post(f"{TRUSTYAI_URL}/metrics/drift/meanshift/request", headers=headers, json=drift_payload, timeout=10)
-    print(f"  Drift subscription: {r.status_code} - {r.text[:200]}")
+    if r.status_code != 200:
+        print("WARNING: Baseline upload failed.")
+        return "upload-failed"
 
-    # Subscribe to identity metric for tracking confidence over time
-    print("Subscribing to confidence tracking metric...")
-    identity_payload = {
-        "modelId": model_name,
-        "columnName": "confidence",
-        "batchSize": 50,
-    }
-    r = requests.post(f"{TRUSTYAI_URL}/metrics/identity/request", headers=headers, json=identity_payload, timeout=10)
-    print(f"  Identity subscription: {r.status_code} - {r.text[:200]}")
+    # Subscribe to drift detection
+    print("Subscribing to meanshift drift...")
+    r = requests.post(f"{TRUSTYAI_URL}/metrics/drift/meanshift/request", headers=headers,
+                      json={"modelId": METRICS_MODEL, "referenceTag": "TRAINING"}, timeout=10)
+    print(f"  Drift: {r.status_code} - {r.text[:200]}")
 
-    # Verify setup
+    print("Subscribing to confidence tracking...")
+    r = requests.post(f"{TRUSTYAI_URL}/metrics/identity/request", headers=headers,
+                      json={"modelId": METRICS_MODEL, "columnName": "predict-0", "batchSize": 50}, timeout=10)
+    print(f"  Identity: {r.status_code} - {r.text[:200]}")
+
+    # Verify
     r = requests.get(f"{TRUSTYAI_URL}/info", headers=headers, timeout=10)
-    print(f"\nTrustyAI info: {r.text[:300]}")
-
-    print("\nMonitoring setup complete.")
-    print("  View metrics: OpenShift Console > Observe > Metrics")
-    print("  Drift metric: trustyai_meanshift")
-    print("  Confidence tracking: trustyai_identity")
+    info = r.json() if r.text else {}
+    model_info = info.get(METRICS_MODEL, {})
+    obs = model_info.get("data", {}).get("observations", 0)
+    metrics = model_info.get("metrics", {}).get("scheduledMetadata", {}).get("metricCounts", {})
+    print(f"\nMonitoring configured:")
+    print(f"  Observations: {obs}")
+    print(f"  Metrics: {metrics}")
+    print(f"  View in OpenShift Console > Observe > Metrics")
 
     return "monitoring-configured"
