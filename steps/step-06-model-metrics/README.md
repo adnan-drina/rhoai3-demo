@@ -11,7 +11,7 @@ Models are deployed. But how do they perform? Step-06 establishes observability:
 ```text
 GuideLLM Benchmark Jobs
     │                          ┌─────────────────────────────────┐
-    ├───► granite-8b-agent     │  Grafana Dashboards             │
+    ├───► qwen3-8b-agent     │  Grafana Dashboards             │
     │     (1 GPU)              │  1. vLLM Latency/Throughput     │
     │                          │  2. NVIDIA DCGM GPU Metrics     │
     └───► mistral-3-bf16       │                                 │
@@ -26,7 +26,7 @@ GuideLLM Benchmark Jobs
 | **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) |
 | **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) |
 | **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC |
-| **Job Templates** | On-demand: `granite-8b-agent` (1,3,5,8,10 req/s) and `mistral-3-bf16` (1,3,5,8,10,15 req/s) |
+| **Job Templates** | On-demand: `qwen3-8b-agent` (1,3,5,8,10 req/s) and `mistral-3-bf16` (1,3,5,8,10,15 req/s) |
 | **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis |
 | **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) |
 
@@ -40,8 +40,8 @@ GuideLLM Benchmark Jobs
 GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${GRAFANA_URL}"
 
-# Benchmark granite-8b-agent (1 GPU, ~5 min)
-oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
+# Benchmark qwen3-8b-agent (1 GPU, ~5 min)
+oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/qwen3-8b-agent.yaml
 
 # Or benchmark mistral-3-bf16 (4 GPU, ~8 min)
 oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
@@ -51,7 +51,7 @@ oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-
 
 ### Scene 2: vLLM Performance Dashboard
 
-Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`.
+Open Grafana → select `namespace=private-ai`, `model_name=qwen3-8b-agent`.
 
 **Key panels:**
 - **E2E Request Latency** — P50/P95/P99 across concurrency levels
@@ -72,7 +72,7 @@ Switch to the DCGM dashboard.
 
 After both benchmarks complete, compare the results (tuned configuration):
 
-| Metric | granite-8b-agent (1 GPU) | mistral-3-bf16 (4 GPU) |
+| Metric | qwen3-8b-agent (1 GPU) | mistral-3-bf16 (4 GPU) |
 |--------|--------------------------|------------------------|
 | **KV cache capacity** | 155K tokens (9.5x at 16K) | 426K tokens (26.0x at 16K) |
 | **TTFT p95** | <90ms | <128ms |
@@ -117,7 +117,7 @@ oc get cronjob guidellm-daily -n private-ai
 # Expected: SCHEDULE "0 2 * * *", not suspended
 
 # Tuned vLLM config (KV cache from pod startup logs)
-oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
+oc logs deploy/qwen3-8b-agent-predictor -n private-ai -c kserve-container \
   | grep 'KV cache size'
 # Expected: 155,184 tokens (kv-cache-dtype=fp8, gpu-memory-utilization=0.92)
 

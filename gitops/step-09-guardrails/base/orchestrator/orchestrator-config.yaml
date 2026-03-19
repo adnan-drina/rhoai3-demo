@@ -18,7 +18,7 @@ data:
   config.yaml: |
     chat_generation:
       service:
-        hostname: granite-8b-agent-predictor.private-ai.svc.cluster.local
+        hostname: qwen3-8b-agent-predictor.private-ai.svc.cluster.local
         port: 8080
     detectors:
       regex:

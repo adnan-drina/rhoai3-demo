@@ -42,11 +42,11 @@ if ! oc get crd datasciencepipelinesapplications.datasciencepipelinesapplication
 fi
 log_success "DSPA CRD available"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice qwen3-8b-agent -n "$NAMESPACE" &>/dev/null; then
+    log_error "qwen3-8b-agent InferenceService not found. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent InferenceService present"
+log_success "qwen3-8b-agent InferenceService present"
 
 if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
     log_error "minio-connection secret not found in $NAMESPACE. Deploy step-03 first."

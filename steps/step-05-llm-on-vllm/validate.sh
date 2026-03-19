@@ -26,7 +26,7 @@ fi
 
 # --- InferenceServices ---
 log_step "InferenceServices"
-for isvc in granite-8b-agent mistral-3-bf16; do
+for isvc in qwen3-8b-agent mistral-3-bf16; do
     EXISTS=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.name}' 2>/dev/null || echo "")
     if [[ "$EXISTS" == "$isvc" ]]; then
         READY=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" \

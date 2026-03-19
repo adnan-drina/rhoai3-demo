@@ -17,7 +17,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
    │
    ▼
  LlamaStackDistribution (lsd-rag)
-   Inference:  remote::vllm → granite-8b-agent
+   Inference:  remote::vllm → qwen3-8b-agent
    Embedding:  inline::sentence-transformers (768d)
    Vector IO:  remote::pgvector → llamastack-postgres
    │
@@ -178,7 +178,7 @@ Or run the validation script:
 | `POSTGRES_HOST/PORT/DB/USER/PASSWORD` | `llamastack-postgres-secret` | Metadata store | Production pattern |
 | `ENABLE_SENTENCE_TRANSFORMERS` | `true` | Inline embeddings (no GPU needed) | Example D |
 | `EMBEDDING_PROVIDER` | `sentence-transformers` | Routes to sentence-transformers (not vllm-embedding) | Required |
-| `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
+| `INFERENCE_MODEL` | `llamastack-vllm-secret` | qwen3-8b-agent | — |
 | `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
 | `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
 | `FMS_ORCHESTRATOR_URL` | Service URL | Guardrails safety (auto-wired by `rh-dev`) | Guardrails docs |
@@ -209,7 +209,7 @@ If the SCC grant is missing (fresh cluster), run:
 oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
 ```
 
-> **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (granite-8b-agent, etc.) in the same namespace.
+> **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (qwen3-8b-agent, etc.) in the same namespace.
 
 ### Agent response empty or "Response failed: Unknown error" with MCP tools
 

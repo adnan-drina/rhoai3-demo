@@ -21,7 +21,7 @@ The orchestrator exposes three gateway routes — `/passthrough` (no detectors),
 
 ### Scene 1: Direct Mode — PII Leaks Freely
 
-In the chatbot, select `granite-8b-agent` and use **Direct** mode (no shields). Ask about the Managing Director.
+In the chatbot, select `qwen3-8b-agent` and use **Direct** mode (no shields). Ask about the Managing Director.
 
 **Prompt:** "Who is the Managing Director of ACME Corp?"
 

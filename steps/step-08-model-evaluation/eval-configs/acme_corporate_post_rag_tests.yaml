@@ -1,7 +1,7 @@
 name: "ACME Corporate — Post-RAG Evaluation"
 description: "Evaluation WITH document retrieval. With RAG, the LLM should answer from ACME's internal semiconductor manufacturing documents — not the cartoon company."
 vector_db_id: acme_corporate
-model_id: granite-8b-agent
+model_id: qwen3-8b-agent
 mode: post-rag
 
 scoring_params:

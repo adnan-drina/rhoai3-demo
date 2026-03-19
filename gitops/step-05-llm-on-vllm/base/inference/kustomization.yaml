@@ -2,11 +2,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # 1x g6.4xlarge (1 GPU) + 1x g6.12xlarge (4 GPU) = 5/5 GPUs
-# granite-8b-agent (1 GPU): RAG, MCP tools, Guardrails, Eval (Steps 06-10)
+# qwen3-8b-agent   (1 GPU): RAG, MCP tools, Guardrails, Eval (Steps 06-10)
 # mistral-3-bf16   (4 GPU): Playground chat, Benchmarking, Eval judge (Steps 06, 08)
-# 3 additional models (Mistral INT4, Devstral-2, GPT-OSS-20B) are registered in
-# the Model Registry and can be deployed from GenAI Studio when needed.
+# Additional models (Granite 3.1, Mistral INT4, Devstral-2, GPT-OSS-20B) are
+# registered in the Model Registry for on-demand deployment.
 
 resources:
-  - granite-8b-agent.yaml
+  - qwen3-8b-agent.yaml
   - mistral-3-bf16.yaml

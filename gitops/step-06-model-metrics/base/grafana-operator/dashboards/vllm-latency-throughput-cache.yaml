@@ -1,5 +1,5 @@
 # Source: https://github.com/llm-d/llm-d-deployer/blob/main/quickstart/grafana/dashboards/llm-d-dashboard.json
-# Modified: namespace=private-ai, model_name=granite-8b-agent, DS_PROMETHEUS→Prometheus-UWM
+# Modified: namespace=private-ai, model_name=qwen3-8b-agent, DS_PROMETHEUS→Prometheus-UWM
 # To update from upstream:
 #   curl -sL https://raw.githubusercontent.com/llm-d/llm-d-deployer/main/quickstart/grafana/dashboards/llm-d-dashboard.json \
 #     | sed 's/${DS_PROMETHEUS}/Prometheus-UWM/g' > llm-d-dashboard.json

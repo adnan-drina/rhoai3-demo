@@ -1,0 +1,87 @@
+# Red Hat Validated Model (Qwen3 Quantized Collection)
+# Model: RedHatAI/Qwen3-8B-FP8-dynamic
+# Source: registry.redhat.io/rhelai1/modelcar-qwen3-8b-fp8-dynamic:1.5
+# Precision: FP8 Dynamic - 8B parameters, ~8GB VRAM
+# Hardware: g6.4xlarge (1x NVIDIA L4, 24GB VRAM)
+# Storage: OCI ModelCar (Red Hat Model Catalog)
+#   - Pulled via cluster pull secret — no S3/MinIO or HuggingFace download needed
+#   - KServe modelcar sidecar mounts the OCI image as an emptyDir volume
+# Use Case: The Agentic Core — Tool-calling, RAG (file_search), MCP servers.
+# Why Qwen3 over Granite 3.1:
+#   Granite 3.x chat template injects document citation behavior when both tools
+#   and documents are in context, causing fake "Sources:" sections with <|file-xxx|>
+#   markers on MCP-only queries. This is architectural (trained behavior, not
+#   suppressible via system prompt). Qwen3 uses hermes-style tool calling without
+#   this citation behavior.
+# Performance:
+#   --kv-cache-dtype=fp8  → L4 Ada Lovelace native FP8, doubles KV cache
+#   --gpu-memory-util=0.92 → Safe maximum (0.95 OOMs during CUDA graph capture)
+#   --max-model-len=16384  → 16K for MCP + RAG context
+#   --tool-call-parser=hermes → RHOAI 3.3 recommended for Qwen3
+# Ref: https://huggingface.co/RedHatAI/Qwen3-8B-FP8-dynamic
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: qwen3-8b-agent
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: qwen3-8b-agent
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"
+    networking.kserve.io/visibility: exposed
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    openshift.io/display-name: "Qwen3-8B Agent (1-GPU FP8)"
+    serving.kserve.io/deploymentMode: RawDeployment
+    opendatahub.io/model-type: generative
+    opendatahub.io/genai-use-case: "agentic tool-calling"
+    security.opendatahub.io/enable-auth: "false"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    deploymentStrategy:
+      type: Recreate
+    nodeSelector:
+      node.kubernetes.io/instance-type: g6.4xlarge
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-qwen3-8b-fp8-dynamic:1.5
+      args:
+        - --served-model-name=qwen3-8b-agent
+        - --max-model-len=16384
+        - --gpu-memory-utilization=0.92
+        - --kv-cache-dtype=fp8
+        - --trust-remote-code
+        - --enable-auto-tool-choice
+        - --tool-call-parser=hermes
+        - --enable-chunked-prefill
+      env:
+        - name: VLLM_USE_V1
+          value: "1"
+        - name: VLLM_NO_HW_METRICS
+          value: "1"
+        - name: LD_LIBRARY_PATH
+          value: /usr/local/nvidia/lib64
+      resources:
+        requests:
+          cpu: "8"
+          memory: 32Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "16"
+          memory: 60Gi
+          nvidia.com/gpu: "1"

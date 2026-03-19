@@ -1,7 +1,7 @@
 #!/bin/bash
 # Step 08: Generate pre/post RAG evaluation reports
 # - Reads *_tests.yaml from eval-configs/ (GitOps-managed)
-# - Candidate model: granite-8b-agent via lsd-rag
+# - Candidate model: qwen3-8b-agent via lsd-rag
 # - Judge model: mistral-3-bf16 via direct vLLM (larger model = better judge)
 # - Reports uploaded to MinIO
 #
@@ -19,7 +19,7 @@ source "$REPO_ROOT/scripts/lib.sh"
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 08: Pre/Post RAG Evaluation Report                       ║"
 echo "║  Run ID: $RUN_ID                                           ║"
-echo "║  Candidate: granite-8b-agent | Judge: mistral-3-bf16           ║"
+echo "║  Candidate: qwen3-8b-agent | Judge: mistral-3-bf16           ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -59,7 +59,7 @@ import requests as http
 
 # --- Config ---
 LLAMASTACK_URL = 'http://localhost:8321'
-CANDIDATE_MODEL = 'vllm-inference/granite-8b-agent'
+CANDIDATE_MODEL = 'vllm-inference/qwen3-8b-agent'
 JUDGE_URL = 'http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions'
 JUDGE_MODEL = 'mistral-3-bf16'
 RUN_ID = '$RUN_ID'
@@ -149,7 +149,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
 </style></head><body>
 <div class=\"container\">
   <div class=\"header\"><h1>RAG Evaluation Report</h1><p>{name}</p><span class=\"badge\">{mode.upper()}</span></div>
-  <p class=\"meta\">Run ID: {run_id} | Candidate: granite-8b-agent | Judge: mistral-3-bf16 | {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} | Tests: {len(results)}</p>
+  <p class=\"meta\">Run ID: {run_id} | Candidate: qwen3-8b-agent | Judge: mistral-3-bf16 | {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} | Tests: {len(results)}</p>
   <div style=\"padding: 0 30px 30px;\"><table><thead><tr><th>#</th><th>Question</th><th>Generated Answer</th><th>Expected</th><th>Judge Score</th></tr></thead>
   <tbody>{rows}</tbody></table></div>
 </div></body></html>'''

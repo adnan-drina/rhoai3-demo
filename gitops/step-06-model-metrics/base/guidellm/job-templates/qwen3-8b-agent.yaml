@@ -1,5 +1,5 @@
-# GuideLLM Benchmark: granite-8b-agent (1-GPU FP8)
-# Usage: oc create -f granite-8b-agent.yaml
+# GuideLLM Benchmark: qwen3-8b-agent (1-GPU FP8)
+# Usage: oc create -f qwen3-8b-agent.yaml
 # Traffic profile: 512→256 (Chatbot/Q&A)
 # SLO target: Conversational — TTFT ≤150ms, ITL ≤45ms (L4 hardware floor)
 apiVersion: batch/v1
@@ -10,7 +10,7 @@ metadata:
   labels:
     app: guidellm
     app.kubernetes.io/part-of: benchmarking
-    model: granite-8b-agent
+    model: qwen3-8b-agent
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 900
@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app: guidellm
-        model: granite-8b-agent
+        model: qwen3-8b-agent
 
     spec:
       restartPolicy: Never
@@ -50,8 +50,8 @@ spec:
               ]
               EOF
               guidellm benchmark run \
-                --target "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1" \
-                --model "granite-8b-agent" \
+                --target "http://qwen3-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1" \
+                --model "qwen3-8b-agent" \
                 --data /tmp/prompts.json \
                 --rate "1,3,5,8,10" \
                 --rate-type constant \

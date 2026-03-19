@@ -147,7 +147,7 @@ def _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_rep
     pipeline_root="s3://pipelines/",
 )
 def granite_benchmark_pipeline(
-    model_name: str = "granite-8b-agent",
+    model_name: str = "qwen3-8b-agent",
     rates: str = "1,3,5,8,10",
     max_seconds: int = 60,
     max_requests: int = 50,

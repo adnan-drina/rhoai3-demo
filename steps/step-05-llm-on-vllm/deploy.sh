@@ -3,7 +3,7 @@
 # Step 05: LLM Serving on vLLM
 # =============================================================================
 # Deploys 2 Red Hat Validated models with GPU scheduling:
-#   1. granite-8b-agent  (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails)
+#   1. qwen3-8b-agent  (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails)
 #   2. mistral-3-bf16    (4-GPU, S3/MinIO, BF16 — Playground, Eval judge)
 #
 # 3 additional models are registered in the Model Registry (seed job) and
@@ -63,7 +63,7 @@ echo ""
 # =============================================================================
 log_step "Model Portfolio (5 GPUs Total)"
 echo ""
-echo "  granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
+echo "  qwen3-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
 echo "  mistral-3-bf16     4-GPU  S3   BF16  Playground chat/Eval judge"
 echo ""
 
@@ -135,12 +135,12 @@ echo ""
 # =============================================================================
 log_step "Applying AI Asset labels for GenAI Playground..."
 
-MODELS="mistral-3-bf16 granite-8b-agent"
+MODELS="mistral-3-bf16 qwen3-8b-agent"
 
 get_use_case() {
     case "$1" in
         mistral-3-bf16)     echo "enterprise chat assistant" ;;
-        granite-8b-agent)   echo "agentic tool-calling" ;;
+        qwen3-8b-agent)   echo "agentic tool-calling" ;;
     esac
 }
 
@@ -180,7 +180,7 @@ if [[ -n "$REGISTRY_ROUTE" ]]; then
 
     # Registry-name → ISVC-name mapping
     declare -A REGISTRY_MAP=(
-        ["Granite-3.1-8B-Agent"]="granite-8b-agent"
+        ["Granite-3.1-8B-Agent"]="qwen3-8b-agent"
         ["Mistral-3-BF16"]="mistral-3-bf16"
     )
 

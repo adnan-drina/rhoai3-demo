@@ -1,4 +1,4 @@
-# LMEvalJob template for granite-8b-agent
+# LMEvalJob template for qwen3-8b-agent
 # Evaluates reasoning, logic, and general knowledge via standard benchmarks.
 # Apply on demand: oc apply -f granite-8b-eval.yaml -n private-ai
 # Results visible in Dashboard: Develop & train > Evaluations
@@ -6,7 +6,7 @@
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: LMEvalJob
 metadata:
-  name: granite-8b-agent-eval
+  name: qwen3-8b-agent-eval
   namespace: private-ai
   labels:
     app.kubernetes.io/name: granite-8b-eval
@@ -16,9 +16,9 @@ spec:
   model: local-completions
   modelArgs:
     - name: model
-      value: granite-8b-agent
+      value: qwen3-8b-agent
     - name: base_url
-      value: http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1/completions
+      value: http://qwen3-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1/completions
     - name: num_concurrent
       value: "1"
     - name: max_retries

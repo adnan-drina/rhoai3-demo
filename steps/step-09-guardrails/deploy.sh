@@ -38,11 +38,11 @@ if [ "$TRUSTYAI_STATE" != "Managed" ]; then
 fi
 log_success "trustyai: Managed"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice qwen3-8b-agent -n "$NAMESPACE" &>/dev/null; then
+    log_error "qwen3-8b-agent InferenceService not found. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent present"
+log_success "qwen3-8b-agent present"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════

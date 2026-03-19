@@ -25,7 +25,7 @@ Each step introduces a core RHOAI capability, deployed the way Red Hat recommend
 
 ## The E2E Scenario: ACME Semiconductor
 
-Steps 07-10 come together in a practical example where `granite-8b-agent` autonomously:
+Steps 07-10 come together in a practical example where `qwen3-8b-agent` autonomously:
 1. **Inspects the cluster** — finds a failing equipment pod via OpenShift MCP
 2. **Queries a database** — identifies the equipment (L-900-08 EUV Scanner) via Database MCP
 3. **Searches internal docs** — finds the DFO calibration procedure via RAG

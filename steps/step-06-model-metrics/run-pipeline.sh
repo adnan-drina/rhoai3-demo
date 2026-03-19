@@ -1,7 +1,7 @@
 #!/bin/bash
 # Trigger a GuideLLM benchmark pipeline run via DSPA.
 # Usage: ./run-pipeline.sh [model_name] [run_id]
-#   model_name: granite-8b-agent (default) or mistral-3-bf16
+#   model_name: qwen3-8b-agent (default) or mistral-3-bf16
 #   run_id:     unique identifier (default: bench-<timestamp>)
 
 set -euo pipefail
@@ -15,8 +15,8 @@ RUN_ID="${2:-bench-$(date +%s)}"
 source "$REPO_ROOT/scripts/lib.sh"
 
 case "$MODEL_INPUT" in
-    granite|granite-8b-agent)
-        MODEL_NAME="granite-8b-agent"
+    granite|qwen3-8b-agent)
+        MODEL_NAME="qwen3-8b-agent"
         PIPELINE_NAME="bench-granite-8b"
         PIPELINE_YAML="$REPO_ROOT/artifacts/bench-granite-8b.yaml"
         ;;

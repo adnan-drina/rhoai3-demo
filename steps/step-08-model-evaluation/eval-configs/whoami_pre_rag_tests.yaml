@@ -1,7 +1,7 @@
 name: "Whoami (CV) — Pre-RAG Baseline"
 description: "Baseline WITHOUT document retrieval. The LLM hallucinates — it thinks Adnan Drina is a Bosnian football coach."
 vector_db_id: null
-model_id: granite-8b-agent
+model_id: qwen3-8b-agent
 mode: pre-rag
 
 scoring_params:
