@@ -442,8 +442,6 @@ class ResponseState:
         # Reasoning state
         self.reasoning_text = ""
         self.reasoning_placeholder = None
-        self._in_think_block = False
-
         # Tool state
         self.tool_status = None
         self.tool_results = []
@@ -482,43 +480,13 @@ class ResponseState:
             self.reasoning_placeholder.markdown(self.reasoning_text)
 
     def update_message(self, delta_text):
-        """Add message text and update display.
-
-        Routes <think>...</think> blocks to the collapsible reasoning
-        expander (collapsed by default) so the main response stays clean.
-        """
+        """Add message text and update display."""
         self.full_response += delta_text
-
-        if '<think>' in self.full_response and not self._in_think_block:
-            self._in_think_block = True
-
-        if self._in_think_block:
-            if '</think>' in self.full_response:
-                self._in_think_block = False
-                think_end = self.full_response.index('</think>') + len('</think>')
-                think_content = self.full_response[:think_end]
-                think_text = think_content.replace('<think>', '').replace('</think>', '').strip()
-                if think_text:
-                    self.update_reasoning(think_text)
-                    self.finalize_reasoning()
-                visible = self.full_response[think_end:].lstrip()
-                self.containers.message.markdown(visible + "▌")
-            return
-
-        visible = self.full_response
-        think_end_pos = visible.find('</think>')
-        if think_end_pos >= 0:
-            visible = visible[think_end_pos + len('</think>'):].lstrip()
-        self.containers.message.markdown(visible + "▌")
+        self.containers.message.markdown(self.full_response + "▌")
 
     def finalize_message(self):
-        """Render final response: strip think blocks, resolve citations."""
+        """Remove cursor from message display."""
         text = self.full_response
-
-        # Strip <think>...</think> blocks from final display
-        think_match = re.search(r'<think>.*?</think>\s*', text, re.DOTALL)
-        if think_match:
-            text = text[think_match.end():]
 
         # Collect cited sources from markers
         cited_ids = _CITATION_RE.findall(text)
