@@ -256,12 +256,14 @@ def _resolve_file_citations(text, file_id_map):
 
 
 def handle_chunk_done(chunk, state):
-    """Resolve file citations in the accumulated response and re-render."""
-    if state.full_response and state.file_id_map:
-        resolved = _resolve_file_citations(state.full_response, state.file_id_map)
-        if resolved != state.full_response:
-            state.full_response = resolved
-            state.containers.message.markdown(resolved)
+    """Handle done chunk and finalize response."""
+    has_output = (
+        hasattr(chunk, 'response') and
+        hasattr(chunk.response, 'output_text') and
+        chunk.response.output_text
+    )
+    if has_output:
+        state.full_response = chunk.response.output_text
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):
@@ -298,9 +300,12 @@ def process_chunk_by_type(chunk, state, selected_vector_dbs):
     elif chunk_type == "response.failed":
         return handle_chunk_error(chunk)
 
-    # Handle completion — resolve file citations and finalize display
+    # Handle completion
     elif chunk_type == "response.completed":
         handle_chunk_completed(chunk)
+
+    # Handle done
+    elif chunk_type == "response.done":
         handle_chunk_done(chunk, state)
 
     return False  # Continue streaming
