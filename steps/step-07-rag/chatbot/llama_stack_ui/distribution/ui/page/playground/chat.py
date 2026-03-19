@@ -126,7 +126,7 @@ def render_toolgroup_selection(builtin_tools_list, mcp_tools_list, selected_vect
             label="MCP Servers",
             options=mcp_tools_list,
             selection_mode="multi",
-            on_change=on_reset,
+            on_change=on_toolgroup_change,
             format_func=lambda tool: "".join(tool.split("::")[1:]),
             help="List of MCP servers registered to your llama stack server.",
         )
