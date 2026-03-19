@@ -1,6 +1,6 @@
 # LMEvalJob template for qwen3-8b-agent
 # Evaluates reasoning, logic, and general knowledge via standard benchmarks.
-# Apply on demand: oc apply -f granite-8b-eval.yaml -n private-ai
+# Apply on demand: oc apply -f qwen3-8b-eval.yaml -n private-ai
 # Results visible in Dashboard: Develop & train > Evaluations
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-large-language-models_evaluate
 apiVersion: trustyai.opendatahub.io/v1alpha1
@@ -9,7 +9,7 @@ metadata:
   name: qwen3-8b-agent-eval
   namespace: private-ai
   labels:
-    app.kubernetes.io/name: granite-8b-eval
+    app.kubernetes.io/name: qwen3-8b-eval
     app.kubernetes.io/component: model-evaluation
     app.kubernetes.io/part-of: rag-evaluation
 spec:
@@ -26,7 +26,7 @@ spec:
     - name: tokenized_requests
       value: "false"
     - name: tokenizer
-      value: ibm-granite/granite-3.1-8b-instruct
+      value: Qwen/Qwen3-8B
   taskList:
     taskNames:
       - hellaswag

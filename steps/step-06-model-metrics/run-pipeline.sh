@@ -17,8 +17,8 @@ source "$REPO_ROOT/scripts/lib.sh"
 case "$MODEL_INPUT" in
     granite|qwen3-8b-agent)
         MODEL_NAME="qwen3-8b-agent"
-        PIPELINE_NAME="bench-granite-8b"
-        PIPELINE_YAML="$REPO_ROOT/artifacts/bench-granite-8b.yaml"
+        PIPELINE_NAME="bench-qwen3-8b"
+        PIPELINE_YAML="$REPO_ROOT/artifacts/bench-qwen3-8b.yaml"
         ;;
     mistral|mistral-bf16|mistral-3-bf16)
         MODEL_NAME="mistral-3-bf16"

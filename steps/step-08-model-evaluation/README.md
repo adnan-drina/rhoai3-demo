@@ -19,7 +19,7 @@ Step-08 provides two evaluation capabilities:
 eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / Dashboard UI
 (*_tests.yaml)      ┌──────────────────────────────┐           ┌──────────────────────────┐
                     │ For each scenario:            │           │ LMEvalJob CR             │
-  GitOps ──────────►│  1. Generate answers (granite)│──► MinIO │  - hellaswag             │
+  GitOps ──────────►│  1. Generate answers (qwen3)  │──► MinIO │  - hellaswag             │
   (ArgoCD)          │  2. Retrieve context (pgvec)  │   HTML   │  - arc_challenge         │──► Dashboard
                     │  3. Judge (mistral-3-bf16)    │  reports │  - winogrande            │   results
                     │  4. Generate HTML report      │          │  - boolq                 │

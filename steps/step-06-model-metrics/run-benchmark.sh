@@ -24,7 +24,7 @@ MODEL="${1:-}"
 
 if [[ -n "$MODEL" ]]; then
     case "$MODEL" in
-        granite|qwen3-8b-agent)
+        qwen3|qwen3-8b-agent)
             JOB_FILE="$REPO_ROOT/gitops/step-06-model-metrics/base/guidellm/job-templates/qwen3-8b-agent.yaml"
             ;;
         mistral|mistral-bf16|mistral-3-bf16)

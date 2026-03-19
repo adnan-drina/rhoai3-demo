@@ -31,7 +31,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 | **Docling** | PDF-to-Markdown intelligent conversion | Data Engineer |
 | **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | MLOps Engineer |
 | **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | AI Engineer |
-| **Granite-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
+| **Qwen3-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
 | **RAG Chatbot UI** | Web frontend for interactive RAG queries | Demo / End User |
 
 ## Demo Walkthrough
@@ -149,7 +149,7 @@ Or run the validation script:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
-> **Agent-based system prompt uses few-shot examples, grounding, retry, and tool hints.** Granite 8B ignores negative instructions and verbose prompts cause narration instead of action. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools, and (4) a concrete `Sources:` citation example with `.md` filenames. All 4 MCP demo scenes pass with all tools enabled simultaneously. See `docs/prompt-engineering-session.md` for full test results.
+> **Agent-based system prompt is concise and action-oriented.** Qwen3 8B uses hermes-style tool calling and follows positive formatting directives. The system prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools. Qwen3 was chosen over Granite 3.1 because Granite's chat template injects document citation behavior when both tools and documents are in context, causing hallucinated "Sources:" sections on MCP-only queries.
 
 > **`max_output_tokens=512` prevents vLLM context overflow.** MCP tool results (especially file_search with 5 document chunks + MCP tool schemas for 31 tools) consume 12-16K of the 16K context window. Without explicitly passing `max_output_tokens`, LlamaStack defaults to requesting 4096 tokens from vLLM, which exceeds the remaining context space and causes `response.failed: Unknown error`. The chatbot now passes `max_output_tokens` from the sidebar slider (default 512) to the Responses API.
 

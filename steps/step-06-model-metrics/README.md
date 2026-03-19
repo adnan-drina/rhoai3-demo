@@ -60,7 +60,7 @@ Open Grafana → select `namespace=private-ai`, `model_name=qwen3-8b-agent`.
 - **Time To First Token** — responsiveness metric
 - **Scheduler State** — running vs waiting requests
 
-*"At 10 concurrent users, Granite's P95 inter-token latency stays at ~41ms and throughput holds at 130-170 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels."*
+*"At 10 concurrent users, Qwen3's P95 inter-token latency stays at ~41ms and throughput holds at 130-170 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels."*
 
 ### Scene 3: GPU Hardware Dashboard (DCGM)
 
@@ -80,19 +80,19 @@ After both benchmarks complete, compare the results (tuned configuration):
 | **Output throughput** | ~130-170 tok/s | ~120-135 tok/s |
 | **Sweet spot** | 5-8 concurrent users | 10-15 concurrent users |
 
-*"After tuning, Granite's KV cache doubled from 74K to 155K tokens — that's 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs at 40ms and 53ms respectively — that's the memory bandwidth floor. Moving to A100 or H100 GPUs would reduce ITL significantly."*
+*"After tuning, Qwen3's KV cache from 74K to 155K tokens — that's 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs at 40ms and 53ms respectively — that's the memory bandwidth floor. Moving to A100 or H100 GPUs would reduce ITL significantly."*
 
 > **Known Limitation (NVIDIA L4):** ITL is limited by memory bandwidth (~300 GB/s). An 8B FP8 model reads ~8 GB of weights per decode step, giving a theoretical minimum of ~27ms. Observed 40ms includes compute, KV cache attention, and CUDA overhead. This is near the hardware floor — not a tuning issue. See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
 ### Scene 5: Dashboard Pipeline (no CLI needed)
 
-**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `bench-granite-8b` (or `bench-mistral-bf16`). Click **Create run**.
+**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `bench-qwen3-8b` (or `bench-mistral-bf16`). Click **Create run**.
 
 **Expect:** A form with pre-filled parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id` — each pipeline has model-specific defaults.
 
 **Do:** Keep defaults, click **Start**. Watch the run in the **Runs** tab.
 
-**Expect:** Granite completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
+**Expect:** Qwen3 completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
 
 *"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change."*
 

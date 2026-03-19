@@ -39,7 +39,7 @@ fi
 
 case "$MODEL" in
     qwen3-8b-agent|granite)
-        TEMPLATE="$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/granite-8b-eval.yaml"
+        TEMPLATE="$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/qwen3-8b-eval.yaml"
         JOB_NAME="qwen3-8b-agent-eval"
         ;;
     mistral-3-bf16|mistral)

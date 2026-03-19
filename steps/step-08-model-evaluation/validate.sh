@@ -160,7 +160,7 @@ else
 fi
 
 LMEVAL_TEMPLATES_EXIST=0
-for tpl in granite-8b-eval.yaml mistral-bf16-eval.yaml; do
+for tpl in qwen3-8b-eval.yaml mistral-bf16-eval.yaml; do
     if [ -f "$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/$tpl" ]; then
         LMEVAL_TEMPLATES_EXIST=$((LMEVAL_TEMPLATES_EXIST + 1))
     fi
