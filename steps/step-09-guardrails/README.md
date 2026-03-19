@@ -67,6 +67,8 @@ _What to say: "This is the most common attack vector against LLM applications. T
 
 > **Custom ACME regex patterns:** PII detector blocks Dutch phone numbers (`+31...`), LinkedIn URLs, and GitHub URLs — specifically targeting our demo data.
 
+> **Dashboard template annotations on ServingRuntime.** The `guardrails-detector-runtime` includes `opendatahub.io/template-name` and `template-display-name` annotations matching the platform template `guardrails-detector-huggingface-serving-template`. Without these, the Dashboard shows "Unknown Serving Runtime" for HAP and prompt injection detectors.
+
 ## References
 
 - [RHOAI 3.3 — Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails)

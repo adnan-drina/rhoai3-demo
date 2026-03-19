@@ -140,6 +140,8 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
 
 > **Design Decision:** **Pre-trained model fallback**. A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
 
+> **Dashboard template annotations on ServingRuntime.** The RHOAI Dashboard identifies runtimes by matching `opendatahub.io/template-name` and `opendatahub.io/template-display-name` annotations against platform templates in `redhat-ods-applications`. Without these, runtimes show as "Unknown Serving Runtime" in the Model Deployments view. The `kserve-ovms` ServingRuntime includes `template-name: kserve-ovms` and `template-display-name: OpenVINO Model Server` to match the platform template.
+
 ## Troubleshooting
 
 ### InferenceService stuck in "Not Ready"
