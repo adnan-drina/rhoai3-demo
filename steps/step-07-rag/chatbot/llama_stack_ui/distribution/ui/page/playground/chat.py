@@ -10,12 +10,9 @@ Provides both Direct mode (manual RAG) and Agent-based mode (automatic tool call
 """
 
 import logging
-import re
 from dataclasses import dataclass
 
 import streamlit as st
-
-_FILE_MARKER_RE = re.compile(r'<\|[^|]+\|>')
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import (
@@ -483,13 +480,11 @@ class ResponseState:
     def update_message(self, delta_text):
         """Add message text and update display."""
         self.full_response += delta_text
-        clean = _FILE_MARKER_RE.sub('', self.full_response).rstrip()
-        self.containers.message.markdown(clean + "▌")
+        self.containers.message.markdown(self.full_response + "▌")
 
     def finalize_message(self):
         """Remove cursor from message display."""
-        clean = _FILE_MARKER_RE.sub('', self.full_response).rstrip()
-        self.containers.message.markdown(clean)
+        self.containers.message.markdown(self.full_response)
 
 
 # ============================================================================
