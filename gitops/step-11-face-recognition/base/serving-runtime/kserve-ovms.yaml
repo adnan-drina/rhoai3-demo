@@ -12,8 +12,11 @@ metadata:
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    opendatahub.io/apiProtocol: REST
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
     opendatahub.io/runtime-version: v2025.4
+    opendatahub.io/template-name: kserve-ovms
+    opendatahub.io/template-display-name: OpenVINO Model Server
     openshift.io/display-name: OpenVINO Model Server
 spec:
   annotations:
