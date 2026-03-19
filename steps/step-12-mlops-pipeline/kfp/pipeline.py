@@ -112,10 +112,11 @@ def face_recognition_training_pipeline(
     reg_task.after(eval_task)
     reg_task.set_caching_options(False)
 
-    # --- Step 5: Deploy Model ---
+    # --- Step 5: Deploy Model + Link to Registry ---
     dep_task = deploy_model(
         isvc_name=model_name,
         namespace=isvc_namespace,
+        registry_url=registry_url,
     )
     _set_resources(dep_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
     dep_task.after(reg_task)

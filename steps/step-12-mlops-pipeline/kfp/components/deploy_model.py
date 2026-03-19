@@ -1,22 +1,55 @@
-"""Restart the face-recognition predictor pod to load the new model."""
+"""Restart the face-recognition predictor pod and link ISVC to Model Registry."""
 
 from kfp.dsl import component
 
 
 @component(
     base_image="python:3.11",
-    packages_to_install=["kubernetes>=28.0.0"],
+    packages_to_install=["kubernetes>=28.0.0", "model-registry>=0.3.7"],
 )
 def deploy_model(
     isvc_name: str,
     namespace: str,
+    registry_url: str = "",
 ) -> str:
-    import time
+    import os, time
     from kubernetes import client, config
 
     config.load_incluster_config()
     v1 = client.CoreV1Api()
+    custom = client.CustomObjectsApi()
 
+    # Link ISVC to Model Registry by querying latest version IDs
+    if registry_url:
+        try:
+            os.environ["KF_PIPELINES_SA_TOKEN_PATH"] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+            from model_registry import ModelRegistry
+            registry = ModelRegistry(server_address=registry_url, port=443,
+                                     author="deploy-step", is_secure=False)
+            rm = registry.get_registered_model(isvc_name)
+            latest_v = None
+            for v in registry.get_model_versions(isvc_name).order_by_id().descending():
+                latest_v = v
+                break
+
+            if rm and latest_v:
+                reg_id = str(rm.id)
+                ver_id = str(latest_v.id)
+                print(f"Linking ISVC to registry: model={reg_id}, version={ver_id}")
+                custom.patch_namespaced_custom_object(
+                    group="serving.kserve.io", version="v1beta1",
+                    namespace=namespace, plural="inferenceservices",
+                    name=isvc_name,
+                    body={"metadata": {"labels": {
+                        "modelregistry.opendatahub.io/registered-model-id": reg_id,
+                        "modelregistry.opendatahub.io/model-version-id": ver_id,
+                    }}},
+                )
+                print("  ISVC labeled with registry IDs")
+        except Exception as e:
+            print(f"  WARNING: Could not link to registry: {e}")
+
+    # Restart predictor pod to load new model
     label = f"serving.kserve.io/inferenceservice={isvc_name}"
     pods = v1.list_namespaced_pod(namespace, label_selector=label)
 
@@ -28,7 +61,6 @@ def deploy_model(
         print(f"Deleting pod {pod.metadata.name}...")
         v1.delete_namespaced_pod(pod.metadata.name, namespace)
 
-    # Wait for new pod to be ready
     print("Waiting for new predictor pod...")
     for i in range(24):
         time.sleep(5)
