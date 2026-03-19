@@ -10,9 +10,12 @@ Provides both Direct mode (manual RAG) and Agent-based mode (automatic tool call
 """
 
 import logging
+import re
 from dataclasses import dataclass
 
 import streamlit as st
+
+_CITATION_RE = re.compile(r'<\|([^|]+)\|>')
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import (
@@ -484,8 +487,43 @@ class ResponseState:
         self.containers.message.markdown(self.full_response + "▌")
 
     def finalize_message(self):
-        """Remove cursor from message display."""
-        self.containers.message.markdown(self.full_response)
+        """Render final response with annotation-based source citations.
+
+        Replaces <|file-xxx|> markers with resolved names from file_id_map,
+        strips any empty Sources/References skeleton the model generated,
+        and renders unique sources as a clean footer — matching the
+        Dashboard Playground citation rendering.
+        """
+        text = self.full_response
+
+        # Collect cited sources from markers
+        cited_ids = _CITATION_RE.findall(text)
+        sources = []
+        seen = set()
+        for fid in cited_ids:
+            name = self.file_id_map.get(fid, fid)
+            if name not in seen:
+                sources.append(name)
+                seen.add(name)
+
+        # Remove markers from text
+        text = _CITATION_RE.sub('', text)
+
+        # Remove empty Sources/References skeletons left by the model
+        text = re.sub(
+            r'\n*(?:Sources?|References?)\s*:\s*(?:\n\s*[-*]\s*)*\s*$',
+            '', text, flags=re.IGNORECASE,
+        ).rstrip()
+
+        # Render clean text
+        self.containers.message.markdown(text)
+
+        # Render source footer if citations were found
+        if sources:
+            with self.containers.message:
+                st.caption(f"{len(sources)} source{'s' if len(sources) != 1 else ''}")
+                for s in sources:
+                    st.markdown(f"&ensp;📄 `{s}`")
 
 
 # ============================================================================
