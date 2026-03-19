@@ -177,13 +177,6 @@ for i in $(seq 1 60); do
 done
 if [ "$DSPA_READY" = "true" ]; then
     log_success "DSPA dspa-rag is Ready"
-
-    # DSPA operator creates child Deployments without part-of labels.
-    # Patch them for OpenShift Topology grouping.
-    for deploy in $(oc get deploy -n "$NAMESPACE" -l dspa=dspa-rag --no-headers -o name 2>/dev/null); do
-        oc label "$deploy" -n "$NAMESPACE" app.kubernetes.io/part-of=rag --overwrite 2>/dev/null || true
-    done
-    log_success "DSPA child deployments labeled part-of=rag"
 else
     log_error "DSPA did not reach Ready state — skipping pipeline compilation and ingestion"
     log_info "Run manually after DSPA is ready:"

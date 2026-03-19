@@ -135,7 +135,7 @@ Or run the validation script:
 
 ## Design Decisions
 
-> **DSPA child Deployments labeled at deploy time.** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation. `deploy.sh` patches them with `part-of=rag` after DSPA reaches Ready, so they group correctly in the OpenShift Topology view. The labels survive until the DSPA CR is modified.
+> **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
 
 > **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and the need for `userConfig`.
 
