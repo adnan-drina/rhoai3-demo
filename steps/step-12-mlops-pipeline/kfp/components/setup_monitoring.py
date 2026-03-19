@@ -130,7 +130,7 @@ def setup_monitoring(
     print(f"\nTrustyAI info: {r.text[:300]}")
 
     print("\nMonitoring setup complete.")
-    print("  View metrics: OpenShift Console → Observe → Metrics")
+    print("  View metrics: OpenShift Console > Observe > Metrics")
     print("  Drift metric: trustyai_meanshift")
     print("  Confidence tracking: trustyai_identity")
 
