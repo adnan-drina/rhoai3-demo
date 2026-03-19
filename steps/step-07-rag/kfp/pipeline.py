@@ -104,6 +104,7 @@ def docling_rag_pipeline(
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
+    reg_db.set_caching_options(False)
     reg_db.after(download)
 
     completion = pipeline_completion_component(
@@ -175,10 +176,11 @@ def batch_docling_rag_pipeline(
         },
     )
 
-    # Stage 3: Register vector DB (idempotent)
+    # Stage 3: Register vector DB (idempotent, cache disabled — UUIDs change on LlamaStack restart)
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
+    reg_db.set_caching_options(False)
     reg_db.after(download)
 
     # Stage 4: Split files into groups for parallel processing

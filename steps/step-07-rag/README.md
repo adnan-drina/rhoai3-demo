@@ -157,6 +157,8 @@ Or run the validation script:
 
 > **pgvector requires `anyuid` SCC via a dedicated ServiceAccount.** The `pgvector/pgvector:pg16` image entrypoint runs `chown`/`chmod` as root to set data directory ownership. OpenShift's restricted SCC blocks this. A dedicated `llamastack-postgres` ServiceAccount with `anyuid` SCC is used instead of granting `anyuid` to the default SA (which would break KServe modelcar FUSE mounts on inference pods sharing the namespace).
 
+> **File citations in agent mode use `attributes` metadata.** The ingestion pipeline passes `attributes={"source": upload_name, "filename": upload_name}` to `vector_stores.files.create()` so each chunk carries the original document name. The chatbot's `handle_chunk_done()` post-processes the complete `response.output_text` to replace LlamaStack's `<|file-xxx|>` citation markers with human-readable `[source_name]` using the `document_id` → `source` map built from `file_search_call` results. Post-processing on `response.done` (not during streaming deltas) avoids partial-token replacement issues.
+
 > **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. `deploy.sh` checks `lastVersion` and runs `oc start-build` if needed.
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.

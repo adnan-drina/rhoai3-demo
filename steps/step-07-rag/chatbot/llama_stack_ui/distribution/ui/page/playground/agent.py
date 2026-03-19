@@ -9,6 +9,7 @@ Agent mode implementation for chat with automatic tool calling.
 """
 
 import logging
+import re
 
 import streamlit as st
 
@@ -133,6 +134,14 @@ def handle_agent_output_item_done(chunk, state):
     if item_type == "file_search_call":
         # File search results
         if hasattr(item, 'results') and item.results:
+            # Build citation map: document_id → human-readable source name
+            for r in item.results:
+                attrs = getattr(r, 'attributes', {})
+                doc_id = attrs.get('document_id', '')
+                source = attrs.get('source') or attrs.get('filename') or getattr(r, 'filename', '')
+                if doc_id and source:
+                    state.file_id_map[doc_id] = source
+
             display_results = []
             for r in item.results:
                 text = getattr(r, 'text', '')
@@ -233,6 +242,19 @@ def handle_chunk_completed(chunk):
         logger.debug("Stop reason: %s", chunk.stop_reason)
 
 
+def _resolve_file_citations(text, file_id_map):
+    """Replace <|file-xxx|> markers with human-readable [source_name] citations."""
+    if not file_id_map:
+        return text
+
+    def _replace(match):
+        file_id = match.group(1)
+        name = file_id_map.get(file_id, file_id)
+        return f"[{name}]"
+
+    return re.sub(r'<\|([^|]+)\|>', _replace, text)
+
+
 def handle_chunk_done(chunk, state):
     """Handle done chunk and finalize response."""
     has_output = (
@@ -241,7 +263,9 @@ def handle_chunk_done(chunk, state):
         chunk.response.output_text
     )
     if has_output:
-        state.full_response = chunk.response.output_text
+        text = _resolve_file_citations(chunk.response.output_text, state.file_id_map)
+        state.full_response = text
+        state.containers.message.markdown(text)
 
 
 def process_chunk_by_type(chunk, state, selected_vector_dbs):

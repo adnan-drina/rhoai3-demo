@@ -85,6 +85,10 @@ def insert_via_llamastack_component(
                 vector_store_id=db_id,
                 file_id=uploaded.id,
                 chunking_strategy=chunking_strategy,
+                attributes={
+                    "source": upload_name,
+                    "filename": upload_name,
+                },
             )
             status = vs_file.status if hasattr(vs_file, "status") else "unknown"
             print(f"  [OK] Indexed into '{db_id}': status={status}")

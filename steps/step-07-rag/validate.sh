@@ -102,6 +102,38 @@ except:
         fi
     done
 
+    # --- File Attributes (citation metadata) ---
+    log_step "File Citation Attributes"
+    FIRST_VS_ID=$(echo "$VS_JSON" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    store = next((v for v in data.get('data', []) if v['name'] == 'acme_corporate'), None)
+    print(store['id'] if store else '')
+except:
+    print('')
+" 2>/dev/null || echo "")
+    if [[ -n "$FIRST_VS_ID" ]]; then
+        HAS_SOURCE=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+            curl -s "http://localhost:8321/v1/vector_stores/${FIRST_VS_ID}/files" 2>/dev/null | \
+            python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    files_with_source = [f for f in data.get('data', []) if f.get('attributes', {}).get('source')]
+    print(len(files_with_source))
+except:
+    print(0)
+" 2>/dev/null || echo "0")
+        if [[ "$HAS_SOURCE" -ge 1 ]]; then
+            echo -e "${GREEN}[PASS]${NC} File attributes have 'source' metadata ($HAS_SOURCE files)"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${YELLOW}[WARN]${NC} Files missing 'source' attribute — re-ingest: for s in acme whoami; do ./steps/step-07-rag/run-batch-ingestion.sh \$s; done"
+            VALIDATE_WARN=$((VALIDATE_WARN + 1))
+        fi
+    fi
+
     # --- Providers ---
     log_step "LlamaStack Providers"
     for provider in pgvector sentence-transformers vllm-inference; do

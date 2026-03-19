@@ -444,6 +444,7 @@ class ResponseState:
 
         # Response content
         self.full_response = ""
+        self.file_id_map = {}  # <|file-xxx|> → human-readable source name
 
     @property
     def has_reasoning(self):
