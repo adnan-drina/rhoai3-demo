@@ -127,4 +127,4 @@ spec:
           memory: 12Gi
     storage:
       size: 5Gi
-    # NO userConfig — rh-dev template handles everything
+    # Minimal userConfig overrides annotation_instruction_template only

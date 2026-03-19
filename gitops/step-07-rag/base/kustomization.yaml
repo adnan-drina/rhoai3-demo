@@ -7,7 +7,7 @@ kind: Kustomization
 #   2. Docling document processing service
 #   3. MinIO bucket for RAG documents
 #   4. DSPA (Kubeflow Pipelines v2) for pipeline orchestration
-#   5. LlamaStackDistribution configured for RAG with pgvector (no userConfig)
+#   5. LlamaStackDistribution configured for RAG with pgvector (minimal userConfig for annotation override)
 
 resources:
   # Infrastructure (sync-wave 1-2)
@@ -16,7 +16,7 @@ resources:
   - minio-rag-bucket/    # MinIO bucket for RAG documents
   # Platform (sync-wave 3-4)
   - dspa/                # Kubeflow Pipelines v2
-  - llamastack-rag/      # LlamaStack RAG backend (pgvector + granite-8b, no userConfig)
+  - llamastack-rag/      # LlamaStack RAG backend (pgvector + granite-8b, annotation override via userConfig)
   # Ingestion (sync-wave 5)
   - ingestion-service/   # Docling-based ingestion (BuildConfig + ConfigMap)
   # Workbench & UI (sync-wave 5-10)

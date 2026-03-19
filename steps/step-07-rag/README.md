@@ -137,9 +137,9 @@ Or run the validation script:
 
 > **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
 
-> **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and the need for `userConfig`.
+> **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and simplifies configuration.
 
-> **No `userConfig`.** The `rh-dev` LlamaStack template auto-wires all providers (pgvector, trustyai_fms, Ragas scoring, MCP tool runtime) from environment variables alone. This ensures vector store persistence across restarts, working Ragas evaluation, and safety provider integration.
+> **Minimal `userConfig` for annotation override.** The `rh-dev` template auto-wires all providers from env vars. A `userConfig` ConfigMap (`lsd-rag-config`) is used solely to override the `annotation_instruction_template` — preventing LlamaStack from injecting `<|file-xxx|>` citation markers into model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs). The full auto-generated config is preserved; only the annotation template is changed.
 
 > **MCP tool_groups are registered via the LlamaStack API at deploy time** (not in config files). They persist in PostgreSQL across restarts.
 
@@ -149,7 +149,7 @@ Or run the validation script:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
-> **Agent-based system prompt uses few-shot examples, grounding, retry, and tool hints.** Granite 8B ignores negative instructions and verbose prompts cause narration instead of action. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools, and (4) a concrete `Sources:` citation example with `.md` filenames. All 4 MCP demo scenes pass with all tools enabled simultaneously. See `docs/prompt-engineering-session.md` for full test results.
+> **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 
 > **`max_output_tokens=512` prevents vLLM context overflow.** MCP tool results (especially file_search with 5 document chunks + MCP tool schemas for 31 tools) consume 12-16K of the 16K context window. Without explicitly passing `max_output_tokens`, LlamaStack defaults to requesting 4096 tokens from vLLM, which exceeds the remaining context space and causes `response.failed: Unknown error`. The chatbot now passes `max_output_tokens` from the sidebar slider (default 512) to the Responses API.
 
@@ -157,7 +157,7 @@ Or run the validation script:
 
 > **pgvector requires `anyuid` SCC via a dedicated ServiceAccount.** The `pgvector/pgvector:pg16` image entrypoint runs `chown`/`chmod` as root to set data directory ownership. OpenShift's restricted SCC blocks this. A dedicated `llamastack-postgres` ServiceAccount with `anyuid` SCC is used instead of granting `anyuid` to the default SA (which would break KServe modelcar FUSE mounts on inference pods sharing the namespace).
 
-> **File citations in agent mode use `attributes` metadata.** The ingestion pipeline passes `attributes={"source": upload_name, "filename": upload_name}` to `vector_stores.files.create()` so each chunk carries the original document name. The chatbot's `handle_chunk_done()` post-processes the complete `response.output_text` to replace LlamaStack's `<|file-xxx|>` citation markers with human-readable `[source_name]` using the `document_id` → `source` map built from `file_search_call` results. Post-processing on `response.done` (not during streaming deltas) avoids partial-token replacement issues.
+> **File citations controlled via LlamaStack annotation template.** LlamaStack's `annotation_instruction_template` tells the model how to cite sources. The default instructs `<|file-id|>` format which produces opaque markers. The `lsd-rag-config` ConfigMap overrides this to instruct "Never include any citation that is in the form file-id" — eliminating the markers. The ingestion pipeline also sets `attributes={"source": upload_name}` for clean filenames in the File Search Results panel.
 
 > **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. `deploy.sh` checks `lastVersion` and runs `oc start-build` if needed.
 
