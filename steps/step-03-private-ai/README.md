@@ -33,6 +33,8 @@ ai-admin (Governor)     ai-developer (Consumer)     MinIO (S3)
 | **RBAC** | `ai-admin` → admin role, `ai-developer` → edit role in `private-ai` |
 | **Data Connection** | Auto-appears in Dashboard dropdowns for workbenches and model serving |
 
+Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: The Service Consumer Experience

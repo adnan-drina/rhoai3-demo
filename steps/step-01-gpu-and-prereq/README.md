@@ -32,6 +32,8 @@ OpenShift 4.20 Cluster
 
 > **AWS Quota:** Requires "Running On-Demand G and VT instances" >= 64 vCPU (16 + 48). Sandbox accounts default to 64.
 
+Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-prereq/base/)
+
 ## What to Verify After Deployment
 
 - **GPU nodes online** — two nodes with `nvidia.com/gpu` allocatable (1 GPU + 4 GPUs)

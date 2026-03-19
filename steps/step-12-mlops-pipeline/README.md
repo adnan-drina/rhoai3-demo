@@ -74,6 +74,8 @@ Options:
 
 Monitor the run in the RHOAI Dashboard: **Data Science Projects** -> **private-ai** -> **Pipelines**.
 
+Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pipeline/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: The Need for Automation

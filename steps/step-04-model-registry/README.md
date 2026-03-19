@@ -31,6 +31,8 @@ RHOAI 3.3 provides two complementary model management capabilities. The **Model 
 | **RBAC** | `ai-admin` = full control, `ai-developer` = read-only |
 | **Seed Job** | Registers Granite 3.1 8B Instruct FP8 on first deploy |
 
+Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-registry/base/)
+
 ## Demo Walkthrough
 
 > **Credentials:** `ai-admin` / `redhat123` · `ai-developer` / `redhat123`
@@ -121,7 +123,7 @@ oc get pvc model-registry-db-pvc -n rhoai-model-registries -o jsonpath='{.metada
 ```bash
 oc wait pods -l app=private-ai-registry -n rhoai-model-registries --for=condition=Ready --timeout=120s
 oc delete job model-registry-seed -n rhoai-model-registries
-oc apply -f gitops/step-04-model-registry/base/registry/seed-job.yaml
+oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
 ```
 
 ### Model Registry not visible in Dashboard

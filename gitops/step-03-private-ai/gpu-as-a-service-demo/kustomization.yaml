@@ -5,12 +5,12 @@ kind: Kustomization
 # NOT auto-deployed by ArgoCD - apply manually for demo
 # Usage:
 #   # Apply all at once (shows queuing)
-#   oc apply -k gitops/step-03-private-ai/demo/
+#   oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/
 #   # Or apply step-by-step
-#   oc apply -f gitops/step-03-private-ai/demo/configmap-notebooks.yaml
-#   oc apply -f gitops/step-03-private-ai/demo/pvcs.yaml
-#   oc apply -f gitops/step-03-private-ai/demo/workbench-1.yaml
-#   oc apply -f gitops/step-03-private-ai/demo/workbench-2.yaml
+#   oc apply -f gitops/step-03-private-ai/gpu-as-a-service-demo/configmap-notebooks.yaml
+#   oc apply -f gitops/step-03-private-ai/gpu-as-a-service-demo/pvcs.yaml
+#   oc apply -f gitops/step-03-private-ai/gpu-as-a-service-demo/workbench-1.yaml
+#   oc apply -f gitops/step-03-private-ai/gpu-as-a-service-demo/workbench-2.yaml
 # Watch the queuing:
 #   oc get workloads -n private-ai -w
 

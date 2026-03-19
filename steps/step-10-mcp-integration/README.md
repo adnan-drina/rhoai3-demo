@@ -84,6 +84,8 @@ Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates
 | `conversations_history` | Get channel message history |
 | `conversations_search_messages` | Search messages |
 
+Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-integration/base/)
+
 ## Demo Walkthrough
 
 In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).

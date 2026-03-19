@@ -32,6 +32,8 @@ GuideLLM Benchmark Jobs
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 
+Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: Run a Benchmark

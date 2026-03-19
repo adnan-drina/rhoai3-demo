@@ -40,6 +40,8 @@ RHOAI 3.3 Platform
 | nvidia-l4-1gpu | NVIDIA L4 1GPU | Node (direct) |
 | nvidia-l4-4gpu | NVIDIA L4 4GPUs | Node (direct) |
 
+Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
+
 ## What to Verify After Deployment
 
 - **Dashboard URL** — RHOAI console accessible at `https://data-science-gateway.apps.<cluster>` (via Service Mesh 3 Gateway in `openshift-ingress`)

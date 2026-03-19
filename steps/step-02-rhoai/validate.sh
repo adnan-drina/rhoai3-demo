@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 02: Red Hat OpenShift AI 3.0 — Validation Script
+# Step 02: Red Hat OpenShift AI 3.3 — Validation Script
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 02: Red Hat OpenShift AI 3.0 — Validation                ║"
+echo "║  Step 02: Red Hat OpenShift AI 3.3 — Validation                ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 

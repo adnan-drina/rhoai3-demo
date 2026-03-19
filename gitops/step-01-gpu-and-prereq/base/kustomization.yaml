@@ -7,7 +7,7 @@ kind: Kustomization
 
 resources:
   - gitops-rbac/cluster-admin-binding.yaml
-  - monitoring/cluster-monitoring-config.yaml
+  - monitoring/
   - nfd/namespace.yaml
   - nfd/operatorgroup.yaml
   - nfd/subscription.yaml

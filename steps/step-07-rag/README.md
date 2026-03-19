@@ -34,6 +34,8 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 | **Granite-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
 | **RAG Chatbot UI** | Web frontend for interactive RAG queries | Demo / End User |
 
+Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: Show the Vector Stores

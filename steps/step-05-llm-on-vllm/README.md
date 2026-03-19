@@ -23,6 +23,8 @@ The models are registered. The GPUs are provisioned. Now we serve them. Step-05 
 
 > **Additional models in the Registry:** Mistral-3-INT4 (1-GPU, OCI), Devstral-2 (4-GPU), and GPT-OSS-20B (4-GPU) are registered in the Model Registry and visible in GenAI Studio AI Available Assets. Deploy them from the Dashboard when needed — no code changes required.
 
+Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm/base/)
+
 ## Demo Walkthrough
 
 > **Login as** `ai-admin` / `redhat123`

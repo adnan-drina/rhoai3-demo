@@ -17,6 +17,8 @@ The TrustyAI Guardrails Orchestrator sits between the user and the LLM, running 
 
 The orchestrator exposes three gateway routes — `/passthrough` (no detectors), `/pii` (output filtering), and `/safe` (full protection on input + output). The chatbot calls the orchestrator API directly for fine-grained control.
 
+Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: Direct Mode — PII Leaks Freely

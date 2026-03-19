@@ -50,6 +50,8 @@ eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / D
 | **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
 | **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
 
+Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
+
 ## Demo Walkthrough
 
 ### Scene 1: Show the Problem — Pre-RAG Hallucination
