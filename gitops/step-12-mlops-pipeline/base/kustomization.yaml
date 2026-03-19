@@ -10,3 +10,4 @@ resources:
   - pipeline-pvc.yaml
   - pipeline-rbac.yaml
   - trustyai-service.yaml
+  - metrics-model/
