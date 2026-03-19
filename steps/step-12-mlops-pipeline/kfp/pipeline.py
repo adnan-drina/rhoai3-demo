@@ -20,6 +20,7 @@ from components.train_model import train_model
 from components.evaluate_model import evaluate_model
 from components.register_model import register_model
 from components.deploy_model import deploy_model
+from components.setup_monitoring import setup_monitoring
 
 MINIO_SECRET = "dspa-minio-credentials"
 PIPELINE_PVC = "face-pipeline-workspace"
@@ -52,7 +53,7 @@ def _mount_pvc(task: PipelineTask) -> None:
 
 @dsl.pipeline(
     name="face-recognition-training",
-    description="Train YOLO11 face recognition, evaluate, register in Model Registry, deploy to KServe",
+    description="Train YOLO11 face recognition, evaluate, register, deploy, and configure monitoring",
     pipeline_root="s3://pipelines/",
 )
 def face_recognition_training_pipeline(
@@ -119,6 +120,16 @@ def face_recognition_training_pipeline(
     _set_resources(dep_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
     dep_task.after(reg_task)
     dep_task.set_caching_options(False)
+
+    # --- Step 6: Setup Monitoring ---
+    mon_task = setup_monitoring(
+        model_name=model_name,
+        namespace=isvc_namespace,
+        num_baseline_samples=500,
+    )
+    _set_resources(mon_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
+    mon_task.after(dep_task)
+    mon_task.set_caching_options(False)
 
 
 if __name__ == "__main__":

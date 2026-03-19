@@ -9,21 +9,21 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 ## What It Does
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                    KFP v2 Pipeline (5 Steps)                          │
-│                                                                       │
-│  ┌─────────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────┐│
-│  │ 1. Prepare   │→│ 2. Train  │→│ 3. Eval   │→│ 4. Reg-   │→│ 5.  ││
-│  │ Dataset      │  │ YOLO11   │  │ mAP50 >  │  │ ister in │  │ De- ││
-│  │ (annotate)   │  │ (CPU)    │  │ threshold?│  │ Registry │  │ ploy││
-│  └─────────────┘  └──────────┘  └──────────┘  └──────────┘  └─────┘│
-│        ↕               ↕              ↕              ↕               │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │              Shared PVC: face-pipeline-workspace                 │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────┘
-         ↑                                    ↓              ↓
-    MinIO (photos)                     MinIO (ONNX)    Model Registry
+┌────────────────────────────────────────────────────────────────────────────┐
+│                       KFP v2 Pipeline (6 Steps)                            │
+│                                                                            │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
+│  │1.Prepare│→│2.Train  │→│3.Eval   │→│4.Regis- │→│5.Deploy │→│6.Moni- │ │
+│  │Dataset  │  │YOLO11  │  │mAP50 > │  │ter in  │  │to      │  │toring  │ │
+│  │(annot.) │  │(CPU)   │  │thresh? │  │Registry│  │KServe  │  │TrustyAI│ │
+│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
+│       ↕            ↕           ↕           ↕                       ↕      │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │              Shared PVC: face-pipeline-workspace                    │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────────┘
+        ↑                                ↓           ↓            ↓
+   MinIO (photos)                  MinIO (ONNX)  Registry    TrustyAI
 ```
 
 | Component | Purpose | Location |
@@ -33,6 +33,8 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 | `evaluate_model` | mAP50 computation, compare with previous version, quality gate | KFP component |
 | `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | KFP component |
 | `deploy_model` | Restart KServe predictor pod | KFP component |
+| `setup_monitoring` | Upload baseline data to TrustyAI, subscribe to drift metrics | KFP component |
+| **TrustyAIService** | Drift detection and metric publishing | GitOps manifest |
 | `face-pipeline-workspace` PVC | Shared storage between pipeline steps | GitOps manifest |
 
 Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
@@ -115,6 +117,31 @@ oc get dspa dspa-rag -n private-ai
 ./steps/step-12-mlops-pipeline/validate.sh
 ```
 
+## Model Monitoring with TrustyAI
+
+After the model is deployed, the pipeline configures **TrustyAI** to monitor inference behavior:
+
+- **Confidence drift** -- tracks whether detection confidence scores shift from the training baseline (meanshift p-value < 0.05 = significant drift)
+- **Class balance** -- monitors the ratio of "adnan" vs "unknown_face" detections over time
+- **Detection count** -- tracks average faces detected per image
+
+The monitoring flow:
+1. Pipeline step 6 uploads baseline confidence/class data to TrustyAI (tagged as "TRAINING")
+2. TrustyAI subscribes to meanshift drift metrics on these features
+3. As new inference requests flow through the model, TrustyAI compares against the baseline
+4. Drift metrics are published to Prometheus and visible in **OpenShift Console -> Observe -> Metrics**
+
+Prometheus queries:
+```promql
+# Confidence drift p-value (< 0.05 = significant drift)
+trustyai_meanshift{model="face-recognition", feature="confidence"}
+
+# Average confidence over time
+trustyai_identity{model="face-recognition", feature="confidence"}
+```
+
+> **Note:** TrustyAI monitors inference metadata (confidence, class distribution), not raw image tensors. This is the practical approach for computer vision models where pixel-level drift detection is not meaningful.
+
 ## Design Decisions
 
 > **Design Decision:** **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.
@@ -122,6 +149,8 @@ oc get dspa dspa-rag -n private-ai
 > **Design Decision:** **Model Registry as quality gate**. The evaluate step queries the previous version's mAP50 from the registry. If the new model is worse, the pipeline fails. This is inspired by the [AI500 MLOps Jukebox](https://github.com/rhoai-mlops/jukebox) pattern.
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
+
+> **Design Decision:** **TrustyAI for output distribution monitoring** (not pixel-level drift). For CV models, monitoring confidence scores and class balance is more meaningful than comparing image tensors. Inspired by the [AI500 MLOps Jukebox monitoring pattern](https://github.com/rhoai-mlops/jukebox/tree/main/4-metrics).
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
