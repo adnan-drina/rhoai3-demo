@@ -190,11 +190,10 @@ Best results from pipeline run `train-20260318-185319`:
 
 ## Known Limitations
 
-- **TrustyAI data format mismatch for CV models** -- TrustyAI's `/data/upload` and drift APIs expect inference payloads matching the model's KServe schema. Our YOLO model has `[1,3,640,640]` tensor input and `[1,6,8400]` output. The synthetic confidence/class data uploaded by step 6 doesn't match this schema (returns 400). For production CV monitoring, a post-processing adapter is needed to extract scalar metrics (confidence, class) from YOLO output and forward to TrustyAI. The AI500 Jukebox pattern works because their model has 13 numeric input features.
+- **TrustyAI SPD values require live inference data** -- The SPD metric is configured and visible in the RHOAI Dashboard's Model bias tab, but shows "No available data" until TrustyAI intercepts actual inference payloads. For KServe RawDeployment, TrustyAI's payload logger does not intercept inference the same way as Serverless mode. The baseline upload establishes the reference; production inference would populate the SPD chart over time.
+- **MLServer proxy was evaluated and removed** -- We initially deployed a scikit-learn metrics proxy via MLServer to work around the CV tensor limitation. However, the RHOAI Dashboard showed "Metrics not supported" for custom runtimes on the Endpoint performance tab. Configuring SPD directly on the face-recognition model proved simpler and the metric appears correctly in the Dashboard.
 
 ## Pending / Future Work
-
-- **TrustyAI CV adapter** -- Create a post-processing sidecar or webhook that extracts confidence scores and class predictions from YOLO inference output and forwards them to TrustyAI in compatible format.
 - **Pipeline-to-registry traceability** -- Store `pipeline_run_id` in model version custom properties (like the Jukebox pattern) so artifacts can be traced back to specific pipeline runs.
 - **Scheduled retraining** -- Use KFP scheduled runs to retrain weekly when new photos are added to MinIO.
 - **Model comparison** -- Evaluate step queries previous mAP from registry; enhance to show side-by-side comparison in pipeline logs.

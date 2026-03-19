@@ -1,7 +1,9 @@
-"""Set up TrustyAI monitoring for the face-recognition-metrics model.
+"""Set up TrustyAI monitoring for the face-recognition model.
 
-Uploads baseline inference data (confidence, class distribution, detection counts)
-to TrustyAI via the metrics proxy model, then subscribes to drift detection.
+Uploads baseline inference data and configures SPD fairness metric
+directly on the face-recognition InferenceService. The SPD metric
+measures whether the model's quality differs between known (adnan)
+and unknown faces, visible in the RHOAI Dashboard Model Bias tab.
 """
 
 from kfp.dsl import component
@@ -23,10 +25,7 @@ def setup_monitoring(
     import requests
     import numpy as np
 
-    METRICS_MODEL = "face-recognition-metrics"
-    METRICS_URL = f"http://{METRICS_MODEL}-predictor.{namespace}.svc.cluster.local:8080"
     TRUSTYAI_URL = f"http://trustyai-service.{namespace}.svc.cluster.local"
-
     headers = {"Content-Type": "application/json"}
 
     # Wait for TrustyAI to be ready
@@ -44,34 +43,19 @@ def setup_monitoring(
         print("WARNING: TrustyAI not reachable. Skipping monitoring setup.")
         return "trustyai-not-ready"
 
-    # Wait for metrics model to be ready
-    print("Waiting for metrics model...")
-    for i in range(12):
-        try:
-            r = requests.get(f"{METRICS_URL}/v2/health/ready", timeout=5)
-            if r.status_code == 200:
-                print(f"Metrics model ready")
-                break
-        except Exception:
-            pass
-        time.sleep(5)
-    else:
-        print("WARNING: Metrics model not reachable.")
-        return "metrics-model-not-ready"
-
     # Generate baseline data representing normal face recognition results
+    # Features: confidence (0-1), class_id (0=adnan, 1=unknown), num_detections
     print(f"Generating {num_baseline_samples} baseline samples...")
     np.random.seed(42)
-    confidence = np.random.normal(loc=0.85, scale=0.08, size=num_baseline_samples).clip(0.3, 1.0)
-    class_id = np.random.choice([0.0, 1.0], size=num_baseline_samples, p=[0.4, 0.6])
-    num_detections = np.random.poisson(lam=2.0, size=num_baseline_samples).astype(float)
+    n = num_baseline_samples
+    confidence = np.random.normal(loc=0.85, scale=0.08, size=n).clip(0.3, 1.0)
+    class_id = np.random.choice([0.0, 1.0], size=n, p=[0.4, 0.6])
+    num_detections = np.random.poisson(lam=2.0, size=n).astype(float)
     quality = ((confidence > 0.6) & (num_detections >= 1)).astype(float)
 
-    n = num_baseline_samples
-
-    # Upload baseline to TrustyAI matching MLServer's I/O schema
+    # Upload training baseline to TrustyAI
     training_data = {
-        "model_name": METRICS_MODEL,
+        "model_name": model_name,
         "data_tag": "TRAINING",
         "request": {
             "inputs": [{
@@ -82,7 +66,7 @@ def setup_monitoring(
             }]
         },
         "response": {
-            "model_name": METRICS_MODEL,
+            "model_name": model_name,
             "model_version": "1",
             "outputs": [{
                 "name": "predict",
@@ -93,7 +77,7 @@ def setup_monitoring(
         }
     }
 
-    print("Uploading baseline data to TrustyAI...")
+    print("Uploading baseline data...")
     r = requests.post(f"{TRUSTYAI_URL}/data/upload", headers=headers, json=training_data, timeout=30)
     print(f"  Upload: {r.status_code} - {r.text[:200]}")
 
@@ -101,26 +85,38 @@ def setup_monitoring(
         print("WARNING: Baseline upload failed.")
         return "upload-failed"
 
-    # Subscribe to drift detection
-    print("Subscribing to meanshift drift...")
-    r = requests.post(f"{TRUSTYAI_URL}/metrics/drift/meanshift/request", headers=headers,
-                      json={"modelId": METRICS_MODEL, "referenceTag": "TRAINING"}, timeout=10)
-    print(f"  Drift: {r.status_code} - {r.text[:200]}")
+    # Configure SPD fairness metric
+    # Measures: does quality differ between adnan (class 0) and unknown (class 1)?
+    print("Configuring SPD fairness metric...")
+    spd_payload = {
+        "modelId": model_name,
+        "requestName": "Face Recognition Fairness",
+        "protectedAttribute": "predict-1",
+        "privilegedAttribute": {"type": "DOUBLE", "value": 0.0},
+        "unprivilegedAttribute": {"type": "DOUBLE", "value": 1.0},
+        "outcomeName": "predict-0-0",
+        "favorableOutcome": {"type": "INT64", "value": 1},
+        "batchSize": 50,
+    }
+    r = requests.post(f"{TRUSTYAI_URL}/metrics/spd/request", headers=headers, json=spd_payload, timeout=10)
+    print(f"  SPD: {r.status_code} - {r.text[:200]}")
 
-    print("Subscribing to confidence tracking...")
-    r = requests.post(f"{TRUSTYAI_URL}/metrics/identity/request", headers=headers,
-                      json={"modelId": METRICS_MODEL, "columnName": "predict-0", "batchSize": 50}, timeout=10)
-    print(f"  Identity: {r.status_code} - {r.text[:200]}")
+    # Subscribe to meanshift drift on training baseline
+    print("Subscribing to drift detection...")
+    r = requests.post(f"{TRUSTYAI_URL}/metrics/drift/meanshift/request", headers=headers,
+                      json={"modelId": model_name, "referenceTag": "TRAINING"}, timeout=10)
+    print(f"  Drift: {r.status_code} - {r.text[:200]}")
 
     # Verify
     r = requests.get(f"{TRUSTYAI_URL}/info", headers=headers, timeout=10)
     info = r.json() if r.text else {}
-    model_info = info.get(METRICS_MODEL, {})
+    model_info = info.get(model_name, {})
     obs = model_info.get("data", {}).get("observations", 0)
     metrics = model_info.get("metrics", {}).get("scheduledMetadata", {}).get("metricCounts", {})
     print(f"\nMonitoring configured:")
+    print(f"  Model: {model_name}")
     print(f"  Observations: {obs}")
     print(f"  Metrics: {metrics}")
-    print(f"  View in OpenShift Console > Observe > Metrics")
+    print(f"  Dashboard: RHOAI > Deployments > {model_name} > Model bias")
 
     return "monitoring-configured"

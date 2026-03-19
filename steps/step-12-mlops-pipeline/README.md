@@ -33,8 +33,8 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 | `evaluate_model` | mAP50 computation, compare with previous version, quality gate | KFP component |
 | `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | KFP component |
 | `deploy_model` | Restart KServe predictor pod | KFP component |
-| `setup_monitoring` | Upload baseline data to TrustyAI, subscribe to drift metrics | KFP component |
-| **TrustyAIService** | Drift detection and metric publishing | GitOps manifest |
+| `setup_monitoring` | Upload baseline to TrustyAI, configure SPD fairness + drift metrics | KFP component |
+| **TrustyAIService** | Fairness and drift monitoring, visible in RHOAI Dashboard | GitOps manifest |
 | `face-pipeline-workspace` PVC | Shared storage between pipeline steps | GitOps manifest |
 
 Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
@@ -119,21 +119,18 @@ oc get dspa dspa-rag -n private-ai
 
 ## Model Monitoring with TrustyAI
 
-The pipeline deploys **TrustyAI** as the monitoring infrastructure for the face-recognition model. TrustyAI provides drift detection and bias monitoring capabilities.
+The pipeline deploys **TrustyAI** and configures monitoring directly on the face-recognition model:
 
-**Current state:** TrustyAI service is deployed and running. The pipeline's step 6 (`setup_monitoring`) demonstrates the monitoring configuration pattern. However, TrustyAI's data ingestion is designed for tabular inference payloads (e.g., 13 numeric features for a music recommendation model). For computer vision models where the input is an image tensor `[1,3,640,640]`, direct drift monitoring requires a post-processing adapter.
+- **SPD Fairness metric** ("Face Recognition Fairness") -- measures whether the model's quality score differs between known faces (adnan) and unknown faces. Visible in **RHOAI Dashboard > Deployments > Face Recognition > Model bias** tab.
+- **Meanshift drift detection** -- compares current inference confidence distribution against the training baseline. Alerts when p-value drops below 0.05.
+- **Endpoint performance** -- request count, latency, CPU/memory visible in the **Endpoint performance** tab.
 
-**What works today:**
-- TrustyAI service deployed via GitOps (TrustyAIService CR)
-- Endpoint performance metrics visible in **RHOAI Dashboard -> Deployments -> face-recognition -> Endpoint performance** (request count, latency, CPU/memory)
-- Pipeline step 6 demonstrates the monitoring configuration pattern
+The pipeline's step 6 (`setup_monitoring`) configures all metrics via TrustyAI's REST API -- no manual Dashboard form-filling required:
+1. Uploads baseline data (confidence scores, class distribution) tagged as "TRAINING"
+2. Subscribes to SPD fairness metric on class_id (adnan vs unknown)
+3. Subscribes to meanshift drift detection against the training baseline
 
-**For production CV monitoring, the recommended approach is:**
-1. Add a post-processing sidecar or webhook that extracts confidence scores and class predictions from YOLO output
-2. Forward these scalar metrics to TrustyAI in KServe v2 format
-3. Subscribe to meanshift drift on confidence distribution and class balance
-
-> **Known Limitation:** TrustyAI's `/data/upload` and drift subscription APIs expect inference payloads matching the model's actual KServe input/output schema. For CV models with large tensor I/O, a translation layer is needed. This is documented as future work. See the [AI500 MLOps Jukebox monitoring](https://github.com/rhoai-mlops/jukebox/tree/main/4-metrics) for the tabular model pattern.
+> **Note:** TrustyAI SPD values populate in the Dashboard once live inference data flows through the model. The baseline upload establishes the reference distribution; the metric configuration appears immediately in the Dashboard's Model bias tab.
 
 ## Design Decisions
 
@@ -143,7 +140,7 @@ The pipeline deploys **TrustyAI** as the monitoring infrastructure for the face-
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 
-> **Design Decision:** **TrustyAI deployed as monitoring infrastructure**. The service is ready for drift detection. For tabular models, it works out of the box (see AI500 Jukebox). For CV models, a translation layer is needed to convert YOLO output tensors to scalar metrics. The pipeline step demonstrates the pattern; production would add a post-processing adapter.
+> **Design Decision:** **TrustyAI SPD configured directly on the face-recognition model**. The pipeline uploads synthetic baseline data (confidence, class, detections) and configures SPD fairness + drift metrics via API. This avoids a separate proxy model and provides monitoring visibility in the RHOAI Dashboard's Model bias tab.
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
