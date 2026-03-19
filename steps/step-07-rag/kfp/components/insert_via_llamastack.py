@@ -54,6 +54,9 @@ def insert_via_llamastack_component(
     # Upload the markdown file to LlamaStack Files API
     # Use a descriptive filename based on the original PDF key
     upload_name = original_key.replace("/", "_").replace(" ", "_")
+    for prefix in ("rag-documents_", "_shared-data_documents_"):
+        if upload_name.startswith(prefix):
+            upload_name = upload_name[len(prefix):]
     if not upload_name.endswith(".md"):
         upload_name = upload_name.rsplit(".", 1)[0] + ".md" if "." in upload_name else upload_name + ".md"
 
