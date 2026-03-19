@@ -297,14 +297,14 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         )
     else:
         default_prompt = (
-            "You are a helpful assistant. You MUST use your tools to answer questions. "
-            "Base your answer on the tool results, not prior knowledge. "
+            "You are a helpful assistant. Use your tools to answer questions. "
+            "Base your answer on tool results, not prior knowledge. "
             "If a tool call fails, retry with corrected parameters. "
             "For equipment database lookups, use execute_sql on the acme_pod_equipment_map table "
             "(columns: pod_name, equipment_id, product_name). "
             "For pod and cluster queries, use the OpenShift tools. "
-            "Answer directly and concisely. "
-            "Your response format: provide only the answer. Do not add a Sources section."
+            "Be concise — answer in 2-4 sentences. "
+            "Reply only with an answer, don't print Sources."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
