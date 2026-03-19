@@ -119,28 +119,21 @@ oc get dspa dspa-rag -n private-ai
 
 ## Model Monitoring with TrustyAI
 
-After the model is deployed, the pipeline configures **TrustyAI** to monitor inference behavior:
+The pipeline deploys **TrustyAI** as the monitoring infrastructure for the face-recognition model. TrustyAI provides drift detection and bias monitoring capabilities.
 
-- **Confidence drift** -- tracks whether detection confidence scores shift from the training baseline (meanshift p-value < 0.05 = significant drift)
-- **Class balance** -- monitors the ratio of "adnan" vs "unknown_face" detections over time
-- **Detection count** -- tracks average faces detected per image
+**Current state:** TrustyAI service is deployed and running. The pipeline's step 6 (`setup_monitoring`) demonstrates the monitoring configuration pattern. However, TrustyAI's data ingestion is designed for tabular inference payloads (e.g., 13 numeric features for a music recommendation model). For computer vision models where the input is an image tensor `[1,3,640,640]`, direct drift monitoring requires a post-processing adapter.
 
-The monitoring flow:
-1. Pipeline step 6 uploads baseline confidence/class data to TrustyAI (tagged as "TRAINING")
-2. TrustyAI subscribes to meanshift drift metrics on these features
-3. As new inference requests flow through the model, TrustyAI compares against the baseline
-4. Drift metrics are published to Prometheus and visible in **OpenShift Console -> Observe -> Metrics**
+**What works today:**
+- TrustyAI service deployed via GitOps (TrustyAIService CR)
+- Endpoint performance metrics visible in **RHOAI Dashboard -> Deployments -> face-recognition -> Endpoint performance** (request count, latency, CPU/memory)
+- Pipeline step 6 demonstrates the monitoring configuration pattern
 
-Prometheus queries:
-```promql
-# Confidence drift p-value (< 0.05 = significant drift)
-trustyai_meanshift{model="face-recognition", feature="confidence"}
+**For production CV monitoring, the recommended approach is:**
+1. Add a post-processing sidecar or webhook that extracts confidence scores and class predictions from YOLO output
+2. Forward these scalar metrics to TrustyAI in KServe v2 format
+3. Subscribe to meanshift drift on confidence distribution and class balance
 
-# Average confidence over time
-trustyai_identity{model="face-recognition", feature="confidence"}
-```
-
-> **Note:** TrustyAI monitors inference metadata (confidence, class distribution), not raw image tensors. This is the practical approach for computer vision models where pixel-level drift detection is not meaningful.
+> **Known Limitation:** TrustyAI's `/data/upload` and drift subscription APIs expect inference payloads matching the model's actual KServe input/output schema. For CV models with large tensor I/O, a translation layer is needed. This is documented as future work. See the [AI500 MLOps Jukebox monitoring](https://github.com/rhoai-mlops/jukebox/tree/main/4-metrics) for the tabular model pattern.
 
 ## Design Decisions
 
@@ -150,7 +143,7 @@ trustyai_identity{model="face-recognition", feature="confidence"}
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 
-> **Design Decision:** **TrustyAI for output distribution monitoring** (not pixel-level drift). For CV models, monitoring confidence scores and class balance is more meaningful than comparing image tensors. Inspired by the [AI500 MLOps Jukebox monitoring pattern](https://github.com/rhoai-mlops/jukebox/tree/main/4-metrics).
+> **Design Decision:** **TrustyAI deployed as monitoring infrastructure**. The service is ready for drift detection. For tabular models, it works out of the box (see AI500 Jukebox). For CV models, a translation layer is needed to convert YOLO output tensors to scalar metrics. The pipeline step demonstrates the pattern; production would add a post-processing adapter.
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 

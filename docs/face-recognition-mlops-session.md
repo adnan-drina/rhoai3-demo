@@ -188,9 +188,13 @@ Best results from pipeline run `train-20260318-185319`:
 | .gitignore | Binary asset exclusions | 1 |
 | **Total** | | **38** |
 
+## Known Limitations
+
+- **TrustyAI data format mismatch for CV models** -- TrustyAI's `/data/upload` and drift APIs expect inference payloads matching the model's KServe schema. Our YOLO model has `[1,3,640,640]` tensor input and `[1,6,8400]` output. The synthetic confidence/class data uploaded by step 6 doesn't match this schema (returns 400). For production CV monitoring, a post-processing adapter is needed to extract scalar metrics (confidence, class) from YOLO output and forward to TrustyAI. The AI500 Jukebox pattern works because their model has 13 numeric input features.
+
 ## Pending / Future Work
 
-- **TrustyAI drift visualization** -- TrustyAI is deployed and step 6 subscribes to metrics, but no Grafana dashboard is configured yet. Add a dashboard JSON or use OpenShift Console Observe tab.
+- **TrustyAI CV adapter** -- Create a post-processing sidecar or webhook that extracts confidence scores and class predictions from YOLO inference output and forwards them to TrustyAI in compatible format.
 - **Pipeline-to-registry traceability** -- Store `pipeline_run_id` in model version custom properties (like the Jukebox pattern) so artifacts can be traced back to specific pipeline runs.
 - **Scheduled retraining** -- Use KFP scheduled runs to retrain weekly when new photos are added to MinIO.
 - **Model comparison** -- Evaluate step queries previous mAP from registry; enhance to show side-by-side comparison in pipeline logs.

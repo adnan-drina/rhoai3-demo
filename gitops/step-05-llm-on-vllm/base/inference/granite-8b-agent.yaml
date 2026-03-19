@@ -11,11 +11,11 @@
 # Features:
 #   - Native tool-calling support (built-in chat template in tokenizer_config.json)
 #   - Auto tool choice via --tool-call-parser=granite for Agent Playground
-#   - 16K context window (required for MCP + RAG with 31 tool schemas)
+#   - 32K context window (multi-turn MCP conversations peak at ~24K)
 # Performance Tuning (benchmarked with GuideLLM):
 #   --kv-cache-dtype=fp8  → Doubles KV cache: 74K→155K tokens (L4 Ada native FP8)
 #   --gpu-memory-util=0.92 → Safe maximum (0.95 OOMs during CUDA graph capture)
-#   --max-model-len=16384  → REQUIRED for MCP demo (31 tool schemas + file_search = 12-16K input)
+#   --max-model-len=32768  → 32K for multi-turn MCP conversations (single request 12-16K, conversation peaks ~24K)
 #   ITL: 40ms p95 (hardware-bound on L4, ~25 tok/s per request)
 #   TTFT: <90ms p95 (well within 150ms SLO)
 # WARNING: Do NOT reduce max-model-len below 16384.
@@ -68,9 +68,11 @@ spec:
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-instruct-fp8-dynamic:1.5
       args:
         - --served-model-name=granite-8b-agent
-        # 16K context REQUIRED: MCP tool schemas (31 tools) + file_search chunks = 12-16K input
-        # Do NOT reduce to 8192 — breaks step-10 MCP demo (4 scenes fail)
-        - --max-model-len=16384
+        # 32K context: MCP tool schemas (31 tools) + file_search + conversation history
+        # Single request peaks at ~24K in 4-scene conversations. 32K provides headroom.
+        # KV cache 155K tokens at fp8 → 4.7x max concurrency at 32K (acceptable for demo)
+        # Do NOT reduce below 16K — single MCP requests need 12-16K input
+        - --max-model-len=32768
         # Tuned: 0.92 is the safe maximum before CUDA graph capture OOM (0.95 fails)
         - --gpu-memory-utilization=0.92
         # FP8 KV cache: L4 (Ada Lovelace) has native FP8 support.
