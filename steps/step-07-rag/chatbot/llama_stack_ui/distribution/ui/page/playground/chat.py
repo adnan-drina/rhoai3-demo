@@ -298,11 +298,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             "Base your answer on the tool results, not prior knowledge. "
             "If a tool call fails, retry with corrected parameters. "
             "For database lookups, use execute_sql on the acme_pod_equipment_map table "
-            "(columns: pod_name, equipment_id, product_name).\n\n"
-            "When citing sources, use this format:\n"
-            "Sources:\n"
-            "- ACME_07_Corporate_Profile.md\n"
-            "- ACME_08_Product_Overview.md"
+            "(columns: pod_name, equipment_id, product_name)."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
