@@ -442,6 +442,8 @@ class ResponseState:
         # Reasoning state
         self.reasoning_text = ""
         self.reasoning_placeholder = None
+        self._in_think_block = False
+
         # Tool state
         self.tool_status = None
         self.tool_results = []
@@ -480,13 +482,46 @@ class ResponseState:
             self.reasoning_placeholder.markdown(self.reasoning_text)
 
     def update_message(self, delta_text):
-        """Add message text and update display."""
+        """Add message text and update display.
+
+        Routes <think>...</think> blocks to a collapsible reasoning
+        expander (collapsed by default), keeping the main response clean.
+        """
         self.full_response += delta_text
-        self.containers.message.markdown(self.full_response + "▌")
+
+        # Detect <think> block start
+        if '<think>' in self.full_response and not self._in_think_block:
+            self._in_think_block = True
+
+        # While inside a think block, wait for </think> before rendering
+        if self._in_think_block:
+            if '</think>' in self.full_response:
+                self._in_think_block = False
+                think_end = self.full_response.index('</think>') + len('</think>')
+                think_text = self.full_response[:think_end].replace('<think>', '').replace('</think>', '').strip()
+                if think_text:
+                    self.update_reasoning(think_text)
+                    self.finalize_reasoning()
+                visible = self.full_response[think_end:].lstrip()
+                self.containers.message.markdown(visible + "▌")
+            # Don't render anything while still inside think block
+            return
+
+        # Normal rendering — skip past any completed think block
+        visible = self.full_response
+        think_end_pos = visible.find('</think>')
+        if think_end_pos >= 0:
+            visible = visible[think_end_pos + len('</think>'):].lstrip()
+        self.containers.message.markdown(visible + "▌")
 
     def finalize_message(self):
-        """Remove cursor from message display."""
+        """Remove cursor from message display, strip think blocks."""
         text = self.full_response
+
+        # Strip <think>...</think> from final display
+        think_match = re.search(r'<think>.*?</think>\s*', text, re.DOTALL)
+        if think_match:
+            text = text[think_match.end():]
 
         # Collect cited sources from markers
         cited_ids = _CITATION_RE.findall(text)

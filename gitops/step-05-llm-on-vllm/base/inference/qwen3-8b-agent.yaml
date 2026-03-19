@@ -69,8 +69,6 @@ spec:
         - --enable-auto-tool-choice
         - --tool-call-parser=hermes
         - --enable-chunked-prefill
-        # Disable Qwen3 thinking mode — saves ~2x output tokens per response
-        - --default-chat-template-kwargs={"enable_thinking":false}
       env:
         - name: VLLM_USE_V1
           value: "1"
