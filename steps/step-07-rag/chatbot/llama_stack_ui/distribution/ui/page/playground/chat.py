@@ -304,7 +304,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             "(columns: pod_name, equipment_id, product_name). "
             "For pod and cluster queries, use the OpenShift tools. "
             "Answer directly and concisely. "
-            "Never include a Sources or References section in your response."
+            "Your response format: provide only the answer. Do not add a Sources section."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
