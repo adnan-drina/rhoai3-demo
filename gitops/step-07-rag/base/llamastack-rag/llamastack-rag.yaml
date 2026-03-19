@@ -1,11 +1,12 @@
-# Aligned with RHOAI 3.3 "Example D: Remote PostgreSQL with pgvector":
-#   - Pure rh-dev template — NO userConfig (enables auto-wired persistence,
-#     Ragas evaluation, safety providers, and state management)
+# RHOAI 3.3 "Example D: pgvector with rh-dev" + annotation override:
+#   - rh-dev template with minimal userConfig (disables citation annotations)
 #   - pgvector for vector store (same PostgreSQL instance as metadata)
 #   - Sentence-transformers for inline embeddings (no GPU needed)
 #   - All credentials via Secrets
-# MCP tool_groups are registered at runtime via the LlamaStack API
-# (see step-10 deploy.sh) — they persist in PostgreSQL across restarts.
+# userConfig overrides only vector_stores.annotation_prompt_params to disable
+# <|file-xxx|> citation markers that LlamaStack injects into model responses.
+# All other rh-dev auto-wiring (persistence, Ragas, safety) is preserved.
+# MCP tool_groups are registered at runtime via the LlamaStack API.
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
@@ -25,6 +26,8 @@ spec:
   server:
     distribution:
       name: rh-dev
+    userConfig:
+      configMapName: lsd-rag-config
     containerSpec:
       name: llama-stack
       port: 8321

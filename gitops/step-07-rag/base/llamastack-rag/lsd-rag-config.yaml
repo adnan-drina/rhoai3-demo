@@ -1,0 +1,19 @@
+# Overrides for lsd-rag LlamaStackDistribution
+# Disables file citation annotation prompts that inject <|file-xxx|> markers
+# into model responses. Source attribution is handled by the File Search
+# Results panel in the chatbot UI instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lsd-rag-config
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: llamastack-rag
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  config.yaml: |
+    vector_stores:
+      annotation_prompt_params:
+        enable_annotations: false
