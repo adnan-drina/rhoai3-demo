@@ -303,7 +303,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             "For equipment database lookups, use execute_sql on the acme_pod_equipment_map table "
             "(columns: pod_name, equipment_id, product_name). "
             "For pod and cluster queries, use the OpenShift tools. "
-            "Be concise — answer in 2-4 sentences. /no_think"
+            "Be concise — answer in 2-4 sentences."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
@@ -442,6 +442,7 @@ class ResponseState:
         # Reasoning state
         self.reasoning_text = ""
         self.reasoning_placeholder = None
+        self._in_think_block = False
 
         # Tool state
         self.tool_status = None
@@ -468,7 +469,7 @@ class ResponseState:
         # Create reasoning expander on first delta
         if not self.has_reasoning:
             with self.containers.reasoning.container():
-                reasoning_expander = st.expander("🧠 Reasoning", expanded=True)
+                reasoning_expander = st.expander("🧠 Reasoning", expanded=False)
                 self.reasoning_placeholder = reasoning_expander.empty()
 
         # Update reasoning text with cursor
@@ -481,19 +482,43 @@ class ResponseState:
             self.reasoning_placeholder.markdown(self.reasoning_text)
 
     def update_message(self, delta_text):
-        """Add message text and update display."""
+        """Add message text and update display.
+
+        Routes <think>...</think> blocks to the collapsible reasoning
+        expander (collapsed by default) so the main response stays clean.
+        """
         self.full_response += delta_text
-        self.containers.message.markdown(self.full_response + "▌")
+
+        if '<think>' in self.full_response and not self._in_think_block:
+            self._in_think_block = True
+
+        if self._in_think_block:
+            if '</think>' in self.full_response:
+                self._in_think_block = False
+                think_end = self.full_response.index('</think>') + len('</think>')
+                think_content = self.full_response[:think_end]
+                think_text = think_content.replace('<think>', '').replace('</think>', '').strip()
+                if think_text:
+                    self.update_reasoning(think_text)
+                    self.finalize_reasoning()
+                visible = self.full_response[think_end:].lstrip()
+                self.containers.message.markdown(visible + "▌")
+            return
+
+        visible = self.full_response
+        think_end_pos = visible.find('</think>')
+        if think_end_pos >= 0:
+            visible = visible[think_end_pos + len('</think>'):].lstrip()
+        self.containers.message.markdown(visible + "▌")
 
     def finalize_message(self):
-        """Render final response with annotation-based source citations.
-
-        Replaces <|file-xxx|> markers with resolved names from file_id_map,
-        strips any empty Sources/References skeleton the model generated,
-        and renders unique sources as a clean footer — matching the
-        Dashboard Playground citation rendering.
-        """
+        """Render final response: strip think blocks, resolve citations."""
         text = self.full_response
+
+        # Strip <think>...</think> blocks from final display
+        think_match = re.search(r'<think>.*?</think>\s*', text, re.DOTALL)
+        if think_match:
+            text = text[think_match.end():]
 
         # Collect cited sources from markers
         cited_ids = _CITATION_RE.findall(text)
