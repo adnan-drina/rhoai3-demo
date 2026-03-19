@@ -7,7 +7,7 @@
 #   ./run-lmeval.sh <model> <limit>   # Override sample limit
 #   ./run-lmeval.sh <model> 0         # Full benchmark (no limit)
 #
-# Models: qwen3-8b-agent | mistral-3-bf16
+# Models: granite-8b-agent | mistral-3-bf16
 
 set -euo pipefail
 
@@ -24,23 +24,23 @@ if [ -z "$MODEL" ]; then
     echo "Usage: $0 <model> [limit]"
     echo ""
     echo "Models:"
-    echo "  qwen3-8b-agent   — 8B reasoning model (1 GPU)"
+    echo "  granite-8b-agent   — 8B reasoning model (1 GPU)"
     echo "  mistral-3-bf16     — 24B general model (4 GPU)"
     echo ""
     echo "Options:"
     echo "  limit  — Number of samples per task (default: 50, 0 = full benchmark)"
     echo ""
     echo "Examples:"
-    echo "  $0 qwen3-8b-agent        # Quick eval (~10 min)"
-    echo "  $0 qwen3-8b-agent 200    # Medium eval (~30 min)"
+    echo "  $0 granite-8b-agent        # Quick eval (~10 min)"
+    echo "  $0 granite-8b-agent 200    # Medium eval (~30 min)"
     echo "  $0 mistral-3-bf16 0        # Full benchmark (hours)"
     exit 1
 fi
 
 case "$MODEL" in
-    qwen3-8b-agent|granite)
-        TEMPLATE="$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/qwen3-8b-eval.yaml"
-        JOB_NAME="qwen3-8b-agent-eval"
+    granite-8b-agent|granite)
+        TEMPLATE="$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/granite-8b-eval.yaml"
+        JOB_NAME="granite-8b-agent-eval"
         ;;
     mistral-3-bf16|mistral)
         TEMPLATE="$REPO_ROOT/gitops/step-08-model-evaluation/base/lmeval/mistral-bf16-eval.yaml"
@@ -48,7 +48,7 @@ case "$MODEL" in
         ;;
     *)
         log_error "Unknown model: $MODEL"
-        echo "Valid: qwen3-8b-agent, mistral-3-bf16"
+        echo "Valid: granite-8b-agent, mistral-3-bf16"
         exit 1
         ;;
 esac

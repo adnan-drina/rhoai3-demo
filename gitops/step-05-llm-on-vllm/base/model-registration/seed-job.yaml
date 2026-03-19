@@ -192,7 +192,7 @@ spec:
               echo "Model Portfolio Registered (5 Models)"
               echo ""
               echo "  DEPLOYED:"
-              echo "    qwen3-8b-agent  1 GPU   RAG/MCP/Guardrails/Eval"
+              echo "    granite-8b-agent  1 GPU   RAG/MCP/Guardrails/Eval"
               echo "    mistral-3-bf16    4 GPUs  Playground/Eval judge"
               echo ""
               echo "  REGISTERED (deploy from GenAI Studio):"

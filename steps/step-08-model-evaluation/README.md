@@ -19,7 +19,7 @@ Step-08 provides two evaluation capabilities:
 eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / Dashboard UI
 (*_tests.yaml)      ┌──────────────────────────────┐           ┌──────────────────────────┐
                     │ For each scenario:            │           │ LMEvalJob CR             │
-  GitOps ──────────►│  1. Generate answers (qwen3)  │──► MinIO │  - hellaswag             │
+  GitOps ──────────►│  1. Generate answers (granite)│──► MinIO │  - hellaswag             │
   (ArgoCD)          │  2. Retrieve context (pgvec)  │   HTML   │  - arc_challenge         │──► Dashboard
                     │  3. Judge (mistral-3-bf16)    │  reports │  - winogrande            │   results
                     │  4. Generate HTML report      │          │  - boolq                 │
@@ -35,7 +35,7 @@ eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / D
 | **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | MLOps Engineer |
 | **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | AI Engineer |
 | **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | AI Engineer |
-| **Candidate model** | `qwen3-8b-agent` (8B) — generates answers | Platform |
+| **Candidate model** | `granite-8b-agent` (8B) — generates answers | Platform |
 | **Judge model** | `mistral-3-bf16` (24B) — evaluates answer quality | Platform |
 | **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | Platform |
 | **HTML Reports** | Per-scenario pre/post RAG results in MinIO | Everyone |
@@ -59,7 +59,7 @@ Ask the LLM about ACME Corp **without** RAG context.
 ```bash
 oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"vllm-inference/qwen3-8b-agent",
+  -d '{"model":"vllm-inference/granite-8b-agent",
        "messages":[{"role":"user","content":"What is ACME Corp?"}],
        "max_tokens":200,"temperature":0,"stream":false}' | \
   python3 -c "import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
@@ -107,29 +107,29 @@ _What to say: "Every evaluation run is versioned and stored in object storage. T
 
 ### Scene 5: Standard Model Benchmarks (LM-Eval)
 
-Trigger an LM-Eval benchmark for qwen3-8b-agent.
+Trigger an LM-Eval benchmark for granite-8b-agent.
 
 ```bash
 # Quick benchmark (50 samples per task, ~10 min)
-./steps/step-08-model-evaluation/run-lmeval.sh qwen3-8b-agent
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
 
 # Medium benchmark (200 samples, ~30 min)
-./steps/step-08-model-evaluation/run-lmeval.sh qwen3-8b-agent 200
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
 
 # Full benchmark (no limit, hours)
-./steps/step-08-model-evaluation/run-lmeval.sh qwen3-8b-agent 0
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 0
 ```
 
 Monitor progress:
 
 ```bash
-oc get lmevaljob qwen3-8b-agent-eval -n private-ai -w
+oc get lmevaljob granite-8b-agent-eval -n private-ai -w
 ```
 
 View results when complete:
 
 ```bash
-oc get lmevaljob qwen3-8b-agent-eval -n private-ai \
+oc get lmevaljob granite-8b-agent-eval -n private-ai \
   -o template --template='{{.status.results}}' | jq '.results'
 ```
 
@@ -158,14 +158,14 @@ _What to say: "LM-Eval is RHOAI's built-in benchmarking service. It runs industr
 ### Standard Model Evaluation
 
 ```bash
-# Benchmark qwen3-8b-agent
-./steps/step-08-model-evaluation/run-lmeval.sh qwen3-8b-agent
+# Benchmark granite-8b-agent
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
 
 # Benchmark mistral-3-bf16
 ./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16
 
 # Custom limit
-./steps/step-08-model-evaluation/run-lmeval.sh qwen3-8b-agent 200
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
 ```
 
 ### Validation
@@ -211,7 +211,7 @@ Or run the validation script:
 
 ## Design Decisions
 
-> **Two separate models for RAG eval:** `qwen3-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.
+> **Two separate models for RAG eval:** `granite-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.
 
 > **Identical test sets:** Pre-RAG and Post-RAG use the same questions and expected answers. The only variable is document context. The score difference directly quantifies RAG value.
 

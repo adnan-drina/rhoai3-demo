@@ -17,7 +17,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
    │
    ▼
  LlamaStackDistribution (lsd-rag)
-   Inference:  remote::vllm → qwen3-8b-agent
+   Inference:  remote::vllm → granite-8b-agent
    Embedding:  inline::sentence-transformers (768d)
    Vector IO:  remote::pgvector → llamastack-postgres
    │
@@ -31,7 +31,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 | **Docling** | PDF-to-Markdown intelligent conversion | Data Engineer |
 | **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | MLOps Engineer |
 | **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | AI Engineer |
-| **Qwen3-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
+| **Granite-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
 | **RAG Chatbot UI** | Web frontend for interactive RAG queries | Demo / End User |
 
 ## Demo Walkthrough
@@ -149,7 +149,7 @@ Or run the validation script:
 
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
-> **Agent-based system prompt is concise and action-oriented.** Qwen3 8B uses hermes-style tool calling and follows positive formatting directives. The system prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools. Qwen3 was chosen over Granite 3.1 because Granite's chat template injects document citation behavior when both tools and documents are in context, causing hallucinated "Sources:" sections on MCP-only queries.
+> **Agent-based system prompt uses few-shot examples, grounding, retry, and tool hints.** Granite 8B ignores negative instructions and verbose prompts cause narration instead of action. The optimal prompt combines: (1) "Base your answer on the tool results, not prior knowledge" for RAG grounding, (2) "If a tool call fails, retry with corrected parameters" for MCP resilience, (3) "For database lookups, use execute_sql on the acme_pod_equipment_map table" to steer tool selection with 31+ tools, and (4) a concrete `Sources:` citation example with `.md` filenames. All 4 MCP demo scenes pass with all tools enabled simultaneously. See `docs/prompt-engineering-session.md` for full test results.
 
 > **`max_output_tokens=512` prevents vLLM context overflow.** MCP tool results (especially file_search with 5 document chunks + MCP tool schemas for 31 tools) consume 12-16K of the 16K context window. Without explicitly passing `max_output_tokens`, LlamaStack defaults to requesting 4096 tokens from vLLM, which exceeds the remaining context space and causes `response.failed: Unknown error`. The chatbot now passes `max_output_tokens` from the sidebar slider (default 512) to the Responses API.
 
@@ -178,7 +178,7 @@ Or run the validation script:
 | `POSTGRES_HOST/PORT/DB/USER/PASSWORD` | `llamastack-postgres-secret` | Metadata store | Production pattern |
 | `ENABLE_SENTENCE_TRANSFORMERS` | `true` | Inline embeddings (no GPU needed) | Example D |
 | `EMBEDDING_PROVIDER` | `sentence-transformers` | Routes to sentence-transformers (not vllm-embedding) | Required |
-| `INFERENCE_MODEL` | `llamastack-vllm-secret` | qwen3-8b-agent | — |
+| `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
 | `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
 | `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
 | `FMS_ORCHESTRATOR_URL` | Service URL | Guardrails safety (auto-wired by `rh-dev`) | Guardrails docs |
@@ -209,7 +209,7 @@ If the SCC grant is missing (fresh cluster), run:
 oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
 ```
 
-> **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (qwen3-8b-agent, etc.) in the same namespace.
+> **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (granite-8b-agent, etc.) in the same namespace.
 
 ### Agent response empty or "Response failed: Unknown error" with MCP tools
 

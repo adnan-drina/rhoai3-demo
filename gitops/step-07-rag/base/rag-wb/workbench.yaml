@@ -135,7 +135,7 @@ spec:
             - name: LLAMA_STACK_URL
               value: "http://lsd-rag-service.private-ai.svc.cluster.local:8321"
             - name: INFERENCE_MODEL
-              value: "qwen3-8b-agent"
+              value: "granite-8b-agent"
             # pgvector access (for debugging)
             - name: PGVECTOR_HOST
               value: "llamastack-postgres.private-ai.svc.cluster.local"

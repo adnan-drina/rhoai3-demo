@@ -21,7 +21,7 @@ GenAI Playground / Chatbot
     v
 LlamaStack (lsd-genai-playground / lsd-rag)
     |--- tool_groups: mcp::database, mcp::openshift, mcp::slack
-    |--- qwen3-8b-agent decides which tools to invoke
+    |--- granite-8b-agent decides which tools to invoke
     |
     v
 MCP Servers (private-ai namespace)
@@ -86,7 +86,7 @@ Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates
 
 ## Demo Walkthrough
 
-In the chatbot, select `qwen3-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).
+In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).
 
 ### Scene 1: List Pods in acme-corp (openshift-mcp)
 

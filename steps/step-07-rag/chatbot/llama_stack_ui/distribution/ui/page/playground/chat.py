@@ -297,13 +297,14 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
         )
     else:
         default_prompt = (
-            "You are a helpful assistant. Use your tools to answer questions. "
-            "Base your answer on tool results, not prior knowledge. "
+            "You are a helpful assistant. You MUST use your tools to answer questions. "
+            "Base your answer on the tool results, not prior knowledge. "
             "If a tool call fails, retry with corrected parameters. "
             "For equipment database lookups, use execute_sql on the acme_pod_equipment_map table "
             "(columns: pod_name, equipment_id, product_name). "
             "For pod and cluster queries, use the OpenShift tools. "
-            "Be concise — answer in 2-4 sentences."
+            "Answer directly and concisely. "
+            "Your response format: provide only the answer. Do not add a Sources section."
         )
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
@@ -442,7 +443,6 @@ class ResponseState:
         # Reasoning state
         self.reasoning_text = ""
         self.reasoning_placeholder = None
-        self._in_think_block = False
 
         # Tool state
         self.tool_status = None
@@ -469,7 +469,7 @@ class ResponseState:
         # Create reasoning expander on first delta
         if not self.has_reasoning:
             with self.containers.reasoning.container():
-                reasoning_expander = st.expander("🧠 Reasoning", expanded=False)
+                reasoning_expander = st.expander("🧠 Reasoning", expanded=True)
                 self.reasoning_placeholder = reasoning_expander.empty()
 
         # Update reasoning text with cursor
@@ -482,46 +482,19 @@ class ResponseState:
             self.reasoning_placeholder.markdown(self.reasoning_text)
 
     def update_message(self, delta_text):
-        """Add message text and update display.
-
-        Routes <think>...</think> blocks to a collapsible reasoning
-        expander (collapsed by default), keeping the main response clean.
-        """
+        """Add message text and update display."""
         self.full_response += delta_text
-
-        # Detect <think> block start
-        if '<think>' in self.full_response and not self._in_think_block:
-            self._in_think_block = True
-
-        # While inside a think block, wait for </think> before rendering
-        if self._in_think_block:
-            if '</think>' in self.full_response:
-                self._in_think_block = False
-                think_end = self.full_response.index('</think>') + len('</think>')
-                think_text = self.full_response[:think_end].replace('<think>', '').replace('</think>', '').strip()
-                if think_text:
-                    self.update_reasoning(think_text)
-                    self.finalize_reasoning()
-                visible = self.full_response[think_end:].lstrip()
-                self.containers.message.markdown(visible + "▌")
-            # Don't render anything while still inside think block
-            return
-
-        # Normal rendering — skip past any completed think block
-        visible = self.full_response
-        think_end_pos = visible.find('</think>')
-        if think_end_pos >= 0:
-            visible = visible[think_end_pos + len('</think>'):].lstrip()
-        self.containers.message.markdown(visible + "▌")
+        self.containers.message.markdown(self.full_response + "▌")
 
     def finalize_message(self):
-        """Remove cursor from message display, strip think blocks."""
-        text = self.full_response
+        """Render final response with annotation-based source citations.
 
-        # Strip <think>...</think> from final display
-        think_match = re.search(r'<think>.*?</think>\s*', text, re.DOTALL)
-        if think_match:
-            text = text[think_match.end():]
+        Replaces <|file-xxx|> markers with resolved names from file_id_map,
+        strips any empty Sources/References skeleton the model generated,
+        and renders unique sources as a clean footer — matching the
+        Dashboard Playground citation rendering.
+        """
+        text = self.full_response
 
         # Collect cited sources from markers
         cited_ids = _CITATION_RE.findall(text)

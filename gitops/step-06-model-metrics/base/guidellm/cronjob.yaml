@@ -53,7 +53,7 @@ spec:
                   echo "GuideLLM Daily Benchmark — ${TIMESTAMP}"
 
                   # Benchmark active models only (minReplicas > 0)
-                  for MODEL in qwen3-8b-agent mistral-3-bf16; do
+                  for MODEL in granite-8b-agent mistral-3-bf16; do
                     TARGET="http://${MODEL}-predictor.private-ai.svc.cluster.local:8080/v1"
                     JOB_NAME="guidellm-${MODEL}-${TIMESTAMP}"
 

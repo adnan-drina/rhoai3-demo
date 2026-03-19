@@ -25,11 +25,11 @@ log_step "Checking prerequisites..."
 
 check_oc_logged_in
 
-if ! oc get inferenceservice qwen3-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "qwen3-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
     exit 1
 fi
-log_success "qwen3-8b-agent present"
+log_success "granite-8b-agent present"
 
 if ! oc get llamastackdistribution -n "$NAMESPACE" &>/dev/null 2>&1; then
     log_error "No LlamaStackDistribution found. Deploy step-05/07 first."

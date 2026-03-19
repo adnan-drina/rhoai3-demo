@@ -18,7 +18,7 @@ The models are registered. The GPUs are provisioned. Now we serve them. Step-05 
 
 | Model | GPUs | Source | Use Case |
 |-------|------|--------|----------|
-| **qwen3-8b-agent** | 1 (g6.4xlarge) | OCI ModelCar | RAG, MCP tools, Guardrails, Eval candidate |
+| **granite-8b-agent** | 1 (g6.4xlarge) | OCI ModelCar | RAG, MCP tools, Guardrails, Eval candidate |
 | **mistral-3-bf16** | 4 (g6.12xlarge) | S3/MinIO | Playground chat, Benchmarking, Eval judge |
 
 > **Additional models in the Registry:** Mistral-3-INT4 (1-GPU, OCI), Devstral-2 (4-GPU), and GPT-OSS-20B (4-GPU) are registered in the Model Registry and visible in GenAI Studio AI Available Assets. Deploy them from the Dashboard when needed — no code changes required.
@@ -37,25 +37,25 @@ oc get inferenceservice -n private-ai
 
 **Expect:** 2 InferenceServices listed, both Ready. The Model Registry shows 5 models total.
 
-*"We have two models running on all five GPUs — Qwen3 on one GPU handles tool-calling and RAG, Mistral BF16 on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them."*
+*"We have two models running on all five GPUs — Granite on one GPU handles tool-calling and RAG, Mistral BF16 on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them."*
 
-### Scene 2 — GenAI Playground (Chat with Qwen3)
+### Scene 2 — GenAI Playground (Chat with Granite)
 
-**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground** and select `qwen3-8b-agent`. Send: *"Explain Kubernetes operators in three sentences."*
+**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground** and select `granite-8b-agent`. Send: *"Explain Kubernetes operators in three sentences."*
 
 **Expect:** Streaming response within 2-3 seconds.
 
-*"This is the Qwen3 model we registered in the Model Registry, now live on a single L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
+*"This is the Granite model we registered in the Model Registry, now live on a single L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
 
 ### Scene 3 — GenAI Playground with RAG
 
-**Do:** In the Playground, select `qwen3-8b-agent`. Toggle **RAG ON**, upload a PDF. Set system instructions:
+**Do:** In the Playground, select `granite-8b-agent`. Toggle **RAG ON**, upload a PDF. Set system instructions:
 
 > *"You MUST use the knowledge_search tool to answer. Ground your response in the retrieved content."*
 
 *"Same model, same GPU — but now grounded in your private data. Upload a PDF, ask a question, get a sourced answer. No vector database setup, no pipeline code."*
 
-> **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Qwen3 for RAG demos.
+> **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Granite for RAG demos.
 
 ## What to Verify After Deployment
 
@@ -66,14 +66,14 @@ oc get servingruntime -n private-ai
 
 # InferenceServices Ready
 oc get inferenceservice -n private-ai
-# Expected: qwen3-8b-agent and mistral-3-bf16, both READY=True
+# Expected: granite-8b-agent and mistral-3-bf16, both READY=True
 
 # GPU scheduling (pods on correct nodes)
 oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide
-# Expected: qwen3 on g6.4xlarge, mistral on g6.12xlarge
+# Expected: granite on g6.4xlarge, mistral on g6.12xlarge
 
 # Quick inference test
-oc exec deploy/qwen3-8b-agent-predictor -n private-ai -c kserve-container -- \
+oc exec deploy/granite-8b-agent-predictor -n private-ai -c kserve-container -- \
   curl -s http://localhost:8080/v1/models
 # Expected: JSON with model ID
 ```
@@ -90,11 +90,11 @@ Or run the validation script:
 
 > **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations and `nodeSelector` for GPU node targeting. GPU nodes are tainted with `nvidia.com/gpu=true:NoSchedule`; every GPU pod must tolerate this taint.
 
-> **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. Qwen3 8B FP8 (~8 GB) uses this path. Models over 20 GB (Mistral BF16 at ~48 GB) use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
+> **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. Granite 8B FP8 (~8 GB) uses this path. Models over 20 GB (Mistral BF16 at ~48 GB) use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
 > **vLLM performance tuning (benchmarked with GuideLLM):**
 >
-> | Parameter | Qwen3 (1x L4) | Mistral (4x L4 TP=4) | Rationale |
+> | Parameter | Granite (1x L4) | Mistral (4x L4 TP=4) | Rationale |
 > |-----------|----------------|----------------------|-----------|
 > | `--gpu-memory-utilization` | 0.92 | 0.90 | Safe maximum; 0.95 OOMs during CUDA graph capture on L4 |
 > | `--kv-cache-dtype` | fp8 | fp8 | L4 Ada Lovelace native FP8; doubles KV cache capacity |
@@ -102,10 +102,10 @@ Or run the validation script:
 > | `--enable-chunked-prefill` | auto (V1) | explicit | V1 engine enables by default; prevents prefill blocking |
 >
 > **KV cache capacity after tuning:**
-> - Qwen3: KV cache tokens (was 74K), max concurrency 9.5x at 16K context (+108% over baseline)
+> - Granite: 155K tokens (was 74K), max concurrency 9.5x at 16K context (+108% over baseline)
 > - Mistral: 426K tokens (was 368K), max concurrency 26.0x at 16K context
 >
-> **ITL is hardware-bound on L4 GPUs:** Qwen3 ~40ms, Mistral ~53ms. These are near the L4 memory bandwidth floor (~300 GB/s). Reducing ITL further requires higher-bandwidth GPUs (e.g., A100, H100). See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
+> **ITL is hardware-bound on L4 GPUs:** Granite ~40ms, Mistral ~53ms. These are near the L4 memory bandwidth floor (~300 GB/s). Reducing ITL further requires higher-bandwidth GPUs (e.g., A100, H100). See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
 
@@ -121,7 +121,7 @@ Or run the validation script:
 
 **Solution:** Verify the ISVC has the correct tolerations:
 ```bash
-oc get inferenceservice qwen3-8b-agent -n private-ai -o jsonpath='{.spec.predictor.tolerations}' | python3 -m json.tool
+oc get inferenceservice granite-8b-agent -n private-ai -o jsonpath='{.spec.predictor.tolerations}' | python3 -m json.tool
 ```
 Expected: toleration for `nvidia.com/gpu`.
 
@@ -143,7 +143,7 @@ oc delete pvc mistral-3-bf16-pvc -n private-ai
 
 **Root Cause:** `--gpu-memory-utilization` set too high (e.g., 0.95). CUDA graph capture needs headroom.
 
-**Solution:** Reduce to 0.92 (Qwen3) or 0.90 (Mistral). Current manifests already use these tuned values.
+**Solution:** Reduce to 0.92 (Granite) or 0.90 (Mistral). Current manifests already use these tuned values.
 
 ## References
 

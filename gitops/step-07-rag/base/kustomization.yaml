@@ -16,7 +16,7 @@ resources:
   - minio-rag-bucket/    # MinIO bucket for RAG documents
   # Platform (sync-wave 3-4)
   - dspa/                # Kubeflow Pipelines v2
-  - llamastack-rag/      # LlamaStack RAG backend (pgvector + qwen3-8b, no userConfig)
+  - llamastack-rag/      # LlamaStack RAG backend (pgvector + granite-8b, no userConfig)
   # Ingestion (sync-wave 5)
   - ingestion-service/   # Docling-based ingestion (BuildConfig + ConfigMap)
   # Workbench & UI (sync-wave 5-10)

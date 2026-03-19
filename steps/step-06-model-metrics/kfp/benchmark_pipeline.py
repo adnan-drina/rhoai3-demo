@@ -139,19 +139,19 @@ def _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_rep
 
 
 @dsl.pipeline(
-    name="bench-qwen3-8b",
+    name="bench-granite-8b",
     description=(
-        "Qwen3 8B Agent benchmark (1x L4 FP8). "
+        "Granite 8B Agent benchmark (1x L4 FP8). "
         "Rates: 1,3,5,8,10 RPS. SLO: TTFT <=150ms, ITL <=45ms."
     ),
     pipeline_root="s3://pipelines/",
 )
-def qwen3_benchmark_pipeline(
-    model_name: str = "qwen3-8b-agent",
+def granite_benchmark_pipeline(
+    model_name: str = "granite-8b-agent",
     rates: str = "1,3,5,8,10",
     max_seconds: int = 60,
     max_requests: int = 50,
-    run_id: str = "bench-qwen3",
+    run_id: str = "bench-granite",
     s3_report_secret: str = "minio-connection",
 ):
     _wire_benchmark(model_name, rates, max_seconds, max_requests, run_id, s3_report_secret)
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     compiler = kfp.compiler.Compiler()
 
     for pipeline_func, filename in [
-        (qwen3_benchmark_pipeline, "bench-qwen3-8b.yaml"),
+        (granite_benchmark_pipeline, "bench-granite-8b.yaml"),
         (mistral_benchmark_pipeline, "bench-mistral-bf16.yaml"),
     ]:
         out = artifacts_dir / filename

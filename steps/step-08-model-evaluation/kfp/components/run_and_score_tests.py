@@ -225,7 +225,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
 </style></head><body>
 <div class="container">
   <div class="header"><h1>RAG Evaluation Report</h1><p>{scenario_name}</p><span class="badge">{mode.upper()}</span></div>
-  <p class="meta">Run ID: {run_id} | Candidate: qwen3-8b-agent | Judge: {JUDGE_MODEL} | {time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())} | Tests: {len(scenario_results)}</p>
+  <p class="meta">Run ID: {run_id} | Candidate: granite-8b-agent | Judge: {JUDGE_MODEL} | {time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())} | Tests: {len(scenario_results)}</p>
   <div style="padding: 0 30px 30px;"><table><thead><tr><th>#</th><th>Question</th><th>Generated Answer</th><th>Expected</th><th>Judge Score</th><th>Tools</th></tr></thead>
   <tbody>{rows_html}</tbody></table></div>
 </div></body></html>"""
@@ -274,7 +274,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
 
         scenario_name = config.get("name", config_path)
         vector_db_id = config.get("vector_db_id")
-        model_id = config.get("model_id", "qwen3-8b-agent")
+        model_id = config.get("model_id", "granite-8b-agent")
         mode = config.get("mode", "post-rag" if vector_db_id else "pre-rag")
         llamastack_url = config.get("llamastack_url", default_llamastack_url)
 

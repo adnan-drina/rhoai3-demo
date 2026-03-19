@@ -1,7 +1,7 @@
 name: "Whoami (CV) — Post-RAG Evaluation"
 description: "Evaluation WITH document retrieval. With RAG, the LLM answers from the actual CV — not the football coach hallucination."
 vector_db_id: whoami
-model_id: qwen3-8b-agent
+model_id: granite-8b-agent
 mode: post-rag
 
 scoring_params:
