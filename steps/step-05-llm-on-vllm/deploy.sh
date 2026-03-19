@@ -166,6 +166,82 @@ set -u
 echo ""
 
 # =============================================================================
+# Link InferenceServices to Model Registry entries
+# Registry IDs are dynamic (assigned by seed job), so we query them at runtime.
+# =============================================================================
+log_step "Linking InferenceServices to Model Registry..."
+
+REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries \
+    -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+
+if [[ -n "$REGISTRY_ROUTE" ]]; then
+    TOKEN=$(oc whoami -t 2>/dev/null || echo "")
+    API_BASE="https://${REGISTRY_ROUTE}/api/model_registry/v1alpha3"
+
+    # Registry-name → ISVC-name mapping
+    declare -A REGISTRY_MAP=(
+        ["Granite-3.1-8B-Agent"]="granite-8b-agent"
+        ["Mistral-3-BF16"]="mistral-3-bf16"
+    )
+
+    MODELS_JSON=$(curl -sk -H "Authorization: Bearer $TOKEN" \
+        "${API_BASE}/registered_models" 2>/dev/null || echo '{"items":[]}')
+
+    for REG_NAME in "${!REGISTRY_MAP[@]}"; do
+        ISVC_NAME="${REGISTRY_MAP[$REG_NAME]}"
+
+        RM_ID=$(echo "$MODELS_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for m in data.get('items', []):
+    if m['name'] == '${REG_NAME}':
+        print(m['id']); break
+else:
+    print('')
+" 2>/dev/null)
+
+        if [[ -z "$RM_ID" ]]; then
+            log_warn "  ${REG_NAME} not found in registry — skipping"
+            continue
+        fi
+
+        # Get latest version for this model
+        VERSIONS_JSON=$(curl -sk -H "Authorization: Bearer $TOKEN" \
+            "${API_BASE}/model_versions?registeredModelId=${RM_ID}" 2>/dev/null || echo '{"items":[]}')
+
+        MV_ID=$(echo "$VERSIONS_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+versions = [v for v in data.get('items', []) if v.get('registeredModelId') == '${RM_ID}']
+if versions:
+    print(sorted(versions, key=lambda v: v['id'], reverse=True)[0]['id'])
+else:
+    print('')
+" 2>/dev/null)
+
+        if [[ -z "$MV_ID" ]]; then
+            log_warn "  ${REG_NAME} has no versions — skipping"
+            continue
+        fi
+
+        if oc get inferenceservice "$ISVC_NAME" -n "$NAMESPACE" &>/dev/null; then
+            oc patch inferenceservice "$ISVC_NAME" -n "$NAMESPACE" --type=merge -p "{
+              \"metadata\": {
+                \"labels\": {
+                  \"modelregistry.opendatahub.io/registered-model-id\": \"${RM_ID}\",
+                  \"modelregistry.opendatahub.io/model-version-id\": \"${MV_ID}\"
+                }
+              }
+            }" &>/dev/null
+            log_success "${ISVC_NAME} → registry model=${RM_ID} version=${MV_ID}"
+        fi
+    done
+else
+    log_warn "Model Registry route not found — skipping ISVC linking"
+fi
+echo ""
+
+# =============================================================================
 # Summary
 # =============================================================================
 log_step "Deployment Complete"
