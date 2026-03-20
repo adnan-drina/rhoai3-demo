@@ -7,15 +7,22 @@ Step-07 gave your team a RAG chatbot that answers from internal documents. But w
 
 ## What It Does
 
-The TrustyAI Guardrails Orchestrator sits between the user and the LLM, running three CPU-only detectors on input and output:
+```text
+AI Safety & Guardrails
+├── Guardrails Orchestrator  → Routes requests through detector chain
+├── HAP Detector             → Hate, abuse, profanity (granite-guardian-hap-38m, CPU)
+├── Prompt Injection         → Jailbreak attempts (deberta-v3, CPU)
+├── PII Regex                → Email, phone, LinkedIn, GitHub, SSN, credit card
+└── Gateway Routes           → /passthrough, /pii, /safe
+```
 
-| Detector | What It Catches | Model | Size |
-|----------|----------------|-------|------|
-| **HAP** | Hate, abuse, profanity | granite-guardian-hap-38m | 38M params, CPU |
-| **Prompt Injection** | Jailbreak attempts | deberta-v3-prompt-injection | 86M params, CPU |
-| **Regex PII** | Email, phone, LinkedIn, GitHub, SSN, credit card | Built-in regex | No model needed |
-
-The orchestrator exposes three gateway routes — `/passthrough` (no detectors), `/pii` (output filtering), and `/safe` (full protection on input + output). The chatbot calls the orchestrator API directly for fine-grained control.
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| **Guardrails Orchestrator** | Routes requests through detector chain (input + output) | `private-ai` |
+| **HAP Detector** | Hate, abuse, profanity detection (38M params, CPU-only) | `private-ai` |
+| **Prompt Injection Detector** | Jailbreak attempt detection (86M params, CPU-only) | `private-ai` |
+| **PII Regex** | Email, phone, LinkedIn, GitHub — built-in, no model needed | `private-ai` |
+| **Gateway Routes** | `/passthrough` (none), `/pii` (output), `/safe` (input + output) | `private-ai` |
 
 Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/base/)
 
@@ -23,7 +30,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 ### Scene 1: Direct Mode — PII Leaks Freely
 
-In the chatbot, select `granite-8b-agent` and use **Direct** mode (no shields). Ask about the Managing Director.
+In the chatbot, select the agent model and use **Direct** mode (no shields). Ask about the Managing Director.
 
 **Prompt:** "Who is the Managing Director of ACME Corp?"
 
