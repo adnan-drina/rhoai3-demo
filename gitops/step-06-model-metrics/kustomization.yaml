@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# Prerequisites:
-#   - Step 01: User Workload Monitoring enabled
-#   - Step 05: vLLM InferenceServices deployed (auto-creates ServiceMonitors)
-
-resources:
-  - base/
