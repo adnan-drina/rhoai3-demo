@@ -55,7 +55,7 @@ The agentic model autonomously resolves an equipment alert using four integrated
 A complete MLOps lifecycle from notebook to production:
 
 1. **Explore** — detect faces with pre-trained YOLO11 (notebook 01)
-2. **Retrain** — auto-annotate 50 selfies, train on CPU in 15 minutes (notebook 02)
+2. **Retrain** — auto-annotate your photos, train a personalized model on CPU (notebook 02)
 3. **Test locally** — annotated video with green/red bounding boxes (notebook 03)
 4. **Deploy** — KFP pipeline registers in Model Registry and deploys on OpenVINO (step 12)
 5. **Monitor** — TrustyAI tracks confidence drift in production (step 12)
