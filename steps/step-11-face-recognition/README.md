@@ -9,13 +9,12 @@ Generative AI gets the headlines, but enterprises also run traditional ML worklo
 ## What It Does
 
 ```text
-Workbench (Notebooks)                  KServe RawDeployment
-┌──────────────────────┐               ┌───────────────────────────┐
-│ 01 Explore YOLO11    │               │  OpenVINO Model Server    │
-│ 02 Retrain + Export  │──ONNX──►MinIO─│──►face-recognition ISVC   │
-│ 03 Test Locally      │               │     CPU-only, ~11MB       │
-│ 04 Query via REST    │◄──REST v2 API─│     v2/models/.../infer   │
-└──────────────────────┘               └───────────────────────────┘
+Face Recognition
+├── kserve-ovms ServingRuntime   → OpenVINO Model Server for ONNX models
+├── face-recognition ISVC        → Serves YOLO11 ONNX model (CPU-only, ~11MB)
+├── face-recognition-wb Notebook → JupyterLab with git-synced notebooks (4 notebooks)
+├── upload-face-model Job        → Downloads pre-trained ONNX from HuggingFace to MinIO
+└── Notebook workflow: Explore → Retrain → Test → Query via REST v2 API
 ```
 
 | Component | Purpose | Namespace |
