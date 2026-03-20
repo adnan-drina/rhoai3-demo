@@ -9,30 +9,23 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 ## What It Does
 
 ```text
- DSPA (Kubeflow Pipelines v2)
-   │  Docling Ingestion Pipeline
-   │  1. Fetch PDFs from MinIO
-   │  2. Convert to Markdown (Docling)
-   │  3. Insert via LlamaStack (vector_stores.files)
-   │
-   ▼
- LlamaStackDistribution (lsd-rag)
-   Inference:  remote::vllm → granite-8b-agent
-   Embedding:  inline::sentence-transformers (768d)
-   Vector IO:  remote::pgvector → llamastack-postgres
-   │
-   ├──► PostgreSQL + pgvector (metadata + vectors)
-   └──► RAG Chatbot UI (direct + agent modes)
+RAG Pipeline
+├── PostgreSQL + pgvector    → Persistent vector database + metadata store
+├── Docling                  → PDF-to-Markdown intelligent conversion
+├── DSPA (KFP v2)            → Pipeline orchestration for repeatable ingestion
+├── LlamaStack (lsd-rag)     → RAG backend: embedding, vector IO, agent queries
+├── RAG Chatbot UI           → Web frontend (direct + agent modes)
+└── Ingestion Service        → BuildConfig + ImageStream for KFP components
 ```
 
-| Component | Purpose | Persona |
-|-----------|---------|---------|
-| **PostgreSQL + pgvector** | Persistent vector database + metadata store | Platform (invisible) |
-| **Docling** | PDF-to-Markdown intelligent conversion | Data Engineer |
-| **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | MLOps Engineer |
-| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | AI Engineer |
-| **Granite-8B Agent** | Tool-calling LLM for RAG queries | Data Scientist |
-| **RAG Chatbot UI** | Web frontend for interactive RAG queries | Demo / End User |
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| **PostgreSQL + pgvector** | Persistent vector database + metadata store | `private-ai` |
+| **Docling** | PDF-to-Markdown intelligent conversion | `private-ai` |
+| **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | `private-ai` |
+| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | `private-ai` |
+| **RAG Chatbot UI** | Web frontend for interactive RAG queries | `private-ai` |
+| **Ingestion Service** | BuildConfig + ImageStream for KFP pipeline components | `private-ai` |
 
 Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
