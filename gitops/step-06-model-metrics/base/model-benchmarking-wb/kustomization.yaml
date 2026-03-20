@@ -1,9 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Usage: oc apply -k gitops/step-06-model-metrics/base/model-benchmarking-wb/
-# Volume Mounts: /results (GuideLLM, read-only), /opt/app-root/src (workbench, read-write)
-
 resources:
   - workbench.yaml
-

@@ -1,24 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 07: RAG Pipeline
-# Deploys the full document-ingestion-and-retrieval stack:
-#   1. PostgreSQL with pgvector (metadata + vector store in one instance)
-#   2. Docling document processing service
-#   3. MinIO bucket for RAG documents
-#   4. DSPA (Kubeflow Pipelines v2) for pipeline orchestration
-#   5. LlamaStackDistribution configured for RAG with pgvector (minimal userConfig for annotation override)
+# Sync-wave ordering: infrastructure (1-2) → platform (3-4) → ingestion (5) → UI (5-10)
 
 resources:
-  # Infrastructure (sync-wave 1-2)
-  - postgresql/          # PostgreSQL with pgvector (metadata + vector store)
-  - docling/             # PDF→Markdown document processor
-  - minio-rag-bucket/    # MinIO bucket for RAG documents
-  # Platform (sync-wave 3-4)
-  - dspa/                # Kubeflow Pipelines v2
-  - llamastack-rag/      # LlamaStack RAG backend (pgvector + granite-8b, annotation override via userConfig)
-  # Ingestion (sync-wave 5)
-  - ingestion-service/   # Docling-based ingestion (BuildConfig + ConfigMap)
-  # Workbench & UI (sync-wave 5-10)
-  - rag-wb/              # RAG development workbench (Jupyter)
-  - chatbot/             # RAG Chatbot UI (Streamlit)
+  - postgresql/
+  - docling/
+  - minio-rag-bucket/
+  - dspa/
+  - llamastack-rag/
+  - ingestion-service/
+  - rag-wb/
+  - chatbot/

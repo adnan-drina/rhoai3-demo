@@ -1,30 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Demonstrates why Inference Efficiency is the most important metric for
-# enterprise AI deployments.
-# The Narrative:
-#   - Baseline: Mistral-3-BF16 sharded across 4 GPUs ($$$$)
-#   - Competitor: Mistral-3-INT4 running on 1 GPU ($)
-#   - Goal: Find the "Efficiency Delta" - where does each model saturate?
-# Components:
-#   1. Grafana Operator (grafana-operator/)
-#   2. GuideLLM Benchmarking (guidellm/)
-#   3. Model Benchmarking Workbench (model-benchmarking-wb/)
-# SLA Targets:
-#   - TTFT: < 500ms (excellent), < 1.0s (acceptable), > 2.0s (breaking)
-#   - TPOT: > 50 tok/s (excellent), > 20 tok/s (acceptable), < 10 tok/s (breaking)
-#   - KV Cache: < 70% (excellent), 70-85% (acceptable), > 95% (breaking)
-#   - Queue Depth: 0 (excellent), 0-1 (acceptable), > 5 (breaking)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index
-# Ref: https://docs.vllm.ai/en/latest/serving/metrics.html
-# Ref: https://github.com/neuralmagic/guidellm
-# Ref: https://github.com/grafana/grafana-operator
+# Ref: https://github.com/vllm-project/guidellm
 
 resources:
   - grafana-operator/
   - guidellm/
   - model-benchmarking-wb/
 
-# Note: Removed commonLabels to avoid Service selector mismatch issues.
-# Labels are applied directly in individual manifests instead.
+# Labels are applied directly in individual manifests (not commonLabels)
+# to avoid Service selector mismatch issues.

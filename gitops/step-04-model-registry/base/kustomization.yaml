@@ -1,32 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 04: Enterprise Model Governance
-# Implements the "Gatekeeper" pattern for AI model management
-# All components in rhoai-model-registries namespace:
-#   ┌─────────────────────────────────────────────────────────────────────────┐
-#   │                    rhoai-model-registries namespace                     │
-#   ├─────────────────────────────────────────────────────────────────────────┤
-#   │                                                                         │
-#   │   ┌─────────────────┐     ┌─────────────────┐                          │
-#   │   │   MariaDB       │◀────│  ModelRegistry  │                          │
-#   │   │   (metadata)    │     │  (API server)   │                          │
-#   │   └─────────────────┘     └─────────────────┘                          │
-#   │                                                                         │
-#   └─────────────────────────────────────────────────────────────────────────┘
-# Model Registration: Done via RHOAI Dashboard (Settings → Model registries)
-# This is the recommended governance workflow for ai-admin.
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index
+# Seed job uses internal service (:8080) to bypass OAuth for automation.
 
 resources:
   - database/
   - registry/
   - rbac/
   - seed-job.yaml
-
-# Service Architecture:
-#   - private-ai-registry:8443          → OAuth-protected (Dashboard, UI, external)
-#   - private-ai-registry-internal:8080 → Internal API (automation, seed jobs)
-# The seed job uses the internal service (8080) to register the
-# May 2025 Validated Granite model. The primary OAuth-protected
-# service (8443) remains the entry point for all user traffic.
