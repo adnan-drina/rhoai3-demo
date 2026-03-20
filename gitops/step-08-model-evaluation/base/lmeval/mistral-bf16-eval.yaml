@@ -2,7 +2,6 @@
 # Evaluates reasoning, logic, and general knowledge via standard benchmarks.
 # Apply on demand: oc apply -f mistral-bf16-eval.yaml -n private-ai
 # Results visible in Dashboard: Develop & train > Evaluations
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-large-language-models_evaluate
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: LMEvalJob
 metadata:

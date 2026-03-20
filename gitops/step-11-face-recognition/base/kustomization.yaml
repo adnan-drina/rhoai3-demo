@@ -5,7 +5,6 @@ kind: Kustomization
 # Deploys an ONNX face recognition model on KServe RawDeployment
 # using the platform-provided kserve-ovms (OpenVINO Model Server) runtime.
 # CPU-only — no GPU required.
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
 
 resources:
   - serving-runtime/

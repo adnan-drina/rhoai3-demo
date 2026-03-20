@@ -1,5 +1,4 @@
 # Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/02-02-deploy-dsc.html
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:

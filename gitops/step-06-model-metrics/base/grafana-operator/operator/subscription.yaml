@@ -1,5 +1,4 @@
 # IMPORTANT: Community Operator - not vetted by Red Hat, no Red Hat support.
-# Ref: https://github.com/grafana/grafana-operator
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

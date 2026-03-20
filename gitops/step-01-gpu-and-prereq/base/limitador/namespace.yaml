@@ -1,6 +1,5 @@
 # Part of Red Hat Connectivity Link (RHCL) stack for llm-d Inference Gateway
 # Provides rate limiting for LLM inference endpoints
-# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/
 apiVersion: v1
 kind: Namespace
 metadata:
