@@ -9,27 +9,23 @@ RHOAI 3.3 provides two complementary model management capabilities. The **Model 
 ## What It Does
 
 ```text
-  Model Catalog (48+ models)          Model Registry (governance)
-  ┌────────────────────────┐          ┌────────────────────────┐
-  │ IBM Granite             │  deploy  │ ✓ Granite 3.1 8B FP8  │
-  │ Meta Llama              │◄────────▶│ ✓ Mistral 24B         │
-  │ Mistral, Qwen, Gemma   │ register │   version, owner,     │
-  │ OCI ModelCar format     │          │   S3/OCI artifact path │
-  └────────────────────────┘          └────────────────────────┘
-         │                                      │
-         ▼                                      ▼
-  Deploy directly (OCI pull)          Deploy from registry
-  via global cluster pull secret      via S3 or OCI reference
+Model Governance
+├── Model Catalog         → 48+ Red Hat-validated models (OCI ModelCar)
+├── Model Registry        → Custom governance: versions, owners, approval status
+├── MariaDB 10.5          → Registry metadata storage (5 Gi PVC)
+├── Internal Service      → Unauthenticated endpoint for seed job automation
+├── RBAC                  → ai-admin = full control, ai-developer = read-only
+└── Seed Job              → Registers initial models on first deploy
 ```
 
-| Component | Purpose |
-|-----------|---------|
-| **Model Catalog** | 48+ Red Hat-validated models (OCI ModelCar), browse in GenAI Studio |
-| **Model Registry** (`private-ai-registry`) | Custom governance: versions, owners, approval status |
-| **MariaDB 10.5** | Registry metadata storage (5 Gi PVC) |
-| **Internal Service** (`:8080`) | Unauthenticated endpoint for seed job automation |
-| **RBAC** | `ai-admin` = full control, `ai-developer` = read-only |
-| **Seed Job** | Registers Granite 3.1 8B Instruct FP8 on first deploy |
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| **Model Catalog** | 48+ Red Hat-validated models (OCI ModelCar), browse in GenAI Studio | platform-wide |
+| **Model Registry** (`private-ai-registry`) | Custom governance: versions, owners, approval status | `rhoai-model-registries` |
+| **MariaDB 10.5** | Registry metadata storage (5 Gi PVC) | `rhoai-model-registries` |
+| **Internal Service** (`:8080`) | Unauthenticated endpoint for seed job automation | `rhoai-model-registries` |
+| **RBAC** | `ai-admin` = full control, `ai-developer` = read-only | `rhoai-model-registries` |
+| **Seed Job** | Registers initial models on first deploy | `rhoai-model-registries` |
 
 Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-registry/base/)
 
