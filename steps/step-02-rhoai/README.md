@@ -4,7 +4,7 @@
 
 ## The Business Story
 
-RHOAI 3.3 is a new-installation-only release with no upgrade path from 2.x. It replaces Accelerator Profiles with Hardware Profiles, introduces GenAI Studio (Agent Playground + Model Catalog), renames `datasciencepipelines` to `aipipelines`, and moves group management from `OdhDashboardConfig` to a dedicated Auth resource. This step deploys the full platform on top of the GPU infrastructure from step-01, giving data scientists a self-service AI environment with built-in model serving, training, and governance.
+This step deploys the full RHOAI 3.3 platform on top of the GPU infrastructure from step-01, giving data scientists a self-service AI environment with built-in model serving, training, pipelines, and governance. GenAI Studio provides an Agent Playground and Model Catalog, Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack.
 
 ## What It Does
 
@@ -49,6 +49,32 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 - **Hardware Profiles available** — four profiles (CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU) listed in Settings
 - **DataScienceCluster Ready** — `default-dsc` phase is `Ready` with all components managed
 - **Service Mesh 3** — auto-installed by DSCInitialization for KServe traffic management
+
+## Demo Walkthrough
+
+### Scene 1: RHOAI Dashboard
+
+**Do:** Open `https://data-science-gateway.apps.<cluster>` and log in as `ai-admin` / `redhat123`.
+
+**Expect:** The RHOAI Dashboard with GenAI Studio in the left navigation — Agent Playground, Model Catalog, AI Available Assets.
+
+*"This is the self-service AI platform. Data scientists get a curated environment — models, pipelines, notebooks, and monitoring — without managing infrastructure."*
+
+### Scene 2: Hardware Profiles
+
+**Do:** Navigate to **Settings** → **Hardware profiles**.
+
+**Expect:** Four profiles — CPU Small, NVIDIA L4 1GPU, NVIDIA L4 1GPU (Default), NVIDIA L4 4GPUs. Each shows nodeSelector and tolerations targeting the correct GPU node type.
+
+*"Hardware Profiles replace the old Accelerator Profiles from RHOAI 2.x. They control exactly which node type a workload lands on — CPU, 1-GPU, or 4-GPU. The platform admin defines these once, and every user selects from the same curated list."*
+
+### Scene 3: Model Catalog
+
+**Do:** Navigate to **GenAI Studio** → **Model Catalog**.
+
+**Expect:** 48+ Red Hat Validated models from IBM, Meta, Mistral, Qwen, and others. Each card shows parameter count, license, and recommended hardware.
+
+*"Out of the box, RHOAI ships a curated catalog of validated models in OCI ModelCar format. These are Red Hat-tested — deploy directly from the catalog using the cluster's pull secret."*
 
 ## Design Decisions
 
