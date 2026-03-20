@@ -133,7 +133,7 @@ This script uploads TRAINING reference data and untagged prediction data, config
 
 > **Design Decision:** **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.
 
-> **Design Decision:** **Model Registry as quality gate**. The evaluate step queries the previous version's mAP50 from the registry. If the new model is worse, the pipeline fails. This is inspired by the [AI500 MLOps Jukebox](https://github.com/rhoai-mlops/jukebox) pattern.
+> **Design Decision:** **Threshold-based quality gate with Registry context**. The evaluate step computes mAP50 and compares it against a configurable threshold (default 0.7). It also queries the Model Registry for the previous version's mAP50 for informational logging. If the new model's mAP50 is below the threshold, the pipeline fails and deployment is skipped. Inspired by the [AI500 MLOps Jukebox](https://github.com/rhoai-mlops/jukebox) pattern.
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 

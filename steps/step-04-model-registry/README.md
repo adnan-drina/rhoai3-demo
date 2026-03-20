@@ -12,7 +12,7 @@ RHOAI 3.3 provides two complementary model management capabilities. The **Model 
 Model Governance
 ├── Model Catalog         → 48+ Red Hat-validated models (OCI ModelCar)
 ├── Model Registry        → Custom governance: versions, owners, approval status
-├── MariaDB 10.5          → Registry metadata storage (5 Gi PVC)
+├── MariaDB 10.11         → Registry metadata storage (5 Gi PVC)
 ├── Internal Service      → Unauthenticated endpoint for seed job automation
 ├── RBAC                  → ai-admin = full control, ai-developer = read-only
 └── Seed Job              → Registers initial models on first deploy
@@ -22,7 +22,7 @@ Model Governance
 |-----------|---------|-----------|
 | **Model Catalog** | 48+ Red Hat-validated models (OCI ModelCar), browse in GenAI Studio | platform-wide |
 | **Model Registry** (`private-ai-registry`) | Custom governance: versions, owners, approval status | `rhoai-model-registries` |
-| **MariaDB 10.5** | Registry metadata storage (5 Gi PVC) | `rhoai-model-registries` |
+| **MariaDB 10.11** | Registry metadata storage (5 Gi PVC) | `rhoai-model-registries` |
 | **Internal Service** (`:8080`) | Unauthenticated endpoint for seed job automation | `rhoai-model-registries` |
 | **RBAC** | `ai-admin` = full control, `ai-developer` = read-only | `rhoai-model-registries` |
 | **Seed Job** | Registers initial models on first deploy | `rhoai-model-registries` |
