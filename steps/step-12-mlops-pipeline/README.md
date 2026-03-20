@@ -123,16 +123,16 @@ oc get dspa dspa-rag -n private-ai
 
 The pipeline deploys **TrustyAI** and configures monitoring directly on the face-recognition model:
 
-- **SPD Fairness metric** ("Face Recognition Fairness") -- measures whether the model's quality score differs between known faces (adnan) and unknown faces. Visible in **RHOAI Dashboard > Deployments > Face Recognition > Model bias** tab.
-- **Meanshift drift detection** -- compares current inference confidence distribution against the training baseline. Alerts when p-value drops below 0.05.
-- **Endpoint performance** -- request count, latency, CPU/memory visible in the **Endpoint performance** tab.
+- **SPD Fairness metric** (`trustyai_spd`) -- measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > Model Serving > face-recognition > Model bias** tab.
+- **Endpoint performance** -- request count, latency visible in the **Endpoint performance** tab.
 
-The pipeline's step 6 (`setup_monitoring`) configures all metrics via TrustyAI's REST API -- no manual Dashboard form-filling required:
-1. Uploads baseline data (confidence scores, class distribution) tagged as "TRAINING"
-2. Subscribes to SPD fairness metric on class_id (adnan vs unknown)
-3. Subscribes to meanshift drift detection against the training baseline
+The monitoring setup uses a **post-processing pattern**: since TrustyAI's fairness algorithms require tabular data (not raw tensors), YOLO inference outputs are transformed into scalar metrics (`image_type`, `num_detections`) and uploaded to TrustyAI:
 
-> **Note:** TrustyAI SPD values populate in the Dashboard once live inference data flows through the model. The baseline upload establishes the reference distribution; the metric configuration appears immediately in the Dashboard's Model bias tab.
+```bash
+./steps/step-12-mlops-pipeline/setup-trustyai-metrics.sh
+```
+
+This script uploads TRAINING reference data and untagged prediction data, configures the scheduled SPD metric, and verifies the Prometheus gauge is live. The `ServiceMonitor trustyai-service` scrapes the metric every 4s for the Dashboard.
 
 ## Design Decisions
 
@@ -142,7 +142,7 @@ The pipeline's step 6 (`setup_monitoring`) configures all metrics via TrustyAI's
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 
-> **Design Decision:** **TrustyAI SPD configured directly on the face-recognition model**. The pipeline uploads synthetic baseline data (confidence, class, detections) and configures SPD fairness + drift metrics via API. This avoids a separate proxy model and provides monitoring visibility in the RHOAI Dashboard's Model bias tab.
+> **Design Decision:** **TrustyAI uses post-processed tabular metrics**, not raw tensor data. Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `setup-trustyai-metrics.sh` script uploads post-processed metrics (image_type, num_detections) that represent the model's behavior in a format TrustyAI can compute SPD on. This is the standard production pattern for monitoring CV models.
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
