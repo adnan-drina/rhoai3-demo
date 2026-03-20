@@ -4,7 +4,7 @@
 
 ## The Business Story
 
-ACME Corp is adopting open-source LLMs on private infrastructure. Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power distributed inference. This step provisions NVIDIA L4 GPU nodes on AWS and installs every operator prerequisite defined in the RHOAI 3.3 installation guide — turning bare metal into an AI platform foundation.
+Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference. This step provisions NVIDIA L4 GPU nodes on AWS and installs every operator prerequisite defined in the RHOAI 3.3 installation guide — turning a vanilla OpenShift cluster into an AI platform foundation.
 
 ## What It Does
 
@@ -40,6 +40,24 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 - **DCGM dashboard** — GPU utilization, temperature, and memory visible in OpenShift Monitoring
 - **All operators Succeeded** — 8 CSVs across their respective namespaces
 - **KnativeServing Ready** — control plane healthy in `knative-serving`
+
+## Demo Walkthrough
+
+### Scene 1: GPU Nodes Online
+
+**Do:** Open the OpenShift Console → **Compute** → **Nodes**. Filter by label `nvidia.com/gpu.present=true`.
+
+**Expect:** Two GPU nodes — `g6.4xlarge` (1 GPU) and `g6.12xlarge` (4 GPUs). Both showing `Ready`.
+
+*"The cluster now has 5 NVIDIA L4 GPUs across two node types. The taints ensure only AI workloads that explicitly request GPUs get scheduled here — no accidental consumption."*
+
+### Scene 2: Operator Stack
+
+**Do:** Navigate to **Operators** → **Installed Operators**. Filter by the GPU and AI-related namespaces.
+
+**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, LeaderWorkerSet, Authorino, Limitador, DNS Operator, RHCL.
+
+*"Every operator prerequisite from the RHOAI 3.3 installation guide is deployed and healthy. This is the foundation — GPU drivers, KServe networking, and the RHCL stack for distributed inference."*
 
 ## Design Decisions
 
