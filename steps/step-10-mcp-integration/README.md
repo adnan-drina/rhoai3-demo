@@ -14,28 +14,22 @@ This completes the **four pillars of Red Hat AI**:
 ## What It Does
 
 ```text
-GenAI Playground / Chatbot
-    |
-    |--- gen-ai-aa-mcp-servers ConfigMap -> lists 3 MCP servers
-    |
-    v
-LlamaStack (lsd-genai-playground / lsd-rag)
-    |--- tool_groups: mcp::database, mcp::openshift, mcp::slack
-    |--- granite-8b-agent decides which tools to invoke
-    |
-    v
-MCP Servers (private-ai namespace)
-    |--- database-mcp:8080/sse  -> PostgreSQL (EDB Postgres MCP)       [SSE transport]
-    |--- openshift-mcp:8000/mcp -> Kubernetes API (kubernetes-mcp-server) [streamable-http]
-    |--- slack-mcp:8080/sse     -> Slack API (slack-mcp-server)        [SSE transport]
+MCP Integration
+├── database-mcp         → EDB Postgres MCP — generic SQL access to ACME equipment DB
+├── openshift-mcp        → Kubernetes MCP Server — read-only cluster inspection
+├── slack-mcp            → Slack MCP Server — workspace messaging
+├── PostgreSQL           → ACME equipment/calibration data
+├── MCP ConfigMap        → Dashboard registration for GenAI Playground
+├── ACME demo namespace  → Simulated equipment pods (healthy + failing)
+└── Tool Groups          → Registered in LlamaStack via deploy.sh
 ```
 
-| Component | Image Source | Purpose |
-|-----------|-------------|---------|
-| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp:10-03-2025` | Generic SQL access to ACME equipment DB |
-| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server:2025-11-24` | Read-only cluster inspection |
-| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server:10-03-2025` | Slack workspace messaging |
-| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data |
+| Component | Image Source | Purpose | Namespace |
+|-----------|-------------|---------|-----------|
+| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp` | Generic SQL access to ACME equipment DB | `private-ai` |
+| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server` | Read-only cluster inspection | `private-ai` |
+| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server` | Slack workspace messaging | `private-ai` |
+| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data | `private-ai` |
 
 All MCP server images come from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers). Zero on-cluster builds required.
 
