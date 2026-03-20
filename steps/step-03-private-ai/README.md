@@ -26,12 +26,12 @@ ai-admin (Governor)     ai-developer (Consumer)     MinIO (S3)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Component | Purpose |
-|-----------|---------|
-| **MinIO** | S3-compatible storage (models, pipelines, workbench data) |
-| **Auth** | HTPasswd: `ai-admin` / `ai-developer` (password: `redhat123`) |
-| **RBAC** | `ai-admin` → admin role, `ai-developer` → edit role in `private-ai` |
-| **Data Connection** | Auto-appears in Dashboard dropdowns for workbenches and model serving |
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| **MinIO** | S3-compatible storage (models, pipelines, workbench data) | `minio-storage` |
+| **Auth** | HTPasswd: `ai-admin` / `ai-developer` (password: `redhat123`) | cluster-scoped |
+| **RBAC** | `ai-admin` → admin role, `ai-developer` → edit role | `private-ai` |
+| **Data Connection** | Auto-appears in Dashboard dropdowns for workbenches and model serving | `private-ai` |
 
 Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/base/)
 
@@ -54,7 +54,7 @@ Login as `ai-admin` (`redhat123`) in the RHOAI Dashboard.
 
 1. Go to **Observe & monitor** → **Workload metrics**
 2. Select project **private-ai**
-3. View GPU utilization via the Grafana dashboards deployed in step-07
+3. View GPU utilization via the Grafana dashboards deployed in step-06
 4. Check node capacity: `oc describe node -l nvidia.com/gpu.present=true`
 
 **What to say:** *"The platform admin monitors GPU utilization through Grafana dashboards and node metrics. Hardware Profiles ensure workloads land on the correct GPU node type."*
