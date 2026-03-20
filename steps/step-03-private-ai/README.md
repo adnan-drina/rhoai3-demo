@@ -9,21 +9,12 @@ Without guardrails, every user consumes every GPU. Step-03 transforms RHOAI into
 ## What It Does
 
 ```text
-ai-admin (Governor)     ai-developer (Consumer)     MinIO (S3)
-       │                       │                       │
-       ▼                       ▼                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   RHOAI Dashboard (3.3)                      │
-│  Hardware Profiles · Distributed Workloads · Data Connections│
-└──────────────────────────────┬──────────────────────────────┘
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Hardware Profiles: nodeSelector ──► GPU Nodes (5 GPUs)       │
-└──────────────────────────────┬──────────────────────────────┘
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│       GPU Nodes (g6.4xlarge / g6.12xlarge) · NVIDIA L4      │
-└─────────────────────────────────────────────────────────────┘
+Private AI Infrastructure
+├── MinIO                → S3-compatible storage (models, pipelines, workbench data)
+├── Authentication       → HTPasswd identity provider (ai-admin, ai-developer)
+├── RBAC                 → Role bindings for Governor / Consumer personas
+├── Data Connection      → Auto-appears in Dashboard dropdowns
+└── Namespace (private-ai) → Shared project for all AI workloads
 ```
 
 | Component | Purpose | Namespace |
