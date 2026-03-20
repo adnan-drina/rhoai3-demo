@@ -1,14 +1,11 @@
 #!/bin/bash
-# =============================================================================
 # Step 05: LLM Serving on vLLM
-# =============================================================================
 # Deploys 2 Red Hat Validated models with GPU scheduling:
 #   1. granite-8b-agent  (1-GPU, OCI ModelCar, FP8 — RAG, MCP, Guardrails)
 #   2. mistral-3-bf16    (4-GPU, S3/MinIO, BF16 — Playground, Eval judge)
 #
 # 3 additional models are registered in the Model Registry (seed job) and
 # can be deployed from GenAI Studio when needed.
-# =============================================================================
 
 set -euo pipefail
 
@@ -28,9 +25,6 @@ echo "║  2 Active Models on GPU Nodes                                         
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# =============================================================================
-# Pre-flight Checks
-# =============================================================================
 log_step "Checking prerequisites..."
 
 if ! oc get namespace "$NAMESPACE" &>/dev/null; then
@@ -55,18 +49,13 @@ GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev
 log_info "GPU nodes available: ${GPU_NODES}"
 echo ""
 
-# =============================================================================
-# Model Portfolio Summary
-# =============================================================================
 log_step "Model Portfolio (5 GPUs Total)"
 echo ""
 echo "  granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
 echo "  mistral-3-bf16     4-GPU  S3   BF16  Playground chat/Eval judge"
 echo ""
 
-# =============================================================================
 # Create HF token secret (upload jobs need this before ArgoCD sync)
-# =============================================================================
 log_step "Ensuring HuggingFace token secret exists..."
 
 if [[ -n "${HF_TOKEN:-}" ]]; then
@@ -78,9 +67,7 @@ else
     log_warn "HF_TOKEN not set in .env — uploads will use unauthenticated HF access (slower)"
 fi
 
-# =============================================================================
 # Upload mistral-3-bf16 model to MinIO (must complete before ISVC creation)
-# =============================================================================
 log_step "Ensuring mistral-3-bf16 model is in MinIO..."
 
 UPLOAD_YAML="$REPO_ROOT/gitops/step-05-llm-on-vllm/base/model-upload/upload-mistral-bf16.yaml"
@@ -118,18 +105,12 @@ else
 fi
 echo ""
 
-# =============================================================================
-# Deploy via ArgoCD
-# =============================================================================
 log_step "Creating ArgoCD Application for Step 05..."
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
-# =============================================================================
-# AI Asset Labels for GenAI Playground
-# =============================================================================
 log_step "Applying AI Asset labels for GenAI Playground..."
 
 MODELS="mistral-3-bf16 granite-8b-agent"
@@ -161,10 +142,8 @@ for model in $MODELS; do
 done
 echo ""
 
-# =============================================================================
 # Link InferenceServices to Model Registry entries
 # Registry IDs are dynamic (assigned by seed job), so we query them at runtime.
-# =============================================================================
 log_step "Linking InferenceServices to Model Registry..."
 
 REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries \
@@ -174,7 +153,6 @@ if [[ -n "$REGISTRY_ROUTE" ]]; then
     TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     API_BASE="https://${REGISTRY_ROUTE}/api/model_registry/v1alpha3"
 
-    # Registry-name → ISVC-name mapping
     declare -A REGISTRY_MAP=(
         ["Granite-3.1-8B-Agent"]="granite-8b-agent"
         ["Mistral-3-BF16"]="mistral-3-bf16"
@@ -201,7 +179,6 @@ else:
             continue
         fi
 
-        # Get latest version for this model
         VERSIONS_JSON=$(curl -sk -H "Authorization: Bearer $TOKEN" \
             "${API_BASE}/model_versions?registeredModelId=${RM_ID}" 2>/dev/null || echo '{"items":[]}')
 
@@ -237,9 +214,6 @@ else
 fi
 echo ""
 
-# =============================================================================
-# Summary
-# =============================================================================
 log_step "Deployment Complete"
 
 echo ""

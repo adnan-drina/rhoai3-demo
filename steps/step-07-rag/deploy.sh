@@ -1,5 +1,4 @@
 #!/bin/bash
-# Step 07: RAG Pipeline — Deploy Script
 # Deploys PostgreSQL+pgvector, Docling, DSPA, LlamaStack (RAG), uploads documents,
 # compiles pipeline, and launches ingestion for acme and whoami scenarios.
 
@@ -17,9 +16,6 @@ echo "║  Step 07: RAG Pipeline (Llama Stack + pgvector + Docling + DSPA)║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 0: Prerequisites
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Checking prerequisites..."
 
 check_oc_logged_in
@@ -63,9 +59,6 @@ fi
 log_success "aipipelines: Managed"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 1: Create DSPA MinIO credentials secret
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Creating DSPA MinIO credentials secret..."
 
 ACCESS_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
@@ -80,11 +73,9 @@ oc create secret generic dspa-minio-credentials \
 log_success "dspa-minio-credentials secret ready"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
 # Step 1b: Ensure anyuid SCC for llamastack-postgres SA
 # The RoleBinding is GitOps-managed (scc-rolebinding.yaml) but we ensure
 # the SA exists before ArgoCD sync to avoid race conditions.
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Ensuring llamastack-postgres SA has anyuid SCC..."
 
 oc create serviceaccount llamastack-postgres -n "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
@@ -92,17 +83,11 @@ oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n "$NAMESPACE" 2>/d
 log_success "llamastack-postgres SA with anyuid SCC ready"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Deploy via ArgoCD
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Deploying Step 07 via ArgoCD..."
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Wait for ArgoCD sync
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for ArgoCD sync..."
 sleep 5
 
@@ -130,9 +115,6 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Wait for components
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for PostgreSQL+pgvector..."
 if ! oc wait deploy/llamastack-postgres -n "$NAMESPACE" \
     --for=condition=Available --timeout=180s 2>/dev/null; then
@@ -185,9 +167,7 @@ else
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
 # Step 4b: Restart GenAI Playground to discover pgvector providers
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Restarting GenAI Playground to discover RAG providers..."
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
     oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
@@ -197,9 +177,7 @@ else
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
 # Steps 5-7: Upload, compile, and launch (only if DSPA is ready)
-# ═══════════════════════════════════════════════════════════════════════════
 if [ "$DSPA_READY" = "true" ]; then
 
     # --- Upload scenario PDFs to MinIO ---
@@ -274,9 +252,6 @@ if [ "$DSPA_READY" = "true" ]; then
 
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 8: Validation output
-# ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 07 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"

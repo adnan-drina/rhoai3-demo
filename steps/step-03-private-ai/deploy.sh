@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# =============================================================================
 # Step 03: Private AI - GPU as a Service
-# =============================================================================
 # Deploys GPU-as-a-Service infrastructure:
 # - MinIO S3 storage provider
 # - Authentication (HTPasswd, OAuth, Groups)
 # - RHOAI Data Connection for MinIO
 # - Project RBAC (ai-admin, ai-developer)
-# =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,31 +18,24 @@ check_oc_logged_in
 
 log_step "Step 03: Private AI - GPU as a Service"
 
-# =============================================================================
-# Prerequisites check
-# =============================================================================
 log_step "Checking prerequisites..."
 
-# Check step-02-rhoai was deployed
 if ! oc get applications -n openshift-gitops step-02-rhoai &>/dev/null; then
     log_error "step-02-rhoai Argo CD Application not found!"
     log_info "Please run: ./steps/step-02-rhoai/deploy.sh first"
     exit 1
 fi
 
-# Check DSC is ready
 DSC_PHASE=$(oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
 if [[ "$DSC_PHASE" != "Ready" ]]; then
     log_error "DataScienceCluster is not Ready (current: $DSC_PHASE)"
     exit 1
 fi
 
-# Check GPU nodes
 if ! oc get nodes -l nvidia.com/gpu.product --no-headers 2>/dev/null | grep -q Ready; then
     log_warn "No GPU nodes found — models will be pending until GPU MachineSets scale up"
 fi
 
-# Check GPU nodes exist
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.present=true --no-headers 2>/dev/null | wc -l || echo "0")
 if [[ "$GPU_NODES" -eq 0 ]]; then
     log_warn "No GPU nodes found with label 'nvidia.com/gpu.present=true'"
@@ -56,27 +46,19 @@ fi
 
 log_success "Prerequisites verified"
 
-# =============================================================================
-# Deploy via Argo CD Application
-# =============================================================================
 log_step "Creating Argo CD Application for Private AI"
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 
 log_success "Argo CD Application '${STEP_NAME}' created"
 
-# =============================================================================
-# Wait for MinIO storage provider
-# =============================================================================
 log_step "Waiting for MinIO storage provider..."
 
-# Wait for minio namespace
 until oc get namespace minio-storage &>/dev/null; do
     log_info "Waiting for minio-storage namespace..."
     sleep 5
 done
 
-# Wait for MinIO deployment
 log_info "Waiting for MinIO deployment to be ready..."
 until oc get deployment minio -n minio-storage &>/dev/null && \
       [[ $(oc get deployment minio -n minio-storage -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0") -ge 1 ]]; do
@@ -106,12 +88,8 @@ if [[ $ELAPSED -ge $TIMEOUT ]]; then
     log_warn "MinIO init job taking longer than expected - continuing anyway"
 fi
 
-# =============================================================================
-# Wait for authentication resources
-# =============================================================================
 log_step "Waiting for authentication resources..."
 
-# Wait for HTPasswd secret
 until oc get secret htpass-secret -n openshift-config &>/dev/null; do
     log_info "Waiting for HTPasswd secret..."
     sleep 5
@@ -122,14 +100,11 @@ log_success "HTPasswd secret created"
 log_info "Waiting for OAuth configuration to apply..."
 sleep 10
 
-# =============================================================================
 # Create OpenShift Groups
-# =============================================================================
 # NOTE: Groups are created via script because ArgoCD cannot parse
 # user.openshift.io/v1 Group schema for comparison
 log_step "Creating OpenShift Groups..."
 
-# Create rhoai-admins group
 if ! oc get group rhoai-admins &>/dev/null; then
     oc adm groups new rhoai-admins ai-admin
     log_success "Created group 'rhoai-admins' with user 'ai-admin'"
@@ -139,7 +114,6 @@ else
     log_success "Group 'rhoai-admins' already exists"
 fi
 
-# Create rhoai-users group
 if ! oc get group rhoai-users &>/dev/null; then
     oc adm groups new rhoai-users ai-developer
     log_success "Created group 'rhoai-users' with user 'ai-developer'"
@@ -151,28 +125,20 @@ fi
 
 log_success "Groups configured"
 
-# =============================================================================
-# Wait for namespace and project resources
-# =============================================================================
 log_step "Waiting for project resources..."
 
-# Wait for namespace
 until oc get namespace private-ai &>/dev/null; do
     log_info "Waiting for private-ai namespace..."
     sleep 5
 done
 log_success "Namespace 'private-ai' created"
 
-# Wait for Data Connection
 until oc get secret minio-connection -n private-ai &>/dev/null; do
     log_info "Waiting for MinIO Data Connection..."
     sleep 5
 done
 log_success "Data Connection 'minio-connection' created"
 
-# =============================================================================
-# Summary
-# =============================================================================
 log_step "Deployment Complete"
 
 # Get URLs

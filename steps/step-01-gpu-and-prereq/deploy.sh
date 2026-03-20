@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# =============================================================================
 # Step 01: GPU Infrastructure & RHOAI Prerequisites - Deploy Script
-# =============================================================================
 # Deploys all prerequisites for RHOAI 3.3:
 # - User Workload Monitoring
 # - NFD Operator + Instance
@@ -10,7 +8,6 @@
 # - LeaderWorkerSet Operator
 # - Red Hat Connectivity Link (RHCL, Authorino, Limitador, DNS)
 # - GPU MachineSets (AWS)
-# =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,14 +21,12 @@ check_oc_logged_in
 
 log_step "Step 01: GPU Infrastructure & RHOAI Prerequisites"
 
-# Get Git repo info
 GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
 GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
 
 log_info "Git Repo: $GIT_REPO_URL"
 log_info "Branch: $GIT_REPO_BRANCH"
 
-# Get cluster infrastructure details
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
 AMI_ID=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.ami.id}')
 REGION=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
@@ -40,18 +35,12 @@ log_info "Cluster ID: $CLUSTER_ID"
 log_info "AMI ID: $AMI_ID"
 log_info "Region: $REGION"
 
-# =============================================================================
-# Deploy via Argo CD Application
-# =============================================================================
 log_step "Creating Argo CD Application for GPU Infrastructure"
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 
 log_success "Argo CD Application '${STEP_NAME}' created"
 
-# =============================================================================
-# Wait for critical operators
-# =============================================================================
 log_step "Waiting for NFD Operator..."
 until oc get crd nodefeaturediscoveries.nfd.openshift.io &>/dev/null; do
     log_info "Waiting for NFD CRD..."
@@ -87,9 +76,7 @@ until oc get crd authpolicies.kuadrant.io &>/dev/null; do
 done
 log_success "RHCL AuthPolicy CRD available"
 
-# =============================================================================
 # Deploy MachineSets (cluster-specific, not in GitOps)
-# =============================================================================
 log_step "Deploying GPU MachineSets"
 
 AZ=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.placement.availabilityZone}')
@@ -198,9 +185,6 @@ done
 
 log_success "GPU MachineSets created"
 
-# =============================================================================
-# Summary
-# =============================================================================
 log_step "Deployment Complete"
 
 echo ""

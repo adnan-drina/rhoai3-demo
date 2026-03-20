@@ -1,5 +1,4 @@
 #!/bin/bash
-# Step 10: MCP Integration — Deploy Script
 # All 3 MCP servers use prebuilt images from Red Hat Ecosystem Catalog (quay.io/mcp-servers/).
 # Zero on-cluster builds required.
 
@@ -18,9 +17,6 @@ echo "║  Database + OpenShift + Slack — Zero on-cluster builds          ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 0: Prerequisites
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Checking prerequisites..."
 
 check_oc_logged_in
@@ -38,9 +34,6 @@ fi
 log_success "LlamaStack present"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 1: Create Slack credentials Secret from .env (not in git)
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Creating Slack MCP credentials Secret..."
 load_env
 
@@ -58,16 +51,10 @@ else
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Deploy via ArgoCD
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Deploying Step 10 via ArgoCD..."
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Wait for ArgoCD sync
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for ArgoCD sync (no builds — all catalog images)..."
 TIMEOUT=300
 ELAPSED=0
@@ -99,9 +86,6 @@ done
 log_success "All MCP servers running"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Populate Dashboard ConfigMap with route URLs
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Configuring MCP servers in Dashboard..."
 
 # OpenShift-MCP supports streamable-http on /mcp; Database and Slack use SSE on /sse
@@ -126,9 +110,6 @@ else
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Restart Playground LSD (safe — no RAG data)
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Restarting Playground LSD to discover MCP tool_groups..."
 
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
@@ -167,9 +148,6 @@ if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Done
-# ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 10 deployment complete!                                   ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
