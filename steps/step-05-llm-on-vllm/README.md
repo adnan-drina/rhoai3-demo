@@ -8,18 +8,19 @@ The models are registered. The GPUs are provisioned. Now we serve them. Step-05 
 
 ## What It Does
 
-| Component | Purpose |
-|-----------|---------|
-| **vLLM ServingRuntime** | KServe runtime (vLLM v0.13.0, RHOAI 3.3) |
-| **2 InferenceServices** | Both active (see table below) |
-| **Model Registry Seed Job** | Registers 5 models for GenAI Studio catalog |
-| **GenAI Playground** | Browser-based chat UI for model evaluation |
-| **AI Asset Labels** | `opendatahub.io/genai-asset: true` for Playground discovery |
+```text
+LLM Serving
+├── vLLM ServingRuntime   → KServe runtime (vLLM v0.13.0, RHOAI 3.3)
+├── 2 InferenceServices   → Active models on GPU (see table)
+├── Model Registry Seed   → Registers 5 models for GenAI Studio catalog
+├── GenAI Playground      → Browser-based chat UI for model evaluation
+└── AI Asset Labels       → opendatahub.io/genai-asset for Playground discovery
+```
 
-| Model | GPUs | Source | Use Case |
-|-------|------|--------|----------|
-| **granite-8b-agent** | 1 (g6.4xlarge) | OCI ModelCar | RAG, MCP tools, Guardrails, Eval candidate |
-| **mistral-3-bf16** | 4 (g6.12xlarge) | S3/MinIO | Playground chat, Benchmarking, Eval judge |
+| Model | GPUs | Source | Use Case | Namespace |
+|-------|------|--------|----------|-----------|
+| **granite-8b-agent** | 1 (g6.4xlarge) | OCI ModelCar | RAG, MCP tools, Guardrails, Eval candidate | `private-ai` |
+| **mistral-3-bf16** | 4 (g6.12xlarge) | S3/MinIO | Playground chat, Benchmarking, Eval judge | `private-ai` |
 
 > **Additional models in the Registry:** Mistral-3-INT4 (1-GPU, OCI), Devstral-2 (4-GPU), and GPT-OSS-20B (4-GPU) are registered in the Model Registry and visible in GenAI Studio AI Available Assets. Deploy them from the Dashboard when needed — no code changes required.
 
@@ -39,15 +40,15 @@ oc get inferenceservice -n private-ai
 
 **Expect:** 2 InferenceServices listed, both Ready. The Model Registry shows 5 models total.
 
-*"We have two models running on all five GPUs — Granite on one GPU handles tool-calling and RAG, Mistral BF16 on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them."*
+*"We have two models running on all five GPUs — the agent model on one GPU handles tool-calling and RAG, the larger model on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them."*
 
-### Scene 2 — GenAI Playground (Chat with Granite)
+### Scene 2 — GenAI Playground
 
-**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground** and select `granite-8b-agent`. Send: *"Explain Kubernetes operators in three sentences."*
+**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground**, select a deployed model, and send: *"Explain Kubernetes operators in three sentences."*
 
 **Expect:** Streaming response within 2-3 seconds.
 
-*"This is the Granite model we registered in the Model Registry, now live on a single L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
+*"This model was registered in the Model Registry, now live on an L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
 
 ### Scene 3 — GenAI Playground with RAG
 
@@ -100,7 +101,7 @@ Or run the validation script:
 > |-----------|----------------|----------------------|-----------|
 > | `--gpu-memory-utilization` | 0.92 | 0.90 | Safe maximum; 0.95 OOMs during CUDA graph capture on L4 |
 > | `--kv-cache-dtype` | fp8 | fp8 | L4 Ada Lovelace native FP8; doubles KV cache capacity |
-> | `--max-model-len` | 16384 | 16384 | Non-negotiable for both: MCP chatbot needs 12-16K input; eval judge needs long context |
+> | `--max-model-len` | 32768 | 16384 | Agent needs 32K for multi-turn MCP conversations (~24K peak); eval judge needs long context |
 > | `--enable-chunked-prefill` | auto (V1) | explicit | V1 engine enables by default; prevents prefill blocking |
 >
 > **KV cache capacity after tuning:**
