@@ -14,31 +14,29 @@ Step-08 provides two evaluation capabilities:
 ## What It Does
 
 ```text
-                    RAG Evaluation (KFP Pipeline)              Standard Benchmarks (LM-Eval)
-                    ─────────────────────────────              ─────────────────────────────
-eval-configs/       run-rag-eval.sh / run-eval-report.sh       run-lmeval.sh / Dashboard UI
-(*_tests.yaml)      ┌──────────────────────────────┐           ┌──────────────────────────┐
-                    │ For each scenario:            │           │ LMEvalJob CR             │
-  GitOps ──────────►│  1. Generate answers (granite)│──► MinIO │  - hellaswag             │
-  (ArgoCD)          │  2. Retrieve context (pgvec)  │   HTML   │  - arc_challenge         │──► Dashboard
-                    │  3. Judge (mistral-3-bf16)    │  reports │  - winogrande            │   results
-                    │  4. Generate HTML report      │          │  - boolq                 │
-                    └──────────────────────────────┘           └──────────────────────────┘
-                          │         │          │                    │
-                     lsd-rag    pgvector  mistral-3-bf16     TrustyAI Operator
-                     (step-07)  (step-07)   (step-05)          (step-02)
+Model Evaluation
+├── RAG Evaluation (KFP Pipeline)
+│   ├── Test YAMLs           → Version-controlled Q&A pairs with expected answers
+│   ├── run-rag-eval.sh      → Launch via KFP (platform-native, tracked in DSPA)
+│   ├── run-eval-report.sh   → Quick eval via lsd-rag pod (debug/demo)
+│   └── HTML Reports         → Per-scenario pre/post RAG results in MinIO
+├── Standard Benchmarks (LM-Eval)
+│   ├── LMEvalJob CRs        → TrustyAI-managed benchmark jobs
+│   └── run-lmeval.sh        → Trigger on-demand benchmarks
+└── Dependencies
+    ├── Candidate model      → Agent model (step-05) generates answers
+    ├── Judge model          → Larger model (step-05) evaluates quality
+    └── lsd-rag + pgvector   → RAG infrastructure (step-07)
 ```
 
-| Component | Purpose | Persona |
-|-----------|---------|---------|
-| **Test YAMLs** | Version-controlled Q&A pairs with expected answers | QA Engineer |
-| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | MLOps Engineer |
-| **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | AI Engineer |
-| **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | AI Engineer |
-| **Candidate model** | `granite-8b-agent` (8B) — generates answers | Platform |
-| **Judge model** | `mistral-3-bf16` (24B) — evaluates answer quality | Platform |
-| **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | Platform |
-| **HTML Reports** | Per-scenario pre/post RAG results in MinIO | Everyone |
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| **Test YAMLs** | Version-controlled Q&A pairs with expected answers | `private-ai` (ConfigMaps) |
+| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | `private-ai` |
+| **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | `private-ai` |
+| **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | `private-ai` |
+| **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | `private-ai` |
+| **HTML Reports** | Per-scenario pre/post RAG results in MinIO | `minio-storage` |
 
 ### Scoring Scale (RAG Evaluation)
 
