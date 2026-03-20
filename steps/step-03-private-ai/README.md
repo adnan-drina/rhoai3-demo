@@ -50,30 +50,7 @@ Login as `ai-admin` (`redhat123`) in the RHOAI Dashboard.
 
 **What to say:** *"The platform admin monitors GPU utilization through Grafana dashboards and node metrics. Hardware Profiles ensure workloads land on the correct GPU node type."*
 
-### Scene 3: GPU Scheduling in Action
-
-This is the key demo moment — showing what happens when demand exceeds supply.
-
-```bash
-# Deploy two workbenches competing for 1 GPU
-oc apply -k gitops/step-03-private-ai/gpu-as-a-service-demo/
-
-# Watch the scheduling
-oc get pods -n private-ai -w
-# demo-workbench-1 → Running (GPU available)
-# demo-workbench-2 → Pending (no GPU node capacity)
-
-# Release GPU
-oc delete notebook demo-workbench-1 -n private-ai
-# Watch demo-workbench-2 automatically start!
-
-# Cleanup
-oc delete -k gitops/step-03-private-ai/gpu-as-a-service-demo/
-```
-
-**What to say:** *"When the first workbench takes the last GPU, the second one doesn't fail — it stays Pending. The moment the GPU is released, Kubernetes schedules the next workload automatically. Hardware Profiles ensure every workload targets the correct GPU node type. And with idle culling set to 15 minutes, forgotten notebooks release GPUs back to the pool."*
-
-### Scene 4: MinIO Storage Console
+### Scene 3: MinIO Storage Console
 
 ```bash
 MINIO_URL=$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}')
