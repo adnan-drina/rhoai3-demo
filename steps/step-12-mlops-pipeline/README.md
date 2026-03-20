@@ -9,33 +9,28 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 ## What It Does
 
 ```text
-┌────────────────────────────────────────────────────────────────────────────┐
-│                       KFP v2 Pipeline (6 Steps)                            │
-│                                                                            │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐ │
-│  │1.Prepare│→│2.Train  │→│3.Eval   │→│4.Regis- │→│5.Deploy │→│6.Moni- │ │
-│  │Dataset  │  │YOLO11  │  │mAP50 > │  │ter in  │  │to      │  │toring  │ │
-│  │(annot.) │  │(CPU)   │  │thresh? │  │Registry│  │KServe  │  │TrustyAI│ │
-│  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘ │
-│       ↕            ↕           ↕           ↕                       ↕      │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │              Shared PVC: face-pipeline-workspace                    │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────────┘
-        ↑                                ↓           ↓            ↓
-   MinIO (photos)                  MinIO (ONNX)  Registry    TrustyAI
+MLOps Training Pipeline (KFP v2, 6 Steps)
+├── 1. prepare_dataset     → Download photos + WIDER Face, auto-annotate, split train/val
+├── 2. train_model         → YOLO11 training on CPU, ONNX export
+├── 3. evaluate_model      → mAP50 quality gate (compare with previous version)
+├── 4. register_model      → Upload ONNX to MinIO, register in Model Registry
+├── 5. deploy_model        → Restart KServe predictor pod
+├── 6. setup_monitoring    → Upload baseline to TrustyAI, configure drift metrics
+└── Infrastructure
+    ├── face-pipeline-workspace PVC → Shared storage between pipeline steps
+    └── TrustyAIService             → Fairness and drift monitoring
 ```
 
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| `prepare_dataset` | Download photos + WIDER Face, auto-annotate, split train/val | KFP component |
-| `train_model` | YOLO11 training on CPU, ONNX export | KFP component |
-| `evaluate_model` | mAP50 computation, compare with previous version, quality gate | KFP component |
-| `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | KFP component |
-| `deploy_model` | Restart KServe predictor pod | KFP component |
-| `setup_monitoring` | Upload baseline to TrustyAI, configure SPD fairness + drift metrics | KFP component |
-| **TrustyAIService** | Fairness and drift monitoring, visible in RHOAI Dashboard | GitOps manifest |
-| `face-pipeline-workspace` PVC | Shared storage between pipeline steps | GitOps manifest |
+| Component | Purpose | Namespace |
+|-----------|---------|-----------|
+| `prepare_dataset` | Download photos + WIDER Face, auto-annotate, split train/val | `private-ai` |
+| `train_model` | YOLO11 training on CPU, ONNX export | `private-ai` |
+| `evaluate_model` | mAP50 computation, compare with previous version, quality gate | `private-ai` |
+| `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | `private-ai` |
+| `deploy_model` | Restart KServe predictor pod, link ISVC to Registry | `private-ai` |
+| `setup_monitoring` | Upload baseline to TrustyAI, configure SPD + drift metrics | `private-ai` |
+| **TrustyAIService** | Fairness and drift monitoring, visible in RHOAI Dashboard | `private-ai` |
+| **face-pipeline-workspace** PVC | Shared storage between pipeline steps | `private-ai` |
 
 Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
 
