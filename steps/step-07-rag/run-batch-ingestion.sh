@@ -96,8 +96,6 @@ if [ ! -f "$PIPELINE_YAML" ]; then
 fi
 
 echo "Launching pipeline run via KFP client..."
-
-VENV_PATH="$REPO_ROOT/.venv-kfp"
 export S3_PREFIX VECTOR_DB_ID SCENARIO NAMESPACE OC_TOKEN REPO_ROOT
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'

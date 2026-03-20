@@ -53,9 +53,6 @@ log_success "minio-connection secret exists"
 
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l | tr -d ' ')
 log_info "GPU nodes available: ${GPU_NODES}"
-
-GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l | tr -d ' ')
-log_info "Current GPU nodes: ${GPU_NODES}"
 echo ""
 
 # =============================================================================
@@ -162,7 +159,6 @@ for model in $MODELS; do
         log_success "${model} labeled (${use_case})"
     fi
 done
-set -u
 echo ""
 
 # =============================================================================

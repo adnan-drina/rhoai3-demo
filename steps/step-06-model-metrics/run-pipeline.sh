@@ -53,8 +53,6 @@ if [ -z "$OC_TOKEN" ]; then
     log_error "Unable to obtain oc token. Run 'oc login' first."
     exit 1
 fi
-
-VENV_PATH="$REPO_ROOT/.venv-kfp"
 export NAMESPACE MODEL_NAME RUN_ID PIPELINE_YAML PIPELINE_NAME
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'

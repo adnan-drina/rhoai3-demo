@@ -23,6 +23,10 @@ check_oc_logged_in
 
 log_step "Uploading training data to MinIO..."
 
+# Read MinIO credentials from cluster secret
+export MINIO_ACCESS_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+export MINIO_SECRET_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+
 # Port-forward MinIO
 oc port-forward -n minio-storage svc/minio 9000:9000 &>/dev/null &
 PF_PID=$!
@@ -51,8 +55,8 @@ IMAGES_DIR = Path(os.environ["IMAGES_DIR"])
 
 s3 = boto3.client("s3",
     endpoint_url="http://localhost:9000",
-    aws_access_key_id="rhoai-access-key",
-    aws_secret_access_key="rhoai-secret-key-12345",
+    aws_access_key_id=os.environ["MINIO_ACCESS_KEY"],
+    aws_secret_access_key=os.environ["MINIO_SECRET_KEY"],
     config=Config(signature_version="s3v4"))
 
 BUCKET = "face-training-photos"
