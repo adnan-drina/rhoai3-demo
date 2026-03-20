@@ -24,7 +24,7 @@ spec:
         operator: "Exists"
         effect: "NoSchedule"
   
-  # Driver version pinned for RHOAI 3.3 / vLLM CUDA 12.8 compatibility
+  # Default driver (no pin) — RHOAI 3.3 vLLM v0.13.0 / CUDA 13.0 is compatible with GPU Operator 25.10 default
   driver:
     enabled: true
   

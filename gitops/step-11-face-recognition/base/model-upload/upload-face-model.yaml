@@ -1,4 +1,4 @@
-# Downloads a pre-trained YOLO11n-face ONNX model from HuggingFace
+# Downloads a pre-trained YOLOv11n face detection ONNX model from HuggingFace
 # and uploads it to MinIO at models/face-recognition/1/model.onnx.
 # The 1/ subdirectory is required by OpenVINO for model versioning.
 # This job is idempotent — it skips if the model already exists in MinIO.

@@ -1,5 +1,5 @@
 # The DSPA pipeline runner ServiceAccount needs permission to
-# delete pods (restart predictor) and read InferenceServices.
+# delete pods (restart predictor) and read/patch InferenceServices.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

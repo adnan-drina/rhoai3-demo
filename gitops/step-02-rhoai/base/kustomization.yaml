@@ -3,11 +3,11 @@ kind: Kustomization
 
 # RHOAI 3.3 Platform Layer
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
-# Key 3.0 Changes:
+# Key 3.x Changes (vs 2.x):
 #   - datasciencepipelines → aipipelines
 #   - User/Admin groups moved from OdhDashboardConfig → Auth resource
 #   - New: Hardware Profiles (replaces Accelerator Profiles)
-#   - New: GenAI Studio, llamastackoperator, distributedinference
+#   - New: GenAI Studio, llamastackoperator
 
 resources:
   - rhoai-operator/namespace.yaml

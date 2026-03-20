@@ -1,4 +1,4 @@
-# YOLO11 face recognition model exported to ONNX, served via OpenVINO.
+# YOLO11 face detection model (retrained for recognition) exported to ONNX, served via OpenVINO.
 # CPU-only — no GPU required. OpenVINO is optimized for CPU inference.
 # The ONNX model must be at s3://models/face-recognition/1/model.onnx
 # (the 1/ subdirectory is required by OpenVINO for model versioning).
