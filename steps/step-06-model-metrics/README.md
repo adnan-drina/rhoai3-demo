@@ -9,26 +9,23 @@ Models are deployed. But how do they perform? Step-06 establishes observability:
 ## What It Does
 
 ```text
-GuideLLM Benchmark Jobs
-    │                          ┌─────────────────────────────────┐
-    ├───► granite-8b-agent     │  Grafana Dashboards             │
-    │     (1 GPU)              │  1. vLLM Latency/Throughput     │
-    │                          │  2. NVIDIA DCGM GPU Metrics     │
-    └───► mistral-3-bf16       │                                 │
-          (4 GPU)              └────────────┬────────────────────┘
-                                            │
-                               OpenShift User Workload Monitoring
-                               (Prometheus + Thanos)
+Model Performance Metrics
+├── Grafana Operator        → Kubernetes-native Grafana (community)
+├── 2 GrafanaDashboards     → vLLM Latency/Throughput/Cache + DCGM GPU Metrics
+├── GuideLLM CronJob        → Daily benchmarks at 2:00 AM UTC
+├── Job Templates           → On-demand per-model benchmarks (graduated concurrency)
+├── Benchmarking Workbench  → Jupyter notebook for interactive analysis
+└── GuideLLM KFP Pipeline   → Dashboard-triggerable benchmark (requires step-07 DSPA)
 ```
 
-| Component | Description |
-|-----------|-------------|
-| **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) |
-| **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) |
-| **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC |
-| **Job Templates** | On-demand: `granite-8b-agent` (1,3,5,8,10 req/s) and `mistral-3-bf16` (1,3,5,8,10,15 req/s) |
-| **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis |
-| **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) |
+| Component | Description | Namespace |
+|-----------|-------------|-----------|
+| **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) | `grafana-operator` |
+| **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) | `private-ai` |
+| **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC | `private-ai` |
+| **Job Templates** | On-demand: per-model benchmarks at 1,3,5,8,10 req/s | `private-ai` |
+| **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis | `private-ai` |
+| **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) | `private-ai` |
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 
