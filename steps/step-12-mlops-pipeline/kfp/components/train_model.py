@@ -12,6 +12,7 @@ from kfp.dsl import component, Output, Metrics, Model
         "onnxslim>=0.1.71",
         "onnxruntime>=1.17.0",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def train_model(
     epochs: int,

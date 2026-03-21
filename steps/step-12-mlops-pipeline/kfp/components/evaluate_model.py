@@ -9,8 +9,10 @@ from kfp.dsl import component, Output, Metrics
     packages_to_install=[
         "ultralytics>=8.3.0",
         "opencv-python-headless>=4.10.0",
+        "onnxruntime>=1.17.0",
         "model-registry>=0.3.7",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def evaluate_model(
     onnx_path: str,

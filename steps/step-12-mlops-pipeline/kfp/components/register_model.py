@@ -9,6 +9,7 @@ from kfp.dsl import component
         "boto3>=1.34.0",
         "model-registry>=0.3.7",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def register_model(
     onnx_path: str,

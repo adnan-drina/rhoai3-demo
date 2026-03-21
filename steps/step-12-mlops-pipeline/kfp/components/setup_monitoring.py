@@ -15,6 +15,7 @@ from kfp.dsl import component
         "requests>=2.31.0",
         "numpy>=1.26.0",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def setup_monitoring(
     model_name: str,
