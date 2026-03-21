@@ -112,11 +112,10 @@ def docling_rag_pipeline(
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
     download.set_caching_options(False)
 
-    # --- Step 3: Register Vector DB ---
+    # --- Step 3: Register Vector DB (runs in parallel with download) ---
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
-    reg_db.after(download)
     reg_db.set_caching_options(False)
 
     # --- Step 4: Process & Insert each document ---
@@ -202,15 +201,16 @@ def batch_docling_rag_pipeline(
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
     download.set_caching_options(False)
 
-    # --- Stage 3: Register vector DB (idempotent, cache disabled — UUIDs change on LlamaStack restart) ---
+    # --- Stage 3: Register vector DB (runs in parallel with download; idempotent) ---
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
-    reg_db.after(download)
     reg_db.set_caching_options(False)
     reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
     # --- Stage 4: Process & insert each document in parallel ---
+    # ParallelFor items come from download; docling.after(reg_db) ensures
+    # processing starts only after both download AND register complete.
     with dsl.ParallelFor(
         items=download.outputs["downloaded_files"],
         parallelism=2,
