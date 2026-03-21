@@ -1,11 +1,11 @@
 """Download photos from MinIO, download WIDER Face for unknown class,
 auto-annotate with YOLO11-face, split train/val, write data.yaml."""
 
-from kfp.dsl import component, Output, Metrics
+from kfp.dsl import component, Output, Dataset, Metrics
 
 
 @component(
-    base_image="registry.redhat.io/ubi9/python-311:latest",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
         "ultralytics>=8.3.0",
         "huggingface_hub>=0.20.0",
@@ -18,6 +18,7 @@ from kfp.dsl import component, Output, Metrics
 def prepare_dataset(
     photos_s3_prefix: str,
     minio_endpoint: str,
+    dataset: Output[Dataset],
     metrics: Output[Metrics],
 ) -> int:
     """Download photos from MinIO and WIDER Face, auto-annotate, and split train/val.
@@ -151,5 +152,11 @@ def prepare_dataset(
     metrics.log_metric("val_images", total["val"])
     metrics.log_metric("user_photos", len(user_photos))
     metrics.log_metric("unknown_photos", len(selected))
+
+    # Record dataset artifact for ML lineage tracking
+    dataset.uri = str(DATASET_DIR / "data.yaml")
+    dataset.metadata["train_images"] = total["train"]
+    dataset.metadata["val_images"] = total["val"]
+    dataset.metadata["classes"] = ["adnan", "unknown_face"]
 
     return total["train"] + total["val"]

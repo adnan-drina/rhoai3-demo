@@ -10,7 +10,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="registry.redhat.io/ubi9/python-311:latest",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
 )
 def pipeline_completion_component(
     vector_db_status: Dict[str, Any],

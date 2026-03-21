@@ -79,6 +79,7 @@ def face_recognition_training_pipeline(
     _mount_pvc(prep_task)
     _set_resources(prep_task, cpu_req="1", cpu_lim="2", mem_req="2Gi", mem_lim="4Gi")
     prep_task.set_caching_options(False)
+    prep_task.set_retry(num_retries=2, backoff_duration="30s", backoff_factor=2.0)
 
     # --- Step 2: Train Model ---
     train_task = train_model(epochs=epochs)
@@ -111,6 +112,7 @@ def face_recognition_training_pipeline(
     _set_resources(reg_task)
     reg_task.after(eval_task)
     reg_task.set_caching_options(False)
+    reg_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
     # --- Step 5: Deploy Model + Link to Registry ---
     dep_task = deploy_model(
@@ -121,6 +123,7 @@ def face_recognition_training_pipeline(
     _set_resources(dep_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
     dep_task.after(reg_task)
     dep_task.set_caching_options(False)
+    dep_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
     # --- Step 6: Setup Monitoring ---
     mon_task = setup_monitoring(
@@ -131,6 +134,7 @@ def face_recognition_training_pipeline(
     _set_resources(mon_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
     mon_task.after(dep_task)
     mon_task.set_caching_options(False)
+    mon_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
 
 if __name__ == "__main__":

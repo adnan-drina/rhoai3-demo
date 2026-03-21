@@ -1,0 +1,899 @@
+# PIPELINE DEFINITION
+# Name: face-recognition-training
+# Description: Train YOLO11 face recognition, evaluate, register, deploy, and configure monitoring
+# Inputs:
+#    epochs: int [Default: 15.0]
+#    isvc_namespace: str [Default: 'private-ai']
+#    mAP_threshold: float [Default: 0.7]
+#    minio_endpoint: str [Default: 'http://minio.minio-storage.svc.cluster.local:9000']
+#    model_name: str [Default: 'face-recognition']
+#    photos_s3_prefix: str [Default: 's3://face-training-photos/adnan/']
+#    registry_url: str [Default: 'https://private-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com']
+#    version: str [Default: '']
+components:
+  comp-deploy-model:
+    executorLabel: exec-deploy-model
+    inputDefinitions:
+      parameters:
+        isvc_name:
+          description: Name of the InferenceService to redeploy.
+          parameterType: STRING
+        namespace:
+          description: OpenShift namespace where the ISVC is deployed.
+          parameterType: STRING
+        registry_url:
+          defaultValue: ''
+          description: Model Registry REST endpoint for linking (optional).
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-evaluate-model:
+    executorLabel: exec-evaluate-model
+    inputDefinitions:
+      parameters:
+        mAP_threshold:
+          description: Minimum mAP50 required to pass the quality gate.
+          parameterType: NUMBER_DOUBLE
+        model_name:
+          description: Registered model name to look up prior metrics.
+          parameterType: STRING
+        onnx_path:
+          description: Path to the ONNX model on the shared PVC.
+          parameterType: STRING
+        registry_url:
+          description: Model Registry REST endpoint for comparing with previous version.
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+      parameters:
+        Output:
+          parameterType: NUMBER_DOUBLE
+  comp-prepare-dataset:
+    executorLabel: exec-prepare-dataset
+    inputDefinitions:
+      parameters:
+        minio_endpoint:
+          description: MinIO endpoint URL (fallback if env var not set).
+          parameterType: STRING
+        photos_s3_prefix:
+          description: S3 URI to the user's photo collection.
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+      parameters:
+        Output:
+          parameterType: NUMBER_INTEGER
+  comp-register-model:
+    executorLabel: exec-register-model
+    inputDefinitions:
+      parameters:
+        minio_endpoint:
+          description: MinIO endpoint URL (fallback if env var not set).
+          parameterType: STRING
+        model_name:
+          description: Name to register under in the Model Registry.
+          parameterType: STRING
+        onnx_path:
+          description: Path to the ONNX model on the shared PVC.
+          parameterType: STRING
+        registry_url:
+          description: Model Registry REST endpoint.
+          parameterType: STRING
+        version:
+          description: Version string for this model release.
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-setup-monitoring:
+    executorLabel: exec-setup-monitoring
+    inputDefinitions:
+      parameters:
+        model_name:
+          description: Name of the deployed InferenceService to monitor.
+          parameterType: STRING
+        namespace:
+          description: OpenShift namespace where TrustyAI and the model are deployed.
+          parameterType: STRING
+        num_baseline_samples:
+          description: Number of synthetic baseline samples to generate.
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      parameters:
+        epochs:
+          description: Number of training epochs.
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        Output:
+          parameterType: STRING
+defaultPipelineRoot: s3://pipelines/
+deploymentSpec:
+  executors:
+    exec-deploy-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - deploy_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kubernetes>=28.0.0'\
+          \ 'model-registry>=0.3.7'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef deploy_model(\n    isvc_name: str,\n    namespace: str,\n   \
+          \ registry_url: str = \"\",\n) -> str:\n    \"\"\"Restart the predictor\
+          \ pod and link the InferenceService to Model Registry.\n\n    Args:\n  \
+          \      isvc_name: Name of the InferenceService to redeploy.\n        namespace:\
+          \ OpenShift namespace where the ISVC is deployed.\n        registry_url:\
+          \ Model Registry REST endpoint for linking (optional).\n\n    Returns:\n\
+          \        Name of the ready predictor pod, or a status string on failure.\n\
+          \    \"\"\"\n    import os, time\n    from kubernetes import client, config\n\
+          \n    config.load_incluster_config()\n    v1 = client.CoreV1Api()\n    custom\
+          \ = client.CustomObjectsApi()\n\n    # Link ISVC to Model Registry by querying\
+          \ latest version IDs\n    if registry_url:\n        try:\n            os.environ[\"\
+          KF_PIPELINES_SA_TOKEN_PATH\"] = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n            from model_registry import ModelRegistry\n            registry\
+          \ = ModelRegistry(server_address=registry_url, port=443,\n             \
+          \                        author=\"deploy-step\", is_secure=False)\n    \
+          \        rm = registry.get_registered_model(isvc_name)\n            latest_v\
+          \ = None\n            for v in registry.get_model_versions(isvc_name).order_by_id().descending():\n\
+          \                latest_v = v\n                break\n\n            if rm\
+          \ and latest_v:\n                reg_id = str(rm.id)\n                ver_id\
+          \ = str(latest_v.id)\n                print(f\"Linking ISVC to registry:\
+          \ model={reg_id}, version={ver_id}\")\n                custom.patch_namespaced_custom_object(\n\
+          \                    group=\"serving.kserve.io\", version=\"v1beta1\",\n\
+          \                    namespace=namespace, plural=\"inferenceservices\",\n\
+          \                    name=isvc_name,\n                    body={\"metadata\"\
+          : {\"labels\": {\n                        \"modelregistry.opendatahub.io/registered-model-id\"\
+          : reg_id,\n                        \"modelregistry.opendatahub.io/model-version-id\"\
+          : ver_id,\n                    }}},\n                )\n               \
+          \ print(\"  ISVC labeled with registry IDs\")\n        except Exception\
+          \ as e:\n            print(f\"  WARNING: Could not link to registry: {e}\"\
+          )\n\n    # Restart predictor pod to load new model\n    label = f\"serving.kserve.io/inferenceservice={isvc_name}\"\
+          \n    pods = v1.list_namespaced_pod(namespace, label_selector=label)\n\n\
+          \    if not pods.items:\n        print(f\"No predictor pods found for {isvc_name}\"\
+          )\n        return \"no-pods\"\n\n    for pod in pods.items:\n        print(f\"\
+          Deleting pod {pod.metadata.name}...\")\n        v1.delete_namespaced_pod(pod.metadata.name,\
+          \ namespace)\n\n    print(\"Waiting for new predictor pod...\")\n    for\
+          \ i in range(24):\n        time.sleep(5)\n        pods = v1.list_namespaced_pod(namespace,\
+          \ label_selector=label)\n        for pod in pods.items:\n            if\
+          \ pod.status.phase == \"Running\":\n                ready = all(\n     \
+          \               cs.ready for cs in (pod.status.container_statuses or [])\n\
+          \                )\n                if ready:\n                    print(f\"\
+          Predictor ready: {pod.metadata.name} (took ~{(i+1)*5}s)\")\n           \
+          \         return pod.metadata.name\n\n    print(\"WARNING: Predictor not\
+          \ ready after 120s\")\n    return \"timeout\"\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 0.5
+          cpuRequest: 0.25
+          memoryLimit: 0.536870912
+          memoryRequest: 0.268435456
+          resourceCpuLimit: 500m
+          resourceCpuRequest: 250m
+          resourceMemoryLimit: 512Mi
+          resourceMemoryRequest: 256Mi
+    exec-evaluate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'ultralytics>=8.3.0'\
+          \ 'opencv-python-headless>=4.10.0' 'model-registry>=0.3.7'  &&  python3\
+          \ -m pip install --quiet --no-warn-script-location 'kfp==2.16.0' '--no-deps'\
+          \ 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\
+          \n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_model(\n    onnx_path: str,\n    mAP_threshold: float,\n\
+          \    registry_url: str,\n    model_name: str,\n    metrics: Output[Metrics],\n\
+          ) -> float:\n    \"\"\"Evaluate the ONNX model, compute mAP50, and enforce\
+          \ quality gate.\n\n    Args:\n        onnx_path: Path to the ONNX model\
+          \ on the shared PVC.\n        mAP_threshold: Minimum mAP50 required to pass\
+          \ the quality gate.\n        registry_url: Model Registry REST endpoint\
+          \ for comparing with previous version.\n        model_name: Registered model\
+          \ name to look up prior metrics.\n        metrics: KFP Metrics artifact\
+          \ for Dashboard visibility.\n\n    Returns:\n        The mAP50 score. Raises\
+          \ RuntimeError if below threshold.\n    \"\"\"\n    import subprocess\n\
+          \    from pathlib import Path\n\n    subprocess.run([\"pip\", \"install\"\
+          , \"--force-reinstall\", \"--no-deps\", \"opencv-python-headless>=4.10.0\"\
+          ], check=True, capture_output=True)\n\n    from ultralytics import YOLO\n\
+          \n    SHARED = Path(\"/shared-data\")\n    DATASET_DIR = SHARED / \"dataset\"\
+          \n    METRICS_DIR = SHARED / \"metrics\"\n    METRICS_DIR.mkdir(parents=True,\
+          \ exist_ok=True)\n\n    # Validate on the val set\n    print(f\"Evaluating\
+          \ {onnx_path}...\")\n    model = YOLO(onnx_path, task=\"detect\")\n    results\
+          \ = model.val(\n        data=str(DATASET_DIR / \"data.yaml\"), imgsz=640,\
+          \ batch=4,\n        project=str(SHARED / \"eval-runs\"), name=\"val\", exist_ok=True,\n\
+          \    )\n\n    mAP50 = float(results.box.map50)\n    mAP50_95 = float(results.box.map)\n\
+          \n    per_class = results.box.maps\n    class_names = model.names\n    print(f\"\
+          \\nOverall: mAP50={mAP50:.3f}, mAP50-95={mAP50_95:.3f}\")\n    for i, m\
+          \ in enumerate(per_class):\n        print(f\"  {class_names[i]}: mAP50={float(m):.3f}\"\
+          )\n\n    adnan_map = float(per_class[0]) if len(per_class) > 0 else 0.0\n\
+          \n    metrics.log_metric(\"mAP50\", mAP50)\n    metrics.log_metric(\"mAP50_95\"\
+          , mAP50_95)\n    metrics.log_metric(\"adnan_mAP50\", adnan_map)\n\n    #\
+          \ Save metrics for register step\n    import json\n    (METRICS_DIR / \"\
+          results.json\").write_text(json.dumps({\n        \"mAP50\": mAP50, \"mAP50_95\"\
+          : mAP50_95,\n        \"adnan_mAP50\": adnan_map,\n    }))\n\n    # Query\
+          \ previous model from registry (pattern from rhoai-mlops/jukebox)\n    prev_mAP50\
+          \ = 0.0\n    try:\n        import os\n        from model_registry import\
+          \ ModelRegistry\n        from model_registry.exceptions import StoreError\n\
+          \n        os.environ[\"KF_PIPELINES_SA_TOKEN_PATH\"] = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n        registry = ModelRegistry(\n            server_address=registry_url,\
+          \ port=443,\n            author=\"eval-pipeline\", is_secure=False,\n  \
+          \      )\n        for v in registry.get_model_versions(model_name).order_by_id().descending():\n\
+          \            props = v.custom_properties\n            if \"mAP50\" in props:\n\
+          \                prev_mAP50 = float(props[\"mAP50\"])\n                print(f\"\
+          Previous model mAP50: {prev_mAP50:.3f}\")\n                break\n    except\
+          \ Exception as e:\n        print(f\"Could not query registry (first run?):\
+          \ {e}\")\n\n    metrics.log_metric(\"prev_mAP50\", prev_mAP50)\n\n    #\
+          \ Quality gate\n    if mAP50 < mAP_threshold:\n        raise RuntimeError(\n\
+          \            f\"Model quality below threshold: mAP50={mAP50:.3f} < {mAP_threshold}.\
+          \ \"\n            f\"Pipeline stopped -- model will NOT be deployed.\"\n\
+          \        )\n\n    print(f\"Quality gate PASSED: mAP50={mAP50:.3f} >= {mAP_threshold}\"\
+          )\n    return mAP50\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 2.0
+          cpuRequest: 1.0
+          memoryLimit: 4.294967296
+          memoryRequest: 2.147483648
+          resourceCpuLimit: '2'
+          resourceCpuRequest: '1'
+          resourceMemoryLimit: 4Gi
+          resourceMemoryRequest: 2Gi
+    exec-prepare-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location --index-url https://pypi.org/simple\
+          \ --trusted-host https://pypi.org/simple 'ultralytics>=8.3.0' 'huggingface_hub>=0.20.0'\
+          \ 'boto3>=1.34.0' 'opencv-python-headless>=4.10.0' 'lapx>=0.5.2'  &&  python3\
+          \ -m pip install --quiet --no-warn-script-location --index-url https://pypi.org/simple\
+          \ --trusted-host https://pypi.org/simple 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5;\
+          \ python_version<\"3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_dataset(\n    photos_s3_prefix: str,\n    minio_endpoint:\
+          \ str,\n    dataset: Output[Dataset],\n    metrics: Output[Metrics],\n)\
+          \ -> int:\n    \"\"\"Download photos from MinIO and WIDER Face, auto-annotate,\
+          \ and split train/val.\n\n    Args:\n        photos_s3_prefix: S3 URI to\
+          \ the user's photo collection.\n        minio_endpoint: MinIO endpoint URL\
+          \ (fallback if env var not set).\n        metrics: KFP Metrics artifact\
+          \ for Dashboard visibility.\n\n    Returns:\n        Total number of annotated\
+          \ images (train + val).\n    \"\"\"\n    import subprocess, os, shutil,\
+          \ random, zipfile\n    from pathlib import Path\n\n    # Force headless\
+          \ OpenCV (ultralytics pulls opencv-python which needs libGL)\n    subprocess.run([\"\
+          pip\", \"install\", \"--force-reinstall\", \"--no-deps\", \"opencv-python-headless>=4.10.0\"\
+          ], check=True, capture_output=True)\n\n    from ultralytics import YOLO\n\
+          \    from huggingface_hub import hf_hub_download, snapshot_download\n  \
+          \  import boto3\n    from botocore.config import Config\n\n    SHARED =\
+          \ Path(\"/shared-data\")\n    DATASET_DIR = SHARED / \"dataset\"\n    PHOTOS_DIR\
+          \ = SHARED / \"photos\"\n    UNKNOWN_DIR = SHARED / \"unknown_faces\"\n\n\
+          \    for d in [DATASET_DIR, PHOTOS_DIR, UNKNOWN_DIR]:\n        if d.exists():\n\
+          \            shutil.rmtree(d)\n        d.mkdir(parents=True)\n\n    for\
+          \ split in [\"train\", \"val\"]:\n        (DATASET_DIR / \"images\" / split).mkdir(parents=True)\n\
+          \        (DATASET_DIR / \"labels\" / split).mkdir(parents=True)\n\n    #\
+          \ --- Download user photos from MinIO ---\n    s3 = boto3.client(\"s3\"\
+          ,\n        endpoint_url=os.environ.get(\"AWS_S3_ENDPOINT\", minio_endpoint),\n\
+          \        aws_access_key_id=os.environ[\"AWS_ACCESS_KEY_ID\"],\n        aws_secret_access_key=os.environ[\"\
+          AWS_SECRET_ACCESS_KEY\"],\n        config=Config(signature_version=\"s3v4\"\
+          ))\n\n    parts = photos_s3_prefix.replace(\"s3://\", \"\").split(\"/\"\
+          , 1)\n    bucket = parts[0]\n    prefix = parts[1] if len(parts) > 1 else\
+          \ \"\"\n\n    resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)\n\
+          \    for obj in resp.get(\"Contents\", []):\n        key = obj[\"Key\"]\n\
+          \        if key.lower().endswith((\".jpg\", \".jpeg\", \".png\")):\n   \
+          \         local = PHOTOS_DIR / key.replace(\"/\", \"_\")\n            s3.download_file(bucket,\
+          \ key, str(local))\n\n    user_photos = sorted(PHOTOS_DIR.glob(\"*\"))\n\
+          \    print(f\"Downloaded {len(user_photos)} user photos from s3://{bucket}/{prefix}\"\
+          )\n\n    # --- Download WIDER Face for unknown class ---\n    print(\"Downloading\
+          \ WIDER Face subset from HuggingFace...\")\n    local_repo = snapshot_download(\n\
+          \        repo_id=\"wider_face\", repo_type=\"dataset\",\n        allow_patterns=[\"\
+          data/WIDER_val.zip\"], cache_dir=\"/tmp/hf_wider\")\n    wider_zip = list(Path(local_repo).rglob(\"\
+          WIDER_val.zip\"))[0]\n\n    with zipfile.ZipFile(wider_zip, \"r\") as z:\n\
+          \        z.extractall(\"/tmp/wider_extracted\")\n\n    all_wider = list(Path(\"\
+          /tmp/wider_extracted/WIDER_val/images\").rglob(\"*.jpg\"))\n    selected\
+          \ = random.sample(all_wider, min(100, len(all_wider)))\n    for i, p in\
+          \ enumerate(selected):\n        shutil.copy2(p, UNKNOWN_DIR / f\"unknown_{i:04d}.jpg\"\
+          )\n    print(f\"Prepared {len(selected)} unknown faces\")\n\n    # --- Auto-annotate\
+          \ ---\n    print(\"Auto-annotating with YOLO11-face detector...\")\n   \
+          \ det_path = hf_hub_download(repo_id=\"AdamCodd/YOLOv11n-face-detection\"\
+          , filename=\"model.pt\")\n    detector = YOLO(det_path)\n\n    def annotate(image_path,\
+          \ class_id, img_dir, lbl_dir, prefix):\n        results = detector.predict(str(image_path),\
+          \ verbose=False, conf=0.3)\n        if len(results[0].boxes) == 0:\n   \
+          \         return False\n        img_name = f\"{prefix}_{image_path.stem}.jpg\"\
+          \n        lbl_name = f\"{prefix}_{image_path.stem}.txt\"\n        shutil.copy2(image_path,\
+          \ img_dir / img_name)\n        img_h, img_w = results[0].orig_shape\n  \
+          \      with open(lbl_dir / lbl_name, \"w\") as f:\n            for box in\
+          \ results[0].boxes:\n                x1, y1, x2, y2 = box.xyxy[0].tolist()\n\
+          \                cx = ((x1 + x2) / 2) / img_w\n                cy = ((y1\
+          \ + y2) / 2) / img_h\n                w = (x2 - x1) / img_w\n          \
+          \      h = (y2 - y1) / img_h\n                f.write(f\"{class_id} {cx:.6f}\
+          \ {cy:.6f} {w:.6f} {h:.6f}\\n\")\n        return True\n\n    unknown_photos\
+          \ = sorted(UNKNOWN_DIR.glob(\"*.jpg\"))\n    random.shuffle(list(user_photos))\n\
+          \    random.shuffle(unknown_photos)\n\n    total = {\"train\": 0, \"val\"\
+          : 0}\n    for photos, cid, pfx in [(user_photos, 0, \"adnan\"), (unknown_photos,\
+          \ 1, \"unknown\")]:\n        split_idx = int(len(photos) * 0.8)\n      \
+          \  for split, photo_list in [(\"train\", photos[:split_idx]), (\"val\",\
+          \ photos[split_idx:])]:\n            for p in photo_list:\n            \
+          \    if annotate(p, cid, DATASET_DIR / \"images\" / split, DATASET_DIR /\
+          \ \"labels\" / split, pfx):\n                    total[split] += 1\n\n \
+          \   # --- Write data.yaml ---\n    (DATASET_DIR / \"data.yaml\").write_text(\n\
+          \        f\"path: {DATASET_DIR}\\ntrain: images/train\\nval: images/val\\\
+          n\\nnc: 2\\nnames:\\n  0: adnan\\n  1: unknown_face\\n\"\n    )\n\n    #\
+          \ Download YOLO11n base model \u2014 try MinIO first, fall back to HuggingFace\n\
+          \    base_model_path = SHARED / \"yolo11n.pt\"\n    if not base_model_path.exists():\n\
+          \        try:\n            s3.download_file(\"models\", \"yolo11n.pt\",\
+          \ str(base_model_path))\n            print(f\"Downloaded base model from\
+          \ MinIO\")\n        except Exception:\n            print(\"yolo11n.pt not\
+          \ in MinIO \u2014 downloading from ultralytics...\")\n            import\
+          \ urllib.request\n            urllib.request.urlretrieve(\n            \
+          \    \"https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt\"\
+          ,\n                str(base_model_path))\n            print(f\"Downloaded\
+          \ base model from ultralytics\")\n\n    print(f\"Dataset: {total['train']}\
+          \ train, {total['val']} val\")\n    metrics.log_metric(\"train_images\"\
+          , total[\"train\"])\n    metrics.log_metric(\"val_images\", total[\"val\"\
+          ])\n    metrics.log_metric(\"user_photos\", len(user_photos))\n    metrics.log_metric(\"\
+          unknown_photos\", len(selected))\n\n    # Record dataset artifact for ML\
+          \ lineage tracking\n    dataset.uri = str(DATASET_DIR / \"data.yaml\")\n\
+          \    dataset.metadata[\"train_images\"] = total[\"train\"]\n    dataset.metadata[\"\
+          val_images\"] = total[\"val\"]\n    dataset.metadata[\"classes\"] = [\"\
+          adnan\", \"unknown_face\"]\n\n    return total[\"train\"] + total[\"val\"\
+          ]\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 2.0
+          cpuRequest: 1.0
+          memoryLimit: 4.294967296
+          memoryRequest: 2.147483648
+          resourceCpuLimit: '2'
+          resourceCpuRequest: '1'
+          resourceMemoryLimit: 4Gi
+          resourceMemoryRequest: 2Gi
+    exec-register-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'boto3>=1.34.0'\
+          \ 'model-registry>=0.3.7'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_model(\n    onnx_path: str,\n    model_name: str,\n\
+          \    version: str,\n    registry_url: str,\n    minio_endpoint: str,\n)\
+          \ -> str:\n    \"\"\"Upload ONNX model to MinIO and register the version\
+          \ in Model Registry.\n\n    Args:\n        onnx_path: Path to the ONNX model\
+          \ on the shared PVC.\n        model_name: Name to register under in the\
+          \ Model Registry.\n        version: Version string for this model release.\n\
+          \        registry_url: Model Registry REST endpoint.\n        minio_endpoint:\
+          \ MinIO endpoint URL (fallback if env var not set).\n\n    Returns:\n  \
+          \      The version string that was registered.\n    \"\"\"\n    import os,\
+          \ json\n    from pathlib import Path\n    import boto3\n    from botocore.config\
+          \ import Config\n    from model_registry import ModelRegistry, utils\n\n\
+          \    SHARED = Path(\"/shared-data\")\n    METRICS_DIR = SHARED / \"metrics\"\
+          \n\n    metrics_data = json.loads((METRICS_DIR / \"results.json\").read_text())\n\
+          \n    # Upload ONNX to MinIO\n    BUCKET = \"models\"\n    KEY = \"face-recognition/1/model.onnx\"\
+          \n\n    s3 = boto3.client(\"s3\",\n        endpoint_url=os.environ.get(\"\
+          AWS_S3_ENDPOINT\", minio_endpoint),\n        aws_access_key_id=os.environ[\"\
+          AWS_ACCESS_KEY_ID\"],\n        aws_secret_access_key=os.environ[\"AWS_SECRET_ACCESS_KEY\"\
+          ],\n        config=Config(signature_version=\"s3v4\"))\n\n    print(f\"\
+          Uploading {onnx_path} -> s3://{BUCKET}/{KEY}...\")\n    s3.upload_file(onnx_path,\
+          \ BUCKET, KEY)\n\n    obj = s3.head_object(Bucket=BUCKET, Key=KEY)\n   \
+          \ print(f\"Uploaded: {obj['ContentLength'] / (1024*1024):.1f} MB\")\n\n\
+          \    # Register in Model Registry (pattern from rhoai-mlops/jukebox)\n \
+          \   s3_endpoint = os.environ.get(\"AWS_S3_ENDPOINT\", minio_endpoint)\n\
+          \    s3_bucket = os.environ.get(\"AWS_S3_BUCKET\", BUCKET)\n\n    metadata\
+          \ = {k: str(v) for k, v in metrics_data.items()}\n\n    try:\n        #\
+          \ The model-registry SDK reads this env var for SA token auth\n        os.environ[\"\
+          KF_PIPELINES_SA_TOKEN_PATH\"] = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n\n        registry = ModelRegistry(\n            server_address=registry_url,\n\
+          \            port=443,\n            author=\"face-recognition-pipeline\"\
+          ,\n            is_secure=False,\n        )\n\n        s3_uri = utils.s3_uri_from(\n\
+          \            f\"/models/{model_name}/1/model.onnx\",\n            bucket=s3_bucket,\n\
+          \            endpoint=s3_endpoint,\n        )\n\n        registry.register_model(\n\
+          \            model_name, s3_uri,\n            model_format_name=\"onnx\"\
+          , model_format_version=\"1\",\n            version=version,\n          \
+          \  version_description=f\"YOLO11n face recognition. mAP50={metrics_data['mAP50']:.3f}\"\
+          ,\n            metadata=metadata,\n        )\n        print(f\"Registered\
+          \ {model_name} v{version} in Model Registry\")\n    except Exception as\
+          \ e:\n        print(f\"WARNING: Model Registry registration failed: {e}\"\
+          )\n        print(\"The model is deployed to MinIO and serving -- registration\
+          \ can be done manually.\")\n\n    return version\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 2.0
+          cpuRequest: 0.5
+          memoryLimit: 4.294967296
+          memoryRequest: 1.073741824
+          resourceCpuLimit: '2'
+          resourceCpuRequest: 500m
+          resourceMemoryLimit: 4Gi
+          resourceMemoryRequest: 1Gi
+    exec-setup-monitoring:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - setup_monitoring
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'requests>=2.31.0'\
+          \ 'numpy>=1.26.0'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef setup_monitoring(\n    model_name: str,\n    namespace: str,\n\
+          \    num_baseline_samples: int,\n) -> str:\n    \"\"\"Configure TrustyAI\
+          \ monitoring with baseline data and fairness metrics.\n\n    Args:\n   \
+          \     model_name: Name of the deployed InferenceService to monitor.\n  \
+          \      namespace: OpenShift namespace where TrustyAI and the model are deployed.\n\
+          \        num_baseline_samples: Number of synthetic baseline samples to generate.\n\
+          \n    Returns:\n        Monitoring status string (e.g. monitoring-configured,\
+          \ trustyai-not-ready).\n    \"\"\"\n    import json, time\n    import requests\n\
+          \    import numpy as np\n\n    TRUSTYAI_URL = f\"http://trustyai-service.{namespace}.svc.cluster.local\"\
+          \n    headers = {\"Content-Type\": \"application/json\"}\n\n    # Wait for\
+          \ TrustyAI to be ready\n    print(\"Waiting for TrustyAI service...\")\n\
+          \    for i in range(12):\n        try:\n            r = requests.get(f\"\
+          {TRUSTYAI_URL}/info\", timeout=5)\n            if r.status_code == 200:\n\
+          \                print(f\"TrustyAI ready (took ~{(i+1)*5}s)\")\n       \
+          \         break\n        except Exception:\n            pass\n        time.sleep(5)\n\
+          \    else:\n        print(\"WARNING: TrustyAI not reachable. Skipping monitoring\
+          \ setup.\")\n        return \"trustyai-not-ready\"\n\n    # Generate baseline\
+          \ data representing normal face recognition results\n    # Features: confidence\
+          \ (0-1), class_id (0=adnan, 1=unknown), num_detections\n    print(f\"Generating\
+          \ {num_baseline_samples} baseline samples...\")\n    np.random.seed(42)\n\
+          \    n = num_baseline_samples\n    confidence = np.random.normal(loc=0.85,\
+          \ scale=0.08, size=n).clip(0.3, 1.0)\n    class_id = np.random.choice([0.0,\
+          \ 1.0], size=n, p=[0.4, 0.6])\n    num_detections = np.random.poisson(lam=2.0,\
+          \ size=n).astype(float)\n    quality = ((confidence > 0.6) & (num_detections\
+          \ >= 1)).astype(float)\n\n    # Upload training baseline to TrustyAI\n \
+          \   training_data = {\n        \"model_name\": model_name,\n        \"data_tag\"\
+          : \"TRAINING\",\n        \"request\": {\n            \"inputs\": [{\n  \
+          \              \"name\": \"predict\",\n                \"shape\": [n, 3],\n\
+          \                \"datatype\": \"FP32\",\n                \"data\": [[float(confidence[i]),\
+          \ float(class_id[i]), float(num_detections[i])] for i in range(n)]\n   \
+          \         }]\n        },\n        \"response\": {\n            \"model_name\"\
+          : model_name,\n            \"model_version\": \"1\",\n            \"outputs\"\
+          : [{\n                \"name\": \"predict\",\n                \"datatype\"\
+          : \"INT64\",\n                \"shape\": [n, 1],\n                \"data\"\
+          : [[int(quality[i])] for i in range(n)]\n            }]\n        }\n   \
+          \ }\n\n    print(\"Uploading baseline data...\")\n    r = requests.post(f\"\
+          {TRUSTYAI_URL}/data/upload\", headers=headers, json=training_data, timeout=30)\n\
+          \    print(f\"  Upload: {r.status_code} - {r.text[:200]}\")\n\n    if r.status_code\
+          \ != 200:\n        print(\"WARNING: Baseline upload failed.\")\n       \
+          \ return \"upload-failed\"\n\n    # Configure SPD fairness metric\n    #\
+          \ Measures: does quality differ between adnan (class 0) and unknown (class\
+          \ 1)?\n    print(\"Configuring SPD fairness metric...\")\n    spd_payload\
+          \ = {\n        \"modelId\": model_name,\n        \"requestName\": \"Face\
+          \ Recognition Fairness\",\n        \"protectedAttribute\": \"predict-1\"\
+          ,\n        \"privilegedAttribute\": {\"type\": \"DOUBLE\", \"value\": 0.0},\n\
+          \        \"unprivilegedAttribute\": {\"type\": \"DOUBLE\", \"value\": 1.0},\n\
+          \        \"outcomeName\": \"predict-0-0\",\n        \"favorableOutcome\"\
+          : {\"type\": \"INT64\", \"value\": 1},\n        \"batchSize\": 50,\n   \
+          \ }\n    r = requests.post(f\"{TRUSTYAI_URL}/metrics/spd/request\", headers=headers,\
+          \ json=spd_payload, timeout=10)\n    print(f\"  SPD: {r.status_code} - {r.text[:200]}\"\
+          )\n\n    # Subscribe to meanshift drift on training baseline\n    print(\"\
+          Subscribing to drift detection...\")\n    r = requests.post(f\"{TRUSTYAI_URL}/metrics/drift/meanshift/request\"\
+          , headers=headers,\n                      json={\"modelId\": model_name,\
+          \ \"referenceTag\": \"TRAINING\"}, timeout=10)\n    print(f\"  Drift: {r.status_code}\
+          \ - {r.text[:200]}\")\n\n    # Verify\n    r = requests.get(f\"{TRUSTYAI_URL}/info\"\
+          , headers=headers, timeout=10)\n    info = r.json() if r.text else {}\n\
+          \    model_info = info.get(model_name, {})\n    obs = model_info.get(\"\
+          data\", {}).get(\"observations\", 0)\n    metrics = model_info.get(\"metrics\"\
+          , {}).get(\"scheduledMetadata\", {}).get(\"metricCounts\", {})\n    print(f\"\
+          \\nMonitoring configured:\")\n    print(f\"  Model: {model_name}\")\n  \
+          \  print(f\"  Observations: {obs}\")\n    print(f\"  Metrics: {metrics}\"\
+          )\n    print(f\"  Dashboard: RHOAI > Deployments > {model_name} > Model\
+          \ bias\")\n\n    return \"monitoring-configured\"\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 0.5
+          cpuRequest: 0.25
+          memoryLimit: 0.536870912
+          memoryRequest: 0.268435456
+          resourceCpuLimit: 500m
+          resourceCpuRequest: 250m
+          resourceMemoryLimit: 512Mi
+          resourceMemoryRequest: 256Mi
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'ultralytics>=8.3.0'\
+          \ 'opencv-python-headless>=4.10.0' 'onnx>=1.12.0' 'onnxslim>=0.1.71' 'onnxruntime>=1.17.0'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    epochs: int,\n    metrics: Output[Metrics],\n\
+          \    trained_model: Output[Model],\n) -> str:\n    \"\"\"Train YOLO11n on\
+          \ the prepared dataset and export to ONNX.\n\n    Args:\n        epochs:\
+          \ Number of training epochs.\n        metrics: KFP Metrics artifact for\
+          \ Dashboard visibility.\n        trained_model: KFP Model artifact for Dashboard\
+          \ lineage tracking.\n\n    Returns:\n        Path to the exported ONNX model\
+          \ file on the shared PVC.\n    \"\"\"\n    import subprocess\n    from pathlib\
+          \ import Path\n\n    subprocess.run([\"pip\", \"install\", \"--force-reinstall\"\
+          , \"--no-deps\", \"opencv-python-headless>=4.10.0\"], check=True, capture_output=True)\n\
+          \n    from ultralytics import YOLO\n\n    SHARED = Path(\"/shared-data\"\
+          )\n    DATASET_DIR = SHARED / \"dataset\"\n    MODEL_DIR = SHARED / \"model\"\
+          \n    MODEL_DIR.mkdir(parents=True, exist_ok=True)\n\n    data_yaml = str(DATASET_DIR\
+          \ / \"data.yaml\")\n    print(f\"Training YOLO11n for {epochs} epochs on\
+          \ CPU...\")\n    print(f\"Dataset: {data_yaml}\")\n\n    # Use pre-downloaded\
+          \ base model from shared PVC (downloaded by prepare_dataset)\n    base_model\
+          \ = str(SHARED / \"yolo11n.pt\") if (SHARED / \"yolo11n.pt\").exists() else\
+          \ \"yolo11n.pt\"\n    print(f\"Base model: {base_model}\")\n    model =\
+          \ YOLO(base_model)\n    results = model.train(\n        data=data_yaml,\n\
+          \        epochs=epochs,\n        imgsz=640,\n        batch=4,\n        device=\"\
+          cpu\",\n        mosaic=1.0,\n        mixup=0.3,\n        fliplr=0.5,\n \
+          \       degrees=15.0,\n        patience=5,\n        project=str(MODEL_DIR\
+          \ / \"runs\"),\n        name=\"train\",\n        exist_ok=True,\n    )\n\
+          \n    best_pt = list(MODEL_DIR.rglob(\"train/weights/best.pt\"))\n    if\
+          \ not best_pt:\n        raise RuntimeError(\"Training failed -- no best.pt\
+          \ found\")\n\n    best = best_pt[0]\n    print(f\"Best model: {best}\")\n\
+          \n    # Export to ONNX\n    trained = YOLO(str(best))\n    onnx_path = trained.export(format=\"\
+          onnx\")\n    print(f\"ONNX exported: {onnx_path}\")\n\n    # Log final metrics\
+          \ from training\n    metrics.log_metric(\"epochs_completed\", epochs)\n\
+          \    metrics.log_metric(\"onnx_path\", onnx_path)\n\n    # Write ONNX to\
+          \ KFP Model artifact for Dashboard lineage tracking\n    import shutil\n\
+          \    shutil.copy2(onnx_path, trained_model.path)\n    trained_model.metadata[\"\
+          framework\"] = \"ultralytics-yolo11n\"\n    trained_model.metadata[\"format\"\
+          ] = \"onnx\"\n    trained_model.metadata[\"epochs\"] = epochs\n\n    return\
+          \ onnx_path\n\n"
+        image: registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0
+        resources:
+          cpuLimit: 4.0
+          cpuRequest: 2.0
+          memoryLimit: 8.589934592
+          memoryRequest: 4.294967296
+          resourceCpuLimit: '4'
+          resourceCpuRequest: '2'
+          resourceMemoryLimit: 8Gi
+          resourceMemoryRequest: 4Gi
+pipelineInfo:
+  description: Train YOLO11 face recognition, evaluate, register, deploy, and configure
+    monitoring
+  name: face-recognition-training
+root:
+  dag:
+    tasks:
+      deploy-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-deploy-model
+        dependentTasks:
+        - register-model
+        inputs:
+          parameters:
+            isvc_name:
+              componentInputParameter: model_name
+            namespace:
+              componentInputParameter: isvc_namespace
+            registry_url:
+              componentInputParameter: registry_url
+        retryPolicy:
+          backoffDuration: 10s
+          backoffFactor: 2.0
+          backoffMaxDuration: 3600s
+          maxRetryCount: 2
+        taskInfo:
+          name: deploy-model
+      evaluate-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate-model
+        dependentTasks:
+        - train-model
+        inputs:
+          parameters:
+            mAP_threshold:
+              componentInputParameter: mAP_threshold
+            model_name:
+              componentInputParameter: model_name
+            onnx_path:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: train-model
+            registry_url:
+              componentInputParameter: registry_url
+        taskInfo:
+          name: evaluate-model
+      prepare-dataset:
+        cachingOptions: {}
+        componentRef:
+          name: comp-prepare-dataset
+        inputs:
+          parameters:
+            minio_endpoint:
+              componentInputParameter: minio_endpoint
+            photos_s3_prefix:
+              componentInputParameter: photos_s3_prefix
+        retryPolicy:
+          backoffDuration: 30s
+          backoffFactor: 2.0
+          backoffMaxDuration: 3600s
+          maxRetryCount: 2
+        taskInfo:
+          name: prepare-dataset
+      register-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-register-model
+        dependentTasks:
+        - evaluate-model
+        - train-model
+        inputs:
+          parameters:
+            minio_endpoint:
+              componentInputParameter: minio_endpoint
+            model_name:
+              componentInputParameter: model_name
+            onnx_path:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: train-model
+            registry_url:
+              componentInputParameter: registry_url
+            version:
+              componentInputParameter: version
+        retryPolicy:
+          backoffDuration: 10s
+          backoffFactor: 2.0
+          backoffMaxDuration: 3600s
+          maxRetryCount: 2
+        taskInfo:
+          name: register-model
+      setup-monitoring:
+        cachingOptions: {}
+        componentRef:
+          name: comp-setup-monitoring
+        dependentTasks:
+        - deploy-model
+        inputs:
+          parameters:
+            model_name:
+              componentInputParameter: model_name
+            namespace:
+              componentInputParameter: isvc_namespace
+            num_baseline_samples:
+              runtimeValue:
+                constant: 500.0
+        retryPolicy:
+          backoffDuration: 10s
+          backoffFactor: 2.0
+          backoffMaxDuration: 3600s
+          maxRetryCount: 2
+        taskInfo:
+          name: setup-monitoring
+      train-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-dataset
+        inputs:
+          parameters:
+            epochs:
+              componentInputParameter: epochs
+        taskInfo:
+          name: train-model
+  inputDefinitions:
+    parameters:
+      epochs:
+        defaultValue: 15.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      isvc_namespace:
+        defaultValue: private-ai
+        isOptional: true
+        parameterType: STRING
+      mAP_threshold:
+        defaultValue: 0.7
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      minio_endpoint:
+        defaultValue: http://minio.minio-storage.svc.cluster.local:9000
+        isOptional: true
+        parameterType: STRING
+      model_name:
+        defaultValue: face-recognition
+        isOptional: true
+        parameterType: STRING
+      photos_s3_prefix:
+        defaultValue: s3://face-training-photos/adnan/
+        isOptional: true
+        parameterType: STRING
+      registry_url:
+        defaultValue: https://private-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com
+        isOptional: true
+        parameterType: STRING
+      version:
+        defaultValue: ''
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.16.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-evaluate-model:
+          pvcMount:
+          - constant: face-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: face-pipeline-workspace
+        exec-prepare-dataset:
+          pvcMount:
+          - constant: face-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: face-pipeline-workspace
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: accesskey
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: secretkey
+            optional: false
+            secretName: dspa-minio-credentials
+            secretNameParameter:
+              runtimeValue:
+                constant: dspa-minio-credentials
+        exec-register-model:
+          pvcMount:
+          - constant: face-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: face-pipeline-workspace
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: accesskey
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: secretkey
+            optional: false
+            secretName: dspa-minio-credentials
+            secretNameParameter:
+              runtimeValue:
+                constant: dspa-minio-credentials
+        exec-train-model:
+          pvcMount:
+          - constant: face-pipeline-workspace
+            mountPath: /shared-data
+            pvcNameParameter:
+              runtimeValue:
+                constant: face-pipeline-workspace

@@ -10,7 +10,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="registry.redhat.io/ubi9/python-312:latest",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
 )
 def register_vector_db_component(

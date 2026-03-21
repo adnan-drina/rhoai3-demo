@@ -15,7 +15,7 @@ from kfp.dsl import component, Output, HTML
 
 
 @component(
-    base_image="registry.redhat.io/ubi9/python-312:latest",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
         "boto3",
         "pyyaml",

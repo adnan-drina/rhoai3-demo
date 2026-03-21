@@ -5,7 +5,7 @@ from kfp.dsl import component, Output, Metrics
 
 
 @component(
-    base_image="registry.redhat.io/ubi9/python-311:latest",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
         "ultralytics>=8.3.0",
         "opencv-python-headless>=4.10.0",

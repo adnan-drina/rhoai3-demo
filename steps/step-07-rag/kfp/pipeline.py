@@ -188,6 +188,7 @@ def batch_docling_rag_pipeline(
     )
     reg_db.after(download)
     reg_db.set_caching_options(False)
+    reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
     # --- Stage 4: Split files into groups for parallel processing ---
     split = split_pdf_list_component(
@@ -217,6 +218,7 @@ def batch_docling_rag_pipeline(
             _mount_pvc(docling)
             _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
             docling.set_caching_options(False)
+            docling.set_retry(num_retries=1, backoff_duration="30s", backoff_factor=2.0)
 
             # Insert into pgvector via LlamaStack
             insert = insert_via_llamastack_component(
@@ -229,6 +231,7 @@ def batch_docling_rag_pipeline(
             _mount_pvc(insert)
             _set_resources(insert)
             insert.set_caching_options(False)
+            insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
     # --- Stage 6: Convergence ---
     completion = pipeline_completion_component(
