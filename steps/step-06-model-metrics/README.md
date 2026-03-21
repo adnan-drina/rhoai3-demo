@@ -15,7 +15,7 @@ Model Performance Metrics
 ├── GuideLLM CronJob        → Daily benchmarks at 2:00 AM UTC
 ├── Job Templates           → On-demand per-model benchmarks (graduated concurrency)
 ├── Benchmarking Workbench  → Jupyter notebook for interactive analysis
-└── GuideLLM KFP Pipeline   → Dashboard-triggerable benchmark (requires step-07 DSPA)
+└── GuideLLM KFP Pipeline   → Dashboard-triggerable benchmark (3-step: run → upload → summary)
 ```
 
 | Component | Description | Namespace |
@@ -91,9 +91,9 @@ After both benchmarks complete, compare the results (tuned configuration):
 
 **Do:** Keep defaults, click **Start**. Watch the run in the **Runs** tab.
 
-**Expect:** Granite completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`).
+**Expect:** A 3-step pipeline: `run_benchmark` → `upload_results` → `benchmark_summary`. Granite completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`). The summary step logs TTFT, ITL, and throughput metrics to the Dashboard.
 
-*"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change."*
+*"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change. The summary step shows TTFT, ITL, and throughput directly in the Dashboard metrics tab."*
 
 > **Prerequisite:** The KFP pipeline requires `dspa-rag` from Step 07. If Step 07 hasn't been deployed yet, Scene 5 is not available — use the CLI approach from Scene 1.
 

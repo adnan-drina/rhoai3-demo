@@ -15,8 +15,10 @@ Step-08 provides two evaluation capabilities:
 
 ```text
 Model Evaluation
-├── RAG Evaluation (KFP Pipeline)
-│   ├── Test YAMLs           → Version-controlled Q&A pairs with expected answers
+├── RAG Evaluation (KFP Pipeline — 3 steps)
+│   ├── scan_tests           → Discover *_tests.yaml configs from PVC
+│   ├── run_and_score_tests  → Execute RAG agent, score via LLM-as-judge, HTML reports
+│   ├── eval_summary         → Aggregate results, log pre/post RAG quality + improvement
 │   ├── run-rag-eval.sh      → Launch via KFP (platform-native, tracked in DSPA)
 │   ├── run-eval-report.sh   → Quick eval via lsd-rag pod (debug/demo)
 │   └── HTML Reports         → Per-scenario pre/post RAG results in MinIO

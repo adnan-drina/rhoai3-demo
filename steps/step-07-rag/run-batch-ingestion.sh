@@ -188,7 +188,6 @@ except Exception:
 params = {
     "s3_prefix": S3_PREFIX,
     "vector_db_id": VECTOR_DB_ID,
-    "cache_buster": str(int(time.time())),
 }
 
 run_name = f"{SCENARIO}-ingestion-{int(time.time())}"
