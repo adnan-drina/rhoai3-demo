@@ -11,11 +11,11 @@ For each *_tests.yaml:
 """
 
 from typing import List
-from kfp.dsl import component
+from kfp.dsl import component, Output, HTML
 
 
 @component(
-    base_image="python:3.12",
+    base_image="registry.redhat.io/ubi9/python-312:latest",
     packages_to_install=[
         "boto3",
         "pyyaml",
@@ -26,6 +26,7 @@ def run_and_score_tests_component(
     test_configs: List[dict],
     default_llamastack_url: str,
     run_id: str = "eval",
+    eval_report: Output[HTML] = None,
 ):
     """Execute pre-RAG and post-RAG tests, score with LLM-as-judge, upload HTML reports.
 
@@ -33,6 +34,7 @@ def run_and_score_tests_component(
         test_configs: List of dicts from scan_tests, each with a config_path.
         default_llamastack_url: LlamaStack endpoint for inference and retrieval.
         run_id: Unique identifier for grouping reports in S3.
+        eval_report: KFP HTML artifact for inline Dashboard rendering.
     """
     import os
     import re
@@ -270,6 +272,8 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
     print(f"  Judge: {JUDGE_MODEL} (direct vLLM endpoint)")
     print("=" * 60)
 
+    all_scenario_html = []
+
     for config_dict in test_configs:
         config_path = config_dict["config_path"]
         full_path = os.path.join(EVAL_CONFIGS_DIR, config_path)
@@ -354,9 +358,17 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
 
         # Generate and upload HTML — correct naming: {scenario}_{mode}_report.html
         html = generate_html_report(scenario_results, scenario_name, mode)
+        all_scenario_html.append(html)
         safe_name = os.path.basename(config_path).replace(".yaml", "").replace("_tests", "")
         s3_key = f"eval-results/{run_id}/{safe_name}_report.html"
         upload_to_s3(html, s3_key)
+
+    # Write combined report to KFP HTML artifact for Dashboard rendering
+    if eval_report is not None and all_scenario_html:
+        combined = "\n<hr style='margin:40px 0;border:2px solid #dee2e6'>\n".join(all_scenario_html)
+        with open(eval_report.path, "w", encoding="utf-8") as f:
+            f.write(combined)
+        print(f"  KFP HTML artifact written ({len(all_scenario_html)} scenario(s))")
 
     print("\n" + "=" * 60)
     print(f"Evaluation complete. Processed {len(test_configs)} config(s).")

@@ -5,7 +5,7 @@ from kfp.dsl import component, Output, Metrics
 
 
 @component(
-    base_image="python:3.11",
+    base_image="registry.redhat.io/ubi9/python-311:latest",
     packages_to_install=[
         "ultralytics>=8.3.0",
         "huggingface_hub>=0.20.0",
@@ -132,11 +132,19 @@ def prepare_dataset(
         f"path: {DATASET_DIR}\ntrain: images/train\nval: images/val\n\nnc: 2\nnames:\n  0: adnan\n  1: unknown_face\n"
     )
 
-    # Download YOLO11n base model from MinIO (GitHub is blocked in pipeline pods)
+    # Download YOLO11n base model — try MinIO first, fall back to HuggingFace
     base_model_path = SHARED / "yolo11n.pt"
     if not base_model_path.exists():
-        s3.download_file("models", "yolo11n.pt", str(base_model_path))
-        print(f"Downloaded base model from MinIO to {base_model_path}")
+        try:
+            s3.download_file("models", "yolo11n.pt", str(base_model_path))
+            print(f"Downloaded base model from MinIO")
+        except Exception:
+            print("yolo11n.pt not in MinIO — downloading from ultralytics...")
+            import urllib.request
+            urllib.request.urlretrieve(
+                "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt",
+                str(base_model_path))
+            print(f"Downloaded base model from ultralytics")
 
     print(f"Dataset: {total['train']} train, {total['val']} val")
     metrics.log_metric("train_images", total["train"])

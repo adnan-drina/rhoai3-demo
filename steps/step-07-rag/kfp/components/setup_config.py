@@ -10,7 +10,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="python:3.12",
+    base_image="registry.redhat.io/ubi9/python-312:latest",
     packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
 )
 def setup_config_component(

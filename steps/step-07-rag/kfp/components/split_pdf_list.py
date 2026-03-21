@@ -8,7 +8,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="python:3.11",
+    base_image="registry.redhat.io/ubi9/python-311:latest",
 )
 def split_pdf_list_component(
     downloaded_files: List[str],

@@ -4,7 +4,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="python:3.11",
+    base_image="registry.redhat.io/ubi9/python-311:latest",
     packages_to_install=["kubernetes>=28.0.0", "model-registry>=0.3.7"],
 )
 def deploy_model(

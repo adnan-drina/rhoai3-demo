@@ -13,7 +13,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="python:3.11",
+    base_image="registry.redhat.io/ubi9/python-311:latest",
     packages_to_install=["boto3==1.34.103"],
 )
 def download_from_s3_component(

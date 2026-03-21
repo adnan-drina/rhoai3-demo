@@ -1,10 +1,10 @@
 """Train YOLO11n on the prepared dataset and export to ONNX."""
 
-from kfp.dsl import component, Output, Metrics
+from kfp.dsl import component, Output, Metrics, Model
 
 
 @component(
-    base_image="python:3.11",
+    base_image="registry.redhat.io/ubi9/python-311:latest",
     packages_to_install=[
         "ultralytics>=8.3.0",
         "opencv-python-headless>=4.10.0",
@@ -16,15 +16,17 @@ from kfp.dsl import component, Output, Metrics
 def train_model(
     epochs: int,
     metrics: Output[Metrics],
+    trained_model: Output[Model],
 ) -> str:
     """Train YOLO11n on the prepared dataset and export to ONNX.
 
     Args:
         epochs: Number of training epochs.
         metrics: KFP Metrics artifact for Dashboard visibility.
+        trained_model: KFP Model artifact for Dashboard lineage tracking.
 
     Returns:
-        Path to the exported ONNX model file.
+        Path to the exported ONNX model file on the shared PVC.
     """
     import subprocess
     from pathlib import Path
@@ -77,5 +79,12 @@ def train_model(
     # Log final metrics from training
     metrics.log_metric("epochs_completed", epochs)
     metrics.log_metric("onnx_path", onnx_path)
+
+    # Write ONNX to KFP Model artifact for Dashboard lineage tracking
+    import shutil
+    shutil.copy2(onnx_path, trained_model.path)
+    trained_model.metadata["framework"] = "ultralytics-yolo11n"
+    trained_model.metadata["format"] = "onnx"
+    trained_model.metadata["epochs"] = epochs
 
     return onnx_path

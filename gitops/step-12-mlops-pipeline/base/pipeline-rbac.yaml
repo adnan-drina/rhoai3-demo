@@ -39,3 +39,22 @@ subjects:
   - kind: ServiceAccount
     name: pipeline-runner-dspa-rag
     namespace: private-ai
+---
+# Pipeline SA needs cluster view to access Model Registry route (cross-namespace)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: face-pipeline-registry-access
+  labels:
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: pipeline-runner-dspa-rag
+    namespace: private-ai
