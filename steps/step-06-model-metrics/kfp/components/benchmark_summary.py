@@ -1,6 +1,10 @@
 """
-Benchmark Summary Component — parses GuideLLM results and logs metrics
-to the RHOAI Dashboard for visibility.
+Benchmark Summary Component — parses GuideLLM results and logs
+performance metrics to the RHOAI Dashboard.
+
+Extracts TTFT, ITL, throughput, and request counts from the GuideLLM
+JSON output. These are the key metrics for evaluating model serving
+performance under load.
 """
 
 from kfp.dsl import component, Output, Metrics
@@ -15,7 +19,7 @@ def benchmark_summary(
     s3_uri: str,
     metrics: Output[Metrics],
 ) -> str:
-    """Parse GuideLLM results and log metrics to the Dashboard.
+    """Parse GuideLLM results and log serving performance metrics.
 
     Args:
         results_json: Raw GuideLLM results as a JSON string.
@@ -27,6 +31,16 @@ def benchmark_summary(
         Human-readable summary of the benchmark.
     """
     import json
+
+    def safe_get(d, *keys, default=None):
+        for k in keys:
+            if isinstance(d, dict):
+                d = d.get(k)
+            else:
+                return default
+            if d is None:
+                return default
+        return d
 
     data = json.loads(results_json)
     benchmarks = data.get("benchmarks", [])
@@ -41,24 +55,68 @@ def benchmark_summary(
     metrics.log_metric("rate_levels", len(benchmarks))
 
     total_completed = 0
+
     for i, bench in enumerate(benchmarks):
         totals = bench.get("request_totals", {})
         completed = totals.get("completed", 0)
+        errored = totals.get("errored", 0)
         total_completed += completed
-        print(f"  Rate {i+1}: {completed} completed requests")
 
-    metrics.log_metric("total_completed_requests", total_completed)
+        sched = bench.get("scheduler", {})
+        rate = sched.get("rate", sched.get("args", {}).get("rate", "?"))
+
+        m = bench.get("metrics", {})
+        successful = m.get("successful", m)
+
+        ttft = safe_get(successful, "time_to_first_token_ms", default={})
+        itl = safe_get(successful, "inter_token_latency_ms", default={})
+        tpot = safe_get(successful, "time_per_output_token_ms", default={})
+        out_tok = safe_get(successful, "output_tokens_per_second", default={})
+        req_lat = safe_get(successful, "request_latency_seconds", default={})
+
+        ttft_med = ttft.get("median") or ttft.get("p50")
+        ttft_p99 = ttft.get("p99")
+        itl_med = itl.get("median") or itl.get("p50")
+        itl_p99 = itl.get("p99")
+        throughput = out_tok.get("mean") if isinstance(out_tok, dict) else out_tok
+
+        label = f"rate_{i+1}"
+        print(f"\n  [{label}] rate={rate} RPS, {completed} completed, {errored} errored")
+
+        if ttft_med is not None:
+            print(f"    TTFT:       median={ttft_med:.0f}ms  p99={ttft_p99:.0f}ms" if ttft_p99 else f"    TTFT:       median={ttft_med:.0f}ms")
+        if itl_med is not None:
+            print(f"    ITL:        median={itl_med:.1f}ms  p99={itl_p99:.1f}ms" if itl_p99 else f"    ITL:        median={itl_med:.1f}ms")
+        if throughput is not None:
+            print(f"    Throughput: {throughput:.0f} tok/s")
+
+    metrics.log_metric("total_completed", total_completed)
 
     if benchmarks:
         last = benchmarks[-1]
-        totals = last.get("request_totals", {})
-        metrics.log_metric("peak_completed", totals.get("completed", 0))
-        metrics.log_metric("peak_errored", totals.get("errored", 0))
+        m = last.get("metrics", {})
+        successful = m.get("successful", m)
 
-    metrics.log_metric("s3_uri", s3_uri)
+        ttft = safe_get(successful, "time_to_first_token_ms", default={})
+        itl = safe_get(successful, "inter_token_latency_ms", default={})
+        out_tok = safe_get(successful, "output_tokens_per_second", default={})
 
-    summary = f"{model_name}: {len(benchmarks)} rate levels, {total_completed} total requests"
-    print(f"\n  {summary}")
+        if isinstance(ttft, dict) and (ttft.get("median") or ttft.get("p50")):
+            val = ttft.get("median") or ttft.get("p50")
+            metrics.log_metric("ttft_median_ms", round(val, 1))
+        if isinstance(ttft, dict) and ttft.get("p99"):
+            metrics.log_metric("ttft_p99_ms", round(ttft["p99"], 1))
+        if isinstance(itl, dict) and (itl.get("median") or itl.get("p50")):
+            val = itl.get("median") or itl.get("p50")
+            metrics.log_metric("itl_median_ms", round(val, 1))
+        if isinstance(itl, dict) and itl.get("p99"):
+            metrics.log_metric("itl_p99_ms", round(itl["p99"], 1))
+        if isinstance(out_tok, dict) and out_tok.get("mean"):
+            metrics.log_metric("throughput_tok_s", round(out_tok["mean"], 1))
+        elif isinstance(out_tok, (int, float)):
+            metrics.log_metric("throughput_tok_s", round(out_tok, 1))
+
+    print(f"\n  Total: {total_completed} completed requests across {len(benchmarks)} rate levels")
     print("=" * 60)
 
-    return summary
+    return f"{model_name}: {len(benchmarks)} rates, {total_completed} requests"
