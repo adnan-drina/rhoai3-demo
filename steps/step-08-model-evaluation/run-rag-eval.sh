@@ -12,9 +12,9 @@ RUN_ID="${1:-eval-$(date +%s)}"
 source "$REPO_ROOT/scripts/lib.sh"
 
 PIPELINE_YAML="$REPO_ROOT/artifacts/rag-eval.yaml"
+VENV_PATH="$REPO_ROOT/.venv-kfp"
 if [ ! -f "$PIPELINE_YAML" ]; then
     log_info "Compiling pipeline..."
-    VENV_PATH="$REPO_ROOT/.venv-kfp"
     if [ ! -d "$VENV_PATH" ]; then
         python3 -m venv "$VENV_PATH"
         "$VENV_PATH/bin/pip" install -q --upgrade pip kfp
