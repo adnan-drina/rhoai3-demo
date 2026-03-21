@@ -1,8 +1,7 @@
 """
 KFP v2 GuideLLM Benchmark Pipeline
 
-Single-step pipeline: runs GuideLLM against a deployed model and
-uploads results to S3 for dashboard viewing.
+3-step pipeline: run GuideLLM benchmark, upload results to S3, log summary metrics.
 
 Components are in kfp/components/ following KFP modular best practices.
 Reuses dspa-rag (step-07) for pipeline execution — no new DSPA needed.
@@ -18,6 +17,8 @@ from kfp.dsl import PipelineTask
 from pathlib import Path
 
 from components.run_benchmark import run_benchmark
+from components.upload_results import upload_results
+from components.benchmark_summary import benchmark_summary
 
 MINIO_SECRET = "minio-connection"
 
@@ -68,11 +69,26 @@ def granite_benchmark_pipeline(
         rates=rates,
         max_seconds=max_seconds,
         max_requests=max_requests,
-        run_id=run_id,
     )
-    _inject_minio(bench)
     _set_resources(bench)
     bench.set_caching_options(False)
+
+    # --- Step 2: Upload Results to S3 ---
+    upload = upload_results(
+        results_json=bench.output,
+        model_name=model_name,
+        run_id=run_id,
+    )
+    _inject_minio(upload)
+    upload.set_caching_options(False)
+
+    # --- Step 3: Summary Report ---
+    summary = benchmark_summary(
+        results_json=bench.output,
+        model_name=model_name,
+        s3_uri=upload.output,
+    )
+    summary.set_caching_options(False)
 
 
 @dsl.pipeline(
@@ -96,11 +112,26 @@ def mistral_benchmark_pipeline(
         rates=rates,
         max_seconds=max_seconds,
         max_requests=max_requests,
-        run_id=run_id,
     )
-    _inject_minio(bench)
     _set_resources(bench)
     bench.set_caching_options(False)
+
+    # --- Step 2: Upload Results to S3 ---
+    upload = upload_results(
+        results_json=bench.output,
+        model_name=model_name,
+        run_id=run_id,
+    )
+    _inject_minio(upload)
+    upload.set_caching_options(False)
+
+    # --- Step 3: Summary Report ---
+    summary = benchmark_summary(
+        results_json=bench.output,
+        model_name=model_name,
+        s3_uri=upload.output,
+    )
+    summary.set_caching_options(False)
 
 
 if __name__ == "__main__":

@@ -1,39 +1,35 @@
 """
-Run Benchmark Component — executes GuideLLM against a deployed model
-and uploads results to S3 for dashboard viewing.
+Run Benchmark Component — executes GuideLLM against a deployed model.
 
-Uses the GuideLLM container image directly as base_image.
+Uses the GuideLLM container image directly as base_image. This step only
+runs the benchmark binary and returns the raw results JSON. Upload and
+summary are handled by downstream atomic steps.
 """
 
-from kfp.dsl import component, Output, Metrics
+from kfp.dsl import component
 
 GUIDELLM_IMAGE = "ghcr.io/vllm-project/guidellm:stable"
 
 
 @component(
     base_image=GUIDELLM_IMAGE,
-    packages_to_install=["boto3>=1.34.0"],
 )
 def run_benchmark(
     model_name: str,
     rates: str,
     max_seconds: int,
     max_requests: int,
-    run_id: str,
-    metrics: Output[Metrics] = None,
 ) -> str:
-    """Run GuideLLM benchmark, print summary, upload results to S3.
+    """Run GuideLLM benchmark and return raw results JSON.
 
     Args:
         model_name: Name of the deployed InferenceService to benchmark.
         rates: Comma-separated request rates (RPS) to test.
         max_seconds: Maximum seconds per rate level.
         max_requests: Maximum requests per rate level.
-        run_id: Unique identifier for grouping results in S3.
-        metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
-        S3 URI of uploaded results, or a status message if upload was skipped.
+        Raw GuideLLM results as a JSON string.
     """
     import json
     import os
@@ -81,42 +77,7 @@ echo "Benchmark complete for {model_name}"
         print(f"Benchmark script exited with code {exit_code}")
 
     if not os.path.exists(results_path):
-        return f"ERROR: {results_path} not found — benchmark may have failed"
+        raise RuntimeError(f"{results_path} not found — GuideLLM benchmark failed")
 
     with open(results_path) as f:
-        data = json.load(f)
-
-    benchmarks = data.get("benchmarks", [])
-    print(f"\n{'=' * 60}")
-    print(f"GuideLLM Summary: {model_name} ({len(benchmarks)} rate levels)")
-    print(f"{'=' * 60}")
-    total_completed = 0
-    for i, bench in enumerate(benchmarks):
-        completed = bench.get("request_totals", {}).get("completed", 0)
-        total_completed += completed
-        print(f"  Rate level {i+1}: {completed} completed requests")
-
-    if metrics is not None:
-        metrics.log_metric("model_name", model_name)
-        metrics.log_metric("rate_levels", len(benchmarks))
-        metrics.log_metric("total_completed_requests", total_completed)
-
-    endpoint = os.environ.get("AWS_S3_ENDPOINT", "")
-    if endpoint:
-        import boto3
-
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=endpoint,
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
-        )
-        bucket = os.environ.get("AWS_S3_BUCKET", "rhoai-storage")
-        key = f"benchmark-results/{run_id}/{model_name}-results.json"
-        s3.upload_file(results_path, bucket, key)
-        msg = f"s3://{bucket}/{key}"
-        print(f"Results uploaded: {msg}")
-        return msg
-
-    return "Results printed (no S3 credentials configured)"
+        return f.read()
