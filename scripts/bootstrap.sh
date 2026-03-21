@@ -74,11 +74,12 @@ oc patch argocd openshift-gitops -n openshift-gitops --type merge \
     && log_success "Resource tracking set to annotation (GitOps 1.19 default)" \
     || log_warn "Could not patch ArgoCD tracking method (may not be ready yet)"
 
-log_step "Configuring PVC health check (WaitForFirstConsumer = Healthy)"
+log_step "Configuring custom resource health checks"
 
-# WaitForFirstConsumer PVCs stay Pending until a pod mounts them.
-# ArgoCD treats Pending as Progressing, which blocks sync waves.
-# Override: treat Pending PVCs as Healthy so sync waves proceed.
+# PVC: WaitForFirstConsumer PVCs stay Pending until a pod mounts them.
+#   ArgoCD treats Pending as Progressing, blocking sync waves.
+# ISVC: ArgoCD default health check misreads KServe condition format,
+#   showing Ready ISVCs as "Progressing". Custom check reads Ready condition.
 oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
   "spec": {
     "resourceHealthChecks": [
@@ -86,12 +87,17 @@ oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
         "group": "",
         "kind": "PersistentVolumeClaim",
         "check": "hs = {}\nif obj.status ~= nil and obj.status.phase ~= nil then\n  if obj.status.phase == \"Pending\" then\n    hs.status = \"Healthy\"\n    hs.message = \"Waiting for first consumer\"\n  elseif obj.status.phase == \"Bound\" then\n    hs.status = \"Healthy\"\n    hs.message = obj.status.phase\n  else\n    hs.status = \"Progressing\"\n    hs.message = obj.status.phase\n  end\nelse\n  hs.status = \"Progressing\"\n  hs.message = \"Waiting for PVC status\"\nend\nreturn hs"
+      },
+      {
+        "group": "serving.kserve.io",
+        "kind": "InferenceService",
+        "check": "hs = {}\nif obj.status ~= nil and obj.status.conditions ~= nil then\n  for _, c in ipairs(obj.status.conditions) do\n    if c.type == \"Ready\" then\n      if c.status == \"True\" then\n        hs.status = \"Healthy\"\n        hs.message = \"Ready\"\n      elseif c.status == \"False\" then\n        hs.status = \"Degraded\"\n        hs.message = c.message or \"Not ready\"\n      else\n        hs.status = \"Progressing\"\n        hs.message = c.message or \"Waiting\"\n      end\n      return hs\n    end\n  end\nend\nhs.status = \"Progressing\"\nhs.message = \"Waiting for conditions\"\nreturn hs"
       }
     ]
   }
 }' 2>/dev/null \
-    && log_success "PVC health check configured (Pending = Healthy)" \
-    || log_warn "Could not configure PVC health check"
+    && log_success "PVC + InferenceService health checks configured" \
+    || log_warn "Could not configure health checks"
 
 log_step "Creating Argo CD project"
 
