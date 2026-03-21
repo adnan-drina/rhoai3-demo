@@ -1,6 +1,12 @@
 """
 Benchmark Summary Component — reads GuideLLM results from the shared PVC
 and logs serving performance metrics (TTFT, ITL, throughput) to the Dashboard.
+
+GuideLLM JSON structure:
+  benchmarks[].metrics.request_totals = {successful, errored, incomplete, total}
+  benchmarks[].metrics.time_to_first_token_ms.successful = {mean, median, p99, ...}
+  benchmarks[].metrics.inter_token_latency_ms.successful = {mean, median, p99, ...}
+  benchmarks[].metrics.output_tokens_per_second.successful = {mean, median, ...}
 """
 
 from kfp.dsl import component, Output, Metrics
@@ -57,64 +63,55 @@ def benchmark_summary(
     metrics.log_metric("model", model_name)
     metrics.log_metric("rate_levels", len(benchmarks))
 
-    total_completed = 0
+    total_successful = 0
 
     for i, bench in enumerate(benchmarks):
-        totals = bench.get("request_totals", {})
-        completed = totals.get("completed", 0)
-        errored = totals.get("errored", 0)
-        total_completed += completed
-
-        sched = bench.get("scheduler", {})
-        rate = sched.get("rate", sched.get("args", {}).get("rate", "?"))
-
         m = bench.get("metrics", {})
-        successful = m.get("successful", m)
 
-        ttft = safe_get(successful, "time_to_first_token_ms", default={})
-        itl = safe_get(successful, "inter_token_latency_ms", default={})
-        out_tok = safe_get(successful, "output_tokens_per_second", default={})
+        rt = m.get("request_totals", {})
+        successful = rt.get("successful", 0)
+        errored = rt.get("errored", 0)
+        total_successful += successful
 
-        ttft_med = ttft.get("median") or ttft.get("p50") if isinstance(ttft, dict) else None
-        ttft_p99 = ttft.get("p99") if isinstance(ttft, dict) else None
-        itl_med = itl.get("median") or itl.get("p50") if isinstance(itl, dict) else None
-        itl_p99 = itl.get("p99") if isinstance(itl, dict) else None
-        throughput = out_tok.get("mean") if isinstance(out_tok, dict) else out_tok
+        ttft_stats = safe_get(m, "time_to_first_token_ms", "successful", default={})
+        itl_stats = safe_get(m, "inter_token_latency_ms", "successful", default={})
+        out_tok_stats = safe_get(m, "output_tokens_per_second", "successful", default={})
 
-        print(f"\n  [rate_{i+1}] rate={rate} RPS, {completed} completed, {errored} errored")
+        ttft_med = ttft_stats.get("median") if isinstance(ttft_stats, dict) else None
+        itl_med = itl_stats.get("median") if isinstance(itl_stats, dict) else None
+        throughput = out_tok_stats.get("mean") if isinstance(out_tok_stats, dict) else None
 
+        print(f"\n  [rate_{i+1}] {successful} successful, {errored} errored")
         if ttft_med is not None:
-            print(f"    TTFT:       median={ttft_med:.0f}ms  p99={ttft_p99:.0f}ms" if ttft_p99 else f"    TTFT:       median={ttft_med:.0f}ms")
+            p99 = ttft_stats.get("percentiles", {}).get("99") or ttft_stats.get("max")
+            print(f"    TTFT:       median={ttft_med:.0f}ms" + (f"  p99={p99:.0f}ms" if p99 else ""))
         if itl_med is not None:
-            print(f"    ITL:        median={itl_med:.1f}ms  p99={itl_p99:.1f}ms" if itl_p99 else f"    ITL:        median={itl_med:.1f}ms")
+            p99 = itl_stats.get("percentiles", {}).get("99") or itl_stats.get("max")
+            print(f"    ITL:        median={itl_med:.1f}ms" + (f"  p99={p99:.1f}ms" if p99 else ""))
         if throughput is not None:
             print(f"    Throughput: {throughput:.0f} tok/s")
 
-    metrics.log_metric("total_completed", total_completed)
+    metrics.log_metric("total_successful", total_successful)
 
     if benchmarks:
-        last = benchmarks[-1]
-        m = last.get("metrics", {})
-        successful = m.get("successful", m)
+        last_m = benchmarks[-1].get("metrics", {})
 
-        ttft = safe_get(successful, "time_to_first_token_ms", default={})
-        itl = safe_get(successful, "inter_token_latency_ms", default={})
-        out_tok = safe_get(successful, "output_tokens_per_second", default={})
+        ttft = safe_get(last_m, "time_to_first_token_ms", "successful", default={})
+        itl = safe_get(last_m, "inter_token_latency_ms", "successful", default={})
+        out_tok = safe_get(last_m, "output_tokens_per_second", "successful", default={})
 
-        if isinstance(ttft, dict) and (ttft.get("median") or ttft.get("p50")):
-            metrics.log_metric("ttft_median_ms", round(ttft.get("median") or ttft.get("p50"), 1))
-        if isinstance(ttft, dict) and ttft.get("p99"):
-            metrics.log_metric("ttft_p99_ms", round(ttft["p99"], 1))
-        if isinstance(itl, dict) and (itl.get("median") or itl.get("p50")):
-            metrics.log_metric("itl_median_ms", round(itl.get("median") or itl.get("p50"), 1))
-        if isinstance(itl, dict) and itl.get("p99"):
-            metrics.log_metric("itl_p99_ms", round(itl["p99"], 1))
+        if isinstance(ttft, dict) and ttft.get("median"):
+            metrics.log_metric("ttft_median_ms", round(ttft["median"], 1))
+        if isinstance(ttft, dict) and ttft.get("percentiles", {}).get("99"):
+            metrics.log_metric("ttft_p99_ms", round(ttft["percentiles"]["99"], 1))
+        if isinstance(itl, dict) and itl.get("median"):
+            metrics.log_metric("itl_median_ms", round(itl["median"], 1))
+        if isinstance(itl, dict) and itl.get("percentiles", {}).get("99"):
+            metrics.log_metric("itl_p99_ms", round(itl["percentiles"]["99"], 1))
         if isinstance(out_tok, dict) and out_tok.get("mean"):
             metrics.log_metric("throughput_tok_s", round(out_tok["mean"], 1))
-        elif isinstance(out_tok, (int, float)):
-            metrics.log_metric("throughput_tok_s", round(out_tok, 1))
 
-    print(f"\n  Total: {total_completed} completed requests across {len(benchmarks)} rate levels")
+    print(f"\n  Total: {total_successful} successful requests across {len(benchmarks)} rate levels")
     print("=" * 60)
 
-    return f"{model_name}: {len(benchmarks)} rates, {total_completed} requests"
+    return f"{model_name}: {len(benchmarks)} rates, {total_successful} requests"
