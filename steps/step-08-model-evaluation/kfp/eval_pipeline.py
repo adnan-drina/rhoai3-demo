@@ -1,10 +1,11 @@
 """
 KFP v2 RAG Evaluation Pipeline
 
-2-step pipeline:
+3-step pipeline:
   1. scan_tests      -- discover *_tests.yaml in /eval-configs
   2. run_and_score   -- execute RAG agent, score via mistral-3-bf16 (direct vLLM judge),
-                       generate HTML reports, upload to MinIO
+                        generate HTML reports, upload to MinIO
+  3. eval_summary    -- aggregate results, log metrics to Dashboard, produce verdict
 
 Components are in kfp/components/ following KFP modular best practices.
 Reuses lsd-rag (step-07) for generation and dspa-rag (step-07) for pipeline execution.
@@ -20,6 +21,7 @@ from pathlib import Path
 
 from components.scan_tests import scan_tests_component
 from components.run_and_score_tests import run_and_score_tests_component
+from components.eval_summary import eval_summary_component
 
 S3_SECRET = "minio-connection"
 PIPELINE_PVC = "rag-pipeline-workspace"
@@ -79,6 +81,13 @@ def rag_eval_pipeline(
     _mount_pvc(run_score)
     _set_resources(run_score)
     run_score.set_caching_options(False)
+
+    # --- Step 3: Summary Report ---
+    report = eval_summary_component(
+        summary=run_score.outputs["summary"],
+        run_id=run_id,
+    )
+    report.set_caching_options(False)
 
 
 if __name__ == "__main__":

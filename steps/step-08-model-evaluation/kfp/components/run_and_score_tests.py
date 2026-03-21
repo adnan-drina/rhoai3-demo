@@ -10,7 +10,7 @@ For each *_tests.yaml:
   6. Upload reports to S3
 """
 
-from typing import List
+from typing import List, Dict, Any, NamedTuple
 from kfp.dsl import component, Output, HTML
 
 
@@ -27,7 +27,7 @@ def run_and_score_tests_component(
     default_llamastack_url: str,
     run_id: str = "eval",
     eval_report: Output[HTML] = None,
-):
+) -> NamedTuple("EvalOutput", [("summary", List[Dict[str, Any]])]):
     """Execute pre-RAG and post-RAG tests, score with LLM-as-judge, upload HTML reports.
 
     Args:
@@ -35,6 +35,9 @@ def run_and_score_tests_component(
         default_llamastack_url: LlamaStack endpoint for inference and retrieval.
         run_id: Unique identifier for grouping reports in S3.
         eval_report: KFP HTML artifact for inline Dashboard rendering.
+
+    Returns:
+        summary: Per-scenario results with pass rates and score distributions.
     """
     import os
     import re
@@ -402,3 +405,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
     print("\n" + "=" * 60)
     print(f"Evaluation complete. Processed {len(test_configs)} config(s).")
     print("=" * 60)
+
+    from collections import namedtuple
+    EvalOutput = namedtuple("EvalOutput", ["summary"])
+    return EvalOutput(summary=all_scenario_summaries)
