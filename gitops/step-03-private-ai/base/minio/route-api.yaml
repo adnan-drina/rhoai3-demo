@@ -1,0 +1,20 @@
+# MinIO S3 API route — exposes the S3 API externally so the RHOAI
+# Dashboard can render pipeline artifacts (Output[HTML], Output[Model])
+# inline in the browser. Without this, artifact visualization fails
+# because the browser can't resolve minio.minio-storage.svc.cluster.local.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: minio-api
+  namespace: minio-storage
+  labels:
+    app: minio
+spec:
+  to:
+    kind: Service
+    name: minio
+  port:
+    targetPort: api
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
