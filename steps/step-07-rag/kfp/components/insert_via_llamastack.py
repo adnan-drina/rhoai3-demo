@@ -16,6 +16,7 @@ from kfp.dsl import component
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=["llama_stack_client>=0.4,<0.5"],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def insert_via_llamastack_component(
     setup_config: Dict[str, Any],

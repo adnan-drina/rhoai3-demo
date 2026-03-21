@@ -9,7 +9,10 @@ from typing import NamedTuple, List
 from kfp.dsl import component
 
 
-@component(base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0")
+@component(
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    pip_index_urls=["https://pypi.org/simple"],
+)
 def scan_tests_component(
     eval_configs_dir: str = "/eval-configs",
 ) -> NamedTuple("ScanOutput", [("test_configs", List[dict])]):

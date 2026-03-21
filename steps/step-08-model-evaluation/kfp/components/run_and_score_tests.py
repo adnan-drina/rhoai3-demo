@@ -21,6 +21,7 @@ from kfp.dsl import component, Output, HTML
         "pyyaml>=6.0",
         "requests>=2.31.0",
     ],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def run_and_score_tests_component(
     test_configs: List[dict],

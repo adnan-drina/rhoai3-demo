@@ -11,6 +11,7 @@ from kfp.dsl import component
 
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def setup_config_component(
     llamastack_url: str,

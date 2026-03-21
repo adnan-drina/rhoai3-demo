@@ -13,6 +13,7 @@ from kfp.dsl import component
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=["requests"],
+    pip_index_urls=["https://pypi.org/simple"],
 )
 def process_with_docling_component(
     document_path: str,
