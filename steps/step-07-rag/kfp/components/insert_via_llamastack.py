@@ -39,7 +39,6 @@ def insert_via_llamastack_component(
     """
     from llama_stack_client import LlamaStackClient
     from collections import namedtuple
-    from pathlib import Path
     import os
 
     InsertOutput = namedtuple("InsertOutput", ["status", "chunks_inserted"])
@@ -55,10 +54,8 @@ def insert_via_llamastack_component(
         print(f"  [SKIP] No processed file for {original_key}")
         return InsertOutput(status="skipped", chunks_inserted=0)
 
-    file_path = Path(processed_file)
-    content = file_path.read_text(encoding="utf-8")
-    content_len = len(content)
-    print(f"Inserting: {original_key} ({content_len} chars)")
+    file_size = os.path.getsize(processed_file)
+    print(f"Inserting: {original_key} ({file_size} bytes)")
     print(f"  LlamaStack: {base_url}")
     print(f"  Vector stores: {vector_db_ids}")
 
@@ -66,12 +63,8 @@ def insert_via_llamastack_component(
 
     # Upload the markdown file to LlamaStack Files API
     # Use a descriptive filename based on the original PDF key
-    upload_name = original_key.replace("/", "_").replace(" ", "_")
-    for prefix in ("rag-documents_", "_shared-data_documents_"):
-        if upload_name.startswith(prefix):
-            upload_name = upload_name[len(prefix):]
-    if not upload_name.endswith(".md"):
-        upload_name = upload_name.rsplit(".", 1)[0] + ".md" if "." in upload_name else upload_name + ".md"
+    basename = os.path.basename(original_key)
+    upload_name = os.path.splitext(basename)[0] + ".md"
 
     try:
         with open(processed_file, "rb") as f:

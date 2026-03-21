@@ -17,9 +17,9 @@ from kfp.dsl import component, Output, HTML
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
-        "boto3",
-        "pyyaml",
-        "requests",
+        "boto3>=1.34.0",
+        "pyyaml>=6.0",
+        "requests>=2.31.0",
     ],
 )
 def run_and_score_tests_component(

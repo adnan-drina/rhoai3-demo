@@ -5,14 +5,14 @@ and uploads results to S3 for dashboard viewing.
 Uses the GuideLLM container image directly as base_image.
 """
 
-from kfp.dsl import component
+from kfp.dsl import component, Output, Metrics
 
 GUIDELLM_IMAGE = "ghcr.io/vllm-project/guidellm:stable"
 
 
 @component(
     base_image=GUIDELLM_IMAGE,
-    packages_to_install=["boto3"],
+    packages_to_install=["boto3>=1.34.0"],
 )
 def run_benchmark(
     model_name: str,
@@ -20,6 +20,7 @@ def run_benchmark(
     max_seconds: int,
     max_requests: int,
     run_id: str,
+    metrics: Output[Metrics] = None,
 ) -> str:
     """Run GuideLLM benchmark, print summary, upload results to S3.
 
@@ -29,6 +30,7 @@ def run_benchmark(
         max_seconds: Maximum seconds per rate level.
         max_requests: Maximum requests per rate level.
         run_id: Unique identifier for grouping results in S3.
+        metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
         S3 URI of uploaded results, or a status message if upload was skipped.
@@ -88,9 +90,16 @@ echo "Benchmark complete for {model_name}"
     print(f"\n{'=' * 60}")
     print(f"GuideLLM Summary: {model_name} ({len(benchmarks)} rate levels)")
     print(f"{'=' * 60}")
+    total_completed = 0
     for i, bench in enumerate(benchmarks):
         completed = bench.get("request_totals", {}).get("completed", 0)
+        total_completed += completed
         print(f"  Rate level {i+1}: {completed} completed requests")
+
+    if metrics is not None:
+        metrics.log_metric("model_name", model_name)
+        metrics.log_metric("rate_levels", len(benchmarks))
+        metrics.log_metric("total_completed_requests", total_completed)
 
     endpoint = os.environ.get("AWS_S3_ENDPOINT", "")
     if endpoint:

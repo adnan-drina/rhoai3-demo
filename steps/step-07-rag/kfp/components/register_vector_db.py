@@ -11,7 +11,7 @@ from kfp.dsl import component
 
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
-    packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
+    packages_to_install=["llama_stack_client>=0.4,<0.5"],
 )
 def register_vector_db_component(
     setup_config: Dict[str, Any],
@@ -27,6 +27,8 @@ def register_vector_db_component(
     """
     from llama_stack_client import LlamaStackClient
     from collections import namedtuple
+
+    VectorDBOutput = namedtuple("VectorDBOutput", ["vector_db_status", "vector_db_ids"])
 
     print("Registering Vector Database")
     print("=" * 60)
@@ -73,7 +75,6 @@ def register_vector_db_component(
                 print(f"  [OK] Already exists, using name as ID: {created_id}")
             else:
                 print(f"  [FAIL] {e}")
-                VectorDBOutput = namedtuple("VectorDBOutput", ["vector_db_status", "vector_db_ids"])
                 return VectorDBOutput(
                     vector_db_status={"status": "error", "error": str(e), "ready": False},
                     vector_db_ids=[],
@@ -88,5 +89,4 @@ def register_vector_db_component(
         "ready": True,
     }
 
-    VectorDBOutput = namedtuple("VectorDBOutput", ["vector_db_status", "vector_db_ids"])
     return VectorDBOutput(vector_db_status=status, vector_db_ids=[created_id])

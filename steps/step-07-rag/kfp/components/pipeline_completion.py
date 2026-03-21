@@ -6,7 +6,7 @@ completion detection when branches (ParallelFor) are used.
 """
 
 from typing import NamedTuple, Dict, Any
-from kfp.dsl import component
+from kfp.dsl import component, Output, Metrics
 
 
 @component(
@@ -15,12 +15,14 @@ from kfp.dsl import component
 def pipeline_completion_component(
     vector_db_status: Dict[str, Any],
     file_count: int,
+    metrics: Output[Metrics] = None,
 ) -> NamedTuple("CompletionOutput", [("completion_status", str)]):
     """Terminal convergence node — summarizes pipeline outcome.
 
     Args:
         vector_db_status: Status dict from the register_vector_db step.
         file_count: Number of files processed by the download step.
+        metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
         completion_status: Overall pipeline status (SUCCESS, PARTIAL_SUCCESS, or FAILED).
@@ -44,6 +46,12 @@ def pipeline_completion_component(
     print(f"  Files:      {file_count}")
     print(f"  Status:     {status}")
     print("=" * 60)
+
+    if metrics is not None:
+        metrics.log_metric("file_count", file_count)
+        metrics.log_metric("vector_db_id", db_id)
+        metrics.log_metric("vector_db_ready", int(db_ok))
+        metrics.log_metric("status", status)
 
     CompletionOutput = namedtuple("CompletionOutput", ["completion_status"])
     return CompletionOutput(completion_status=status)

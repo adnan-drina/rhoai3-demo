@@ -193,7 +193,6 @@ def batch_docling_rag_pipeline(
     # --- Stage 4: Split files into groups for parallel processing ---
     split = split_pdf_list_component(
         downloaded_files=download.outputs["downloaded_files"],
-        original_keys=download.outputs["original_keys"],
         num_splits=num_splits,
     )
     split.after(reg_db)

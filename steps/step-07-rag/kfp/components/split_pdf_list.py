@@ -1,5 +1,5 @@
 """
-Split PDF List Component — divides a list of PDF URIs into balanced groups
+Split PDF List Component — divides a list of PDF paths into balanced groups
 for parallel processing via dsl.ParallelFor.
 """
 
@@ -12,33 +12,27 @@ from kfp.dsl import component
 )
 def split_pdf_list_component(
     downloaded_files: List[str],
-    original_keys: List[str],
     num_splits: int,
-) -> NamedTuple("SplitOutput", [("file_groups", List[List[str]]), ("key_groups", List[List[str]])]):
+) -> NamedTuple("SplitOutput", [("file_groups", List[List[str]])]):
     """Divide a list of PDF paths into balanced groups for parallel processing.
 
     Args:
         downloaded_files: List of local file paths from the download step.
-        original_keys: Corresponding original S3 keys.
         num_splits: Number of parallel groups to create.
 
     Returns:
         file_groups: Nested list of file paths, one sub-list per group.
-        key_groups: Nested list of S3 keys, matching file_groups.
     """
     from collections import namedtuple
 
     n = max(1, num_splits)
     file_groups: list[list[str]] = [[] for _ in range(n)]
-    key_groups: list[list[str]] = [[] for _ in range(n)]
 
-    for i, (fp, key) in enumerate(zip(downloaded_files, original_keys)):
-        idx = i % n
-        file_groups[idx].append(fp)
-        key_groups[idx].append(key)
+    for i, fp in enumerate(downloaded_files):
+        file_groups[i % n].append(fp)
 
     for g_idx, group in enumerate(file_groups):
         print(f"  Group {g_idx}: {len(group)} files")
 
-    SplitOutput = namedtuple("SplitOutput", ["file_groups", "key_groups"])
-    return SplitOutput(file_groups=file_groups, key_groups=key_groups)
+    SplitOutput = namedtuple("SplitOutput", ["file_groups"])
+    return SplitOutput(file_groups=file_groups)

@@ -5,13 +5,12 @@ consumed by all downstream pipeline components.
 Adopted from rhoai-genaiops with greedy/top_p sampling strategy.
 """
 
-from typing import NamedTuple, Optional, Dict, Any
+from typing import NamedTuple, Dict, Any
 from kfp.dsl import component
 
 
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
-    packages_to_install=["llama_stack_client>=0.4,<0.5", "requests"],
 )
 def setup_config_component(
     llamastack_url: str,
