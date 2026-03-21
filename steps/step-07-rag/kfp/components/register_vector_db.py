@@ -15,12 +15,20 @@ from kfp.dsl import component
     pip_index_urls=["https://pypi.org/simple"],
 )
 def register_vector_db_component(
-    setup_config: Dict[str, Any],
+    llamastack_url: str,
+    vector_db_id: str,
+    embedding_model: str,
+    embedding_dimension: int,
+    vector_provider: str,
 ) -> NamedTuple("VectorDBOutput", [("vector_db_status", Dict[str, Any]), ("vector_db_ids", List[str])]):
     """Create or re-use a pgvector vector store through LlamaStack.
 
     Args:
-        setup_config: Runtime configuration dict from setup_config_component.
+        llamastack_url: LlamaStack service endpoint URL.
+        vector_db_id: Identifier for the vector store collection.
+        embedding_model: Embedding model identifier.
+        embedding_dimension: Dimensionality of the embedding vectors.
+        vector_provider: Vector DB provider (e.g. pgvector).
 
     Returns:
         vector_db_status: Dict with status, vector_db_id, and readiness flag.
@@ -33,19 +41,13 @@ def register_vector_db_component(
 
     print("Registering Vector Database")
     print("=" * 60)
-
-    base_url = setup_config["base_url"]
-    vector_db_id = setup_config["vector_db_id"]
-    doc_config = setup_config["document_intelligence"]
-
-    print(f"  LlamaStack: {base_url}")
+    print(f"  LlamaStack: {llamastack_url}")
     print(f"  DB ID:      {vector_db_id}")
-    print(f"  Embedding:  {doc_config['embedding_model']} ({doc_config['embedding_dimension']}d)")
-    print(f"  Provider:   {doc_config['vector_provider']}")
+    print(f"  Embedding:  {embedding_model} ({embedding_dimension}d)")
+    print(f"  Provider:   {vector_provider}")
 
-    client = LlamaStackClient(base_url=base_url)
+    client = LlamaStackClient(base_url=llamastack_url)
 
-    # Look up existing vector store by name before attempting to create
     created_id = None
     try:
         existing = client.vector_stores.list()
@@ -62,9 +64,9 @@ def register_vector_db_component(
             vs = client.vector_stores.create(
                 name=vector_db_id,
                 extra_body={
-                    "embedding_model": doc_config["embedding_model"],
-                    "embedding_dimension": doc_config["embedding_dimension"],
-                    "provider_id": doc_config["vector_provider"],
+                    "embedding_model": embedding_model,
+                    "embedding_dimension": embedding_dimension,
+                    "provider_id": vector_provider,
                     "vector_db_id": vector_db_id,
                 },
             )
@@ -84,9 +86,9 @@ def register_vector_db_component(
     status = {
         "status": "success",
         "vector_db_id": created_id,
-        "embedding_model": doc_config["embedding_model"],
-        "embedding_dimension": doc_config["embedding_dimension"],
-        "provider": doc_config["vector_provider"],
+        "embedding_model": embedding_model,
+        "embedding_dimension": embedding_dimension,
+        "provider": vector_provider,
         "ready": True,
     }
 

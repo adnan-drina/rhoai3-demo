@@ -9,7 +9,7 @@ Uses 0.4.x API: files.create() for upload, then vector_stores.files.create()
 for indexing with static chunking strategy.
 """
 
-from typing import NamedTuple, Dict, Any, List
+from typing import NamedTuple, List
 from kfp.dsl import component
 
 
@@ -19,16 +19,18 @@ from kfp.dsl import component
     pip_index_urls=["https://pypi.org/simple"],
 )
 def insert_via_llamastack_component(
-    setup_config: Dict[str, Any],
+    llamastack_url: str,
     processed_file: str,
     vector_db_ids: List[str],
+    chunk_size_tokens: int = 512,
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
     """Ingest processed Markdown into pgvector via LlamaStack vector_stores API.
 
     Args:
-        setup_config: Runtime configuration dict from setup_config_component.
+        llamastack_url: LlamaStack service endpoint URL.
         processed_file: Path to the Markdown file on the shared PVC.
         vector_db_ids: List of vector store IDs to index into.
+        chunk_size_tokens: Token count per chunk for static chunking strategy.
 
     Returns:
         status: Insertion status (success, skipped, or error).
@@ -40,13 +42,6 @@ def insert_via_llamastack_component(
 
     InsertOutput = namedtuple("InsertOutput", ["status", "chunks_inserted"])
 
-    base_url = setup_config["base_url"]
-    chunk_size = setup_config["document_intelligence"]["chunk_size_tokens"]
-    vector_db_id = setup_config["vector_db_id"]
-
-    if not vector_db_ids:
-        vector_db_ids = [vector_db_id]
-
     if not processed_file or not os.path.exists(processed_file):
         print(f"  [SKIP] No processed file: {processed_file}")
         return InsertOutput(status="skipped", chunks_inserted=0)
@@ -55,10 +50,10 @@ def insert_via_llamastack_component(
     upload_name = os.path.splitext(os.path.basename(processed_file))[0] + ".md"
 
     print(f"Inserting: {upload_name} ({file_size} bytes)")
-    print(f"  LlamaStack: {base_url}")
+    print(f"  LlamaStack: {llamastack_url}")
     print(f"  Vector stores: {vector_db_ids}")
 
-    client = LlamaStackClient(base_url=base_url, timeout=300.0)
+    client = LlamaStackClient(base_url=llamastack_url, timeout=300.0)
 
     try:
         with open(processed_file, "rb") as f:
@@ -71,11 +66,11 @@ def insert_via_llamastack_component(
         print(f"  [FAIL] File upload: {e}")
         return InsertOutput(status="error", chunks_inserted=0)
 
-    chunk_overlap = max(1, chunk_size // 4)
+    chunk_overlap = max(1, chunk_size_tokens // 4)
     chunking_strategy = {
         "type": "static",
         "static": {
-            "max_chunk_size_tokens": chunk_size,
+            "max_chunk_size_tokens": chunk_size_tokens,
             "chunk_overlap_tokens": chunk_overlap,
         },
     }

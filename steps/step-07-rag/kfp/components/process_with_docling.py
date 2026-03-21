@@ -6,7 +6,7 @@ Docling v1.14.3 API: POST /v1/convert/file
 Response: {"document": {"md_content": "..."}, "status": "success|failure"}
 """
 
-from typing import NamedTuple, Dict, Any
+from typing import NamedTuple
 from kfp.dsl import component
 
 
@@ -17,15 +17,15 @@ from kfp.dsl import component
 )
 def process_with_docling_component(
     document_path: str,
-    original_key: str,
-    setup_config: Dict[str, Any],
+    docling_service: str,
+    processing_timeout: int,
 ) -> NamedTuple("DoclingOutput", [("processed_file", str), ("success", bool)]):
     """Convert a PDF to Markdown using the Docling REST API.
 
     Args:
         document_path: Local path to the PDF file on the shared PVC.
-        original_key: Original S3 key for logging and metadata.
-        setup_config: Runtime configuration dict from setup_config_component.
+        docling_service: Docling REST API endpoint URL.
+        processing_timeout: Timeout in seconds for document processing.
 
     Returns:
         processed_file: Path to the generated Markdown file on the shared PVC.
@@ -39,14 +39,10 @@ def process_with_docling_component(
     import uuid
     from collections import namedtuple
 
-    doc_config = setup_config["document_intelligence"]
-    api_address = doc_config["docling_service"]
-    timeout = doc_config["processing_timeout"]
-
     DoclingOutput = namedtuple("DoclingOutput", ["processed_file", "success"])
 
-    print(f"Processing: {original_key}")
-    print(f"  Docling: {api_address}/v1/convert/file")
+    print(f"Processing: {os.path.basename(document_path)}")
+    print(f"  Docling: {docling_service}/v1/convert/file")
 
     if not os.path.exists(document_path):
         print(f"  [FAIL] File not found: {document_path}")
@@ -73,10 +69,10 @@ def process_with_docling_component(
 
     try:
         response = requests.post(
-            f"{api_address}/v1/convert/file",
+            f"{docling_service}/v1/convert/file",
             files=files,
             data={"to_formats": "md", "image_export_mode": "placeholder"},
-            timeout=timeout,
+            timeout=processing_timeout,
         )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:

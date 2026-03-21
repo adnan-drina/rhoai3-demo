@@ -8,11 +8,8 @@ Defines two pipelines:
 Components are in kfp/components/ following KFP modular best practices.
 Reuses the existing DSPA (dspa-rag) in private-ai namespace.
 
-Key design choices (RHOAI 3.3 aligned):
-  - kubernetes.use_secret_as_env()  for MinIO credentials (no secrets in params)
-  - kubernetes.mount_pvc()          for inter-component file sharing
-  - Server-side chunking            via vector_stores.files.create()
-  - Docling fallback logic          for API version tolerance
+Pipeline flow:
+  download → register_db → ParallelFor(docling → insert) → completion
 
 Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 """
@@ -22,7 +19,6 @@ from kfp import dsl, kubernetes
 from kfp.dsl import PipelineTask
 from pathlib import Path
 
-from components.setup_config import setup_config_component
 from components.download_from_s3 import download_from_s3_component
 from components.register_vector_db import register_vector_db_component
 from components.process_with_docling import process_with_docling_component
@@ -76,33 +72,14 @@ def docling_rag_pipeline(
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
     docling_service: str = "http://docling-service.private-ai.svc:5001",
-    model_id: str = "granite-8b-agent",
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
     vector_provider: str = "pgvector",
     vector_db_id: str = "acme_corporate",
-    temperature: float = 0.0,
-    max_tokens: int = 4096,
     processing_timeout: int = 600,
 ):
-    # --- Step 1: Setup Configuration ---
-    setup = setup_config_component(
-        llamastack_url=llamastack_url,
-        model_id=model_id,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        embedding_model=embedding_model,
-        embedding_dimension=embedding_dimension,
-        chunk_size_tokens=chunk_size_tokens,
-        vector_provider=vector_provider,
-        docling_service=docling_service,
-        processing_timeout=processing_timeout,
-        vector_db_id=vector_db_id,
-    )
-    setup.set_caching_options(False)
-
-    # --- Step 2: Download from S3 ---
+    # --- Step 1: Download from S3 ---
     download = download_from_s3_component(
         s3_prefix=input_uri,
         minio_endpoint=minio_endpoint,
@@ -112,13 +89,18 @@ def docling_rag_pipeline(
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
     download.set_caching_options(False)
 
-    # --- Step 3: Register Vector DB (runs in parallel with download) ---
+    # --- Step 2: Register Vector DB ---
     reg_db = register_vector_db_component(
-        setup_config=setup.outputs["setup_config"],
+        llamastack_url=llamastack_url,
+        vector_db_id=vector_db_id,
+        embedding_model=embedding_model,
+        embedding_dimension=embedding_dimension,
+        vector_provider=vector_provider,
     )
+    reg_db.after(download)
     reg_db.set_caching_options(False)
 
-    # --- Step 4: Process & Insert each document ---
+    # --- Step 3: Process & Insert each document ---
     with dsl.ParallelFor(
         items=download.outputs["downloaded_files"],
         parallelism=1,
@@ -126,8 +108,8 @@ def docling_rag_pipeline(
     ) as doc_path:
         docling = process_with_docling_component(
             document_path=doc_path,
-            original_key=doc_path,
-            setup_config=setup.outputs["setup_config"],
+            docling_service=docling_service,
+            processing_timeout=processing_timeout,
         )
         _mount_pvc(docling)
         _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
@@ -135,15 +117,16 @@ def docling_rag_pipeline(
         docling.set_caching_options(False)
 
         insert = insert_via_llamastack_component(
-            setup_config=setup.outputs["setup_config"],
+            llamastack_url=llamastack_url,
             processed_file=docling.outputs["processed_file"],
             vector_db_ids=reg_db.outputs["vector_db_ids"],
+            chunk_size_tokens=chunk_size_tokens,
         )
         _mount_pvc(insert)
         _set_resources(insert)
         insert.set_caching_options(False)
 
-    # --- Step 5: Completion ---
+    # --- Step 4: Completion ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],
@@ -165,33 +148,14 @@ def batch_docling_rag_pipeline(
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
     docling_service: str = "http://docling-service.private-ai.svc:5001",
-    model_id: str = "granite-8b-agent",
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
     vector_provider: str = "pgvector",
     vector_db_id: str = "acme_corporate",
-    temperature: float = 0.0,
-    max_tokens: int = 4096,
     processing_timeout: int = 600,
 ):
-    # --- Stage 1: Setup Configuration ---
-    setup = setup_config_component(
-        llamastack_url=llamastack_url,
-        model_id=model_id,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        embedding_model=embedding_model,
-        embedding_dimension=embedding_dimension,
-        chunk_size_tokens=chunk_size_tokens,
-        vector_provider=vector_provider,
-        docling_service=docling_service,
-        processing_timeout=processing_timeout,
-        vector_db_id=vector_db_id,
-    )
-    setup.set_caching_options(False)
-
-    # --- Stage 2: Download all PDFs from S3 prefix ---
+    # --- Step 1: Download all PDFs from S3 ---
     download = download_from_s3_component(
         s3_prefix=s3_prefix,
         minio_endpoint=minio_endpoint,
@@ -201,16 +165,19 @@ def batch_docling_rag_pipeline(
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
     download.set_caching_options(False)
 
-    # --- Stage 3: Register vector DB (runs in parallel with download; idempotent) ---
+    # --- Step 2: Register vector DB ---
     reg_db = register_vector_db_component(
-        setup_config=setup.outputs["setup_config"],
+        llamastack_url=llamastack_url,
+        vector_db_id=vector_db_id,
+        embedding_model=embedding_model,
+        embedding_dimension=embedding_dimension,
+        vector_provider=vector_provider,
     )
+    reg_db.after(download)
     reg_db.set_caching_options(False)
     reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Stage 4: Process & insert each document in parallel ---
-    # ParallelFor items come from download; docling.after(reg_db) ensures
-    # processing starts only after both download AND register complete.
+    # --- Step 3: Process & insert each document in parallel ---
     with dsl.ParallelFor(
         items=download.outputs["downloaded_files"],
         parallelism=2,
@@ -218,8 +185,8 @@ def batch_docling_rag_pipeline(
     ) as doc_path:
         docling = process_with_docling_component(
             document_path=doc_path,
-            original_key=doc_path,
-            setup_config=setup.outputs["setup_config"],
+            docling_service=docling_service,
+            processing_timeout=processing_timeout,
         )
         _mount_pvc(docling)
         _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
@@ -228,16 +195,17 @@ def batch_docling_rag_pipeline(
         docling.set_retry(num_retries=1, backoff_duration="30s", backoff_factor=2.0)
 
         insert = insert_via_llamastack_component(
-            setup_config=setup.outputs["setup_config"],
+            llamastack_url=llamastack_url,
             processed_file=docling.outputs["processed_file"],
             vector_db_ids=reg_db.outputs["vector_db_ids"],
+            chunk_size_tokens=chunk_size_tokens,
         )
         _mount_pvc(insert)
         _set_resources(insert)
         insert.set_caching_options(False)
         insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Stage 5: Convergence ---
+    # --- Step 4: Completion ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],
