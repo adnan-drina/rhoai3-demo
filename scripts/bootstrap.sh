@@ -8,6 +8,19 @@ source "$REPO_ROOT/scripts/lib.sh"
 load_env
 check_oc_logged_in
 
+# Auto-detect repo URL from git remote (supports forks)
+GIT_REPO_URL=$(git -C "$REPO_ROOT" remote get-url origin 2>/dev/null || echo "https://github.com/adnan-drina/rhoai3-demo.git")
+GIT_REPO_URL="${GIT_REPO_URL%.git}.git"
+log_info "Repository: $GIT_REPO_URL"
+
+# Update all ArgoCD Applications to use the detected repo URL
+if [[ "$GIT_REPO_URL" != "https://github.com/adnan-drina/rhoai3-demo.git" ]]; then
+    log_step "Updating ArgoCD Applications for fork: $GIT_REPO_URL"
+    sed -i '' "s|https://github.com/adnan-drina/rhoai3-demo.git|${GIT_REPO_URL}|g" \
+        "$REPO_ROOT"/gitops/argocd/app-of-apps/step-*.yaml
+    log_success "Updated $(ls "$REPO_ROOT"/gitops/argocd/app-of-apps/step-*.yaml | wc -l | tr -d ' ') Application files"
+fi
+
 log_step "Installing OpenShift GitOps operator"
 
 cat <<EOF | oc apply -f -
@@ -17,7 +30,7 @@ metadata:
   name: openshift-gitops-operator
   namespace: openshift-operators
 spec:
-  channel: latest
+  channel: gitops-1.15
   name: openshift-gitops-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace

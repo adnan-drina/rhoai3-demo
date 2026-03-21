@@ -74,8 +74,10 @@ A complete MLOps lifecycle from notebook to production:
 git clone https://github.com/adnan-drina/rhoai3-demo.git && cd rhoai3-demo
 cp env.example .env              # Edit with your config
 oc login --token=<token> --server=<api>
-./scripts/bootstrap.sh           # Install ArgoCD + AppProject
+./scripts/bootstrap.sh           # Install ArgoCD + auto-detects fork URL
 ```
+
+> **Using a fork?** `bootstrap.sh` auto-detects your git remote and updates all ArgoCD Applications. No manual `sed` needed.
 
 Deploy by theme or all steps in order:
 
@@ -121,6 +123,13 @@ Validate the ACME demo flow:
 | 10 | [Agentic AI & MCP](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers | [Configuring MCP servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user) |
 | 11 | [Face Recognition](steps/step-11-face-recognition/README.md) | YOLO11 ONNX, KServe + OpenVINO, CPU-only inference | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
 | 12 | [MLOps Pipeline](steps/step-12-mlops-pipeline/README.md) | KFP v2 training, Model Registry, TrustyAI monitoring | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/) |
+
+## GitOps Architecture
+
+- **Per-step deployment** — each `deploy.sh` applies its own ArgoCD Application (`oc apply -f`), giving control over ordering and runtime setup (secrets, SCC grants, model uploads) between syncs.
+- **`targetRevision: main`** — acceptable for a demo project where the single branch is the source of truth. For stable demo releases, tag the repo and update across all 12 Applications.
+- **Single ArgoCD instance** — both platform (steps 01-02) and application (steps 03-12) resources are managed by the default `openshift-gitops` instance. Production audiences should consider separating cluster-config from app-deployment.
+- **Fork-friendly** — `bootstrap.sh` auto-detects the git remote URL and updates all ArgoCD Applications. No manual URL changes needed for forks.
 
 ## Demo Credentials
 
