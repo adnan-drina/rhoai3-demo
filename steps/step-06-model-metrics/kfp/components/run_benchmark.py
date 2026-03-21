@@ -1,9 +1,8 @@
 """
 Run Benchmark Component — executes GuideLLM against a deployed model.
 
-Uses the GuideLLM container image directly as base_image. This step only
-runs the benchmark binary and returns the raw results JSON. Upload and
-summary are handled by downstream atomic steps.
+Uses the GuideLLM container image directly as base_image. Writes results
+to /shared-data/results.json on the shared PVC for downstream steps.
 """
 
 from kfp.dsl import component
@@ -20,7 +19,7 @@ def run_benchmark(
     max_seconds: int,
     max_requests: int,
 ) -> str:
-    """Run GuideLLM benchmark and return raw results JSON.
+    """Run GuideLLM benchmark and write results to the shared PVC.
 
     Args:
         model_name: Name of the deployed InferenceService to benchmark.
@@ -29,7 +28,7 @@ def run_benchmark(
         max_requests: Maximum requests per rate level.
 
     Returns:
-        Raw GuideLLM results as a JSON string.
+        Path to the results JSON on the shared PVC.
     """
     import json
     import os
@@ -38,7 +37,9 @@ def run_benchmark(
     os.environ.setdefault("HF_HOME", "/tmp/.cache/huggingface")
 
     target = f"http://{model_name}-predictor.private-ai.svc.cluster.local:8080/v1"
-    results_path = "/tmp/results.json"
+    results_dir = "/shared-data"
+    os.makedirs(results_dir, exist_ok=True)
+    results_path = f"{results_dir}/results.json"
 
     prompts_json = json.dumps([
         {"prompt": "Explain the difference between containers and virtual machines in detail."},
@@ -79,5 +80,6 @@ echo "Benchmark complete for {model_name}"
     if not os.path.exists(results_path):
         raise RuntimeError(f"{results_path} not found — GuideLLM benchmark failed")
 
-    with open(results_path) as f:
-        return f.read()
+    size = os.path.getsize(results_path)
+    print(f"Results written: {results_path} ({size} bytes)")
+    return results_path

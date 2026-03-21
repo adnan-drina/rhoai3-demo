@@ -1,5 +1,6 @@
 """
-Upload Results Component — uploads GuideLLM benchmark results JSON to S3.
+Upload Results Component — reads GuideLLM results from the shared PVC
+and uploads to S3.
 """
 
 from kfp.dsl import component
@@ -10,14 +11,14 @@ from kfp.dsl import component
     packages_to_install=["boto3>=1.34.0"],
 )
 def upload_results(
-    results_json: str,
+    results_path: str,
     model_name: str,
     run_id: str,
 ) -> str:
-    """Upload benchmark results JSON to S3.
+    """Upload benchmark results from the shared PVC to S3.
 
     Args:
-        results_json: Raw GuideLLM results as a JSON string.
+        results_path: Path to results JSON on the shared PVC.
         model_name: Model name for the S3 key path.
         run_id: Run identifier for the S3 key path.
 
@@ -25,12 +26,15 @@ def upload_results(
         S3 URI of uploaded results.
     """
     import os
-    import tempfile
 
     endpoint = os.environ.get("AWS_S3_ENDPOINT", "")
     if not endpoint:
         print("No S3 credentials configured — skipping upload")
         return "skipped"
+
+    if not os.path.exists(results_path):
+        print(f"Results file not found: {results_path}")
+        return "missing"
 
     import boto3
 
@@ -45,14 +49,7 @@ def upload_results(
     bucket = os.environ.get("AWS_S3_BUCKET", "rhoai-storage")
     key = f"benchmark-results/{run_id}/{model_name}-results.json"
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        f.write(results_json)
-        tmp_path = f.name
-
-    try:
-        s3.upload_file(tmp_path, bucket, key, ExtraArgs={"ContentType": "application/json"})
-    finally:
-        os.unlink(tmp_path)
+    s3.upload_file(results_path, bucket, key, ExtraArgs={"ContentType": "application/json"})
 
     uri = f"s3://{bucket}/{key}"
     print(f"Results uploaded: {uri}")

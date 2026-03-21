@@ -1,0 +1,18 @@
+# Shared workspace for benchmark pipeline inter-step file transfer.
+# GuideLLM writes results JSON here; upload and summary steps read it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: benchmark-pipeline-workspace
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/part-of: model-metrics
+    app.kubernetes.io/component: pipeline-workspace
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

@@ -2,6 +2,7 @@
 KFP v2 GuideLLM Benchmark Pipeline
 
 3-step pipeline: run GuideLLM benchmark, upload results to S3, log summary metrics.
+Results flow between steps via shared PVC at /shared-data.
 
 Components are in kfp/components/ following KFP modular best practices.
 Reuses dspa-rag (step-07) for pipeline execution — no new DSPA needed.
@@ -21,6 +22,7 @@ from components.upload_results import upload_results
 from components.benchmark_summary import benchmark_summary
 
 MINIO_SECRET = "minio-connection"
+PIPELINE_PVC = "benchmark-pipeline-workspace"
 
 
 def _set_resources(
@@ -48,6 +50,10 @@ def _inject_minio(task: PipelineTask) -> None:
     )
 
 
+def _mount_pvc(task: PipelineTask) -> None:
+    kubernetes.mount_pvc(task, pvc_name=PIPELINE_PVC, mount_path="/shared-data")
+
+
 @dsl.pipeline(
     name="bench-granite-8b",
     description=(
@@ -70,24 +76,27 @@ def granite_benchmark_pipeline(
         max_seconds=max_seconds,
         max_requests=max_requests,
     )
+    _mount_pvc(bench)
     _set_resources(bench)
     bench.set_caching_options(False)
 
     # --- Step 2: Upload Results to S3 ---
     upload = upload_results(
-        results_json=bench.output,
+        results_path=bench.output,
         model_name=model_name,
         run_id=run_id,
     )
+    _mount_pvc(upload)
     _inject_minio(upload)
     upload.set_caching_options(False)
 
     # --- Step 3: Summary Report ---
     summary = benchmark_summary(
-        results_json=bench.output,
+        results_path=bench.output,
         model_name=model_name,
         s3_uri=upload.output,
     )
+    _mount_pvc(summary)
     summary.set_caching_options(False)
 
 
@@ -113,24 +122,27 @@ def mistral_benchmark_pipeline(
         max_seconds=max_seconds,
         max_requests=max_requests,
     )
+    _mount_pvc(bench)
     _set_resources(bench)
     bench.set_caching_options(False)
 
     # --- Step 2: Upload Results to S3 ---
     upload = upload_results(
-        results_json=bench.output,
+        results_path=bench.output,
         model_name=model_name,
         run_id=run_id,
     )
+    _mount_pvc(upload)
     _inject_minio(upload)
     upload.set_caching_options(False)
 
     # --- Step 3: Summary Report ---
     summary = benchmark_summary(
-        results_json=bench.output,
+        results_path=bench.output,
         model_name=model_name,
         s3_uri=upload.output,
     )
+    _mount_pvc(summary)
     summary.set_caching_options(False)
 
 
