@@ -1,11 +1,5 @@
 #!/bin/bash
-# =============================================================================
-# Step 12: MLOps Training Pipeline
-# =============================================================================
-# Deploys the pipeline infrastructure (PVC, RBAC) via ArgoCD.
-# The pipeline itself is compiled and uploaded via run-training-pipeline.sh.
-# =============================================================================
-
+# Step 12: MLOps Training Pipeline — full deploy + pipeline execution
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,13 +14,10 @@ check_oc_logged_in
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 12: MLOps Training Pipeline                                    ║"
-echo "║  KFP v2: Train → Evaluate → Register → Deploy                       ║"
+echo "║  KFP v2: Train → Evaluate → Register → Deploy → Monitor             ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# =============================================================================
-# Pre-flight Checks
-# =============================================================================
 log_step "Checking prerequisites..."
 
 if ! oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
@@ -49,26 +40,95 @@ else
 fi
 echo ""
 
-# =============================================================================
-# Deploy via ArgoCD
-# =============================================================================
 log_step "Creating ArgoCD Application for Step 12..."
-
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
-# =============================================================================
-# Summary
-# =============================================================================
-log_step "Deployment Complete"
+# Wait for ArgoCD sync
+log_step "Waiting for ArgoCD sync..."
+TIMEOUT=120
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    HEALTH=$(oc get application "$STEP_NAME" -n openshift-gitops \
+        -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+    if [ "$HEALTH" = "Healthy" ]; then
+        log_success "ArgoCD sync complete"
+        break
+    fi
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+done
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    log_warn "ArgoCD sync not complete — continuing (resources may sync in background)"
+fi
+echo ""
 
+# Upload training photos to MinIO
+log_step "Uploading training data to MinIO..."
+if [ -f "$SCRIPT_DIR/upload-training-data.sh" ]; then
+    PHOTOS_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/my_photos"
+    if [ -d "$PHOTOS_DIR" ] && [ "$(find "$PHOTOS_DIR" -name "*.jpeg" -o -name "*.jpg" -o -name "*.png" 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]; then
+        chmod +x "$SCRIPT_DIR/upload-training-data.sh"
+        "$SCRIPT_DIR/upload-training-data.sh" || log_warn "Training data upload had issues — pipeline may use existing data"
+    else
+        log_info "No local training photos found — pipeline will use existing data in MinIO"
+    fi
+else
+    log_info "upload-training-data.sh not found — skip upload"
+fi
 echo ""
-echo "  Run the training pipeline:"
-echo "    ./steps/step-12-mlops-pipeline/run-training-pipeline.sh"
+
+# Compile and launch the training pipeline
+log_step "Launching training pipeline..."
+if [ -f "$SCRIPT_DIR/run-training-pipeline.sh" ]; then
+    chmod +x "$SCRIPT_DIR/run-training-pipeline.sh"
+    "$SCRIPT_DIR/run-training-pipeline.sh" || log_warn "Pipeline launch had issues — check Dashboard"
+else
+    log_error "run-training-pipeline.sh not found"
+fi
 echo ""
-echo "  Watch pipeline runs in RHOAI Dashboard:"
-echo "    Data Science Projects → private-ai → Pipelines"
+
+# Wait for pipeline completion
+log_step "Waiting for pipeline to complete (~20 min)..."
+TIMEOUT=1500
+ELAPSED=0
+PIPELINE_DONE=false
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    # Check for any running pipeline pods
+    ACTIVE=$(oc get pods -n "$NAMESPACE" -l pipeline/runid --no-headers 2>/dev/null | grep -v Completed | grep -v Error | wc -l | tr -d ' ')
+    if [ "$ACTIVE" -eq 0 ] && [ $ELAPSED -gt 60 ]; then
+        PIPELINE_DONE=true
+        break
+    fi
+    sleep 30
+    ELAPSED=$((ELAPSED + 30))
+    if (( ELAPSED % 120 == 0 )); then
+        log_info "  Pipeline in progress... (${ELAPSED}s elapsed, $ACTIVE pods active)"
+    fi
+done
+if [ "$PIPELINE_DONE" = "true" ]; then
+    log_success "Training pipeline completed"
+else
+    log_warn "Pipeline did not complete within ${TIMEOUT}s — check Dashboard"
+fi
+echo ""
+
+# Setup TrustyAI monitoring
+log_step "Setting up TrustyAI monitoring..."
+if [ -f "$SCRIPT_DIR/setup-trustyai-metrics.sh" ]; then
+    chmod +x "$SCRIPT_DIR/setup-trustyai-metrics.sh"
+    "$SCRIPT_DIR/setup-trustyai-metrics.sh" || log_warn "TrustyAI setup had issues — configure manually"
+else
+    log_info "setup-trustyai-metrics.sh not found — skip monitoring setup"
+fi
+echo ""
+
+log_step "Deployment Complete"
+echo ""
+echo "  Pipeline runs: RHOAI Dashboard → Data Science Projects → private-ai → Pipelines"
+echo "  Model Registry: RHOAI Dashboard → Settings → Model registries → private-ai-registry"
+echo "  TrustyAI metrics: RHOAI Dashboard → Model Serving → face-recognition → Model bias"
 echo ""
 log_info "Validate: ./steps/step-12-mlops-pipeline/validate.sh"
 echo ""
