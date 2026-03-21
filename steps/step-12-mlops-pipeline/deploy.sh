@@ -79,6 +79,40 @@ else
 fi
 echo ""
 
+# Ensure yolo11n.pt base model is in MinIO (pipeline's prepare_dataset needs it)
+log_step "Ensuring YOLO11 base model in MinIO..."
+VENV_PATH="$REPO_ROOT/.venv-kfp"
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
+fi
+"$VENV_PATH/bin/pip" install -q boto3 2>/dev/null
+
+oc port-forward -n minio-storage svc/minio 9000:9000 &>/dev/null &
+PF_PID=$!
+sleep 3
+
+MINIO_ACCESS=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+MINIO_SECRET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+
+"$VENV_PATH/bin/python3" -c "
+import boto3, os, urllib.request
+from botocore.config import Config
+s3 = boto3.client('s3', endpoint_url='http://localhost:9000',
+    aws_access_key_id='${MINIO_ACCESS}', aws_secret_access_key='${MINIO_SECRET}',
+    config=Config(signature_version='s3v4'))
+try:
+    s3.head_object(Bucket='models', Key='yolo11n.pt')
+    print('yolo11n.pt already in MinIO')
+except:
+    print('Downloading yolo11n.pt from ultralytics...')
+    urllib.request.urlretrieve('https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt', '/tmp/yolo11n.pt')
+    s3.upload_file('/tmp/yolo11n.pt', 'models', 'yolo11n.pt')
+    print('Uploaded to s3://models/yolo11n.pt')
+" 2>/dev/null && log_success "YOLO11 base model ready in MinIO" || log_warn "Could not verify base model"
+
+kill $PF_PID 2>/dev/null
+echo ""
+
 # Compile and launch the training pipeline
 log_step "Launching training pipeline..."
 if [ -f "$SCRIPT_DIR/run-training-pipeline.sh" ]; then
