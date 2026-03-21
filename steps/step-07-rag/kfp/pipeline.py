@@ -27,7 +27,6 @@ from components.download_from_s3 import download_from_s3_component
 from components.register_vector_db import register_vector_db_component
 from components.process_with_docling import process_with_docling_component
 from components.insert_via_llamastack import insert_via_llamastack_component
-from components.split_pdf_list import split_pdf_list_component
 from components.pipeline_completion import pipeline_completion_component
 
 MINIO_SECRET = "minio-connection"
@@ -70,7 +69,7 @@ def _mount_pvc(task: PipelineTask) -> None:
 
 @dsl.pipeline(
     name="rag-ingestion-single",
-    description="RAG single-document ingestion via Docling + LlamaStack Vector IO (v1.0.0)",
+    description="RAG single-document ingestion via Docling + LlamaStack Vector IO",
 )
 def docling_rag_pipeline(
     input_uri: str = "s3://rag-documents/acme/sample.pdf",
@@ -120,7 +119,32 @@ def docling_rag_pipeline(
     reg_db.after(download)
     reg_db.set_caching_options(False)
 
-    # --- Step 4: Completion ---
+    # --- Step 4: Process & Insert each document ---
+    with dsl.ParallelFor(
+        items=download.outputs["downloaded_files"],
+        parallelism=1,
+        name="process-pdf",
+    ) as doc_path:
+        docling = process_with_docling_component(
+            document_path=doc_path,
+            original_key=doc_path,
+            setup_config=setup.outputs["setup_config"],
+        )
+        _mount_pvc(docling)
+        _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
+        docling.after(reg_db)
+        docling.set_caching_options(False)
+
+        insert = insert_via_llamastack_component(
+            setup_config=setup.outputs["setup_config"],
+            processed_file=docling.outputs["processed_file"],
+            vector_db_ids=reg_db.outputs["vector_db_ids"],
+        )
+        _mount_pvc(insert)
+        _set_resources(insert)
+        insert.set_caching_options(False)
+
+    # --- Step 5: Completion ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],
@@ -134,7 +158,7 @@ def docling_rag_pipeline(
 
 @dsl.pipeline(
     name="rag-ingestion-batch",
-    description="RAG batch ingestion: Docling + LlamaStack Vector IO with parallel processing (v1.0.0)",
+    description="RAG batch ingestion: Docling + LlamaStack Vector IO with parallel processing",
     pipeline_root="s3://pipelines/",
 )
 def batch_docling_rag_pipeline(
@@ -151,11 +175,7 @@ def batch_docling_rag_pipeline(
     temperature: float = 0.0,
     max_tokens: int = 4096,
     processing_timeout: int = 600,
-    num_splits: int = 2,
-    cache_buster: str = "",
 ):
-    bucket_name = "rag-documents"
-
     # --- Stage 1: Setup Configuration ---
     setup = setup_config_component(
         llamastack_url=llamastack_url,
@@ -190,49 +210,34 @@ def batch_docling_rag_pipeline(
     reg_db.set_caching_options(False)
     reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Stage 4: Split files into groups for parallel processing ---
-    split = split_pdf_list_component(
-        downloaded_files=download.outputs["downloaded_files"],
-        num_splits=num_splits,
-    )
-    split.after(reg_db)
-    split.set_caching_options(False)
-
-    # --- Stage 5: Process each group in parallel ---
+    # --- Stage 4: Process & insert each document in parallel ---
     with dsl.ParallelFor(
-        items=split.outputs["file_groups"],
-        name="process-group",
-    ) as file_group:
-        with dsl.ParallelFor(
-            items=file_group,
-            parallelism=1,
-            name="process-pdf",
-        ) as doc_path:
-            # Docling conversion
-            docling = process_with_docling_component(
-                document_path=doc_path,
-                original_key=doc_path,
-                setup_config=setup.outputs["setup_config"],
-            )
-            _mount_pvc(docling)
-            _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
-            docling.set_caching_options(False)
-            docling.set_retry(num_retries=1, backoff_duration="30s", backoff_factor=2.0)
+        items=download.outputs["downloaded_files"],
+        parallelism=2,
+        name="process-pdf",
+    ) as doc_path:
+        docling = process_with_docling_component(
+            document_path=doc_path,
+            original_key=doc_path,
+            setup_config=setup.outputs["setup_config"],
+        )
+        _mount_pvc(docling)
+        _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
+        docling.after(reg_db)
+        docling.set_caching_options(False)
+        docling.set_retry(num_retries=1, backoff_duration="30s", backoff_factor=2.0)
 
-            # Insert into pgvector via LlamaStack
-            insert = insert_via_llamastack_component(
-                setup_config=setup.outputs["setup_config"],
-                processed_file=docling.outputs["processed_file"],
-                original_key=doc_path,
-                bucket_name=bucket_name,
-                vector_db_ids=reg_db.outputs["vector_db_ids"],
-            )
-            _mount_pvc(insert)
-            _set_resources(insert)
-            insert.set_caching_options(False)
-            insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
+        insert = insert_via_llamastack_component(
+            setup_config=setup.outputs["setup_config"],
+            processed_file=docling.outputs["processed_file"],
+            vector_db_ids=reg_db.outputs["vector_db_ids"],
+        )
+        _mount_pvc(insert)
+        _set_resources(insert)
+        insert.set_caching_options(False)
+        insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Stage 6: Convergence ---
+    # --- Stage 5: Convergence ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],

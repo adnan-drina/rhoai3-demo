@@ -20,8 +20,6 @@ from kfp.dsl import component
 def insert_via_llamastack_component(
     setup_config: Dict[str, Any],
     processed_file: str,
-    original_key: str,
-    bucket_name: str,
     vector_db_ids: List[str],
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
     """Ingest processed Markdown into pgvector via LlamaStack vector_stores API.
@@ -29,8 +27,6 @@ def insert_via_llamastack_component(
     Args:
         setup_config: Runtime configuration dict from setup_config_component.
         processed_file: Path to the Markdown file on the shared PVC.
-        original_key: Original S3 key for metadata attributes.
-        bucket_name: S3 bucket name for source attribution.
         vector_db_ids: List of vector store IDs to index into.
 
     Returns:
@@ -51,20 +47,17 @@ def insert_via_llamastack_component(
         vector_db_ids = [vector_db_id]
 
     if not processed_file or not os.path.exists(processed_file):
-        print(f"  [SKIP] No processed file for {original_key}")
+        print(f"  [SKIP] No processed file: {processed_file}")
         return InsertOutput(status="skipped", chunks_inserted=0)
 
     file_size = os.path.getsize(processed_file)
-    print(f"Inserting: {original_key} ({file_size} bytes)")
+    upload_name = os.path.splitext(os.path.basename(processed_file))[0] + ".md"
+
+    print(f"Inserting: {upload_name} ({file_size} bytes)")
     print(f"  LlamaStack: {base_url}")
     print(f"  Vector stores: {vector_db_ids}")
 
     client = LlamaStackClient(base_url=base_url, timeout=300.0)
-
-    # Upload the markdown file to LlamaStack Files API
-    # Use a descriptive filename based on the original PDF key
-    basename = os.path.basename(original_key)
-    upload_name = os.path.splitext(basename)[0] + ".md"
 
     try:
         with open(processed_file, "rb") as f:
@@ -77,7 +70,6 @@ def insert_via_llamastack_component(
         print(f"  [FAIL] File upload: {e}")
         return InsertOutput(status="error", chunks_inserted=0)
 
-    # Index into each vector store
     chunk_overlap = max(1, chunk_size // 4)
     chunking_strategy = {
         "type": "static",

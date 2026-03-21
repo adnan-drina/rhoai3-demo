@@ -4,8 +4,6 @@ Download from S3 Component — lists and downloads all PDFs from an S3 prefix.
 Uses boto3 with credentials injected from a Kubernetes secret via
 kubernetes.use_secret_as_env(). Files are written to a shared PVC
 at /shared-data/documents/.
-
-Original MinIO keys are preserved separately for metadata tracing.
 """
 
 from typing import NamedTuple, List
@@ -21,7 +19,7 @@ def download_from_s3_component(
     minio_endpoint: str,
 ) -> NamedTuple(
     "DownloadOutput",
-    [("downloaded_files", List[str]), ("original_keys", List[str]), ("file_count", int)],
+    [("downloaded_files", List[str]), ("file_count", int)],
 ):
     """List and download all PDFs from an S3 prefix to the shared PVC.
 
@@ -31,7 +29,6 @@ def download_from_s3_component(
 
     Returns:
         downloaded_files: List of local paths to downloaded PDFs.
-        original_keys: List of original S3 keys for metadata tracing.
         file_count: Number of successfully downloaded files.
     """
     import boto3
@@ -76,7 +73,6 @@ def download_from_s3_component(
     print(f"  Found {len(objects)} objects")
 
     downloaded_files: list[str] = []
-    original_keys: list[str] = []
 
     for obj in objects:
         key = obj["Key"]
@@ -94,16 +90,14 @@ def download_from_s3_component(
             size = os.path.getsize(local_path)
             print(f"  [OK] {key} ({size} bytes)")
             downloaded_files.append(local_path)
-            original_keys.append(key)
         except Exception as e:
             print(f"  [FAIL] {key}: {e}")
             continue
 
     print(f"\nDownloaded {len(downloaded_files)} / {len(objects)} objects")
 
-    DownloadOutput = namedtuple("DownloadOutput", ["downloaded_files", "original_keys", "file_count"])
+    DownloadOutput = namedtuple("DownloadOutput", ["downloaded_files", "file_count"])
     return DownloadOutput(
         downloaded_files=downloaded_files,
-        original_keys=original_keys,
         file_count=len(downloaded_files),
     )
