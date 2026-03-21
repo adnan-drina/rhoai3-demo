@@ -28,8 +28,8 @@ check "DSPA pipeline server" \
     "True"
 
 check "Pipeline RBAC (Role)" \
-    "oc get role face-recognition-pipeline -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
-    "face-recognition-pipeline"
+    "oc get role face-pipeline-controller -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "face-pipeline-controller"
 
 # --- Pipeline Execution ---
 log_step "Pipeline Execution"

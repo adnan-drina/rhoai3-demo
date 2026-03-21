@@ -1,6 +1,6 @@
 #!/bin/bash
 # Launch a batch RAG ingestion pipeline run for a given scenario.
-# Usage: ./run-batch-ingestion.sh <scenario>
+# Usage: ./run-batch-ingestion.sh <scenario> [--eval]
 #   scenario: acme | whoami
 
 set -euo pipefail
@@ -9,10 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="private-ai"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+source "$REPO_ROOT/scripts/lib.sh"
+load_env
 
 EVAL_AFTER=false
 SCENARIO=""
@@ -24,7 +22,7 @@ for arg in "$@"; do
 done
 
 if [ -z "$SCENARIO" ]; then
-    echo -e "${RED}Error: Scenario parameter required${NC}"
+    log_error "Scenario parameter required"
     echo ""
     echo "Usage: $0 <scenario> [--eval]"
     echo ""
@@ -54,48 +52,44 @@ case "$SCENARIO" in
         DESCRIPTION="Personal CV"
         ;;
     *)
-        echo -e "${RED}Error: Invalid scenario: $SCENARIO${NC}"
-        echo "Valid options: acme, whoami"
+        log_error "Invalid scenario: $SCENARIO (valid: acme, whoami)"
         exit 1
         ;;
 esac
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE} RAG Batch Ingestion Pipeline${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "${GREEN}  Scenario:${NC}    $SCENARIO"
-echo -e "${GREEN}  S3 Path:${NC}     $S3_PREFIX"
-echo -e "${GREEN}  Collection:${NC}  $VECTOR_DB_ID"
-echo -e "${GREEN}  Description:${NC} $DESCRIPTION"
+log_step "RAG Batch Ingestion Pipeline"
+log_info "Scenario:    $SCENARIO"
+log_info "S3 Path:     $S3_PREFIX"
+log_info "Collection:  $VECTOR_DB_ID"
+log_info "Description: $DESCRIPTION"
 echo ""
 
 OC_TOKEN=$(oc whoami -t 2>/dev/null || true)
 if [ -z "$OC_TOKEN" ]; then
-    echo -e "${RED}Unable to obtain oc token. Run 'oc login' first.${NC}"
+    log_error "Unable to obtain oc token. Run 'oc login' first."
     exit 1
 fi
-echo -e "${GREEN}  oc token acquired${NC}"
+log_success "oc token acquired"
 
 VENV_PATH="$REPO_ROOT/.venv-kfp"
 if [ ! -d "$VENV_PATH" ]; then
-    echo "Creating Python venv..."
+    log_info "Creating Python venv..."
     python3 -m venv "$VENV_PATH"
 fi
 "$VENV_PATH/bin/pip" install -q --upgrade pip kfp "kfp-server-api>=2.0,<3.0" 2>/dev/null
 
 PIPELINE_YAML="$REPO_ROOT/artifacts/rag-ingestion-batch.yaml"
 if [ ! -f "$PIPELINE_YAML" ]; then
-    echo "Compiling pipeline..."
+    log_step "Compiling pipeline..."
     mkdir -p "$REPO_ROOT/artifacts"
     (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
     if [ ! -f "$PIPELINE_YAML" ]; then
-        echo -e "${RED}Pipeline compilation failed — $PIPELINE_YAML not found${NC}"
+        log_error "Pipeline compilation failed — $PIPELINE_YAML not found"
         exit 1
     fi
 fi
 
-echo "Launching pipeline run via KFP client..."
+log_info "Launching pipeline run via KFP client..."
 export S3_PREFIX VECTOR_DB_ID SCENARIO NAMESPACE OC_TOKEN REPO_ROOT
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
@@ -212,27 +206,25 @@ PYTHON_SCRIPT
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo -e "${GREEN}Pipeline launched for scenario: $SCENARIO${NC}"
+    log_success "Pipeline launched for scenario: $SCENARIO"
 
     if [ "$EVAL_AFTER" = true ]; then
         echo ""
-        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${BLUE} Triggering RAG evaluation after ingestion...${NC}"
-        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        log_step "Triggering RAG evaluation after ingestion..."
         EVAL_SCRIPT="$SCRIPT_DIR/../step-08-model-evaluation/run-rag-eval.sh"
         if [ -x "$EVAL_SCRIPT" ] || [ -f "$EVAL_SCRIPT" ]; then
-            echo -e "${GREEN}  Waiting 30s for ingestion to settle before evaluating...${NC}"
+            log_info "Waiting 30s for ingestion to settle before evaluating..."
             sleep 30
             chmod +x "$EVAL_SCRIPT"
             "$EVAL_SCRIPT" "eval-after-${SCENARIO}-$(date +%s)" || \
-                echo -e "${RED}  Eval pipeline launch failed — run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh${NC}"
+                log_error "Eval pipeline launch failed — run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh"
         else
-            echo -e "${RED}  Eval script not found: $EVAL_SCRIPT${NC}"
-            echo -e "${RED}  Run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh${NC}"
+            log_error "Eval script not found: $EVAL_SCRIPT"
+            log_error "Run manually: ./steps/step-08-model-evaluation/run-rag-eval.sh"
         fi
     fi
 else
     echo ""
-    echo -e "${RED}Pipeline launch failed for $SCENARIO${NC}"
+    log_error "Pipeline launch failed for $SCENARIO"
     exit 1
 fi

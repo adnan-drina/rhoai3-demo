@@ -6,8 +6,9 @@ Defines two pipelines:
   2. batch_docling_rag_pipeline — Batch ingestion with ParallelFor
 
 Components are in kfp/components/ following KFP modular best practices.
+Reuses the existing DSPA (dspa-rag) in private-ai namespace.
 
-Key design choices (RHOAI 3.0 aligned):
+Key design choices (RHOAI 3.3 aligned):
   - kubernetes.use_secret_as_env()  for MinIO credentials (no secrets in params)
   - kubernetes.mount_pvc()          for inter-component file sharing
   - Server-side chunking            via vector_stores.files.create()
@@ -29,6 +30,9 @@ from components.insert_via_llamastack import insert_via_llamastack_component
 from components.split_pdf_list import split_pdf_list_component
 from components.pipeline_completion import pipeline_completion_component
 
+MINIO_SECRET = "minio-connection"
+PIPELINE_PVC = "rag-pipeline-workspace"
+
 
 def _set_resources(
     task: PipelineTask,
@@ -44,6 +48,22 @@ def _set_resources(
     task.set_memory_limit(mem_lim)
 
 
+def _inject_minio(task: PipelineTask) -> None:
+    kubernetes.use_secret_as_env(
+        task,
+        secret_name=MINIO_SECRET,
+        secret_key_to_env={
+            "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
+            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
+        },
+    )
+
+
+def _mount_pvc(task: PipelineTask) -> None:
+    kubernetes.mount_pvc(task, pvc_name=PIPELINE_PVC, mount_path="/shared-data")
+
+
 # ---------------------------------------------------------------------------
 # Pipeline 1: Single-document ingestion (for testing / ad-hoc use)
 # ---------------------------------------------------------------------------
@@ -54,7 +74,6 @@ def _set_resources(
 )
 def docling_rag_pipeline(
     input_uri: str = "s3://rag-documents/acme/sample.pdf",
-    minio_secret_name: str = "minio-connection",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
     docling_service: str = "http://docling-service.private-ai.svc:5001",
@@ -68,8 +87,7 @@ def docling_rag_pipeline(
     max_tokens: int = 4096,
     processing_timeout: int = 600,
 ):
-    pvc_name = "rag-pipeline-workspace"
-
+    # --- Step 1: Setup Configuration ---
     setup = setup_config_component(
         llamastack_url=llamastack_url,
         model_id=model_id,
@@ -83,34 +101,31 @@ def docling_rag_pipeline(
         processing_timeout=processing_timeout,
         vector_db_id=vector_db_id,
     )
+    setup.set_caching_options(False)
 
+    # --- Step 2: Download from S3 ---
     download = download_from_s3_component(
         s3_prefix=input_uri,
         minio_endpoint=minio_endpoint,
     )
-    download.set_caching_options(False)
+    _inject_minio(download)
+    _mount_pvc(download)
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
-    kubernetes.mount_pvc(download, pvc_name=pvc_name, mount_path="/shared-data")
-    kubernetes.use_secret_as_env(
-        download,
-        secret_name=minio_secret_name,
-        secret_key_to_env={
-            "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
-            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
-        },
-    )
+    download.set_caching_options(False)
 
+    # --- Step 3: Register Vector DB ---
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
-    reg_db.set_caching_options(False)
     reg_db.after(download)
+    reg_db.set_caching_options(False)
 
+    # --- Step 4: Completion ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],
     )
+    completion.set_caching_options(False)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +139,6 @@ def docling_rag_pipeline(
 )
 def batch_docling_rag_pipeline(
     s3_prefix: str = "s3://rag-documents/acme/",
-    minio_secret_name: str = "minio-connection",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
     docling_service: str = "http://docling-service.private-ai.svc:5001",
@@ -140,10 +154,9 @@ def batch_docling_rag_pipeline(
     num_splits: int = 2,
     cache_buster: str = "",
 ):
-    pvc_name = "rag-pipeline-workspace"
     bucket_name = "rag-documents"
 
-    # Stage 1: Setup
+    # --- Stage 1: Setup Configuration ---
     setup = setup_config_component(
         llamastack_url=llamastack_url,
         model_id=model_id,
@@ -157,41 +170,35 @@ def batch_docling_rag_pipeline(
         processing_timeout=processing_timeout,
         vector_db_id=vector_db_id,
     )
+    setup.set_caching_options(False)
 
-    # Stage 2: Download all PDFs from S3 prefix
+    # --- Stage 2: Download all PDFs from S3 prefix ---
     download = download_from_s3_component(
         s3_prefix=s3_prefix,
         minio_endpoint=minio_endpoint,
     )
-    download.set_caching_options(False)
+    _inject_minio(download)
+    _mount_pvc(download)
     _set_resources(download, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
-    kubernetes.mount_pvc(download, pvc_name=pvc_name, mount_path="/shared-data")
-    kubernetes.use_secret_as_env(
-        download,
-        secret_name=minio_secret_name,
-        secret_key_to_env={
-            "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
-            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
-        },
-    )
+    download.set_caching_options(False)
 
-    # Stage 3: Register vector DB (idempotent, cache disabled — UUIDs change on LlamaStack restart)
+    # --- Stage 3: Register vector DB (idempotent, cache disabled — UUIDs change on LlamaStack restart) ---
     reg_db = register_vector_db_component(
         setup_config=setup.outputs["setup_config"],
     )
-    reg_db.set_caching_options(False)
     reg_db.after(download)
+    reg_db.set_caching_options(False)
 
-    # Stage 4: Split files into groups for parallel processing
+    # --- Stage 4: Split files into groups for parallel processing ---
     split = split_pdf_list_component(
         downloaded_files=download.outputs["downloaded_files"],
         original_keys=download.outputs["original_keys"],
         num_splits=num_splits,
     )
     split.after(reg_db)
+    split.set_caching_options(False)
 
-    # Stage 5: Process each group in parallel
+    # --- Stage 5: Process each group in parallel ---
     with dsl.ParallelFor(
         items=split.outputs["file_groups"],
         name="process-group",
@@ -207,9 +214,9 @@ def batch_docling_rag_pipeline(
                 original_key=doc_path,
                 setup_config=setup.outputs["setup_config"],
             )
-            docling.set_caching_options(False)
+            _mount_pvc(docling)
             _set_resources(docling, cpu_req="500m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
-            kubernetes.mount_pvc(docling, pvc_name=pvc_name, mount_path="/shared-data")
+            docling.set_caching_options(False)
 
             # Insert into pgvector via LlamaStack
             insert = insert_via_llamastack_component(
@@ -219,15 +226,16 @@ def batch_docling_rag_pipeline(
                 bucket_name=bucket_name,
                 vector_db_ids=reg_db.outputs["vector_db_ids"],
             )
-            insert.set_caching_options(False)
+            _mount_pvc(insert)
             _set_resources(insert)
-            kubernetes.mount_pvc(insert, pvc_name=pvc_name, mount_path="/shared-data")
+            insert.set_caching_options(False)
 
-    # Stage 6: Convergence
+    # --- Stage 6: Convergence ---
     completion = pipeline_completion_component(
         vector_db_status=reg_db.outputs["vector_db_status"],
         file_count=download.outputs["file_count"],
     )
+    completion.set_caching_options(False)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,17 @@ def process_with_docling_component(
     original_key: str,
     setup_config: Dict[str, Any],
 ) -> NamedTuple("DoclingOutput", [("processed_file", str), ("success", bool)]):
+    """Convert a PDF to Markdown using the Docling REST API.
+
+    Args:
+        document_path: Local path to the PDF file on the shared PVC.
+        original_key: Original S3 key for logging and metadata.
+        setup_config: Runtime configuration dict from setup_config_component.
+
+    Returns:
+        processed_file: Path to the generated Markdown file on the shared PVC.
+        success: Whether the conversion succeeded.
+    """
     import requests
     import json
     import os

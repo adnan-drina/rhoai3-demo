@@ -4,8 +4,9 @@ KFP v2 RAG Evaluation Pipeline
 2-step pipeline:
   1. scan_tests      -- discover *_tests.yaml in /eval-configs
   2. run_and_score   -- execute RAG agent, score via mistral-3-bf16 (direct vLLM judge),
-                        generate HTML reports, upload to MinIO
+                       generate HTML reports, upload to MinIO
 
+Components are in kfp/components/ following KFP modular best practices.
 Reuses lsd-rag (step-07) for generation and dspa-rag (step-07) for pipeline execution.
 Judge model (mistral-3-bf16) is called directly via its vLLM endpoint.
 
@@ -14,10 +15,43 @@ Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/
 
 import kfp
 from kfp import dsl, kubernetes
+from kfp.dsl import PipelineTask
 from pathlib import Path
 
 from components.scan_tests import scan_tests_component
 from components.run_and_score_tests import run_and_score_tests_component
+
+S3_SECRET = "minio-connection"
+PIPELINE_PVC = "rag-pipeline-workspace"
+
+
+def _set_resources(
+    task: PipelineTask,
+    cpu_req: str = "500m", cpu_lim: str = "2",
+    mem_req: str = "512Mi", mem_lim: str = "2Gi",
+) -> None:
+    task.set_cpu_request(cpu_req)
+    task.set_cpu_limit(cpu_lim)
+    task.set_memory_request(mem_req)
+    task.set_memory_limit(mem_lim)
+
+
+def _inject_minio(task: PipelineTask) -> None:
+    kubernetes.use_secret_as_env(
+        task,
+        secret_name=S3_SECRET,
+        secret_key_to_env={
+            "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
+            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
+            "AWS_S3_BUCKET": "AWS_S3_BUCKET",
+            "AWS_DEFAULT_REGION": "AWS_DEFAULT_REGION",
+        },
+    )
+
+
+def _mount_pvc(task: PipelineTask) -> None:
+    kubernetes.mount_pvc(task, pvc_name=PIPELINE_PVC, mount_path="/shared-data")
 
 
 @dsl.pipeline(
@@ -27,41 +61,24 @@ from components.run_and_score_tests import run_and_score_tests_component
 )
 def rag_eval_pipeline(
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
-    s3_report_secret: str = "minio-connection",
     run_id: str = "eval",
 ):
-    pvc_name = "rag-pipeline-workspace"
-
-    # Step 1: Discover test configs (PVC is mounted at /shared-data, configs in /shared-data/eval-configs)
+    # --- Step 1: Discover Tests ---
     scan = scan_tests_component(eval_configs_dir="/shared-data/eval-configs")
+    _mount_pvc(scan)
     scan.set_caching_options(False)
-    kubernetes.mount_pvc(scan, pvc_name=pvc_name, mount_path="/shared-data")
 
-    # Step 2: Run all tests, score, generate reports, upload to S3
+    # --- Step 2: Run & Score ---
     run_score = run_and_score_tests_component(
         test_configs=scan.outputs["test_configs"],
         default_llamastack_url=llamastack_url,
         run_id=run_id,
     )
     run_score.after(scan)
+    _inject_minio(run_score)
+    _mount_pvc(run_score)
+    _set_resources(run_score)
     run_score.set_caching_options(False)
-    run_score.set_cpu_request("500m")
-    run_score.set_cpu_limit("2")
-    run_score.set_memory_request("512Mi")
-    run_score.set_memory_limit("2Gi")
-
-    kubernetes.mount_pvc(run_score, pvc_name=pvc_name, mount_path="/shared-data")
-    kubernetes.use_secret_as_env(
-        run_score,
-        secret_name=s3_report_secret,
-        secret_key_to_env={
-            "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
-            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
-            "AWS_S3_BUCKET": "AWS_S3_BUCKET",
-            "AWS_DEFAULT_REGION": "AWS_DEFAULT_REGION",
-        },
-    )
 
 
 if __name__ == "__main__":

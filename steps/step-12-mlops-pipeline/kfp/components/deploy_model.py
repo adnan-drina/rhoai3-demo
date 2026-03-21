@@ -12,6 +12,16 @@ def deploy_model(
     namespace: str,
     registry_url: str = "",
 ) -> str:
+    """Restart the predictor pod and link the InferenceService to Model Registry.
+
+    Args:
+        isvc_name: Name of the InferenceService to redeploy.
+        namespace: OpenShift namespace where the ISVC is deployed.
+        registry_url: Model Registry REST endpoint for linking (optional).
+
+    Returns:
+        Name of the ready predictor pod, or a status string on failure.
+    """
     import os, time
     from kubernetes import client, config
 

@@ -23,6 +23,17 @@ def download_from_s3_component(
     "DownloadOutput",
     [("downloaded_files", List[str]), ("original_keys", List[str]), ("file_count", int)],
 ):
+    """List and download all PDFs from an S3 prefix to the shared PVC.
+
+    Args:
+        s3_prefix: S3 URI (s3://bucket/prefix/) to scan for PDFs.
+        minio_endpoint: MinIO endpoint URL (fallback if env var not set).
+
+    Returns:
+        downloaded_files: List of local paths to downloaded PDFs.
+        original_keys: List of original S3 keys for metadata tracing.
+        file_count: Number of successfully downloaded files.
+    """
     import boto3
     import os
     from collections import namedtuple

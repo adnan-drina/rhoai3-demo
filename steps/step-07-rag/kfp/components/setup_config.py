@@ -26,6 +26,24 @@ def setup_config_component(
     processing_timeout: int,
     vector_db_id: str,
 ) -> NamedTuple("SetupOutput", [("setup_config", Dict[str, Any])]):
+    """Build a runtime configuration dict consumed by all downstream components.
+
+    Args:
+        llamastack_url: LlamaStack service endpoint URL.
+        model_id: LLM model identifier for inference.
+        temperature: Sampling temperature (0.0 for greedy).
+        max_tokens: Maximum tokens for model responses.
+        embedding_model: Embedding model identifier for vector search.
+        embedding_dimension: Dimensionality of the embedding vectors.
+        chunk_size_tokens: Token count per chunk for document splitting.
+        vector_provider: Vector DB provider (e.g. pgvector).
+        docling_service: Docling REST API endpoint URL.
+        processing_timeout: Timeout in seconds for document processing.
+        vector_db_id: Identifier for the vector store collection.
+
+    Returns:
+        setup_config: Dict containing all pipeline configuration.
+    """
     from collections import namedtuple
 
     print("Initializing RAG Pipeline Configuration")

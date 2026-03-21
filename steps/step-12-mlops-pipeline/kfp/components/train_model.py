@@ -17,6 +17,15 @@ def train_model(
     epochs: int,
     metrics: Output[Metrics],
 ) -> str:
+    """Train YOLO11n on the prepared dataset and export to ONNX.
+
+    Args:
+        epochs: Number of training epochs.
+        metrics: KFP Metrics artifact for Dashboard visibility.
+
+    Returns:
+        Path to the exported ONNX model file.
+    """
     import subprocess
     from pathlib import Path
 

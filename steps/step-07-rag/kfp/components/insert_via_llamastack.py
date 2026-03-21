@@ -24,6 +24,19 @@ def insert_via_llamastack_component(
     bucket_name: str,
     vector_db_ids: List[str],
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
+    """Ingest processed Markdown into pgvector via LlamaStack vector_stores API.
+
+    Args:
+        setup_config: Runtime configuration dict from setup_config_component.
+        processed_file: Path to the Markdown file on the shared PVC.
+        original_key: Original S3 key for metadata attributes.
+        bucket_name: S3 bucket name for source attribution.
+        vector_db_ids: List of vector store IDs to index into.
+
+    Returns:
+        status: Insertion status (success, skipped, or error).
+        chunks_inserted: Number of vector stores successfully indexed.
+    """
     from llama_stack_client import LlamaStackClient
     from collections import namedtuple
     from pathlib import Path

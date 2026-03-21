@@ -21,6 +21,16 @@ def setup_monitoring(
     namespace: str,
     num_baseline_samples: int,
 ) -> str:
+    """Configure TrustyAI monitoring with baseline data and fairness metrics.
+
+    Args:
+        model_name: Name of the deployed InferenceService to monitor.
+        namespace: OpenShift namespace where TrustyAI and the model are deployed.
+        num_baseline_samples: Number of synthetic baseline samples to generate.
+
+    Returns:
+        Monitoring status string (e.g. monitoring-configured, trustyai-not-ready).
+    """
     import json, time
     import requests
     import numpy as np

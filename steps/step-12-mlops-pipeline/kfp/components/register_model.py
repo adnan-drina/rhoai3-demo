@@ -17,6 +17,18 @@ def register_model(
     registry_url: str,
     minio_endpoint: str,
 ) -> str:
+    """Upload ONNX model to MinIO and register the version in Model Registry.
+
+    Args:
+        onnx_path: Path to the ONNX model on the shared PVC.
+        model_name: Name to register under in the Model Registry.
+        version: Version string for this model release.
+        registry_url: Model Registry REST endpoint.
+        minio_endpoint: MinIO endpoint URL (fallback if env var not set).
+
+    Returns:
+        The version string that was registered.
+    """
     import os, json
     from pathlib import Path
     import boto3

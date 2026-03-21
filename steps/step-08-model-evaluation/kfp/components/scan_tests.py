@@ -13,6 +13,14 @@ from kfp.dsl import component
 def scan_tests_component(
     eval_configs_dir: str = "/eval-configs",
 ) -> NamedTuple("ScanOutput", [("test_configs", List[dict])]):
+    """Discover *_tests.yaml files in the eval-configs directory.
+
+    Args:
+        eval_configs_dir: Directory path on the shared PVC to scan.
+
+    Returns:
+        test_configs: List of dicts, each with a config_path relative to eval_configs_dir.
+    """
     import glob
     import os
     from collections import namedtuple

@@ -16,6 +16,15 @@ def pipeline_completion_component(
     vector_db_status: Dict[str, Any],
     file_count: int,
 ) -> NamedTuple("CompletionOutput", [("completion_status", str)]):
+    """Terminal convergence node — summarizes pipeline outcome.
+
+    Args:
+        vector_db_status: Status dict from the register_vector_db step.
+        file_count: Number of files processed by the download step.
+
+    Returns:
+        completion_status: Overall pipeline status (SUCCESS, PARTIAL_SUCCESS, or FAILED).
+    """
     from collections import namedtuple
 
     print("Pipeline Completion")

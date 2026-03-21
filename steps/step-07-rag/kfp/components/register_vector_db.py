@@ -16,6 +16,15 @@ from kfp.dsl import component
 def register_vector_db_component(
     setup_config: Dict[str, Any],
 ) -> NamedTuple("VectorDBOutput", [("vector_db_status", Dict[str, Any]), ("vector_db_ids", List[str])]):
+    """Create or re-use a pgvector vector store through LlamaStack.
+
+    Args:
+        setup_config: Runtime configuration dict from setup_config_component.
+
+    Returns:
+        vector_db_status: Dict with status, vector_db_id, and readiness flag.
+        vector_db_ids: List of created/found vector store IDs.
+    """
     from llama_stack_client import LlamaStackClient
     from collections import namedtuple
 

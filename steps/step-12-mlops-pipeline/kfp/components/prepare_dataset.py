@@ -20,6 +20,16 @@ def prepare_dataset(
     minio_endpoint: str,
     metrics: Output[Metrics],
 ) -> int:
+    """Download photos from MinIO and WIDER Face, auto-annotate, and split train/val.
+
+    Args:
+        photos_s3_prefix: S3 URI to the user's photo collection.
+        minio_endpoint: MinIO endpoint URL (fallback if env var not set).
+        metrics: KFP Metrics artifact for Dashboard visibility.
+
+    Returns:
+        Total number of annotated images (train + val).
+    """
     import subprocess, os, shutil, random, zipfile
     from pathlib import Path
 

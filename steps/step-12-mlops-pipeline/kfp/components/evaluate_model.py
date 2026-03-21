@@ -19,6 +19,18 @@ def evaluate_model(
     model_name: str,
     metrics: Output[Metrics],
 ) -> float:
+    """Evaluate the ONNX model, compute mAP50, and enforce quality gate.
+
+    Args:
+        onnx_path: Path to the ONNX model on the shared PVC.
+        mAP_threshold: Minimum mAP50 required to pass the quality gate.
+        registry_url: Model Registry REST endpoint for comparing with previous version.
+        model_name: Registered model name to look up prior metrics.
+        metrics: KFP Metrics artifact for Dashboard visibility.
+
+    Returns:
+        The mAP50 score. Raises RuntimeError if below threshold.
+    """
     import subprocess
     from pathlib import Path
 

@@ -27,6 +27,13 @@ def run_and_score_tests_component(
     default_llamastack_url: str,
     run_id: str = "eval",
 ):
+    """Execute pre-RAG and post-RAG tests, score with LLM-as-judge, upload HTML reports.
+
+    Args:
+        test_configs: List of dicts from scan_tests, each with a config_path.
+        default_llamastack_url: LlamaStack endpoint for inference and retrieval.
+        run_id: Unique identifier for grouping reports in S3.
+    """
     import os
     import re
     import yaml
