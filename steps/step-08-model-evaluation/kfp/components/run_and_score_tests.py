@@ -273,6 +273,7 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
     print("=" * 60)
 
     all_scenario_html = []
+    all_scenario_summaries = []
 
     for config_dict in test_configs:
         config_path = config_dict["config_path"]
@@ -356,6 +357,18 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
         for i, sr in enumerate(scenario_results, 1):
             print(f"    [{i}] Judge: ({sr['judge_letter']}) | Tools: {sr['tool_calls']}")
 
+        # Collect per-scenario summary for artifact metadata
+        letters = [sr["judge_letter"] for sr in scenario_results]
+        good = sum(1 for l in letters if l in ("A", "B"))
+        total_tests = len(letters)
+        all_scenario_summaries.append({
+            "scenario": scenario_name,
+            "mode": mode,
+            "tests": total_tests,
+            "pass_rate": f"{good}/{total_tests} ({100*good//max(total_tests,1)}%)",
+            "scores": {l: letters.count(l) for l in sorted(set(letters))},
+        })
+
         # Generate and upload HTML — correct naming: {scenario}_{mode}_report.html
         html = generate_html_report(scenario_results, scenario_name, mode)
         all_scenario_html.append(html)
@@ -368,6 +381,22 @@ tr:nth-child(even) {{ background: #f8f9fa; }}
         combined = "\n<hr style='margin:40px 0;border:2px solid #dee2e6'>\n".join(all_scenario_html)
         with open(eval_report.path, "w", encoding="utf-8") as f:
             f.write(combined)
+
+        total_tests = sum(s["tests"] for s in all_scenario_summaries)
+        total_good = sum(
+            sum(1 for l in s["scores"] if l in ("A", "B")) * s["scores"].get(l, 0)
+            for s in all_scenario_summaries
+            for l in s["scores"] if l in ("A", "B")
+        )
+        eval_report.metadata["run_id"] = run_id
+        eval_report.metadata["judge_model"] = JUDGE_MODEL
+        eval_report.metadata["candidate_model"] = "granite-8b-agent"
+        eval_report.metadata["scenarios"] = len(all_scenario_summaries)
+        eval_report.metadata["total_tests"] = total_tests
+        for s in all_scenario_summaries:
+            key = f"{s['scenario']}_{s['mode']}"
+            eval_report.metadata[key] = s["pass_rate"]
+
         print(f"  KFP HTML artifact written ({len(all_scenario_html)} scenario(s))")
 
     print("\n" + "=" * 60)
