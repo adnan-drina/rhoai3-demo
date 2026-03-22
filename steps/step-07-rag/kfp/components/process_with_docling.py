@@ -36,7 +36,6 @@ def process_with_docling_component(
     import os
     import re
     import unicodedata
-    import uuid
     from collections import namedtuple
 
     DoclingOutput = namedtuple("DoclingOutput", ["processed_file", "success"])
@@ -101,7 +100,8 @@ def process_with_docling_component(
         return DoclingOutput(processed_file="", success=False)
 
     os.makedirs("/shared-data/processed", exist_ok=True)
-    out_path = f"/shared-data/processed/{uuid.uuid4().hex}.md"
+    base = os.path.splitext(os.path.basename(document_path))[0]
+    out_path = f"/shared-data/processed/{base}.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 

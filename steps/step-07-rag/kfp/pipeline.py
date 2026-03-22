@@ -23,6 +23,7 @@ from components.download_from_s3 import download_from_s3_component
 from components.register_vector_db import register_vector_db_component
 from components.process_with_docling import process_with_docling_component
 from components.insert_via_llamastack import insert_via_llamastack_component
+from components.ingestion_summary import ingestion_summary_component
 
 MINIO_SECRET = "minio-connection"
 PIPELINE_PVC = "rag-pipeline-workspace"
@@ -125,6 +126,14 @@ def docling_rag_pipeline(
         _set_resources(insert)
         insert.set_caching_options(False)
 
+    # --- Step 4: Ingestion Summary (polls PVC log until all docs done) ---
+    summary = ingestion_summary_component(
+        expected_count=download.outputs["file_count"],
+        vector_db_id=vector_db_id,
+    )
+    _mount_pvc(summary)
+    summary.set_caching_options(False)
+
 
 # ---------------------------------------------------------------------------
 # Pipeline 2: Batch ingestion with parallel processing
@@ -196,6 +205,14 @@ def batch_docling_rag_pipeline(
         _set_resources(insert)
         insert.set_caching_options(False)
         insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
+
+    # --- Step 4: Ingestion Summary (polls PVC log until all docs done) ---
+    summary = ingestion_summary_component(
+        expected_count=download.outputs["file_count"],
+        vector_db_id=vector_db_id,
+    )
+    _mount_pvc(summary)
+    summary.set_caching_options(False)
 
 
 if __name__ == "__main__":
