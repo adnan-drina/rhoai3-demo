@@ -141,7 +141,32 @@ This script uploads TRAINING reference data and untagged prediction data, config
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
+> **Design Decision:** **`pip_index_urls=["https://pypi.org/simple"]`** on all components that require packages outside the Red Hat index. The RHOAI base image (`rhai/base-image-cpu-rhel9:3.3.0`) configures pip to use Red Hat's Python index, which lacks `ultralytics`, `onnxruntime`, `onnxslim`, and other ML packages. Adding `pip_index_urls` in the `@component` decorator tells KFP to use PyPI instead. This also resolves the KFP SDK version mismatch (base image has 2.15.2, compiled pipeline requests 2.16.0).
+
 ## Troubleshooting
+
+### Pipeline fails at "train_model" with "No matching distribution found for ultralytics"
+
+**Root Cause:** The RHOAI base image uses Red Hat's Python package index which doesn't include `ultralytics`.
+
+**Solution:** Ensure `pip_index_urls=["https://pypi.org/simple"]` is set in the `@component` decorator. See `kfp/components/train_model.py` for the pattern.
+
+### Pipeline fails at "evaluate_model" with "No module named 'onnxruntime'"
+
+**Root Cause:** `onnxruntime` was missing from `packages_to_install` in evaluate_model. YOLO ONNX inference requires it.
+
+**Solution:** Add `"onnxruntime>=1.17.0"` to the component's `packages_to_install`.
+
+### TrustyAIService stuck in "Progressing" / "Pending deletion"
+
+**Root Cause:** A `foregroundDeletion` finalizer can get stuck if the ArgoCD Application is deleted and recreated while the TrustyAIService is being reconciled.
+
+**Solution:**
+```bash
+oc patch trustyaiservice trustyai-service -n private-ai --type json \
+  -p '[{"op": "remove", "path": "/metadata/finalizers"}]'
+```
+ArgoCD will recreate the resource from Git automatically.
 
 ### Pipeline fails at "prepare_dataset" with S3 credentials error
 

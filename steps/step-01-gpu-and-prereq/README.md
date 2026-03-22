@@ -71,6 +71,13 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
 
+> **ArgoCD `selfHeal: false`:** This step's ArgoCD Application uses `selfHeal: false` (unlike other steps) to allow operators to manually scale GPU MachineSets without ArgoCD reverting the change. ArgoCD shows OutOfSync for visibility but does not auto-heal. Git-triggered syncs still work. See the `manage-resources` skill for scaling workflows.
+
+> **Custom ArgoCD health checks** (`bootstrap.sh`): Three custom Lua health checks are configured during bootstrap to fix ArgoCD misreporting:
+> - **PersistentVolumeClaim** — Treats `Pending` PVCs as Healthy (for `WaitForFirstConsumer` storage classes that stay Pending until a pod mounts them)
+> - **InferenceService** — Reads the KServe `Ready` condition correctly (ArgoCD's built-in check misinterprets the condition format)
+> - **TrustyAIService** — Reads the `Available` condition (ArgoCD has no built-in health check for this CRD)
+
 ## Troubleshooting
 
 ### GPU MachineSet stuck in Provisioning
