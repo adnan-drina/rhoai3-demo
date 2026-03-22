@@ -37,6 +37,11 @@ def download_from_s3_component(
     from collections import namedtuple
     from urllib.parse import urlparse
 
+    # Clean up state from previous runs on the shared PVC
+    for stale in ["/shared-data/ingestion-log.jsonl"]:
+        if os.path.exists(stale):
+            os.remove(stale)
+
     print("Downloading Documents from MinIO")
     print("=" * 60)
 

@@ -65,7 +65,4 @@ def ingestion_summary_component(
     for i, r in enumerate(succeeded):
         metrics.log_metric(f"doc_{i+1}", r["document"])
 
-    if os.path.exists(log_path):
-        os.remove(log_path)
-
     return f"{len(succeeded)}/{len(results)} documents ingested into {vector_db_id}"
