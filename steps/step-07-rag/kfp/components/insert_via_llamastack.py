@@ -10,7 +10,7 @@ for indexing with static chunking strategy.
 """
 
 from typing import NamedTuple, List
-from kfp.dsl import component, Output, Metrics
+from kfp.dsl import component
 
 
 @component(
@@ -24,7 +24,6 @@ def insert_via_llamastack_component(
     vector_db_ids: List[str],
     vector_db_name: str = "",
     chunk_size_tokens: int = 512,
-    metrics: Output[Metrics] = None,
 ) -> NamedTuple("InsertOutput", [("status", str), ("chunks_inserted", int)]):
     """Ingest processed Markdown into pgvector via LlamaStack vector_stores API.
 
@@ -98,11 +97,6 @@ def insert_via_llamastack_component(
         except Exception as e:
             print(f"  [FAIL] Index into '{db_id}': {e}")
             return InsertOutput(status="error", chunks_inserted=inserted)
-
-    if metrics is not None:
-        metrics.log_metric("document", upload_name)
-        metrics.log_metric("status", "success")
-        metrics.log_metric("vector_stores_indexed", inserted)
 
     import json as _json
     log_path = "/shared-data/ingestion-log.jsonl"
