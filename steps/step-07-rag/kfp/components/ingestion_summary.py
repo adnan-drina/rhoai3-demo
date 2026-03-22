@@ -30,13 +30,15 @@ def ingestion_summary_component(
 
     log_path = "/shared-data/ingestion-log.jsonl"
 
-    results = []
+    all_entries = []
     if os.path.exists(log_path):
         with open(log_path) as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    results.append(json.loads(line))
+                    all_entries.append(json.loads(line))
+
+    results = [r for r in all_entries if r.get("vector_db", "") == vector_db_id or not r.get("vector_db")]
 
     succeeded = [r for r in results if r.get("status") == "success"]
     skipped = [r for r in results if r.get("status") == "skipped"]

@@ -47,7 +47,7 @@ def insert_via_llamastack_component(
         print(f"  [SKIP] No processed file: {processed_file}")
         import json as _json
         with open("/shared-data/ingestion-log.jsonl", "a") as lf:
-            lf.write(_json.dumps({"document": processed_file or "unknown", "status": "skipped", "stores": 0}) + "\n")
+            lf.write(_json.dumps({"document": processed_file or "unknown", "status": "skipped", "stores": 0, "vector_db": vector_db_ids[0] if vector_db_ids else ""}) + "\n")
         return InsertOutput(status="skipped", chunks_inserted=0)
 
     file_size = os.path.getsize(processed_file)
@@ -106,6 +106,6 @@ def insert_via_llamastack_component(
     import json as _json
     log_path = "/shared-data/ingestion-log.jsonl"
     with open(log_path, "a") as lf:
-        lf.write(_json.dumps({"document": upload_name, "status": "success", "stores": inserted}) + "\n")
+        lf.write(_json.dumps({"document": upload_name, "status": "success", "stores": inserted, "vector_db": vector_db_ids[0] if vector_db_ids else ""}) + "\n")
 
     return InsertOutput(status="success", chunks_inserted=inserted)
