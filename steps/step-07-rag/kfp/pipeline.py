@@ -120,6 +120,7 @@ def docling_rag_pipeline(
             llamastack_url=llamastack_url,
             processed_file=docling.outputs["processed_file"],
             vector_db_ids=reg_db.outputs["vector_db_ids"],
+            vector_db_name=vector_db_id,
             chunk_size_tokens=chunk_size_tokens,
         )
         _mount_pvc(insert)
@@ -197,6 +198,7 @@ def batch_docling_rag_pipeline(
             llamastack_url=llamastack_url,
             processed_file=docling.outputs["processed_file"],
             vector_db_ids=reg_db.outputs["vector_db_ids"],
+            vector_db_name=vector_db_id,
             chunk_size_tokens=chunk_size_tokens,
         )
         _mount_pvc(insert)
