@@ -87,7 +87,7 @@ Open the RHOAI Dashboard and navigate to **Data Science Pipelines > Runs**.
 
 **URL:** RHOAI Dashboard → Data Science Projects → `private-ai` → Pipelines
 
-**What to expect:** Completed pipeline runs showing the three-stage flow: fetch from MinIO → convert with Docling → insert via LlamaStack.
+**What to expect:** Completed pipeline runs showing: download → register_db → ParallelFor(docling → insert) → ingestion_summary. The summary step reports document counts and names per scenario.
 
 To trigger a new run from the CLI:
 
