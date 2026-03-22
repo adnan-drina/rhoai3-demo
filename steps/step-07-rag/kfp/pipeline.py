@@ -129,7 +129,6 @@ def docling_rag_pipeline(
     # --- Step 4: Ingestion Summary (waits for all inserts via Collected) ---
     summary = ingestion_summary_component(
         insert_statuses=Collected(insert.outputs["status"]),
-        files_downloaded=download.outputs["file_count"],
         vector_db_id=vector_db_id,
     )
     summary.set_caching_options(False)
@@ -209,7 +208,6 @@ def batch_docling_rag_pipeline(
     # --- Step 4: Ingestion Summary (waits for all inserts via Collected) ---
     summary = ingestion_summary_component(
         insert_statuses=Collected(insert.outputs["status"]),
-        files_downloaded=download.outputs["file_count"],
         vector_db_id=vector_db_id,
     )
     summary.set_caching_options(False)
