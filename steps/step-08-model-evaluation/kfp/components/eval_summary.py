@@ -19,6 +19,7 @@ from kfp.dsl import component, Output, Metrics
 def eval_summary_component(
     summary: List[Dict[str, Any]],
     run_id: str,
+    minio_console_url: str,
     metrics: Output[Metrics],
 ) -> str:
     """Summarize RAG evaluation results and log metrics to the Dashboard.
@@ -26,6 +27,7 @@ def eval_summary_component(
     Args:
         summary: Per-scenario results from run_and_score_tests.
         run_id: Evaluation run identifier.
+        minio_console_url: External MinIO console URL for report links.
         metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
@@ -81,6 +83,9 @@ def eval_summary_component(
         metrics.log_metric("rag_improvement", f"{sign}{delta}pp")
         print(f"  RAG improvement:  {sign}{delta} percentage points")
 
+    report_url = f"{minio_console_url}/browser/rhoai-storage/eval-results/{run_id}/"
+    metrics.log_metric("reports", report_url)
+    print(f"\n  Reports: {report_url}")
     print("=" * 60)
 
     return " | ".join(lines)

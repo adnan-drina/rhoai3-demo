@@ -29,7 +29,12 @@ if [ -z "$OC_TOKEN" ]; then
     log_error "Unable to obtain oc token. Run 'oc login' first."
     exit 1
 fi
-export NAMESPACE RUN_ID PIPELINE_YAML
+MINIO_CONSOLE_ROUTE=$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+MINIO_CONSOLE_URL=""
+if [ -n "$MINIO_CONSOLE_ROUTE" ]; then
+    MINIO_CONSOLE_URL="https://$MINIO_CONSOLE_ROUTE"
+fi
+export NAMESPACE RUN_ID PIPELINE_YAML MINIO_CONSOLE_URL
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys, time
@@ -111,7 +116,8 @@ except Exception:
         print(f"Could not create/find experiment '{experiment_name}'")
         sys.exit(1)
 
-params = {"run_id": RUN_ID}
+MINIO_CONSOLE_URL = os.environ.get("MINIO_CONSOLE_URL", "")
+params = {"run_id": RUN_ID, "minio_console_url": MINIO_CONSOLE_URL}
 
 run = kfp_client.run_pipeline(
     experiment_id=experiment_id,

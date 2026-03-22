@@ -64,6 +64,7 @@ def _mount_pvc(task: PipelineTask) -> None:
 def rag_eval_pipeline(
     llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
     run_id: str = "eval",
+    minio_console_url: str = "",
 ):
     # --- Step 1: Discover Tests ---
     scan = scan_tests_component(eval_configs_dir="/shared-data/eval-configs")
@@ -86,6 +87,7 @@ def rag_eval_pipeline(
     report = eval_summary_component(
         summary=run_score.outputs["summary"],
         run_id=run_id,
+        minio_console_url=minio_console_url,
     )
     report.set_caching_options(False)
 
