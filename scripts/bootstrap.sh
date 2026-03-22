@@ -80,6 +80,8 @@ log_step "Configuring custom resource health checks"
 #   ArgoCD treats Pending as Progressing, blocking sync waves.
 # ISVC: ArgoCD default health check misreads KServe condition format,
 #   showing Ready ISVCs as "Progressing". Custom check reads Ready condition.
+# TrustyAIService: ArgoCD has no built-in health check for this CRD.
+#   Reports Available=True but ArgoCD shows Progressing without this check.
 oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
   "spec": {
     "resourceHealthChecks": [
@@ -92,11 +94,16 @@ oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
         "group": "serving.kserve.io",
         "kind": "InferenceService",
         "check": "hs = {}\nif obj.status ~= nil and obj.status.conditions ~= nil then\n  for _, c in ipairs(obj.status.conditions) do\n    if c.type == \"Ready\" then\n      if c.status == \"True\" then\n        hs.status = \"Healthy\"\n        hs.message = \"Ready\"\n      elseif c.status == \"False\" then\n        hs.status = \"Degraded\"\n        hs.message = c.message or \"Not ready\"\n      else\n        hs.status = \"Progressing\"\n        hs.message = c.message or \"Waiting\"\n      end\n      return hs\n    end\n  end\nend\nhs.status = \"Progressing\"\nhs.message = \"Waiting for conditions\"\nreturn hs"
+      },
+      {
+        "group": "trustyai.opendatahub.io",
+        "kind": "TrustyAIService",
+        "check": "hs = {}\nif obj.status ~= nil and obj.status.conditions ~= nil then\n  for _, c in ipairs(obj.status.conditions) do\n    if c.type == \"Available\" then\n      if c.status == \"True\" then\n        hs.status = \"Healthy\"\n        hs.message = c.reason or \"Available\"\n      elseif c.status == \"False\" then\n        hs.status = \"Degraded\"\n        hs.message = c.message or \"Not available\"\n      else\n        hs.status = \"Progressing\"\n        hs.message = c.message or \"Waiting\"\n      end\n      return hs\n    end\n  end\nend\nhs.status = \"Progressing\"\nhs.message = \"Waiting for conditions\"\nreturn hs"
       }
     ]
   }
 }' 2>/dev/null \
-    && log_success "PVC + InferenceService health checks configured" \
+    && log_success "PVC + InferenceService + TrustyAIService health checks configured" \
     || log_warn "Could not configure health checks"
 
 log_step "Creating Argo CD project"
