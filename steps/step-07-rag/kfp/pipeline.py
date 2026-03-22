@@ -126,11 +126,12 @@ def docling_rag_pipeline(
         _set_resources(insert)
         insert.set_caching_options(False)
 
-    # --- Step 4: Ingestion Summary (polls PVC log until all docs done) ---
+    # --- Step 4: Ingestion Summary (runs after all parallel inserts complete) ---
     summary = ingestion_summary_component(
         expected_count=download.outputs["file_count"],
         vector_db_id=vector_db_id,
     )
+    summary.after(insert)
     _mount_pvc(summary)
     summary.set_caching_options(False)
 
@@ -206,11 +207,12 @@ def batch_docling_rag_pipeline(
         insert.set_caching_options(False)
         insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 4: Ingestion Summary (polls PVC log until all docs done) ---
+    # --- Step 4: Ingestion Summary (runs after all parallel inserts complete) ---
     summary = ingestion_summary_component(
         expected_count=download.outputs["file_count"],
         vector_db_id=vector_db_id,
     )
+    summary.after(insert)
     _mount_pvc(summary)
     summary.set_caching_options(False)
 

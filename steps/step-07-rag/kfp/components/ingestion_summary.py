@@ -1,10 +1,8 @@
 """
-Ingestion Summary Component — waits for all parallel inserts to write
-their results to /shared-data/ingestion-log.jsonl, then reports
-final document counts and names.
+Ingestion Summary Component — reads the ingestion log from the shared PVC
+and reports final document counts and names.
 
-Workaround for RHOAI 3.3 not supporting dsl.Collected: the component
-polls the PVC log file until expected_count entries are present.
+Runs after all ParallelFor inserts complete via .after(insert).
 """
 
 from kfp.dsl import component, Output, Metrics
@@ -19,7 +17,7 @@ def ingestion_summary_component(
     vector_db_id: str,
     metrics: Output[Metrics],
 ) -> str:
-    """Wait for all documents to be processed, then report results.
+    """Read ingestion results from PVC log and report metrics.
 
     Args:
         expected_count: Number of documents expected (from download step).
@@ -30,25 +28,9 @@ def ingestion_summary_component(
         Human-readable summary of the ingestion run.
     """
     import json
-    import time
     import os
 
     log_path = "/shared-data/ingestion-log.jsonl"
-    timeout = 900
-    poll_interval = 10
-    elapsed = 0
-
-    print(f"Waiting for {expected_count} documents to complete...")
-
-    while elapsed < timeout:
-        if os.path.exists(log_path):
-            with open(log_path) as f:
-                lines = [l.strip() for l in f if l.strip()]
-            if len(lines) >= expected_count:
-                break
-            print(f"  {len(lines)}/{expected_count} done ({elapsed}s)")
-        time.sleep(poll_interval)
-        elapsed += poll_interval
 
     results = []
     if os.path.exists(log_path):
@@ -62,7 +44,7 @@ def ingestion_summary_component(
     skipped = [r for r in results if r.get("status") == "skipped"]
     errored = [r for r in results if r.get("status") == "error"]
 
-    print("\nRAG Ingestion Summary")
+    print("RAG Ingestion Summary")
     print("=" * 60)
     print(f"  Vector DB:  {vector_db_id}")
     print(f"  Expected:   {expected_count}")
@@ -86,7 +68,6 @@ def ingestion_summary_component(
     for i, r in enumerate(succeeded):
         metrics.log_metric(f"doc_{i+1}", r["document"])
 
-    # Clean up log for next run
     if os.path.exists(log_path):
         os.remove(log_path)
 
