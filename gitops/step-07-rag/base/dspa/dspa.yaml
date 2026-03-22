@@ -18,11 +18,15 @@ metadata:
     openshift.io/display-name: "RAG Ingestion Pipelines"
 spec:
   objectStorage:
+    # Use the external MinIO API route so Dashboard artifact preview
+    # generates browser-accessible signed URLs. secure: false skips
+    # TLS verification for the self-signed OpenShift router cert.
     externalStorage:
       bucket: pipelines
-      host: minio.minio-storage.svc.cluster.local
-      port: "9000"
-      scheme: http
+      host: minio-api-minio-storage.apps.cluster-v2zvn.v2zvn.sandbox2890.opentlc.com
+      port: ""
+      scheme: https
+      secure: false
       s3CredentialsSecret:
         secretName: dspa-minio-credentials
         accessKey: accesskey
