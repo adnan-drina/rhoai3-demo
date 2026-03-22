@@ -9,20 +9,21 @@ Components are in kfp/components/ following KFP modular best practices.
 Reuses the existing DSPA (dspa-rag) in private-ai namespace.
 
 Pipeline flow:
-  download → register_db → ParallelFor(docling → insert) → completion
+  download → register_db → ParallelFor(docling → insert) → summary
 
 Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 """
 
 import kfp
 from kfp import dsl, kubernetes
-from kfp.dsl import PipelineTask
+from kfp.dsl import PipelineTask, Collected
 from pathlib import Path
 
 from components.download_from_s3 import download_from_s3_component
 from components.register_vector_db import register_vector_db_component
 from components.process_with_docling import process_with_docling_component
 from components.insert_via_llamastack import insert_via_llamastack_component
+from components.ingestion_summary import ingestion_summary_component
 
 MINIO_SECRET = "minio-connection"
 PIPELINE_PVC = "rag-pipeline-workspace"
@@ -125,6 +126,14 @@ def docling_rag_pipeline(
         _set_resources(insert)
         insert.set_caching_options(False)
 
+    # --- Step 4: Ingestion Summary (waits for all inserts via Collected) ---
+    summary = ingestion_summary_component(
+        insert_statuses=Collected(insert.outputs["status"]),
+        files_downloaded=download.outputs["file_count"],
+        vector_db_id=vector_db_id,
+    )
+    summary.set_caching_options(False)
+
 
 # ---------------------------------------------------------------------------
 # Pipeline 2: Batch ingestion with parallel processing
@@ -196,6 +205,14 @@ def batch_docling_rag_pipeline(
         _set_resources(insert)
         insert.set_caching_options(False)
         insert.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
+
+    # --- Step 4: Ingestion Summary (waits for all inserts via Collected) ---
+    summary = ingestion_summary_component(
+        insert_statuses=Collected(insert.outputs["status"]),
+        files_downloaded=download.outputs["file_count"],
+        vector_db_id=vector_db_id,
+    )
+    summary.set_caching_options(False)
 
 
 if __name__ == "__main__":
