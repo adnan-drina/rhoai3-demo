@@ -226,6 +226,16 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 
 **Solution:** Increase the "Max Inference Iterations" slider to 20+ in the chatbot sidebar. The default is 20.
 
+### ParallelFor group shows "Running" after pipeline completes
+
+**Symptom:** In the Dashboard pipeline graph, the `process-pdf` ParallelFor group node shows a spinner/running status even after the downstream `ingestion_summary` step has completed successfully.
+
+**Root Cause:** KFP backend bug where sub-DAG group status updates when the first task completes instead of waiting for all tasks. Tracked as [kubeflow/pipelines#10830](https://github.com/kubeflow/pipelines/issues/10830), fixed in [PR #11651](https://github.com/kubeflow/pipelines/pull/11651) (KFP 2.5.0, Feb 2025). RHOAI 3.3's DSPA may not include the full fix for dynamic ParallelFor groups.
+
+**Impact:** Cosmetic only. Pipeline execution order is correct — the `ingestion_summary` step properly waits for all ParallelFor iterations via `.after(insert)`, as confirmed by the compiled YAML `dependentTasks: [for-loop-1]`.
+
+**Workaround:** None from pipeline code. Verify actual completion by checking the `ingestion_summary` step's metrics or the pipeline run status (which correctly shows "Succeeded").
+
 ## References
 
 - [RHOAI 3.3 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
