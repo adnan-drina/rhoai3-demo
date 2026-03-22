@@ -13,14 +13,12 @@ from kfp.dsl import component, Output, Metrics
     pip_index_urls=["https://pypi.org/simple"],
 )
 def ingestion_summary_component(
-    expected_count: int,
     vector_db_id: str,
     metrics: Output[Metrics],
 ) -> str:
     """Read ingestion results from PVC log and report metrics.
 
     Args:
-        expected_count: Number of documents expected (from download step).
         vector_db_id: Target vector store collection name.
         metrics: KFP Metrics artifact for Dashboard visibility.
 
@@ -47,8 +45,7 @@ def ingestion_summary_component(
     print("RAG Ingestion Summary")
     print("=" * 60)
     print(f"  Vector DB:  {vector_db_id}")
-    print(f"  Expected:   {expected_count}")
-    print(f"  Processed:  {len(results)}")
+    print(f"  Total:      {len(results)}")
     print(f"  Succeeded:  {len(succeeded)}")
     print(f"  Skipped:    {len(skipped)}")
     print(f"  Errored:    {len(errored)}")
@@ -61,7 +58,7 @@ def ingestion_summary_component(
     print("=" * 60)
 
     metrics.log_metric("vector_db_id", vector_db_id)
-    metrics.log_metric("documents_expected", expected_count)
+    metrics.log_metric("documents_total", len(results))
     metrics.log_metric("documents_ingested", len(succeeded))
     metrics.log_metric("documents_skipped", len(skipped))
     metrics.log_metric("documents_errored", len(errored))
@@ -71,4 +68,4 @@ def ingestion_summary_component(
     if os.path.exists(log_path):
         os.remove(log_path)
 
-    return f"{len(succeeded)}/{expected_count} documents ingested into {vector_db_id}"
+    return f"{len(succeeded)}/{len(results)} documents ingested into {vector_db_id}"
