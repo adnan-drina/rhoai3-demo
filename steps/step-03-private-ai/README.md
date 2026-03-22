@@ -11,6 +11,7 @@ Without guardrails, every user consumes every GPU. Step-03 transforms RHOAI into
 ```text
 Private AI Infrastructure
 ├── MinIO                → S3-compatible storage (models, pipelines, workbench data)
+├── MinIO API Route      → External S3 endpoint for DSPA artifact preview
 ├── Authentication       → HTPasswd identity provider (ai-admin, ai-developer)
 ├── RBAC                 → Role bindings for Governor / Consumer personas
 ├── Data Connection      → Auto-appears in Dashboard dropdowns
@@ -20,6 +21,7 @@ Private AI Infrastructure
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
 | **MinIO** | S3-compatible storage (models, pipelines, workbench data) | `minio-storage` |
+| **MinIO API Route** | External S3 endpoint — enables DSPA artifact preview in Dashboard | `minio-storage` |
 | **Auth** | HTPasswd: `ai-admin` / `ai-developer` (password: `redhat123`) | cluster-scoped |
 | **RBAC** | `ai-admin` → admin role, `ai-developer` → edit role | `private-ai` |
 | **Data Connection** | Auto-appears in Dashboard dropdowns for workbenches and model serving | `private-ai` |

@@ -83,13 +83,19 @@ Run the evaluation pipeline to compare pre-RAG and post-RAG answers.
 ./steps/step-08-model-evaluation/run-rag-eval.sh
 ```
 
-**Expected result:** 4 HTML reports in MinIO — `acme_corporate_pre_rag_report.html`, `acme_corporate_post_rag_report.html`, `whoami_pre_rag_report.html`, `whoami_post_rag_report.html`.
+**Expected result:** A 3-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO.
 
-### Scene 3: Review HTML Reports in MinIO
+### Scene 3: Review Results
 
-Open the MinIO Console and navigate to `rhoai-storage/eval-results/{run-id}/`.
+The `eval_summary` Dashboard metrics show:
+- `pre_rag_quality` — baseline without documents (expect ~20%)
+- `post_rag_quality` — with RAG context (expect ~90%)
+- `rag_improvement` — quality delta (expect +70pp)
+- `reports` — clickable MinIO console URL to view full HTML reports
 
-_What to say: "Every evaluation run is versioned and stored in object storage. The team can review exactly which questions improved after adding RAG."_
+The `run-rag-eval.sh` script resolves the MinIO console route and passes it as a pipeline parameter so the reports URL is cluster-aware.
+
+_What to say: "Every evaluation run is versioned and stored in object storage. The summary shows the quality improvement from RAG — 20% without documents to 90% with them."_
 
 ### Scene 4: Scoring Breakdown
 
