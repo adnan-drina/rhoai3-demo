@@ -1,9 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# Upload training photos and test images to MinIO for the pipeline.
+# Upload training photos, unknown faces, and test images to MinIO.
 #
 # The pipeline's prepare_dataset component reads from:
-#   s3://face-training-photos/adnan/     (selfie photos)
+#   s3://face-training-photos/adnan/     (selfie photos — class 0)
+#   s3://face-training-photos/unknown/   (colleague photos — class 1)
 #   s3://face-training-photos/test-images/ (test images for evaluation)
 #
 # Usage: ./upload-training-data.sh
@@ -16,6 +17,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 PHOTOS_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/my_photos"
+UNKNOWN_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/unknown_face"
 IMAGES_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/images"
 NAMESPACE="private-ai"
 
@@ -43,7 +45,7 @@ else
     "$VENV_PATH/bin/pip" install -q boto3 2>/dev/null
 fi
 
-export PHOTOS_DIR IMAGES_DIR
+export PHOTOS_DIR UNKNOWN_DIR IMAGES_DIR
 
 "$VENV_PATH/bin/python3" << 'PYEOF'
 import os, boto3
@@ -51,6 +53,7 @@ from pathlib import Path
 from botocore.config import Config
 
 PHOTOS_DIR = Path(os.environ["PHOTOS_DIR"])
+UNKNOWN_DIR = Path(os.environ["UNKNOWN_DIR"])
 IMAGES_DIR = Path(os.environ["IMAGES_DIR"])
 
 s3 = boto3.client("s3",
@@ -61,26 +64,29 @@ s3 = boto3.client("s3",
 
 BUCKET = "face-training-photos"
 
-# Ensure bucket exists
 try:
     s3.head_bucket(Bucket=BUCKET)
 except Exception:
     s3.create_bucket(Bucket=BUCKET)
     print(f"Created bucket: {BUCKET}")
 
-# Upload selfie photos
-photos = sorted(PHOTOS_DIR.glob("*.jpeg")) + sorted(PHOTOS_DIR.glob("*.jpg")) + sorted(PHOTOS_DIR.glob("*.png"))
-print(f"Uploading {len(photos)} training photos -> s3://{BUCKET}/adnan/")
-for p in photos:
-    s3.upload_file(str(p), BUCKET, f"adnan/{p.name}")
-print(f"  Done: {len(photos)} photos")
+def upload_dir(local_dir, s3_prefix):
+    files = sorted(local_dir.glob("*.jpeg")) + sorted(local_dir.glob("*.jpg")) + sorted(local_dir.glob("*.png"))
+    for f in files:
+        s3.upload_file(str(f), BUCKET, f"{s3_prefix}/{f.name}")
+    return len(files)
 
-# Upload test images
-images = sorted(IMAGES_DIR.glob("*.jpg"))
-print(f"Uploading {len(images)} test images -> s3://{BUCKET}/test-images/")
-for img in images:
-    s3.upload_file(str(img), BUCKET, f"test-images/{img.name}")
-print(f"  Done: {len(images)} images")
+n = upload_dir(PHOTOS_DIR, "adnan")
+print(f"Uploaded {n} selfie photos -> s3://{BUCKET}/adnan/")
+
+if UNKNOWN_DIR.exists():
+    n = upload_dir(UNKNOWN_DIR, "unknown")
+    print(f"Uploaded {n} unknown photos -> s3://{BUCKET}/unknown/")
+else:
+    print("No unknown_face directory — pipeline will fall back to LFW")
+
+n = upload_dir(IMAGES_DIR, "test-images")
+print(f"Uploaded {n} test images -> s3://{BUCKET}/test-images/")
 
 print(f"\nAll data uploaded to s3://{BUCKET}/")
 PYEOF

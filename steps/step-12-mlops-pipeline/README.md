@@ -10,7 +10,7 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 
 ```text
 MLOps Training Pipeline (KFP v2, 6 Steps)
-├── 1. prepare_dataset     → Download photos + WIDER Face, auto-annotate, split train/val
+├── 1. prepare_dataset     → Download photos + unknowns from MinIO, auto-annotate, split train/val
 ├── 2. train_model         → YOLO11 training on CPU, ONNX export
 ├── 3. evaluate_model      → mAP50 quality gate (compare with previous version)
 ├── 4. register_model      → Upload ONNX to MinIO, register in Model Registry
@@ -23,7 +23,7 @@ MLOps Training Pipeline (KFP v2, 6 Steps)
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| `prepare_dataset` | Download photos + WIDER Face, auto-annotate, split train/val | `private-ai` |
+| `prepare_dataset` | Download adnan + unknown photos from MinIO, auto-annotate, split train/val (falls back to LFW if no unknowns in MinIO) | `private-ai` |
 | `train_model` | YOLO11 training on CPU, ONNX export | `private-ai` |
 | `evaluate_model` | mAP50 computation, compare with previous version, quality gate | `private-ai` |
 | `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | `private-ai` |

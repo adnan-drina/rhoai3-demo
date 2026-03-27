@@ -43,6 +43,8 @@ artifacts/
 
 # Step 11: Face recognition binary assets and training artifacts
 steps/step-11-face-recognition/notebooks/my_photos/
+steps/step-11-face-recognition/notebooks/unknown_face/
+steps/step-11-face-recognition/notebooks/lfw_subset/
 steps/step-11-face-recognition/notebooks/images/
 steps/step-11-face-recognition/notebooks/videos/
 steps/step-11-face-recognition/notebooks/face-dataset/

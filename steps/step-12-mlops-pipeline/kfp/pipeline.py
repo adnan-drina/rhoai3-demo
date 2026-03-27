@@ -58,6 +58,7 @@ def _mount_pvc(task: PipelineTask) -> None:
 )
 def face_recognition_training_pipeline(
     photos_s3_prefix: str = "s3://face-training-photos/adnan/",
+    unknown_s3_prefix: str = "s3://face-training-photos/unknown/",
     model_name: str = "face-recognition",
     version: str = "",
     epochs: int = 15,
@@ -73,6 +74,7 @@ def face_recognition_training_pipeline(
     # --- Step 1: Prepare Dataset ---
     prep_task = prepare_dataset(
         photos_s3_prefix=photos_s3_prefix,
+        unknown_s3_prefix=unknown_s3_prefix,
         minio_endpoint=minio_endpoint,
     )
     _inject_minio(prep_task)

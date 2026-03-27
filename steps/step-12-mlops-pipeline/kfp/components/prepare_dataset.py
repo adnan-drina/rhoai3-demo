@@ -1,5 +1,6 @@
-"""Download photos from MinIO, download WIDER Face for unknown class,
-auto-annotate with YOLO11-face, split train/val, write data.yaml."""
+"""Download user photos and unknown faces from MinIO, auto-annotate with
+YOLO11-face, split train/val, write data.yaml. Falls back to LFW
+portraits if no unknown photos are in MinIO."""
 
 from kfp.dsl import component, Output, Dataset, Metrics
 
@@ -8,7 +9,7 @@ from kfp.dsl import component, Output, Dataset, Metrics
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
         "ultralytics>=8.3.0",
-        "huggingface_hub>=0.20.0",
+        "scikit-learn>=1.4.0",
         "boto3>=1.34.0",
         "opencv-python-headless>=4.10.0",
         "lapx>=0.5.2",
@@ -18,27 +19,29 @@ from kfp.dsl import component, Output, Dataset, Metrics
 def prepare_dataset(
     photos_s3_prefix: str,
     minio_endpoint: str,
-    dataset: Output[Dataset],
-    metrics: Output[Metrics],
+    unknown_s3_prefix: str = "s3://face-training-photos/unknown/",
+    dataset: Output[Dataset] = None,
+    metrics: Output[Metrics] = None,
 ) -> int:
-    """Download photos from MinIO and WIDER Face, auto-annotate, and split train/val.
+    """Download user and unknown photos from MinIO, auto-annotate, split train/val.
 
     Args:
-        photos_s3_prefix: S3 URI to the user's photo collection.
+        photos_s3_prefix: S3 URI to the user's photo collection (class 0).
         minio_endpoint: MinIO endpoint URL (fallback if env var not set).
+        unknown_s3_prefix: S3 URI to unknown face photos (class 1).
+            Falls back to LFW dataset if empty.
         metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
         Total number of annotated images (train + val).
     """
-    import subprocess, os, shutil, random, zipfile
+    import subprocess, os, shutil, random
     from pathlib import Path
 
-    # Force headless OpenCV (ultralytics pulls opencv-python which needs libGL)
     subprocess.run(["pip", "install", "--force-reinstall", "--no-deps", "opencv-python-headless>=4.10.0"], check=True, capture_output=True)
 
     from ultralytics import YOLO
-    from huggingface_hub import hf_hub_download, snapshot_download
+    from huggingface_hub import hf_hub_download
     import boto3
     from botocore.config import Config
 
@@ -56,42 +59,50 @@ def prepare_dataset(
         (DATASET_DIR / "images" / split).mkdir(parents=True)
         (DATASET_DIR / "labels" / split).mkdir(parents=True)
 
-    # --- Download user photos from MinIO ---
     s3 = boto3.client("s3",
         endpoint_url=os.environ.get("AWS_S3_ENDPOINT", minio_endpoint),
         aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         config=Config(signature_version="s3v4"))
 
-    parts = photos_s3_prefix.replace("s3://", "").split("/", 1)
-    bucket = parts[0]
-    prefix = parts[1] if len(parts) > 1 else ""
+    def download_s3_photos(s3_prefix, dest_dir):
+        parts = s3_prefix.replace("s3://", "").split("/", 1)
+        bucket, prefix = parts[0], parts[1] if len(parts) > 1 else ""
+        downloaded = 0
+        paginator = s3.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.lower().endswith((".jpg", ".jpeg", ".png")):
+                    local = dest_dir / key.replace("/", "_")
+                    s3.download_file(bucket, key, str(local))
+                    downloaded += 1
+        return downloaded
 
-    resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    for obj in resp.get("Contents", []):
-        key = obj["Key"]
-        if key.lower().endswith((".jpg", ".jpeg", ".png")):
-            local = PHOTOS_DIR / key.replace("/", "_")
-            s3.download_file(bucket, key, str(local))
-
+    # --- Download user photos from MinIO ---
+    n_user = download_s3_photos(photos_s3_prefix, PHOTOS_DIR)
     user_photos = sorted(PHOTOS_DIR.glob("*"))
-    print(f"Downloaded {len(user_photos)} user photos from s3://{bucket}/{prefix}")
+    print(f"Downloaded {n_user} user photos from {photos_s3_prefix}")
 
-    # --- Download WIDER Face for unknown class ---
-    print("Downloading WIDER Face subset from HuggingFace...")
-    local_repo = snapshot_download(
-        repo_id="wider_face", repo_type="dataset",
-        allow_patterns=["data/WIDER_val.zip"], cache_dir="/tmp/hf_wider")
-    wider_zip = list(Path(local_repo).rglob("WIDER_val.zip"))[0]
+    # --- Download unknown photos from MinIO, fall back to LFW ---
+    n_unknown = download_s3_photos(unknown_s3_prefix, UNKNOWN_DIR)
+    print(f"Downloaded {n_unknown} unknown photos from {unknown_s3_prefix}")
 
-    with zipfile.ZipFile(wider_zip, "r") as z:
-        z.extractall("/tmp/wider_extracted")
+    if n_unknown < 20:
+        print(f"Only {n_unknown} unknown photos in MinIO — augmenting with LFW portraits...")
+        from sklearn.datasets import fetch_lfw_people
+        from PIL import Image
+        import numpy as np
+        NUM_LFW = 200
+        lfw = fetch_lfw_people(min_faces_per_person=1, resize=1.0, color=True)
+        indices = random.sample(range(len(lfw.images)), min(NUM_LFW, len(lfw.images)))
+        for i, idx in enumerate(indices):
+            img = Image.fromarray(lfw.images[idx].astype(np.uint8))
+            img.save(UNKNOWN_DIR / f"lfw_{i:04d}.jpg", quality=95)
+        print(f"Added {len(indices)} LFW portraits as fallback")
 
-    all_wider = list(Path("/tmp/wider_extracted/WIDER_val/images").rglob("*.jpg"))
-    selected = random.sample(all_wider, min(100, len(all_wider)))
-    for i, p in enumerate(selected):
-        shutil.copy2(p, UNKNOWN_DIR / f"unknown_{i:04d}.jpg")
-    print(f"Prepared {len(selected)} unknown faces")
+    unknown_photos = sorted(UNKNOWN_DIR.glob("*.jpg")) + sorted(UNKNOWN_DIR.glob("*.jpeg"))
+    print(f"Total unknown faces: {len(unknown_photos)}")
 
     # --- Auto-annotate ---
     print("Auto-annotating with YOLO11-face detector...")
@@ -151,7 +162,7 @@ def prepare_dataset(
     metrics.log_metric("train_images", total["train"])
     metrics.log_metric("val_images", total["val"])
     metrics.log_metric("user_photos", len(user_photos))
-    metrics.log_metric("unknown_photos", len(selected))
+    metrics.log_metric("unknown_photos", len(unknown_photos))
 
     # Record dataset artifact for ML lineage tracking
     dataset.uri = str(DATASET_DIR / "data.yaml")

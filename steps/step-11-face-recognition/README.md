@@ -62,7 +62,8 @@ This copies three folders to the workbench pod via `oc cp`:
 |--------|----------|---------|
 | `notebooks/images/` | Test face and group photos (.jpg) | Used by notebooks 01, 03, 04 |
 | `notebooks/videos/` | Test video (.mov) | Used by notebooks 03, 04 for video inference |
-| `notebooks/my_photos/` | ~50-120 selfie photos (.jpeg) | Training data for notebook 02 |
+| `notebooks/my_photos/` | ~200+ selfie photos (.jpeg) | Training data — class 0 (adnan) |
+| `notebooks/unknown_face/` | ~200+ colleague photos (.jpg) | Training data — class 1 (unknown_face) |
 
 These folders are gitignored (binary assets). The workbench PVC persists them across pod restarts.
 
@@ -80,7 +81,7 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 
 **Do:** Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`). Run `02-retrain-face-model.ipynb`.
 
-**Expect:** The notebook auto-annotates your photos, downloads public faces for the "unknown" class, trains on CPU for ~10-15 minutes, and exports to ONNX.
+**Expect:** The notebook auto-annotates your photos, combines real colleague photos (`unknown_face/`) with LFW portraits for the "unknown" class, trains on CPU for ~30-60 minutes (50 epochs), and exports to ONNX.
 
 **Say:** *"With just 50 photos and 15 minutes of CPU training, we have a personalized face recognition model. YOLO11's built-in augmentation — mosaic, flips, rotation, color jitter — turns 50 images into thousands of training variations."*
 
@@ -136,6 +137,8 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
 > **Design Decision:** **YOLO11** (not YOLOv8). YOLO11 (Sep 2024) has 22% fewer parameters and higher mAP than YOLOv8 (Jan 2023). Same `ultralytics` package — accessed as `YOLO('yolo11n.pt')`.
 
 > **Design Decision:** **Auto-annotation** using the pre-trained YOLO11-face detector eliminates manual bounding box labeling. Users only need to provide raw selfie photos.
+
+> **Design Decision:** **Real colleague photos for unknown class.** Using surveillance-style datasets (e.g. WIDER Face) as negatives causes the model to classify any close-up face as "adnan" because the visual domain is too different. The `unknown_face/` directory contains photos of real colleagues from the same events and camera conditions. Combined with LFW portraits for diversity, this produces mAP50 >0.94 vs ~0.76 with WIDER Face alone.
 
 > **Design Decision:** **Pre-trained model fallback**. A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
 
