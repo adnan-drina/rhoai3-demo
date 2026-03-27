@@ -46,9 +46,9 @@ echo "  ║        Edge AI on MicroShift — Live Demo                    ║"
 echo "  ║        Face Recognition on NVIDIA L4 GPU at the Edge        ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo "  This RHEL host was previously running a 1B parameter LLM (RHAIIS)."
-echo "  We replaced it with MicroShift + NVIDIA Triton serving a YOLO11"
-echo "  face recognition model on the same L4 GPU."
+echo "  A RHEL 9.5 edge server running MicroShift 4.20 with an NVIDIA L4 GPU."
+echo "  YOLO11 face recognition model served by NVIDIA Triton — trained in the"
+echo "  datacenter, packaged as ModelCar OCI image, deployed to the edge."
 echo ""
 pause
 
@@ -136,15 +136,13 @@ cmd "oc get pods -n edge-ai"
 pause
 
 # =============================================================================
-section "8. The Before and After"
-echo "  This host was running RHAIIS (vLLM with Gemma 1B on the L4 GPU)."
-echo "  We stopped it, installed MicroShift, and deployed face recognition"
-echo "  on the same GPU using NVIDIA Triton."
+section "8. Edge Platform Services"
+echo "  MicroShift and CRI-O running as systemd services on RHEL."
 echo ""
 
-cmd "cat /etc/systemd/system/rhaiis.service 2>/dev/null | grep -E 'Description|ExecStart' || echo 'RHAIIS service file not found'"
-cmd "systemctl is-active rhaiis.service 2>/dev/null || echo 'RHAIIS: inactive (stopped for MicroShift)'"
 cmd "systemctl is-active microshift"
+cmd "systemctl is-active crio"
+cmd "rpm -q microshift --queryformat '%{NAME} %{VERSION}-%{RELEASE}\n'"
 
 pause
 
