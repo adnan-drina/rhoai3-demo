@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-camera
+  namespace: edge-ai-demo
+  labels:
+    app.kubernetes.io/name: edge-camera
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: edge-ai
+    app.openshift.io/runtime: python
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    app.openshift.io/connects-to: '[{"apiVersion":"serving.kserve.io/v1beta1","kind":"InferenceService","name":"face-recognition-edge"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: edge-camera
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: edge-camera
+        app.kubernetes.io/part-of: edge-ai
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: streamlit
+          image: quay.io/adrina/edge-camera:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 8501
+              protocol: TCP
+          env:
+            - name: FACE_RECOGNITION_ENDPOINT
+              value: "http://face-recognition-edge-predictor:8888/v2/models/face-recognition-edge/infer"
+            - name: CONFIDENCE_THRESHOLD
+              value: "0.3"
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

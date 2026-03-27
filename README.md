@@ -30,14 +30,15 @@ Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-t
 | 09 | AI Safety | TrustyAI Guardrails: HAP detection, prompt injection, PII filtering |
 | 10 | Agentic AI & MCP | Database, OpenShift, Slack MCP servers — autonomous tool orchestration |
 
-### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-12)
+### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-13)
 
-Train a YOLO11 face recognition model, deploy on OpenVINO, and automate the full MLOps lifecycle — proving RHOAI handles both GenAI and traditional ML.
+Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLOps lifecycle, and bring inference to the edge — proving RHOAI handles both GenAI and traditional ML across datacenter and edge.
 
 | Step | Capability | Highlights |
 |------|-----------|------------|
 | 11 | Computer Vision | YOLO11 ONNX on KServe + OpenVINO Model Server — CPU-only, no GPU needed |
 | 12 | MLOps Pipeline | KFP v2: train → evaluate → register → deploy → monitor with TrustyAI drift detection |
+| 13 | Edge AI | Phone camera app + edge inference — Red Hat Edge + On-Premise AI/ML pattern |
 
 ## E2E Scenarios
 
@@ -60,6 +61,7 @@ A complete MLOps lifecycle from notebook to production:
 4. **Deploy** — KFP pipeline registers in Model Registry and deploys on OpenVINO (step 12)
 5. **Monitor** — TrustyAI tracks confidence drift in production (step 12)
 6. **Query via API** — KServe v2 REST endpoint for application integration (notebook 04)
+7. **Edge inference** — phone camera app with live face recognition at the edge (step 13)
 
 ## What You Need
 
@@ -99,6 +101,7 @@ Deploy by theme or all steps in order:
 # Theme 3: Predictive AI
 ./steps/step-11-face-recognition/deploy.sh
 ./steps/step-12-mlops-pipeline/deploy.sh
+./steps/step-13-edge-ai/deploy.sh
 ```
 
 Validate the ACME demo flow:
@@ -123,11 +126,12 @@ Validate the ACME demo flow:
 | 10 | [Agentic AI & MCP](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers | [Configuring MCP servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user) |
 | 11 | [Face Recognition](steps/step-11-face-recognition/README.md) | YOLO11 ONNX, KServe + OpenVINO, CPU-only inference | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
 | 12 | [MLOps Pipeline](steps/step-12-mlops-pipeline/README.md) | KFP v2 training, Model Registry, TrustyAI monitoring | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/) |
+| 13 | [Edge AI](steps/step-13-edge-ai/README.md) | Phone camera app, edge inference, GitOps model delivery | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
 
 ## GitOps Architecture
 
 - **Per-step deployment** — each `deploy.sh` applies its own ArgoCD Application (`oc apply -f`), giving control over ordering and runtime setup (secrets, SCC grants, model uploads) between syncs.
-- **`targetRevision: main`** — acceptable for a demo project where the single branch is the source of truth. For stable demo releases, tag the repo and update across all 12 Applications.
+- **`targetRevision: main`** — acceptable for a demo project where the single branch is the source of truth. For stable demo releases, tag the repo and update across all 13 Applications.
 - **Single ArgoCD instance** — both platform (steps 01-02) and application (steps 03-12) resources are managed by the default `openshift-gitops` instance. Production audiences should consider separating cluster-config from app-deployment.
 - **Fork-friendly** — `bootstrap.sh` auto-detects the git remote URL and updates all ArgoCD Applications. No manual URL changes needed for forks.
 

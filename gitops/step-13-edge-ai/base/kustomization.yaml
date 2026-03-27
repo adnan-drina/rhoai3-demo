@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Step 13: Edge AI — Face recognition at the edge
+# Deploys a simulated edge environment (SNO) with:
+#   - OpenVINO Model Server serving the same YOLO11 model as step-11
+#   - Streamlit camera app for phone-based face recognition
+
+resources:
+  - namespace.yaml
+  - storage-config-secret.yaml
+  - serving-runtime/
+  - inference/
+  - edge-camera/

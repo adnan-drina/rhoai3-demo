@@ -1,0 +1,59 @@
+# OpenVINO Model Server for the edge namespace.
+# Same runtime as step-11 (central), duplicated here because
+# ServingRuntimes are namespace-scoped.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: kserve-ovms
+  namespace: edge-ai-demo
+  labels:
+    app.kubernetes.io/part-of: edge-ai
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/runtime-version: v2025.4
+    opendatahub.io/template-name: kserve-ovms
+    opendatahub.io/template-display-name: OpenVINO Model Server
+    openshift.io/display-name: OpenVINO Model Server
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: ovms
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8888"
+  multiModel: false
+  protocolVersions:
+    - v2
+    - grpc-v2
+  supportedModelFormats:
+    - name: openvino_ir
+      autoSelect: true
+      version: opset13
+    - name: onnx
+      version: "1"
+    - name: tensorflow
+      autoSelect: true
+      version: "1"
+    - name: tensorflow
+      autoSelect: true
+      version: "2"
+    - name: paddle
+      autoSelect: true
+      version: "2"
+    - name: pytorch
+      autoSelect: true
+      version: "2"
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:defd01ac5a37a6138de73a8f1b10c676a2efa617238049378f8bc63fb0eb00c6
+      args:
+        - --model_name={{.Name}}
+        - --port=8001
+        - --rest_port=8888
+        - --model_path=/mnt/models
+        - --file_system_poll_wait_seconds=0
+        - --metrics_enable
+      ports:
+        - containerPort: 8888
+          protocol: TCP

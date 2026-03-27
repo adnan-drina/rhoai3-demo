@@ -1,0 +1,21 @@
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+USER 0
+RUN dnf install -y --nodocs mesa-libGL glib2 && \
+    dnf clean all && rm -rf /var/cache/dnf
+USER 1001
+
+WORKDIR /opt/app-root/src
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "edge_camera.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true", \
+     "--browser.gatherUsageStats=false"]

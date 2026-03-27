@@ -1,0 +1,21 @@
+# HTTPS required — browsers block getUserMedia (camera access) on non-HTTPS origins.
+# OpenShift edge TLS termination provides this automatically.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: edge-camera
+  namespace: edge-ai-demo
+  labels:
+    app.kubernetes.io/name: edge-camera
+    app.kubernetes.io/part-of: edge-ai
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: edge-camera
+  port:
+    targetPort: 8501

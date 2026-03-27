@@ -1,0 +1,38 @@
+# Same YOLO11 face recognition model as step-11, served at the edge.
+# Pulls from the same MinIO bucket — in production, this would be a
+# local model cache populated by a GitOps model sync mechanism.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: face-recognition-edge
+  namespace: edge-ai-demo
+  labels:
+    app.kubernetes.io/name: face-recognition-edge
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: edge-ai
+    app.kubernetes.io/managed-by: argocd
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    openshift.io/display-name: "Face Recognition — Edge (YOLO11 ONNX)"
+    serving.kserve.io/deploymentMode: RawDeployment
+    security.opendatahub.io/enable-auth: "false"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      runtime: kserve-ovms
+      modelFormat:
+        name: onnx
+      storage:
+        key: minio-connection
+      storageUri: s3://models/face-recognition/
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
