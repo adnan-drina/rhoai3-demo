@@ -38,6 +38,8 @@ cmd() {
     echo ""
 }
 
+ROUTE_HOST=$(oc get route edge-camera -n edge-ai -o jsonpath='{.spec.host}' 2>/dev/null || echo "unknown")
+
 # =============================================================================
 clear
 echo -e "${BOLD}"
@@ -46,9 +48,18 @@ echo "  ║        Edge AI on MicroShift — Live Demo                    ║"
 echo "  ║        Face Recognition on NVIDIA L4 GPU at the Edge        ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo "  A RHEL 9.5 edge server running MicroShift 4.20 with an NVIDIA L4 GPU."
-echo "  YOLO11 face recognition model served by NVIDIA Triton — trained in the"
-echo "  datacenter, packaged as ModelCar OCI image, deployed to the edge."
+echo ""
+echo -e "  ${BOLD}Red Hat Edge + On-Premise AI/ML Pattern:${NC}"
+echo ""
+echo "  Datacenter (OCP 4.20)          Edge (MicroShift 4.20 on RHEL 9.5)"
+echo "  ┌──────────────────────┐       ┌──────────────────────────────────┐"
+echo "  │ Train (KFP pipeline) │       │ Streamlit Camera App             │"
+echo "  │ Evaluate (mAP50)     │       │ NVIDIA Triton + ONNX Runtime     │"
+echo "  │ Register (Model Reg) │──────>│ YOLO11 ONNX on L4 GPU           │"
+echo "  │ Package (ModelCar)   │  OCI  │ KServe v2 API                    │"
+echo "  └──────────────────────┘       └──────────────────────────────────┘"
+echo ""
+echo -e "  Camera App: ${BOLD}${GREEN}https://${ROUTE_HOST}${NC}"
 echo ""
 pause
 
@@ -101,12 +112,6 @@ echo ""
 
 cmd "oc get servingruntime -n edge-ai -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image"
 
-echo "  Model metadata (input/output tensor shapes):"
-SVC_IP=$(oc get svc face-recognition-edge-stable -n edge-ai -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
-if [ -n "$SVC_IP" ]; then
-    cmd "curl -s http://${SVC_IP}:8000/v2/models/face-recognition-edge | python3 -m json.tool"
-fi
-
 pause
 
 # =============================================================================
@@ -124,7 +129,6 @@ section "7. The Camera App"
 echo "  Streamlit app accessible via HTTPS — open it on your phone or laptop."
 echo ""
 
-ROUTE_HOST=$(oc get route edge-camera -n edge-ai -o jsonpath='{.spec.host}' 2>/dev/null)
 echo -e "  ${BOLD}${GREEN}https://${ROUTE_HOST}${NC}"
 echo ""
 echo "  (Accept the self-signed certificate warning)"
@@ -136,28 +140,7 @@ cmd "oc get pods -n edge-ai"
 pause
 
 # =============================================================================
-section "8. Edge Platform Services"
-echo "  MicroShift and CRI-O running as systemd services on RHEL."
-echo ""
-
-cmd "systemctl is-active microshift"
-cmd "systemctl is-active crio"
-cmd "rpm -q microshift --queryformat '%{NAME} %{VERSION}-%{RELEASE}\n'"
-
-pause
-
-# =============================================================================
 section "Demo Complete"
-echo ""
-echo -e "  ${BOLD}Red Hat Edge + On-Premise AI/ML Pattern:${NC}"
-echo ""
-echo "  Datacenter (OCP 4.20)          Edge (MicroShift 4.20 on RHEL 9.5)"
-echo "  ┌──────────────────────┐       ┌──────────────────────────────────┐"
-echo "  │ Train (KFP pipeline) │       │ Streamlit Camera App             │"
-echo "  │ Evaluate (mAP50)     │       │ NVIDIA Triton + ONNX Runtime     │"
-echo "  │ Register (Model Reg) │──────>│ YOLO11 ONNX on L4 GPU           │"
-echo "  │ Package (ModelCar)   │  OCI  │ KServe v2 API                    │"
-echo "  └──────────────────────┘       └──────────────────────────────────┘"
 echo ""
 echo -e "  Camera App: ${BOLD}${GREEN}https://${ROUTE_HOST}${NC}"
 echo ""
