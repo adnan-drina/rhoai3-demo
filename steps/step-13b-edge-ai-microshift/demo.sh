@@ -43,11 +43,12 @@ clear
 echo -e "${BOLD}"
 echo "  ╔══════════════════════════════════════════════════════════════╗"
 echo "  ║        Edge AI on MicroShift — Live Demo                    ║"
-echo "  ║        Face Recognition at the Edge                         ║"
+echo "  ║        Face Recognition on NVIDIA L4 GPU at the Edge        ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo "  This RHEL host was previously running a 1B parameter LLM."
-echo "  We replaced it with MicroShift + a YOLO11 face recognition model."
+echo "  This RHEL host was previously running a 1B parameter LLM (RHAIIS)."
+echo "  We replaced it with MicroShift + NVIDIA Triton serving a YOLO11"
+echo "  face recognition model on the same L4 GPU."
 echo ""
 pause
 
@@ -63,8 +64,8 @@ cmd "oc get nodes -o wide"
 pause
 
 # =============================================================================
-section "2. GPU Hardware"
-echo "  NVIDIA L4 GPU — 24 GB VRAM, available for edge inference."
+section "2. GPU-Powered Inference"
+echo "  NVIDIA L4 GPU running Triton Inference Server with our YOLO11 model."
 echo ""
 
 cmd "nvidia-smi"
@@ -76,7 +77,8 @@ section "3. Kubernetes at the Edge"
 echo "  MicroShift runs the same KServe API as the datacenter."
 echo ""
 
-cmd "oc get pods -A"
+cmd "oc get pods -n edge-ai"
+cmd "oc get pods -n nvidia-device-plugin"
 
 pause
 
@@ -92,29 +94,28 @@ cmd "sudo podman images | grep modelcar"
 pause
 
 # =============================================================================
-section "5. Model Server Details"
-echo "  OpenVINO Model Server — extracted from the MicroShift RPM template."
+section "5. NVIDIA Triton Serving Runtime"
+echo "  Custom ServingRuntime using NVIDIA Triton with CUDA + ONNX Runtime."
+echo "  Supports ONNX, PyTorch, TensorFlow, TensorRT on NVIDIA GPUs."
 echo ""
 
 cmd "oc get servingruntime -n edge-ai -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image"
 
-echo "  Model metadata (input/output shapes):"
-SVC_IP=$(oc get svc -n edge-ai face-recognition-edge-predictor -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-if [ -n "$SVC_IP" ] && [ "$SVC_IP" != "None" ]; then
-    cmd "curl -s http://${SVC_IP}:80/v2/models/face-recognition-edge | python3 -m json.tool"
-else
-    cmd "oc exec -n edge-ai deploy/face-recognition-edge-predictor -c kserve-container -- curl -s localhost:8888/v2/models/face-recognition-edge | python3 -m json.tool"
+echo "  Model metadata (input/output tensor shapes):"
+POD_IP=$(oc get pods -n edge-ai --no-headers | grep face-recognition | awk '{print $6}')
+if [ -n "$POD_IP" ]; then
+    cmd "curl -s http://${POD_IP}:8000/v2/models/face-recognition-edge | python3 -m json.tool"
 fi
 
 pause
 
 # =============================================================================
-section "6. GPU Visibility in Kubernetes"
-echo "  The NVIDIA device plugin exposes the GPU to Kubernetes."
+section "6. GPU in Kubernetes"
+echo "  NVIDIA device plugin exposes the L4 GPU to the Kubernetes scheduler."
 echo ""
 
 cmd "oc get node -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}'; echo ' GPU(s) available'"
-cmd "oc get pods -n nvidia-device-plugin"
+cmd "oc get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; echo ' GPU(s) allocatable'"
 
 pause
 
@@ -136,8 +137,9 @@ pause
 
 # =============================================================================
 section "8. The Before and After"
-echo "  This host was running RHAIIS (vLLM with Gemma 1B)."
-echo "  We stopped it and deployed MicroShift with face recognition."
+echo "  This host was running RHAIIS (vLLM with Gemma 1B on the L4 GPU)."
+echo "  We stopped it, installed MicroShift, and deployed face recognition"
+echo "  on the same GPU using NVIDIA Triton."
 echo ""
 
 cmd "cat /etc/systemd/system/rhaiis.service 2>/dev/null | grep -E 'Description|ExecStart' || echo 'RHAIIS service file not found'"
@@ -151,13 +153,13 @@ section "Demo Complete"
 echo ""
 echo -e "  ${BOLD}Red Hat Edge + On-Premise AI/ML Pattern:${NC}"
 echo ""
-echo "  Datacenter (OCP 4.20)        Edge (MicroShift 4.20 on RHEL)"
-echo "  ┌──────────────────────┐     ┌──────────────────────────────┐"
-echo "  │ Train (KFP pipeline) │     │ Streamlit Camera App         │"
-echo "  │ Evaluate (mAP50)     │     │ OpenVINO Model Server        │"
-echo "  │ Register (Model Reg) │────>│ YOLO11 ONNX (ModelCar OCI)   │"
-echo "  │ Package (ModelCar)   │ OCI │ KServe v2 API                │"
-echo "  └──────────────────────┘     └──────────────────────────────┘"
+echo "  Datacenter (OCP 4.20)          Edge (MicroShift 4.20 on RHEL 9.5)"
+echo "  ┌──────────────────────┐       ┌──────────────────────────────────┐"
+echo "  │ Train (KFP pipeline) │       │ Streamlit Camera App             │"
+echo "  │ Evaluate (mAP50)     │       │ NVIDIA Triton + ONNX Runtime     │"
+echo "  │ Register (Model Reg) │──────>│ YOLO11 ONNX on L4 GPU           │"
+echo "  │ Package (ModelCar)   │  OCI  │ KServe v2 API                    │"
+echo "  └──────────────────────┘       └──────────────────────────────────┘"
 echo ""
 echo -e "  Camera App: ${BOLD}${GREEN}https://${ROUTE_HOST}${NC}"
 echo ""
