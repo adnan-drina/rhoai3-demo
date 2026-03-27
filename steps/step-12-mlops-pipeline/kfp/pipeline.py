@@ -87,6 +87,9 @@ def face_recognition_training_pipeline(
     train_task = train_model(epochs=epochs)
     _mount_pvc(train_task)
     _set_resources(train_task, cpu_req="2", cpu_lim="4", mem_req="4Gi", mem_lim="8Gi")
+    train_task.set_accelerator_type("nvidia.com/gpu")
+    train_task.set_gpu_limit(1)
+    kubernetes.add_toleration(train_task, key="nvidia.com/gpu", operator="Exists", effect="NoSchedule")
     train_task.after(prep_task)
     train_task.set_caching_options(False)
 

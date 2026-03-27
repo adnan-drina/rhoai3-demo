@@ -42,24 +42,26 @@ def train_model(
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     data_yaml = str(DATASET_DIR / "data.yaml")
-    print(f"Training YOLO11n for {epochs} epochs on CPU...")
+    # Auto-detect GPU; fall back to CPU
+    import torch
+    device = 0 if torch.cuda.is_available() else "cpu"
+    print(f"Training YOLO11s for {epochs} epochs on {device}...")
     print(f"Dataset: {data_yaml}")
 
-    # Use pre-downloaded base model from shared PVC (downloaded by prepare_dataset)
-    base_model = str(SHARED / "yolo11s.pt") if (SHARED / "yolo11s.pt").exists() else "yolo11s.pt"
+    base_model = str(SHARED / "yolo11m.pt") if (SHARED / "yolo11m.pt").exists() else "yolo11m.pt"
     print(f"Base model: {base_model}")
     model = YOLO(base_model)
     results = model.train(
         data=data_yaml,
         epochs=epochs,
         imgsz=640,
-        batch=4,
-        device="cpu",
+        batch=8 if device == 0 else 4,
+        device=device,
         mosaic=1.0,
         mixup=0.3,
         fliplr=0.5,
         degrees=15.0,
-        patience=5,
+        patience=10,
         project=str(MODEL_DIR / "runs"),
         name="train",
         exist_ok=True,
@@ -84,7 +86,7 @@ def train_model(
     # Write ONNX to KFP Model artifact for Dashboard lineage tracking
     import shutil
     shutil.copy2(onnx_path, trained_model.path)
-    trained_model.metadata["framework"] = "ultralytics-yolo11s"
+    trained_model.metadata["framework"] = "ultralytics-yolo11m"
     trained_model.metadata["format"] = "onnx"
     trained_model.metadata["epochs"] = epochs
 
