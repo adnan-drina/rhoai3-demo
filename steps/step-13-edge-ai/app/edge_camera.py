@@ -47,7 +47,7 @@ def run_inference_and_display(img_bytes):
 
     t0 = time.monotonic()
     try:
-                annotated, detections = detect_faces(img_bgr, GRPC_ENDPOINT, MODEL_NAME, CONFIDENCE)
+        annotated, detections = detect_faces(img_bgr, GRPC_ENDPOINT, MODEL_NAME, CONFIDENCE)
         latency_ms = (time.monotonic() - t0) * 1000
 
         col1, col2 = st.columns([2, 1])
