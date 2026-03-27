@@ -1,0 +1,25 @@
+# YOLO11 face recognition model served via OpenVINO on MicroShift.
+# Model is loaded from a local ModelCar OCI image (no S3 dependency).
+# The runtime and modelFormat.version must be specified explicitly —
+# KServe on MicroShift does not auto-select without them.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: face-recognition-edge
+  namespace: edge-ai
+spec:
+  predictor:
+    model:
+      runtime: kserve-ovms
+      modelFormat:
+        name: onnx
+        version: "1"
+      storageUri: "oci://localhost/face-recognition-modelcar:v1"
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-camera
+  namespace: edge-ai
+  labels:
+    app.kubernetes.io/name: edge-camera
+spec:
+  selector:
+    app.kubernetes.io/name: edge-camera
+  ports:
+    - port: 8501
+      targetPort: 8501
+      protocol: TCP

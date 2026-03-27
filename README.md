@@ -39,6 +39,7 @@ Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLO
 | 11 | Computer Vision | YOLO11 ONNX on KServe + OpenVINO Model Server — CPU-only, no GPU needed |
 | 12 | MLOps Pipeline | KFP v2: train → evaluate → register → deploy → monitor with TrustyAI drift detection |
 | 13 | Edge AI | Phone camera app + edge inference — Red Hat Edge + On-Premise AI/ML pattern |
+| 13b | Edge AI on MicroShift *(optional)* | Same model on real edge hardware — MicroShift 4.20, ModelCar OCI, NVIDIA L4 GPU |
 
 ## E2E Scenarios
 
@@ -102,6 +103,9 @@ Deploy by theme or all steps in order:
 ./steps/step-11-face-recognition/deploy.sh
 ./steps/step-12-mlops-pipeline/deploy.sh
 ./steps/step-13-edge-ai/deploy.sh
+
+# Optional: Real edge on MicroShift (requires RHEL host with MicroShift repos)
+# EDGE_HOST=<host> EDGE_USER=dev EDGE_PASS=<pass> ./steps/step-13b-edge-ai-microshift/deploy.sh
 ```
 
 Validate the ACME demo flow:
@@ -127,6 +131,7 @@ Validate the ACME demo flow:
 | 11 | [Face Recognition](steps/step-11-face-recognition/README.md) | YOLO11 ONNX, KServe + OpenVINO, CPU-only inference | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
 | 12 | [MLOps Pipeline](steps/step-12-mlops-pipeline/README.md) | KFP v2 training, Model Registry, TrustyAI monitoring | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/) |
 | 13 | [Edge AI](steps/step-13-edge-ai/README.md) | Phone camera app, edge inference, GitOps model delivery | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
+| 13b | [Edge AI on MicroShift](steps/step-13b-edge-ai-microshift/README.md) *(optional)* | Real edge: MicroShift 4.20 on RHEL, ModelCar OCI, NVIDIA L4 | [Using AI models on MicroShift](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/) |
 
 ## GitOps Architecture
 

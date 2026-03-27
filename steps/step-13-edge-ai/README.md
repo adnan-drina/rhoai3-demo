@@ -286,4 +286,4 @@ The `camera_input_live` community component was not designed for mobile viewport
 - [streamlit-camera-input-live](https://github.com/blackary/streamlit-camera-input-live)
 - [OpenVINO Model Server KServe-compatible API](https://docs.openvino.ai/2026/model-server/ovms_docs_rest_api_kfs.html)
 
-> **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 03 — Private AI](../step-03-private-ai/README.md) (MinIO + namespace)
+> **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (real edge hardware), [Step 03 — Private AI](../step-03-private-ai/README.md) (MinIO + namespace)
