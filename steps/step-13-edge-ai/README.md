@@ -1,10 +1,10 @@
 # Step 13: Edge AI — Face Recognition at the Edge
 
-**"From datacenter to edge"** — Deploy the face recognition model to a simulated edge environment with a phone camera app, demonstrating the Red Hat Edge + On-Premise AI/ML pattern.
+**"From datacenter to edge"** — Deploy the face recognition model to a simulated edge environment with a camera app, demonstrating the Red Hat Edge + On-Premise AI/ML pattern.
 
 ## The Business Story
 
-Steps 11 and 12 proved that RHOAI 3.3 handles the full ML lifecycle — from interactive training to automated pipelines with quality gates. But models have to run where the data is. Step 13 brings the face recognition model to the edge: a phone camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. This is the Red Hat Edge + On-Premise pattern: data acquisition and inference at the edge, model development in the datacenter.
+Steps 11 and 12 proved that RHOAI 3.3 handles the full ML lifecycle — from interactive training to automated pipelines with quality gates. But models have to run where the data is. Step 13 brings the face recognition model to the edge: a camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. This is the Red Hat Edge + On-Premise pattern: data acquisition and inference at the edge, model development in the datacenter.
 
 ## What It Does
 
@@ -13,9 +13,9 @@ Edge AI (simulated SNO)
 ├── edge-ai-demo Namespace          → Simulates a Single Node OpenShift edge site
 ├── kserve-ovms ServingRuntime       → OpenVINO Model Server (same as step-11)
 ├── face-recognition-edge ISVC       → Same YOLO11 ONNX model, served locally at the edge
-├── edge-camera Deployment           → Streamlit app with phone camera + file upload
-│   ├── Photo mode                   → st.camera_input — take a photo, run inference
-│   └── Live Video mode              → streamlit-webrtc — real-time video with bounding boxes
+├── edge-camera Deployment           → Streamlit app with camera + file upload
+│   ├── Photo mode                   → st.camera_input — single shot, full annotated image
+│   └── Live Video mode              → camera_input_live — continuous capture with detection overlay
 └── Model delivery                   → Same MinIO bucket as step-11 (GitOps model sync)
 ```
 
@@ -23,7 +23,7 @@ Edge AI (simulated SNO)
 |-----------|---------|-----------|
 | **kserve-ovms** ServingRuntime | OpenVINO Model Server for ONNX models | `edge-ai-demo` |
 | **face-recognition-edge** InferenceService | Serves the YOLO11 ONNX model (CPU-only) at the edge | `edge-ai-demo` |
-| **edge-camera** Deployment | Streamlit app — phone camera UI, sends frames to local inference | `edge-ai-demo` |
+| **edge-camera** Deployment | Streamlit app — camera UI, sends frames to local inference | `edge-ai-demo` |
 | **edge-camera** Route | HTTPS endpoint (required for browser camera access) | `edge-ai-demo` |
 
 Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
@@ -35,10 +35,10 @@ Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 │                                                                           │
 │  ┌──────────────────┐    KServe v2 REST    ┌────────────────────────────┐ │
 │  │  edge-camera     │ ──────────────────→  │  face-recognition-edge    │ │
-│  │  (Streamlit)     │   POST /v2/infer     │  InferenceService         │ │
+│  │  (Streamlit)     │  binary tensors      │  InferenceService         │ │
 │  │  Route: HTTPS    │ ←──────────────────  │  (OpenVINO + ONNX)       │ │
 │  └──────────────────┘   annotated result   └────────────────────────────┘ │
-│       ↑ phone browser                              ↑ model from MinIO     │
+│       ↑ browser                                    ↑ model from MinIO     │
 └───────┼──────────────────────────────────────────────────────────────────-┘
         │                                            │
         │                        ┌───── GitOps model delivery ─────┐
@@ -50,8 +50,8 @@ Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 │       │                                                                   │
 └───────┼──────────────────────────────────────────────────────────────────┘
         │
-   Phone camera
-   (your phone browser)
+   Laptop or phone camera
+   (browser)
 ```
 
 ## Prerequisites
@@ -63,16 +63,18 @@ Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 
 ## Building the Container Image
 
-The Streamlit app runs from a pre-built container image. Build and push it before deploying:
+The Streamlit app runs from a pre-built container image. Build for **linux/amd64** (the cluster architecture) and push:
 
 ```bash
-# Using podman (or docker)
-podman build -t quay.io/adrina/edge-camera:latest \
+podman build --platform linux/amd64 \
+  -t quay.io/adrina/edge-camera:latest \
   -f steps/step-13-edge-ai/app/Containerfile \
   steps/step-13-edge-ai/app/
 
 podman push quay.io/adrina/edge-camera:latest
 ```
+
+> **Note:** If building on Apple Silicon (M1/M2/M3), the `--platform linux/amd64` flag is required. Without it, the image will be ARM-based and fail with `Exec format error` on the cluster.
 
 Or set `BUILD_EDGE_CAMERA=true` and the deploy script will build automatically:
 
@@ -80,7 +82,7 @@ Or set `BUILD_EDGE_CAMERA=true` and the deploy script will build automatically:
 BUILD_EDGE_CAMERA=true ./steps/step-13-edge-ai/deploy.sh
 ```
 
-Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deployment.yaml` if you use a different registry path.
+Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deployment.yaml` if you use a different registry path. The quay.io repository must be **public** for the cluster to pull it.
 
 ## Deploy
 
@@ -103,27 +105,27 @@ The script:
 
 **Say:** *"This namespace simulates an edge deployment — a factory floor kiosk, a security checkpoint, a retail store camera. In production, this would be a Single Node OpenShift or MicroShift instance at a remote site, completely separate from the datacenter."*
 
-### Scene 2: Phone Camera — Photo Mode
+### Scene 2: Photo Mode — The Wow Moment
 
-**Do:** Open the edge-camera Route URL on your phone:
+**Do:** Open the edge-camera Route URL on your laptop or phone:
 
 ```bash
 echo "https://$(oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.host}')"
 ```
 
-Select **Photo** mode. Take a selfie. Show the annotated result.
+Select **Photo** mode. Take a selfie. Show the annotated result with bounding boxes.
 
-**Expect:** Green bounding box on your face ("adnan 0.94"), red on others ("unknown_face 0.87"). Latency metric shows ~200-500ms.
+**Expect:** Green bounding box on your face ("adnan 0.91"), red on others ("unknown_face 0.60"). Latency metric shows ~100-150ms.
 
-**Say:** *"I'm pointing my phone camera at my face and the inference happens entirely at the edge — same namespace, no data leaves this environment. The model knows who I am because it was trained on my photos in Step 11."*
+**Say:** *"I'm pointing my camera at my face and the inference happens entirely at the edge — same namespace, no data leaves this environment. The model knows who I am because it was trained on my photos in Step 11."*
 
-### Scene 3: Live Video — Real-Time Detection
+### Scene 3: Live Video — Continuous Detection (Laptop)
 
-**Do:** Switch to **Live Video** mode. Point the camera at yourself and another person.
+**Do:** Switch to **Live Video** mode on a laptop. Point the camera at yourself and another person.
 
-**Expect:** Real-time bounding boxes on the video feed. Green for you, red for anyone else.
+**Expect:** Camera feed updates continuously (~1.5s interval). Annotated image with bounding boxes appears below. Detection metrics update in real time.
 
-**Say:** *"Now in real-time — every video frame goes through the YOLO11 model on OpenVINO. CPU-only, no GPU. This is the kind of inference you'd run on edge hardware with limited resources."*
+**Say:** *"Now continuously — every frame goes through the YOLO11 model on OpenVINO at 100ms inference latency. CPU-only, no GPU. This is the kind of inference you'd run on edge hardware with limited resources."*
 
 ### Scene 4: Model Lifecycle — Datacenter to Edge
 
@@ -162,7 +164,7 @@ oc get pods -n edge-ai-demo -l app.kubernetes.io/name=edge-camera
 
 # Route is accessible (HTTPS)
 curl -sk "https://$(oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.host}')/_stcore/health"
-# Expected: {"status":"ok"}
+# Expected: ok
 
 # Model server responds
 oc exec -n edge-ai-demo deploy/face-recognition-edge-predictor -- \
@@ -178,34 +180,60 @@ oc exec -n edge-ai-demo deploy/face-recognition-edge-predictor -- \
 
 > **Design Decision:** **Shared MinIO (`storageUri`)** for single-cluster demo. Both the central (`private-ai`) and edge (`edge-ai-demo`) InferenceServices read from the same S3 bucket. In production, a model sync mechanism (Tekton task, CronJob, or S3 replication) would push models to edge-local storage.
 
-> **Design Decision:** **Both `st.camera_input()` and `streamlit-webrtc`** are included. Photo mode is reliable on any phone/browser. Live video is impressive but requires WebRTC connectivity (STUN/TURN). Having both provides a fallback for restrictive network environments.
+> **Design Decision:** **`camera_input_live`** for Live Video instead of `streamlit-webrtc`. WebRTC failed because the pod can't reach STUN servers over UDP (restricted egress). `camera_input_live` captures frames via `getUserMedia` + `canvas.toDataURL` and sends them over the existing Streamlit WebSocket — plain HTTPS, no STUN/TURN required.
+
+> **Design Decision:** **KServe v2 Binary Tensor Extension** for inference. Sending the preprocessed tensor as raw bytes instead of a JSON array of 1.2M floats reduced inference round-trip from 827ms to 101ms (8x improvement). Ref: [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
+
+> **Design Decision:** **`@st.fragment`** wraps the live camera section. Only the camera fragment re-executes on each new frame — the sidebar, header, and mode selector are not re-rendered. This is the [Streamlit-recommended pattern](https://docs.streamlit.io/develop/concepts/architecture/fragments) for live/streaming UI sections.
 
 > **Design Decision:** **CPU-only inference** at the edge. Same rationale as Step 11 — OpenVINO is CPU-optimized, the YOLO11n model is ~11MB. Edge devices often lack GPUs. No GPU allocation conflicts.
 
-> **Design Decision:** **Pre-built container image** for the Streamlit app. Consistent with the rhoai3-demo pattern (all other steps use pre-built images). The Containerfile is in the repo for reproducibility.
+> **Design Decision:** **Pre-built container image** for the Streamlit app. Consistent with the rhoai3-demo pattern. The Containerfile is in the repo for reproducibility. Must be built with `--platform linux/amd64` on Apple Silicon.
 
 > **Design Decision:** **No AMQ Streams / Kafka** in this step. Direct REST from the Streamlit app to the local InferenceService is simpler and sufficient for the demo. Kafka-based streaming is a documented future extension.
 
+## Known Limitations
+
+### Live Video mode does not work reliably on mobile phones
+
+**Symptom:** Camera captures the first frame but stops streaming after the first inference result renders.
+
+**Root Cause:** The `camera_input_live` component runs in a Streamlit iframe. When the inference result renders below the camera, the page layout shifts, pushing the camera iframe partially off-screen. Mobile browsers (Safari, Chrome) aggressively pause `setInterval` timers in off-screen iframes to conserve battery, which stops frame capture.
+
+**Workaround:** Use **Photo mode** on phones — it uses Streamlit's built-in `st.camera_input()` which handles mobile camera permissions natively and works reliably on all devices.
+
+**Status:** Live Video works well on laptops where the viewport is large enough to keep the camera iframe on-screen. A proper mobile fix requires a custom Streamlit component that either: (a) renders results as a lightweight overlay inside the camera iframe itself, or (b) uses `IntersectionObserver` to detect when the iframe scrolls off-screen and compensate. See [Future Improvements](#future-improvements).
+
 ## Troubleshooting
 
-### edge-camera pod in CrashLoopBackOff
+### edge-camera pod — "Exec format error"
 
-**Root Cause:** The container image was not pushed to the registry, or the image pull fails.
+**Root Cause:** The container image was built for ARM (Apple Silicon) but the cluster runs x86_64.
 
 **Solution:**
 ```bash
-oc describe pod -n edge-ai-demo -l app.kubernetes.io/name=edge-camera | tail -20
-
-# Build and push the image
-podman build -t quay.io/adrina/edge-camera:latest \
+podman build --platform linux/amd64 \
+  -t quay.io/adrina/edge-camera:latest \
   -f steps/step-13-edge-ai/app/Containerfile \
   steps/step-13-edge-ai/app/
 podman push quay.io/adrina/edge-camera:latest
 ```
 
+### edge-camera pod in CrashLoopBackOff / ImagePullBackOff
+
+**Root Cause:** The container image was not pushed, or the quay.io repository is private.
+
+**Solution:**
+```bash
+oc describe pod -n edge-ai-demo -l app.kubernetes.io/name=edge-camera | tail -20
+
+# Ensure the quay.io repo is public:
+# https://quay.io/repository/adrina/edge-camera?tab=settings
+```
+
 ### InferenceService stuck in "Not Ready"
 
-**Root Cause:** The model is not at the expected MinIO path, or the `storage-config` secret is missing/incorrect.
+**Root Cause:** The model is not at the expected MinIO path, or the `storage-config` secret is missing.
 
 **Solution:**
 ```bash
@@ -219,24 +247,27 @@ oc exec -n minio-storage deploy/minio -- mc ls local/models/face-recognition/1/
 oc get secret storage-config -n edge-ai-demo -o yaml
 ```
 
-### Live Video mode doesn't start (WebRTC)
-
-**Root Cause:** WebRTC requires STUN/TURN server connectivity. Corporate firewalls may block STUN.
-
-**Solution:** Use Photo mode as a fallback. For TURN server support, set the `TURN_SERVER_URL` environment variable and update the `rtc_configuration` in `edge_camera.py`.
-
-### Camera not working on phone
+### Camera not working in browser
 
 **Root Cause:** Browser camera access (`getUserMedia`) requires HTTPS. The Route must use TLS.
 
 **Solution:**
 ```bash
-# Verify the route has TLS
 oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 # Expected: edge
 ```
 
-## Future Extensions
+## Future Improvements
+
+### Mobile live video support
+
+The `camera_input_live` community component was not designed for mobile viewports where layout reflow can push its iframe off-screen. A proper fix requires one of:
+
+- **Custom Streamlit component** — build a dedicated camera component that renders detection results as a canvas overlay inside the same iframe, eliminating layout shift entirely
+- **Progressive Web App (PWA)** — a standalone mobile app using the phone camera natively, posting frames to the inference endpoint via REST. Eliminates the Streamlit iframe constraint
+- **Server-Sent Events (SSE)** — a thin FastAPI endpoint that accepts JPEG frames and streams back annotated JPEGs, rendered in an `<img>` tag that updates in-place
+
+### Additional extensions
 
 - **AMQ Streams (Kafka):** Replace direct REST with Kafka topics for edge-to-central data streaming
 - **Edge data feedback:** Save captured frames to MinIO for retraining data (closes the Red Hat feedback loop)
@@ -247,10 +278,12 @@ oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 ## References
 
 - [RHOAI 3.3 — Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
+- [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
 - [Red Hat Edge + On-Premise AI/ML Architecture](https://www.redhat.com/en/topics/ai/ai-at-the-edge)
 - [MicroShift documentation](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/)
 - [Streamlit camera_input API](https://docs.streamlit.io/develop/api-reference/widgets/st.camera_input)
-- [streamlit-webrtc](https://github.com/whitphx/streamlit-webrtc)
+- [Streamlit fragments](https://docs.streamlit.io/develop/concepts/architecture/fragments)
+- [streamlit-camera-input-live](https://github.com/blackary/streamlit-camera-input-live)
 - [OpenVINO Model Server KServe-compatible API](https://docs.openvino.ai/2026/model-server/ovms_docs_rest_api_kfs.html)
 
 > **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 03 — Private AI](../step-03-private-ai/README.md) (MinIO + namespace)
