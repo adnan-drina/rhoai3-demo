@@ -45,7 +45,7 @@ def train_model(
     # Auto-detect GPU; fall back to CPU
     import torch
     device = 0 if torch.cuda.is_available() else "cpu"
-    print(f"Training YOLO11s for {epochs} epochs on {device}...")
+    print(f"Training YOLO26m for {epochs} epochs on {device}...")
     print(f"Dataset: {data_yaml}")
 
     base_model = str(SHARED / "yolo26m.pt") if (SHARED / "yolo26m.pt").exists() else "yolo26m.pt"
@@ -55,9 +55,10 @@ def train_model(
         data=data_yaml,
         epochs=epochs,
         imgsz=640,
-        batch=16 if device == 0 else 4,
+        batch=32 if device == 0 else 4,
         device=device,
         workers=0,
+        cos_lr=True,
         mosaic=1.0,
         mixup=0.3,
         fliplr=0.5,
