@@ -83,11 +83,12 @@ def face_recognition_training_pipeline(
     prep_task.set_caching_options(False)
     prep_task.set_retry(num_retries=2, backoff_duration="30s", backoff_factor=2.0)
 
-    # --- Step 2: Train Model ---
+    # --- Step 2: Train Model (GPU-accelerated) ---
     train_task = train_model(epochs=epochs)
     _mount_pvc(train_task)
     train_task.set_cpu_request("2").set_cpu_limit("4")
     train_task.set_memory_request("4Gi").set_memory_limit("8Gi")
+    train_task.set_accelerator_type("nvidia.com/gpu")
     train_task.set_gpu_limit(1)
     kubernetes.add_toleration(train_task, key="nvidia.com/gpu", operator="Exists", effect="NoSchedule")
     kubernetes.add_node_selector(train_task, label_key="node-role.kubernetes.io/gpu", label_value="")
