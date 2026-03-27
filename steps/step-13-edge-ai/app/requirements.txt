@@ -3,4 +3,4 @@ streamlit-camera-input-live>=0.2.0
 opencv-python-headless==4.9.0.80
 numpy<2
 Pillow==10.4.0
-requests>=2.32.0
+tritonclient[grpc]>=2.42.0

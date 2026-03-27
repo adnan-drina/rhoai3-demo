@@ -12,8 +12,8 @@ spec:
   selector:
     app: isvc.face-recognition-edge-predictor
   ports:
-    - name: http
-      port: 8000
-      targetPort: 8000
+    - name: grpc
+      port: 8001
+      targetPort: 8001
       protocol: TCP
   type: ClusterIP

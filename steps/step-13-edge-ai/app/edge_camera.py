@@ -4,13 +4,13 @@ Streamlit app with two modes:
 1. Photo mode (st.camera_input) — take a single photo, run inference
 2. Live mode (camera_input_live) — continuous capture at ~1 fps, no WebRTC needed
 
-Performance optimizations (all Streamlit-recommended):
+Performance optimizations:
+- KServe v2 gRPC for low-latency inference (~30x faster than REST JSON)
 - @st.fragment for partial reruns (only the camera section rerenders)
-- KServe v2 Binary Tensor Extension (raw bytes instead of JSON float arrays)
-- Reduced capture resolution (320px — less data over mobile network)
 
 Designed to run on a phone browser via an OpenShift HTTPS Route.
-Uses only HTTP/WebSocket — no STUN/TURN servers required.
+Uses only HTTP/WebSocket for the UI — no STUN/TURN servers required.
+Inference uses gRPC between the Streamlit pod and the model server.
 """
 
 import os
@@ -22,10 +22,11 @@ import streamlit as st
 
 from inference import detect_faces, CLASSES, COLORS
 
-ENDPOINT = os.environ.get(
-    "FACE_RECOGNITION_ENDPOINT",
-    "http://face-recognition-edge-predictor:8888/v2/models/face-recognition-edge/infer",
+GRPC_ENDPOINT = os.environ.get(
+    "GRPC_ENDPOINT",
+    "face-recognition-edge-predictor:8001",
 )
+MODEL_NAME = os.environ.get("MODEL_NAME", "face-recognition-edge")
 CONFIDENCE = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.3"))
 
 st.set_page_config(
@@ -46,7 +47,7 @@ def run_inference_and_display(img_bytes):
 
     t0 = time.monotonic()
     try:
-        annotated, detections = detect_faces(img_bgr, ENDPOINT, CONFIDENCE)
+                annotated, detections = detect_faces(img_bgr, GRPC_ENDPOINT, MODEL_NAME, CONFIDENCE)
         latency_ms = (time.monotonic() - t0) * 1000
 
         col1, col2 = st.columns([2, 1])
@@ -66,7 +67,7 @@ def run_inference_and_display(img_bytes):
         st.error(f"Inference failed: {e}")
         st.info(
             "Check that the model server is running:\n\n"
-            "`oc get inferenceservice face-recognition-edge -n edge-ai-demo`"
+            f"`GRPC_ENDPOINT={GRPC_ENDPOINT} MODEL_NAME={MODEL_NAME}`"
         )
 
 
@@ -106,7 +107,7 @@ elif mode == "\U0001f3a5 Live Video":
         if image is not None:
             run_inference_and_display(image.getvalue())
         else:
-            st.info("Waiting for camera... Your browser will ask for camera permission.")
+            st.info("Waiting for camera...")
 
     st.caption(
         "Camera captures frames continuously over HTTPS. "
@@ -120,7 +121,7 @@ elif mode == "\U0001f3a5 Live Video":
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.header("Edge Deployment Info")
-    st.code(ENDPOINT, language=None)
+    st.code(f"gRPC: {GRPC_ENDPOINT}\nModel: {MODEL_NAME}", language=None)
     st.caption(f"Confidence threshold: {CONFIDENCE}")
     st.markdown("---")
     st.markdown(
