@@ -9,6 +9,7 @@ from kfp.dsl import component, Output, Dataset, Metrics
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
     packages_to_install=[
         "ultralytics>=8.3.0",
+        "huggingface_hub>=0.20.0",
         "scikit-learn>=1.4.0",
         "boto3>=1.34.0",
         "opencv-python-headless>=4.10.0",
