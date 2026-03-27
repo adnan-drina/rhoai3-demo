@@ -182,15 +182,15 @@ oc exec -n edge-ai-demo deploy/face-recognition-edge-predictor -- \
 
 > **Design Decision:** **`camera_input_live`** for Live Video instead of `streamlit-webrtc`. WebRTC failed because the pod can't reach STUN servers over UDP (restricted egress). `camera_input_live` captures frames via `getUserMedia` + `canvas.toDataURL` and sends them over the existing Streamlit WebSocket — plain HTTPS, no STUN/TURN required.
 
-> **Design Decision:** **KServe v2 Binary Tensor Extension** for inference. Sending the preprocessed tensor as raw bytes instead of a JSON array of 1.2M floats reduced inference round-trip from 827ms to 101ms (8x improvement). Ref: [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
+> **Design Decision:** **gRPC for inference** using `tritonclient[grpc]`. Both OVMS (this step) and NVIDIA Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. gRPC provides ~30x lower latency compared to REST JSON. The same `inference.py` client code works against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 
 > **Design Decision:** **`@st.fragment`** wraps the live camera section. Only the camera fragment re-executes on each new frame — the sidebar, header, and mode selector are not re-rendered. This is the [Streamlit-recommended pattern](https://docs.streamlit.io/develop/concepts/architecture/fragments) for live/streaming UI sections.
 
-> **Design Decision:** **CPU-only inference** at the edge. Same rationale as Step 11 — OpenVINO is CPU-optimized, the YOLO11n model is ~11MB. Edge devices often lack GPUs. No GPU allocation conflicts.
+> **Design Decision:** **CPU-only inference** (OpenVINO) on the simulated edge. The YOLO11n model is ~11MB and runs at ~100ms on CPU. Step 13b demonstrates GPU inference on real edge hardware with NVIDIA Triton.
 
-> **Design Decision:** **Pre-built container image** for the Streamlit app. Consistent with the rhoai3-demo pattern. The Containerfile is in the repo for reproducibility. Must be built with `--platform linux/amd64` on Apple Silicon.
+> **Design Decision:** **Shared application code** with step-13b. `inference.py`, `edge_camera.py`, `requirements.txt`, and the Containerfile are identical. Only the `GRPC_ENDPOINT` env var differs between the two deployments. Must be built with `--platform linux/amd64` on Apple Silicon.
 
-> **Design Decision:** **No AMQ Streams / Kafka** in this step. Direct REST from the Streamlit app to the local InferenceService is simpler and sufficient for the demo. Kafka-based streaming is a documented future extension.
+> **Design Decision:** **No AMQ Streams / Kafka** in this step. gRPC between the Streamlit app and the model server is sufficient for the demo. Kafka-based streaming is a documented future extension.
 
 ## Known Limitations
 
