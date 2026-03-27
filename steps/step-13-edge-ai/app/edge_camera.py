@@ -54,7 +54,6 @@ def run_inference_and_display(img_bytes):
             st.image(
                 cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
                 caption="Detection Results",
-                width="stretch",
             )
         with col2:
             st.metric("Faces detected", len(detections))
