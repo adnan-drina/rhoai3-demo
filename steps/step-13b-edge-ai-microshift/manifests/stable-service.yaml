@@ -1,0 +1,19 @@
+# Non-headless service for the predictor pod.
+# KServe creates a headless service (ClusterIP: None) which doesn't provide
+# a stable ClusterIP for other pods to connect to. This service provides
+# a real ClusterIP so the edge-camera can use a DNS name that survives
+# pod restarts without needing to know the pod IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: face-recognition-edge-stable
+  namespace: edge-ai
+spec:
+  selector:
+    app: isvc.face-recognition-edge-predictor
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  type: ClusterIP

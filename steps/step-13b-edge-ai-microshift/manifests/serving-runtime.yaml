@@ -1,0 +1,36 @@
+# Custom ServingRuntime using NVIDIA Triton Inference Server with GPU.
+# Supports ONNX (via CUDA execution provider), PyTorch, TensorFlow, TensorRT.
+# Ref: https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: triton-gpu
+  namespace: edge-ai
+spec:
+  supportedModelFormats:
+    - name: onnx
+      version: "1"
+      autoSelect: true
+  multiModel: false
+  protocolVersions:
+    - v2
+  containers:
+    - name: kserve-container
+      image: nvcr.io/nvidia/tritonserver:24.08-py3
+      command:
+        - tritonserver
+        - --model-repository=/mnt/models
+        - --strict-model-config=false
+        - --log-verbose=0
+      ports:
+        - containerPort: 8000
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "2"
+          memory: 8Gi
+          nvidia.com/gpu: "1"

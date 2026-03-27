@@ -2,9 +2,12 @@
 # Built with `sudo podman` on the MicroShift host so CRI-O can access it
 # (CRI-O and podman share root container storage).
 # Uses a specific tag (not `latest`) so imagePullPolicy is IfNotPresent.
+#
+# Directory layout follows Triton model repository convention:
+#   /models/<model-name>/<version>/model.onnx
 # Ref: https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai#packaging-ai-model-oci-image_microshift-rh-openshift-ai
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 RUN microdnf install -y wget && microdnf clean all
-RUN mkdir -p /models/1 && chmod -R 755 /models/1
-RUN wget -q -P /models/1 \
+RUN mkdir -p /models/face-recognition-edge/1 && chmod -R 755 /models
+RUN wget -q -P /models/face-recognition-edge/1 \
   https://huggingface.co/ariakang/YOLOv11n-face-detection/resolve/main/model.onnx
