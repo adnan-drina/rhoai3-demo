@@ -59,7 +59,7 @@ echo ""
 
 cmd "cat /etc/redhat-release"
 cmd "rpm -q microshift microshift-ai-model-serving"
-cmd "oc get nodes -o wide"
+cmd "oc get nodes"
 
 pause
 
@@ -73,8 +73,8 @@ cmd "nvidia-smi"
 pause
 
 # =============================================================================
-section "3. Kubernetes at the Edge"
-echo "  MicroShift runs the same KServe API as the datacenter."
+section "3. Edge AI Workloads"
+echo "  Face recognition model + camera app running in the edge-ai namespace."
 echo ""
 
 cmd "oc get pods -n edge-ai"
@@ -87,7 +87,7 @@ section "4. The AI Model (ModelCar OCI Image)"
 echo "  The model is packaged as an OCI container image — no S3 needed."
 echo ""
 
-cmd "oc get isvc -n edge-ai"
+cmd "oc get isvc face-recognition-edge -n edge-ai -o jsonpath='{.metadata.name}{\"  \"}{.status.url}{\"  READY=\"}{.status.conditions[?(@.type==\"Ready\")].status}'; echo ''"
 cmd "oc get isvc face-recognition-edge -n edge-ai -o jsonpath='{.spec.predictor.model.storageUri}'; echo ''"
 cmd "sudo podman images | grep modelcar"
 
@@ -102,9 +102,9 @@ echo ""
 cmd "oc get servingruntime -n edge-ai -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image"
 
 echo "  Model metadata (input/output tensor shapes):"
-POD_IP=$(oc get pods -n edge-ai --no-headers | grep face-recognition | awk '{print $6}')
-if [ -n "$POD_IP" ]; then
-    cmd "curl -s http://${POD_IP}:8000/v2/models/face-recognition-edge | python3 -m json.tool"
+SVC_IP=$(oc get svc face-recognition-edge-stable -n edge-ai -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
+if [ -n "$SVC_IP" ]; then
+    cmd "curl -s http://${SVC_IP}:8000/v2/models/face-recognition-edge | python3 -m json.tool"
 fi
 
 pause
