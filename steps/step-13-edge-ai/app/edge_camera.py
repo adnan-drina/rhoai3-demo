@@ -100,7 +100,6 @@ elif mode == "\U0001f3a5 Live Video":
 
         image = camera_input_live(
             debounce=1500,
-            width=320,
             show_controls=True,
         )
 
