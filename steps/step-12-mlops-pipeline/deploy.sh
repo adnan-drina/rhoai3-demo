@@ -79,7 +79,7 @@ else
 fi
 echo ""
 
-# Ensure yolo11n.pt base model is in MinIO (pipeline's prepare_dataset needs it)
+# Ensure yolo11s.pt base model is in MinIO (pipeline's prepare_dataset needs it)
 log_step "Ensuring YOLO11 base model in MinIO..."
 VENV_PATH="$REPO_ROOT/.venv-kfp"
 if [ ! -d "$VENV_PATH" ]; then
@@ -101,13 +101,13 @@ s3 = boto3.client('s3', endpoint_url='http://localhost:9000',
     aws_access_key_id='${MINIO_ACCESS}', aws_secret_access_key='${MINIO_SECRET}',
     config=Config(signature_version='s3v4'))
 try:
-    s3.head_object(Bucket='models', Key='yolo11n.pt')
-    print('yolo11n.pt already in MinIO')
+    s3.head_object(Bucket='models', Key='yolo11s.pt')
+    print('yolo11s.pt already in MinIO')
 except:
-    print('Downloading yolo11n.pt from ultralytics...')
-    urllib.request.urlretrieve('https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt', '/tmp/yolo11n.pt')
-    s3.upload_file('/tmp/yolo11n.pt', 'models', 'yolo11n.pt')
-    print('Uploaded to s3://models/yolo11n.pt')
+    print('Downloading yolo11s.pt from ultralytics...')
+    urllib.request.urlretrieve('https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11s.pt', '/tmp/yolo11s.pt')
+    s3.upload_file('/tmp/yolo11s.pt', 'models', 'yolo11s.pt')
+    print('Uploaded to s3://models/yolo11s.pt')
 " 2>/dev/null && log_success "YOLO11 base model ready in MinIO" || log_warn "Could not verify base model"
 
 kill $PF_PID 2>/dev/null

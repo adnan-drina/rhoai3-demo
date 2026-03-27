@@ -46,7 +46,7 @@ def train_model(
     print(f"Dataset: {data_yaml}")
 
     # Use pre-downloaded base model from shared PVC (downloaded by prepare_dataset)
-    base_model = str(SHARED / "yolo11n.pt") if (SHARED / "yolo11n.pt").exists() else "yolo11n.pt"
+    base_model = str(SHARED / "yolo11s.pt") if (SHARED / "yolo11s.pt").exists() else "yolo11s.pt"
     print(f"Base model: {base_model}")
     model = YOLO(base_model)
     results = model.train(
@@ -84,7 +84,7 @@ def train_model(
     # Write ONNX to KFP Model artifact for Dashboard lineage tracking
     import shutil
     shutil.copy2(onnx_path, trained_model.path)
-    trained_model.metadata["framework"] = "ultralytics-yolo11n"
+    trained_model.metadata["framework"] = "ultralytics-yolo11s"
     trained_model.metadata["format"] = "onnx"
     trained_model.metadata["epochs"] = epochs
 
