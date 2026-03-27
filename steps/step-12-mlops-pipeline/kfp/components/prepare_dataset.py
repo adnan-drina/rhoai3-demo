@@ -146,16 +146,16 @@ def prepare_dataset(
     )
 
     # Download YOLO11n base model — try MinIO first, fall back to HuggingFace
-    base_model_path = SHARED / "yolo11m.pt"
+    base_model_path = SHARED / "yolo26m.pt"
     if not base_model_path.exists():
         try:
-            s3.download_file("models", "yolo11m.pt", str(base_model_path))
+            s3.download_file("models", "yolo26m.pt", str(base_model_path))
             print(f"Downloaded base model from MinIO")
         except Exception:
-            print("yolo11m.pt not in MinIO — downloading from ultralytics...")
+            print("yolo26m.pt not in MinIO — downloading from ultralytics...")
             import urllib.request
             urllib.request.urlretrieve(
-                "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11m.pt",
+                "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m.pt",
                 str(base_model_path))
             print(f"Downloaded base model from ultralytics")
 
