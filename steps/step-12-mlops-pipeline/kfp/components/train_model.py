@@ -48,7 +48,7 @@ def train_model(
     print(f"Training YOLO26m for {epochs} epochs on {device}...")
     print(f"Dataset: {data_yaml}")
 
-    base_model = str(SHARED / "yolo26m.pt") if (SHARED / "yolo26m.pt").exists() else "yolo26m.pt"
+    base_model = str(SHARED / "yolo11m.pt") if (SHARED / "yolo11m.pt").exists() else "yolo11m.pt"
     print(f"Base model: {base_model}")
     model = YOLO(base_model)
     results = model.train(
@@ -88,7 +88,7 @@ def train_model(
     # Write ONNX to KFP Model artifact for Dashboard lineage tracking
     import shutil
     shutil.copy2(onnx_path, trained_model.path)
-    trained_model.metadata["framework"] = "ultralytics-yolo26m"
+    trained_model.metadata["framework"] = "ultralytics-yolo11m"
     trained_model.metadata["format"] = "onnx"
     trained_model.metadata["epochs"] = epochs
 
