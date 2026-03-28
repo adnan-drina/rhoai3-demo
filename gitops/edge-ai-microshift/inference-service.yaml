@@ -1,0 +1,28 @@
+# YOLO11 face recognition model served via NVIDIA Triton on MicroShift.
+# Model is loaded from a local ModelCar OCI image (no S3 dependency).
+# Uses NVIDIA L4 GPU via the CUDA execution provider in ONNX Runtime.
+# The runtime and modelFormat.version must be specified explicitly —
+# KServe on MicroShift does not auto-select without them.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: face-recognition-edge
+  namespace: edge-ai
+spec:
+  predictor:
+    model:
+      runtime: triton-gpu
+      modelFormat:
+        name: onnx
+        version: "1"
+      storageUri: "oci://quay.io/adrina/face-recognition-modelcar:v3"
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "2"
+          memory: 8Gi
+          nvidia.com/gpu: "1"

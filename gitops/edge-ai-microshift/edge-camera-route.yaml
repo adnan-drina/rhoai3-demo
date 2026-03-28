@@ -1,0 +1,18 @@
+# HTTPS required for browser camera access (getUserMedia API).
+# The host is set dynamically by deploy.sh using the host's public IP + nip.io.
+# Replace PUBLIC_IP_PLACEHOLDER with the actual IP before applying.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: edge-camera
+  namespace: edge-ai
+spec:
+  host: edge-camera-edge-ai.apps.PUBLIC_IP_PLACEHOLDER.nip.io
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: edge-camera
+  port:
+    targetPort: 8501

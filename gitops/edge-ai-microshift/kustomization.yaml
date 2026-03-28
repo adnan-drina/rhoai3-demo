@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Edge AI workloads managed by ArgoCD on MicroShift.
+# Model updates: change the ModelCar tag in inference-service.yaml,
+# push to Git, ArgoCD syncs automatically.
+
+resources:
+  - namespace.yaml
+  - serving-runtime.yaml
+  - inference-service.yaml
+  - stable-service.yaml
+  - edge-camera-deployment.yaml
+  - edge-camera-service.yaml
+  - edge-camera-route.yaml
