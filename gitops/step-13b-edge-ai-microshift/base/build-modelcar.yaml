@@ -1,0 +1,109 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-modelcar
+  namespace: private-ai
+spec:
+  description: >
+    Download an ONNX model from MinIO, build a ModelCar OCI image
+    with Triton directory layout, and push to a container registry.
+  params:
+    - name: minio-endpoint
+      type: string
+    - name: minio-bucket
+      type: string
+      default: models
+    - name: minio-key
+      type: string
+      default: face-recognition/1/model.onnx
+    - name: model-name
+      type: string
+      default: face-recognition-edge
+    - name: image-ref
+      type: string
+      description: "Full image reference including tag, e.g. quay.io/adrina/face-recognition-modelcar:v4"
+  workspaces:
+    - name: build
+      description: Scratch space for the build context
+  steps:
+    - name: download-model
+      image: registry.access.redhat.com/ubi9/python-311:latest
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: dspa-minio-credentials
+              key: accesskey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dspa-minio-credentials
+              key: secretkey
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        pip install -q boto3 2>/dev/null
+
+        python3 - <<'PYEOF'
+        import boto3, os
+        from botocore.config import Config
+        from pathlib import Path
+
+        model_dir = Path("$(workspaces.build.path)/models/$(params.model-name)/1")
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        s3 = boto3.client("s3",
+            endpoint_url="$(params.minio-endpoint)",
+            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+            config=Config(signature_version="s3v4"))
+
+        dest = model_dir / "model.onnx"
+        print(f"Downloading s3://$(params.minio-bucket)/$(params.minio-key) -> {dest}")
+        s3.download_file("$(params.minio-bucket)", "$(params.minio-key)", str(dest))
+        size_mb = dest.stat().st_size / (1024 * 1024)
+        print(f"Downloaded: {size_mb:.1f} MB")
+        PYEOF
+
+    - name: build-and-push
+      image: registry.access.redhat.com/ubi9/buildah:latest
+      securityContext:
+        capabilities:
+          add: ["SETFCAP"]
+      env:
+        - name: REGISTRY_AUTH_FILE
+          value: /workspace/auth/.dockerconfigjson
+      volumeMounts:
+        - name: registry-auth
+          mountPath: /workspace/auth
+          readOnly: true
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+
+        cd "$(workspaces.build.path)"
+
+        cat > Containerfile <<'CEOF'
+        FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+        COPY --chown=0:0 models /models
+        RUN chmod -R a=rX /models
+        USER 65534
+        CEOF
+
+        echo "Building $(params.image-ref)..."
+        buildah bud \
+          --storage-driver=vfs \
+          --platform linux/amd64 \
+          --format=oci \
+          -t "$(params.image-ref)" .
+
+        echo "Pushing $(params.image-ref)..."
+        buildah push \
+          --storage-driver=vfs \
+          "$(params.image-ref)"
+
+        echo "Done: $(params.image-ref)"
+  volumes:
+    - name: registry-auth
+      secret:
+        secretName: quay-push-credentials

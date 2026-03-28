@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: modelcar-release
+  namespace: private-ai
+spec:
+  description: >
+    Build a ModelCar OCI image from the latest ONNX model in MinIO,
+    push it to quay.io, and update the edge GitOps manifest so ArgoCD
+    on MicroShift picks up the new model version automatically.
+  params:
+    - name: model-name
+      type: string
+      default: face-recognition-edge
+    - name: model-version
+      type: string
+      description: "Tag for the ModelCar image, e.g. v4"
+    - name: registry-image
+      type: string
+      default: quay.io/adrina/face-recognition-modelcar
+    - name: minio-endpoint
+      type: string
+      default: http://minio.minio-storage.svc.cluster.local:9000
+    - name: minio-bucket
+      type: string
+      default: models
+    - name: minio-key
+      type: string
+      default: face-recognition/1/model.onnx
+    - name: git-repo
+      type: string
+      default: https://github.com/adnan-drina/rhoai3-demo.git
+    - name: git-revision
+      type: string
+      default: main
+    - name: gitops-file
+      type: string
+      default: gitops/edge-ai-microshift/inference-service.yaml
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: build-modelcar
+      taskRef:
+        name: build-modelcar
+      params:
+        - name: minio-endpoint
+          value: $(params.minio-endpoint)
+        - name: minio-bucket
+          value: $(params.minio-bucket)
+        - name: minio-key
+          value: $(params.minio-key)
+        - name: model-name
+          value: $(params.model-name)
+        - name: image-ref
+          value: $(params.registry-image):$(params.model-version)
+      workspaces:
+        - name: build
+          workspace: shared-workspace
+    - name: update-gitops
+      runAfter:
+        - build-modelcar
+      taskRef:
+        name: update-gitops
+      params:
+        - name: git-repo
+          value: $(params.git-repo)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: gitops-file
+          value: $(params.gitops-file)
+        - name: image-ref
+          value: "oci://$(params.registry-image):$(params.model-version)"
+      workspaces:
+        - name: source
+          workspace: shared-workspace
