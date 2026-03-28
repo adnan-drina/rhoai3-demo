@@ -45,10 +45,12 @@ artifacts/
 steps/step-11-face-recognition/notebooks/my_photos/
 steps/step-11-face-recognition/notebooks/unknown_face/
 steps/step-11-face-recognition/notebooks/lfw_subset/
+steps/step-11-face-recognition/notebooks/unknown_combined/
+steps/step-11-face-recognition/notebooks/dataset-samples/
 steps/step-11-face-recognition/notebooks/images/
 steps/step-11-face-recognition/notebooks/videos/
 steps/step-11-face-recognition/notebooks/face-dataset/
-steps/step-11-face-recognition/notebooks/lfw_subset/
 steps/step-11-face-recognition/notebooks/.venv/
 steps/step-11-face-recognition/notebooks/yolo11n.pt
+steps/step-11-face-recognition/notebooks/yolo11m.pt
 runs/
