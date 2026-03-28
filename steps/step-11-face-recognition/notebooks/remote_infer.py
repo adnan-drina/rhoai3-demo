@@ -1,7 +1,8 @@
 """Helper functions for face recognition inference via OpenVINO Model Server (KServe v2 API).
 
-Used by notebooks 04 and 05 to preprocess images, send inference requests
-to the served ONNX model, and draw annotated bounding boxes on results.
+Used by notebooks 03, 04, and the Streamlit app to preprocess images, send
+inference requests to the served ONNX model, draw annotated bounding boxes,
+and apply identity uniqueness constraints on results.
 """
 
 import requests
@@ -19,6 +20,32 @@ COLORS = {
     0: (0, 200, 0),      # green for recognized face
     1: (0, 0, 200),      # red for unknown face
 }
+
+
+def enforce_identity_uniqueness(detections, identity_class_id=0):
+    """Apply identity uniqueness constraint: one person can only appear once per frame.
+
+    For the identified class (adnan), keeps only the highest-confidence detection
+    and reclassifies duplicates as unknown_face. This is a standard domain-constrained
+    post-processing technique used in identity-aware detection systems — a known person
+    cannot physically appear twice in the same image, so any duplicate detection is
+    guaranteed to be a false positive.
+
+    Args:
+        detections: List of detection dicts with 'class_id' and 'confidence' keys.
+        identity_class_id: The class ID for the known identity (default: 0 = adnan).
+
+    Returns:
+        The detections list with duplicates reclassified.
+    """
+    identity_dets = [d for d in detections if d["class_id"] == identity_class_id]
+    if len(identity_dets) > 1:
+        best = max(identity_dets, key=lambda d: d["confidence"])
+        for d in identity_dets:
+            if d is not best:
+                d["class_id"] = 1
+                d["class_name"] = CLASSES.get(1, "unknown_face")
+    return detections
 
 
 def preprocess(image_path: str, imgsz: int = 640):
@@ -44,7 +71,7 @@ def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):
     cv2.putText(img, label, (x, y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
 
-def postprocess(response_data, scale, original_image, conf_threshold: float = 0.25):
+def postprocess(response_data, scale, original_image, conf_threshold: float = 0.6):
     """Parse ONNX/OpenVINO output tensor, apply NMS, and draw boxes."""
     outputs = np.array([cv2.transpose(response_data[0])])
     rows = outputs.shape[1]
@@ -73,10 +100,16 @@ def postprocess(response_data, scale, original_image, conf_threshold: float = 0.
             "scale": scale,
         }
         detections.append(detection)
+
+    # Apply identity uniqueness constraint before drawing boxes
+    detections = enforce_identity_uniqueness(detections)
+
+    for det in detections:
+        box = det["box"]
         draw_bounding_box(
             original_image,
-            class_ids[idx],
-            scores[idx],
+            det["class_id"],
+            det["confidence"],
             round(box[0] * scale[1]),
             round(box[1] * scale[0]),
             round((box[0] + box[2]) * scale[1]),
@@ -121,7 +154,7 @@ def send_request(blob, endpoint: str):
     ]
 
 
-def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.25):
+def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.6):
     """End-to-end: preprocess, infer via REST, postprocess, and return annotated image."""
     blob, scale, original_image = preprocess(image_path)
     response = send_request(blob, endpoint)
@@ -192,7 +225,7 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     return output_path
 
 
-def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.25):
+def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.6):
     """Process a video frame-by-frame via the KServe REST API.
 
     Args:

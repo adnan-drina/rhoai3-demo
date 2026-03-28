@@ -139,6 +139,8 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
 
 > **Design Decision:** **Auto-annotation** using the pre-trained YOLO11-face detector eliminates manual bounding box labeling. Users only need to provide raw selfie photos.
 
+> **Design Decision:** **Identity uniqueness constraint** at inference. A known person can only appear once per frame — any duplicate "adnan" detection is guaranteed to be a false positive. The `enforce_identity_uniqueness()` function in `remote_infer.py` keeps only the highest-confidence detection for the identified class and reclassifies duplicates as unknown. This is a standard domain-constrained post-processing technique used in production identity-aware detection systems, combined with a confidence threshold of 0.6 (vs default 0.25) to filter low-confidence predictions.
+
 > **Design Decision:** **Real colleague photos + HuggingFace portraits for unknown class.** Using surveillance-style datasets (e.g. WIDER Face) as negatives causes the model to classify any close-up face as "adnan" because the visual domain is too different. The `unknown_face/` directory contains ~600 photos of real colleagues from the same events and camera conditions. Combined with 200 high-quality portraits downloaded from [HuggingFace](https://huggingface.co/datasets/prithivMLmods/Realistic-Face-Portrait-1024px) at runtime, this produces mAP50 >0.93 vs ~0.76 with WIDER Face alone.
 
 > **Design Decision:** **Pre-trained model fallback**. A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
