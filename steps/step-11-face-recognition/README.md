@@ -30,7 +30,8 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 - Steps 01-03 deployed (GPU infra, RHOAI platform, MinIO + namespace)
 - `oc` CLI logged in with cluster access
-- ~50 selfie photos for custom face training (optional — a pre-trained model is provided)
+- ~200+ selfie photos for custom face training (optional — a pre-trained model is provided)
+- ~600+ colleague/stranger photos for the unknown class (uploaded to MinIO and workbench)
 - 1 test video (10-30s, you + another person) for the video demo (optional)
 
 ## Deploy
@@ -81,9 +82,9 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 
 **Do:** Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`). Run `02-retrain-face-model.ipynb`.
 
-**Expect:** The notebook auto-annotates your photos, combines real colleague photos (`unknown_face/`) with LFW portraits for the "unknown" class, trains on CPU for ~30-60 minutes (50 epochs), and exports to ONNX.
+**Expect:** The notebook auto-annotates your photos, combines real colleague photos (`unknown_face/`) with 200 HuggingFace portraits for the "unknown" class, trains YOLO11m on GPU for ~1 hour (100 epochs, `workers=0`), and exports to ONNX.
 
-**Say:** *"With just 50 photos and 15 minutes of CPU training, we have a personalized face recognition model. YOLO11's built-in augmentation — mosaic, flips, rotation, color jitter — turns 50 images into thousands of training variations."*
+**Say:** *"With ~200 selfie photos, ~600 colleague photos, and an hour of GPU training, we have a personalized face recognition model. YOLO11m's 20M parameters and built-in augmentation — mosaic, flips, rotation, color jitter — deliver production-grade accuracy (mAP50 >0.93)."*
 
 ### Scene 3: The Wow Moment — Video Recognition (Notebook 03)
 
@@ -132,13 +133,13 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
 
 > **Design Decision:** We use **KServe RawDeployment** (not ModelMesh) because ModelMesh is deprecated in RHOAI 3.3 ([release notes section 6.1.9](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/support-removals_relnotes)). The `kserve-ovms` template is the platform-recommended approach for ONNX/OpenVINO models.
 
-> **Design Decision:** **CPU-only** inference and training. OpenVINO is optimized for CPU, and the YOLO11n-face model is small (~11MB ONNX). This avoids GPU allocation conflicts with the LLM models in Steps 05-10.
+> **Design Decision:** **CPU inference, GPU training.** OpenVINO serves the ONNX model on CPU workers (no GPU needed for inference). Training uses GPU when available (`device=0`, `workers=0` to avoid `/dev/shm` limits in containers) for ~1 hour on L4, with CPU fallback (~6 hours). The YOLO11m ONNX model is ~77MB.
 
-> **Design Decision:** **YOLO11** (not YOLOv8). YOLO11 (Sep 2024) has 22% fewer parameters and higher mAP than YOLOv8 (Jan 2023). Same `ultralytics` package — accessed as `YOLO('yolo11n.pt')`.
+> **Design Decision:** **YOLO11m** (medium, 20M params). YOLO11n (2.6M) lacked capacity to distinguish similar-looking people. YOLO11m provides 7.7x more parameters for learning subtle facial features. YOLO26m was tested but fails on small datasets (<1K images) due to its NMS-free architecture requiring COCO-scale data.
 
 > **Design Decision:** **Auto-annotation** using the pre-trained YOLO11-face detector eliminates manual bounding box labeling. Users only need to provide raw selfie photos.
 
-> **Design Decision:** **Real colleague photos for unknown class.** Using surveillance-style datasets (e.g. WIDER Face) as negatives causes the model to classify any close-up face as "adnan" because the visual domain is too different. The `unknown_face/` directory contains photos of real colleagues from the same events and camera conditions. Combined with LFW portraits for diversity, this produces mAP50 >0.94 vs ~0.76 with WIDER Face alone.
+> **Design Decision:** **Real colleague photos + HuggingFace portraits for unknown class.** Using surveillance-style datasets (e.g. WIDER Face) as negatives causes the model to classify any close-up face as "adnan" because the visual domain is too different. The `unknown_face/` directory contains ~600 photos of real colleagues from the same events and camera conditions. Combined with 200 high-quality portraits downloaded from [HuggingFace](https://huggingface.co/datasets/prithivMLmods/Realistic-Face-Portrait-1024px) at runtime, this produces mAP50 >0.93 vs ~0.76 with WIDER Face alone.
 
 > **Design Decision:** **Pre-trained model fallback**. A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
 

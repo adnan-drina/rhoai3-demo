@@ -1,4 +1,4 @@
-"""Train YOLO11n on the prepared dataset and export to ONNX."""
+"""Train YOLO11m on the prepared dataset and export to ONNX."""
 
 from kfp.dsl import component, Output, Metrics, Model
 
@@ -19,7 +19,7 @@ def train_model(
     metrics: Output[Metrics],
     trained_model: Output[Model],
 ) -> str:
-    """Train YOLO11n on the prepared dataset and export to ONNX.
+    """Train YOLO11m on the prepared dataset and export to ONNX.
 
     Args:
         epochs: Number of training epochs.
@@ -45,7 +45,7 @@ def train_model(
     # Auto-detect GPU; fall back to CPU
     import torch
     device = 0 if torch.cuda.is_available() else "cpu"
-    print(f"Training YOLO26m for {epochs} epochs on {device}...")
+    print(f"Training YOLO11m for {epochs} epochs on {device}...")
     print(f"Dataset: {data_yaml}")
 
     base_model = str(SHARED / "yolo11m.pt") if (SHARED / "yolo11m.pt").exists() else "yolo11m.pt"

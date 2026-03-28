@@ -124,7 +124,7 @@ fi
 echo ""
 
 # Wait for pipeline completion
-log_step "Waiting for pipeline to complete (~20 min)..."
+log_step "Waiting for pipeline to complete (~60 min (100 epochs on GPU))..."
 TIMEOUT=1500
 ELAPSED=0
 PIPELINE_DONE=false

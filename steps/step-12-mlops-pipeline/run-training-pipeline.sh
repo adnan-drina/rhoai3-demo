@@ -13,7 +13,7 @@ load_env
 
 # Parse arguments
 VERSION="$(date +%Y%m%d-%H%M%S)"
-EPOCHS=15
+EPOCHS=100
 THRESHOLD=0.7
 for arg in "$@"; do
     case "$arg" in

@@ -83,7 +83,7 @@ if UNKNOWN_DIR.exists():
     n = upload_dir(UNKNOWN_DIR, "unknown")
     print(f"Uploaded {n} unknown photos -> s3://{BUCKET}/unknown/")
 else:
-    print("No unknown_face directory — pipeline will fall back to LFW")
+    print("No unknown_face directory — pipeline will still add HuggingFace portraits")
 
 n = upload_dir(IMAGES_DIR, "test-images")
 print(f"Uploaded {n} test images -> s3://{BUCKET}/test-images/")

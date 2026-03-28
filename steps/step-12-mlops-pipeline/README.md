@@ -23,7 +23,7 @@ MLOps Training Pipeline (KFP v2, 6 Steps)
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| `prepare_dataset` | Download adnan + unknown photos from MinIO, auto-annotate, split train/val (falls back to LFW if no unknowns in MinIO) | `private-ai` |
+| `prepare_dataset` | Download adnan + unknown photos from MinIO, auto-annotate, split train/val (augments with 200 HuggingFace portraits at runtime) | `private-ai` |
 | `train_model` | YOLO11 training on CPU, ONNX export | `private-ai` |
 | `evaluate_model` | mAP50 computation, compare with previous version, quality gate | `private-ai` |
 | `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | `private-ai` |
