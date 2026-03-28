@@ -136,8 +136,8 @@ Validate the ACME demo flow:
 ## GitOps Architecture
 
 - **Per-step deployment** — each `deploy.sh` applies its own ArgoCD Application (`oc apply -f`), giving control over ordering and runtime setup (secrets, SCC grants, model uploads) between syncs.
-- **`targetRevision: main`** — acceptable for a demo project where the single branch is the source of truth. For stable demo releases, tag the repo and update across all 13 Applications.
-- **Single ArgoCD instance** — both platform (steps 01-02) and application (steps 03-12) resources are managed by the default `openshift-gitops` instance. Production audiences should consider separating cluster-config from app-deployment.
+- **`targetRevision: main`** — acceptable for a demo project where the single branch is the source of truth. For stable demo releases, tag the repo and update across all 14 Applications (steps 01-13b).
+- **Two ArgoCD layers** — the central `openshift-gitops` instance manages platform (steps 01-02), application (steps 03-13), and the Tekton ModelCar pipeline (step-13b). A second **embedded ArgoCD core** on MicroShift manages edge workloads from `gitops/edge-ai-microshift/`, enabling Git-driven model updates to the edge without SSH.
 - **Fork-friendly** — `bootstrap.sh` auto-detects the git remote URL and updates all ArgoCD Applications. No manual URL changes needed for forks.
 
 ## Demo Credentials

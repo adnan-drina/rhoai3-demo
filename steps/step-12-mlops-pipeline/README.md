@@ -84,7 +84,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 **Do:** Run `./run-training-pipeline.sh`. Open the RHOAI Dashboard Pipelines tab. Show the DAG visualization as steps execute.
 
-**Expect:** 5 green steps completing in sequence (~20 minutes).
+**Expect:** 6 green steps completing in sequence (~20 minutes). With `release_to_edge=True`, a 7th step triggers the Tekton ModelCar pipeline.
 
 **Say:** *"This is the same training workflow, but fully automated. Each step runs in its own container with explicit resource limits. Data flows between steps via a shared PVC."*
 
@@ -192,7 +192,9 @@ The KFP `package_modelcar` component creates a Tekton PipelineRun and waits for 
 - **`quay-push-credentials`** secret in `private-ai` (docker-registry type with quay.io auth)
 - **`github-push-credentials`** secret in `private-ai` (generic with `username` + `token` keys)
 
-Manifests: [`steps/step-12-mlops-pipeline/tekton/`](tekton/)
+Tekton source manifests: [`steps/step-12-mlops-pipeline/tekton/`](tekton/)
+
+ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/) via the `step-13b-edge-ai-microshift` ArgoCD Application.
 
 ## Design Decisions
 

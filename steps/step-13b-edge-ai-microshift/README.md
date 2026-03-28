@@ -134,7 +134,11 @@ The script walks through 5 sections with pause-and-talk flow: edge platform, GPU
 
 > **Design Decision:** **nip.io for Route DNS**. MicroShift defaults to `apps.example.com` which doesn't resolve. Using `<public-ip>.nip.io` provides automatic DNS resolution.
 
+> **Design Decision:** **Recreate deployment strategy** for the predictor. With a single GPU on the edge device, the default RollingUpdate strategy creates a new pod before deleting the old one, requiring 2 GPUs. `deploymentStrategy: { type: Recreate }` in the InferenceService spec terminates the old pod first, freeing the GPU for the new revision.
+
 > **Design Decision:** **Restart recovery verified**. All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
+
+> **Design Decision:** **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `private-ai` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
 
 ## Known Limitations
 
