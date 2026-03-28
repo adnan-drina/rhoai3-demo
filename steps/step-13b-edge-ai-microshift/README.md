@@ -118,7 +118,7 @@ ssh dev@<edge-host>
 ./demo.sh
 ```
 
-The script walks through 6 sections with pause-and-talk flow: edge platform, GPU-powered inference, edge AI workloads, model serving stack (InferenceService + Triton runtime), camera app URL, and embedded GitOps (ArgoCD syncing from Git).
+The script walks through 5 sections with pause-and-talk flow: edge platform, GPU-powered inference, model serving stack, edge AI workloads (with camera app URL), and embedded GitOps (ArgoCD syncing from Git).
 
 ## Design Decisions
 

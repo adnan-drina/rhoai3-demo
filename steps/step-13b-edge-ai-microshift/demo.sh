@@ -86,17 +86,7 @@ cmd "oc get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; e
 pause
 
 # =============================================================================
-section "3. Edge AI Workloads"
-echo "  Face recognition model + camera app running in the edge-ai namespace."
-echo ""
-
-cmd "oc get pods -n edge-ai"
-cmd "oc get pods -n nvidia-device-plugin"
-
-pause
-
-# =============================================================================
-section "4. Model Serving Stack"
+section "3. Model Serving Stack"
 echo "  YOLO11 ONNX model packaged as a ModelCar OCI image — no S3 needed."
 echo "  Served by NVIDIA Triton with CUDA + ONNX Runtime on the L4 GPU."
 echo ""
@@ -108,7 +98,8 @@ cmd "oc get servingruntime -n edge-ai -o custom-columns=RUNTIME:.metadata.name,I
 pause
 
 # =============================================================================
-section "5. The Camera App"
+section "4. Edge AI Workloads"
+echo "  Face recognition model + camera app running in the edge-ai namespace."
 echo "  Streamlit app accessible via HTTPS — open it on your phone or laptop."
 echo ""
 
@@ -117,12 +108,14 @@ echo ""
 echo "  (Accept the self-signed certificate warning)"
 echo ""
 
+cmd "oc get pods -n edge-ai"
+cmd "oc get pods -n nvidia-device-plugin"
 cmd "oc get route -n edge-ai"
 
 pause
 
 # =============================================================================
-section "6. Embedded GitOps (ArgoCD on MicroShift)"
+section "5. Embedded GitOps (ArgoCD on MicroShift)"
 echo "  ArgoCD core runs directly on this edge device — no central dependency."
 echo "  It watches a Git repo and auto-syncs all edge-ai workloads."
 echo "  Model updates = change the ModelCar tag in Git, push, done."
