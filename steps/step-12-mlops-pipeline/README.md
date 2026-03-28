@@ -9,16 +9,19 @@ Step 11 demonstrated the data scientist's inner loop -- interactive training in 
 ## What It Does
 
 ```text
-MLOps Training Pipeline (KFP v2, 6 Steps)
+MLOps Training Pipeline (KFP v2, 7 Steps)
 ├── 1. prepare_dataset     → Download photos + unknowns from MinIO, auto-annotate, split train/val
-├── 2. train_model         → YOLO11 training on CPU, ONNX export
+├── 2. train_model         → YOLO11 training on GPU, ONNX export
 ├── 3. evaluate_model      → mAP50 quality gate (compare with previous version)
 ├── 4. register_model      → Upload ONNX to MinIO, register in Model Registry
 ├── 5. deploy_model        → Restart KServe predictor pod
 ├── 6. setup_monitoring    → Upload baseline to TrustyAI, configure drift metrics
+├── 7. package_modelcar *  → Trigger Tekton pipeline: build ModelCar OCI, push, update Git
+│      (* optional, release_to_edge=True)
 └── Infrastructure
     ├── face-pipeline-workspace PVC → Shared storage between pipeline steps
-    └── TrustyAIService             → Fairness and drift monitoring
+    ├── TrustyAIService             → Fairness and drift monitoring
+    └── modelcar-release Pipeline   → Tekton pipeline for edge model promotion
 ```
 
 | Component | Purpose | Namespace |
@@ -129,6 +132,68 @@ The monitoring setup uses a **post-processing pattern**: since TrustyAI's fairne
 
 This script uploads TRAINING reference data and untagged prediction data, configures the scheduled SPD metric, and verifies the Prometheus gauge is live. The `ServiceMonitor trustyai-service` scrapes the metric every 4s for the Dashboard.
 
+## ModelCar Release Pipeline (Edge Promotion)
+
+After the KFP training pipeline registers a model, you can promote it to the edge fleet using the **Tekton `modelcar-release` pipeline**. This bridges data science (KFP) and CI/CD (Tekton):
+
+```text
+KFP Training Pipeline                Tekton modelcar-release Pipeline
+┌──────────────────────────┐         ┌──────────────────────────────────┐
+│ 1. Prepare Dataset       │         │ 1. build-modelcar                │
+│ 2. Train (GPU)           │         │    Download ONNX from MinIO      │
+│ 3. Evaluate (quality gate│         │    buildah ModelCar OCI image    │
+│ 4. Register (MinIO + MR) │──────>  │    Push to quay.io               │
+│ 5. Deploy (central OCP)  │ trigger │ 2. update-gitops                 │
+│ 6. Monitoring            │         │    Update storageUri tag in Git   │
+│ 7. Package ModelCar *    │         │    ArgoCD on MicroShift syncs     │
+└──────────────────────────┘         └──────────────────────────────────┘
+  * optional (release_to_edge=True)
+```
+
+### Run Standalone (Tekton)
+
+```bash
+oc create -f - <<EOF
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: modelcar-release-
+  namespace: private-ai
+spec:
+  pipelineRef:
+    name: modelcar-release
+  params:
+    - name: model-version
+      value: v5
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+EOF
+```
+
+### Run from KFP (Integrated)
+
+Set `release_to_edge=True` when running the training pipeline:
+
+```bash
+./run-training-pipeline.sh --release-to-edge --modelcar-version=v5
+```
+
+The KFP `package_modelcar` component creates a Tekton PipelineRun and waits for completion.
+
+### Prerequisites
+
+- **OpenShift Pipelines operator** installed (Tekton)
+- **`quay-push-credentials`** secret in `private-ai` (docker-registry type with quay.io auth)
+- **`github-push-credentials`** secret in `private-ai` (generic with `username` + `token` keys)
+
+Manifests: [`steps/step-12-mlops-pipeline/tekton/`](tekton/)
+
 ## Design Decisions
 
 > **Design Decision:** **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.
@@ -140,6 +205,8 @@ This script uploads TRAINING reference data and untagged prediction data, config
 > **Design Decision:** **TrustyAI uses post-processed tabular metrics**, not raw tensor data. Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `setup-trustyai-metrics.sh` script uploads post-processed metrics (image_type, num_detections) that represent the model's behavior in a format TrustyAI can compute SPD on. This is the standard production pattern for monitoring CV models.
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
+
+> **Design Decision:** **Tekton for ModelCar builds, not KFP**. Building OCI images requires `buildah` with elevated security context -- inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
 
 > **Design Decision:** **`pip_index_urls=["https://pypi.org/simple"]`** on all components that require packages outside the Red Hat index. The RHOAI base image (`rhai/base-image-cpu-rhel9:3.3.0`) configures pip to use Red Hat's Python index, which lacks `ultralytics`, `onnxruntime`, `onnxslim`, and other ML packages. Adding `pip_index_urls` in the `@component` decorator tells KFP to use PyPI instead. This also resolves the KFP SDK version mismatch (base image has 2.15.2, compiled pipeline requests 2.16.0).
 
@@ -202,4 +269,4 @@ oc apply -f gitops/step-12-mlops-pipeline/base/pipeline-rbac.yaml
 - [AI500 MLOps Enablement (Jukebox)](https://github.com/rhoai-mlops/jukebox)
 - [KFP Pipelines Components](https://github.com/red-hat-data-services/pipelines-components)
 
-> **See also:** [Step 07 -- RAG Pipeline](../step-07-rag/README.md) (KFP patterns), [Step 11 -- Face Recognition](../step-11-face-recognition/README.md) (notebook-based training), [Step 04 -- Model Registry](../step-04-model-registry/README.md) (governance)
+> **See also:** [Step 07 -- RAG Pipeline](../step-07-rag/README.md) (KFP patterns), [Step 11 -- Face Recognition](../step-11-face-recognition/README.md) (notebook-based training), [Step 04 -- Model Registry](../step-04-model-registry/README.md) (governance), [Step 13b -- Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (ArgoCD consumes the ModelCar tag updates)
