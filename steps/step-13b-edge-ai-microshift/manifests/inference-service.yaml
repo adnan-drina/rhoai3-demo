@@ -11,6 +11,8 @@ metadata:
   namespace: edge-ai
 spec:
   predictor:
+    deploymentStrategy:
+      type: Recreate
     model:
       runtime: triton-gpu
       modelFormat:
