@@ -1,8 +1,8 @@
 """Edge inference helpers for face recognition via KServe v2 gRPC API.
 
-Uses tritonclient gRPC for ~30x lower latency compared to REST JSON.
-Works with both OpenVINO Model Server and NVIDIA Triton — both implement
-the KServe v2 gRPC protocol on port 8001.
+Uses tritonclient gRPC for low-latency inference. Includes identity
+uniqueness constraint: a known person can only appear once per frame.
+Works with both OpenVINO Model Server and NVIDIA Triton.
 """
 
 import cv2
@@ -24,8 +24,24 @@ def preprocess(img_bgr, imgsz: int = 640):
     return blob, scale
 
 
-def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.25):
-    """Parse ONNX output tensor, apply NMS, return annotated image + detections."""
+def enforce_identity_uniqueness(detections, identity_class_id=0):
+    """Keep only the highest-confidence detection per known identity.
+
+    A known person cannot physically appear twice in the same image,
+    so duplicate detections are reclassified as unknown_face.
+    """
+    identity_dets = [d for d in detections if d["class_id"] == identity_class_id]
+    if len(identity_dets) > 1:
+        best = max(identity_dets, key=lambda d: d["confidence"])
+        for d in identity_dets:
+            if d is not best:
+                d["class_id"] = 1
+                d["class_name"] = CLASSES.get(1, "unknown_face")
+    return detections
+
+
+def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.7):
+    """Parse ONNX output tensor, apply NMS + identity uniqueness, draw boxes."""
     outputs = np.array([cv2.transpose(response_data[0])])
     rows = outputs.shape[1]
 
@@ -41,7 +57,6 @@ def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.25):
 
     result_boxes = cv2.dnn.NMSBoxes(boxes, scores, conf_threshold, 0.45, 0.5)
     detections = []
-    annotated = img_bgr.copy()
 
     for idx in result_boxes:
         box = boxes[idx]
@@ -51,7 +66,17 @@ def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.25):
             "class_id": cid,
             "class_name": CLASSES.get(cid, "unknown"),
             "confidence": float(conf),
+            "box": box,
+            "scale": scale,
         })
+
+    detections = enforce_identity_uniqueness(detections)
+
+    annotated = img_bgr.copy()
+    for det in detections:
+        box = det["box"]
+        cid = det["class_id"]
+        conf = det["confidence"]
         x1 = round(box[0] * scale[1])
         y1 = round(box[1] * scale[0])
         x2 = round((box[0] + box[2]) * scale[1])
@@ -80,7 +105,7 @@ def _get_client(endpoint: str):
 
 
 def send_request(blob, endpoint: str, model_name: str):
-    """Send inference via KServe v2 gRPC — works with both OVMS and Triton."""
+    """Send inference via KServe v2 gRPC."""
     client = _get_client(endpoint)
 
     input_tensor = grpcclient.InferInput("images", list(blob.shape), "FP32")
@@ -97,8 +122,8 @@ def send_request(blob, endpoint: str, model_name: str):
     return [result.as_numpy("output0")]
 
 
-def detect_faces(img_bgr, endpoint: str, model_name: str, conf_threshold: float = 0.25):
-    """End-to-end: preprocess, infer via gRPC, postprocess."""
+def detect_faces(img_bgr, endpoint: str, model_name: str, conf_threshold: float = 0.7):
+    """End-to-end: preprocess, infer via gRPC, postprocess with identity uniqueness."""
     blob, scale = preprocess(img_bgr)
     response = send_request(blob, endpoint, model_name)
     return postprocess(response[0], scale, img_bgr, conf_threshold)

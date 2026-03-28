@@ -141,6 +141,38 @@ sudo subscription-manager register --username=<your-rh-email>
 
 **Workaround:** Use Photo mode on phones. Live Video works on laptops.
 
+## Future: Production-Grade Edge Deployment with bootc
+
+The current deployment uses RPM installation + auto-manifests, which is appropriate for demos and single-device deployments. For **production fleet management** of multiple edge devices, Red Hat recommends the **RHEL Image Mode (bootc)** approach:
+
+> **RHEL Image Mode** packages the entire edge device — OS, MicroShift, GPU drivers, model, and application manifests — into a single bootable OCI container image. Updates are atomic: `bootc switch` to a new image version, and greenboot auto-rolls back if the health check fails.
+
+**Production deployment workflow:**
+
+1. **Build a bootc image** using RHEL Image Builder with a blueprint that includes:
+   - MicroShift + `microshift-ai-model-serving` RPMs
+   - NVIDIA driver + container toolkit RPMs
+   - Pull-secret, MicroShift config, auto-manifests
+   - Pre-pulled container images (Triton, edge-camera, ModelCar)
+
+2. **Publish the bootc image** to a container registry (quay.io)
+
+3. **Deploy to edge devices** via `bootc switch` or PXE boot from the ISO
+
+4. **Update the fleet** by building a new bootc image with the updated model/app, pushing to the registry, and having each device pull the update
+
+**Key benefits over RPM deployment:**
+- **Atomic updates** — entire OS + workload updated as one unit, rollback on failure
+- **Immutable** — no configuration drift across fleet
+- **Offline-capable** — all images pre-pulled into the bootc image
+- **Greenboot integration** — automatic health checks and rollback
+
+**References:**
+- [Embedding in a RHEL for Edge image](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/embedding_in_a_rhel_for_edge_image/)
+- [Installing with image mode for RHEL](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html-single/installing_with_image_mode_for_rhel/)
+- [Automated recovery from manual backups](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/backup_and_restore/microshift-auto-recover-manual-backup)
+- [Greenboot workload health checks](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/running_applications/microshift-greenboot-workload-health-checks)
+
 ## References
 
 - [MicroShift 4.20 — Using AI models](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai)

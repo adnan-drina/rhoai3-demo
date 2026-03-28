@@ -1,13 +1,18 @@
-# ModelCar OCI image for the YOLO11 face recognition ONNX model.
-# Built with `sudo podman` on the MicroShift host so CRI-O can access it
-# (CRI-O and podman share root container storage).
-# Uses a specific tag (not `latest`) so imagePullPolicy is IfNotPresent.
+# ModelCar OCI image for the YOLO11m face recognition ONNX model.
+# Built centrally (laptop or OCP), pushed to quay.io, pulled by MicroShift.
+# Uses RHOAI-recommended OCI format for model storage.
 #
 # Directory layout follows Triton model repository convention:
 #   /models/<model-name>/<version>/model.onnx
-# Ref: https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai#packaging-ai-model-oci-image_microshift-rh-openshift-ai
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
-RUN microdnf install -y wget && microdnf clean all
-RUN mkdir -p /models/face-recognition-edge/1 && chmod -R 755 /models
-RUN wget -q -P /models/face-recognition-edge/1 \
-  https://huggingface.co/ariakang/YOLOv11n-face-detection/resolve/main/model.onnx
+#
+# Build:
+#   1. Download model.onnx from MinIO (or copy from training output)
+#   2. Place at models/face-recognition-edge/1/model.onnx
+#   3. podman build --platform linux/amd64 --format=oci -t quay.io/adrina/face-recognition-modelcar:v3 .
+#   4. podman push quay.io/adrina/face-recognition-modelcar:v3
+#
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/deploying-models_rhoai-user#storing-a-model-in-an-oci-image
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+COPY --chown=0:0 models /models
+RUN chmod -R a=rX /models
+USER 65534
