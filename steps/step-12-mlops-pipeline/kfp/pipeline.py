@@ -61,7 +61,7 @@ def face_recognition_training_pipeline(
     unknown_s3_prefix: str = "s3://face-training-photos/unknown/",
     model_name: str = "face-recognition",
     version: str = "",
-    epochs: int = 15,
+    epochs: int = 100,
     mAP_threshold: float = 0.7,
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     registry_url: str = "https://private-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com",

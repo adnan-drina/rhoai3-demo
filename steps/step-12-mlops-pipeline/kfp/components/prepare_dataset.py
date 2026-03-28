@@ -10,7 +10,7 @@ from kfp.dsl import component, Output, Dataset, Metrics
     packages_to_install=[
         "ultralytics>=8.3.0",
         "huggingface_hub>=0.20.0",
-        "scikit-learn>=1.4.0",
+        "datasets>=2.14.0",
         "boto3>=1.34.0",
         "opencv-python-headless>=4.10.0",
         "lapx>=0.5.2",
@@ -89,18 +89,28 @@ def prepare_dataset(
     n_unknown = download_s3_photos(unknown_s3_prefix, UNKNOWN_DIR)
     print(f"Downloaded {n_unknown} unknown photos from {unknown_s3_prefix}")
 
-    if n_unknown < 20:
-        print(f"Only {n_unknown} unknown photos in MinIO — augmenting with LFW portraits...")
-        from sklearn.datasets import fetch_lfw_people
+    # Augment with HuggingFace portraits for diversity
+    NUM_PORTRAITS = 200
+    print(f"Downloading {NUM_PORTRAITS} realistic face portraits from HuggingFace...")
+    try:
+        from datasets import load_dataset
         from PIL import Image
-        import numpy as np
-        NUM_LFW = 200
-        lfw = fetch_lfw_people(min_faces_per_person=1, resize=1.0, color=True)
-        indices = random.sample(range(len(lfw.images)), min(NUM_LFW, len(lfw.images)))
-        for i, idx in enumerate(indices):
-            img = Image.fromarray(lfw.images[idx].astype(np.uint8))
-            img.save(UNKNOWN_DIR / f"lfw_{i:04d}.jpg", quality=95)
-        print(f"Added {len(indices)} LFW portraits as fallback")
+        ds = load_dataset("prithivMLmods/Realistic-Face-Portrait-1024px", split="train", streaming=True)
+        p_count = 0
+        for example in ds:
+            if p_count >= NUM_PORTRAITS:
+                break
+            try:
+                img = example["image"]
+                if img.width >= 256:
+                    img = img.resize((512, 512))
+                    img.save(UNKNOWN_DIR / f"portrait_{p_count:04d}.jpg", quality=95)
+                    p_count += 1
+            except:
+                continue
+        print(f"Added {p_count} HuggingFace portraits")
+    except Exception as e:
+        print(f"Portrait download failed ({e}) — continuing with MinIO photos only")
 
     unknown_photos = sorted(UNKNOWN_DIR.glob("*.jpg")) + sorted(UNKNOWN_DIR.glob("*.jpeg"))
     print(f"Total unknown faces: {len(unknown_photos)}")
