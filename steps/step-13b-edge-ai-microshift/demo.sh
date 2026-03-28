@@ -81,6 +81,7 @@ echo "  NVIDIA L4 GPU running Triton Inference Server with our YOLO11 model."
 echo ""
 
 cmd "nvidia-smi"
+cmd "oc get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; echo ' GPU(s) allocatable to Kubernetes'"
 
 pause
 
@@ -95,38 +96,19 @@ cmd "oc get pods -n nvidia-device-plugin"
 pause
 
 # =============================================================================
-section "4. The AI Model (ModelCar OCI Image)"
-echo "  The model is packaged as an OCI container image — no S3 needed."
+section "4. Model Serving Stack"
+echo "  YOLO11 ONNX model packaged as a ModelCar OCI image — no S3 needed."
+echo "  Served by NVIDIA Triton with CUDA + ONNX Runtime on the L4 GPU."
 echo ""
 
-cmd "oc get isvc face-recognition-edge -n edge-ai -o jsonpath='{.metadata.name}{\"  \"}{.status.url}{\"  READY=\"}{.status.conditions[?(@.type==\"Ready\")].status}'; echo ''"
-cmd "oc get isvc face-recognition-edge -n edge-ai -o jsonpath='{.spec.predictor.model.storageUri}'; echo ''"
-cmd "sudo podman images | grep modelcar"
+cmd "oc get isvc face-recognition-edge -n edge-ai"
+cmd "oc get isvc face-recognition-edge -n edge-ai -o jsonpath='ModelCar: {.spec.predictor.model.storageUri}'; echo ''"
+cmd "oc get servingruntime -n edge-ai -o custom-columns=RUNTIME:.metadata.name,IMAGE:.spec.containers[0].image"
 
 pause
 
 # =============================================================================
-section "5. NVIDIA Triton Serving Runtime"
-echo "  Custom ServingRuntime using NVIDIA Triton with CUDA + ONNX Runtime."
-echo "  Supports ONNX, PyTorch, TensorFlow, TensorRT on NVIDIA GPUs."
-echo ""
-
-cmd "oc get servingruntime -n edge-ai -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image"
-
-pause
-
-# =============================================================================
-section "6. GPU in Kubernetes"
-echo "  NVIDIA device plugin exposes the L4 GPU to the Kubernetes scheduler."
-echo ""
-
-cmd "oc get node -o jsonpath='{.items[0].status.capacity.nvidia\.com/gpu}'; echo ' GPU(s) available'"
-cmd "oc get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; echo ' GPU(s) allocatable'"
-
-pause
-
-# =============================================================================
-section "7. The Camera App"
+section "5. The Camera App"
 echo "  Streamlit app accessible via HTTPS — open it on your phone or laptop."
 echo ""
 
@@ -136,12 +118,11 @@ echo "  (Accept the self-signed certificate warning)"
 echo ""
 
 cmd "oc get route -n edge-ai"
-cmd "oc get pods -n edge-ai"
 
 pause
 
 # =============================================================================
-section "8. Embedded GitOps (ArgoCD on MicroShift)"
+section "6. Embedded GitOps (ArgoCD on MicroShift)"
 echo "  ArgoCD core runs directly on this edge device — no central dependency."
 echo "  It watches a Git repo and auto-syncs all edge-ai workloads."
 echo "  Model updates = change the ModelCar tag in Git, push, done."
@@ -149,12 +130,7 @@ echo ""
 
 cmd "oc get pods -n argocd"
 cmd "oc get app -n argocd edge-ai"
-
-echo "  Source repo and sync status:"
-echo ""
-cmd "oc get app -n argocd edge-ai -o jsonpath='Source: {.spec.source.repoURL}'; echo ''"
-cmd "oc get app -n argocd edge-ai -o jsonpath='Path:   {.spec.source.path}'; echo ''"
-cmd "oc get app -n argocd edge-ai -o jsonpath='Sync:   {.status.sync.status}'; echo ''"
+cmd "oc get app -n argocd edge-ai -o jsonpath='Repo: {.spec.source.repoURL}  Path: {.spec.source.path}  Sync: {.status.sync.status}'; echo ''"
 
 pause
 

@@ -118,7 +118,7 @@ ssh dev@<edge-host>
 ./demo.sh
 ```
 
-The script walks through 8 sections with pause-and-talk flow: platform overview, GPU-powered inference (`nvidia-smi` shows `tritonserver`), edge workloads, ModelCar OCI model, Triton serving runtime, GPU in Kubernetes, the camera app URL, and embedded GitOps (ArgoCD syncing from Git).
+The script walks through 6 sections with pause-and-talk flow: edge platform, GPU-powered inference, edge AI workloads, model serving stack (InferenceService + Triton runtime), camera app URL, and embedded GitOps (ArgoCD syncing from Git).
 
 ## Design Decisions
 
