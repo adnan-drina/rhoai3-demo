@@ -42,7 +42,7 @@ spec:
             - name: MODEL_NAME
               value: "face-recognition-edge"
             - name: CONFIDENCE_THRESHOLD
-              value: "0.7"
+              value: "0.6"
           readinessProbe:
             httpGet:
               path: /_stcore/health
