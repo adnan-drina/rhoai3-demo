@@ -84,7 +84,7 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 
 **Expect:** The notebook auto-annotates your photos, combines real colleague photos (`unknown_face/`) with 200 HuggingFace portraits for the "unknown" class, trains YOLO11m on GPU for ~1 hour (100 epochs, `workers=0`), and exports to ONNX.
 
-**Say:** *"With ~200 selfie photos, ~600 colleague photos, and an hour of GPU training, we have a personalized face recognition model. YOLO11m's 20M parameters and built-in augmentation — mosaic, flips, rotation, color jitter — deliver production-grade accuracy (mAP50 >0.93)."*
+**Say:** *"With ~200 selfie photos, ~600 colleague photos, and an hour of GPU training, we have a personalized face recognition model. YOLO11m's 20M parameters and face-optimized augmentation — mosaic for group scenes, horizontal flips for symmetry, no mixup to preserve identity features — deliver production-grade accuracy (mAP50 >0.93)."*
 
 ### Scene 3: The Wow Moment — Video Recognition (Notebook 03)
 
