@@ -71,7 +71,7 @@ def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):
     cv2.putText(img, label, (x, y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
 
-def postprocess(response_data, scale, original_image, conf_threshold: float = 0.6):
+def postprocess(response_data, scale, original_image, conf_threshold: float = 0.7):
     """Parse ONNX/OpenVINO output tensor, apply NMS, and draw boxes."""
     outputs = np.array([cv2.transpose(response_data[0])])
     rows = outputs.shape[1]
@@ -154,7 +154,7 @@ def send_request(blob, endpoint: str):
     ]
 
 
-def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.6):
+def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.7):
     """End-to-end: preprocess, infer via REST, postprocess, and return annotated image."""
     blob, scale, original_image = preprocess(image_path)
     response = send_request(blob, endpoint)
@@ -179,7 +179,7 @@ def _to_h264(input_path: str) -> str:
     return input_path
 
 
-def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.6):
+def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.7):
     """Process a video using a local YOLO model with identity uniqueness constraint.
 
     Each frame is run through the model, then enforce_identity_uniqueness()
@@ -268,7 +268,7 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     return output_path
 
 
-def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.6):
+def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.7):
     """Process a video frame-by-frame via the KServe REST API.
 
     Args:
