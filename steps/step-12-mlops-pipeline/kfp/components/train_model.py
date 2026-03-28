@@ -79,6 +79,7 @@ def train_model(
     val_model = YOLO(str(best))
     val_results = val_model.val(
         data=data_yaml, imgsz=640, batch=8, device=device,
+        workers=0,
         project=str(MODEL_DIR / "runs"), name="final_val", exist_ok=True,
     )
 

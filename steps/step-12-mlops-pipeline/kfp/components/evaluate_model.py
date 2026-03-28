@@ -50,6 +50,7 @@ def evaluate_model(
     model = YOLO(onnx_path, task="detect")
     results = model.val(
         data=str(DATASET_DIR / "data.yaml"), imgsz=640, batch=4,
+        workers=0,
         project=str(SHARED / "eval-runs"), name="val", exist_ok=True,
     )
 
