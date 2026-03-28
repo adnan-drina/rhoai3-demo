@@ -75,14 +75,42 @@ def train_model(
     best = best_pt[0]
     print(f"Best model: {best}")
 
+    # Validate best model to get final metrics
+    val_model = YOLO(str(best))
+    val_results = val_model.val(
+        data=data_yaml, imgsz=640, batch=8, device=device,
+        project=str(MODEL_DIR / "runs"), name="final_val", exist_ok=True,
+    )
+
+    mAP50 = float(val_results.box.map50)
+    mAP50_95 = float(val_results.box.map)
+    precision = float(val_results.box.mp)
+    recall = float(val_results.box.mr)
+    per_class = val_results.box.maps
+    class_names = val_model.names
+
+    print(f"\nFinal validation: mAP50={mAP50:.3f}, mAP50-95={mAP50_95:.3f}")
+    for i, m in enumerate(per_class):
+        print(f"  {class_names[i]}: mAP50={float(m):.3f}")
+
     # Export to ONNX
-    trained = YOLO(str(best))
-    onnx_path = trained.export(format="onnx")
+    onnx_path = val_model.export(format="onnx")
     print(f"ONNX exported: {onnx_path}")
 
-    # Log final metrics from training
+    import time
+    training_time = time.time()
+
+    # Log meaningful metrics to KFP Dashboard
     metrics.log_metric("epochs_completed", epochs)
-    metrics.log_metric("onnx_path", onnx_path)
+    metrics.log_metric("mAP50", round(mAP50, 4))
+    metrics.log_metric("mAP50_95", round(mAP50_95, 4))
+    metrics.log_metric("precision", round(precision, 4))
+    metrics.log_metric("recall", round(recall, 4))
+    metrics.log_metric("device", str(device))
+    metrics.log_metric("model_size_mb", round(Path(onnx_path).stat().st_size / 1024 / 1024, 1))
+
+    for i, m in enumerate(per_class):
+        metrics.log_metric(f"{class_names[i]}_mAP50", round(float(m), 4))
 
     # Write ONNX to KFP Model artifact for Dashboard lineage tracking
     import shutil
@@ -90,5 +118,9 @@ def train_model(
     trained_model.metadata["framework"] = "ultralytics-yolo11m"
     trained_model.metadata["format"] = "onnx"
     trained_model.metadata["epochs"] = epochs
+    trained_model.metadata["mAP50"] = round(mAP50, 4)
+    trained_model.metadata["mAP50_95"] = round(mAP50_95, 4)
+    trained_model.metadata["precision"] = round(precision, 4)
+    trained_model.metadata["recall"] = round(recall, 4)
 
     return onnx_path
