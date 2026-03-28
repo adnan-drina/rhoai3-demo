@@ -206,8 +206,10 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+    # Write as AVI/MJPG first (universally supported by OpenCV)
+    tmp_avi = output_path.replace(".mp4", "_tmp.avi")
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+    writer = cv2.VideoWriter(tmp_avi, fourcc, fps, (w, h))
 
     frame_count = 0
     dedup_count = 0
@@ -246,8 +248,22 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     if dedup_count > 0:
         print(f"  Identity dedup applied on {dedup_count}/{frame_count} frames")
     print(f"  Done: {frame_count} frames")
+
+    # Convert AVI→MP4 with ffmpeg for browser playback
+    import subprocess, os
     print("  Converting to H.264 for browser playback...")
-    output_path = _to_h264(output_path)
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", tmp_avi, "-vcodec", "libvpx-vp9", "-crf", "30",
+         "-b:v", "0", "-an", output_path.replace(".mp4", ".webm")],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        output_path = output_path.replace(".mp4", ".webm")
+        os.remove(tmp_avi)
+    else:
+        # Fallback: keep AVI, rename to mp4
+        os.rename(tmp_avi, output_path)
+
     print(f"  Saved: {output_path}")
     return output_path
 
