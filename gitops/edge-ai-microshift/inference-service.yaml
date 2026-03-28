@@ -16,7 +16,7 @@ spec:
       modelFormat:
         name: onnx
         version: "1"
-      storageUri: "oci://quay.io/adrina/face-recognition-modelcar:v3"
+      storageUri: "oci://quay.io/adrina/face-recognition-modelcar:v4"
       resources:
         requests:
           cpu: 500m
