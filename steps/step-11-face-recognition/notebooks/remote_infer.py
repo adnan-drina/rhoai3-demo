@@ -176,14 +176,18 @@ def _to_h264(input_path: str) -> str:
     return input_path
 
 
-def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.5):
-    """Process a video using a local YOLO model and save annotated output.
+def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.6):
+    """Process a video using a local YOLO model with identity uniqueness constraint.
+
+    Each frame is run through the model, then enforce_identity_uniqueness()
+    ensures at most one "adnan" detection per frame. Annotated frames are
+    reassembled into an H.264 video for browser playback.
 
     Args:
         video_path: Path to input video.
         model: A loaded ultralytics YOLO model.
         output_path: Path for annotated output video. If None, auto-generated.
-        conf: Confidence threshold.
+        conf: Confidence threshold (default: 0.6).
 
     Returns:
         Path to the output video (H.264 encoded for browser playback).
@@ -203,12 +207,30 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
 
     frame_count = 0
+    dedup_count = 0
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
         results = model.predict(frame, conf=conf, verbose=False)
+
+        # Apply identity uniqueness per frame
+        for result in results:
+            boxes = result.boxes
+            if boxes is not None and len(boxes) > 0:
+                cls = boxes.cls.cpu().numpy()
+                confs = boxes.conf.cpu().numpy()
+                adnan_idx = [i for i, c in enumerate(cls) if int(c) == 0]
+                if len(adnan_idx) > 1:
+                    best = max(adnan_idx, key=lambda i: confs[i])
+                    new_cls = boxes.cls.clone()
+                    for idx in adnan_idx:
+                        if idx != best:
+                            new_cls[idx] = 1
+                    boxes.cls = new_cls
+                    dedup_count += 1
+
         annotated = results[0].plot()
         writer.write(annotated)
 
@@ -218,6 +240,8 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
 
     cap.release()
     writer.release()
+    if dedup_count > 0:
+        print(f"  Identity dedup applied on {dedup_count}/{frame_count} frames")
     print(f"  Done: {frame_count} frames")
     print("  Converting to H.264 for browser playback...")
     output_path = _to_h264(output_path)
