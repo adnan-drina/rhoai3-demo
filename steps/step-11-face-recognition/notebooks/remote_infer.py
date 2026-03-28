@@ -291,8 +291,9 @@ def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+    tmp_avi = output_path.replace(".mp4", "_tmp.avi")
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+    writer = cv2.VideoWriter(tmp_avi, fourcc, fps, (w, h))
 
     frame_count = 0
     while cap.isOpened():
@@ -316,7 +317,19 @@ def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str
     cap.release()
     writer.release()
     print(f"  Done: {frame_count} frames")
-    print("  Converting to H.264 for browser playback...")
-    output_path = _to_h264(output_path)
+
+    import subprocess, os
+    print("  Converting to WebM for browser playback...")
+    result = subprocess.run(
+        ["ffmpeg", "-y", "-i", tmp_avi, "-vcodec", "libvpx-vp9", "-crf", "30",
+         "-b:v", "0", "-an", output_path.replace(".mp4", ".webm")],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        output_path = output_path.replace(".mp4", ".webm")
+        os.remove(tmp_avi)
+    else:
+        os.rename(tmp_avi, output_path)
+
     print(f"  Saved: {output_path}")
     return output_path
