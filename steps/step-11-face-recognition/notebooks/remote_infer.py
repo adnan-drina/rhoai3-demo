@@ -166,13 +166,16 @@ def _to_h264(input_path: str) -> str:
     """Re-encode video to H.264 for HTML5 inline playback."""
     import subprocess, os
     h264_path = input_path.replace(".mp4", "_h264.mp4")
-    result = subprocess.run(
-        ["ffmpeg", "-y", "-i", input_path, "-c:v", "libx264", "-preset", "fast",
-         "-crf", "23", "-c:a", "aac", "-movflags", "+faststart", h264_path],
-        capture_output=True, text=True
-    )
-    if result.returncode == 0 and os.path.exists(h264_path):
-        os.replace(h264_path, input_path)
+    for encoder in ["libx264", "libopenh264", "h264_nvenc"]:
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", input_path, "-c:v", encoder,
+             "-movflags", "+faststart", h264_path],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0 and os.path.exists(h264_path):
+            os.replace(h264_path, input_path)
+            return input_path
+    print("  WARNING: H.264 conversion failed — video may not play in browser")
     return input_path
 
 
