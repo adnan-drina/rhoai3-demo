@@ -19,7 +19,8 @@ Edge AI on MicroShift (real edge hardware)
 │   └── Live Video mode              → camera_input_live — continuous capture
 ├── gRPC inference                   → tritonclient gRPC for ~30x lower latency vs REST
 ├── NVIDIA device plugin             → Exposes L4 GPU to Kubernetes (nvidia.com/gpu: 1)
-└── Route (nip.io)                   → HTTPS access via public IP + nip.io DNS
+├── Route (nip.io)                   → HTTPS access via public IP + nip.io DNS
+└── ArgoCD core (embedded GitOps)    → Syncs edge-ai workloads from Git, no SSH needed
 ```
 
 | Component | Purpose | Namespace |
@@ -30,6 +31,7 @@ Edge AI on MicroShift (real edge hardware)
 | **face-recognition-edge-stable** Service | Non-headless ClusterIP for reliable gRPC connectivity | `edge-ai` |
 | **edge-camera** Deployment | Streamlit camera app (gRPC inference) | `edge-ai` |
 | **edge-camera** Route | HTTPS (nip.io, edge TLS) | `edge-ai` |
+| **ArgoCD core** (controller + repo-server + redis) | Embedded GitOps — syncs workloads from Git | `argocd` |
 
 ## Architecture
 
@@ -43,16 +45,27 @@ Edge AI on MicroShift (real edge hardware)
 │  └──────────────┘                    │ NVIDIA L4 GPU (24 GB)          │ │
 │       ↑ browser                      └──────────────────────────────────┘ │
 │       (nip.io)                             ↑ model from                   │
-│                                       localhost/face-recognition-          │
-│                                       modelcar:v2 (Triton dir layout)     │
+│                                       quay.io/adrina/face-recognition-    │
+│  ┌──────────────────┐                 modelcar:v3 (ModelCar OCI)          │
+│  │ ArgoCD core      │                                                     │
+│  │ (argocd ns)      │ ← watches Git: gitops/edge-ai-microshift/          │
+│  │ auto-sync + heal │   model update = change storageUri tag + push       │
+│  └──────────────────┘                                                     │
 └────────────────────────────────────────────────────────────────────────────┘
-         │
+         │                               │
+         │                               │ Git (auto-sync)
+         │                     ┌─────────┴─────────────────┐
+         │                     │ github.com/adnan-drina/    │
+         │                     │ rhoai3-demo (main)         │
+         │                     │ gitops/edge-ai-microshift/ │
+         │                     └─────────┬─────────────────┘
+         │                               │
          │                     ┌─── Model trained centrally ───┐
          │                     │                                │
 ┌────────┼── Central OCP 4.20 (Datacenter) ────────────────────────────────┐
 │        │                                                                  │
 │        │   Step 12 Pipeline ──→ Model Registry ──→ ModelCar OCI build    │
-│        │   (train + evaluate)   (versioned)         (quay.io or local)   │
+│        │   (train + evaluate)   (versioned)         (quay.io)            │
 └────────┼─────────────────────────────────────────────────────────────────┘
          │
     Laptop/phone camera
@@ -141,37 +154,58 @@ sudo subscription-manager register --username=<your-rh-email>
 
 **Workaround:** Use Photo mode on phones. Live Video works on laptops.
 
-## Future: Production-Grade Edge Deployment with bootc
+## Edge Fleet Management: Three Tiers
 
-The current deployment uses RPM installation + auto-manifests, which is appropriate for demos and single-device deployments. For **production fleet management** of multiple edge devices, Red Hat recommends the **RHEL Image Mode (bootc)** approach:
+Edge deployments range from a single demo device to thousands of production edge nodes. This section documents three tiers of fleet management, matching Red Hat's recommended progression.
 
-> **RHEL Image Mode** packages the entire edge device — OS, MicroShift, GPU drivers, model, and application manifests — into a single bootable OCI container image. Updates are atomic: `bootc switch` to a new image version, and greenboot auto-rolls back if the health check fails.
+### Tier 1: Manual Deployment (Single Device)
 
-**Production deployment workflow:**
+SSH into the device, install RPMs, apply manifests with `oc apply`. Model updates require SSH, `podman build`, and pod restarts. This is what `deploy.sh` does — appropriate for demos and prototyping.
 
-1. **Build a bootc image** using RHEL Image Builder with a blueprint that includes:
-   - MicroShift + `microshift-ai-model-serving` RPMs
-   - NVIDIA driver + container toolkit RPMs
-   - Pull-secret, MicroShift config, auto-manifests
-   - Pre-pulled container images (Triton, edge-camera, ModelCar)
+### Tier 2: Embedded GitOps (Dozens of Devices)
 
-2. **Publish the bootc image** to a container registry (quay.io)
+Deploy ArgoCD core controller (no UI, no API server) directly on MicroShift. The controller watches a Git repository and automatically syncs edge workloads. Model updates become Git commits — no SSH required.
 
-3. **Deploy to edge devices** via `bootc switch` or PXE boot from the ISO
+**This is deployed on our demo edge host.** ArgoCD core runs in the `argocd` namespace and manages all `edge-ai` workloads from [`gitops/edge-ai-microshift/`](../../gitops/edge-ai-microshift/).
 
-4. **Update the fleet** by building a new bootc image with the updated model/app, pushing to the registry, and having each device pull the update
+```text
+ArgoCD Application "edge-ai" (argocd namespace)
+  └── Source: github.com/adnan-drina/rhoai3-demo.git
+      └── Path: gitops/edge-ai-microshift/
+          ├── namespace.yaml
+          ├── serving-runtime.yaml    (Triton GPU)
+          ├── inference-service.yaml  (ModelCar OCI tag → model version)
+          ├── stable-service.yaml     (gRPC ClusterIP)
+          ├── edge-camera-deployment.yaml
+          ├── edge-camera-service.yaml
+          └── edge-camera-route.yaml
+```
 
-**Key benefits over RPM deployment:**
-- **Atomic updates** — entire OS + workload updated as one unit, rollback on failure
-- **Immutable** — no configuration drift across fleet
-- **Offline-capable** — all images pre-pulled into the bootc image
-- **Greenboot integration** — automatic health checks and rollback
+**Model update workflow:**
+1. Train a new model version centrally (Step 12)
+2. Build and push a new ModelCar tag: `quay.io/adrina/face-recognition-modelcar:v4`
+3. Update `inference-service.yaml` in Git: change `storageUri` tag from `v3` to `v4`
+4. Push to `main` — ArgoCD on MicroShift detects the change within 3 minutes
+5. KServe reconciles the InferenceService, pulls the new ModelCar, restarts the predictor
+
+**Setup notes:** ArgoCD core was installed from the upstream `core-install.yaml` (v2.14.11). Required fixes for MicroShift:
+- Grant `anyuid` SCC to ArgoCD service accounts (Redis and controller run as non-standard UIDs)
+- Create `argocd-redis` secret with empty `auth` key
+- Recreate the Redis deployment (simplified, no init container)
+- Create `default` AppProject (not included in core-install)
+
+### Tier 3: Centralized Fleet Management (Hundreds+ Devices)
+
+For production fleets, Red Hat recommends **RHEL Image Mode (bootc)** combined with **Red Hat Advanced Cluster Management (RHACM)** or **Red Hat Edge Manager**:
+
+- **bootc images** package the entire edge device — OS, MicroShift, GPU drivers, model, and manifests — into a single bootable OCI container image. Updates are atomic; greenboot auto-rolls back on failure.
+- **RHACM / Edge Manager** orchestrates fleet-wide updates from the central OCP cluster. Each device auto-registers and receives its configuration declaratively.
 
 **References:**
 - [Embedding in a RHEL for Edge image](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/embedding_in_a_rhel_for_edge_image/)
 - [Installing with image mode for RHEL](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html-single/installing_with_image_mode_for_rhel/)
-- [Automated recovery from manual backups](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/backup_and_restore/microshift-auto-recover-manual-backup)
-- [Greenboot workload health checks](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/running_applications/microshift-greenboot-workload-health-checks)
+- [Manage MicroShift with RHACM and OpenShift GitOps](https://developers.redhat.com/articles/2024/10/07/manage-microshift-red-hat-advanced-cluster-management-and-openshift-gitops)
+- [Red Hat Edge Manager (RHACM 2.13)](https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.13/html-single/edge_manager)
 
 ## References
 
