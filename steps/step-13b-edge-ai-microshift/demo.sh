@@ -57,7 +57,8 @@ echo "  │ Train (KFP pipeline) │       │ Streamlit Camera App             
 echo "  │ Evaluate (mAP50)     │       │ NVIDIA Triton + ONNX Runtime     │"
 echo "  │ Register (Model Reg) │──────>│ YOLO11 ONNX on L4 GPU           │"
 echo "  │ Package (ModelCar)   │  OCI  │ KServe v2 API                    │"
-echo "  └──────────────────────┘       └──────────────────────────────────┘"
+echo "  └──────────────────────┘       │ ArgoCD core (GitOps from Git)    │"
+echo "                                  └──────────────────────────────────┘"
 echo ""
 echo -e "  Camera App: ${BOLD}${GREEN}https://${ROUTE_HOST}${NC}"
 echo ""
@@ -136,6 +137,24 @@ echo ""
 
 cmd "oc get route -n edge-ai"
 cmd "oc get pods -n edge-ai"
+
+pause
+
+# =============================================================================
+section "8. Embedded GitOps (ArgoCD on MicroShift)"
+echo "  ArgoCD core runs directly on this edge device — no central dependency."
+echo "  It watches a Git repo and auto-syncs all edge-ai workloads."
+echo "  Model updates = change the ModelCar tag in Git, push, done."
+echo ""
+
+cmd "oc get pods -n argocd"
+cmd "oc get app -n argocd edge-ai"
+
+echo "  Source repo and sync status:"
+echo ""
+cmd "oc get app -n argocd edge-ai -o jsonpath='Source: {.spec.source.repoURL}'; echo ''"
+cmd "oc get app -n argocd edge-ai -o jsonpath='Path:   {.spec.source.path}'; echo ''"
+cmd "oc get app -n argocd edge-ai -o jsonpath='Sync:   {.status.sync.status}'; echo ''"
 
 pause
 
