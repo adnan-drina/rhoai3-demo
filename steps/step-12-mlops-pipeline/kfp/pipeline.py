@@ -21,6 +21,7 @@ from components.evaluate_model import evaluate_model
 from components.register_model import register_model
 from components.deploy_model import deploy_model
 from components.setup_monitoring import setup_monitoring
+from components.package_modelcar import package_modelcar
 
 MINIO_SECRET = "dspa-minio-credentials"
 PIPELINE_PVC = "face-pipeline-workspace"
@@ -66,6 +67,9 @@ def face_recognition_training_pipeline(
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     registry_url: str = "https://private-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com",
     isvc_namespace: str = "private-ai",
+    release_to_edge: bool = False,
+    modelcar_registry: str = "quay.io/adrina/face-recognition-modelcar",
+    modelcar_version: str = "",
 ):
     # Auto-generate version if not provided
     if not version:
@@ -142,6 +146,20 @@ def face_recognition_training_pipeline(
     mon_task.after(dep_task)
     mon_task.set_caching_options(False)
     mon_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
+
+    # --- Step 7: Package ModelCar & Release to Edge (optional) ---
+    with dsl.If(release_to_edge == True):
+        mc_version = modelcar_version if modelcar_version else version
+        mc_task = package_modelcar(
+            model_name="face-recognition-edge",
+            model_version=mc_version,
+            registry_image=modelcar_registry,
+            minio_endpoint=minio_endpoint,
+            namespace=isvc_namespace,
+        )
+        _set_resources(mc_task, cpu_req="250m", cpu_lim="500m", mem_req="256Mi", mem_lim="512Mi")
+        mc_task.after(reg_task)
+        mc_task.set_caching_options(False)
 
 
 if __name__ == "__main__":

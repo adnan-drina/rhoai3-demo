@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: update-gitops
+  namespace: private-ai
+spec:
+  description: >
+    Update the ModelCar image tag in the edge GitOps manifest and push
+    to Git. ArgoCD on MicroShift picks up the change automatically.
+  params:
+    - name: git-repo
+      type: string
+      default: https://github.com/adnan-drina/rhoai3-demo.git
+    - name: git-revision
+      type: string
+      default: main
+    - name: gitops-file
+      type: string
+      default: gitops/edge-ai-microshift/inference-service.yaml
+    - name: image-ref
+      type: string
+      description: "New full image reference, e.g. oci://quay.io/adrina/face-recognition-modelcar:v4"
+  workspaces:
+    - name: source
+      description: Scratch space for git clone
+  steps:
+    - name: update-and-push
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      env:
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: github-push-credentials
+              key: username
+        - name: GIT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-push-credentials
+              key: token
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+
+        microdnf install -y git-core --nodocs --setopt=install_weak_deps=0 2>/dev/null
+
+        cd "$(workspaces.source.path)"
+
+        REPO_URL=$(echo "$(params.git-repo)" | sed "s|https://|https://${GIT_USERNAME}:${GIT_TOKEN}@|")
+        git clone --depth=1 -b "$(params.git-revision)" "$REPO_URL" repo
+        cd repo
+
+        FILE="$(params.gitops-file)"
+        echo "Current storageUri:"
+        grep storageUri "$FILE"
+
+        sed -i 's|storageUri:.*oci://[^"]*|storageUri: "$(params.image-ref)|' "$FILE"
+
+        echo "Updated storageUri:"
+        grep storageUri "$FILE"
+
+        git config user.email "pipeline@rhoai-demo"
+        git config user.name "ModelCar Release Pipeline"
+        git add "$FILE"
+        git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+        git commit -m "ci(edge): promote model to $(params.image-ref)"
+        git push origin "$(params.git-revision)"
+
+        echo "Pushed to $(params.git-repo) @ $(params.git-revision)"
+        echo "ArgoCD on MicroShift will sync within 3 minutes."
