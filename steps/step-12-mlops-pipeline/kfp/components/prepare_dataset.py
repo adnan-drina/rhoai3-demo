@@ -121,7 +121,10 @@ def prepare_dataset(
     detector = YOLO(det_path)
 
     def annotate(image_path, class_id, img_dir, lbl_dir, prefix):
-        results = detector.predict(str(image_path), verbose=False, conf=0.3)
+        try:
+            results = detector.predict(str(image_path), verbose=False, conf=0.3)
+        except Exception:
+            return False
         if len(results[0].boxes) == 0:
             return False
         img_name = f"{prefix}_{image_path.stem}.jpg"
