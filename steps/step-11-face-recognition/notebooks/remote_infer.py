@@ -224,11 +224,11 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
                 adnan_idx = [i for i, c in enumerate(cls) if int(c) == 0]
                 if len(adnan_idx) > 1:
                     best = max(adnan_idx, key=lambda i: confs[i])
-                    new_cls = boxes.cls.clone()
+                    new_data = boxes.data.clone()
                     for idx in adnan_idx:
                         if idx != best:
-                            new_cls[idx] = 1
-                    boxes.cls = new_cls
+                            new_data[idx, 5] = 1
+                    result.boxes = type(boxes)(new_data, result.orig_shape)
                     dedup_count += 1
 
         annotated = results[0].plot()
