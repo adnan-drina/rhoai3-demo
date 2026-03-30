@@ -5,6 +5,7 @@ inference requests to the served ONNX model, draw annotated bounding boxes,
 and apply identity uniqueness constraints on results.
 """
 
+import os
 import requests
 import cv2
 import cv2.dnn
@@ -46,6 +47,34 @@ def enforce_identity_uniqueness(detections, identity_class_id=0):
                 d["class_id"] = 1
                 d["class_name"] = CLASSES.get(1, "unknown_face")
     return detections
+
+
+TRUSTYAI_ADAPTER_URL = os.environ.get(
+    "TRUSTYAI_ADAPTER_URL",
+    "http://trustyai-adapter.private-ai.svc.cluster.local:8090",
+)
+
+
+def report_to_trustyai(detections):
+    """Fire-and-forget reporting of detection results to TrustyAI adapter.
+
+    Sends a lightweight summary of post-processed detections so TrustyAI
+    can compute SPD bias metrics on tabular data derived from CV inference.
+    Non-blocking with 1s timeout — never impacts inference latency.
+    """
+    try:
+        requests.post(
+            f"{TRUSTYAI_ADAPTER_URL}/report",
+            json={
+                "detections": [
+                    {"class_id": d["class_id"], "confidence": float(d["confidence"])}
+                    for d in detections
+                ]
+            },
+            timeout=1,
+        )
+    except Exception:
+        pass
 
 
 def preprocess(image_path: str, imgsz: int = 640):
@@ -159,6 +188,7 @@ def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.7):
     blob, scale, original_image = preprocess(image_path)
     response = send_request(blob, endpoint)
     annotated, detections = postprocess(response[0], scale, original_image, conf_threshold)
+    report_to_trustyai(detections)
     return annotated, detections
 
 

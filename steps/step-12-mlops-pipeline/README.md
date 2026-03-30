@@ -119,18 +119,48 @@ oc get dspa dspa-rag -n private-ai
 
 ## Model Monitoring with TrustyAI
 
-The pipeline deploys **TrustyAI** and configures monitoring directly on the face-recognition model:
+The pipeline deploys **TrustyAI** and configures bias monitoring for the face-recognition model:
 
-- **SPD Fairness metric** (`trustyai_spd`) -- measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > Model Serving > face-recognition > Model bias** tab.
+- **SPD Fairness metric** (`trustyai_spd`) -- measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > AI hub > Deployments > face-recognition > Model bias** tab.
+- **Drift detection** (`trustyai_meanshift`) -- detects distribution shifts in inference data vs training baseline.
 - **Endpoint performance** -- request count, latency visible in the **Endpoint performance** tab.
 
-The monitoring setup uses a **post-processing pattern**: since TrustyAI's fairness algorithms require tabular data (not raw tensors), YOLO inference outputs are transformed into scalar metrics (`image_type`, `num_detections`) and uploaded to TrustyAI:
+### Architecture: TrustyAI Adapter Pattern
+
+TrustyAI's fairness algorithms require **tabular data**, but the YOLO model has tensor I/O (`[1,3,640,640]` image in, `[1,6,8400]` detections out). We use a **post-processing adapter** that transforms detection results into tabular metrics:
+
+```text
+Inference Client (Notebook/Streamlit)
+  │
+  ├── 1. Send image → OVMS (KServe v2) → YOLO detections
+  │
+  └── 2. POST /report → trustyai-adapter (fire-and-forget)
+                              │
+                              └── Transform to tabular:
+                                    Input:  image_type (0=known, 1=unknown_only)
+                                    Output: num_detections (face count)
+                                         │
+                                         └── POST /data/upload → TrustyAI
+                                                                    │
+                                                                    └── trustyai_spd → Prometheus → Dashboard
+```
+
+The adapter runs as a standalone Deployment (`trustyai-adapter`) in `private-ai`. Inference clients (`remote_infer.py`, edge `inference.py`) call `report_to_trustyai()` after each inference — fire-and-forget with 1s timeout.
+
+### Setup
 
 ```bash
 ./steps/step-12-mlops-pipeline/setup-trustyai-metrics.sh
 ```
 
-This script uploads TRAINING reference data and untagged prediction data, configures the scheduled SPD metric, and verifies the Prometheus gauge is live. The `ServiceMonitor trustyai-service` scrapes the metric every 4s for the Dashboard.
+This script:
+1. Triggers the adapter's `/bootstrap` endpoint (uploads TRAINING baseline + prediction samples)
+2. Patches TrustyAI's internal CSV to tag predictions as `_trustyai_unlabeled` (required for SPD computation)
+3. Sets `recordedInferences=true` in TrustyAI metadata
+4. Configures scheduled SPD and drift metrics
+5. Verifies `trustyai_spd` appears in Prometheus
+
+> **Known Limitation (RHOAI 3.3):** TrustyAI's KServe inference logger uses HTTPS to forward payloads, but the `inferenceservice-config` ConfigMap is actively reconciled by the RHOAI operator, preventing `caBundle`/`tlsSkipVerify` settings from being persisted (per RHOAI 3.3 docs Section 2.5). The adapter pattern bypasses this by receiving data directly from clients instead of relying on the KServe logger path.
 
 ## ModelCar Release Pipeline (Edge Promotion)
 
@@ -204,7 +234,7 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 
 > **Design Decision:** **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 
-> **Design Decision:** **TrustyAI uses post-processed tabular metrics**, not raw tensor data. Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `setup-trustyai-metrics.sh` script uploads post-processed metrics (image_type, num_detections) that represent the model's behavior in a format TrustyAI can compute SPD on. This is the standard production pattern for monitoring CV models.
+> **Design Decision:** **TrustyAI adapter pattern for CV models.** Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `trustyai-adapter` Deployment receives post-processed detection results from inference clients and transforms them into tabular metrics (`image_type`, `num_detections`) that TrustyAI computes SPD on. This approach bypasses the KServe inference logger's TLS limitation in RawDeployment mode (RHOAI 3.3). See [RHOAI 3.3 Monitoring](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/monitoring_your_ai_systems/).
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 

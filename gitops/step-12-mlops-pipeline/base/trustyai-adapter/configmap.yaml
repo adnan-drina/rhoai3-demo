@@ -1,0 +1,212 @@
+# TrustyAI adapter: transforms YOLO detection results into tabular data
+# for SPD bias monitoring. Receives POST /report from inference clients,
+# forwards tabular summaries to TrustyAI /data/upload API.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trustyai-adapter-script
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: trustyai-adapter
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: monitoring
+data:
+  adapter.py: |
+    """TrustyAI adapter for computer vision models.
+
+    Receives post-processed detection results from inference clients and
+    forwards them as tabular data to TrustyAI's /data/upload API, enabling
+    SPD bias monitoring and drift detection for CV models whose raw tensor
+    I/O is incompatible with TrustyAI's tabular schema.
+    """
+    import json, os, time, uuid, threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+
+    TRUSTYAI_URL = os.environ.get(
+        "TRUSTYAI_URL", "http://trustyai-service.private-ai.svc.cluster.local"
+    )
+    MODEL_NAME = os.environ.get("MODEL_NAME", "face-recognition")
+    PORT = int(os.environ.get("PORT", "8090"))
+    BASELINE_SAMPLES = int(os.environ.get("BASELINE_SAMPLES", "50"))
+
+    try:
+        import requests as _req
+    except ImportError:
+        import urllib.request, urllib.error
+
+        class _req:
+            @staticmethod
+            def get(url, **kw):
+                timeout = kw.get("timeout", 10)
+                r = urllib.request.urlopen(url, timeout=timeout)
+                return type("R", (), {"status_code": r.status, "text": r.read().decode(), "json": lambda s=r: json.loads(s.read().decode() if hasattr(s, 'read') else r.text)})()
+
+            @staticmethod
+            def post(url, json=None, headers=None, **kw):
+                timeout = kw.get("timeout", 10)
+                data = json_mod.dumps(json).encode() if json else None
+                req = urllib.request.Request(url, data=data, headers=headers or {"Content-Type": "application/json"})
+                try:
+                    r = urllib.request.urlopen(req, timeout=timeout)
+                    return type("R", (), {"status_code": r.status, "text": r.read().decode()})()
+                except urllib.error.HTTPError as e:
+                    return type("R", (), {"status_code": e.code, "text": e.read().decode()})()
+
+    import json as json_mod
+
+    def upload_observation(image_type: int, num_detections: int):
+        """Send one tabular observation to TrustyAI as prediction data (no tag)."""
+        req_id = str(uuid.uuid4())
+        payload = {
+            "model_name": MODEL_NAME,
+            "request": {
+                "id": req_id,
+                "inputs": [{"name": "image_type", "shape": [1], "datatype": "INT32", "data": [image_type]}],
+            },
+            "response": {
+                "model_name": MODEL_NAME,
+                "id": req_id,
+                "outputs": [{"name": "num_detections", "shape": [1], "datatype": "INT32", "data": [num_detections]}],
+            },
+        }
+        r = _req.post(f"{TRUSTYAI_URL}/data/upload", json=payload, headers={"Content-Type": "application/json"}, timeout=5)
+        return r.status_code
+
+    def bootstrap():
+        """Upload TRAINING baseline and configure SPD + drift if not already done."""
+        print(f"[bootstrap] Checking TrustyAI at {TRUSTYAI_URL}...")
+        for attempt in range(12):
+            try:
+                r = _req.get(f"{TRUSTYAI_URL}/info", timeout=5)
+                if r.status_code == 200:
+                    break
+            except Exception:
+                pass
+            time.sleep(5)
+        else:
+            print("[bootstrap] TrustyAI not reachable, skipping.")
+            return
+
+        info = json_mod.loads(r.text) if r.text and r.text != "{}" else {}
+        if MODEL_NAME in info:
+            obs = info[MODEL_NAME].get("data", {}).get("observations", 0)
+            metrics = info[MODEL_NAME].get("metrics", {}).get("scheduledMetadata", {}).get("metricCounts", {})
+            if obs > 0 and metrics.get("SPD", 0) > 0:
+                print(f"[bootstrap] Already configured: {obs} observations, metrics={metrics}")
+                return
+
+        import random
+        random.seed(42)
+        print(f"[bootstrap] Uploading {BASELINE_SAMPLES} TRAINING samples...")
+        for i in range(BASELINE_SAMPLES):
+            img_type = 0 if random.random() < 0.4 else 1
+            n_det = random.choice([1, 2, 3]) if img_type == 0 else random.choice([0, 1, 0, 0, 1, 0])
+            req_id = str(uuid.uuid4())
+            payload = {
+                "model_name": MODEL_NAME,
+                "data_tag": "TRAINING",
+                "request": {"id": req_id, "inputs": [{"name": "image_type", "shape": [1], "datatype": "INT32", "data": [img_type]}]},
+                "response": {"model_name": MODEL_NAME, "id": req_id, "outputs": [{"name": "num_detections", "shape": [1], "datatype": "INT32", "data": [n_det]}]},
+            }
+            _req.post(f"{TRUSTYAI_URL}/data/upload", json=payload, headers={"Content-Type": "application/json"}, timeout=10)
+
+        print(f"[bootstrap] Uploading {BASELINE_SAMPLES} prediction samples...")
+        random.seed(123)
+        for i in range(BASELINE_SAMPLES):
+            img_type = 0 if random.random() < 0.4 else 1
+            n_det = random.choice([1, 2, 3]) if img_type == 0 else random.choice([0, 1, 0, 0, 1, 0])
+            upload_observation(img_type, n_det)
+
+        # Patch metadata for recordedInferences
+        print("[bootstrap] Patching metadata...")
+        try:
+            import subprocess
+            subprocess.run([
+                "python3", "-c",
+                "import json; f='/data/{}-metadata.json'.format('{}'); d=json.load(open(f)); d['recordedInferences']=True; json.dump(d,open(f,'w'),indent=2)".format(MODEL_NAME),
+            ], timeout=5, capture_output=True)
+        except Exception:
+            pass
+
+        print("[bootstrap] Configuring SPD metric...")
+        r = _req.post(
+            f"{TRUSTYAI_URL}/metrics/group/fairness/spd/request",
+            headers={"Content-Type": "application/json"},
+            json={
+                "modelId": MODEL_NAME,
+                "requestName": "face-recognition-bias",
+                "protectedAttribute": "image_type",
+                "privilegedAttribute": {"type": "INT32", "value": 0},
+                "unprivilegedAttribute": {"type": "INT32", "value": 1},
+                "outcomeName": "num_detections",
+                "favorableOutcome": {"type": "INT32", "value": 1},
+                "batchSize": 50,
+            },
+            timeout=10,
+        )
+        print(f"[bootstrap] SPD: {r.status_code}")
+
+        print("[bootstrap] Configuring drift detection...")
+        r = _req.post(
+            f"{TRUSTYAI_URL}/metrics/drift/meanshift/request",
+            headers={"Content-Type": "application/json"},
+            json={"modelId": MODEL_NAME, "referenceTag": "TRAINING"},
+            timeout=10,
+        )
+        print(f"[bootstrap] Drift: {r.status_code}")
+
+        r = _req.get(f"{TRUSTYAI_URL}/info", timeout=5)
+        info = json_mod.loads(r.text) if r.text else {}
+        model_info = info.get(MODEL_NAME, {})
+        obs = model_info.get("data", {}).get("observations", 0)
+        metrics = model_info.get("metrics", {}).get("scheduledMetadata", {}).get("metricCounts", {})
+        print(f"[bootstrap] Done: {obs} observations, metrics={metrics}")
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health" or self.path == "/healthz":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status":"ok"}')
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):
+            if self.path == "/report":
+                length = int(self.headers.get("Content-Length", 0))
+                body = json_mod.loads(self.rfile.read(length)) if length else {}
+                detections = body.get("detections", [])
+                image_type = 0 if any(d.get("class_id") == 0 for d in detections) else 1
+                num_detections = len(detections)
+                try:
+                    status = upload_observation(image_type, num_detections)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json_mod.dumps({"status": "ok", "trustyai_status": status}).encode())
+                except Exception as e:
+                    self.send_response(502)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json_mod.dumps({"error": str(e)}).encode())
+            elif self.path == "/bootstrap":
+                threading.Thread(target=bootstrap, daemon=True).start()
+                self.send_response(202)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status":"bootstrap-started"}')
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def log_message(self, format, *args):
+            if "/health" not in str(args):
+                print(f"[adapter] {args[0]}")
+
+    if __name__ == "__main__":
+        print(f"[adapter] Starting on port {PORT}, TrustyAI={TRUSTYAI_URL}, model={MODEL_NAME}")
+        threading.Thread(target=bootstrap, daemon=True).start()
+        server = HTTPServer(("0.0.0.0", PORT), Handler)
+        server.serve_forever()

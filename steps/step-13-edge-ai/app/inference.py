@@ -5,6 +5,7 @@ uniqueness constraint: a known person can only appear once per frame.
 Works with both OpenVINO Model Server and NVIDIA Triton.
 """
 
+import os
 import cv2
 import cv2.dnn
 import numpy as np
@@ -38,6 +39,31 @@ def enforce_identity_uniqueness(detections, identity_class_id=0):
                 d["class_id"] = 1
                 d["class_name"] = CLASSES.get(1, "unknown_face")
     return detections
+
+
+TRUSTYAI_ADAPTER_URL = os.environ.get(
+    "TRUSTYAI_ADAPTER_URL",
+    "http://trustyai-adapter.private-ai.svc.cluster.local:8090",
+)
+
+
+def report_to_trustyai(detections):
+    """Fire-and-forget reporting of detection results to TrustyAI adapter."""
+    try:
+        import urllib.request, json
+        data = json.dumps({
+            "detections": [
+                {"class_id": d["class_id"], "confidence": float(d["confidence"])}
+                for d in detections
+            ]
+        }).encode()
+        req = urllib.request.Request(
+            f"{TRUSTYAI_ADAPTER_URL}/report", data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=1)
+    except Exception:
+        pass
 
 
 def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.7):
@@ -126,4 +152,6 @@ def detect_faces(img_bgr, endpoint: str, model_name: str, conf_threshold: float 
     """End-to-end: preprocess, infer via gRPC, postprocess with identity uniqueness."""
     blob, scale = preprocess(img_bgr)
     response = send_request(blob, endpoint, model_name)
-    return postprocess(response[0], scale, img_bgr, conf_threshold)
+    annotated, detections = postprocess(response[0], scale, img_bgr, conf_threshold)
+    report_to_trustyai(detections)
+    return annotated, detections

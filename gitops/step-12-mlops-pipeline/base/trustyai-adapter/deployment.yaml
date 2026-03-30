@@ -1,0 +1,67 @@
+# Lightweight adapter that bridges CV model inference results to TrustyAI's
+# tabular data format, enabling SPD bias monitoring for face recognition.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trustyai-adapter
+  namespace: private-ai
+  labels:
+    app.kubernetes.io/name: trustyai-adapter
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trustyai-adapter
+  template:
+    metadata:
+      labels:
+        app: trustyai-adapter
+        app.kubernetes.io/name: trustyai-adapter
+        app.kubernetes.io/part-of: face-recognition
+        app.kubernetes.io/component: monitoring
+    spec:
+      containers:
+        - name: adapter
+          image: registry.redhat.io/ubi9/python-312:latest
+          command: ["python3", "/app/adapter.py"]
+          ports:
+            - containerPort: 8090
+              protocol: TCP
+          env:
+            - name: TRUSTYAI_URL
+              value: "http://trustyai-service.private-ai.svc.cluster.local"
+            - name: MODEL_NAME
+              value: "face-recognition"
+            - name: PORT
+              value: "8090"
+            - name: BASELINE_SAMPLES
+              value: "50"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - name: script
+              mountPath: /app
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: trustyai-adapter-script
