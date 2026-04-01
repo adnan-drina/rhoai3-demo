@@ -7,7 +7,7 @@ Step 11 demonstrated the data scientist's inner loop — interactive training in
 
 **Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** for automating ML workflows and a **Model Registry** for versioned model governance. Step 12 is the MLOps engineer's outer loop: the same training workflow automated as a pipeline that runs unattended, evaluates quality, and only deploys if the model passes. This is the first pipeline in the project that connects KFP to the Model Registry, demonstrating the full RHOAI 3.3 ML lifecycle. Beyond pipeline automation, ongoing model health matters. As the guide warns: *"Implement drift monitoring to track model behavior over time, including changes in accuracy, response quality, and adherence to safety guidelines. Models can degrade as the world changes around them; monitoring catches this before users do."*
 
-This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: AI pipelines that automate model delivery with built-in governance — versioned, tracked, and managed on the same platform that serves the models.
+This step demonstrates the **Predictive AI** use case of the Red Hat AI platform: automating the full ML lifecycle — from training through evaluation to production deployment — with AI pipelines that are versioned, tracked, and managed on the same platform that serves the models.
 
 ### What Gets Deployed
 

@@ -7,7 +7,7 @@ Step 07 proved your RAG system can retrieve and answer. But _how much better_ ar
 
 **Red Hat OpenShift AI 3.3** provides two evaluation capabilities through its AI platform. **RAG Evaluation** runs the same questions with and without document context, then uses a larger LLM as a judge to score the quality difference — delivered as a **Kubeflow Pipeline** with HTML reports published to MinIO. **Standard Model Evaluation** uses RHOAI's native **LMEvalJob** CR and **TrustyAI** operator to run industry-standard benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any deployed model.
 
-This step demonstrates the **Connecting Models to Data** pillar of Red Hat's AI platform: AI pipelines that automate model delivery and testing, ensuring that RAG value is measurable and model capabilities are baselined before production deployment.
+This step demonstrates the **Generative AI** use case of the Red Hat AI platform: evaluating and benchmarking model quality to ensure that RAG value is measurable and model capabilities are baselined before production deployment.
 
 ### What Gets Deployed
 

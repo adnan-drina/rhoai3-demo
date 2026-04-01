@@ -9,7 +9,7 @@ Your models are registered. Your GPUs are provisioned. Now it's time to serve th
 
 The model portfolio reflects a deliberate sizing strategy. *"Small language models offer a compelling middle ground. These models deliver strong performance on targeted tasks while requiring significantly fewer resources than their larger counterparts."* Granite 8B — the agent model — runs as an FP8 quantized checkpoint on a single GPU, while Mistral 3 BF16 uses four GPUs for enterprise chat and evaluation. *"Model quantization reduces size and accelerates inference by using lower-precision numerical formats... Red Hat's benchmarks of over half a million evaluations found that 8-bit quantization delivers approximately 1.8x performance speedup with full accuracy recovery."*
 
-This step demonstrates the **Efficient Inferencing** pillar of Red Hat's AI platform: optimized model serving via vLLM, delivering fast and cost-effective inference at scale.
+This step demonstrates the **Generative AI** use case of the Red Hat AI platform: serving foundation models with optimized inference via vLLM, delivering fast and cost-effective content generation at scale.
 
 ### What Gets Deployed
 

@@ -6,16 +6,16 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
-## Red Hat AI: Four Pillars
+## Red Hat AI: Four Use Cases
 
-This demo demonstrates all four pillars of the [Red Hat AI platform](https://www.redhat.com/en/products/ai/openshift-ai):
+This demo covers all four [Red Hat OpenShift AI use cases](https://www.redhat.com/en/products/ai/openshift-ai):
 
-| Pillar | What Red Hat Delivers | Demo Steps |
-|--------|----------------------|------------|
-| **Efficient Inferencing** | Optimized model serving via vLLM, delivering fast and cost-effective inference at scale | Steps 05-06 |
-| **Connecting Models to Data** | RAG for private data connection, model evaluation, document ingestion with Docling | Steps 07-08 |
-| **Accelerating Agentic AI** | Llama Stack API, MCP servers, AI guardrails for safe autonomous workflows | Steps 09-10 |
-| **Flexibility across Hybrid Cloud** | GPU infrastructure, model governance, edge deployment from datacenter to MicroShift | Steps 01-04, 11-13b |
+| Use Case | What Red Hat Delivers | Demo Steps |
+|----------|----------------------|------------|
+| **Operationalized AI** | Platform foundation, GPU-as-a-Service, model governance, performance monitoring — systems that support the maintenance and deployment of AI at scale | Steps 01-04, 06 |
+| **Generative AI** | LLM serving on vLLM, RAG with Llama Stack, model evaluation — producing new content grounded in enterprise data | Steps 05, 07-08 |
+| **Agentic AI** | AI safety guardrails, MCP server integration — autonomous workflows that perform complex tasks with limited supervision | Steps 09-10 |
+| **Predictive AI** | Computer vision training, MLOps pipelines, edge deployment — connecting patterns and forecasting outcomes from datacenter to edge | Steps 11-13b |
 
 ## Three Demo Themes
 

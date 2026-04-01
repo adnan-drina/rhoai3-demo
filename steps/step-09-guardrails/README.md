@@ -7,7 +7,7 @@ Your team built a RAG chatbot grounded in internal documents — it answers from
 
 **Red Hat OpenShift AI 3.3** addresses this with the **TrustyAI Guardrails Orchestrator** — a customizable safety framework that protects model inputs and outputs from harmful information including abusive speech, personal data, and prompt injection. AI guardrails are an RHOAI platform capability, not a third-party add-on — they deploy via GitOps and run entirely on CPU.
 
-This step demonstrates the **Trust and Governance** pillar of Red Hat's AI platform: ensuring that AI models remain fair, transparent, and reliable for use in production.
+This step demonstrates the **Agentic AI** use case of the Red Hat AI platform: ensuring that autonomous AI workflows remain safe, fair, and reliable before they are connected to live enterprise systems.
 
 ### What Gets Deployed
 

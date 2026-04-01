@@ -7,7 +7,7 @@ Steps 11 and 12 proved that Red Hat OpenShift AI handles the full ML lifecycle â
 
 Step 13 brings the face recognition model to the edge: a camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. As Red Hat's AI adoption guide explains: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."* This is the **Red Hat Edge + On-Premise** pattern â€” data acquisition and inference at the edge, model development in the datacenter, all managed by the same platform.
 
-This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: the same model trained centrally on RHOAI deploys to edge sites with zero code changes.
+This step demonstrates **Predictive AI at the edge**: the same model trained centrally on RHOAI deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI allows deployment and monitoring of AI/ML workloads across cloud, on-premise, and edge environments.
 
 ### What Gets Deployed
 
