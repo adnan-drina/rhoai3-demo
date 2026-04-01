@@ -7,7 +7,7 @@ With GPU infrastructure, the AI platform, and access controls in place, organiza
 
 **Red Hat OpenShift AI 3.3** provides two complementary model management capabilities. The **Model Catalog** is a curated library of 48+ Red Hat-validated models in OCI ModelCar format — ready to deploy with a click and no external dependencies. The **Model Registry** tracks versions, ownership, and approval status of models before they reach production. Together they provide *"centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts"* — discover in the Catalog, register for governance, deploy from either.
 
-This step demonstrates the **Operationalized AI** use case of the Red Hat AI platform: centralized management for AI models, their metadata and artifacts — ensuring that the same governed model lifecycle works across any OpenShift cluster.
+This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts — ensuring that the same governed model lifecycle works across any OpenShift cluster.
 
 ### What Gets Deployed
 

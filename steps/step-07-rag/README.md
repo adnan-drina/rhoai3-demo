@@ -7,7 +7,7 @@ Step 05 proved your team can experiment with LLMs via the GenAI Playground. But 
 
 **Red Hat OpenShift AI 3.3** provides an integrated RAG stack through the **Llama Stack API** — embedding, vector storage, and agent queries in a unified interface. Documents are ingested through **Kubeflow Pipelines** with **Docling** for intelligent PDF conversion, stored in **PostgreSQL with pgvector**, and queried via both direct retrieval and autonomous agent-based search. *"Docling, an open source framework included in Red Hat AI, handles this complexity by extracting text, tables, and structure from PDFs and other documents."* The entire pipeline is repeatable, versioned, and visible in the RHOAI Dashboard.
 
-*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This step demonstrates the **Generative AI** use case of the Red Hat AI platform: Retrieval Augmented Generation for private data connection, ensuring models produce content grounded in your documents rather than hallucinating from training data.
+*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This step demonstrates RHOAI's **Model development and customization** capability — specifically Retrieval Augmented Generation (RAG) for private data connection — and **AI pipelines** that automate document ingestion, ensuring models produce content grounded in your documents rather than hallucinating from training data.
 
 ### What Gets Deployed
 

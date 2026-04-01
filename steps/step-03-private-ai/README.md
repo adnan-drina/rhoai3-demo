@@ -7,7 +7,7 @@ The RHOAI platform is installed, but without access controls, every user consume
 
 **Red Hat OpenShift AI 3.3** provides the building blocks for a governed AI platform — with *"self-service GPU access... intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles."* The platform adds integrated data connections for S3 storage and OpenShift-native RBAC that separates Service Governors from Service Consumers, ensuring the right people have access to the right resources without bottlenecking on infrastructure tickets.
 
-This step demonstrates the **Operationalized AI** use case of the Red Hat AI platform: simplified configurations, automated workflows, and governance that scales from a single team to an entire organization.
+This step builds on RHOAI's **Intelligent GPU and hardware speed** capability — adding quota management, priority access, and visibility of use through hardware profiles — with governance that scales from a single team to an entire organization.
 
 ### What Gets Deployed
 

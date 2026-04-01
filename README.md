@@ -6,16 +6,23 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
-## Red Hat AI: Four Use Cases
+## RHOAI Features and Benefits Coverage
 
-This demo covers all four [Red Hat OpenShift AI use cases](https://www.redhat.com/en/products/ai/openshift-ai):
+This demo covers 9 of 11 features from the [Red Hat OpenShift AI datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
 
-| Use Case | What Red Hat Delivers | Demo Steps |
-|----------|----------------------|------------|
-| **Operationalized AI** | Platform foundation, GPU-as-a-Service, model governance, performance monitoring — systems that support the maintenance and deployment of AI at scale | Steps 01-04, 06 |
-| **Generative AI** | LLM serving on vLLM, RAG with Llama Stack, model evaluation — producing new content grounded in enterprise data | Steps 05, 07-08 |
-| **Agentic AI** | AI safety guardrails, MCP server integration — autonomous workflows that perform complex tasks with limited supervision | Steps 09-10 |
-| **Predictive AI** | Computer vision training, MLOps pipelines, edge deployment — connecting patterns and forecasting outcomes from datacenter to edge | Steps 11-13b |
+| RHOAI Feature | Datasheet Benefit | Demo Steps |
+|---------------|-------------------|------------|
+| **Intelligent GPU and hardware speed** | Self-service GPU access, workload scheduling, quota management, hardware profiles | Steps 01, 02, 03 |
+| **Catalog and registry** | Centralized management for predictive and gen AI models, metadata, and artifacts | Step 04 |
+| **Optimized model serving** | vLLM for high throughput and low latency, validated gen AI models, LLM compressor | Steps 05, 06 |
+| **Model development and customization** | JupyterLab workbenches, data ingestion, RAG for private data connection | Steps 07, 11 |
+| **AI pipelines** | Automate model delivery and testing — versioned, tracked, managed | Steps 07, 08, 12 |
+| **Model observability and governance** | Performance metrics, data drift and bias detection, AI guardrails, LM-Eval, GuideLLM | Steps 06, 08, 09, 12 |
+| **Agentic AI and gen AI UIs** | MCP and Llama Stack API, AI hub, gen AI studio and playground | Steps 05, 09, 10 |
+| **Model training and experimentation** | Distributed workloads, experiment tracking, simplified hardware allocation | Steps 11, 12 |
+| **Disconnected environments and edge** | Disconnected and air-gapped clusters for security and regulatory compliance | Steps 13, 13b |
+| Feature store | *Managing data features for ML models* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| Models-as-a-service | *API gateway for self-service model access (developer preview)* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 
 ## Three Demo Themes
 

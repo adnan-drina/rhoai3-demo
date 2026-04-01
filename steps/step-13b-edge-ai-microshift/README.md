@@ -7,7 +7,7 @@ Step 13 simulated an edge deployment using a separate namespace on the central O
 
 **Red Hat Build of MicroShift 4.20** is an edge-optimized Kubernetes distribution built on RHEL, providing KServe model serving via the `microshift-ai-model-serving` RPM. Combined with **NVIDIA Triton Inference Server** for GPU-accelerated inference and **embedded ArgoCD** for GitOps-driven model delivery, this step demonstrates the complete Red Hat Edge + On-Premise lifecycle.
 
-This step demonstrates **Predictive AI on real edge hardware**: the same model trained on RHOAI in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model, proving Red Hat's hybrid cloud flexibility from datacenter to edge.
+This step demonstrates RHOAI's **Disconnected environments and edge** capability on real hardware: the same model trained in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model, with embedded GitOps for autonomous updates.
 
 > **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
 

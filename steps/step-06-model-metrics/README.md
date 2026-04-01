@@ -7,7 +7,7 @@ Models are deployed. But how do they perform? *"Moving from proof-of-concept to 
 
 **Red Hat OpenShift AI 3.3** provides model observability through **OpenShift User Workload Monitoring**, which automatically scrapes vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards visualize latency, throughput, and KV cache utilization in real time, while **GuideLLM** stress tests reveal each model's capacity limits under graduated concurrency. **DCGM** (Data Center GPU Manager) exposes GPU hardware utilization for capacity planning.
 
-This step demonstrates the **Operationalized AI** use case of the Red Hat AI platform: model observability and governance — tracking metrics including performance and capacity to right-size deployments and set SLO expectations.
+This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to assist real-world inference deployments and right-size GPU spend.
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 

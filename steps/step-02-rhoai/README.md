@@ -7,7 +7,7 @@ With GPU infrastructure in place, the cluster needs an AI platform layer that tu
 
 **Red Hat OpenShift AI 3.3** delivers a unified AI/ML platform that provides centralized management for predictive and generative AI models — a platform that *"provides a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions."* GenAI Studio enables *"rapid prototyping and evaluation before committing to production"* with an Agent Playground and Model Catalog. Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack — from model serving and distributed training to pipelines and governance.
 
-This step demonstrates the **Operationalized AI** use case of the Red Hat AI platform: a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively on a single platform.
+This step deploys the full RHOAI platform — covering **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate on one platform.
 
 ### What Gets Deployed
 

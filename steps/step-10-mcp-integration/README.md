@@ -7,7 +7,7 @@ Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe
 
 **Red Hat OpenShift AI 3.3** accelerates agentic AI with built-in support for the **Model Context Protocol (MCP)** — an open source protocol that enables standardized communication between AI applications and external services. MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) connect the LLM to live enterprise systems through a unified API layer, with the **Llama Stack API** orchestrating tool calls autonomously.
 
-This step demonstrates the **Agentic AI** use case of the Red Hat AI platform: building workflows that perform complex tasks with limited supervision, using standardized tool interfaces that deploy and manage like any other platform component.
+This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building autonomous systems that perform complex tasks with limited supervision.
 
 ### What Gets Deployed
 

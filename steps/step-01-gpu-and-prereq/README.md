@@ -7,7 +7,7 @@ Your organization is adopting AI on private infrastructure — both generative A
 
 **Red Hat OpenShift AI 3.3** provides intelligent GPU and hardware acceleration — self-service GPU access, intelligent GPU use for workload scheduling, and hardware discovery that automatically labels and provisions GPU resources. GPUs are *"specialized processors for handling parallel processing tasks, making them ideal for training deep learning models that require processing large amounts of data simultaneously"* — and this step ensures they are properly discovered, provisioned, and managed. The platform handles the full stack: driver lifecycle, GPU node management, and inference networking — all deployed via GitOps and managed as first-class OpenShift resources.
 
-This step demonstrates the **Operationalized AI** use case of the Red Hat AI platform: building the systems that support the maintenance and deployment of AI at scale, starting with the GPU infrastructure that powers everything above it.
+This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload above depends on.
 
 ### What Gets Deployed
 

@@ -7,7 +7,7 @@ Generative AI gets the headlines, but enterprises also run traditional ML worklo
 
 **Red Hat OpenShift AI 3.3** supports the full spectrum: LLMs on vLLM (Steps 05-10) and predictive AI on OpenVINO (this step) — same platform, same GitOps lifecycle, same operational model. The "WhoAmI — Visual Identity" scenario trains a YOLO11 model that literally recognizes your face, served via KServe RawDeployment on CPU.
 
-This step demonstrates the **Predictive AI** use case of the Red Hat AI platform: identifying and connecting patterns with high accuracy — proving that RHOAI handles both generative and predictive AI workloads on the same infrastructure.
+This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
 
 ### What Gets Deployed
 
