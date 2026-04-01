@@ -145,43 +145,6 @@ Or view in the RHOAI Dashboard: **Develop & train > Evaluations**.
 
 _What to say: "LM-Eval is RHOAI's built-in benchmarking service. It runs industry-standard tasks like HellaSwag and ARC Challenge to measure reasoning ability. This is how you baseline a model before deploying it."_
 
-## Operations
-
-### RAG Evaluation
-
-```bash
-# Full deploy: ArgoCD app + compile pipeline + launch eval
-./steps/step-08-model-evaluation/deploy.sh
-
-# KFP pipeline (tracked in DSPA, 4 reports to MinIO)
-./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]
-
-# Quick eval (runs inside lsd-rag pod, good for debugging)
-./steps/step-08-model-evaluation/run-eval-report.sh
-
-# Trigger eval after ingestion
-./steps/step-07-rag/run-batch-ingestion.sh acme --eval
-```
-
-### Standard Model Evaluation
-
-```bash
-# Benchmark granite-8b-agent
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
-
-# Benchmark mistral-3-bf16
-./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16
-
-# Custom limit
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
-```
-
-### Validation
-
-```bash
-./steps/step-08-model-evaluation/validate.sh
-```
-
 ## What to Verify After Deployment
 
 ```bash
@@ -290,6 +253,43 @@ If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.
 - [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) — Engine behind RHOAI LM-Eval
 - [TrustyAI Documentation](https://trustyai.org/docs/main/main) — Tutorials for LM-Eval setup
+
+## Operations
+
+### RAG Evaluation
+
+```bash
+# Full deploy: ArgoCD app + compile pipeline + launch eval
+./steps/step-08-model-evaluation/deploy.sh
+
+# KFP pipeline (tracked in DSPA, 4 reports to MinIO)
+./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]
+
+# Quick eval (runs inside lsd-rag pod, good for debugging)
+./steps/step-08-model-evaluation/run-eval-report.sh
+
+# Trigger eval after ingestion
+./steps/step-07-rag/run-batch-ingestion.sh acme --eval
+```
+
+### Standard Model Evaluation
+
+```bash
+# Benchmark granite-8b-agent
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
+
+# Benchmark mistral-3-bf16
+./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16
+
+# Custom limit
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
+```
+
+### Validation
+
+```bash
+./steps/step-08-model-evaluation/validate.sh
+```
 
 ## Next Steps
 

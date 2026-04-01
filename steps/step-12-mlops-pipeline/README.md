@@ -4,7 +4,7 @@
 
 ## The Business Story
 
-Step 11 demonstrated the data scientist's inner loop -- interactive training in a notebook. Step 12 is the MLOps engineer's outer loop: the same workflow automated as a pipeline that runs unattended, evaluates quality, and only deploys if the model passes. This is the first pipeline in the project that connects KFP to the Model Registry, demonstrating the full RHOAI 3.3 ML lifecycle.
+Step 11 demonstrated the data scientist's inner loop — interactive training in a notebook. Step 12 is the MLOps engineer's outer loop: the same workflow automated as a pipeline that runs unattended, evaluates quality, and only deploys if the model passes. This is the first pipeline in the project that connects KFP to the Model Registry, demonstrating the full RHOAI 3.3 ML lifecycle.
 
 ## What It Does
 
@@ -78,7 +78,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 ### Scene 1: The Need for Automation
 
-**Say:** *"We trained a face recognition model in a notebook -- great for experimentation. But what happens when you need to retrain weekly as new photos come in? You need automation, governance, and quality gates."*
+**Say:** *"We trained a face recognition model in a notebook — great for experimentation. But what happens when you need to retrain weekly as new photos come in? You need automation, governance, and quality gates."*
 
 ### Scene 2: Run the Pipeline
 
@@ -94,7 +94,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 **Expect:** A new version of "face-recognition" with metrics attached.
 
-**Say:** *"The model is automatically registered with its accuracy metrics. Every version is traceable -- you know exactly which pipeline run produced it."*
+**Say:** *"The model is automatically registered with its accuracy metrics. Every version is traceable — you know exactly which pipeline run produced it."*
 
 ### Scene 4: The Quality Gate (Governance)
 
@@ -102,7 +102,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 **Expect:** Step 3 (evaluate) turns red. Steps 4-5 never execute.
 
-**Say:** *"The quality gate caught a model that doesn't meet the bar. The old model stays in production. This is governance -- the pipeline won't deploy a model that's worse than what you already have."*
+**Say:** *"The quality gate caught a model that doesn't meet the bar. The old model stays in production. This is governance — the pipeline won't deploy a model that's worse than what you already have."*
 
 ## What to Verify After Deployment
 
@@ -121,9 +121,9 @@ oc get dspa dspa-rag -n private-ai
 
 The pipeline deploys **TrustyAI** and configures bias monitoring for the face-recognition model:
 
-- **SPD Fairness metric** (`trustyai_spd`) -- measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > AI hub > Deployments > face-recognition > Model bias** tab.
-- **Drift detection** (`trustyai_meanshift`) -- detects distribution shifts in inference data vs training baseline.
-- **Endpoint performance** -- request count, latency visible in the **Endpoint performance** tab.
+- **SPD Fairness metric** (`trustyai_spd`) — measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > AI hub > Deployments > face-recognition > Model bias** tab.
+- **Drift detection** (`trustyai_meanshift`) — detects distribution shifts in inference data vs training baseline.
+- **Endpoint performance** — request count, latency visible in the **Endpoint performance** tab.
 
 ### Architecture: TrustyAI Adapter Pattern
 
@@ -238,7 +238,7 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 
 > **Design Decision:** **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
-> **Design Decision:** **Tekton for ModelCar builds, not KFP**. Building OCI images requires `buildah` with elevated security context -- inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
+> **Design Decision:** **Tekton for ModelCar builds, not KFP**. Building OCI images requires `buildah` with elevated security context — inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
 
 > **Design Decision:** **`pip_index_urls=["https://pypi.org/simple"]`** on all components that require packages outside the Red Hat index. The RHOAI base image (`rhai/base-image-cpu-rhel9:3.3.0`) configures pip to use Red Hat's Python index, which lacks `ultralytics`, `onnxruntime`, `onnxslim`, and other ML packages. Adding `pip_index_urls` in the `@component` decorator tells KFP to use PyPI instead. This also resolves the KFP SDK version mismatch (base image has 2.15.2, compiled pipeline requests 2.16.0).
 
@@ -295,10 +295,10 @@ oc apply -f gitops/step-12-mlops-pipeline/base/pipeline-rbac.yaml
 
 ## References
 
-- [RHOAI 3.3 -- Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/)
-- [RHOAI 3.3 -- Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_model_registries/)
+- [RHOAI 3.3 — Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/)
+- [RHOAI 3.3 — Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_model_registries/)
 - [Fine-tune AI pipelines in RHOAI 3.3](https://developers.redhat.com/articles/2026/02/26/fine-tune-ai-pipelines-red-hat-openshift-ai)
 - [AI500 MLOps Enablement (Jukebox)](https://github.com/rhoai-mlops/jukebox)
 - [KFP Pipelines Components](https://github.com/red-hat-data-services/pipelines-components)
 
-> **See also:** [Step 07 -- RAG Pipeline](../step-07-rag/README.md) (KFP patterns), [Step 11 -- Face Recognition](../step-11-face-recognition/README.md) (notebook-based training), [Step 04 -- Model Registry](../step-04-model-registry/README.md) (governance), [Step 13b -- Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (ArgoCD consumes the ModelCar tag updates)
+> **See also:** [Step 07 — RAG Pipeline](../step-07-rag/README.md) (KFP patterns), [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (notebook-based training), [Step 04 — Model Registry](../step-04-model-registry/README.md) (governance), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (ArgoCD consumes the ModelCar tag updates)

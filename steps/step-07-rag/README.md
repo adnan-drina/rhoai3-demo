@@ -49,8 +49,6 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 *What to say: "Both document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. Let me show you what querying them looks like."*
 
----
-
 ### Scene 2: RAG Chatbot — Direct Mode
 
 Open the RAG Chatbot UI and select **Direct** mode.
@@ -62,8 +60,6 @@ Ask: *"What products does ACME Corp manufacture?"*
 **What to expect:** The chatbot calls `vector_stores.search()` to find relevant chunks, injects them as context into the prompt, and calls `chat.completions()`. The answer references specific ACME Corp products from the ingested PDFs.
 
 *What to say: "Direct mode is the simplest RAG pattern. It does a vector search, finds the top chunks, stuffs them into the prompt, and asks the model to answer. No tool calls, no agent loop — just search and generate. Fast and predictable."*
-
----
 
 ### Scene 3: RAG Chatbot — Agent-Based Mode
 
@@ -78,8 +74,6 @@ Ask a follow-up: *"Who is the Managing Director of ACME Corp?"*
 **What to expect:** The agent searches the `acme_corporate` vector store and returns the name and role from the corporate profile document.
 
 *What to say: "The agent autonomously decided to search the corporate docs to find the answer. In step 09 we'll add guardrails so the response doesn't leak personal contact details like phone numbers and emails."*
-
----
 
 ### Scene 4: Run the Ingestion Pipeline
 

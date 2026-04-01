@@ -120,6 +120,44 @@ ssh dev@<edge-host>
 
 The script walks through 5 sections with pause-and-talk flow: edge platform, GPU-powered inference, model serving stack, edge AI workloads (with camera app URL), and embedded GitOps (ArgoCD syncing from Git).
 
+## What to Verify After Deployment
+
+SSH into the edge host and verify:
+
+```bash
+# MicroShift running
+sudo systemctl is-active microshift
+# Expected: active
+
+# GPU device available
+oc get nodes -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'
+# Expected: 1
+
+# ServingRuntime exists
+oc get servingruntime triton-gpu -n edge-ai
+# Expected: triton-gpu listed
+
+# InferenceService is Ready
+oc get inferenceservice face-recognition-edge -n edge-ai
+# Expected: READY = True
+
+# edge-camera pod is running
+oc get pods -n edge-ai -l app.kubernetes.io/name=edge-camera
+# Expected: 1/1 Running
+
+# ArgoCD core running
+oc get pods -n argocd
+# Expected: argocd-application-controller, argocd-repo-server, argocd-redis Running
+```
+
+From your laptop (not the edge host):
+
+```bash
+# Route accessible
+curl -sk "https://edge-camera-edge-ai.<public-ip>.nip.io/_stcore/health"
+# Expected: ok
+```
+
 ## Design Decisions
 
 > **Design Decision:** **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
