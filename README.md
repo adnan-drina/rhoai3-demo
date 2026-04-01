@@ -31,11 +31,12 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 | OCP Feature | What It Provides | Demo Steps |
 |-------------|-----------------|------------|
 | **MachineSets** | Declarative GPU node provisioning on AWS (g6.4xlarge, g6.12xlarge) | Step 01 |
+| **Operator Lifecycle Manager (OLM)** | Installation and lifecycle management of all OCP and RHOAI components and dependencies | Steps 01, 02 |
 | **Node Feature Discovery (NFD)** | Hardware labels for automatic GPU discovery and scheduling | Step 01 |
-| **Operator Lifecycle Manager (OLM)** | Installation and upgrade of GPU Operator, Serverless, RHOAI, and all dependencies | Steps 01, 02 |
+| **NVIDIA GPU Operator** | Driver lifecycle management via Driver Toolkit (DTK), DCGM exporter for GPU telemetry | Step 01 |
 | **OpenShift Serverless** | KnativeServing infrastructure for KServe model serving networking | Step 01 |
 | **Service Mesh 3** | Gateway and traffic management for the RHOAI Dashboard and KServe endpoints | Step 02 |
-| **User Workload Monitoring** | Prometheus scraping for vLLM metrics, DCGM GPU telemetry, and TrustyAI metrics | Steps 01, 06, 12 |
+| **Monitoring** | Prometheus scraping for platform metrics, vLLM inference metrics, DCGM GPU telemetry, and TrustyAI metrics | Steps 01, 06, 12 |
 | **OAuth / HTPasswd Identity Provider** | Demo user authentication (`ai-admin`, `ai-developer`) and RBAC | Step 03 |
 | **Routes** | HTTPS endpoints for MinIO console, RAG chatbot, edge camera, Grafana, MCP servers | Steps 03, 06, 07, 10, 13, 13b |
 | **BuildConfig / ImageStream** | On-cluster container builds for the RAG chatbot application | Step 07 |
