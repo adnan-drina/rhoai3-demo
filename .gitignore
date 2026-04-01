@@ -18,6 +18,8 @@ Thumbs.db
 .idea/
 .vscode/
 .cursor/
+.claude/
+CLAUDE.md
 *.code-workspace
 
 # Build outputs
