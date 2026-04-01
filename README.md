@@ -6,6 +6,112 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
+## Architecture
+
+```mermaid
+block-beta
+  columns 1
+
+  block:lifecycle:1
+    columns 8
+    space
+    Ingest
+    Train
+    Evaluate
+    Register
+    Deploy
+    Monitor
+    space
+  end
+
+  block:rhoai:1
+    columns 5
+    dev["Model Dev &\nCustomization"]
+    training["Model Training &\nExperimentation"]
+    gpu["Intelligent GPU &\nHardware Speed"]
+    pipelines["AI Pipelines"]
+    serving["Optimized Model\nServing"]
+    agentic["Agentic AI &\nGen AI UIs"]
+    observability["Model Observability\n& Governance"]
+    catalog["Catalog &\nRegistry"]
+    featurestore["Feature Store *"]
+    maas["Models-as-a-\nService *"]
+  end
+
+  block:accelerators:1
+    columns 1
+    gpusupport["Compute Accelerators — NVIDIA L4 GPU"]
+  end
+
+  block:ocp:1
+    columns 5
+    olm["OLM"]
+    nfd["NFD"]
+    serverless["Serverless\n(Knative)"]
+    mesh["Service Mesh 3\n(Istio)"]
+    monitoring["Monitoring\n(Prometheus)"]
+    gpuop["NVIDIA GPU\nOperator"]
+    gitops["GitOps\n(ArgoCD)"]
+    tekton["Pipelines\n(Tekton)"]
+    auth["Authentication\n& Authorization"]
+    space
+  end
+
+  block:infra:1
+    columns 3
+    aws["Cloud (AWS)\nOCP 4.20"]
+    edgesim["Edge Simulated\n(OCP namespace)"]
+    edgereal["Edge (MicroShift)\nRHEL 9.5 + L4 GPU"]
+  end
+
+  lifecycle -- "RHOAI 3.3 — AI/ML Platform" --> rhoai
+  rhoai --> accelerators
+  accelerators -- "OpenShift Container Platform 4.20" --> ocp
+  ocp -- "Infrastructure" --> infra
+```
+
+> *\* Planned — see [BACKLOG.md](BACKLOG.md)*
+
+<details>
+<summary>Text version (if Mermaid does not render)</summary>
+
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  GitOps-Driven AI Lifecycle                              │
+│                                                                         │
+│  Ingest ──→ Train ──→ Evaluate ──→ Register ──→ Deploy ──→ Monitor    │
+│    ↑                                                           │       │
+│    └──────────────────── Retrain ──────────────────────────────┘       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                    RHOAI 3.3 — AI/ML Platform                           │
+│                                                                         │
+│  Model Dev &       Model Training    Intelligent GPU    AI Pipelines   │
+│  Customization     & Experimentation & Hardware Speed                  │
+│                                                                         │
+│  Optimized Model   Agentic AI &      Model Observability  Catalog &   │
+│  Serving           Gen AI UIs        & Governance         Registry    │
+│                                                                         │
+│  Feature Store*    Models-as-a-Service*                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│               Compute Accelerators — NVIDIA L4 GPU                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                OpenShift Container Platform 4.20                        │
+│                                                                         │
+│  OLM    NFD    Serverless    Service Mesh 3    Monitoring (Prometheus)  │
+│  NVIDIA GPU Operator    GitOps (ArgoCD)    Pipelines (Tekton)    Auth  │
+│                                                                         │
+│  Data Foundation*    Streams (Kafka)*                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                         Infrastructure                                  │
+│                                                                         │
+│      Cloud (AWS)          Edge Simulated (OCP)     Edge (MicroShift)   │
+│      OCP 4.20             namespace on OCP         RHEL 9.5 + L4 GPU  │
+└─────────────────────────────────────────────────────────────────────────┘
+  * Planned — see BACKLOG.md
+```
+
+</details>
+
 ## RHOAI 3.3 Features and Benefits Coverage
 
 This demo covers 9 of 11 features from the [Red Hat OpenShift AI datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
