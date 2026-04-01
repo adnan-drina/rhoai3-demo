@@ -88,6 +88,22 @@ Items are prioritized by impact on demo coverage and customer conversations. The
 
 **Proposed approach:** Out of scope for the current AWS-based demo. Could be addressed with a multi-cloud variant.
 
+### OpenShift Data Foundation (ODF)
+
+**Gap:** The demo uses MinIO for S3-compatible storage. OpenShift Data Foundation provides enterprise-grade persistent storage, data services, and data protection for containers and virtual machines — integrated with the OpenShift platform.
+
+**Why it matters:** Customers evaluating RHOAI on production infrastructure will use ODF rather than standalone MinIO. Demonstrating ODF integration shows a more realistic production architecture.
+
+**Proposed approach:** Replace MinIO with ODF-backed ObjectBucketClaim for model storage and pipeline artifacts. Requires an ODF-capable cluster (additional storage nodes or cloud-native storage).
+
+### AMQ Streams (Kafka)
+
+**Gap:** The demo's edge camera app (step 13) uses direct gRPC inference between the Streamlit app and the model server. In a production edge scenario, event streaming would connect edge devices to central data processing.
+
+**Why it matters:** Real-time data pipelines are a common requirement for edge AI — streaming inference results, sensor data, or camera frames from edge to datacenter for retraining and monitoring.
+
+**Proposed approach:** Add Kafka-based streaming between the edge camera and a central monitoring service. AMQ Streams would handle the edge-to-central data pipeline, demonstrating the full Red Hat Edge + AI integration pattern. Already noted as a future improvement in step 13's README.
+
 ## Demo Strengths Beyond the E-book
 
 These capabilities are demonstrated in our demo but NOT covered in the e-book — they represent differentiated value:
