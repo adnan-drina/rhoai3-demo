@@ -83,9 +83,10 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 | OpenShift Data Foundation | *Persistent storage, data services, and data protection for containers and virtual machines* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 | AMQ Streams (Kafka) | *Event streaming platform for real-time data pipelines and streaming applications* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 
-## Three Demo Themes
+## Four Demo Themes
 
-### Theme 1: Private AI Platform (Steps 01-04)
+### Theme 1: AI Platform (Steps 01-04)
+**Pillars: AI Platform + Fast Inference**
 
 Transform a vanilla OpenShift cluster into a governed AI platform — GPU compute, hardware discovery, model governance, and multitenancy. As Red Hat's AI adoption guide notes: *"Can your current environment support AI workloads? This includes computing resources, storage, network capabilities, and the flexibility to scale as requirements grow."*
 
@@ -97,6 +98,7 @@ Transform a vanilla OpenShift cluster into a governed AI platform — GPU comput
 | 04 | Model Governance | Model Registry + Model Catalog — discover, register, deploy |
 
 ### Theme 2: Generative AI — ACME Semiconductor (Steps 05-10)
+**Pillars: Fast Inference + Connecting Models to Data + Agentic AI**
 
 Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-to-end agentic AI workflow grounded in enterprise documents. *"Much enterprise knowledge lives in documents scattered across the organization: PDFs, wikis, support tickets, and internal documentation. Connecting models to this knowledge is often a more efficient path to value."*
 
@@ -109,14 +111,23 @@ Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-t
 | 09 | AI Safety | TrustyAI Guardrails: HAP detection, prompt injection, PII filtering |
 | 10 | Agentic AI & MCP | Database, OpenShift, Slack MCP servers — autonomous tool orchestration |
 
-### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-13)
+### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-12)
+**Pillars: Connecting Models to Data**
 
-Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLOps lifecycle, and bring inference to the edge. *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments—cloud, on-premise datacenters, or at the edge."* This theme proves RHOAI handles both GenAI and traditional ML across datacenter and edge.
+Train a YOLO11 face recognition model, deploy on OpenVINO, and automate the full MLOps lifecycle — proving RHOAI handles both generative and predictive AI on the same platform. *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows."*
 
 | Step | Capability | Highlights |
 |------|-----------|------------|
 | 11 | Computer Vision | YOLO11 ONNX on KServe + OpenVINO Model Server — CPU-only, no GPU needed |
 | 12 | MLOps Pipeline | KFP v2: train → evaluate → register → deploy → monitor with TrustyAI drift detection |
+
+### Theme 4: Edge AI (Steps 13-13b)
+**Pillars: AI Platform (hybrid cloud)**
+
+Bring inference to the edge — the same model trained centrally deploys to edge sites with zero code changes. *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments—cloud, on-premise datacenters, or at the edge."*
+
+| Step | Capability | Highlights |
+|------|-----------|------------|
 | 13 | Edge AI | Phone camera app + edge inference — Red Hat Edge + On-Premise AI/ML pattern |
 | 13b | Edge AI on MicroShift *(optional)* | Same model on real edge hardware — MicroShift 4.20, ModelCar OCI, NVIDIA L4 GPU |
 
