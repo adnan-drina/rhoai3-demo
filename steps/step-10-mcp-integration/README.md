@@ -1,17 +1,15 @@
-# Step 10: MCP Integration
+# Step 10: Agentic AI with MCP
 **"Enterprise Tool Orchestration"** — Give the AI agent access to live enterprise systems through Model Context Protocol.
 
-## The Business Story
+## Overview
 
-Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A. Step 10 adds MCP (Model Context Protocol) servers that give the LLM agent access to live systems: query an equipment database, inspect an OpenShift cluster, or send team notifications — all through standardized tool interfaces that the model invokes autonomously.
+Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A — it takes action. An AI agent that can only search documents is a chatbot. An AI agent that can query databases, inspect infrastructure, and notify teams is an autonomous operations assistant.
 
-This completes the **four pillars of Red Hat AI**:
-1. Flexible Foundation (steps 01-05)
-2. Data and AI Integration (steps 06-08)
-3. Trust and Governance (step 09)
-4. **Integration and Automation (step 10)**
+**Red Hat OpenShift AI 3.3** accelerates agentic AI with built-in support for the **Model Context Protocol (MCP)** — an open source protocol that enables standardized communication between AI applications and external services. MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) connect the LLM to live enterprise systems through a unified API layer, with the **Llama Stack API** orchestrating tool calls autonomously.
 
-## What It Does
+This step demonstrates the **Accelerating Agentic AI** pillar of Red Hat's AI platform: building workflows that perform complex tasks with limited supervision, using standardized tool interfaces that deploy and manage like any other platform component.
+
+### What Gets Deployed
 
 ```text
 MCP Integration
@@ -33,7 +31,7 @@ MCP Integration
 
 All MCP server images come from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers). Zero on-cluster builds required.
 
-### ACME Corp Demo Environment
+#### ACME Corp Demo Environment
 
 Step 10 deploys an `acme-corp` namespace with three simulated equipment monitoring pods:
 
@@ -45,7 +43,7 @@ Step 10 deploys an `acme-corp` namespace with three simulated equipment monitori
 
 Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates this failure.
 
-### MCP Server Tools
+#### MCP Server Tools
 
 **database-mcp** (EDB Postgres MCP) — generic SQL access, LLM discovers schema autonomously:
 
@@ -80,49 +78,86 @@ Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates
 
 Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-integration/base/)
 
-## Demo Walkthrough
+### Design Decisions
+
+> **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.
+
+> **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
+
+> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
+
+> **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
+
+> **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
+
+> **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
+
+### Deploy
+
+```bash
+./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP tool_group registration
+./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
+```
+
+## The Demo
+
+> In this demo, the AI agent autonomously resolves an equipment alert using four integrated enterprise systems. Starting from a failing pod on OpenShift, it identifies the equipment in a database, finds the resolution procedure in internal documents, and notifies the platform team on Slack — all in a single conversation, with no scripted logic.
 
 In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).
 
-### Scene 1: List Pods in acme-corp (openshift-mcp)
+### Inspect the Cluster
 
-**Prompt:** "List pods in acme-corp project"
+> An equipment monitoring pod is failing in the `acme-corp` namespace. We ask the agent to investigate — it will query the live OpenShift cluster through the Kubernetes MCP Server to find the problem.
 
-The agent calls `pods_list_in_namespace(namespace="acme-corp")` via the OpenShift MCP server.
+1. Ask: *"List pods in acme-corp project"*
 
-**Expected result:** Returns 3 pods — two healthy, one (`acme-equipment-0007`) in CrashLoopBackOff.
+**Expect:** The agent calls `pods_list_in_namespace(namespace="acme-corp")` via the OpenShift MCP server. Returns 3 pods — two healthy, one (`acme-equipment-0007`) in CrashLoopBackOff.
 
-_What to say: "The agent just queried the live OpenShift cluster through MCP. No kubectl, no scripts — the LLM decided which API to call and parsed the response. It immediately spots the failing pod."_
+> The agent just queried the live OpenShift cluster through MCP. No kubectl, no scripts — the LLM decided which API to call and parsed the response. It immediately identifies the failing pod.
 
-### Scene 2: Fetch Equipment Name (database-mcp)
+### Identify the Equipment
 
-**Prompt:** "Fetch the equipment name for the failed pod"
+> The agent found a failing pod, but a pod name is not actionable for a maintenance team. We need the actual equipment identifier. The agent will pivot to the equipment database and look up the mapping.
 
-The agent calls `execute_sql` via the Database MCP server, querying the `acme_pod_equipment_map` table.
+1. Ask: *"Fetch the equipment name for the failed pod"*
 
-**Expected result:** Returns L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite.
+**Expect:** The agent calls `execute_sql` via the Database MCP server, querying the `acme_pod_equipment_map` table. Returns L-900-08 (L-900 EUV Scanner 08), product: L-900 EUV Calibration Suite.
 
-_What to say: "Now it pivots to the equipment database. The LLM discovered the schema on its own, wrote a SQL query joining the pod name to equipment records, and returned the specific scanner model. No one taught it this query."_
+> The LLM discovered the database schema on its own, wrote a SQL query joining the pod name to equipment records, and returned the specific scanner model. No one pre-built this query — the agent constructed it from the schema and the conversation context.
 
-### Scene 3: Search Known Issues (RAG)
+### Search Known Issues
 
-**Prompt:** "Search for known issues for the mentioned product"
+> We now know which piece of equipment is failing. The agent will search the internal knowledge base — the same RAG vector store from Step 07 — for documented resolution procedures.
 
-The agent calls `knowledge_search` against the `acme_corporate` vector store (RAG from step-07).
+1. Ask: *"Search for known issues for the mentioned product"*
 
-**Expected result:** Returns DFO calibration procedure documentation for the L-900 product line.
+**Expect:** The agent calls `knowledge_search` against the `acme_corporate` vector store. Returns the DFO calibration procedure documentation for the L-900 product line.
 
-_What to say: "This is where it all comes together — the agent combines live cluster data, database lookups, and document retrieval in a single conversation. It found the calibration procedure for the exact scanner that's failing."_
+> This is where it all comes together. The agent combined live cluster data, a database lookup, and document retrieval in a single conversation to find the exact calibration procedure for the scanner that is failing.
 
-### Scene 4: Send Slack Message (slack-mcp)
+### Notify the Team
 
-**Prompt:** "Send a Slack message with the summary to the platform team"
+> The agent has the full picture: which pod failed, which equipment it maps to, and the documented resolution procedure. Now it delivers the summary to the platform team on Slack.
 
-The agent calls `conversations_add_message` via the Slack MCP server, posting to `#all-acme-mcp-demo`.
+1. Ask: *"Send a Slack message with the summary to the platform team"*
 
-**Expected result:** A structured summary — pod name, equipment ID, product line, known issue, and recommended procedure — delivered to the real Slack workspace.
+**Expect:** The agent calls `conversations_add_message` via the Slack MCP server, posting a structured summary — pod name, equipment ID, product line, known issue, and recommended procedure — to `#all-acme-mcp-demo`.
 
-_What to say: "Four questions, four different systems — OpenShift cluster, PostgreSQL database, RAG document store, and Slack. The LLM orchestrated all of it autonomously through MCP. This is what enterprise AI integration looks like."_
+> Four questions, four different enterprise systems — OpenShift cluster, PostgreSQL database, RAG document store, and Slack. The LLM orchestrated all of it autonomously through MCP, using standardized tool interfaces from the Red Hat Ecosystem Catalog. This is what enterprise agentic AI looks like on Red Hat OpenShift AI.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- AI agents move from answering questions to resolving incidents — the model investigates, correlates, and notifies without human intervention
+- MCP provides a standardized protocol for connecting AI to any enterprise system — databases, infrastructure, messaging — without custom integration code
+- MCP servers are available from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers), extending the trusted supply chain to AI tooling
+
+**For technical teams:**
+
+- MCP servers deploy as standard containers from `quay.io/mcp-servers/` — zero on-cluster builds, managed via GitOps like every other component
+- The Llama Stack API provides a unified entry point for tool orchestration — tool_groups register once and persist across restarts
+- The agent discovers database schemas and writes SQL autonomously — no application-specific APIs or predefined queries required
 
 ## What to Verify After Deployment
 
@@ -141,20 +176,6 @@ _What to say: "Four questions, four different systems — OpenShift cluster, Pos
 | **Database MCP** | `list_schemas` | Returns public schema |
 | **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
 | **Slack MCP** | `channels_list` | Returns demo channel |
-
-## Design Decisions
-
-> **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.
-
-> **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
-
-> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
-
-> **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
-
-> **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
-
-> **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
 
 ## Troubleshooting
 
@@ -200,10 +221,9 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 - [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
-## Operations
+## Next Steps
 
-```bash
-./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP tool_group registration
-./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
-```
+- **Step 11**: [Face Recognition](../step-11-face-recognition/README.md) — Predictive AI on RHOAI: train a YOLO11 model, deploy on OpenVINO, CPU-only inference
