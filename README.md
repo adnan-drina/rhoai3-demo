@@ -6,23 +6,42 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
-## RHOAI Features and Benefits Coverage
+## RHOAI 3.3 Features and Benefits Coverage
 
 This demo covers 9 of 11 features from the [Red Hat OpenShift AI datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
 
 | RHOAI Feature | Benefit (from datasheet) | Demo Steps |
 |---------------|--------------------------|------------|
-| **Model development and customization** | An interactive JupyterLab interface with AI/ML libraries and workbenches. Integrates data ingestion, synthetic data generation, InstructLab toolkit, and Retrieval Augmented Generation (RAG) for private data connection. | Steps 07, 11 |
-| **Model training and experimentation** | Organizes development files and artifacts. Supports distributed workloads for efficient training and tuning. Features experiment tracking and simplified hardware allocation. | Steps 11, 12 |
 | **Intelligent GPU and hardware speed** | Self-service GPU access is available. Offers intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles. | Steps 01, 02, 03 |
-| **AI pipelines** | Can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows. | Steps 07, 08, 12 |
-| **Optimized model serving** | Serves models from various providers and frameworks via a virtual large language model (vLLM), optimized for high throughput and low latency. The llm-d distributed inference framework supports predictable and scalable performance and efficient resource management. Includes LLM compressor and access to common, optimized and validated gen AI models. | Steps 05, 06 |
-| **Agentic AI and gen AI user interfaces (UIs)** | Speeds agentic AI workflows with core platform services. A unified application programming interface (API) layer (MCP and Llama Stack API) and dedicated dashboard experience (AI hub and gen AI studio). | Steps 05, 09, 10 |
-| **Model observability and governance** | Common open source tooling for lifecycle management, performance, and management. Tracks metrics, including performance, data drift and bias detection and AI guardrails or inference. Offers LLM evaluation (LM Eval) and LLM benchmarking (GuideLLM) to assist real world inference deployments. | Steps 06, 08, 09, 12 |
 | **Catalog and registry** | Centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts. | Step 04 |
+| **Optimized model serving** | Serves models from various providers and frameworks via a virtual large language model (vLLM), optimized for high throughput and low latency. The llm-d distributed inference framework supports predictable and scalable performance and efficient resource management. Includes LLM compressor and access to common, optimized and validated gen AI models. | Steps 05, 06 |
+| **Model development and customization** | An interactive JupyterLab interface with AI/ML libraries and workbenches. Integrates data ingestion, synthetic data generation, InstructLab toolkit, and Retrieval Augmented Generation (RAG) for private data connection. | Steps 07, 11 |
+| **AI pipelines** | Can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows. | Steps 07, 08, 12 |
+| **Model observability and governance** | Common open source tooling for lifecycle management, performance, and management. Tracks metrics, including performance, data drift and bias detection and AI guardrails or inference. Offers LLM evaluation (LM Eval) and LLM benchmarking (GuideLLM) to assist real world inference deployments. | Steps 06, 08, 09, 12 |
+| **Agentic AI and gen AI user interfaces (UIs)** | Speeds agentic AI workflows with core platform services. A unified application programming interface (API) layer (MCP and Llama Stack API) and dedicated dashboard experience (AI hub and gen AI studio). | Steps 05, 09, 10 |
+| **Model training and experimentation** | Organizes development files and artifacts. Supports distributed workloads for efficient training and tuning. Features experiment tracking and simplified hardware allocation. | Steps 11, 12 |
 | **Disconnected environments and edge** | Supports disconnected and air-gapped clusters for security and regulatory compliance. | Steps 13, 13b |
 | Feature store | *A UI for managing clean, well-defined data features for ML models, enhancing performance and accelerating workflows.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 | Models-as-a-service | *Allows AI engineers to use models via a managed, built-in API gateway for self-service access and usage tracking (developer preview feature).* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+
+## OpenShift Container Platform 4.20 Features Used
+
+The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/architecture/architecture) and leverages the following platform capabilities:
+
+| OCP Feature | What It Provides | Demo Steps |
+|-------------|-----------------|------------|
+| **MachineSets** | Declarative GPU node provisioning on AWS (g6.4xlarge, g6.12xlarge) | Step 01 |
+| **Node Feature Discovery (NFD)** | Hardware labels for automatic GPU discovery and scheduling | Step 01 |
+| **Operator Lifecycle Manager (OLM)** | Installation and upgrade of GPU Operator, Serverless, RHOAI, and all dependencies | Steps 01, 02 |
+| **OpenShift Serverless** | KnativeServing infrastructure for KServe model serving networking | Step 01 |
+| **Service Mesh 3** | Gateway and traffic management for the RHOAI Dashboard and KServe endpoints | Step 02 |
+| **User Workload Monitoring** | Prometheus scraping for vLLM metrics, DCGM GPU telemetry, and TrustyAI metrics | Steps 01, 06, 12 |
+| **OAuth / HTPasswd Identity Provider** | Demo user authentication (`ai-admin`, `ai-developer`) and RBAC | Step 03 |
+| **Routes** | HTTPS endpoints for MinIO console, RAG chatbot, edge camera, Grafana, MCP servers | Steps 03, 06, 07, 10, 13, 13b |
+| **BuildConfig / ImageStream** | On-cluster container builds for the RAG chatbot application | Step 07 |
+| **OpenShift GitOps (ArgoCD)** | Declarative deployment of all 14 steps via GitOps — the deployment backbone | All steps |
+| **OpenShift Pipelines (Tekton)** | ModelCar OCI image build and Git-driven edge model promotion | Step 12 |
+| **MicroShift 4.20** | Edge-optimized Kubernetes distribution for real edge hardware deployment | Step 13b |
 
 ## Three Demo Themes
 
