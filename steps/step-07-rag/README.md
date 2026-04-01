@@ -1,12 +1,15 @@
 # Step 07: RAG Pipeline
+**"Ground the Answers"** — Ingest your own documents, embed them in pgvector, and let the LLM ground answers in your data.
 
-**"From Chat to Knowledge-Grounded Answers"** — Ingest your own documents, embed them in pgvector, and let the LLM ground answers in your data.
+## Overview
 
-## The Business Story
+Step 05 proved your team can experiment with LLMs via the GenAI Playground. But chat alone hallucinates when asked about internal documents — an LLM that thinks your semiconductor client is a Looney Tunes company is not production-ready. Retrieval Augmented Generation (RAG) closes this gap by grounding model responses in your actual data.
 
-Step 05 proved your team can experiment with LLMs via the GenAI Playground. But chat alone hallucinates when asked about internal documents. Step 07 closes that gap: ingest PDFs through Docling, chunk and embed them via LlamaStack, store the vectors in PostgreSQL with pgvector, and query with both direct retrieval and agent-based file search — all orchestrated as a repeatable Kubeflow Pipeline on RHOAI.
+**Red Hat OpenShift AI 3.3** provides an integrated RAG stack through the **Llama Stack API** — embedding, vector storage, and agent queries in a unified interface. Documents are ingested through **Kubeflow Pipelines** with **Docling** for intelligent PDF conversion, stored in **PostgreSQL with pgvector**, and queried via both direct retrieval and autonomous agent-based search. The entire pipeline is repeatable, versioned, and visible in the RHOAI Dashboard.
 
-## What It Does
+This step demonstrates the **Connecting Models to Data** pillar of Red Hat's AI platform: Retrieval Augmented Generation for private data connection, ensuring models answer from your documents rather than hallucinating from training data.
+
+### What Gets Deployed
 
 ```text
 RAG Pipeline
@@ -29,100 +32,7 @@ RAG Pipeline
 
 Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
-## Demo Walkthrough
-
-### Scene 1: Show the Vector Stores
-
-Open a terminal and list the vector stores that were populated during deployment.
-
-```bash
-oc exec deploy/lsd-rag -n private-ai -- \
-  curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
-```
-
-**What to expect:** Two vector stores — `acme_corporate` (semiconductor manufacturing docs) and `whoami` (personal CV for identity queries).
-
-| Scenario | Collection | Documents | Description |
-|----------|------------|-----------|-------------|
-| **acme_corporate** | `acme_corporate` | 8 files | Manufacturing/lithography internal docs (ACME Semiconductor) |
-| **whoami** | `whoami` | 1 file | Personal CV — strong pre/post RAG contrast |
-
-*What to say: "Both document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. Let me show you what querying them looks like."*
-
-### Scene 2: RAG Chatbot — Direct Mode
-
-Open the RAG Chatbot UI and select **Direct** mode.
-
-**URL:** `https://rag-chatbot-private-ai.apps.<cluster>/`
-
-Ask: *"What products does ACME Corp manufacture?"*
-
-**What to expect:** The chatbot calls `vector_stores.search()` to find relevant chunks, injects them as context into the prompt, and calls `chat.completions()`. The answer references specific ACME Corp products from the ingested PDFs.
-
-*What to say: "Direct mode is the simplest RAG pattern. It does a vector search, finds the top chunks, stuffs them into the prompt, and asks the model to answer. No tool calls, no agent loop — just search and generate. Fast and predictable."*
-
-### Scene 3: RAG Chatbot — Agent-Based Mode
-
-Switch to **Agent-based** mode in the chatbot. Ask the same question.
-
-**What to expect:** The chatbot uses the Responses API with `file_search` as a tool. The agent decides when and how to search, potentially making multiple retrieval calls to refine the answer.
-
-*What to say: "Agent-based mode is where it gets interesting. Instead of us hardcoding the retrieval, we give the model a `file_search` tool and let it decide when to search. It can make multiple searches, refine its query, and combine results. This is the pattern you'd use in production — the model becomes an autonomous retriever."*
-
-Ask a follow-up: *"Who is the Managing Director of ACME Corp?"*
-
-**What to expect:** The agent searches the `acme_corporate` vector store and returns the name and role from the corporate profile document.
-
-*What to say: "The agent autonomously decided to search the corporate docs to find the answer. In step 09 we'll add guardrails so the response doesn't leak personal contact details like phone numbers and emails."*
-
-### Scene 4: Run the Ingestion Pipeline
-
-Open the RHOAI Dashboard and navigate to **Data Science Pipelines > Runs**.
-
-**URL:** RHOAI Dashboard → Data Science Projects → `private-ai` → Pipelines
-
-**What to expect:** Completed pipeline runs showing: download → register_db → ParallelFor(docling → insert) → ingestion_summary. The summary step reports document counts and names per scenario.
-
-To trigger a new run from the CLI:
-
-```bash
-./steps/step-07-rag/run-batch-ingestion.sh
-```
-
-*What to say: "This is the repeatable part. Every time your team adds new documents to MinIO, this pipeline runs — Docling converts the PDFs to Markdown, LlamaStack chunks and embeds them, and pgvector stores the vectors. It's a standard Kubeflow Pipeline, so it shows up in the RHOAI Dashboard alongside your training pipelines."*
-
-## What to Verify After Deployment
-
-```bash
-# PostgreSQL + pgvector
-oc get deploy llamastack-postgres -n private-ai -o jsonpath='{.status.readyReplicas}'
-# Expected: 1
-
-# LlamaStack RAG
-oc get llamastackdistribution lsd-rag -n private-ai -o jsonpath='{.status.phase}'
-# Expected: Ready
-
-# DSPA
-oc get dspa dspa-rag -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
-# Expected: True
-
-# Vector stores populated
-oc exec deploy/lsd-rag -n private-ai -- \
-  curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
-# Expected: acme_corporate (8 files) and whoami (1 file)
-
-# Chatbot accessible
-oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
-# Expected: HTTPS route URL
-```
-
-Or run the validation script:
-
-```bash
-./steps/step-07-rag/validate.sh
-```
-
-## Design Decisions
+### Design Decisions
 
 > **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
 
@@ -158,7 +68,7 @@ Or run the validation script:
 
 > **PostgreSQL PVC sync wave aligned with Deployment.** The `llamastack-postgres-pvc` PVC uses sync wave `"2"` (same as the Deployment) to avoid the `WaitForFirstConsumer` deadlock where ArgoCD waits for the PVC to bind before creating the pod that triggers binding.
 
-### LlamaStack Configuration (RHOAI 3.3 Example D — pgvector with `rh-dev`)
+#### LlamaStack Configuration (RHOAI 3.3 Example D — pgvector with `rh-dev`)
 
 | Env Var | Value / Source | Purpose | RHOAI 3.3 Ref |
 |---------|---------------|---------|---------------|
@@ -176,12 +86,124 @@ Or run the validation script:
 
 > Ref: [RHOAI 3.3 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 
+### Deploy
+
+```bash
+./steps/step-07-rag/deploy.sh              # Deploy pgvector, LlamaStack, DSPA, chatbot
+./steps/step-07-rag/validate.sh            # Verify all components + vector store health
+```
+
+### What to Verify After Deployment
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| PostgreSQL | llamastack-postgres deployment | readyReplicas = 1 |
+| LlamaStack RAG | lsd-rag LlamaStackDistribution | phase = Ready |
+| DSPA | dspa-rag pipeline server | Ready condition = True |
+| Vector stores | acme_corporate and whoami populated | 8 files + 1 file |
+| Chatbot route | rag-chatbot HTTPS route | URL accessible |
+
+```bash
+oc get deploy llamastack-postgres -n private-ai -o jsonpath='{.status.readyReplicas}'
+oc get llamastackdistribution lsd-rag -n private-ai -o jsonpath='{.status.phase}'
+oc get dspa dspa-rag -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+
+oc exec deploy/lsd-rag -n private-ai -- \
+  curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
+
+oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
+```
+
+## The Demo
+
+> In this demo, we show the full RAG lifecycle — from populated vector stores to grounded answers in both direct and agent-based modes — proving that the LLM answers from your private documents instead of hallucinating from training data.
+
+### Show the Vector Stores
+
+> We start by verifying that the document ingestion pipeline has populated our vector stores. These are the knowledge bases the LLM will search when answering questions.
+
+1. List the vector stores populated during deployment:
+
+```bash
+oc exec deploy/lsd-rag -n private-ai -- \
+  curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
+```
+
+**Expect:** Two vector stores — `acme_corporate` (semiconductor manufacturing docs) and `whoami` (personal CV for identity queries).
+
+| Scenario | Collection | Documents | Description |
+|----------|------------|-----------|-------------|
+| **acme_corporate** | `acme_corporate` | 8 files | Manufacturing/lithography internal docs (ACME Semiconductor) |
+| **whoami** | `whoami` | 1 file | Personal CV — strong pre/post RAG contrast |
+
+> Both document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. The Llama Stack API manages the full lifecycle: chunking, embedding, and retrieval.
+
+### RAG Chatbot — Direct Mode
+
+> Direct mode is the simplest RAG pattern. It does a vector search, finds the top chunks, stuffs them into the prompt, and asks the model to answer. No tool calls, no agent loop — just search and generate. Fast and predictable.
+
+1. Open the RAG Chatbot UI (`https://rag-chatbot-private-ai.apps.<cluster>/`)
+2. Select **Direct** mode
+3. Ask: *"What products does ACME Corp manufacture?"*
+
+**Expect:** The chatbot calls `vector_stores.search()` to find relevant chunks, injects them as context into the prompt, and calls `chat.completions()`. The answer references specific ACME Corp products from the ingested PDFs.
+
+> Direct mode gives you predictable, low-latency retrieval. One search, one generation — no iteration. For questions where a single retrieval pass gives sufficient context, this is the most efficient pattern on Red Hat OpenShift AI.
+
+### RAG Chatbot — Agent-Based Mode
+
+> Agent-based mode is where it gets interesting. Instead of hardcoding the retrieval, we give the model a `file_search` tool and let it decide when to search. It can make multiple searches, refine its query, and combine results — the pattern you'd use in production.
+
+1. Switch to **Agent-based** mode in the chatbot
+2. Ask the same question: *"What products does ACME Corp manufacture?"*
+
+**Expect:** The chatbot uses the Responses API with `file_search` as a tool. The agent decides when and how to search, potentially making multiple retrieval calls to refine the answer.
+
+> The model becomes an autonomous retriever — it decides when to search, how to refine its queries, and when it has enough context to answer. This is the Llama Stack Responses API in action, orchestrating tool calls through the same unified interface.
+
+3. Ask a follow-up: *"Who is the Managing Director of ACME Corp?"*
+
+**Expect:** The agent searches the `acme_corporate` vector store and returns the name and role from the corporate profile document.
+
+> The agent autonomously decided to search the corporate docs to find the answer. In Step 09 we'll add guardrails so the response doesn't leak personal contact details like phone numbers and emails.
+
+### Run the Ingestion Pipeline
+
+> The ingestion pipeline is what makes RAG repeatable. Every time your team adds new documents to MinIO, this pipeline runs — Docling converts the PDFs to Markdown, LlamaStack chunks and embeds them, and pgvector stores the vectors.
+
+1. Open the RHOAI Dashboard → **Data Science Projects** → `private-ai` → **Pipelines**
+2. View completed pipeline runs showing: download → register_db → ParallelFor(docling → insert) → ingestion_summary
+
+**Expect:** The summary step reports document counts and names per scenario.
+
+3. To trigger a new run from the CLI:
+
+```bash
+./steps/step-07-rag/run-batch-ingestion.sh
+```
+
+> A standard Kubeflow Pipeline, visible in the RHOAI Dashboard alongside your training pipelines. The ingestion is automated, versioned, and repeatable — the same GitOps-managed infrastructure that handles model serving also handles document processing.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- RAG eliminates hallucination for internal knowledge — the model answers from your documents, not training data
+- Document ingestion runs as a repeatable Kubeflow Pipeline — new documents are one pipeline run away from being searchable
+- The entire RAG stack runs on private infrastructure with no external API calls, supporting data sovereignty requirements
+
+**For technical teams:**
+
+- The Llama Stack API provides a unified interface for embedding, vector storage, and agent queries — no separate services to manage
+- pgvector replaces Milvus with a single PostgreSQL instance, simplifying operations and reducing resource footprint
+- Agent-based retrieval via the Responses API gives the model autonomy to refine searches — production-grade RAG without custom orchestration code
+
 ## Troubleshooting
 
 ### pgvector pod CrashLoopBackOff: "data directory has wrong ownership"
 
 **Symptom:** `llamastack-postgres` pod crashes with:
-```
+```text
 chmod: changing permissions of '/var/lib/postgresql/data/pgdata': Operation not permitted
 FATAL: data directory "/var/lib/postgresql/data/pgdata" has wrong ownership
 ```
@@ -236,15 +258,10 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 - [RHOAI 3.3 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 - [RHOAI 3.3 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
-
-## Operations
-
-```bash
-./steps/step-07-rag/deploy.sh              # Deploy pgvector, LlamaStack, DSPA, chatbot
-./steps/step-07-rag/validate.sh            # Verify all components + vector store health
-```
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-- [Step 08: Model Evaluation](../step-08-model-evaluation/README.md) — Pre/Post RAG evaluation with LLM-as-Judge
-- [Step 09: Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI
+- **Step 08**: [Model Evaluation](../step-08-model-evaluation/README.md) — Pre/Post RAG evaluation with LLM-as-Judge
+- **Step 09**: [Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI

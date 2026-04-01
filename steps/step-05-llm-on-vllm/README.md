@@ -1,12 +1,15 @@
 # Step 05: LLM Serving on vLLM
+**"Serve the Models"** — Deploy production-ready LLMs on the Red Hat AI Inference Server and experiment in the GenAI Playground.
 
-**Deploy LLMs on vLLM inference servers and validate them in the GenAI Playground.**
+## Overview
 
-## The Business Story
+Your models are registered. Your GPUs are provisioned. Now it's time to serve them. Moving from experimentation to production inference requires a runtime that balances performance, compatibility, and operational simplicity — all on private infrastructure with no external API dependencies.
 
-The models are registered. The GPUs are provisioned. Now we serve them. Step-05 deploys two Red Hat-validated models on vLLM using KServe RawDeployment mode and makes them accessible through the GenAI Playground. Three additional models are registered in the Model Registry and can be deployed from GenAI Studio when needed.
+**Red Hat OpenShift AI 3.3** delivers this with the **Red Hat AI Inference Server**, powered by vLLM — optimized for high throughput and low latency on GPU hardware. KServe RawDeployment mode exposes OpenAI-compatible endpoints, the **Model Registry** catalogs available models, and the **GenAI Playground** gives developers a browser-based sandbox for immediate experimentation. Three additional models are registered in the catalog and deployable from **GenAI Studio** when the team needs them.
 
-## What It Does
+This step demonstrates the **Efficient Inferencing** pillar of Red Hat's AI platform: optimized model serving via vLLM, delivering fast and cost-effective inference at scale.
+
+### What Gets Deployed
 
 ```text
 LLM Serving
@@ -26,68 +29,7 @@ LLM Serving
 
 Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm/base/)
 
-## Demo Walkthrough
-
-> **Login as** `ai-admin` / `redhat123`
-
-### Scene 1 — Model Portfolio
-
-**Do:** Navigate to **GenAI Studio → AI Asset Endpoints** in the RHOAI Dashboard. Then check CLI:
-
-```bash
-oc get inferenceservice -n private-ai
-```
-
-**Expect:** 2 InferenceServices listed, both Ready. The Model Registry shows 5 models total.
-
-*"We have two models running on all five GPUs — the agent model on one GPU handles tool-calling and RAG, the larger model on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them."*
-
-### Scene 2 — GenAI Playground
-
-**Do:** Navigate to **GenAI Studio → Playground**. Click **Create playground**, select a deployed model, and send: *"Explain Kubernetes operators in three sentences."*
-
-**Expect:** Streaming response within 2-3 seconds.
-
-*"This model was registered in the Model Registry, now live on an L4 GPU. Developers open the Playground and start experimenting — no API keys, no external accounts, no curl commands. Everything runs on our infrastructure."*
-
-### Scene 3 — GenAI Playground with RAG
-
-**Do:** In the Playground, select `granite-8b-agent`. Toggle **RAG ON**, upload a PDF. Set system instructions:
-
-> *"You MUST use the knowledge_search tool to answer. Ground your response in the retrieved content."*
-
-*"Same model, same GPU — but now grounded in your private data. Upload a PDF, ask a question, get a sourced answer. No vector database setup, no pipeline code."*
-
-> **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Granite for RAG demos.
-
-## What to Verify After Deployment
-
-```bash
-# ServingRuntime exists
-oc get servingruntime -n private-ai
-# Expected: at least 1
-
-# InferenceServices Ready
-oc get inferenceservice -n private-ai
-# Expected: granite-8b-agent and mistral-3-bf16, both READY=True
-
-# GPU scheduling (pods on correct nodes)
-oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide
-# Expected: granite on g6.4xlarge, mistral on g6.12xlarge
-
-# Quick inference test
-oc exec deploy/granite-8b-agent-predictor -n private-ai -c kserve-container -- \
-  curl -s http://localhost:8080/v1/models
-# Expected: JSON with model ID
-```
-
-Or run the validation script:
-
-```bash
-./steps/step-05-llm-on-vllm/validate.sh
-```
-
-## Design Decisions
+### Design Decisions
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.
 
@@ -115,6 +57,92 @@ Or run the validation script:
 > **Upload-before-serve ordering:** `deploy.sh` runs the S3 upload job for `mistral-3-bf16` and waits for completion **before** applying the ArgoCD Application. This prevents a race condition where KServe's `storage-initializer` lists S3 while the upload is still in progress, resulting in a partial download and vLLM `CrashLoopBackOff` ("Invalid repository ID or local directory"). The upload job is idempotent — it skips if the model is already in MinIO.
 
 > **ArgoCD `selfHeal: false`:** This step's ArgoCD Application uses `selfHeal: false` (unlike other steps) to allow operators to manually scale InferenceServices (e.g. `minReplicas: 0` to stop a model) without ArgoCD reverting the change. ArgoCD shows OutOfSync for visibility but does not auto-heal. Git-triggered syncs still work. See the `manage-resources` skill for scaling workflows.
+
+### Deploy
+
+```bash
+./steps/step-05-llm-on-vllm/deploy.sh    # Deploy runtime + 2 models + register 5 in catalog
+./steps/step-05-llm-on-vllm/validate.sh  # Verify InferenceServices + GPU scheduling
+```
+
+### What to Verify After Deployment
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ServingRuntime | Runtime exists in namespace | At least 1 |
+| InferenceServices Ready | granite-8b-agent and mistral-3-bf16 | Both READY=True |
+| GPU scheduling | Pods on correct GPU nodes | granite on g6.4xlarge, mistral on g6.12xlarge |
+| Quick inference test | vLLM model endpoint responds | JSON with model ID |
+
+```bash
+oc get servingruntime -n private-ai
+oc get inferenceservice -n private-ai
+oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide
+oc exec deploy/granite-8b-agent-predictor -n private-ai -c kserve-container -- \
+  curl -s http://localhost:8080/v1/models
+```
+
+## The Demo
+
+> In this demo, we verify that two production-ready LLMs are serving on vLLM and interact with them through the GenAI Playground — proving that LLM inference runs entirely on Red Hat infrastructure with no external dependencies.
+
+> **Login as** `ai-admin` / `redhat123`
+
+### Model Portfolio
+
+> Before experimenting, we verify that our model serving infrastructure is live. Two InferenceServices are running on all five GPUs, and the Model Registry holds three more models ready to deploy on demand.
+
+1. Navigate to **GenAI Studio → AI Asset Endpoints** in the RHOAI Dashboard
+2. Check via CLI:
+
+```bash
+oc get inferenceservice -n private-ai
+```
+
+**Expect:** 2 InferenceServices listed, both Ready. The Model Registry shows 5 models total.
+
+> Two models running on all five GPUs — the agent model on one GPU handles tool-calling and RAG, the larger model on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them — all served by the Red Hat AI Inference Server.
+
+### GenAI Playground
+
+> The GenAI Playground gives developers immediate access to deployed models — no API keys, no external accounts, no setup required. We open a chat session and interact with a live model on GPU.
+
+1. Navigate to **GenAI Studio → Playground**
+2. Click **Create playground**, select a deployed model
+3. Send: *"Explain Kubernetes operators in three sentences."*
+
+**Expect:** Streaming response within 2-3 seconds.
+
+> The model was registered in the Model Registry and is now live on an L4 GPU. Developers open the Playground and start experimenting immediately — everything runs on our infrastructure, served by Red Hat OpenShift AI.
+
+### GenAI Playground with RAG
+
+> The same model can be augmented with document context directly in the Playground — upload a PDF, set grounding instructions, and get sourced answers without configuring a vector database or writing pipeline code.
+
+1. In the Playground, select `granite-8b-agent`
+2. Toggle **RAG ON**, upload a PDF
+3. Set system instructions:
+   > *"You MUST use the knowledge_search tool to answer. Ground your response in the retrieved content."*
+
+**Expect:** The model answers grounded in the uploaded document content.
+
+> Same model, same GPU — but now grounded in your private data. Upload a PDF, ask a question, get a sourced answer. The GenAI Playground makes RAG experimentation accessible to any developer on the team.
+
+> **Known Limitation (RHOAI 3.3):** Mistral models fail with RAG due to a vLLM ToolCall `index` field validation error. Use Granite for RAG demos.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- LLM inference runs entirely on your infrastructure — no external API calls, no data leaving the platform
+- The GenAI Playground gives developers immediate access to experiment with models, reducing time to first value
+- A model portfolio strategy (agent model + enterprise model) optimizes GPU cost per use case
+
+**For technical teams:**
+
+- Red Hat AI Inference Server with vLLM supports OCI ModelCar and S3 model sources — choose based on model size and deployment speed
+- KServe RawDeployment with `Recreate` strategy avoids dual-pod GPU contention on constrained nodes
+- vLLM performance tuning (FP8 KV cache, chunked prefill) doubles effective capacity — see Step 06 for benchmarks
 
 ## Troubleshooting
 
@@ -155,15 +183,10 @@ oc delete pvc mistral-3-bf16-pvc -n private-ai
 - [RHOAI 3.3 — Deploying Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
 - [RHOAI 3.3 — GenAI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
 - [RHOAI 3.3 — Model and Runtime Requirements for Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user)
-
-## Operations
-
-```bash
-./steps/step-05-llm-on-vllm/deploy.sh    # Deploy runtime + 2 models + register 5 in catalog
-./steps/step-05-llm-on-vllm/validate.sh  # Verify InferenceServices + GPU scheduling
-```
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-- **[Step 06: Model Performance Metrics](../step-06-model-metrics/README.md)** — Grafana dashboards and GuideLLM benchmarks
-- **[Step 07: RAG Pipeline](../step-07-rag/README.md)** — pgvector, Docling, document ingestion
+- **Step 06**: [Model Performance Metrics](../step-06-model-metrics/README.md) — Grafana dashboards and GuideLLM benchmarks
+- **Step 07**: [RAG Pipeline](../step-07-rag/README.md) — pgvector, Docling, document ingestion

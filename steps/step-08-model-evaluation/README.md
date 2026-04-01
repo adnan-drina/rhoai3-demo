@@ -1,17 +1,15 @@
 # Step 08: Model Evaluation
 **"Trust but Verify"** — Quantify RAG value and benchmark model capabilities using RHOAI-native evaluation tools.
 
-## The Business Story
+## Overview
 
-Step-07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? And how does your model stack up on standard reasoning benchmarks?
+Step 07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? And how does your model stack up on standard reasoning benchmarks? Without measurable evaluation, you're trusting the model on faith — and faith doesn't pass compliance audits.
 
-Step-08 provides two evaluation capabilities:
+**Red Hat OpenShift AI 3.3** provides two evaluation capabilities through its AI platform. **RAG Evaluation** runs the same questions with and without document context, then uses a larger LLM as a judge to score the quality difference — delivered as a **Kubeflow Pipeline** with HTML reports published to MinIO. **Standard Model Evaluation** uses RHOAI's native **LMEvalJob** CR and **TrustyAI** operator to run industry-standard benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any deployed model.
 
-1. **RAG Evaluation** — Runs the same questions in two modes (Pre-RAG without documents, Post-RAG with pgvector retrieval), then uses `mistral-3-bf16` as an LLM-as-judge to score the quality difference. HTML reports are published to MinIO.
+This step demonstrates the **Connecting Models to Data** pillar of Red Hat's AI platform: AI pipelines that automate model delivery and testing, ensuring that RAG value is measurable and model capabilities are baselined before production deployment.
 
-2. **Standard Model Evaluation** — On-demand LM-Eval benchmarks (hellaswag, arc_challenge, winogrande, boolq) for any deployed model, using RHOAI 3.3's native `LMEvalJob` CR and TrustyAI operator.
-
-## What It Does
+### What Gets Deployed
 
 ```text
 Model Evaluation
@@ -40,7 +38,7 @@ Model Evaluation
 | **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | `private-ai` |
 | **HTML Reports** | Per-scenario pre/post RAG results in MinIO | `minio-storage` |
 
-### Scoring Scale (RAG Evaluation)
+#### Scoring Scale (RAG Evaluation)
 
 | Score | Meaning | Color | Quality |
 |-------|---------|-------|---------|
@@ -52,135 +50,7 @@ Model Evaluation
 
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
 
-## Demo Walkthrough
-
-### Scene 1: Show the Problem — Pre-RAG Hallucination
-
-Ask the LLM about ACME Corp **without** RAG context.
-
-```bash
-oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"vllm-inference/granite-8b-agent",
-       "messages":[{"role":"user","content":"What is ACME Corp?"}],
-       "max_tokens":200,"temperature":0,"stream":false}' | \
-  python3 -c "import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
-```
-
-**Expected result:** The model falls back to internet training data — "ACME Corp is a fictional company from cartoons."
-
-_What to say: "Without documents, the model hallucinates. It thinks ACME is a cartoon company, not our semiconductor client."_
-
-### Scene 2: Run RAG Evaluation
-
-Run the evaluation pipeline to compare pre-RAG and post-RAG answers.
-
-```bash
-# Option A: Quick eval via lsd-rag pod (faster, good for demos)
-./steps/step-08-model-evaluation/run-eval-report.sh
-
-# Option B: KFP pipeline (platform-native, tracked in DSPA)
-./steps/step-08-model-evaluation/run-rag-eval.sh
-```
-
-**Expected result:** A 3-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO.
-
-### Scene 3: Review Results
-
-The `eval_summary` Dashboard metrics show:
-- `pre_rag_quality` — baseline without documents (expect ~20%)
-- `post_rag_quality` — with RAG context (expect ~90%)
-- `rag_improvement` — quality delta (expect +70pp)
-- `reports` — clickable MinIO console URL to view full HTML reports
-
-The `run-rag-eval.sh` script resolves the MinIO console route and passes it as a pipeline parameter so the reports URL is cluster-aware.
-
-_What to say: "Every evaluation run is versioned and stored in object storage. The summary shows the quality improvement from RAG — 20% without documents to 90% with them."_
-
-### Scene 4: Scoring Breakdown
-
-#### Post-RAG (with documents) — should score A/B
-
-| Scenario | Scores | Summary |
-|----------|--------|---------|
-| **ACME Corporate** | B, B, B, B, B, B | 6/6 excellent — grounded in semiconductor docs |
-| **Whoami** | B, B, B, **A** | 4/4 excellent — grounded in actual CV |
-
-#### Pre-RAG (no documents) — should score D/E
-
-| Scenario | Scores | Summary |
-|----------|--------|---------|
-| **ACME Corporate** | E, E, E, E, E, E | 6/6 fail — thinks ACME is a Looney Tunes company |
-| **Whoami** | E, E, B, E | 3/4 fail — thinks Adnan Drina is a football coach |
-
-### Scene 5: Standard Model Benchmarks (LM-Eval)
-
-Trigger an LM-Eval benchmark for granite-8b-agent.
-
-```bash
-# Quick benchmark (50 samples per task, ~10 min)
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
-
-# Medium benchmark (200 samples, ~30 min)
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
-
-# Full benchmark (no limit, hours)
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 0
-```
-
-Monitor progress:
-
-```bash
-oc get lmevaljob granite-8b-agent-eval -n private-ai -w
-```
-
-View results when complete:
-
-```bash
-oc get lmevaljob granite-8b-agent-eval -n private-ai \
-  -o template --template='{{.status.results}}' | jq '.results'
-```
-
-Or view in the RHOAI Dashboard: **Develop & train > Evaluations**.
-
-_What to say: "LM-Eval is RHOAI's built-in benchmarking service. It runs industry-standard tasks like HellaSwag and ARC Challenge to measure reasoning ability. This is how you baseline a model before deploying it."_
-
-## What to Verify After Deployment
-
-```bash
-# ArgoCD sync
-oc get application step-08-model-evaluation -n openshift-gitops \
-  -o jsonpath='{.status.sync.status} / {.status.health.status}'
-# Expected: Synced / Healthy
-
-# Eval ConfigMaps
-oc get configmap eval-configs eval-test-cases -n private-ai
-# Expected: both present
-
-# LlamaStack eval provider
-oc exec deploy/lsd-rag -n private-ai -- \
-  curl -s http://localhost:8321/v1/providers | \
-  python3 -c "import json,sys; print([p['provider_id'] for p in json.load(sys.stdin)['data'] if p['api']=='eval'])"
-# Expected: at least 1 eval provider
-
-# Judge model ready
-oc get inferenceservice mistral-3-bf16 -n private-ai \
-  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
-# Expected: True
-
-# LM-Eval configuration
-oc get datasciencecluster default-dsc \
-  -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitOnline}'
-# Expected: allow
-```
-
-Or run the validation script:
-
-```bash
-./steps/step-08-model-evaluation/validate.sh
-```
-
-## Design Decisions
+### Design Decisions
 
 > **Two separate models for RAG eval:** `granite-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.
 
@@ -197,6 +67,181 @@ Or run the validation script:
 > **Configurable sample limits:** LMEvalJob templates default to 50 samples per task for fast demo runs (~10 min). Increase via CLI (`run-lmeval.sh model 200`) or remove for full benchmarks.
 
 > **Depends on step-07 vector stores.** Post-RAG evaluation retrieves context from `acme_corporate` and `whoami` vector stores. Run step-07 ingestion pipelines first.
+
+### Deploy
+
+```bash
+./steps/step-08-model-evaluation/deploy.sh     # ArgoCD app + compile pipeline + launch eval
+./steps/step-08-model-evaluation/validate.sh   # Verify eval ConfigMaps, providers, judge model
+```
+
+Additional operations:
+
+```bash
+# RAG Evaluation
+./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]   # KFP pipeline (tracked in DSPA)
+./steps/step-08-model-evaluation/run-eval-report.sh          # Quick eval via lsd-rag pod
+./steps/step-07-rag/run-batch-ingestion.sh acme --eval       # Trigger eval after ingestion
+
+# Standard Model Evaluation (LM-Eval)
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent      # 50 samples (~10 min)
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200  # 200 samples (~30 min)
+./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16        # Benchmark second model
+```
+
+### What to Verify After Deployment
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ArgoCD sync | App synced and healthy | Synced / Healthy |
+| Eval ConfigMaps | eval-configs and eval-test-cases | Both present |
+| Eval provider | LlamaStack eval provider registered | At least 1 provider |
+| Judge model | mistral-3-bf16 InferenceService | READY=True |
+| LM-Eval config | DataScienceCluster LM-Eval permissions | `permitOnline: allow` |
+
+```bash
+oc get application step-08-model-evaluation -n openshift-gitops \
+  -o jsonpath='{.status.sync.status} / {.status.health.status}'
+
+oc get configmap eval-configs eval-test-cases -n private-ai
+
+oc exec deploy/lsd-rag -n private-ai -- \
+  curl -s http://localhost:8321/v1/providers | \
+  python3 -c "import json,sys; print([p['provider_id'] for p in json.load(sys.stdin)['data'] if p['api']=='eval'])"
+
+oc get inferenceservice mistral-3-bf16 -n private-ai \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+
+oc get datasciencecluster default-dsc \
+  -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitOnline}'
+```
+
+## The Demo
+
+> In this demo, we quantify the value of RAG by comparing the same questions with and without document context, then run industry-standard benchmarks to baseline model reasoning capabilities — proving that evaluation is a platform capability, not an afterthought.
+
+### The Problem — Pre-RAG Hallucination
+
+> We start by asking the LLM about ACME Corp without RAG context. This establishes the baseline: what does the model think it knows when it has no access to your documents?
+
+1. Ask the LLM about ACME Corp without RAG context:
+
+```bash
+oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"vllm-inference/granite-8b-agent",
+       "messages":[{"role":"user","content":"What is ACME Corp?"}],
+       "max_tokens":200,"temperature":0,"stream":false}' | \
+  python3 -c "import json,sys; print(json.load(sys.stdin)['choices'][0]['message']['content'][:300])"
+```
+
+**Expect:** The model falls back to internet training data — "ACME Corp is a fictional company from cartoons."
+
+> Without documents, the model hallucinates. It thinks ACME is a cartoon company, not our semiconductor client. This is the gap RAG fills — and evaluation measures.
+
+### Run RAG Evaluation
+
+> Now we run the evaluation pipeline to systematically compare pre-RAG and post-RAG answers across all test questions. The same questions, the same expected answers — the only variable is document context.
+
+1. Run the evaluation:
+
+```bash
+# Option A: Quick eval via lsd-rag pod (faster, good for demos)
+./steps/step-08-model-evaluation/run-eval-report.sh
+
+# Option B: KFP pipeline (platform-native, tracked in DSPA)
+./steps/step-08-model-evaluation/run-rag-eval.sh
+```
+
+**Expect:** A 3-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO.
+
+> The evaluation pipeline is a Kubeflow Pipeline — tracked, versioned, and visible in the RHOAI Dashboard. Every run is reproducible and auditable, not a one-off script execution.
+
+### Review Results
+
+> The evaluation summary quantifies the value of RAG in a single number: the quality improvement from document grounding.
+
+1. Check the `eval_summary` Dashboard metrics:
+   - `pre_rag_quality` — baseline without documents (expect ~20%)
+   - `post_rag_quality` — with RAG context (expect ~90%)
+   - `rag_improvement` — quality delta (expect +70pp)
+   - `reports` — clickable MinIO console URL to view full HTML reports
+
+**Expect:** A clear quality gap — ~20% without documents to ~90% with them.
+
+> Every evaluation run is versioned and stored in object storage. The summary shows the quality improvement from RAG — the measurable proof that connecting your model to your data transforms answer quality.
+
+### Scoring Breakdown
+
+> The scoring breakdown shows how the LLM-as-judge evaluated each individual question across both scenarios — demonstrating the A-E grading scale in practice.
+
+#### Post-RAG (with documents) — should score A/B
+
+| Scenario | Scores | Summary |
+|----------|--------|---------|
+| **ACME Corporate** | B, B, B, B, B, B | 6/6 excellent — grounded in semiconductor docs |
+| **Whoami** | B, B, B, **A** | 4/4 excellent — grounded in actual CV |
+
+#### Pre-RAG (no documents) — should score D/E
+
+| Scenario | Scores | Summary |
+|----------|--------|---------|
+| **ACME Corporate** | E, E, E, E, E, E | 6/6 fail — thinks ACME is a Looney Tunes company |
+| **Whoami** | E, E, B, E | 3/4 fail — thinks Adnan Drina is a football coach |
+
+**Expect:** Post-RAG scores are consistently A/B (grounded in real documents), Pre-RAG scores are consistently D/E (hallucination from training data).
+
+> The contrast is stark. With documents, every answer is grounded and accurate. Without documents, the model confidently fabricates information. This is why evaluation must be automated and repeatable — you need to know the moment your RAG pipeline stops delivering value.
+
+### Standard Model Benchmarks (LM-Eval)
+
+> RAG evaluation measures retrieval quality. Standard benchmarks measure the model itself — reasoning, comprehension, common sense. RHOAI's native LM-Eval service runs industry-standard tasks against any deployed model.
+
+1. Trigger an LM-Eval benchmark for granite-8b-agent:
+
+```bash
+# Quick benchmark (50 samples per task, ~10 min)
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
+
+# Medium benchmark (200 samples, ~30 min)
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
+
+# Full benchmark (no limit, hours)
+./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 0
+```
+
+2. Monitor progress:
+
+```bash
+oc get lmevaljob granite-8b-agent-eval -n private-ai -w
+```
+
+3. View results when complete:
+
+```bash
+oc get lmevaljob granite-8b-agent-eval -n private-ai \
+  -o template --template='{{.status.results}}' | jq '.results'
+```
+
+4. Or view in the RHOAI Dashboard: **Develop & train → Evaluations**
+
+**Expect:** Benchmark results for HellaSwag, ARC Challenge, WinoGrande, and BoolQ — the standard reasoning tasks that baseline a model before production deployment.
+
+> LM-Eval is RHOAI's built-in benchmarking service, managed by the TrustyAI operator. It runs industry-standard tasks to measure reasoning ability — this is how you baseline a model before deploying it, and how you validate that fine-tuning or quantization didn't degrade capabilities.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- RAG value is measurable: ~20% baseline to ~90% with documents — a 70-point improvement quantified through automated evaluation
+- Every evaluation run is versioned, auditable, and stored in object storage — supporting compliance and governance requirements
+- Standard benchmarks baseline model capabilities before production deployment, reducing the risk of deploying undertested models
+
+**For technical teams:**
+
+- RAG evaluation runs as a Kubeflow Pipeline — automated, tracked in DSPA, with HTML reports published to MinIO
+- LM-Eval is an RHOAI-native capability via the TrustyAI operator — no additional tooling to install or manage
+- The LLM-as-judge pattern (small candidate + large judge) provides reliable grading without manual review of every answer
 
 ## Troubleshooting
 
@@ -253,43 +298,8 @@ If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.
 - [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) — Engine behind RHOAI LM-Eval
 - [TrustyAI Documentation](https://trustyai.org/docs/main/main) — Tutorials for LM-Eval setup
-
-## Operations
-
-### RAG Evaluation
-
-```bash
-# Full deploy: ArgoCD app + compile pipeline + launch eval
-./steps/step-08-model-evaluation/deploy.sh
-
-# KFP pipeline (tracked in DSPA, 4 reports to MinIO)
-./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]
-
-# Quick eval (runs inside lsd-rag pod, good for debugging)
-./steps/step-08-model-evaluation/run-eval-report.sh
-
-# Trigger eval after ingestion
-./steps/step-07-rag/run-batch-ingestion.sh acme --eval
-```
-
-### Standard Model Evaluation
-
-```bash
-# Benchmark granite-8b-agent
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
-
-# Benchmark mistral-3-bf16
-./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16
-
-# Custom limit
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent 200
-```
-
-### Validation
-
-```bash
-./steps/step-08-model-evaluation/validate.sh
-```
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 

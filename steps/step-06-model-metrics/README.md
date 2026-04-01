@@ -1,12 +1,17 @@
 # Step 06: Model Performance Metrics
+**"Measure What Matters"** — Understand how your models perform under load with Grafana dashboards and GuideLLM benchmarks.
 
-**Understand how your models perform under load — latency, throughput, GPU utilization, and capacity limits.**
+## Overview
 
-## The Business Story
+Models are deployed. But how do they perform? Before scaling to production, platform teams need data: latency distributions, throughput ceilings, GPU utilization, and KV cache pressure under real concurrency. Without observability, capacity planning is guesswork — and guessing at GPU scale costs money.
 
-Models are deployed. But how do they perform? Step-06 establishes observability: Grafana dashboards visualize vLLM metrics (latency, throughput, KV cache), DCGM exposes GPU hardware utilization, and GuideLLM stress tests reveal each model's capacity limits under graduated concurrency. This gives platform teams the data to right-size deployments and set SLO expectations.
+**Red Hat OpenShift AI 3.3** provides model observability through **OpenShift User Workload Monitoring**, which automatically scrapes vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards visualize latency, throughput, and KV cache utilization in real time, while **GuideLLM** stress tests reveal each model's capacity limits under graduated concurrency. **DCGM** (Data Center GPU Manager) exposes GPU hardware utilization for capacity planning.
 
-## What It Does
+This step demonstrates the **Efficient Inferencing** pillar of Red Hat's AI platform: model observability and governance — tracking metrics including performance and capacity to right-size deployments and set SLO expectations.
+
+> **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
+
+### What Gets Deployed
 
 ```text
 Model Performance Metrics
@@ -27,47 +32,122 @@ Model Performance Metrics
 | **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis | `private-ai` |
 | **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) | `private-ai` |
 
-> **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
-
 Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
 
-## Demo Walkthrough
+### Design Decisions
 
-### Scene 1: Run a Benchmark
+> **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.
+
+> **Prometheus/Grafana metrics over file-based results:** vLLM automatically exposes production metrics via ServiceMonitors. Grafana dashboards visualize real-time performance without custom result parsing.
+
+> **Two focused dashboards:** vLLM Latency/Throughput/Cache (operational) and DCGM GPU Metrics (hardware). The vLLM dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) covers E2E latency, TTFT, TPOT, scheduler, and KV cache in one view.
+
+> **CronJob uses 1,3,5,8,10 for both models:** The daily CronJob benchmarks all active models with 5 rate levels. Mistral's 15 RPS level is available only through the on-demand job template. This keeps daily runs shorter while still providing meaningful saturation data.
+
+> **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook reads GuideLLM JSON output from S3 (uploaded by the KFP benchmark pipeline) or from on-demand Job results.
+
+### Deploy
+
+```bash
+./steps/step-06-model-metrics/deploy.sh         # Deploy Grafana + GuideLLM via ArgoCD
+./steps/step-06-model-metrics/validate.sh       # Verify Grafana health, dashboards, CronJob
+```
+
+Additional operations:
+
+```bash
+./steps/step-06-model-metrics/run-benchmark.sh  # CLI benchmark (Job template or CronJob)
+./steps/step-06-model-metrics/run-pipeline.sh   # Dashboard benchmark (KFP pipeline via DSPA)
+```
+
+### What to Verify After Deployment
+
+`validate.sh` runs 5 checks: Grafana health, dashboards, CronJob, and tuned vLLM config.
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| Grafana instance | Grafana CR exists | 1 instance |
+| GrafanaDashboards | vLLM + DCGM dashboards | 2 dashboards |
+| Grafana health | API health endpoint | `database: ok` |
+| GuideLLM CronJob | Daily benchmark schedule | `0 2 * * *`, not suspended |
+| Granite KV cache | Tuned vLLM startup logs | 155,184 tokens (fp8, 0.92) |
+| Mistral KV cache | Tuned vLLM startup logs | 426,160 tokens (fp8, 0.90) |
+
+```bash
+oc get grafana -n private-ai
+oc get grafanadashboard -n private-ai
+
+GRAFANA_HOST=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
+curl -sk "https://$GRAFANA_HOST/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin))"
+
+oc get cronjob guidellm-daily -n private-ai
+
+oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
+  | grep 'KV cache size'
+oc logs deploy/mistral-3-bf16-predictor -n private-ai -c kserve-container \
+  | grep 'KV cache size'
+```
+
+## The Demo
+
+> In this demo, we run real benchmarks against our deployed models, visualize the results in Grafana, and establish baseline performance metrics — latency, throughput, GPU utilization, and capacity limits — giving platform teams the data to right-size deployments and set SLO expectations.
+
+### Run a Benchmark
+
+> We start by stress-testing a model with GuideLLM, which sends graduated concurrency — 1, 3, 5, 8, 10 requests per second — while vLLM's built-in Prometheus metrics capture latency and throughput at each level.
+
+1. Get the Grafana URL:
 
 ```bash
 GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
 echo "https://${GRAFANA_URL}"
+```
 
-# Benchmark granite-8b-agent (1 GPU, ~5 min)
+2. Benchmark granite-8b-agent (~5 min):
+
+```bash
 oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/granite-8b-agent.yaml
+```
 
-# Or benchmark mistral-3-bf16 (4 GPU, ~8 min)
+3. Or benchmark mistral-3-bf16 (~8 min):
+
+```bash
 oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-bf16.yaml
 ```
 
-*"GuideLLM sends graduated concurrency — 1, 3, 5, 8, 10 requests per second — while vLLM's built-in Prometheus metrics capture latency and throughput at each level. KServe auto-creates the ServiceMonitors."*
+**Expect:** The GuideLLM Job runs graduated concurrency tests while vLLM metrics flow to Prometheus. KServe auto-creates the ServiceMonitors.
 
-### Scene 2: vLLM Performance Dashboard
+> GuideLLM generates real load at production-level concurrency. Combined with vLLM's native Prometheus metrics and KServe's automatic ServiceMonitor creation, we get end-to-end observability without custom instrumentation.
 
-Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`.
+### vLLM Performance Dashboard
 
-**Key panels:**
-- **E2E Request Latency** — P50/P95/P99 across concurrency levels
-- **Token Throughput** — output tokens/second
-- **KV Cache Utilization** — memory pressure indicator
-- **Time To First Token** — responsiveness metric
-- **Scheduler State** — running vs waiting requests
+> With the benchmark running, we open Grafana to see real-time model performance — latency distributions, token throughput, and KV cache pressure across concurrency levels.
 
-*"At 10 concurrent users, Granite's P95 inter-token latency stays at ~41ms and throughput holds at 130-170 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels."*
+1. Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`
+2. Observe key panels:
+   - **E2E Request Latency** — P50/P95/P99 across concurrency levels
+   - **Token Throughput** — output tokens/second
+   - **KV Cache Utilization** — memory pressure indicator
+   - **Time To First Token** — responsiveness metric
+   - **Scheduler State** — running vs waiting requests
 
-### Scene 3: GPU Hardware Dashboard (DCGM)
+**Expect:** At 10 concurrent users, Granite's P95 inter-token latency stays at ~41ms and throughput holds at 130-170 tok/s. The KV cache is healthy — no memory pressure. Switch the model dropdown to compare Mistral BF16 on the same panels.
 
-Switch to the DCGM dashboard.
+> Production-grade observability out of the box. vLLM exposes Prometheus metrics natively, KServe manages the ServiceMonitors, and Grafana visualizes the full picture — from token-level latency to KV cache pressure. Platform teams can set SLO targets backed by real data.
 
-*"GPU utilization hits 95-100% during the benchmark — that's the capacity ceiling. When capacity is exhausted, new pods remain Pending until a GPU node has available resources."*
+### GPU Hardware Dashboard
 
-### Scene 4: Understanding Capacity Limits
+> Beyond model metrics, GPU hardware utilization tells us whether we're getting value from our GPU investment — or leaving capacity on the table.
+
+1. Switch to the DCGM dashboard in Grafana
+
+**Expect:** GPU utilization hits 95-100% during the benchmark — that's the capacity ceiling.
+
+> When GPU utilization hits 100%, that's the wall. New pods remain Pending until a GPU node has available resources. DCGM metrics give platform teams the signal to scale GPU nodes before users experience queuing.
+
+### Understanding Capacity Limits
+
+> After both benchmarks complete, we compare the tuned results to establish capacity baselines for each model — the data platform teams need for procurement and scaling decisions.
 
 After both benchmarks complete, compare the results (tuned configuration):
 
@@ -79,70 +159,42 @@ After both benchmarks complete, compare the results (tuned configuration):
 | **Output throughput** | ~130-170 tok/s | ~120-135 tok/s |
 | **Sweet spot** | 5-8 concurrent users | 10-15 concurrent users |
 
-*"After tuning, Granite's KV cache doubled from 74K to 155K tokens — that's 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs at 40ms and 53ms respectively — that's the memory bandwidth floor. Moving to A100 or H100 GPUs would reduce ITL significantly."*
+**Expect:** After tuning, Granite's KV cache doubled from 74K to 155K tokens — 9 concurrent requests at full 16K context, up from 4.5 before tuning. Mistral gained 16% more capacity. Both models' inter-token latency is hardware-bound on L4 GPUs.
+
+> KV cache doubled through FP8 tuning. Throughput holds steady through realistic concurrency. But inter-token latency at 40ms and 53ms is the L4 memory bandwidth floor — not a tuning issue. Moving to A100 or H100 GPUs would reduce ITL significantly. These are the numbers platform teams need to make GPU procurement decisions with confidence.
 
 > **Known Limitation (NVIDIA L4):** ITL is limited by memory bandwidth (~300 GB/s). An 8B FP8 model reads ~8 GB of weights per decode step, giving a theoretical minimum of ~27ms. Observed 40ms includes compute, KV cache attention, and CUDA overhead. This is near the hardware floor — not a tuning issue. See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
-### Scene 5: Dashboard Pipeline (no CLI needed)
+### Dashboard Pipeline
 
-**Do:** Navigate to **Develop & train -> Pipelines** in the RHOAI Dashboard. Select `bench-granite-8b` (or `bench-mistral-bf16`). Click **Create run**.
+> CLI benchmarks work for automation, but platform teams need self-service. The same GuideLLM benchmark runs as a Kubeflow Pipeline, triggerable from the RHOAI Dashboard without CLI access.
 
-**Expect:** A form with pre-filled parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id` — each pipeline has model-specific defaults.
-
-**Do:** Keep defaults, click **Start**. Watch the run in the **Runs** tab.
+1. Navigate to **Develop & train → Pipelines** in the RHOAI Dashboard
+2. Select `bench-granite-8b` (or `bench-mistral-bf16`)
+3. Click **Create run**
+4. Review pre-filled parameters: `model_name`, `rates`, `max_seconds`, `max_requests`, `run_id`
+5. Keep defaults, click **Start**
+6. Watch the run in the **Runs** tab
 
 **Expect:** A 3-step pipeline: `run_benchmark` → `upload_results` → `benchmark_summary`. Granite completes in ~5 minutes, Mistral in ~8 minutes. Results uploaded to S3 (`benchmark-results/<run_id>/`). The summary step logs TTFT, ITL, and throughput metrics to the Dashboard.
 
-*"This is the same GuideLLM benchmark we ran from the CLI, but now it's a Kubeflow Pipeline that anyone can trigger from the dashboard. No `oc` access needed — the platform team sets it up once, and developers run it whenever they want to validate model performance after a config change. The summary step shows TTFT, ITL, and throughput directly in the Dashboard metrics tab."*
+> The same GuideLLM benchmark — now a Kubeflow Pipeline that anyone can trigger from the RHOAI Dashboard. No `oc` access needed. The platform team sets it up once, developers run it whenever they want to validate model performance after a configuration change. Results are versioned in S3 and summarized directly in the Dashboard.
 
-> **Prerequisite:** The KFP pipeline requires `dspa-rag` from Step 07. If Step 07 hasn't been deployed yet, Scene 5 is not available — use the CLI approach from Scene 1.
+> **Prerequisite:** The KFP pipeline requires `dspa-rag` from Step 07. If Step 07 hasn't been deployed yet, this scene is not available — use the CLI approach from Run a Benchmark.
 
-## What to Verify After Deployment
+## Key Takeaways
 
-```bash
-# Grafana health
-oc get grafana -n private-ai
-# Expected: 1 instance
+**For business stakeholders:**
 
-oc get grafanadashboard -n private-ai
-# Expected: 2 dashboards (vllm-latency-throughput-cache, dcgm-gpu-metrics)
+- Model observability transforms GPU investment from guesswork into data-driven capacity planning
+- Performance baselines enable SLO commitments — P95 latency, throughput, and concurrency limits are measurable
+- Self-service benchmarking via the RHOAI Dashboard puts performance validation in the hands of every team, not just platform operators
 
-GRAFANA_HOST=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
-curl -sk "https://$GRAFANA_HOST/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin))"
-# Expected: {"commit":"...","database":"ok","version":"..."}
+**For technical teams:**
 
-# GuideLLM CronJob
-oc get cronjob guidellm-daily -n private-ai
-# Expected: SCHEDULE "0 2 * * *", not suspended
-
-# Tuned vLLM config (KV cache from pod startup logs)
-oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
-  | grep 'KV cache size'
-# Expected: 155,184 tokens (kv-cache-dtype=fp8, gpu-memory-utilization=0.92)
-
-oc logs deploy/mistral-3-bf16-predictor -n private-ai -c kserve-container \
-  | grep 'KV cache size'
-# Expected: 426,160 tokens (kv-cache-dtype=fp8, gpu-memory-utilization=0.90)
-```
-
-Or run the validation script:
-
-```bash
-./steps/step-06-model-metrics/validate.sh
-# Expected: 5 passed, 0 failed
-```
-
-## Design Decisions
-
-> **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.
-
-> **Prometheus/Grafana metrics over file-based results:** vLLM automatically exposes production metrics via ServiceMonitors. Grafana dashboards visualize real-time performance without custom result parsing.
-
-> **Two focused dashboards:** vLLM Latency/Throughput/Cache (operational) and DCGM GPU Metrics (hardware). The vLLM dashboard (from [llm-d-deployer](https://github.com/llm-d/llm-d-deployer)) covers E2E latency, TTFT, TPOT, scheduler, and KV cache in one view.
-
-> **CronJob uses 1,3,5,8,10 for both models:** The daily CronJob benchmarks all active models with 5 rate levels. Mistral's 15 RPS level is available only through the on-demand job template. This keeps daily runs shorter while still providing meaningful saturation data.
-
-> **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook reads GuideLLM JSON output from S3 (uploaded by the KFP benchmark pipeline) or from on-demand Job results.
+- vLLM exposes Prometheus metrics natively; KServe auto-creates ServiceMonitors — zero custom instrumentation
+- FP8 KV cache tuning doubles effective concurrency without additional GPUs
+- GuideLLM graduated concurrency tests (1-10 req/s) reveal saturation points and hardware-bound limits
 
 ## Troubleshooting
 
@@ -195,16 +247,9 @@ oc get operatorgroup -n private-ai
 - [GuideLLM — Evaluate LLM Deployments (Red Hat Developers)](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference)
 - [vLLM Production Metrics](https://docs.vllm.ai/en/latest/usage/metrics/)
 - [Grafana Operator](https://github.com/grafana/grafana-operator)
-
-## Operations
-
-```bash
-./steps/step-06-model-metrics/deploy.sh         # Deploy Grafana + GuideLLM via ArgoCD
-./steps/step-06-model-metrics/run-benchmark.sh  # CLI benchmark (Job template or CronJob)
-./steps/step-06-model-metrics/run-pipeline.sh   # Dashboard benchmark (KFP pipeline via DSPA)
-./steps/step-06-model-metrics/validate.sh       # Verify Grafana health, dashboards, CronJob
-```
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-- [Step 07: RAG Pipeline](../step-07-rag/README.md) — Document ingestion and vector search with LlamaStack
+- **Step 07**: [RAG Pipeline](../step-07-rag/README.md) — Document ingestion and vector search with LlamaStack
