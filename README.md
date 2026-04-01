@@ -8,6 +8,8 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 ## Architecture
 
+*Single platform to run any model, on any accelerator, on any cloud*
+
 ```text
 ┌───────────────────────────────────────────────────────────────────────┐
 │                 GitOps-Driven AI Lifecycle                            │
