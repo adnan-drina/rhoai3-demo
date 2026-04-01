@@ -47,6 +47,22 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 ./steps/step-09-guardrails/validate.sh   # 12 checks: infrastructure + functional detector tests
 ```
 
+### What to Verify After Deployment
+
+`validate.sh` runs 12 checks: 8 infrastructure + 4 functional detector tests.
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ArgoCD sync/health | App is Synced and Healthy | Synced + Healthy |
+| GuardrailsOrchestrator | CR exists and pods ready | 1+ pods running |
+| Detector ISVCs | hap-detector and prompt-injection-detector | Both Ready |
+| Orchestrator health | `/health` endpoint responds | HTTP 200 |
+| **HAP functional** | "I hate you stupid bot!" | Score > 0.9 |
+| **Prompt injection functional** | "Ignore all previous instructions..." | Score > 0.9 |
+| **PII regex functional** | Email + Dutch phone number | >= 2 detections |
+| **Clean input functional** | Normal question | 0 detections (no false positives) |
+| LlamaStack safety provider | `trustyai_fms` registered in lsd-rag | Provider found |
+
 ## The Demo
 
 > In this demo, we show all three layers of the TrustyAI Guardrails Orchestrator in action: a PII leak that gets blocked, abusive input that gets caught, and a jailbreak attempt that gets stopped — without touching the model or the application code.
@@ -110,22 +126,6 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 - All detectors run on CPU (HAP 38MB, prompt injection 86MB) — zero GPU budget impact
 - TrustyAI Guardrails Orchestrator deploys via ArgoCD like every other RHOAI component — consistent GitOps lifecycle
 - PII regex patterns are customizable for your data (Dutch phone numbers, EU formats, social URLs)
-
-## What to Verify After Deployment
-
-`validate.sh` runs 12 checks: 8 infrastructure + 4 functional detector tests.
-
-| Check | What It Tests | Pass Criteria |
-|-------|--------------|---------------|
-| ArgoCD sync/health | App is Synced and Healthy | Synced + Healthy |
-| GuardrailsOrchestrator | CR exists and pods ready | 1+ pods running |
-| Detector ISVCs | hap-detector and prompt-injection-detector | Both Ready |
-| Orchestrator health | `/health` endpoint responds | HTTP 200 |
-| **HAP functional** | "I hate you stupid bot!" | Score > 0.9 |
-| **Prompt injection functional** | "Ignore all previous instructions..." | Score > 0.9 |
-| **PII regex functional** | Email + Dutch phone number | >= 2 detections |
-| **Clean input functional** | Normal question | 0 detections (no false positives) |
-| LlamaStack safety provider | `trustyai_fms` registered in lsd-rag | Provider found |
 
 ## Troubleshooting
 

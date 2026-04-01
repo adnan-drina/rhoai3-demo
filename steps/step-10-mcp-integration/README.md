@@ -99,6 +99,24 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 ./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
 ```
 
+### What to Verify After Deployment
+
+`validate.sh` runs 19 checks: 12 infrastructure + 7 functional MCP tests.
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ArgoCD sync/health | App is Synced (Degraded expected — 0007 CrashLoop) | Synced |
+| MCP deployments | database-mcp, openshift-mcp, slack-mcp | All available |
+| PostgreSQL | Pod running | Ready |
+| ConfigMap | `gen-ai-aa-mcp-servers` in `redhat-ods-applications` | Exists |
+| ACME environment | acme-corp namespace, 3 equipment pods | Namespace + 3 pods |
+| MCP connectivity | Pod found for each server | 3 pods |
+| **Tool_group registration** | mcp::openshift, mcp::database, mcp::slack | All registered in lsd-rag |
+| **OpenShift MCP** | `pods_list_in_namespace(acme-corp)` | Returns acme-equipment pods |
+| **Database MCP** | `list_schemas` | Returns public schema |
+| **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
+| **Slack MCP** | `channels_list` | Returns demo channel |
+
 ## The Demo
 
 > In this demo, the AI agent autonomously resolves an equipment alert using four integrated enterprise systems. Starting from a failing pod on OpenShift, it identifies the equipment in a database, finds the resolution procedure in internal documents, and notifies the platform team on Slack — all in a single conversation, with no scripted logic.
@@ -158,24 +176,6 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 - MCP servers deploy as standard containers from `quay.io/mcp-servers/` — zero on-cluster builds, managed via GitOps like every other component
 - The Llama Stack API provides a unified entry point for tool orchestration — tool_groups register once and persist across restarts
 - The agent discovers database schemas and writes SQL autonomously — no application-specific APIs or predefined queries required
-
-## What to Verify After Deployment
-
-`validate.sh` runs 19 checks: 12 infrastructure + 7 functional MCP tests.
-
-| Check | What It Tests | Pass Criteria |
-|-------|--------------|---------------|
-| ArgoCD sync/health | App is Synced (Degraded expected — 0007 CrashLoop) | Synced |
-| MCP deployments | database-mcp, openshift-mcp, slack-mcp | All available |
-| PostgreSQL | Pod running | Ready |
-| ConfigMap | `gen-ai-aa-mcp-servers` in `redhat-ods-applications` | Exists |
-| ACME environment | acme-corp namespace, 3 equipment pods | Namespace + 3 pods |
-| MCP connectivity | Pod found for each server | 3 pods |
-| **Tool_group registration** | mcp::openshift, mcp::database, mcp::slack | All registered in lsd-rag |
-| **OpenShift MCP** | `pods_list_in_namespace(acme-corp)` | Returns acme-equipment pods |
-| **Database MCP** | `list_schemas` | Returns public schema |
-| **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
-| **Slack MCP** | `channels_list` | Returns demo channel |
 
 ## Troubleshooting
 
