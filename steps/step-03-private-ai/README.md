@@ -1,12 +1,15 @@
-# Step 03: Private AI - GPU as a Service
+# Step 03: Private AI — GPU as a Service
+**"From Static Platform to GPU-as-a-Service"** — Dynamic GPU allocation, S3 storage, quota enforcement, and role-based access control.
 
-**"From Static Platform to GPU-as-a-Service"** — Dynamic GPU allocation, quota enforcement, S3 storage, and role-based access control.
+## Overview
 
-## The Business Story
+The RHOAI platform is installed, but without access controls, every user consumes every GPU. A shared AI platform requires governance: storage for models and pipeline artifacts, identity management for teams, and role-based access that separates platform administrators from data science consumers.
 
-Without guardrails, every user consumes every GPU. Step-03 transforms RHOAI into a **GPU-as-a-Service** model: MinIO provides shared S3 storage, Hardware Profiles with `nodeSelector` + `tolerations` direct workloads to the right GPU nodes, and two demo personas demonstrate the Service Governor / Service Consumer split.
+**Red Hat OpenShift AI 3.3** provides the building blocks for a governed AI platform — Hardware Profiles for intelligent GPU scheduling, integrated data connections for S3 storage, and OpenShift-native RBAC that separates Service Governors from Service Consumers. The platform ensures that the right people have access to the right resources without bottlenecking on infrastructure tickets.
 
-## What It Does
+This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: a secure and flexible platform that gives you the choice of where you develop and deploy your models, with governance that scales from a single team to an entire organization.
+
+### What Gets Deployed
 
 ```text
 Private AI Infrastructure
@@ -28,79 +31,97 @@ Private AI Infrastructure
 
 Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/base/)
 
-## Demo Walkthrough
+### Design Decisions
 
-### Scene 1: The Service Consumer Experience
+> **Direct GPU scheduling (no Kueue):** Kueue was evaluated and removed because its SchedulingGate mechanism gates ALL pods in managed namespaces — including build pods, DSPA pipeline executors, and chatbot Deployments — not just GPU workloads. GPU scheduling uses direct `nodeSelector` + `tolerations` defined in Hardware Profiles and InferenceService manifests. This provides reliable GPU placement without the SchedulingGate side effects.
 
-Login as `ai-developer` (`redhat123`) in the RHOAI Dashboard.
+> **OpenShift Groups created by `deploy.sh`:** Groups are created at deploy time (not via ArgoCD) because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema.
 
-1. Go to **Data Science Projects** → **private-ai**
-2. Create a **Workbench** → select Hardware Profile **"NVIDIA L4 1GPU"**
-3. Under Data Connection, **"MinIO Storage"** appears automatically
-4. Click **Create** → workbench starts, scheduled to GPU node
+> **No `opendatahub.io/managed` label on `storage-config`:** The ODH model controller watches for secrets with `opendatahub.io/managed: "true"` and deletes any it did not create. Since ArgoCD creates `storage-config`, the controller deletes it within seconds, causing an infinite create-delete loop. This label is only needed on `minio-connection` (the Data Connection that appears in Dashboard dropdowns), not on `storage-config` (the KServe credential used by storage-initializer). See also: `.cursor/rules/30-secrets-and-certs.mdc`.
 
-**What to say:** *"The developer selects a GPU profile from a curated list. The Hardware Profile's nodeSelector targets the right GPU node type. The S3 storage is pre-configured — no credentials to hunt for."*
+### Deploy
 
-### Scene 2: The Service Governor View
+```bash
+./steps/step-03-private-ai/deploy.sh     # ArgoCD app: MinIO + auth + RBAC + data connections
+./steps/step-03-private-ai/validate.sh   # Verify storage, auth, RBAC, groups
+```
 
-Login as `ai-admin` (`redhat123`) in the RHOAI Dashboard.
+### What to Verify After Deployment
 
-1. Go to **Observe & monitor** → **Workload metrics**
-2. Select project **private-ai**
-3. View GPU utilization via the Grafana dashboards deployed in step-06
-4. Check node capacity: `oc describe node -l nvidia.com/gpu.present=true`
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| MinIO ready | Deployment available | 1 replica running in `minio-storage` |
+| Data connections | `minio-connection` + `storage-config` secrets | Both present in `private-ai` |
+| Authentication | HTPasswd identity provider | Provider registered in OAuth |
+| RBAC | Role bindings for ai-admin and ai-developer | Both present in `private-ai` |
+| Groups | `rhoai-admins` and `rhoai-users` | ai-admin in rhoai-admins, ai-developer in rhoai-users |
 
-**What to say:** *"The platform admin monitors GPU utilization through Grafana dashboards and node metrics. Hardware Profiles ensure workloads land on the correct GPU node type."*
+## The Demo
 
-### Scene 3: MinIO Storage Console
+> In this demo, we show the GPU-as-a-Service model in action — a data scientist self-serves a GPU workbench, a platform admin monitors resource utilization, and shared S3 storage is pre-configured for every AI workflow.
+
+### The Service Consumer Experience
+
+> A data scientist needs a GPU-enabled notebook to experiment with a model. On a traditional platform, this means filing a ticket and waiting days. On RHOAI, they select a Hardware Profile and start working in minutes.
+
+1. Log in as `ai-developer` (`redhat123`) in the RHOAI Dashboard
+2. Go to **Data Science Projects** → **private-ai**
+3. Create a **Workbench** → select Hardware Profile **"NVIDIA L4 1GPU"**
+4. Under Data Connection, **"MinIO Storage"** appears automatically
+5. Click **Create** → workbench starts, scheduled to GPU node
+
+**Expect:** The workbench is created and scheduled to a GPU node matching the selected Hardware Profile. The S3 data connection is pre-configured with no manual credential setup.
+
+> The developer selects a GPU profile from a curated list — the Hardware Profile's nodeSelector targets the right GPU node type automatically. The S3 storage is pre-configured. No tickets, no waiting, no credentials to hunt for. This is self-service GPU access on Red Hat OpenShift AI.
+
+### The Service Governor View
+
+> While data scientists consume GPU resources, the platform team needs visibility into utilization and capacity. The admin role provides monitoring access without giving developers infrastructure-level permissions.
+
+1. Log in as `ai-admin` (`redhat123`) in the RHOAI Dashboard
+2. Go to **Observe & monitor** → **Workload metrics**
+3. Select project **private-ai**
+4. Check node capacity:
+
+```bash
+oc describe node -l nvidia.com/gpu.present=true
+```
+
+**Expect:** GPU utilization metrics visible in the Dashboard. Node descriptions show GPU allocatable capacity and current usage.
+
+> The platform admin monitors GPU utilization and node capacity from a single pane. Hardware Profiles ensure workloads land on the correct GPU node type — no accidental scheduling, no resource conflicts between teams. Governance and self-service, working together.
+
+### MinIO Storage Console
+
+> Every AI workflow needs shared storage — model weights, pipeline artifacts, training data. MinIO provides S3-compatible storage that integrates natively with RHOAI data connections.
+
+1. Get the MinIO console URL:
 
 ```bash
 MINIO_URL=$(oc get route minio-console -n minio-storage -o jsonpath='{.spec.host}')
 echo "https://${MINIO_URL}"
-# Login: minio-admin / minio-secret-123
 ```
 
-Show the buckets: `rhoai-storage`, `models`, `pipelines`. These are where all subsequent steps store their data.
+2. Log in: `minio-admin` / `minio-secret-123`
+3. Browse the buckets: `rhoai-storage`, `models`, `pipelines`
 
-## What to Verify After Deployment
+**Expect:** Three pre-created buckets visible in the MinIO console — these are where all subsequent steps store their data.
 
-```bash
-# MinIO ready
-oc get deploy minio -n minio-storage -o jsonpath='{.status.readyReplicas}'
-# Expected: 1
+> Shared S3 storage, pre-configured data connections, and role-based access — the platform is ready for any AI workload. Every step that follows inherits this storage layer automatically.
 
-# Data connections
-oc get secret minio-connection -n private-ai
-oc get secret storage-config -n private-ai
-# Expected: both present
+## Key Takeaways
 
-# Authentication
-oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
-# Expected: htpasswd or local-users provider
+**For business stakeholders:**
 
-# RBAC
-oc get rolebinding ai-admin-admin ai-developer-edit -n private-ai
-# Expected: both present
+- GPU-as-a-Service eliminates the ticket queue — data scientists self-serve GPU workbenches in minutes, not days
+- Role-based access control separates platform governors from data science consumers — governance without bottlenecks
+- Pre-configured S3 storage and data connections remove infrastructure friction from every AI workflow
 
-# Groups
-oc get group rhoai-admins rhoai-users
-# Expected: ai-admin in rhoai-admins, ai-developer in rhoai-users
-```
+**For technical teams:**
 
-Or run the validation script:
-
-```bash
-./steps/step-03-private-ai/validate.sh
-# Expected: all passed, 0 failed
-```
-
-## Design Decisions
-
-> **Direct GPU scheduling (no Kueue):** Kueue was evaluated and removed because its SchedulingGate mechanism gates ALL pods in managed namespaces — including build pods, DSPA pipeline executors, and chatbot Deployments — not just GPU workloads. GPU scheduling uses direct `nodeSelector` + `tolerations` defined in Hardware Profiles and InferenceService manifests. This provides reliable GPU placement without the SchedulingGate side effects.
-
-> **Design Decision:** OpenShift Groups are created by `deploy.sh` (not ArgoCD) because ArgoCD cannot parse the `user.openshift.io/v1 Group` schema.
-
-> **No `opendatahub.io/managed` label on `storage-config`:** The ODH model controller watches for secrets with `opendatahub.io/managed: "true"` and deletes any it did not create. Since ArgoCD creates `storage-config`, the controller deletes it within seconds, causing an infinite create-delete loop. This label is only needed on `minio-connection` (the Data Connection that appears in Dashboard dropdowns), not on `storage-config` (the KServe credential used by storage-initializer). See also: `.cursor/rules/30-secrets-and-certs.mdc`.
+- Hardware Profiles use direct `nodeSelector` + `tolerations` — reliable GPU scheduling without Kueue's SchedulingGate side effects
+- Data connections are GitOps-managed secrets that auto-appear in Dashboard dropdowns for workbenches and model serving
+- The `opendatahub.io/managed` label must be omitted from `storage-config` to prevent the ODH model controller delete loop
 
 ## Troubleshooting
 
@@ -137,15 +158,9 @@ oc apply -f gitops/step-03-private-ai/base/minio/init-job.yaml
 
 - [RHOAI 3.3 — Managing Resources](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index)
 - [RHOAI 3.3 — User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_users/index)
-
-## Operations
-
-```bash
-./steps/step-03-private-ai/deploy.sh     # Deploy via ArgoCD
-./steps/step-03-private-ai/validate.sh   # Verify all components
-```
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-- **Step 04**: [Model Registry](../step-04-model-registry/README.md) — Enterprise model governance
-- **Step 05**: [LLM on vLLM](../step-05-llm-on-vllm/README.md) — Deploy models with GPU-as-a-Service
+- **Step 04**: [Model Registry & Model Catalog](../step-04-model-registry/README.md) — Enterprise model governance with a curated catalog and versioned registry

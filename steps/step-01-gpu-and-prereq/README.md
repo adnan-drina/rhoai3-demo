@@ -1,12 +1,15 @@
 # Step 01: GPU Infrastructure & Prerequisites
+**"AI-Ready Infrastructure"** — Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.3 depends on.
 
-**Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.3 depends on.**
+## Overview
 
-## The Business Story
+Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference.
 
-Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference. This step provisions NVIDIA L4 GPU nodes on AWS and installs every operator prerequisite defined in the RHOAI 3.3 installation guide — turning a vanilla OpenShift cluster into an AI platform foundation.
+**Red Hat OpenShift AI 3.3** provides intelligent GPU and hardware acceleration — self-service GPU access, intelligent GPU use for workload scheduling, and hardware discovery that automatically labels and provisions GPU resources. The platform handles the full stack: driver lifecycle, GPU node management, and inference networking — all deployed via GitOps and managed as first-class OpenShift resources.
 
-## What It Does
+This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: a secure and flexible foundation that gives you the choice of where you develop and deploy your models, starting with the GPU infrastructure that powers everything above it.
+
+### What Gets Deployed
 
 ```text
 OpenShift 4.20 Cluster
@@ -34,32 +37,7 @@ OpenShift 4.20 Cluster
 
 Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-prereq/base/)
 
-## What to Verify After Deployment
-
-- **GPU nodes online** — two nodes with `nvidia.com/gpu` allocatable (1 GPU + 4 GPUs)
-- **DCGM dashboard** — GPU utilization, temperature, and memory visible in OpenShift Monitoring
-- **All operators Succeeded** — 8 CSVs across their respective namespaces
-- **KnativeServing Ready** — control plane healthy in `knative-serving`
-
-## Demo Walkthrough
-
-### Scene 1: GPU Nodes Online
-
-**Do:** Open the OpenShift Console → **Compute** → **Nodes**. Filter by label `nvidia.com/gpu.present=true`.
-
-**Expect:** Two GPU nodes — `g6.4xlarge` (1 GPU) and `g6.12xlarge` (4 GPUs). Both showing `Ready`.
-
-*"The cluster now has 5 NVIDIA L4 GPUs across two node types. The taints ensure only AI workloads that explicitly request GPUs get scheduled here — no accidental consumption."*
-
-### Scene 2: Operator Stack
-
-**Do:** Navigate to **Operators** → **Installed Operators**. Filter by the GPU and AI-related namespaces.
-
-**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, LeaderWorkerSet, Authorino, Limitador, DNS Operator, RHCL.
-
-*"Every operator prerequisite from the RHOAI 3.3 installation guide is deployed and healthy. This is the foundation — GPU drivers, KServe networking, and the RHCL stack for distributed inference."*
-
-## Design Decisions
+### Design Decisions
 
 > **Default GPU driver (no pin):** RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.
 
@@ -77,6 +55,62 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 > - **PersistentVolumeClaim** — Treats `Pending` PVCs as Healthy (for `WaitForFirstConsumer` storage classes that stay Pending until a pod mounts them)
 > - **InferenceService** — Reads the KServe `Ready` condition correctly (ArgoCD's built-in check misinterprets the condition format)
 > - **TrustyAIService** — Reads the `Available` condition (ArgoCD has no built-in health check for this CRD)
+
+### Deploy
+
+```bash
+./steps/step-01-gpu-and-prereq/deploy.sh     # ArgoCD app: operators + GPU MachineSets
+./steps/step-01-gpu-and-prereq/validate.sh   # Verify GPUs, operators, KnativeServing
+```
+
+### What to Verify After Deployment
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| GPU nodes online | Two nodes with `nvidia.com/gpu` allocatable | 1 GPU + 4 GPUs |
+| DCGM dashboard | GPU utilization, temperature, and memory | Visible in OpenShift Monitoring |
+| All operators Succeeded | 8 CSVs across their respective namespaces | All Succeeded |
+| KnativeServing Ready | Control plane healthy | Ready in `knative-serving` |
+
+## The Demo
+
+> In this demo, we verify that the OpenShift cluster has been transformed into an AI-ready platform — GPU nodes are online, drivers are active, and every operator prerequisite for RHOAI 3.3 is in place.
+
+### GPU Nodes Online
+
+> Before any model can be served, the cluster needs GPU compute. We start by confirming that the GPU nodes provisioned by the MachineSets are online and reporting their accelerator capacity to the scheduler.
+
+1. Open the OpenShift Console → **Compute** → **Nodes**
+2. Filter by label `nvidia.com/gpu.present=true`
+
+**Expect:** Two GPU nodes — `g6.4xlarge` (1 GPU) and `g6.12xlarge` (4 GPUs). Both showing `Ready`.
+
+> Five NVIDIA L4 GPUs across two node types, provisioned and tainted for AI workloads only. The taints ensure no accidental consumption — only workloads that explicitly request GPUs get scheduled here. This is Red Hat OpenShift AI's intelligent GPU management in action.
+
+### Operator Stack
+
+> GPU nodes are ready, but inference networking, distributed training, and model serving require additional platform capabilities. The RHOAI 3.3 installation guide defines eight operator prerequisites — we verify they are all deployed and healthy.
+
+1. Navigate to **Operators** → **Installed Operators**
+2. Filter by the GPU and AI-related namespaces
+
+**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, LeaderWorkerSet, Authorino, Limitador, DNS Operator, RHCL.
+
+> Every operator prerequisite from the RHOAI 3.3 installation guide is deployed and healthy. This is the AI-ready foundation — GPU drivers, KServe networking, and the RHCL stack for distributed inference — all managed via GitOps on Red Hat OpenShift Container Platform.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- GPU infrastructure is provisioned as code — no manual hardware requests, no ticket queues
+- GPU nodes are tainted and isolated for AI workloads, preventing accidental consumption by non-AI applications
+- The entire operator stack deploys via GitOps, making the AI platform reproducible across any OpenShift cluster
+
+**For technical teams:**
+
+- NVIDIA L4 GPUs run on AWS G6 instances with Driver Toolkit — no RHEL entitlement secrets required
+- Eight operator prerequisites are managed declaratively: NFD, GPU Operator, Serverless, LWS, Authorino, Limitador, DNS Operator, RHCL
+- Custom ArgoCD health checks ensure accurate sync status for PVCs, InferenceServices, and TrustyAI CRDs
 
 ## Troubleshooting
 
@@ -118,11 +152,9 @@ oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 - [OCP 4.20 — Understanding the Driver Toolkit](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/using-the-driver-toolkit)
 - [OCP 4.20 — NVIDIA GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [NVIDIA GPU driver 580.105.08 compatibility (KB 7134740)](https://access.redhat.com/solutions/7134740)
-
-## Operations
-
-Deploy: `./steps/step-01-gpu-and-prereq/deploy.sh` · Validate: `./steps/step-01-gpu-and-prereq/validate.sh`
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-Proceed to [Step 02: Red Hat OpenShift AI 3.3 Platform](../step-02-rhoai/README.md) to deploy the RHOAI operator and configure the DataScienceCluster.
+- **Step 02**: [Red Hat OpenShift AI 3.3 Platform](../step-02-rhoai/README.md) — Install the full RHOAI platform with GenAI Studio, Hardware Profiles, and model serving

@@ -1,12 +1,15 @@
 # Step 02: Red Hat OpenShift AI 3.3 Platform
+**"The AI Platform"** — Install the full RHOAI 3.3 platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a GPU-accelerated OpenShift cluster.
 
-**Install the full RHOAI 3.3 AI platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a fresh OpenShift cluster.**
+## Overview
 
-## The Business Story
+With GPU infrastructure in place, the cluster needs an AI platform layer that turns raw compute into a self-service environment for data scientists and ML engineers. Without it, every team builds their own model serving pipeline, training infrastructure, and monitoring stack — duplicating effort and creating ungoverned silos.
 
-This step deploys the full RHOAI 3.3 platform on top of the GPU infrastructure from step-01, giving data scientists a self-service AI environment with built-in model serving, training, pipelines, and governance. GenAI Studio provides an Agent Playground and Model Catalog, Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack.
+**Red Hat OpenShift AI 3.3** delivers a unified AI/ML platform that provides centralized management for predictive and generative AI models. GenAI Studio provides an Agent Playground and Model Catalog, Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack — from model serving and distributed training to pipelines and governance.
 
-## What It Does
+This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: providing a secure and flexible platform that gives you the choice of where you develop and deploy your models, with a consistent experience across any OpenShift cluster.
+
+### What Gets Deployed
 
 ```text
 RHOAI 3.3 Platform
@@ -42,41 +45,7 @@ RHOAI 3.3 Platform
 
 Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
-## What to Verify After Deployment
-
-- **Dashboard URL** — RHOAI console accessible at `https://data-science-gateway.apps.<cluster>` (via Service Mesh 3 Gateway in `openshift-ingress`)
-- **GenAI Studio visible** — Agent Playground and Model Catalog appear in the left nav
-- **Hardware Profiles available** — four profiles (CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU) listed in Settings
-- **DataScienceCluster Ready** — `default-dsc` phase is `Ready` with all components managed
-- **Service Mesh 3** — auto-installed by DSCInitialization for KServe traffic management
-
-## Demo Walkthrough
-
-### Scene 1: RHOAI Dashboard
-
-**Do:** Open `https://data-science-gateway.apps.<cluster>` and log in as `ai-admin` / `redhat123`.
-
-**Expect:** The RHOAI Dashboard with GenAI Studio in the left navigation — Agent Playground, Model Catalog, AI Available Assets.
-
-*"This is the self-service AI platform. Data scientists get a curated environment — models, pipelines, notebooks, and monitoring — without managing infrastructure."*
-
-### Scene 2: Hardware Profiles
-
-**Do:** Navigate to **Settings** → **Hardware profiles**.
-
-**Expect:** Four profiles — CPU Small, NVIDIA L4 1GPU, NVIDIA L4 1GPU (Default), NVIDIA L4 4GPUs. Each shows nodeSelector and tolerations targeting the correct GPU node type.
-
-*"Hardware Profiles replace the old Accelerator Profiles from RHOAI 2.x. They control exactly which node type a workload lands on — CPU, 1-GPU, or 4-GPU. The platform admin defines these once, and every user selects from the same curated list."*
-
-### Scene 3: Model Catalog
-
-**Do:** Navigate to **GenAI Studio** → **Model Catalog**.
-
-**Expect:** 48+ Red Hat Validated models from IBM, Meta, Mistral, Qwen, and others. Each card shows parameter count, license, and recommended hardware.
-
-*"Out of the box, RHOAI ships a curated catalog of validated models in OCI ModelCar format. These are Red Hat-tested — deploy directly from the catalog using the cluster's pull secret."*
-
-## Design Decisions
+### Design Decisions
 
 > **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.
 
@@ -86,12 +55,71 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
 
-## References
+### Deploy
 
-- [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
-- [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
-- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
+```bash
+./steps/step-02-rhoai/deploy.sh     # ArgoCD app: RHOAI operator + DSC + Hardware Profiles
+./steps/step-02-rhoai/validate.sh   # Verify Dashboard, GenAI Studio, DSC health
+```
+
+### What to Verify After Deployment
+
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| Dashboard URL | RHOAI console accessible | `https://data-science-gateway.apps.<cluster>` responds |
+| GenAI Studio visible | Agent Playground and Model Catalog in left nav | Both menu items present |
+| Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
+| DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
+| Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |
+
+## The Demo
+
+> In this demo, we tour the RHOAI 3.3 platform — the self-service AI environment that data scientists and ML engineers will use for every subsequent step. We see the Dashboard, Hardware Profiles that control GPU scheduling, and the Model Catalog with 48+ validated models ready to deploy.
+
+### RHOAI Dashboard
+
+> The starting point for every AI practitioner on the platform. The RHOAI Dashboard provides a unified console for managing models, pipelines, notebooks, and monitoring — without direct infrastructure access.
+
+1. Open `https://data-science-gateway.apps.<cluster>` and log in as `ai-admin` / `redhat123`
+2. Explore the left navigation — GenAI Studio, Data Science Projects, Model Serving
+
+**Expect:** The RHOAI Dashboard with GenAI Studio in the left navigation — Agent Playground, Model Catalog, AI Available Assets.
+
+> This is the self-service AI platform. Data scientists get a curated environment — models, pipelines, notebooks, and monitoring — without managing infrastructure. Red Hat OpenShift AI provides this out of the box on any OpenShift cluster.
+
+### Hardware Profiles
+
+> Hardware Profiles replace the old Accelerator Profiles from RHOAI 2.x. They define exactly which node type a workload lands on — the platform admin creates these once, and every user selects from the same curated list.
+
+1. Navigate to **Settings** → **Hardware profiles**
+
+**Expect:** Four profiles — CPU Small, NVIDIA L4 1GPU, NVIDIA L4 1GPU (Default), NVIDIA L4 4GPUs. Each shows nodeSelector and tolerations targeting the correct GPU node type.
+
+> Intelligent GPU and hardware acceleration — self-service GPU access with workload scheduling that ensures the right workload lands on the right hardware. No guessing, no overprovisioning, no resource conflicts between teams.
+
+### Model Catalog
+
+> Red Hat OpenShift AI ships with a curated library of validated models — tested against the platform, available immediately with no external dependencies.
+
+1. Navigate to **GenAI Studio** → **Model Catalog**
+
+**Expect:** 48+ Red Hat Validated models from IBM, Meta, Mistral, Qwen, and others. Each card shows parameter count, license, and recommended hardware.
+
+> Over 48 models in OCI ModelCar format — Red Hat-tested and ready to deploy directly from the catalog using the cluster's pull secret. No HuggingFace account needed, no external model downloads, no supply chain concerns.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- RHOAI 3.3 provides a complete AI platform with one operator install — model serving, training, pipelines, governance, and a curated model catalog
+- Self-service Hardware Profiles eliminate the "which GPU do I use?" question — the platform admin defines the options, every team uses the same curated list
+- 48+ Red Hat-validated models are available out of the box with no external dependencies or procurement
+
+**For technical teams:**
+
+- The DataScienceCluster CR manages 11 components declaratively — deploy the full stack with a single GitOps manifest
+- Hardware Profiles use direct `nodeSelector` + `tolerations` for GPU placement, providing reliable scheduling without queuing complexity
+- Service Mesh 3 is auto-installed by DSCInitialization — no separate mesh deployment required
 
 ## Troubleshooting
 
@@ -135,10 +163,15 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 
 > **Note (RHOAI 3.3):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step.
 
-## Operations
+## References
 
-Deploy: `./steps/step-02-rhoai/deploy.sh` · Validate: `./steps/step-02-rhoai/validate.sh`
+- [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
+- [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
+- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 ## Next Steps
 
-Continue to [Step 03 — Private AI Infrastructure](../step-03-private-ai/README.md) to configure MinIO storage, authentication, and RBAC for GPU-as-a-Service.
+- **Step 03**: [Private AI — GPU as a Service](../step-03-private-ai/README.md) — Dynamic GPU allocation, S3 storage, and role-based access control
