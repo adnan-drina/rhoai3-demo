@@ -10,19 +10,19 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────┐
-│                 GitOps-Driven AI Lifecycle                             │
+│                 GitOps-Driven AI Lifecycle                            │
 │                                                                       │
-│ Ingest ──→ Train ──→ Evaluate ──→ Register ──→ Deploy ──→ Monitor   │
-│   ↑                                                         │        │
-│   └──────────────────── Retrain ────────────────────────────┘        │
+│ Ingest ──→ Train ──→ Evaluate ──→ Register ──→ Deploy ──→ Monitor     │
+│   ↑                                                         │         │
+│   └──────────────────── Retrain ────────────────────────────┘         │
 ├───────────────────────────────────────────────────────────────────────┤
 │                  RHOAI 3.3 — AI/ML Platform                           │
 │                                                                       │
-│ Model Dev &       Model Training   Intelligent GPU   AI Pipelines    │
-│ Customization     & Experimentation & Hardware Speed                 │
+│ Model Dev &       Model Training   Intelligent GPU   AI Pipelines     │
+│ Customization     & Experimentation & Hardware Speed                  │
 │                                                                       │
-│ Optimized Model   Agentic AI &     Model Observability  Catalog &    │
-│ Serving           Gen AI UIs       & Governance         Registry     │
+│ Optimized Model   Agentic AI &     Model Observability  Catalog &     │
+│ Serving           Gen AI UIs       & Governance         Registry      │
 │                                                                       │
 │ Feature Store*    Models-as-a-Service*                                │
 ├───────────────────────────────────────────────────────────────────────┤
@@ -30,15 +30,15 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 ├───────────────────────────────────────────────────────────────────────┤
 │               OpenShift Container Platform 4.20                       │
 │                                                                       │
-│ OLM   NFD   Serverless   Service Mesh 3   Monitoring (Prometheus)    │
-│ NVIDIA GPU Operator   GitOps (ArgoCD)   Pipelines (Tekton)   Auth    │
+│ OLM   NFD   Serverless   Service Mesh 3   Monitoring (Prometheus)     │
+│ NVIDIA GPU Operator   GitOps (ArgoCD)   Pipelines (Tekton)   Auth     │
 │                                                                       │
 │ Data Foundation*   Streams (Kafka)*                                   │
 ├───────────────────────────────────────────────────────────────────────┤
 │                        Infrastructure                                 │
 │                                                                       │
-│    Cloud (AWS)        Edge Simulated (OCP)      Edge (MicroShift)    │
-│    OCP 4.20           namespace on OCP          RHEL 9.5 + L4 GPU   │
+│    Cloud (AWS)        Edge Simulated (OCP)      Edge (MicroShift)     │
+│    OCP 4.20           namespace on OCP          RHEL 9.5 + L4 GPU     │
 └───────────────────────────────────────────────────────────────────────┘
   * Planned — see BACKLOG.md
 ```
