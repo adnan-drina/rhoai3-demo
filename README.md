@@ -1,14 +1,27 @@
 # Red Hat OpenShift AI 3.3 Demo
 
-A production-like deployment of **AI on Red Hat OpenShift AI (RHOAI) 3.3** on **Red Hat OpenShift Container Platform (RHOCP) 4.20** — covering Generative AI (LLMs, RAG, agentic workflows) and Predictive AI (computer vision, MLOps pipelines) on the same platform. Deployed using GitOps (ArgoCD + Kustomize), following Red Hat's official documentation and best practices.
+A production-like deployment of **Red Hat OpenShift AI (RHOAI) 3.3** on **Red Hat OpenShift Container Platform (RHOCP) 4.20** — covering Generative AI (LLMs, RAG, agentic workflows) and Predictive AI (computer vision, MLOps pipelines) on the same platform. Deployed using GitOps (ArgoCD + Kustomize), following Red Hat's official documentation and best practices.
+
+Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and deploy AI models and applications at scale across private and hybrid cloud environments. This demo brings that value proposition to life across 14 deployment steps organized into three themes, each mapping to Red Hat's core AI pillars.
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
+
+## Red Hat AI: Four Pillars
+
+This demo demonstrates all four pillars of the [Red Hat AI platform](https://www.redhat.com/en/products/ai/openshift-ai):
+
+| Pillar | What Red Hat Delivers | Demo Steps |
+|--------|----------------------|------------|
+| **Efficient Inferencing** | Optimized model serving via vLLM, delivering fast and cost-effective inference at scale | Steps 05-06 |
+| **Connecting Models to Data** | RAG for private data connection, model evaluation, document ingestion with Docling | Steps 07-08 |
+| **Accelerating Agentic AI** | Llama Stack API, MCP servers, AI guardrails for safe autonomous workflows | Steps 09-10 |
+| **Flexibility across Hybrid Cloud** | GPU infrastructure, model governance, edge deployment from datacenter to MicroShift | Steps 01-04, 11-13b |
 
 ## Three Demo Themes
 
 ### Theme 1: Private AI Platform (Steps 01-04)
 
-Transform a vanilla OpenShift cluster into a governed AI platform — GPU compute, hardware discovery, model governance, and multitenancy.
+Transform a vanilla OpenShift cluster into a governed AI platform — GPU compute, hardware discovery, model governance, and multitenancy. As Red Hat's AI adoption guide notes: *"Can your current environment support AI workloads? This includes computing resources, storage, network capabilities, and the flexibility to scale as requirements grow."*
 
 | Step | Capability | Highlights |
 |------|-----------|------------|
@@ -19,7 +32,7 @@ Transform a vanilla OpenShift cluster into a governed AI platform — GPU comput
 
 ### Theme 2: Generative AI — ACME Semiconductor (Steps 05-10)
 
-Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-to-end agentic AI workflow grounded in enterprise documents.
+Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-to-end agentic AI workflow grounded in enterprise documents. *"Much enterprise knowledge lives in documents scattered across the organization: PDFs, wikis, support tickets, and internal documentation. Connecting models to this knowledge is often a more efficient path to value."*
 
 | Step | Capability | Highlights |
 |------|-----------|------------|
@@ -32,7 +45,7 @@ Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-t
 
 ### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-13)
 
-Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLOps lifecycle, and bring inference to the edge — proving RHOAI handles both GenAI and traditional ML across datacenter and edge.
+Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLOps lifecycle, and bring inference to the edge. *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments—cloud, on-premise datacenters, or at the edge."* This theme proves RHOAI handles both GenAI and traditional ML across datacenter and edge.
 
 | Step | Capability | Highlights |
 |------|-----------|------------|
@@ -45,7 +58,7 @@ Train a YOLO11 face recognition model, deploy on OpenVINO, automate the full MLO
 
 ### ACME Semiconductor (GenAI — Steps 07-10)
 
-The agentic model autonomously resolves an equipment alert using four integrated tools:
+The agentic model autonomously resolves an equipment alert using four integrated tools. *"Agentic architectures orchestrate multiple AI agents that can query databases, call APIs, search internal knowledge bases, and take actions based on results. This moves AI from answering questions to completing tasks."*
 
 1. **Inspects the cluster** — finds a failing equipment pod via OpenShift MCP
 2. **Queries a database** — identifies the equipment (L-900-08 EUV Scanner) via Database MCP
@@ -150,7 +163,12 @@ Validate the ACME demo flow:
 
 ## References
 
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
+- [Get started with AI for enterprise organizations](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 - [RHOAI 3.3 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
 - [RHOAI 3.3 Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
 - [OpenShift 4.20 GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [Red Hat AI Validated Models](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index)
+- [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
