@@ -103,7 +103,7 @@ oc get inferenceservice -n private-ai
 
 **Expect:** 2 InferenceServices listed, both Ready. The Model Registry shows 5 models total.
 
-> Two models running on all five GPUs — the agent model on one GPU handles tool-calling and RAG, the larger model on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them — all served by the Red Hat AI Inference Server.
+> Two models running on all five GPUs — a deliberate multimodel strategy. *"Enterprises are adopting a multimodel approach, using multiple specialized models rather than one monolithic system, with large-scale reasoning models for complex planning tasks while routing simpler requests to models with 7-13 billion parameters."* Our Granite 8B agent handles tool-calling and RAG on one GPU, while Mistral 3 BF16 on four GPUs handles enterprise chat and evaluation. Three more models are registered in the catalog and ready to deploy when the team needs them — all served by the Red Hat AI Inference Server.
 
 ### GenAI Playground
 

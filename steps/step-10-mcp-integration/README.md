@@ -161,7 +161,7 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 
 **Expect:** The agent calls `conversations_add_message` via the Slack MCP server, posting a structured summary — pod name, equipment ID, product line, known issue, and recommended procedure — to `#all-acme-mcp-demo`.
 
-> Four questions, four different enterprise systems — OpenShift cluster, PostgreSQL database, RAG document store, and Slack. The LLM orchestrated all of it autonomously through MCP, using standardized tool interfaces from the Red Hat Ecosystem Catalog. This is what enterprise agentic AI looks like on Red Hat OpenShift AI.
+> Four questions, four different enterprise systems — OpenShift cluster, PostgreSQL database, RAG document store, and Slack. *"Think of [Llama Stack] as Kubernetes for AI agents: just as Kubernetes orchestrates containers, Llama Stack orchestrates agents and their providers"* — and MCP provides the standardized tool interfaces from the Red Hat Ecosystem Catalog. This is what enterprise agentic AI looks like on Red Hat OpenShift AI.
 
 ## Key Takeaways
 

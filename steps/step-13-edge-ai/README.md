@@ -249,6 +249,7 @@ oc delete pod -n edge-ai-demo -l app=face-recognition-edge-predictor
 - AI inference runs where the data lives — the same model trained centrally deploys to edge sites with zero code changes and minimal hardware (CPU-only)
 - The Red Hat Edge + On-Premise pattern separates concerns: data acquisition and inference at the edge, model development and governance in the datacenter
 - GitOps-driven model delivery means edge devices always run the latest approved model — no manual intervention, no site visits
+- *"AI adoption is rarely a single project."* The datacenter-to-edge progression demonstrates iterative adoption — use learnings from initial deployments to refine your approach, expand to new use cases, and build internal capabilities
 
 **For technical teams:**
 

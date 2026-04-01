@@ -3,7 +3,7 @@
 
 ## Overview
 
-With GPU infrastructure, the AI platform, and access controls in place, organizations need a governed approach to model management. As Red Hat's AI adoption guide observes, *"enterprises are adopting a multimodel approach, using multiple specialized models rather than one monolithic system"* — which makes governance essential. Without it, teams download models from external sources, track versions in spreadsheets, and deploy unvetted artifacts to production — creating shadow AI that no one can audit. Finding the right model matters: *"The right model is the smallest one that meets your accuracy requirements and has been optimized for your infrastructure."*
+With GPU infrastructure, the AI platform, and access controls in place, organizations need a governed approach to model management. As Red Hat's AI adoption guide observes, *"enterprises are adopting a multimodel approach, using multiple specialized models rather than one monolithic system"* — which makes governance essential. Without it, teams download models from external sources, track versions in spreadsheets, and deploy unvetted artifacts to production — creating shadow AI that no one can audit. *"Without visibility into the datasets that created the model or an understanding of how the model uses that data, organizations are exposed to potential risks related to AI-generated content."* Finding the right model matters: *"The right model is the smallest one that meets your accuracy requirements and has been optimized for your infrastructure."*
 
 **Red Hat OpenShift AI 3.3** provides two complementary model management capabilities. The **Model Catalog** is a curated library of 48+ Red Hat-validated models in OCI ModelCar format — ready to deploy with a click and no external dependencies. The **Model Registry** tracks versions, ownership, and approval status of models before they reach production. Together they provide *"centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts"* — discover in the Catalog, register for governance, deploy from either.
 
@@ -105,6 +105,7 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 - The Model Catalog provides 48+ Red Hat-validated models out of the box — no procurement, no license negotiation, no external dependencies
 - The Model Registry provides an auditable record of who approved which model, when, and where it is stored — essential for compliance
 - Role-based access ensures only vetted models reach production — no shadow AI
+- *"Red Hat has always believed in the power of open source to propel innovation, and a transparent approach to software development that gives customers control over the choices they make."* That same philosophy now extends to AI — and the Model Catalog is where it starts
 
 **For technical teams:**
 

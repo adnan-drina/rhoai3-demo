@@ -152,14 +152,14 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 ### RAG Chatbot — Agent-Based Mode
 
-> Agent-based mode is where it gets interesting. Instead of hardcoding the retrieval, we give the model a `file_search` tool and let it decide when to search. It can make multiple searches, refine its query, and combine results — the pattern you'd use in production.
+> Agent-based mode is where it gets interesting. *"Think of [Llama Stack] as Kubernetes for AI agents: just as Kubernetes orchestrates containers, Llama Stack orchestrates agents and their providers, offering common APIs for inference, RAG, agents, tools, and safety that work consistently across development and production environments."* Instead of hardcoding the retrieval, we give the model a `file_search` tool and let it decide when to search. It can make multiple searches, refine its query, and combine results — the pattern you'd use in production.
 
 1. Switch to **Agent-based** mode in the chatbot
 2. Ask the same question: *"What products does ACME Corp manufacture?"*
 
 **Expect:** The chatbot uses the Responses API with `file_search` as a tool. The agent decides when and how to search, potentially making multiple retrieval calls to refine the answer.
 
-> The model becomes an autonomous retriever — it decides when to search, how to refine its queries, and when it has enough context to answer. This is the Llama Stack Responses API in action, orchestrating tool calls through the same unified interface.
+> The model becomes an autonomous retriever — it decides when to search, how to refine its queries, and when it has enough context to answer. *"Prompt engineering and system prompts shape model behavior through carefully crafted instructions... from few-shot learning to sophisticated system prompts that define persona, constraints, and output format."* The agent system prompt grounds this behavior — and the Llama Stack Responses API orchestrates the tool calls through a unified interface.
 
 3. Ask a follow-up: *"Who is the Managing Director of ACME Corp?"*
 

@@ -152,6 +152,8 @@ oc get dspa dspa-rag -n private-ai
 
 ## Model Monitoring with TrustyAI
 
+As Red Hat's AI adoption guide emphasizes: *"Production AI requires ongoing oversight. Deploy models with appropriate guardrails: content filters, output validation, and safety boundaries that reflect your policies and risk tolerance."* TrustyAI provides this oversight layer on Red Hat OpenShift AI.
+
 The pipeline deploys **TrustyAI** and configures bias monitoring for the face-recognition model:
 
 - **SPD Fairness metric** (`trustyai_spd`) — measures whether the model detects known faces at the same rate as unknown faces. Visible in **RHOAI Dashboard > AI hub > Deployments > face-recognition > Model bias** tab.

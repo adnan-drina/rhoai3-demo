@@ -116,6 +116,7 @@ echo "https://${MINIO_URL}"
 - GPU-as-a-Service eliminates the ticket queue — data scientists self-serve GPU workbenches in minutes, not days
 - Role-based access control separates platform governors from data science consumers — governance without bottlenecks
 - Pre-configured S3 storage and data connections remove infrastructure friction from every AI workflow
+- The platform delivers simplified operations on proven infrastructure — *"IT operations benefit from simplified configurations and more automated workflows on a proven platform that can scale up or down with low effort, while providing better governance and security"*
 
 **For technical teams:**
 
