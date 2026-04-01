@@ -30,7 +30,6 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 
 | OCP Feature | What It Provides | Demo Steps |
 |-------------|-----------------|------------|
-| **MachineSets** | Declarative GPU node provisioning on AWS (g6.4xlarge, g6.12xlarge) | Step 01 |
 | **Operator Lifecycle Manager (OLM)** | Installation and lifecycle management of all OCP and RHOAI components and dependencies | Steps 01, 02 |
 | **Node Feature Discovery (NFD)** | Hardware labels for automatic GPU discovery and scheduling | Step 01 |
 | **NVIDIA GPU Operator** | Driver lifecycle management via Driver Toolkit (DTK), DCGM exporter for GPU telemetry | Step 01 |
@@ -38,8 +37,6 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 | **Service Mesh 3** | Gateway and traffic management for the RHOAI Dashboard and KServe endpoints | Step 02 |
 | **Monitoring** | Prometheus scraping for platform metrics, vLLM inference metrics, DCGM GPU telemetry, and TrustyAI metrics | Steps 01, 06, 12 |
 | **OAuth / HTPasswd Identity Provider** | Demo user authentication (`ai-admin`, `ai-developer`) and RBAC | Step 03 |
-| **Routes** | HTTPS endpoints for MinIO console, RAG chatbot, edge camera, Grafana, MCP servers | Steps 03, 06, 07, 10, 13, 13b |
-| **BuildConfig / ImageStream** | On-cluster container builds for the RAG chatbot application | Step 07 |
 | **OpenShift GitOps (ArgoCD)** | Declarative deployment of all 14 steps via GitOps — the deployment backbone | All steps |
 | **OpenShift Pipelines (Tekton)** | ModelCar OCI image build and Git-driven edge model promotion | Step 12 |
 | **MicroShift 4.20** | Edge-optimized Kubernetes distribution for real edge hardware deployment | Step 13b |
