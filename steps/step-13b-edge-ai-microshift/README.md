@@ -1,12 +1,17 @@
 # Step 13b: Edge AI on MicroShift (Optional)
+**"Real Edge Hardware"** — Deploy the face recognition model on MicroShift 4.20 running on a RHEL 9.5 host with NVIDIA L4 GPU, using NVIDIA Triton Inference Server for GPU-accelerated ONNX inference via gRPC.
 
-**"Real edge hardware"** — Deploy the face recognition model on MicroShift 4.20 running on a RHEL 9.5 host with NVIDIA L4 GPU, using NVIDIA Triton Inference Server for GPU-accelerated ONNX inference via gRPC.
+## Overview
 
-## The Business Story
+Step 13 simulated an edge deployment using a separate namespace on the central OCP cluster. Step 13b deploys on **real edge hardware** — a RHEL host running MicroShift. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* This is the proof: the same model trained centrally flows to an actual edge device running a completely different Kubernetes distribution.
 
-Step 13 simulated an edge deployment using a separate namespace on the central OCP cluster. Step 13b deploys on **real edge hardware** — a RHEL host running MicroShift, the same way you'd deploy to a factory floor kiosk, a security checkpoint, or a remote camera station. The model was trained centrally (Steps 11-12), packaged as a ModelCar OCI image, and served by NVIDIA Triton on the L4 GPU. The Streamlit camera app uses gRPC for low-latency inference. This is the complete Red Hat Edge + On-Premise lifecycle.
+**Red Hat Build of MicroShift 4.20** is an edge-optimized Kubernetes distribution built on RHEL, providing KServe model serving via the `microshift-ai-model-serving` RPM. Combined with **NVIDIA Triton Inference Server** for GPU-accelerated inference and **embedded ArgoCD** for GitOps-driven model delivery, this step demonstrates the complete Red Hat Edge + On-Premise lifecycle.
 
-## What It Does
+This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: the same model trained on RHOAI in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model.
+
+> **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
+
+### What Gets Deployed
 
 ```text
 Edge AI on MicroShift (real edge hardware)
@@ -33,7 +38,7 @@ Edge AI on MicroShift (real edge hardware)
 | **edge-camera** Route | HTTPS (nip.io, edge TLS) | `edge-ai` |
 | **ArgoCD core** (controller + repo-server + redis) | Embedded GitOps — syncs workloads from Git | `argocd` |
 
-## Architecture
+#### Architecture
 
 ```text
 ┌─────────── RHEL 9.5 Host (MicroShift 4.20) ──────────────────────────────┐
@@ -71,12 +76,12 @@ Edge AI on MicroShift (real edge hardware)
     Laptop/phone camera
 ```
 
-## Shared Code with Step 13
+### Shared Code with Step 13
 
 Steps 13 and 13b share identical application code:
 
 | File | Shared? | Description |
-|---|---|---|
+|------|---------|-------------|
 | `inference.py` | Yes | KServe v2 gRPC client using `tritonclient[grpc]` |
 | `edge_camera.py` | Yes | Streamlit app with Photo + Live Video modes |
 | `requirements.txt` | Yes | Same dependencies |
@@ -85,11 +90,33 @@ Steps 13 and 13b share identical application code:
 The only difference is the infrastructure manifests and the env vars in the Deployment:
 
 | Env Var | Step 13 (OCP) | Step 13b (MicroShift) |
-|---|---|---|
+|---------|---------------|------------------------|
 | `GRPC_ENDPOINT` | `face-recognition-edge-predictor:8001` | `face-recognition-edge-stable:8001` |
 | `MODEL_NAME` | `face-recognition-edge` | `face-recognition-edge` |
 
-## Prerequisites
+### Design Decisions
+
+> **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
+
+> **gRPC for inference** instead of REST. Both OVMS (step-13) and Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. Using `tritonclient[grpc]` provides ~30x lower latency compared to REST JSON, with the same client code working against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
+
+> **ModelCar OCI format** with Triton directory layout (`/models/<model-name>/<version>/model.onnx`). Built with `sudo podman` so CRI-O can access it directly from root container storage. Uses tag `v2` (not `latest`) so `imagePullPolicy` is `IfNotPresent`.
+
+> **Non-headless stable service** (`face-recognition-edge-stable`) for gRPC connectivity. KServe creates a headless service (`ClusterIP: None`) which doesn't provide a stable ClusterIP. The stable service ensures the edge-camera can use a DNS name that survives pod restarts.
+
+> **NVIDIA device plugin** deployed via MicroShift auto-manifests at `/etc/microshift/manifests/` with SELinux permissions (`container_use_devices` boolean + custom policy module). Follows the [NVIDIA GPU with Red Hat Device Edge](https://docs.nvidia.com/datacenter/cloud-native/edge/latest/nvidia-gpu-with-device-edge.html) guide.
+
+> **nip.io for Route DNS.** MicroShift defaults to `apps.example.com` which doesn't resolve. Using `<public-ip>.nip.io` provides automatic DNS resolution.
+
+> **Recreate deployment strategy** for the predictor. With a single GPU on the edge device, the default RollingUpdate strategy creates a new pod before deleting the old one, requiring 2 GPUs. `deploymentStrategy: { type: Recreate }` in the InferenceService spec terminates the old pod first, freeing the GPU for the new revision.
+
+> **Restart recovery verified.** All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
+
+> **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `private-ai` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
+
+### Deploy
+
+**Prerequisites:**
 
 - **RHEL 9.5+ host** with SSH access and sudo
 - **NVIDIA GPU** with driver installed (tested with L4, driver 595.58)
@@ -98,10 +125,6 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 - `sshpass` installed on your local machine
 - Step 13's `edge-camera` container image pushed to quay.io (public)
 
-> **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
-
-## Deploy
-
 ```bash
 EDGE_HOST=rhaiis.example.com \
 EDGE_USER=dev \
@@ -109,7 +132,7 @@ EDGE_PASS=<password> \
 ./steps/step-13b-edge-ai-microshift/deploy.sh
 ```
 
-## Demo Script
+#### Interactive Demo Script
 
 An interactive demo script is included for live presentations:
 
@@ -120,7 +143,7 @@ ssh dev@<edge-host>
 
 The script walks through 5 sections with pause-and-talk flow: edge platform, GPU-powered inference, model serving stack, edge AI workloads (with camera app URL), and embedded GitOps (ArgoCD syncing from Git).
 
-## What to Verify After Deployment
+### What to Verify After Deployment
 
 SSH into the edge host and verify:
 
@@ -158,43 +181,93 @@ curl -sk "https://edge-camera-edge-ai.<public-ip>.nip.io/_stcore/health"
 # Expected: ok
 ```
 
-## Design Decisions
+## The Demo
 
-> **Design Decision:** **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
+> In this demo, we show the face recognition model running on real edge hardware — a RHEL host with MicroShift 4.20 and an NVIDIA L4 GPU. The model was trained centrally, packaged as a ModelCar OCI image, and delivered to the edge via embedded ArgoCD. GPU-accelerated inference, live camera, full GitOps lifecycle.
 
-> **Design Decision:** **gRPC for inference** instead of REST. Both OVMS (step-13) and Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. Using `tritonclient[grpc]` provides ~30x lower latency compared to REST JSON, with the same client code working against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
+### The Edge Platform
 
-> **Design Decision:** **ModelCar OCI format** with Triton directory layout (`/models/<model-name>/<version>/model.onnx`). Built with `sudo podman` so CRI-O can access it directly from root container storage. Uses tag `v2` (not `latest`) so `imagePullPolicy` is `IfNotPresent`.
+> MicroShift is Red Hat's edge-optimized Kubernetes distribution — it runs on a single RHEL host with minimal footprint. Combined with the `microshift-ai-model-serving` RPM, it provides KServe model serving at the edge.
 
-> **Design Decision:** **Non-headless stable service** (`face-recognition-edge-stable`) for gRPC connectivity. KServe creates a headless service (`ClusterIP: None`) which doesn't provide a stable ClusterIP. The stable service ensures the edge-camera can use a DNS name that survives pod restarts.
+1. SSH into the edge host:
 
-> **Design Decision:** **NVIDIA device plugin** deployed via MicroShift auto-manifests at `/etc/microshift/manifests/` with SELinux permissions (`container_use_devices` boolean + custom policy module). Follows the [NVIDIA GPU with Red Hat Device Edge](https://docs.nvidia.com/datacenter/cloud-native/edge/latest/nvidia-gpu-with-device-edge.html) guide.
-
-> **Design Decision:** **nip.io for Route DNS**. MicroShift defaults to `apps.example.com` which doesn't resolve. Using `<public-ip>.nip.io` provides automatic DNS resolution.
-
-> **Design Decision:** **Recreate deployment strategy** for the predictor. With a single GPU on the edge device, the default RollingUpdate strategy creates a new pod before deleting the old one, requiring 2 GPUs. `deploymentStrategy: { type: Recreate }` in the InferenceService spec terminates the old pod first, freeing the GPU for the new revision.
-
-> **Design Decision:** **Restart recovery verified**. All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
-
-> **Design Decision:** **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `private-ai` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
-
-## Known Limitations
-
-### RHDP Lab subscription doesn't include MicroShift repos
-
-**Solution:** Re-register with a personal Red Hat subscription:
 ```bash
-sudo subscription-manager config --server.hostname=subscription.rhsm.redhat.com \
-  --server.prefix=/subscription --rhsm.baseurl=https://cdn.redhat.com \
-  --rhsm.repo_ca_cert=/etc/rhsm/ca/redhat-uep.pem
-sudo subscription-manager register --username=<your-rh-email>
+ssh dev@<edge-host>
 ```
 
-### Live Video mode on mobile phones
+2. Show the platform status:
 
-**Symptom:** Camera captures first frame, then stops streaming.
+```bash
+sudo systemctl is-active microshift
+oc get nodes
+oc get nodes -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'
+```
 
-**Workaround:** Use Photo mode on phones. Live Video works on laptops.
+**Expect:** MicroShift active, single node ready, 1 NVIDIA GPU allocatable.
+
+> A single RHEL host running MicroShift with an L4 GPU — this is what edge AI looks like in production. The same Kubernetes API, the same `oc` commands, but optimized for remote sites with limited resources. Red Hat Build of MicroShift brings the OpenShift operational model to the edge.
+
+### GPU-Accelerated Inference
+
+> The model is served by NVIDIA Triton Inference Server on the L4 GPU, accessed via gRPC for minimal latency. The same YOLO11 model from Step 11, but GPU-accelerated at the edge.
+
+1. Open the edge-camera Route URL on your laptop or phone:
+
+```bash
+echo "https://edge-camera-edge-ai.<public-ip>.nip.io"
+```
+
+2. Select **Photo** mode, take a selfie
+
+**Expect:** Face recognized with bounding boxes. Inference latency is significantly lower than CPU-only (Step 13) due to the L4 GPU.
+
+> GPU-accelerated inference at the edge — the NVIDIA L4 provides the compute, NVIDIA Triton serves the model, and KServe on MicroShift manages the lifecycle. All on a single RHEL host, delivered through the same platform that manages datacenter AI workloads.
+
+### Embedded GitOps — Model Delivery
+
+> The model wasn't SSH'd or manually copied to this device. ArgoCD core runs directly on MicroShift, watching a Git repository. When the model version changes in Git, ArgoCD syncs the new configuration automatically — no human intervention required.
+
+1. Show the ArgoCD state on the edge host:
+
+```bash
+oc get applications -n argocd
+oc get application edge-ai -n argocd -o jsonpath='{.status.sync.status}'
+```
+
+2. Show the current model version:
+
+```bash
+oc get inferenceservice face-recognition-edge -n edge-ai -o jsonpath='{.spec.predictor.model.storageUri}'
+```
+
+**Expect:** ArgoCD application is `Synced`. The `storageUri` points to a specific ModelCar OCI tag (e.g., `quay.io/adrina/face-recognition-modelcar:v3`).
+
+> Embedded GitOps on the edge device. ArgoCD core watches the Git repository and auto-syncs — when Step 12's Tekton pipeline builds a new ModelCar and updates the tag in Git, every edge device picks up the new model within minutes. No SSH, no manual intervention, no site visits. This is how Red Hat manages AI at scale across edge fleets.
+
+### Live Camera — Continuous Detection
+
+> Beyond single photos, the same Streamlit camera app from Step 13 runs on the MicroShift edge device with GPU-accelerated inference for faster continuous detection.
+
+1. Switch to **Live Video** mode on a laptop
+2. Point the camera at yourself and another person
+
+**Expect:** Continuous face detection with GPU-accelerated inference. Lower latency than the CPU-only Step 13 deployment.
+
+> The same application code, the same container image — but now backed by an NVIDIA GPU on real edge hardware. Red Hat OpenShift AI on MicroShift provides the full edge AI stack: model serving, GPU management, GitOps delivery, and HTTPS routing.
+
+## Key Takeaways
+
+**For business stakeholders:**
+
+- AI models deploy to real edge hardware — a RHEL host running MicroShift — with the same operational model as the datacenter, proving the hybrid cloud promise
+- Models flow from central training to edge devices via GitOps — no manual intervention, no site visits, no custom deployment scripts
+- GPU-accelerated inference at the edge handles workloads that CPU-only cannot — real-time video analysis, high-throughput detection, latency-sensitive applications
+
+**For technical teams:**
+
+- MicroShift 4.20 with `microshift-ai-model-serving` provides KServe at the edge — the same InferenceService API works on central OCP and MicroShift
+- ModelCar OCI images package models as container images, enabling standard container registry workflows for model delivery and version management
+- Embedded ArgoCD core (no UI, no API server) provides GitOps on edge devices with minimal footprint — model updates are Git commits that auto-sync within minutes
 
 ## Edge Fleet Management: Three Tiers
 
@@ -249,6 +322,55 @@ For production fleets, Red Hat recommends **RHEL Image Mode (bootc)** combined w
 - [Manage MicroShift with RHACM and OpenShift GitOps](https://developers.redhat.com/articles/2024/10/07/manage-microshift-red-hat-advanced-cluster-management-and-openshift-gitops)
 - [Red Hat Edge Manager (RHACM 2.13)](https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.13/html-single/edge_manager)
 
+## Known Limitations
+
+### RHDP Lab subscription doesn't include MicroShift repos
+
+**Solution:** Re-register with a personal Red Hat subscription:
+```bash
+sudo subscription-manager config --server.hostname=subscription.rhsm.redhat.com \
+  --server.prefix=/subscription --rhsm.baseurl=https://cdn.redhat.com \
+  --rhsm.repo_ca_cert=/etc/rhsm/ca/redhat-uep.pem
+sudo subscription-manager register --username=<your-rh-email>
+```
+
+### Live Video mode on mobile phones
+
+**Symptom:** Camera captures first frame, then stops streaming.
+
+**Workaround:** Use Photo mode on phones. Live Video works on laptops.
+
+## Troubleshooting
+
+### InferenceService stuck in "Not Ready"
+
+**Root Cause:** The ModelCar OCI image is not accessible, or the GPU device plugin is not running.
+
+**Solution:**
+```bash
+# Check predictor pod status
+oc get pods -n edge-ai -l serving.kserve.io/inferenceservice=face-recognition-edge
+
+# Check NVIDIA device plugin
+oc get pods -n nvidia-device-plugin
+
+# Verify GPU is allocatable
+oc get nodes -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'
+```
+
+### ArgoCD not syncing
+
+**Root Cause:** Repository access issue, or ArgoCD pods not running.
+
+**Solution:**
+```bash
+# Check ArgoCD pods
+oc get pods -n argocd
+
+# Check application status
+oc get application edge-ai -n argocd -o yaml | grep -A 5 status
+```
+
 ## References
 
 - [MicroShift 4.20 — Using AI models](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/microshift-rh-openshift-ai)
@@ -258,5 +380,11 @@ For production fleets, Red Hat recommends **RHEL Image Mode (bootc)** combined w
 - [RHOAI 3.3 — Custom ServingRuntimes (Triton examples)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/configuring_your_model-serving_platform/configuring_model_servers)
 - [YOLOv5 Training and Serving (gRPC vs REST)](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 - [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 
 > **See also:** [Step 13 — Edge AI (simulated)](../step-13-edge-ai/README.md), [Step 11 — Face Recognition](../step-11-face-recognition/README.md), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md)
+
+## Next Steps
+
+- This is the final step in the RHOAI 3.3 demo sequence. Return to the [project README](../../README.md) for the full demo overview.
