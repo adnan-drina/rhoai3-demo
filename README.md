@@ -36,7 +36,7 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 | **OpenShift Serverless** | KnativeServing infrastructure for KServe model serving networking | Step 01 |
 | **Service Mesh 3** | Gateway and traffic management for the RHOAI Dashboard and KServe endpoints | Step 02 |
 | **Monitoring** | Prometheus scraping for platform metrics, vLLM inference metrics, DCGM GPU telemetry, and TrustyAI metrics | Steps 01, 06, 12 |
-| **OAuth / HTPasswd Identity Provider** | Demo user authentication (`ai-admin`, `ai-developer`) and RBAC | Step 03 |
+| **Authentication and Authorization** | OAuth server, identity providers, and RBAC for multi-tenant access control (`ai-admin`, `ai-developer`) | Step 03 |
 | **OpenShift GitOps (ArgoCD)** | Declarative deployment of all 14 steps via GitOps — the deployment backbone | All steps |
 | **OpenShift Pipelines (Tekton)** | ModelCar OCI image build and Git-driven edge model promotion | Step 12 |
 | **MicroShift 4.20** | Edge-optimized Kubernetes distribution for real edge hardware deployment | Step 13b |
