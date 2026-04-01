@@ -10,19 +10,19 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 
 This demo covers 9 of 11 features from the [Red Hat OpenShift AI datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
 
-| RHOAI Feature | Datasheet Benefit | Demo Steps |
-|---------------|-------------------|------------|
-| **Intelligent GPU and hardware speed** | Self-service GPU access, workload scheduling, quota management, hardware profiles | Steps 01, 02, 03 |
-| **Catalog and registry** | Centralized management for predictive and gen AI models, metadata, and artifacts | Step 04 |
-| **Optimized model serving** | vLLM for high throughput and low latency, validated gen AI models, LLM compressor | Steps 05, 06 |
-| **Model development and customization** | JupyterLab workbenches, data ingestion, RAG for private data connection | Steps 07, 11 |
-| **AI pipelines** | Automate model delivery and testing — versioned, tracked, managed | Steps 07, 08, 12 |
-| **Model observability and governance** | Performance metrics, data drift and bias detection, AI guardrails, LM-Eval, GuideLLM | Steps 06, 08, 09, 12 |
-| **Agentic AI and gen AI UIs** | MCP and Llama Stack API, AI hub, gen AI studio and playground | Steps 05, 09, 10 |
-| **Model training and experimentation** | Distributed workloads, experiment tracking, simplified hardware allocation | Steps 11, 12 |
-| **Disconnected environments and edge** | Disconnected and air-gapped clusters for security and regulatory compliance | Steps 13, 13b |
-| Feature store | *Managing data features for ML models* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
-| Models-as-a-service | *API gateway for self-service model access (developer preview)* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| RHOAI Feature | Benefit (from datasheet) | Demo Steps |
+|---------------|--------------------------|------------|
+| **Model development and customization** | An interactive JupyterLab interface with AI/ML libraries and workbenches. Integrates data ingestion, synthetic data generation, InstructLab toolkit, and Retrieval Augmented Generation (RAG) for private data connection. | Steps 07, 11 |
+| **Model training and experimentation** | Organizes development files and artifacts. Supports distributed workloads for efficient training and tuning. Features experiment tracking and simplified hardware allocation. | Steps 11, 12 |
+| **Intelligent GPU and hardware speed** | Self-service GPU access is available. Offers intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles. | Steps 01, 02, 03 |
+| **AI pipelines** | Can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows. | Steps 07, 08, 12 |
+| **Optimized model serving** | Serves models from various providers and frameworks via a virtual large language model (vLLM), optimized for high throughput and low latency. The llm-d distributed inference framework supports predictable and scalable performance and efficient resource management. Includes LLM compressor and access to common, optimized and validated gen AI models. | Steps 05, 06 |
+| **Agentic AI and gen AI user interfaces (UIs)** | Speeds agentic AI workflows with core platform services. A unified application programming interface (API) layer (MCP and Llama Stack API) and dedicated dashboard experience (AI hub and gen AI studio). | Steps 05, 09, 10 |
+| **Model observability and governance** | Common open source tooling for lifecycle management, performance, and management. Tracks metrics, including performance, data drift and bias detection and AI guardrails or inference. Offers LLM evaluation (LM Eval) and LLM benchmarking (GuideLLM) to assist real world inference deployments. | Steps 06, 08, 09, 12 |
+| **Catalog and registry** | Centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts. | Step 04 |
+| **Disconnected environments and edge** | Supports disconnected and air-gapped clusters for security and regulatory compliance. | Steps 13, 13b |
+| Feature store | *A UI for managing clean, well-defined data features for ML models, enhancing performance and accelerating workflows.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| Models-as-a-service | *Allows AI engineers to use models via a managed, built-in API gateway for self-service access and usage tracking (developer preview feature).* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 
 ## Three Demo Themes
 
