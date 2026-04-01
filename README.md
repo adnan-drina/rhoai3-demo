@@ -30,10 +30,11 @@ Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and
 ├───────────────────────────────────────────────────────────────────────┤
 │               OpenShift Container Platform 4.20                       │
 │                                                                       │
-│ OLM   NFD   Serverless   Service Mesh 3   Monitoring (Prometheus)     │
-│ NVIDIA GPU Operator   GitOps (ArgoCD)   Pipelines (Tekton)   Auth     │
+│ NFD        NVIDIA GPU  Serverless   Service Mesh     Monitoring       │
+│ Operator   Operator    (Knative)    (Istio)          (Prometheus)     │
 │                                                                       │
-│ Data Foundation*   Streams (Kafka)*                                   │
+│ Auth       GitOps    Pipelines    Data Foundation*   Streams*         │
+│ Operator   (ArgoCD)  (Tekton)     (Ceph)             (Kafka)          │
 ├───────────────────────────────────────────────────────────────────────┤
 │                        Infrastructure                                 │
 │                                                                       │
