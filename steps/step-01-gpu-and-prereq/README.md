@@ -3,9 +3,9 @@
 
 ## Overview
 
-Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference.
+Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). As Red Hat's AI adoption guide asks: *"Can your current environment support AI workloads? This includes computing resources, storage, network capabilities, and the flexibility to scale as requirements grow."* Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference.
 
-**Red Hat OpenShift AI 3.3** provides intelligent GPU and hardware acceleration — self-service GPU access, intelligent GPU use for workload scheduling, and hardware discovery that automatically labels and provisions GPU resources. The platform handles the full stack: driver lifecycle, GPU node management, and inference networking — all deployed via GitOps and managed as first-class OpenShift resources.
+**Red Hat OpenShift AI 3.3** provides intelligent GPU and hardware acceleration — self-service GPU access, intelligent GPU use for workload scheduling, and hardware discovery that automatically labels and provisions GPU resources. GPUs are *"specialized processors for handling parallel processing tasks, making them ideal for training deep learning models that require processing large amounts of data simultaneously"* — and this step ensures they are properly discovered, provisioned, and managed. The platform handles the full stack: driver lifecycle, GPU node management, and inference networking — all deployed via GitOps and managed as first-class OpenShift resources.
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: a secure and flexible foundation that gives you the choice of where you develop and deploy your models, starting with the GPU infrastructure that powers everything above it.
 
@@ -154,6 +154,7 @@ oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 - [NVIDIA GPU driver 580.105.08 compatibility (KB 7134740)](https://access.redhat.com/solutions/7134740)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

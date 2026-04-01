@@ -3,9 +3,9 @@
 
 ## Overview
 
-With GPU infrastructure, the AI platform, and access controls in place, organizations need a governed approach to model management. Without it, teams download models from external sources, track versions in spreadsheets, and deploy unvetted artifacts to production — creating shadow AI that no one can audit.
+With GPU infrastructure, the AI platform, and access controls in place, organizations need a governed approach to model management. As Red Hat's AI adoption guide observes, *"enterprises are adopting a multimodel approach, using multiple specialized models rather than one monolithic system"* — which makes governance essential. Without it, teams download models from external sources, track versions in spreadsheets, and deploy unvetted artifacts to production — creating shadow AI that no one can audit. Finding the right model matters: *"The right model is the smallest one that meets your accuracy requirements and has been optimized for your infrastructure."*
 
-**Red Hat OpenShift AI 3.3** provides two complementary model management capabilities. The **Model Catalog** is a curated library of 48+ Red Hat-validated models in OCI ModelCar format — ready to deploy with a click and no external dependencies. The **Model Registry** tracks versions, ownership, and approval status of models before they reach production. Together they form a centralized management system for predictive and generative AI models: discover in the Catalog, register for governance, deploy from either.
+**Red Hat OpenShift AI 3.3** provides two complementary model management capabilities. The **Model Catalog** is a curated library of 48+ Red Hat-validated models in OCI ModelCar format — ready to deploy with a click and no external dependencies. The **Model Registry** tracks versions, ownership, and approval status of models before they reach production. Together they provide *"centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts"* — discover in the Catalog, register for governance, deploy from either.
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: providing a catalog and registry for centralized management of AI models, ensuring that the same governed model lifecycle works across any OpenShift cluster.
 
@@ -159,6 +159,7 @@ oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.modelregist
 - [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

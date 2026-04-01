@@ -3,11 +3,11 @@
 
 ## Overview
 
-Step 05 proved your team can experiment with LLMs via the GenAI Playground. But chat alone hallucinates when asked about internal documents — an LLM that thinks your semiconductor client is a Looney Tunes company is not production-ready. Retrieval Augmented Generation (RAG) closes this gap by grounding model responses in your actual data.
+Step 05 proved your team can experiment with LLMs via the GenAI Playground. But chat alone hallucinates when asked about internal documents — an LLM that thinks your semiconductor client is a Looney Tunes company is not production-ready. *"Much enterprise knowledge lives in documents scattered across the organization: PDFs, wikis, support tickets, and internal documentation. Connecting models to this knowledge is often a more efficient path to value."* Retrieval Augmented Generation (RAG) closes this gap by grounding model responses in your actual data.
 
-**Red Hat OpenShift AI 3.3** provides an integrated RAG stack through the **Llama Stack API** — embedding, vector storage, and agent queries in a unified interface. Documents are ingested through **Kubeflow Pipelines** with **Docling** for intelligent PDF conversion, stored in **PostgreSQL with pgvector**, and queried via both direct retrieval and autonomous agent-based search. The entire pipeline is repeatable, versioned, and visible in the RHOAI Dashboard.
+**Red Hat OpenShift AI 3.3** provides an integrated RAG stack through the **Llama Stack API** — embedding, vector storage, and agent queries in a unified interface. Documents are ingested through **Kubeflow Pipelines** with **Docling** for intelligent PDF conversion, stored in **PostgreSQL with pgvector**, and queried via both direct retrieval and autonomous agent-based search. *"Docling, an open source framework included in Red Hat AI, handles this complexity by extracting text, tables, and structure from PDFs and other documents."* The entire pipeline is repeatable, versioned, and visible in the RHOAI Dashboard.
 
-This step demonstrates the **Connecting Models to Data** pillar of Red Hat's AI platform: Retrieval Augmented Generation for private data connection, ensuring models answer from your documents rather than hallucinating from training data.
+*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This step demonstrates the **Connecting Models to Data** pillar of Red Hat's AI platform: Retrieval Augmented Generation for private data connection, ensuring models answer from your documents rather than hallucinating from training data.
 
 ### What Gets Deployed
 
@@ -260,6 +260,7 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

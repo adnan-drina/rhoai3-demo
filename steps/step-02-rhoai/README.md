@@ -5,7 +5,7 @@
 
 With GPU infrastructure in place, the cluster needs an AI platform layer that turns raw compute into a self-service environment for data scientists and ML engineers. Without it, every team builds their own model serving pipeline, training infrastructure, and monitoring stack — duplicating effort and creating ungoverned silos.
 
-**Red Hat OpenShift AI 3.3** delivers a unified AI/ML platform that provides centralized management for predictive and generative AI models. GenAI Studio provides an Agent Playground and Model Catalog, Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack — from model serving and distributed training to pipelines and governance.
+**Red Hat OpenShift AI 3.3** delivers a unified AI/ML platform that provides centralized management for predictive and generative AI models — a platform that *"provides a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions."* GenAI Studio enables *"rapid prototyping and evaluation before committing to production"* with an Agent Playground and Model Catalog. Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack — from model serving and distributed training to pipelines and governance.
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: providing a secure and flexible platform that gives you the choice of where you develop and deploy your models, with a consistent experience across any OpenShift cluster.
 
@@ -171,6 +171,7 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

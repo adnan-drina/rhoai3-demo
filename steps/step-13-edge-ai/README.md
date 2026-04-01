@@ -5,7 +5,7 @@
 
 Steps 11 and 12 proved that Red Hat OpenShift AI handles the full ML lifecycle — from interactive training to automated pipelines with quality gates. But models have to run where the data is. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."*
 
-Step 13 brings the face recognition model to the edge: a camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. This is the **Red Hat Edge + On-Premise** pattern — data acquisition and inference at the edge, model development in the datacenter, all managed by the same platform.
+Step 13 brings the face recognition model to the edge: a camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. As Red Hat's AI adoption guide explains: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."* This is the **Red Hat Edge + On-Premise** pattern — data acquisition and inference at the edge, model development in the datacenter, all managed by the same platform.
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: the same model trained centrally on RHOAI deploys to edge sites with zero code changes.
 
@@ -333,6 +333,7 @@ oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 - [OpenVINO Model Server KServe-compatible API](https://docs.openvino.ai/2026/model-server/ovms_docs_rest_api_kfs.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 > **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (real edge hardware), [Step 03 — Private AI](../step-03-private-ai/README.md) (MinIO + namespace)
 

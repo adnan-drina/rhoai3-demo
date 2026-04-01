@@ -5,7 +5,9 @@
 
 Your models are registered. Your GPUs are provisioned. Now it's time to serve them. Moving from experimentation to production inference requires a runtime that balances performance, compatibility, and operational simplicity — all on private infrastructure with no external API dependencies.
 
-**Red Hat OpenShift AI 3.3** delivers this with the **Red Hat AI Inference Server**, powered by vLLM — optimized for high throughput and low latency on GPU hardware. KServe RawDeployment mode exposes OpenAI-compatible endpoints, the **Model Registry** catalogs available models, and the **GenAI Playground** gives developers a browser-based sandbox for immediate experimentation. Three additional models are registered in the catalog and deployable from **GenAI Studio** when the team needs them.
+**Red Hat OpenShift AI 3.3** delivers this with the **Red Hat AI Inference Server**, powered by vLLM. *"Purpose-built serving infrastructure, such as Red Hat AI Inference Server (based on vLLM), maximizes throughput through techniques such as continuous batching, paged attention, and optimized GPU use."* KServe RawDeployment mode exposes OpenAI-compatible endpoints, the **Model Registry** catalogs available models, and the **GenAI Playground** gives developers a browser-based sandbox for immediate experimentation. Three additional models are registered in the catalog and deployable from **GenAI Studio** when the team needs them.
+
+The model portfolio reflects a deliberate sizing strategy. *"Small language models offer a compelling middle ground. These models deliver strong performance on targeted tasks while requiring significantly fewer resources than their larger counterparts."* Granite 8B — the agent model — runs as an FP8 quantized checkpoint on a single GPU, while Mistral 3 BF16 uses four GPUs for enterprise chat and evaluation. *"Model quantization reduces size and accelerates inference by using lower-precision numerical formats... Red Hat's benchmarks of over half a million evaluations found that 8-bit quantization delivers approximately 1.8x performance speedup with full accuracy recovery."*
 
 This step demonstrates the **Efficient Inferencing** pillar of Red Hat's AI platform: optimized model serving via vLLM, delivering fast and cost-effective inference at scale.
 
@@ -185,6 +187,7 @@ oc delete pvc mistral-3-bf16-pvc -n private-ai
 - [RHOAI 3.3 — Model and Runtime Requirements for Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

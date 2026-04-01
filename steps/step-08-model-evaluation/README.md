@@ -3,7 +3,7 @@
 
 ## Overview
 
-Step 07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? And how does your model stack up on standard reasoning benchmarks? Without measurable evaluation, you're trusting the model on faith — and faith doesn't pass compliance audits.
+Step 07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? And how does your model stack up on standard reasoning benchmarks? Without measurable evaluation, you're trusting the model on faith — and faith doesn't pass compliance audits. As Red Hat's AI adoption guide emphasizes: *"Define success criteria in advance: accuracy thresholds, response quality, latency requirements, or business metrics. Without clear criteria, you won't know whether your implementation is working."*
 
 **Red Hat OpenShift AI 3.3** provides two evaluation capabilities through its AI platform. **RAG Evaluation** runs the same questions with and without document context, then uses a larger LLM as a judge to score the quality difference — delivered as a **Kubeflow Pipeline** with HTML reports published to MinIO. **Standard Model Evaluation** uses RHOAI's native **LMEvalJob** CR and **TrustyAI** operator to run industry-standard benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any deployed model.
 
@@ -300,6 +300,7 @@ If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.
 - [TrustyAI Documentation](https://trustyai.org/docs/main/main) — Tutorials for LM-Eval setup
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

@@ -3,9 +3,9 @@
 
 ## Overview
 
-The RHOAI platform is installed, but without access controls, every user consumes every GPU. A shared AI platform requires governance: storage for models and pipeline artifacts, identity management for teams, and role-based access that separates platform administrators from data science consumers.
+The RHOAI platform is installed, but without access controls, every user consumes every GPU. A shared AI platform requires governance: storage for models and pipeline artifacts, identity management for teams, and role-based access that separates platform administrators from data science consumers. As Red Hat's AI adoption guide notes, *"Sovereign AI addresses this by keeping data, models, and inference within your control, whether that means on-premise, in a specific region, or within a trusted cloud environment."*
 
-**Red Hat OpenShift AI 3.3** provides the building blocks for a governed AI platform — Hardware Profiles for intelligent GPU scheduling, integrated data connections for S3 storage, and OpenShift-native RBAC that separates Service Governors from Service Consumers. The platform ensures that the right people have access to the right resources without bottlenecking on infrastructure tickets.
+**Red Hat OpenShift AI 3.3** provides the building blocks for a governed AI platform — with *"self-service GPU access... intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles."* The platform adds integrated data connections for S3 storage and OpenShift-native RBAC that separates Service Governors from Service Consumers, ensuring the right people have access to the right resources without bottlenecking on infrastructure tickets.
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: a secure and flexible platform that gives you the choice of where you develop and deploy your models, with governance that scales from a single team to an entire organization.
 
@@ -160,6 +160,7 @@ oc apply -f gitops/step-03-private-ai/base/minio/init-job.yaml
 - [RHOAI 3.3 — User Management](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_users/index)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

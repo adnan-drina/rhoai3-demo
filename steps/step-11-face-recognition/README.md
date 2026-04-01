@@ -3,7 +3,7 @@
 
 ## Overview
 
-Generative AI gets the headlines, but enterprises also run traditional ML workloads — image classification, object detection, anomaly recognition. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* A platform that only handles LLMs is half a platform.
+Generative AI gets the headlines, but enterprises also run traditional ML workloads — image classification, object detection, anomaly recognition. A platform that only handles LLMs is half a platform. Red Hat's AI adoption guide describes this broader landscape: *"Predictive AI helps organizations identify and connect patterns, historical events, and real-time data to predict future outcomes with extremely high accuracy. It can be applied to demand forecasting, preventive maintenance, and operational planning."* In the visual domain, *"Computer vision enables object detection, image classification, and segmentation, which is particularly valuable in manufacturing and quality control."* As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."*
 
 **Red Hat OpenShift AI 3.3** supports the full spectrum: LLMs on vLLM (Steps 05-10) and predictive AI on OpenVINO (this step) — same platform, same GitOps lifecycle, same operational model. The "WhoAmI — Visual Identity" scenario trains a YOLO11 model that literally recognizes your face, served via KServe RawDeployment on CPU.
 
@@ -244,6 +244,7 @@ oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition |
 - [Pre-trained model (ONNX): ariakang/YOLOv11n-face-detection](https://huggingface.co/ariakang/YOLOv11n-face-detection) — deployed to MinIO by `deploy.sh`
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 > **See also:** [Step 05 — LLM Serving on vLLM](../step-05-llm-on-vllm/README.md) (GPU model serving pattern), [Step 09 — Guardrails](../step-09-guardrails/README.md) (CPU-only InferenceService pattern)
 

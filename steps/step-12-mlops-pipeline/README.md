@@ -3,9 +3,9 @@
 
 ## Overview
 
-Step 11 demonstrated the data scientist's inner loop — interactive training in a notebook. But as Red Hat states: *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed."* When you need to retrain weekly as new photos come in, you need automation, governance, and quality gates — not a notebook someone runs manually.
+Step 11 demonstrated the data scientist's inner loop — interactive training in a notebook. But as Red Hat's AI adoption guide states: *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows."* When you need to retrain weekly as new photos come in, you need automation, governance, and quality gates — not a notebook someone runs manually.
 
-**Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** for automating ML workflows and a **Model Registry** for versioned model governance. Step 12 is the MLOps engineer's outer loop: the same training workflow automated as a pipeline that runs unattended, evaluates quality, and only deploys if the model passes. This is the first pipeline in the project that connects KFP to the Model Registry, demonstrating the full RHOAI 3.3 ML lifecycle.
+**Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** for automating ML workflows and a **Model Registry** for versioned model governance. Step 12 is the MLOps engineer's outer loop: the same training workflow automated as a pipeline that runs unattended, evaluates quality, and only deploys if the model passes. This is the first pipeline in the project that connects KFP to the Model Registry, demonstrating the full RHOAI 3.3 ML lifecycle. Beyond pipeline automation, ongoing model health matters. As the guide warns: *"Implement drift monitoring to track model behavior over time, including changes in accuracy, response quality, and adherence to safety guidelines. Models can degrade as the world changes around them; monitoring catches this before users do."*
 
 This step demonstrates the **Flexibility across hybrid cloud** pillar of Red Hat's AI platform: AI pipelines that automate model delivery with built-in governance — versioned, tracked, and managed on the same platform that serves the models.
 
@@ -334,6 +334,7 @@ oc apply -f gitops/step-12-mlops-pipeline/base/pipeline-rbac.yaml
 - [KFP Pipelines Components](https://github.com/red-hat-data-services/pipelines-components)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 > **See also:** [Step 07 — RAG Pipeline](../step-07-rag/README.md) (KFP patterns), [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (notebook-based training), [Step 04 — Model Registry](../step-04-model-registry/README.md) (governance), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (ArgoCD consumes the ModelCar tag updates)
 

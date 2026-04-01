@@ -3,7 +3,7 @@
 
 ## Overview
 
-Models are deployed. But how do they perform? Before scaling to production, platform teams need data: latency distributions, throughput ceilings, GPU utilization, and KV cache pressure under real concurrency. Without observability, capacity planning is guesswork — and guessing at GPU scale costs money.
+Models are deployed. But how do they perform? *"Moving from proof-of-concept to production introduces new challenges around cost, latency, and scale. Optimization ensures your models perform efficiently under real-world conditions, where every millisecond of latency and every dollar of compute cost matters."* Before scaling to production, platform teams need data: latency distributions, throughput ceilings, GPU utilization, and KV cache pressure under real concurrency. Without observability, capacity planning is guesswork — and guessing at GPU scale costs money.
 
 **Red Hat OpenShift AI 3.3** provides model observability through **OpenShift User Workload Monitoring**, which automatically scrapes vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards visualize latency, throughput, and KV cache utilization in real time, while **GuideLLM** stress tests reveal each model's capacity limits under graduated concurrency. **DCGM** (Data Center GPU Manager) exposes GPU hardware utilization for capacity planning.
 
@@ -249,6 +249,7 @@ oc get operatorgroup -n private-ai
 - [Grafana Operator](https://github.com/grafana/grafana-operator)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

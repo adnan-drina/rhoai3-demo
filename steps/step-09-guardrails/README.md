@@ -3,7 +3,7 @@
 
 ## Overview
 
-Your team built a RAG chatbot grounded in internal documents — it answers from your real data. But as Red Hat's AI platform documentation states: *"Hallucination and bias can compromise the integrity of your models and make it harder to scale."* Uncontrolled output can expose sensitive personal data, and unfiltered input opens the door to abuse and prompt injection attacks.
+Your team built a RAG chatbot grounded in internal documents — it answers from your real data. But as Red Hat's AI platform documentation states: *"Hallucination and bias can compromise the integrity of your models and make it harder to scale."* Uncontrolled output can expose sensitive personal data, and unfiltered input opens the door to abuse and prompt injection attacks. Red Hat's AI adoption guide recommends: *"Deploy models with appropriate guardrails: content filters, output validation, and safety boundaries that reflect your policies and risk tolerance."*
 
 **Red Hat OpenShift AI 3.3** addresses this with the **TrustyAI Guardrails Orchestrator** — a customizable safety framework that protects model inputs and outputs from harmful information including abusive speech, personal data, and prompt injection. AI guardrails are an RHOAI platform capability, not a third-party add-on — they deploy via GitOps and run entirely on CPU.
 
@@ -176,6 +176,7 @@ If missing, re-run `deploy.sh` or manually register the safety provider.
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
 - [rhoai-genaiops/lab-instructions — Guardrails](https://github.com/rhoai-genaiops/lab-instructions/tree/main/docs/7-honor-code)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

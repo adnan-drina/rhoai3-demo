@@ -3,7 +3,7 @@
 
 ## Overview
 
-Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A — it takes action. An AI agent that can only search documents is a chatbot. An AI agent that can query databases, inspect infrastructure, and notify teams is an autonomous operations assistant.
+Steps 07-09 proved your RAG system can retrieve, answer, evaluate, and stay safe. But real enterprise AI goes beyond document Q&A — it takes action. As Red Hat's AI adoption guide describes: *"Agentic architectures orchestrate multiple AI agents that can query databases, call APIs, search internal knowledge bases, and take actions based on results. This moves AI from answering questions to completing tasks."* An AI agent that can only search documents is a chatbot. An AI agent that can query databases, inspect infrastructure, and notify teams is an autonomous operations assistant. As the guide notes: *"Modern models also now support function calling, allowing them to interact with external tools, APIs, and databases, transforming them from text generators to action-takers."*
 
 **Red Hat OpenShift AI 3.3** accelerates agentic AI with built-in support for the **Model Context Protocol (MCP)** — an open source protocol that enables standardized communication between AI applications and external services. MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) connect the LLM to live enterprise systems through a unified API layer, with the **Llama Stack API** orchestrating tool calls autonomously.
 
@@ -223,6 +223,7 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 

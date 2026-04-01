@@ -3,7 +3,7 @@
 
 ## Overview
 
-Step 13 simulated an edge deployment using a separate namespace on the central OCP cluster. Step 13b deploys on **real edge hardware** — a RHEL host running MicroShift. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* This is the proof: the same model trained centrally flows to an actual edge device running a completely different Kubernetes distribution.
+Step 13 simulated an edge deployment using a separate namespace on the central OCP cluster. Step 13b deploys on **real edge hardware** — a RHEL host running MicroShift. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* This is the proof: the same model trained centrally flows to an actual edge device running a completely different Kubernetes distribution. Red Hat's AI adoption guide frames this as sovereign AI: *"Sovereign AI addresses this by keeping data, models, and inference within your control, whether that means on-premise, in a specific region, or within a trusted cloud environment."* The value is practical: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."*
 
 **Red Hat Build of MicroShift 4.20** is an edge-optimized Kubernetes distribution built on RHEL, providing KServe model serving via the `microshift-ai-model-serving` RPM. Combined with **NVIDIA Triton Inference Server** for GPU-accelerated inference and **embedded ArgoCD** for GitOps-driven model delivery, this step demonstrates the complete Red Hat Edge + On-Premise lifecycle.
 
@@ -382,6 +382,7 @@ oc get application edge-ai -n argocd -o yaml | grep -A 5 status
 - [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 > **See also:** [Step 13 — Edge AI (simulated)](../step-13-edge-ai/README.md), [Step 11 — Face Recognition](../step-11-face-recognition/README.md), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md)
 
