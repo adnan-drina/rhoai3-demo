@@ -3,9 +3,7 @@
 
 ## Overview
 
-Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **tool-enabled action**, not only document answers. Theme 2 closes the loop: models grounded in data, held to policy, and now able to query equipment databases, inspect OpenShift workloads, and notify teams in Slack when something fails. As Red Hat's AI adoption guide describes: *"Agentic architectures orchestrate multiple AI agents that can query databases, call APIs, search internal knowledge bases, and take actions based on results. This moves AI from answering questions to completing tasks."* As the guide notes: *"Modern models also now support function calling, allowing them to interact with external tools, APIs, and databases, transforming them from text generators to action-takers."*
-
-**Red Hat OpenShift AI 3.3** supports that pattern through the **Model Context Protocol (MCP)** — standardized communication between AI applications and external services. MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) plug the model into operational systems on private infrastructure, with the **Llama Stack API** orchestrating tool use.
+Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **tool-enabled action**, not only document answers. The loop closes: models grounded in data, held to policy, and now able to use tools — querying equipment databases, inspecting OpenShift workloads, and notifying teams in Slack. **Red Hat OpenShift AI 3.3** supports this through the **Model Context Protocol (MCP)** — standardized communication between AI applications and external services — with MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) and the **Llama Stack API** orchestrating tool use.
 
 This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building tool-enabled workflows that perform complex tasks with limited supervision.
 
@@ -92,13 +90,18 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
 
-> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
-
 > **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
+
+<details>
+<summary>Additional design decisions</summary>
+
+> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
 
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
 > **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
+
+</details>
 
 ### Deploy
 

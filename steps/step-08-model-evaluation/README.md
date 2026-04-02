@@ -3,11 +3,9 @@
 
 ## Overview
 
-Building on **RAG** from Step 07 — within the same governed platform ACME already uses for serving and grounded data — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. As Red Hat's AI adoption guide emphasizes: *"Define success criteria in advance: accuracy thresholds, response quality, latency requirements, or business metrics. Without clear criteria, you won't know whether your implementation is working."*
+Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. **Red Hat OpenShift AI 3.3** provides two paths: **RAG Evaluation** (LLM-as-judge inside a Kubeflow Pipeline with HTML reports) and **Standard Model Evaluation** (LMEvalJob CR with TrustyAI for benchmarks like HellaSwag, ARC Challenge, WinoGrande, BoolQ).
 
-**Red Hat OpenShift AI 3.3** provides two paths. **RAG Evaluation** runs the same questions with and without context, scores the gap with an LLM-as-judge inside a **Kubeflow Pipeline**, and publishes HTML reports to MinIO. **Standard Model Evaluation** uses the **LMEvalJob** CR and **TrustyAI** operator for benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any served model.
-
-This step supports Trust by making quality and improvement reviewable for stakeholders. It demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
+This step demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
 
 ### What Gets Deployed
 
@@ -265,19 +263,6 @@ oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.trustyai.ev
 
 Should show `permitOnline: allow` and `permitCodeExecution: allow`. If not, redeploy step-02.
 
-### KFP eval pipeline can't reach mistral-3-bf16
-
-**Root Cause:** The judge model's InferenceService is not ready or the service DNS isn't resolving from KFP pods.
-
-**Solution:**
-
-```bash
-oc get inferenceservice mistral-3-bf16 -n private-ai
-oc get svc -n private-ai | grep mistral
-```
-
-The KFP pipeline connects to `http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080`. Verify the service exists and the model is Ready.
-
 ### Post-RAG scores are low (D/E) when they should be A/B
 
 **Root Cause:** Vector stores are empty — step-07 ingestion hasn't run.
@@ -291,11 +276,29 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector_
 
 If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.sh acme && ./steps/step-07-rag/run-batch-ingestion.sh whoami`
 
+<details>
+<summary>Additional troubleshooting</summary>
+
+### KFP eval pipeline can't reach mistral-3-bf16
+
+**Root Cause:** The judge model's InferenceService is not ready or the service DNS isn't resolving from KFP pods.
+
+**Solution:**
+
+```bash
+oc get inferenceservice mistral-3-bf16 -n private-ai
+oc get svc -n private-ai | grep mistral
+```
+
+The KFP pipeline connects to `http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080`. Verify the service exists and the model is Ready.
+
 ### Evaluations page not visible in Dashboard
 
 **Root Cause:** `disableLMEval` is `true` in `OdhDashboardConfig`.
 
 **Solution:** Already set to `false` in `gitops/step-02-rhoai/base/rhoai-operator/dashboard-config.yaml`. If not applied, redeploy step-02.
+
+</details>
 
 ## References
 

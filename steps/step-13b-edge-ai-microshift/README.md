@@ -3,11 +3,9 @@
 
 ## Overview
 
-**Run AI closer to where decisions happen without losing central control.** Step 13 simulated edge placement on-cluster; Step 13b proves the **governed platform** on **real edge hardware** — **one operating model** and **consistent lifecycle** from core to a RHEL host at the edge, with **hybrid flexibility** so edge inference stays aligned with central standards. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* Sovereign AI in the adoption guide means keeping *"data, models, and inference within your control"* on-premise, in-region, or in a trusted cloud — paired with *"low-latency inference for real-time applications without round-trip calls to external APIs."*
+Step 13 simulated edge placement on-cluster; Step 13b proves it on **real edge hardware** — same operating model, real RHEL host, edge footprint. **Red Hat Build of MicroShift 4.20** brings KServe-style serving and embedded ArgoCD to a single RHEL host with an NVIDIA L4 GPU, so edge inference stays aligned with central standards without creating a second stack.
 
-**Red Hat Build of MicroShift 4.20** is an edge-optimized Kubernetes on RHEL that brings the **same Kubernetes primitives** — KServe-style serving and GitOps — to **resource-constrained** devices: `microshift-ai-model-serving`, **NVIDIA Triton Inference Server** for GPU-accelerated ONNX, and **embedded ArgoCD** for the same declarative delivery model you use in the datacenter.
-
-This optional step proves Consistency on an actual edge footprint, not just in a simulated target. It demonstrates RHOAI's **Disconnected environments and edge** capability on real hardware: the same model trained in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model, with embedded GitOps for autonomous updates.
+This optional step demonstrates RHOAI's **Disconnected environments and edge** capability on real hardware: the same model trained in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model, with embedded GitOps for autonomous updates.
 
 > **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
 
@@ -110,6 +108,9 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 > **ModelCar OCI format** with Triton directory layout (`/models/<model-name>/<version>/model.onnx`). Built with `sudo podman` so CRI-O can access it directly from root container storage. Uses tag `v2` (not `latest`) so `imagePullPolicy` is `IfNotPresent`.
 
+<details>
+<summary>Additional design decisions</summary>
+
 > **Non-headless stable service** (`face-recognition-edge-stable`) for gRPC connectivity. KServe creates a headless service (`ClusterIP: None`) which doesn't provide a stable ClusterIP. The stable service ensures the edge-camera can use a DNS name that survives pod restarts.
 
 > **NVIDIA device plugin** deployed via MicroShift auto-manifests at `/etc/microshift/manifests/` with SELinux permissions (`container_use_devices` boolean + custom policy module). Follows the [NVIDIA GPU with Red Hat Device Edge](https://docs.nvidia.com/datacenter/cloud-native/edge/latest/nvidia-gpu-with-device-edge.html) guide.
@@ -121,6 +122,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 > **Restart recovery verified.** All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
 
 > **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `private-ai` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
+
+</details>
 
 ### Deploy
 

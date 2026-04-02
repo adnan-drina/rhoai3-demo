@@ -3,9 +3,7 @@
 
 ## Overview
 
-**Run AI closer to where decisions happen without losing central control.** Steps 11 and 12 trained and governed the model in the core — **the same models, pipelines, and governance** now **extend** from datacenter to an edge-shaped target. You keep **one operating model** and a **consistent lifecycle** (central training, GitOps promotion) while putting inference next to the camera and the data, with **hybrid cloud flexibility** instead of a second shadow stack.
-
-As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* Step 13 simulates that pattern: a local OpenVINO server answers the edge camera, while the model artifact still flows from the same central story (MinIO, pipeline, registry) you already trust. The adoption guide frames the payoff: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."*
+**Run AI closer to where decisions happen without losing central control.** The models, pipelines, and governance from Steps 11–12 **extend** from datacenter to an edge-shaped target. You keep **one operating model** and a **consistent lifecycle** (central training, GitOps promotion) while putting inference next to the camera and the data, without creating a second stack.
 
 Edge is not a new AI platform — it is the same governed lifecycle pushed outward. This step demonstrates RHOAI's **Disconnected environments and edge** capability: the same model trained centrally deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI supports deployment across cloud, on-premise, and edge environments.
 
@@ -95,6 +93,9 @@ Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deploymen
 
 > **`camera_input_live`** for Live Video instead of `streamlit-webrtc`. WebRTC failed because the pod can't reach STUN servers over UDP (restricted egress). `camera_input_live` captures frames via `getUserMedia` + `canvas.toDataURL` and sends them over the existing Streamlit WebSocket — plain HTTPS, no STUN/TURN required.
 
+<details>
+<summary>Additional design decisions</summary>
+
 > **gRPC for inference** using `tritonclient[grpc]`. Both OVMS (this step) and NVIDIA Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. gRPC provides ~30x lower latency compared to REST JSON. The same `inference.py` client code works against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 
 > **`@st.fragment`** wraps the live camera section. Only the camera fragment re-executes on each new frame — the sidebar, header, and mode selector are not re-rendered. This is the [Streamlit-recommended pattern](https://docs.streamlit.io/develop/concepts/architecture/fragments) for live/streaming UI sections.
@@ -104,6 +105,8 @@ Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deploymen
 > **Shared application code** with step-13b. `inference.py`, `edge_camera.py`, `requirements.txt`, and the Containerfile are identical. Only the `GRPC_ENDPOINT` env var differs between the two deployments. Must be built with `--platform linux/amd64` on Apple Silicon.
 
 > **No AMQ Streams / Kafka** in this step. gRPC between the Streamlit app and the model server is sufficient for the demo. Kafka-based streaming is a documented future extension.
+
+</details>
 
 ### Future Improvements
 
@@ -290,18 +293,6 @@ podman build --platform linux/amd64 \
 podman push quay.io/adrina/edge-camera:latest
 ```
 
-### edge-camera pod in CrashLoopBackOff / ImagePullBackOff
-
-**Root Cause:** The container image was not pushed, or the quay.io repository is private.
-
-**Solution:**
-```bash
-oc describe pod -n edge-ai-demo -l app.kubernetes.io/name=edge-camera | tail -20
-
-# Ensure the quay.io repo is public:
-# https://quay.io/repository/adrina/edge-camera?tab=settings
-```
-
 ### InferenceService stuck in "Not Ready"
 
 **Root Cause:** The model is not at the expected MinIO path, or the `storage-config` secret is missing.
@@ -318,6 +309,21 @@ oc exec -n minio-storage deploy/minio -- mc ls local/models/face-recognition/1/
 oc get secret storage-config -n edge-ai-demo -o yaml
 ```
 
+<details>
+<summary>Additional troubleshooting</summary>
+
+### edge-camera pod in CrashLoopBackOff / ImagePullBackOff
+
+**Root Cause:** The container image was not pushed, or the quay.io repository is private.
+
+**Solution:**
+```bash
+oc describe pod -n edge-ai-demo -l app.kubernetes.io/name=edge-camera | tail -20
+
+# Ensure the quay.io repo is public:
+# https://quay.io/repository/adrina/edge-camera?tab=settings
+```
+
 ### Camera not working in browser
 
 **Root Cause:** Browser camera access (`getUserMedia`) requires HTTPS. The Route must use TLS.
@@ -327,6 +333,8 @@ oc get secret storage-config -n edge-ai-demo -o yaml
 oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 # Expected: edge
 ```
+
+</details>
 
 ## References
 

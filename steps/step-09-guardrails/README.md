@@ -3,9 +3,7 @@
 
 ## Overview
 
-RAG made the assistant useful; evaluation proved it. The next step before production is making it **governable** — ensuring every prompt and response meets policy before that assistant faces broader risk. Building on the **RAG chatbot** from Step 07 — reusing governance already in place for models, data, and serving — this step adds **safety controls** that move ACME's AI from a capable prototype to a production-grade service. As Red Hat's AI platform documentation states: *"Hallucination and bias can compromise the integrity of your models and make it harder to scale."* Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Trust** at scale needs explicit boundaries. Red Hat's AI adoption guide recommends: *"Deploy models with appropriate guardrails: content filters, output validation, and safety boundaries that reflect your policies and risk tolerance."*
-
-**Red Hat OpenShift AI 3.3** delivers that with the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — as a platform-native capability deployed via GitOps, with CPU-based detectors that avoid competing with inference GPUs.
+RAG made the assistant useful; evaluation proved it. The next step before production is making it **governable** — ensuring every prompt and response meets policy before that assistant faces broader risk. Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Red Hat OpenShift AI 3.3** delivers safety through the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — deployed via GitOps with CPU-based detectors that avoid competing with inference GPUs.
 
 This step demonstrates RHOAI's **Model observability and governance** capability — specifically AI guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
 

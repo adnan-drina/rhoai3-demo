@@ -3,11 +3,9 @@
 
 ## Overview
 
-**Build, train, and operationalize predictive AI on the same platform as generative AI.** You do not adopt a separate toolchain for traditional ML: the **serving**, **pipelines**, **observability**, and **governance** you established in earlier themes carry forward here. Red Hat's AI adoption guide describes predictive AI as helping organizations *"identify and connect patterns, historical events, and real-time data to predict future outcomes with extremely high accuracy"* — including demand forecasting, preventive maintenance, and operational planning. In the visual domain, *"Computer vision enables object detection, image classification, and segmentation, which is particularly valuable in manufacturing and quality control."* As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."*
+**Predictive AI on the same platform as generative AI.** The serving, pipelines, observability, and governance established for LLMs carry forward for traditional ML — you do not adopt a separate toolchain. Computer vision enables object detection and image classification particularly valuable in manufacturing and quality control. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.3** alongside the GenAI stack, not on an island — one infrastructure footprint, one operational model.
 
-The **same platform** that serves LLMs with vLLM (Steps 05–10) also supports computer vision: this step trains a YOLO11 model, exports to ONNX, and serves it with OpenVINO on KServe — **one infrastructure footprint, one operational model** for both generative and predictive AI. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.3** alongside your GenAI stack, not on an island.
-
-This is where Choice shows up at the platform level: the same governed platform supports both generative and predictive patterns. This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
+This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
 
 ### What Gets Deployed
 

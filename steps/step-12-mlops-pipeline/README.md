@@ -3,11 +3,9 @@
 
 ## Overview
 
-**Build, train, and operationalize predictive AI on the same platform as generative AI.** Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, and registry-backed promotion **on the same RHOAI footprint** as your GenAI work, not a separate toolchain. You **reuse** the pipeline server, registry, and observability story from earlier themes: the **same pipeline infrastructure** that powers RAG document ingestion (Step 07) now runs dataset prep, training, evaluation, Model Registry updates, and conditional deploy for face recognition.
+Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, and registry-backed promotion on the **same pipeline infrastructure** that powers RAG document ingestion (Step 07). **Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** and a **Model Registry** so the workflow runs unattended with governance. Pipelines are versioned, tracked, and managed — reducing user error from experimentation through production. Drift monitoring tracks model behavior over time, catching degradation before users do.
 
-As Red Hat's AI adoption guide states: *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows."* **Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** and a **Model Registry** so that workflow runs unattended with governance. Ongoing model health still matters: *"Implement drift monitoring to track model behavior over time, including changes in accuracy, response quality, and adherence to safety guidelines. Models can degrade as the world changes around them; monitoring catches this before users do."*
-
-This is where Consistency shows up for predictive AI: the same platform governs experimentation, automation, promotion, and monitoring. This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with pipelines that are versioned, tracked, and managed, plus TrustyAI drift and bias monitoring in production.
+This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with TrustyAI drift and bias monitoring in production.
 
 ### What Gets Deployed
 
@@ -59,6 +57,9 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 > **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
 
+<details>
+<summary>Additional design decisions</summary>
+
 > **TrustyAI adapter pattern for CV models.** Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `trustyai-adapter` Deployment receives post-processed detection results from inference clients and transforms them into tabular metrics (`image_type`, `num_detections`) that TrustyAI computes SPD on. This approach bypasses the KServe inference logger's TLS limitation in RawDeployment mode (RHOAI 3.3). See [RHOAI 3.3 Monitoring](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/monitoring_your_ai_systems/).
 
 > **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
@@ -66,6 +67,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 > **Tekton for ModelCar builds, not KFP.** Building OCI images requires `buildah` with elevated security context — inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
 
 > **`pip_index_urls=["https://pypi.org/simple"]`** on all components that require packages outside the Red Hat index. The RHOAI base image (`rhai/base-image-cpu-rhel9:3.3.0`) configures pip to use Red Hat's Python index, which lacks `ultralytics`, `onnxruntime`, `onnxslim`, and other ML packages. Adding `pip_index_urls` in the `@component` decorator tells KFP to use PyPI instead. This also resolves the KFP SDK version mismatch (base image has 2.15.2, compiled pipeline requests 2.16.0).
+
+</details>
 
 ### Deploy
 
@@ -292,6 +295,17 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 
 **Solution:** Ensure `pip_index_urls=["https://pypi.org/simple"]` is set in the `@component` decorator. See `kfp/components/train_model.py` for the pattern.
 
+### Pipeline fails at "evaluate_model" with threshold error
+
+**This is expected behavior** when the model doesn't meet the quality bar. Lower the threshold or improve training data:
+
+```bash
+./run-training-pipeline.sh --threshold=0.5
+```
+
+<details>
+<summary>Additional troubleshooting</summary>
+
 ### Pipeline fails at "evaluate_model" with "No module named 'onnxruntime'"
 
 **Root Cause:** `onnxruntime` was missing from `packages_to_install` in evaluate_model. YOLO ONNX inference requires it.
@@ -318,14 +332,6 @@ ArgoCD will recreate the resource from Git automatically.
 oc get secret dspa-minio-credentials -n private-ai -o yaml
 ```
 
-### Pipeline fails at "evaluate_model" with threshold error
-
-**This is expected behavior** when the model doesn't meet the quality bar. Lower the threshold or improve training data:
-
-```bash
-./run-training-pipeline.sh --threshold=0.5
-```
-
 ### Pipeline fails at "deploy_model" with permission error
 
 **Root Cause:** The pipeline ServiceAccount lacks pod delete permission.
@@ -334,6 +340,8 @@ oc get secret dspa-minio-credentials -n private-ai -o yaml
 ```bash
 oc apply -f gitops/step-12-mlops-pipeline/base/pipeline-rbac.yaml
 ```
+
+</details>
 
 ## References
 

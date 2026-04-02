@@ -3,11 +3,9 @@
 
 ## Overview
 
-Building on **model serving** from Step 05 — still on the same governed platform — this step gives teams the **visibility to move from experiment to production**. *"Moving from proof-of-concept to production introduces new challenges around cost, latency, and scale. Optimization ensures your models perform efficiently under real-world conditions, where every millisecond of latency and every dollar of compute cost matters."* For ACME Semiconductor, that means understanding latency, throughput, GPU headroom, and cost before widening access to internal applications: practical capacity planning instead of guesswork.
+Building on **model serving** from Step 05 — still on the same governed platform — this step gives teams the **visibility to move from experiment to production**. Production AI requires visibility into latency, throughput, GPU headroom, and cost. **Red Hat OpenShift AI 3.3** wires this through **OpenShift User Workload Monitoring** and KServe-managed ServiceMonitors; Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load.
 
-**Red Hat OpenShift AI 3.3** wires this through **OpenShift User Workload Monitoring**, scraping vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load; **DCGM** (Data Center GPU Manager) ties results back to hardware utilization.
-
-This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to assist real-world inference deployments and right-size GPU spend. This is where Trust becomes measurable for generative AI: cost, latency, throughput, and behavior under load.
+This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to right-size GPU spend.
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 

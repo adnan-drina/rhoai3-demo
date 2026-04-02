@@ -3,9 +3,7 @@
 
 ## Overview
 
-**Private AI** means running AI with control over data, operations, and deployment choices. That control starts with compute you govern: this step establishes the **compute foundation** for the platform — GPU-accelerated capacity, hardware discovery, and the networking primitives inference depends on — so workloads run where you operate, not as an afterthought. This is where Trust becomes operational: the compute layer is open, governed, and under the organization's control.
-
-**Red Hat OpenShift Container Platform** and the operators installed here (NFD, NVIDIA GPU Operator, Serverless, monitoring) are **open source**; you retain operational choice over how the stack is deployed and updated. **Red Hat OpenShift AI 3.3** adds intelligent GPU and hardware acceleration to that stack — self-service GPU access, intelligent scheduling, and discovery that labels and provisions GPU resources — managed as first-class OpenShift resources and GitOps-friendly objects.
+**Private AI** starts with compute you govern. This step establishes the **compute foundation** — GPU-accelerated capacity, hardware discovery, and the core serving prerequisites — so workloads run where you operate. The operators installed here (NFD, NVIDIA GPU Operator, Serverless, monitoring) are **open source** and managed as GitOps-friendly OpenShift resources. This is where Trust becomes operational: the compute layer is open, governed, and under the organization's control.
 
 This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload on the platform depends on.
 
@@ -54,6 +52,9 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 > **GPU node taints (`nvidia.com/gpu=true:NoSchedule`):** Reserves expensive GPU instances exclusively for workloads that explicitly request GPU resources.
 
+<details>
+<summary>Additional design decisions</summary>
+
 > **RHCL stack for Inference Gateway (commented out):** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway. These are defined in the kustomization file but commented out until llm-d distributed inference is added to the demo.
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
@@ -64,6 +65,8 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 > - **PersistentVolumeClaim** — Treats `Pending` PVCs as Healthy (for `WaitForFirstConsumer` storage classes that stay Pending until a pod mounts them)
 > - **InferenceService** — Reads the KServe `Ready` condition correctly (ArgoCD's built-in check misinterprets the condition format)
 > - **TrustyAIService** — Reads the `Available` condition (ArgoCD has no built-in health check for this CRD)
+
+</details>
 
 ### Deploy
 

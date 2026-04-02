@@ -3,11 +3,9 @@
 
 ## Overview
 
-**Private AI** extends to **models**: you need control over what is discovered, registered, and promoted — not only compute and tenancy. This step adds the **governance layer for models themselves**: a **catalog** for discovery and a **registry** for lifecycle and accountability. That closes the loop on *who* can serve *which* artifact *where*, in line with practical governance rather than ad hoc downloads and spreadsheet tracking. As Red Hat's AI adoption guide notes, multimodel strategies and visibility into model lineage reduce shadow AI and operational risk; the right model is the smallest one that meets accuracy needs and fits your infrastructure.
+Private AI extends to **models**: you need control over what is discovered, registered, and promoted — not only compute and tenancy. This step adds a **catalog** for discovery and a **registry** for lifecycle and accountability, closing the loop on *who* can serve *which* artifact *where*. **Red Hat OpenShift AI 3.3** pairs the **Model Catalog** (48+ Red Hat-validated models in OCI ModelCar format) with the **Model Registry** (versions, ownership, approval) — discover in the Catalog, govern in the Registry.
 
-**Red Hat OpenShift AI 3.3** pairs the **Model Catalog** (48+ Red Hat-validated models in OCI ModelCar format — many from **open-source** communities, deployable without external dependencies) with the **Model Registry** (versions, ownership, approval). Together they deliver *"centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts"* — discover in the Catalog, govern in the Registry. This **completes the Private AI foundation** for the demo: compute, platform, access and storage, and now model lifecycle.
-
-This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts — ensuring that the same governed model lifecycle works across any OpenShift cluster. This completes the Private AI foundation. From here, every model served, evaluated, or promoted carries accountability through the registry.
+This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts. This completes the Private AI foundation — compute, platform, access, storage, and now model lifecycle.
 
 ### What Gets Deployed
 

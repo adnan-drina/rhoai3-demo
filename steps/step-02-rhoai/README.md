@@ -3,11 +3,9 @@
 
 ## Overview
 
-**Private AI** is about control over data, operations, and deployment choices — and teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models without duplicating siloed tooling. This is what turns raw GPU capacity into a shared platform for teams.
+Teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys **Red Hat OpenShift AI 3.3** — the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models. Built on the **open-source** Open Data Hub project, RHOAI provides GenAI Studio for rapid prototyping, Hardware Profiles for GPU placement, and a DataScienceCluster that manages serving, training, pipelines, and governance in one surface.
 
-RHOAI is **open source**, built on the **Open Data Hub** community project and delivered as a supported Red Hat product. **Red Hat OpenShift AI 3.3** provides centralized management for predictive and generative AI — *"a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions,"* with GenAI Studio for *"rapid prototyping and evaluation before committing to production,"* Hardware Profiles for the right GPU placement, and a DataScienceCluster that manages the component stack from serving and training through pipelines and governance.
-
-This step deploys the full RHOAI platform — covering **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate on one platform.
+This step demonstrates RHOAI's **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster.
 
 ### What Gets Deployed
 

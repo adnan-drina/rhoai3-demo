@@ -3,9 +3,7 @@
 
 ## Overview
 
-Building on the governed platform from Theme 1 — reusing the catalog, GPU placement, and namespace controls already in place — this step makes LLMs **available for real enterprise work** at ACME Semiconductor. Theme 2 is about turning models into useful applications grounded in business context; that begins with **scalable, low-latency inference** on private infrastructure: fast answers without sending prompts to an external public service, at a cost profile operations can plan around.
-
-**Red Hat OpenShift AI 3.3** delivers production serving through the **Red Hat AI Inference Server**, powered by vLLM. *"Purpose-built serving infrastructure, such as Red Hat AI Inference Server (based on vLLM), maximizes throughput through techniques such as continuous batching, paged attention, and optimized GPU use."* KServe RawDeployment exposes OpenAI-compatible endpoints, the **Model Registry** keeps the model portfolio discoverable, and the **GenAI Playground** lets teams validate behavior immediately. The sizing strategy matches workload to hardware: *"Small language models offer a compelling middle ground. These models deliver strong performance on targeted tasks while requiring significantly fewer resources than their larger counterparts."* Granite 8B (FP8) runs on one GPU for agent-style tasks; Mistral 3 BF16 spans four GPUs for chat and evaluation — with *"Model quantization reduces size and accelerates inference by using lower-precision numerical formats... Red Hat's benchmarks of over half a million evaluations found that 8-bit quantization delivers approximately 1.8x performance speedup with full accuracy recovery."* Three further models stay registered for on-demand deploy from **GenAI Studio** when ACME needs them.
+Building on the governed platform — reusing the catalog, GPU placement, and namespace controls already in place — this step makes LLMs **available for real enterprise work** with **scalable, low-latency inference** on private infrastructure. Fast answers without sending prompts to an external public service, at a cost profile operations can plan around. **Red Hat OpenShift AI 3.3** delivers production serving through the **Red Hat AI Inference Server** (powered by vLLM), KServe RawDeployment for OpenAI-compatible endpoints, and the **GenAI Playground** for immediate experimentation. The sizing strategy matches workload to hardware: Granite 8B (FP8) runs on one GPU for agent-style tasks; Mistral 3 BF16 spans four GPUs for chat and evaluation.
 
 This step demonstrates RHOAI's **Optimized model serving** capability: serving models via vLLM, optimized for high throughput and low latency, with access to validated gen AI models — and the **Agentic AI and gen AI UIs** through the GenAI Playground for immediate experimentation.
 
@@ -42,8 +40,6 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.
 
-> **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations and `nodeSelector` for GPU node targeting. GPU nodes are tainted with `nvidia.com/gpu=true:NoSchedule`; every GPU pod must tolerate this taint.
-
 > **OCI ModelCar for small models, S3 for large:** Models under ~15 GB use OCI ModelCar from the Red Hat Registry (`registry.redhat.io/rhelai1/modelcar-*`), pulled via the cluster pull secret — no HuggingFace download or S3 upload needed. Granite 8B FP8 (~8 GB) uses this path. Models over 20 GB (Mistral BF16 at ~48 GB) use S3/MinIO because OCI image layers may hit CRI-O overlay extraction limits. Ref: [Red Hat AI Validated ModelCar Images](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images).
 
 > **vLLM performance tuning (benchmarked with GuideLLM):**
@@ -61,11 +57,18 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 >
 > **ITL is hardware-bound on L4 GPUs:** Granite ~40ms, Mistral ~53ms. These are near the L4 memory bandwidth floor (~300 GB/s). Reducing ITL further requires higher-bandwidth GPUs (e.g., A100, H100). See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
+<details>
+<summary>Additional design decisions</summary>
+
+> **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations and `nodeSelector` for GPU node targeting. GPU nodes are tainted with `nvidia.com/gpu=true:NoSchedule`; every GPU pod must tolerate this taint.
+
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
 
 > **Upload-before-serve ordering:** `deploy.sh` runs the S3 upload job for `mistral-3-bf16` and waits for completion **before** applying the ArgoCD Application. This prevents a race condition where KServe's `storage-initializer` lists S3 while the upload is still in progress, resulting in a partial download and vLLM `CrashLoopBackOff` ("Invalid repository ID or local directory"). The upload job is idempotent — it skips if the model is already in MinIO.
 
 > **ArgoCD `selfHeal: false`:** This step's ArgoCD Application uses `selfHeal: false` (unlike other steps) to allow operators to manually scale InferenceServices (e.g. `minReplicas: 0` to stop a model) without ArgoCD reverting the change. ArgoCD shows OutOfSync for visibility but does not auto-heal. Git-triggered syncs still work. See the `manage-resources` skill for scaling workflows.
+
+</details>
 
 ### Deploy
 

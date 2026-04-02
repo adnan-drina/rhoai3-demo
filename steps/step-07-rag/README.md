@@ -3,11 +3,9 @@
 
 ## Overview
 
-Building on **optimized model serving** — reusing the governed inference stack already in place — this step **grounds models in ACME Semiconductor's enterprise knowledge**. A model that only reflects its training cutoff cannot reliably answer questions about wafer yield memos, equipment runbooks, or policy PDFs. *"Much enterprise knowledge lives in documents scattered across the organization: PDFs, wikis, support tickets, and internal documentation. Connecting models to this knowledge is often a more efficient path to value."* Retrieval Augmented Generation (RAG) is how the platform connects fast inference to **real organizational data**, turning generic chat into answers grounded in what ACME actually knows.
+Building on **optimized model serving** — reusing the governed inference stack already in place — this step **grounds models in ACME Semiconductor's enterprise knowledge**. A model that only reflects its training cutoff cannot reliably answer questions about internal documentation. RAG connects fast inference to organizational data, turning generic chat into answers grounded in what ACME actually knows. **Red Hat OpenShift AI 3.3** implements RAG through the **Llama Stack API** — embedding, vector storage, and agent queries in one surface — with **Kubeflow Pipelines** and **Docling** for repeatable document ingestion into **PostgreSQL with pgvector**.
 
-**Red Hat OpenShift AI 3.3** implements that path through the **Llama Stack API** — embedding, vector storage, and agent queries in one surface. Ingestion runs on **Kubeflow Pipelines** with **Docling** for PDF conversion, **PostgreSQL with pgvector** for storage, with repeatable, dashboard-visible runs. *"Docling, an open source framework included in Red Hat AI, handles this complexity by extracting text, tables, and structure from PDFs and other documents."*
-
-*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This is where Choice shows up: teams can keep enterprise data private while deciding how and where models access it. This step demonstrates RHOAI's **Model development and customization** capability — specifically Retrieval Augmented Generation (RAG) for private data connection — and **AI pipelines** that automate document ingestion, ensuring models produce content grounded in your documents rather than hallucinating from training data.
+This is where Choice shows up: teams can keep enterprise data private while deciding how and where models access it. This step demonstrates RHOAI's **Model development and customization** capability — specifically RAG for private data connection — and **AI pipelines** that automate document ingestion.
 
 ### What Gets Deployed
 
@@ -46,11 +44,14 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and simplifies configuration.
 
+> **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
+
+<details>
+<summary>Additional design decisions</summary>
+
 > **Minimal `userConfig` for annotation override.** The `rh-dev` template auto-wires all providers from env vars. A `userConfig` ConfigMap (`lsd-rag-config`) is used solely to override the `annotation_instruction_template` — preventing LlamaStack from injecting `<|file-xxx|>` citation markers into model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs). The full auto-generated config is preserved; only the annotation template is changed.
 
 > **MCP tool_groups are registered via the LlamaStack API at deploy time** (not in config files). They persist in PostgreSQL across restarts.
-
-> **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
 
@@ -93,6 +94,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 
 > Ref: [RHOAI 3.3 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
+
+</details>
 
 ### Deploy
 
@@ -242,6 +245,9 @@ oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
 ```
 If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 
+<details>
+<summary>Additional troubleshooting</summary>
+
 ### Agent stops mid-chain without completing MCP multi-step queries
 
 **Symptom:** Database MCP queries call `list_schemas` and `list_objects` but never reach `execute_sql`. The response describes what it would do next instead of executing.
@@ -259,6 +265,8 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 **Impact:** Cosmetic only. Pipeline execution order is correct — the `ingestion_summary` step properly waits for all ParallelFor iterations via `.after(insert)`, as confirmed by the compiled YAML `dependentTasks: [for-loop-1]`.
 
 **Workaround:** None from pipeline code. Verify actual completion by checking the `ingestion_summary` step's metrics or the pipeline run status (which correctly shows "Succeeded").
+
+</details>
 
 ## References
 
