@@ -32,7 +32,8 @@ Model Performance Metrics
 
 Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -41,6 +42,8 @@ Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-met
 | OCP | Monitoring (Prometheus — user workload metrics) | Used |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.

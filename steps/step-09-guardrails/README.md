@@ -28,7 +28,8 @@ AI Safety & Guardrails
 
 Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -36,6 +37,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 | RHOAI | Optimized model serving (detector ISVCs) | Used |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **CPU-only detectors:** granite-guardian-hap-38m (38M params) and deberta-v3 (86M params) each use 1 CPU core and 2GB RAM. No GPU contention with the LLM workloads.

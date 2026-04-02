@@ -27,7 +27,8 @@ Face Recognition
 
 Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-recognition/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -36,6 +37,8 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 | RHOAI | Optimized model serving (OpenVINO) | Used |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **KServe RawDeployment** (not ModelMesh) because ModelMesh is deprecated in RHOAI 3.3 ([release notes section 6.1.9](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/support-removals_relnotes)). The `kserve-ovms` template is the platform-recommended approach for ONNX/OpenVINO models.

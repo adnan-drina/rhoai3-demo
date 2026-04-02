@@ -27,7 +27,8 @@ LLM Serving
 
 Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -37,6 +38,8 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 | RHOAI | Intelligent GPU and hardware speed | Used |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.

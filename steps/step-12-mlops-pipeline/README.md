@@ -40,7 +40,8 @@ Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
 
 Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pipeline/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -50,6 +51,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 | OCP | OpenShift Pipelines (Tekton — ModelCar build) | Introduced |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.

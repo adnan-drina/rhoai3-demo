@@ -76,7 +76,8 @@ Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates
 
 Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-integration/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -85,6 +86,8 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | RHOAI | Model observability and governance (guardrails) | Used |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.

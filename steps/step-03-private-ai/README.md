@@ -29,7 +29,8 @@ Private AI Infrastructure
 
 Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -37,6 +38,8 @@ Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/b
 | OCP | Authentication and Authorization (OAuth, RBAC) | Introduced |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Direct GPU scheduling (no Kueue):** Kueue was evaluated and removed because its SchedulingGate mechanism gates ALL pods in managed namespaces — including build pods, DSPA pipeline executors, and chatbot Deployments — not just GPU workloads. GPU scheduling uses direct `nodeSelector` + `tolerations` defined in Hardware Profiles and InferenceService manifests. This provides reliable GPU placement without the SchedulingGate side effects.

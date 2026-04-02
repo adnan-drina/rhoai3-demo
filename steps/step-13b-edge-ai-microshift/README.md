@@ -36,7 +36,8 @@ Edge AI on MicroShift (real edge hardware)
 | **edge-camera** Route | HTTPS (nip.io, edge TLS) | `edge-ai` |
 | **ArgoCD core** (controller + repo-server + redis) | Embedded GitOps — syncs workloads from Git | `argocd` |
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -101,6 +102,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 | `MODEL_NAME` | `face-recognition-edge` | `face-recognition-edge` |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)

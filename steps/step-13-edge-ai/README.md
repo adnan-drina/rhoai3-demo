@@ -29,7 +29,8 @@ Edge AI (simulated SNO)
 
 Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -86,6 +87,8 @@ BUILD_EDGE_CAMERA=true ./steps/step-13-edge-ai/deploy.sh
 Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deployment.yaml` if you use a different registry path. The quay.io repository must be **public** for the cluster to pull it.
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Separate `edge-ai-demo` namespace** to simulate the network boundary of a real SNO edge site. All edge components are self-contained in this namespace. Migration to actual SNO or MicroShift requires only changing the ArgoCD destination and adding a model sync mechanism.

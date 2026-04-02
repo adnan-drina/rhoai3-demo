@@ -43,7 +43,8 @@ RHOAI 3.3 Platform
 
 Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -52,6 +53,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | OCP | Service Mesh 3 (Istio) | Introduced |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.

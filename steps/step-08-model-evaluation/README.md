@@ -38,7 +38,8 @@ Model Evaluation
 
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
 
-### RHOAI and OCP Features in This Step
+<details>
+<summary>RHOAI and OCP Features in This Step</summary>
 
 | | Feature | Status |
 |---|---|---|
@@ -57,6 +58,8 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
 
 <details>
+</details>
+
 <summary>Design Decisions</summary>
 
 > **Two separate models for RAG eval:** `granite-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.
