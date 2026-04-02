@@ -3,11 +3,11 @@
 
 ## Overview
 
-The RHOAI platform is installed, but without access controls, every user consumes every GPU. A shared AI platform requires governance: storage for models and pipeline artifacts, identity management for teams, and role-based access that separates platform administrators from data science consumers. As Red Hat's AI adoption guide notes, *"Sovereign AI addresses this by keeping data, models, and inference within your control, whether that means on-premise, in a specific region, or within a trusted cloud environment."*
+**Private AI** means running AI with control over data, operations, and deployment choices. At platform scale, that requires a **governance layer**: who may use GPUs, where artifacts live, and how roles are separated — so multi-tenant use stays **sovereign-ready** (data and workloads remain under your operational control, on-prem, in-region, or in a boundary you define). Without it, shared GPU capacity and storage become a free-for-all.
 
-**Red Hat OpenShift AI 3.3** provides the building blocks for a governed AI platform — with *"self-service GPU access... intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles."* The platform adds integrated data connections for S3 storage and OpenShift-native RBAC that separates Service Governors from Service Consumers, ensuring the right people have access to the right resources without bottlenecking on infrastructure tickets.
+**Red Hat OpenShift AI 3.3** supplies the operational pieces — *"self-service GPU access... intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles"* — alongside **open-source** OpenShift patterns for identity and RBAC. Integrated S3-style storage and OpenShift-native RBAC separate Service Governors from Service Consumers so access is deliberate, not accidental.
 
-This step builds on RHOAI's **Intelligent GPU and hardware speed** capability — adding quota management, priority access, and visibility of use through hardware profiles — with governance that scales from a single team to an entire organization.
+This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability — quota management, priority access, and visibility of use through hardware profiles — with governance that scales from a single team to an entire organization.
 
 ### What Gets Deployed
 

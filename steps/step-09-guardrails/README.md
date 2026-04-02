@@ -3,9 +3,9 @@
 
 ## Overview
 
-Your team built a RAG chatbot grounded in internal documents — it answers from your real data. But as Red Hat's AI platform documentation states: *"Hallucination and bias can compromise the integrity of your models and make it harder to scale."* Uncontrolled output can expose sensitive personal data, and unfiltered input opens the door to abuse and prompt injection attacks. Red Hat's AI adoption guide recommends: *"Deploy models with appropriate guardrails: content filters, output validation, and safety boundaries that reflect your policies and risk tolerance."*
+Building on the **RAG chatbot** from Step 07 — reusing governance already in place for models, data, and serving — this step adds **safety controls before that assistant faces broader risk**. ACME's answers now draw on real documents; the operational question is whether every prompt and response meets policy. As Red Hat's AI platform documentation states: *"Hallucination and bias can compromise the integrity of your models and make it harder to scale."* Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Trust** at scale needs explicit boundaries. Red Hat's AI adoption guide recommends: *"Deploy models with appropriate guardrails: content filters, output validation, and safety boundaries that reflect your policies and risk tolerance."*
 
-**Red Hat OpenShift AI 3.3** addresses this with the **TrustyAI Guardrails Orchestrator** — a customizable safety framework that protects model inputs and outputs from harmful information including abusive speech, personal data, and prompt injection. AI guardrails are an RHOAI platform capability, not a third-party add-on — they deploy via GitOps and run entirely on CPU.
+**Red Hat OpenShift AI 3.3** delivers that with the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — as a platform-native capability deployed via GitOps, with CPU-based detectors that avoid competing with inference GPUs.
 
 This step demonstrates RHOAI's **Model observability and governance** capability — specifically AI guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
 

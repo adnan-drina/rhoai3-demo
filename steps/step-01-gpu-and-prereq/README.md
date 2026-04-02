@@ -3,11 +3,11 @@
 
 ## Overview
 
-Your organization is adopting AI on private infrastructure — both generative AI (LLMs, RAG, agentic workflows) and predictive AI (computer vision, MLOps pipelines). As Red Hat's AI adoption guide asks: *"Can your current environment support AI workloads? This includes computing resources, storage, network capabilities, and the flexibility to scale as requirements grow."* Before any model can be served, the cluster needs GPU-accelerated compute, hardware discovery, and the networking primitives that power inference.
+**Private AI** means running AI with control over data, operations, and deployment choices. That control starts with compute you govern: this step establishes the **compute foundation** for the platform — GPU-accelerated capacity, hardware discovery, and the networking primitives inference depends on — so workloads run where you operate, not as an afterthought.
 
-**Red Hat OpenShift AI 3.3** provides intelligent GPU and hardware acceleration — self-service GPU access, intelligent GPU use for workload scheduling, and hardware discovery that automatically labels and provisions GPU resources. GPUs are *"specialized processors for handling parallel processing tasks, making them ideal for training deep learning models that require processing large amounts of data simultaneously"* — and this step ensures they are properly discovered, provisioned, and managed. The platform handles the full stack: driver lifecycle, GPU node management, and inference networking — all deployed via GitOps and managed as first-class OpenShift resources.
+**Red Hat OpenShift Container Platform** and the operators installed here (NFD, NVIDIA GPU Operator, Serverless, monitoring) are **open source**; you retain operational choice over how the stack is deployed and updated. **Red Hat OpenShift AI 3.3** adds intelligent GPU and hardware acceleration to that stack — self-service GPU access, intelligent scheduling, and discovery that labels and provisions GPU resources — managed as first-class OpenShift resources and GitOps-friendly objects.
 
-This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload above depends on.
+This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload on the platform depends on.
 
 ### What Gets Deployed
 

@@ -3,9 +3,9 @@
 
 ## Overview
 
-Models are deployed. But how do they perform? *"Moving from proof-of-concept to production introduces new challenges around cost, latency, and scale. Optimization ensures your models perform efficiently under real-world conditions, where every millisecond of latency and every dollar of compute cost matters."* Before scaling to production, platform teams need data: latency distributions, throughput ceilings, GPU utilization, and KV cache pressure under real concurrency. Without observability, capacity planning is guesswork — and guessing at GPU scale costs money.
+Building on **model serving** from Step 05 — still on the same governed platform — this step gives teams the **visibility to move from experiment to production**. *"Moving from proof-of-concept to production introduces new challenges around cost, latency, and scale. Optimization ensures your models perform efficiently under real-world conditions, where every millisecond of latency and every dollar of compute cost matters."* For ACME Semiconductor, that means understanding latency, throughput, GPU headroom, and cost before widening access to internal applications: practical capacity planning instead of guesswork.
 
-**Red Hat OpenShift AI 3.3** provides model observability through **OpenShift User Workload Monitoring**, which automatically scrapes vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards visualize latency, throughput, and KV cache utilization in real time, while **GuideLLM** stress tests reveal each model's capacity limits under graduated concurrency. **DCGM** (Data Center GPU Manager) exposes GPU hardware utilization for capacity planning.
+**Red Hat OpenShift AI 3.3** wires this through **OpenShift User Workload Monitoring**, scraping vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load; **DCGM** (Data Center GPU Manager) ties results back to hardware utilization.
 
 This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to assist real-world inference deployments and right-size GPU spend.
 

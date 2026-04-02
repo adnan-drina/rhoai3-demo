@@ -3,9 +3,9 @@
 
 ## Overview
 
-With GPU infrastructure in place, the cluster needs an AI platform layer that turns raw compute into a self-service environment for data scientists and ML engineers. Without it, every team builds their own model serving pipeline, training infrastructure, and monitoring stack — duplicating effort and creating ungoverned silos.
+**Private AI** is about control over data, operations, and deployment choices — and teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models without duplicating siloed tooling.
 
-**Red Hat OpenShift AI 3.3** delivers a unified AI/ML platform that provides centralized management for predictive and generative AI models — a platform that *"provides a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions."* GenAI Studio enables *"rapid prototyping and evaluation before committing to production"* with an Agent Playground and Model Catalog. Hardware Profiles direct workloads to the right GPU nodes, and the DataScienceCluster manages the complete component stack — from model serving and distributed training to pipelines and governance.
+RHOAI is **open source**, built on the **Open Data Hub** community project and delivered as a supported Red Hat product. **Red Hat OpenShift AI 3.3** provides centralized management for predictive and generative AI — *"a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions,"* with GenAI Studio for *"rapid prototyping and evaluation before committing to production,"* Hardware Profiles for the right GPU placement, and a DataScienceCluster that manages the component stack from serving and training through pipelines and governance.
 
 This step deploys the full RHOAI platform — covering **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate on one platform.
 

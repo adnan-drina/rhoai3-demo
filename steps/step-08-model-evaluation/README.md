@@ -3,9 +3,9 @@
 
 ## Overview
 
-Step 07 proved your RAG system can retrieve and answer. But _how much better_ are the answers compared to the base LLM? And how does your model stack up on standard reasoning benchmarks? Without measurable evaluation, you're trusting the model on faith — and faith doesn't pass compliance audits. As Red Hat's AI adoption guide emphasizes: *"Define success criteria in advance: accuracy thresholds, response quality, latency requirements, or business metrics. Without clear criteria, you won't know whether your implementation is working."*
+Building on **RAG** from Step 07 — within the same governed platform ACME already uses for serving and grounded data — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. As Red Hat's AI adoption guide emphasizes: *"Define success criteria in advance: accuracy thresholds, response quality, latency requirements, or business metrics. Without clear criteria, you won't know whether your implementation is working."*
 
-**Red Hat OpenShift AI 3.3** provides two evaluation capabilities through its AI platform. **RAG Evaluation** runs the same questions with and without document context, then uses a larger LLM as a judge to score the quality difference — delivered as a **Kubeflow Pipeline** with HTML reports published to MinIO. **Standard Model Evaluation** uses RHOAI's native **LMEvalJob** CR and **TrustyAI** operator to run industry-standard benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any deployed model.
+**Red Hat OpenShift AI 3.3** provides two paths. **RAG Evaluation** runs the same questions with and without context, scores the gap with an LLM-as-judge inside a **Kubeflow Pipeline**, and publishes HTML reports to MinIO. **Standard Model Evaluation** uses the **LMEvalJob** CR and **TrustyAI** operator for benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any served model.
 
 This step demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
 

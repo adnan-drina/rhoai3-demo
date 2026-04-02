@@ -3,9 +3,9 @@
 
 ## Overview
 
-Steps 11 and 12 proved that Red Hat OpenShift AI handles the full ML lifecycle — from interactive training to automated pipelines with quality gates. But models have to run where the data is. As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."*
+**Run AI closer to where decisions happen without losing central control.** Steps 11 and 12 trained and governed the model in the core — **the same models, pipelines, and governance** now **extend** from datacenter to an edge-shaped target. You keep **one operating model** and a **consistent lifecycle** (central training, GitOps promotion) while putting inference next to the camera and the data, with **hybrid cloud flexibility** instead of a second shadow stack.
 
-Step 13 brings the face recognition model to the edge: a camera captures faces, a local model server runs inference, and the model itself flows from the datacenter via GitOps. As Red Hat's AI adoption guide explains: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."* This is the **Red Hat Edge + On-Premise** pattern — data acquisition and inference at the edge, model development in the datacenter, all managed by the same platform.
+As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* Step 13 simulates that pattern: a local OpenVINO server answers the edge camera, while the model artifact still flows from the same central story (MinIO, pipeline, registry) you already trust. The adoption guide frames the payoff: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."*
 
 This step demonstrates RHOAI's **Disconnected environments and edge** capability: the same model trained centrally deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI supports deployment across cloud, on-premise, and edge environments.
 

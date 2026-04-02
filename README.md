@@ -1,8 +1,16 @@
 # Red Hat OpenShift AI 3.3 Demo
 
-A production-like deployment of **Red Hat OpenShift AI (RHOAI) 3.3** on **Red Hat OpenShift Container Platform (RHOCP) 4.20** — covering Generative AI (LLMs, RAG, agentic workflows) and Predictive AI (computer vision, MLOps pipelines) on the same platform. Deployed using GitOps (ArgoCD + Kustomize), following Red Hat's official documentation and best practices.
+**One governed, open, hybrid-cloud AI platform for private, generative, predictive, and edge AI.**
 
-Red Hat OpenShift AI is an MLOps platform that allows you to develop, train, and deploy AI models and applications at scale across private and hybrid cloud environments. This demo brings that value proposition to life across 14 deployment steps organized into three themes, each mapping to Red Hat's core AI pillars.
+This demo shows how Red Hat OpenShift AI helps organizations build a trusted, open, and consistent AI platform across hybrid cloud. We start with **Private AI** to establish governance, sovereign-ready operations, and open-source control. We then add **Generative AI** to serve models efficiently, ground them in enterprise data, and expose them through agentic patterns. Next, we show **Predictive AI** to prove the same platform supports model development, training, and repeatable MLOps workflows. Finally, we extend that governed lifecycle to **Edge AI**, using the same operating model from core to edge.
+
+### Why it matters
+
+AI in the enterprise is not just about models. It is about building a governed AI platform that gives teams:
+
+- **Trust** — control over data, privacy, security, and where AI runs
+- **Choice** — flexibility in models, tools, accelerators, and environments
+- **Consistency** — one operating model across private, hybrid, and edge environments
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
@@ -85,10 +93,10 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 
 ## Four Demo Themes
 
-### Theme 1: AI Platform (Steps 01-04)
-**Pillars: AI Platform + Fast Inference**
+### Theme 1: Private AI (Steps 01-04)
+**Run AI with control over data, operations, and deployment choices.**
 
-Transform a vanilla OpenShift cluster into a governed AI platform — GPU compute, hardware discovery, model governance, and multitenancy. As Red Hat's AI adoption guide notes: *"Can your current environment support AI workloads? This includes computing resources, storage, network capabilities, and the flexibility to scale as requirements grow."*
+OpenShift AI adds GPU enablement, governance, multitenancy, and consistent operations to OpenShift. Built on open source and designed for hybrid cloud, it helps organizations establish a sovereign-ready foundation for predictive and generative AI without creating a separate stack.
 
 | Step | Capability | RHOAI Features Introduced | OCP Features Introduced |
 |------|-----------|--------------------------|------------------------|
@@ -98,9 +106,9 @@ Transform a vanilla OpenShift cluster into a governed AI platform — GPU comput
 | 04 | Model Governance | Catalog and registry | — |
 
 ### Theme 2: Generative AI — ACME Semiconductor (Steps 05-10)
-**Pillars: Fast Inference + Connecting Models to Data + Agentic AI**
+**Turn LLMs into useful applications grounded in business context.**
 
-Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-to-end agentic AI workflow grounded in enterprise documents. *"Much enterprise knowledge lives in documents scattered across the organization: PDFs, wikis, support tickets, and internal documentation. Connecting models to this knowledge is often a more efficient path to value."*
+Building on the private AI base, this theme adds scalable serving, data grounding, and agentic patterns. It helps teams deliver more relevant outcomes on the same governed platform — reusing governance, observability, and access controls already in place.
 
 | Step | Capability | RHOAI Features Introduced | Reuses From |
 |------|-----------|--------------------------|-------------|
@@ -112,9 +120,9 @@ Serve LLMs, build a RAG pipeline, add guardrails, connect MCP tools — an end-t
 | 10 | Agentic AI & MCP | Agentic AI and gen AI UIs (MCP, Llama Stack) | RAG (07), Guardrails (09) |
 
 ### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-12)
-**Pillars: Connecting Models to Data**
+**Build, train, and operationalize predictive AI on the same platform as generative AI.**
 
-Train a YOLO11 face recognition model, deploy on OpenVINO, and automate the full MLOps lifecycle — proving RHOAI handles both generative and predictive AI on the same platform. *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows."*
+Building on the serving, pipelines, and observability established earlier, this theme adds model development, training, and repeatable MLOps workflows. It proves that OpenShift AI supports predictive and generative AI together — not as separate toolchains.
 
 | Step | Capability | RHOAI Features Introduced | Reuses From |
 |------|-----------|--------------------------|-------------|
@@ -122,9 +130,9 @@ Train a YOLO11 face recognition model, deploy on OpenVINO, and automate the full
 | 12 | MLOps Pipeline | — (uses pipelines, observability, registry) | Pipelines (07), Registry (04), Observability (06) |
 
 ### Theme 4: Edge AI (Steps 13-13b)
-**Pillars: AI Platform (hybrid cloud)**
+**Run AI closer to where decisions happen without losing central control.**
 
-Bring inference to the edge — the same model trained centrally deploys to edge sites with zero code changes. *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments—cloud, on-premise datacenters, or at the edge."*
+Building on the models, pipelines, and governance established centrally, this theme extends the same operating model from core to edge. Teams keep one governed lifecycle across datacenter, cloud, and distributed environments.
 
 | Step | Capability | RHOAI Features Introduced | OCP Features Introduced |
 |------|-----------|--------------------------|------------------------|
