@@ -30,7 +30,7 @@ RAG Pipeline
 
 Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

@@ -40,7 +40,7 @@ Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
 
 Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pipeline/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

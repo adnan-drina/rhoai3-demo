@@ -38,7 +38,7 @@ Model Evaluation
 
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

@@ -29,7 +29,7 @@ Edge AI (simulated SNO)
 
 Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

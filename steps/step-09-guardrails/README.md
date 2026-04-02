@@ -28,7 +28,7 @@ AI Safety & Guardrails
 
 Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

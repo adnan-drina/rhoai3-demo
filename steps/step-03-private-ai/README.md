@@ -29,7 +29,7 @@ Private AI Infrastructure
 
 Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

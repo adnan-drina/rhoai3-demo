@@ -76,7 +76,7 @@ Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates
 
 Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-integration/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

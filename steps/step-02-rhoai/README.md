@@ -43,7 +43,7 @@ RHOAI 3.3 Platform
 
 Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

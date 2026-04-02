@@ -32,7 +32,7 @@ Model Performance Metrics
 
 Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

@@ -27,7 +27,7 @@ Face Recognition
 
 Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-recognition/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|

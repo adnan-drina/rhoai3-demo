@@ -30,7 +30,7 @@ Model Governance
 
 Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-registry/base/)
 
-#### Platform Features
+### RHOAI and OCP Features in This Step
 
 | | Feature | Status |
 |---|---|---|
