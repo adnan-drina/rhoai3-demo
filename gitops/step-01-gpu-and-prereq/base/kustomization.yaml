@@ -22,19 +22,21 @@ resources:
   - serverless/subscription.yaml
   - serverless/knative-serving-namespace.yaml
   - serverless/knative-serving.yaml
-  - leaderworkerset/namespace.yaml
-  - leaderworkerset/operatorgroup.yaml
-  - leaderworkerset/subscription.yaml
-  - authorino/namespace.yaml
-  - authorino/operatorgroup.yaml
-  - authorino/subscription.yaml
-  - limitador/namespace.yaml
-  - limitador/operatorgroup.yaml
-  - limitador/subscription.yaml
-  - dns-operator/namespace.yaml
-  - dns-operator/operatorgroup.yaml
-  - dns-operator/subscription.yaml
-  - rhcl-operator/namespace.yaml
-  - rhcl-operator/operatorgroup.yaml
-  - rhcl-operator/subscription.yaml
+  # llm-d prerequisites — installed but not yet used (see BACKLOG.md)
+  # Uncomment when adding distributed inference with llm-d Inference Gateway
+  # - leaderworkerset/namespace.yaml
+  # - leaderworkerset/operatorgroup.yaml
+  # - leaderworkerset/subscription.yaml
+  # - authorino/namespace.yaml
+  # - authorino/operatorgroup.yaml
+  # - authorino/subscription.yaml
+  # - limitador/namespace.yaml
+  # - limitador/operatorgroup.yaml
+  # - limitador/subscription.yaml
+  # - dns-operator/namespace.yaml
+  # - dns-operator/operatorgroup.yaml
+  # - dns-operator/subscription.yaml
+  # - rhcl-operator/namespace.yaml
+  # - rhcl-operator/operatorgroup.yaml
+  # - rhcl-operator/subscription.yaml
 

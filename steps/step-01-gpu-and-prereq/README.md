@@ -17,8 +17,6 @@ OpenShift 4.20 Cluster
 ├── NVIDIA GPU Operator   → Driver lifecycle (DTK, DCGM exporter)
 ├── GPU MachineSets       → g6.4xlarge (1×L4) + g6.12xlarge (4×L4) = 5 GPUs
 ├── OpenShift Serverless  → KnativeServing for KServe networking
-├── LeaderWorkerSet       → Multi-node GPU orchestration for llm-d
-├── RHCL Stack            → Authorino, Limitador, DNS, RHCL (Inference Gateway)
 └── User Workload Mon.    → Prometheus scraping for GPU telemetry
 ```
 
@@ -28,10 +26,9 @@ OpenShift 4.20 Cluster
 | NVIDIA GPU Operator v25.10 | Driver lifecycle via Driver Toolkit (DTK) | `nvidia-gpu-operator` |
 | GPU MachineSets (AWS G6) | 1×g6.4xl + 1×g6.12xl = 5 NVIDIA L4 GPUs | `openshift-machine-api` |
 | OpenShift Serverless | Knative infrastructure for KServe | `openshift-serverless` |
-| LeaderWorkerSet (LWS) | Multi-node GPU orchestration for llm-d | `openshift-lws-operator` |
-| Authorino + Limitador | AuthZ and rate limiting for Inference Gateway | `openshift-authorino` / `openshift-limitador-operator` |
-| DNS Operator + RHCL | Endpoint DNS and AuthPolicy CRD for llm-d | `openshift-dns-operator` / `rhcl-operator` |
 | User Workload Monitoring | Prometheus scraping for DCGM metrics | `openshift-monitoring` |
+
+> **llm-d prerequisites (commented out):** LeaderWorkerSet, Authorino, Limitador, DNS Operator, and RHCL are defined in the kustomization file but commented out. They are prerequisites for the llm-d Inference Gateway, which is planned but not yet demonstrated. See [BACKLOG.md](../../BACKLOG.md).
 
 > **AWS Quota:** Requires "Running On-Demand G and VT instances" >= 64 vCPU (16 + 48). Sandbox accounts default to 64.
 
@@ -45,7 +42,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 > **GPU node taints (`nvidia.com/gpu=true:NoSchedule`):** Reserves expensive GPU instances exclusively for workloads that explicitly request GPU resources.
 
-> **RHCL stack for Inference Gateway:** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway in step-05.
+> **RHCL stack for Inference Gateway (commented out):** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway. These are defined in the kustomization file but commented out until llm-d distributed inference is added to the demo.
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
 
@@ -94,9 +91,9 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 1. Navigate to **Operators** → **Installed Operators**
 2. Filter by the GPU and AI-related namespaces
 
-**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, LeaderWorkerSet, Authorino, Limitador, DNS Operator, RHCL.
+**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless.
 
-> Every operator prerequisite from the RHOAI 3.3 installation guide is deployed and healthy. This is the AI-ready foundation — GPU drivers, KServe networking, and the RHCL stack for distributed inference — all managed via GitOps on Red Hat OpenShift Container Platform.
+> Every operator prerequisite for RHOAI 3.3 model serving is deployed and healthy. This is the AI-ready foundation — GPU drivers and KServe networking — all managed via GitOps on Red Hat OpenShift Container Platform.
 
 ## Key Takeaways
 
@@ -109,7 +106,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 **For technical teams:**
 
 - NVIDIA L4 GPUs run on AWS G6 instances with Driver Toolkit — no RHEL entitlement secrets required
-- Eight operator prerequisites are managed declaratively: NFD, GPU Operator, Serverless, LWS, Authorino, Limitador, DNS Operator, RHCL
+- Three operator prerequisites are managed declaratively: NFD, GPU Operator, Serverless (llm-d stack available in kustomization when needed)
 - Custom ArgoCD health checks ensure accurate sync status for PVCs, InferenceServices, and TrustyAI CRDs
 
 ## Troubleshooting
