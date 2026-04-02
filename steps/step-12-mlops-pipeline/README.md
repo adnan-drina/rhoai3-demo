@@ -49,16 +49,14 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 | RHOAI | Model observability and governance (TrustyAI drift/bias) | Used |
 | OCP | OpenShift Pipelines (Tekton — ModelCar build) | Introduced |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.
 
 > **Threshold-based quality gate with Registry context.** The evaluate step computes mAP50 and compares it against a configurable threshold (default 0.7). It also queries the Model Registry for the previous version's mAP50 for informational logging. If the new model's mAP50 is below the threshold, the pipeline fails and deployment is skipped. Inspired by the [AI500 MLOps Jukebox](https://github.com/rhoai-mlops/jukebox) pattern.
 
 > **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **TrustyAI adapter pattern for CV models.** Vision model I/O (1.2M float tensors) cannot be used directly by TrustyAI's fairness algorithms, which require scalar columns. The `trustyai-adapter` Deployment receives post-processed detection results from inference clients and transforms them into tabular metrics (`image_type`, `num_detections`) that TrustyAI computes SPD on. This approach bypasses the KServe inference logger's TLS limitation in RawDeployment mode (RHOAI 3.3). See [RHOAI 3.3 Monitoring](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/monitoring_your_ai_systems/).
 
@@ -70,7 +68,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 **Prerequisites:**
 
@@ -106,7 +105,10 @@ Options:
 
 Monitor the run in the RHOAI Dashboard: **Data Science Projects** → **private-ai** → **Pipelines**.
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 ```bash
 # Pipeline PVC created
@@ -118,6 +120,8 @@ oc get dspa dspa-rag -n private-ai
 # Validate
 ./steps/step-12-mlops-pipeline/validate.sh
 ```
+
+</details>
 
 ## The Demo
 
@@ -287,7 +291,8 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 - Use pipeline quality gates to prevent regressions from reaching production
 - Extend the same model lifecycle toward release and edge promotion paths
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### Pipeline fails at "train_model" with "No matching distribution found for ultralytics"
 
@@ -302,9 +307,6 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 ```bash
 ./run-training-pipeline.sh --threshold=0.5
 ```
-
-<details>
-<summary>Additional troubleshooting</summary>
 
 ### Pipeline fails at "evaluate_model" with "No module named 'onnxruntime'"
 

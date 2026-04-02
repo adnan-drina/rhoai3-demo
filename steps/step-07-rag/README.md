@@ -38,16 +38,14 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | RHOAI | AI pipelines (KFP v2, DSPA) | Introduced |
 | RHOAI | Optimized model serving | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
 
 > **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and simplifies configuration.
 
 > **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **Minimal `userConfig` for annotation override.** The `rh-dev` template auto-wires all providers from env vars. A `userConfig` ConfigMap (`lsd-rag-config`) is used solely to override the `annotation_instruction_template` — preventing LlamaStack from injecting `<|file-xxx|>` citation markers into model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs). The full auto-generated config is preserved; only the annotation template is changed.
 
@@ -97,14 +95,18 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-07-rag/deploy.sh              # Deploy pgvector, LlamaStack, DSPA, chatbot
 ./steps/step-07-rag/validate.sh            # Verify all components + vector store health
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -124,6 +126,8 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
 ```
+
+</details>
 
 ## The Demo
 
@@ -209,7 +213,8 @@ oc exec deploy/lsd-rag -n private-ai -- \
 - Convert, embed, and store enterprise content in a reusable retrieval layer
 - Connect fast inference to private data without creating a separate stack
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### pgvector pod CrashLoopBackOff: "data directory has wrong ownership"
 
@@ -244,9 +249,6 @@ oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
 "max_output_tokens": config.sampling.max_tokens,
 ```
 If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
-
-<details>
-<summary>Additional troubleshooting</summary>
 
 ### Agent stops mid-chain without completing MCP multi-step queries
 

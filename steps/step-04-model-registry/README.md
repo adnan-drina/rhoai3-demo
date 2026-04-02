@@ -36,7 +36,8 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 |---|---|---|
 | RHOAI | Catalog and registry | Introduced |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Model Catalog for discovery, Registry for governance:** The Catalog provides 48+ OCI-ready models for rapid deployment. The Registry adds custom metadata, versioning, and RBAC. In production, the ideal flow is: discover in Catalog → register for governance → deploy from Registry. Our demo uses OCI ModelCar for small models (Granite 8B FP8, Mistral INT4) pulled directly from the Red Hat Registry, and S3/MinIO for large BF16 models (>20GB) where OCI image layers may hit CRI-O overlay limits. Ref: [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_the_model_catalog/).
 
@@ -46,14 +47,20 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 
 > **PVC sync wave aligned with consumer:** The MariaDB PVC (`model-registry-db-pvc`) uses sync wave `"2"` — the same wave as the MariaDB Deployment. With `WaitForFirstConsumer` storage class, a PVC in an earlier wave than its consumer creates a deadlock: ArgoCD waits for the PVC to become Healthy (Bound), but binding requires a pod to schedule, and the pod is in a later wave that hasn't started. Placing both in the same wave eliminates this.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-04-model-registry/deploy.sh      # ArgoCD app: registry + MariaDB + RBAC + seed job
 ./steps/step-04-model-registry/validate.sh     # Verify CR status, seed job, API health
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -62,6 +69,8 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 | Registry pods | Application pods running | At least 1 Running |
 | Seed job | Initial model registration | Succeeded (may be cleaned up by TTL) |
 | Internal service | Unauthenticated endpoint | `private-ai-registry-internal` on port 8080 |
+
+</details>
 
 ## The Demo
 
@@ -116,7 +125,8 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 - Track model versions, ownership, and approval state in one place
 - Reuse the same model governance flow across predictive and generative AI
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### MariaDB pod stuck in Pending
 
@@ -154,6 +164,8 @@ oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
 oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.modelregistry.managementState}'
 # Expected: Managed
 ```
+
+</details>
 
 ## References
 

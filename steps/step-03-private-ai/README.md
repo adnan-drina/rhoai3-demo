@@ -36,7 +36,8 @@ Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/b
 | RHOAI | Intelligent GPU and hardware speed (GPU-as-a-Service) | Used |
 | OCP | Authentication and Authorization (OAuth, RBAC) | Introduced |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Direct GPU scheduling (no Kueue):** Kueue was evaluated and removed because its SchedulingGate mechanism gates ALL pods in managed namespaces — including build pods, DSPA pipeline executors, and chatbot Deployments — not just GPU workloads. GPU scheduling uses direct `nodeSelector` + `tolerations` defined in Hardware Profiles and InferenceService manifests. This provides reliable GPU placement without the SchedulingGate side effects.
 
@@ -44,14 +45,20 @@ Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/b
 
 > **No `opendatahub.io/managed` label on `storage-config`:** The ODH model controller watches for secrets with `opendatahub.io/managed: "true"` and deletes any it did not create. Since ArgoCD creates `storage-config`, the controller deletes it within seconds, causing an infinite create-delete loop. This label is only needed on `minio-connection` (the Data Connection that appears in Dashboard dropdowns), not on `storage-config` (the KServe credential used by storage-initializer). See also: `.cursor/rules/30-secrets-and-certs.mdc`.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-03-private-ai/deploy.sh     # ArgoCD app: MinIO + auth + RBAC + data connections
 ./steps/step-03-private-ai/validate.sh   # Verify storage, auth, RBAC, groups
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -60,6 +67,8 @@ Manifests: [`gitops/step-03-private-ai/base/`](../../gitops/step-03-private-ai/b
 | Authentication | HTPasswd identity provider | Provider registered in OAuth |
 | RBAC | Role bindings for ai-admin and ai-developer | Both present in `private-ai` |
 | Groups | `rhoai-admins` and `rhoai-users` | ai-admin in rhoai-admins, ai-developer in rhoai-users |
+
+</details>
 
 ## The Demo
 
@@ -128,7 +137,8 @@ echo "https://${MINIO_URL}"
 - Enforce who can use GPUs and where artifacts live
 - Make private AI operational with identity, quotas, and governed access patterns
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### MinIO init job fails or minio-connection secret missing
 
@@ -158,6 +168,8 @@ oc apply -f gitops/step-03-private-ai/base/minio/init-job.yaml
 **Root Cause:** Operators (OLM, OAuth) mutate secrets and ConfigMaps with additional annotations/fields. ArgoCD detects this as drift.
 
 **Solution:** The ArgoCD Application includes `ignoreDifferences` for Secret `/data` and operator-managed annotations. If drift persists, check the ArgoCD diff view for the specific field and add it to `ignoreDifferences`.
+
+</details>
 
 ## References
 

@@ -56,7 +56,8 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
 | **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Two separate models for RAG eval:** `granite-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.
 
@@ -74,7 +75,10 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 > **Depends on step-07 vector stores.** Post-RAG evaluation retrieves context from `acme_corporate` and `whoami` vector stores. Run step-07 ingestion pipelines first.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-08-model-evaluation/deploy.sh     # ArgoCD app + compile pipeline + launch eval
@@ -95,7 +99,10 @@ Additional operations:
 ./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16        # Benchmark second model
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -121,6 +128,8 @@ oc get inferenceservice mistral-3-bf16 -n private-ai \
 oc get datasciencecluster default-dsc \
   -o jsonpath='{.spec.components.trustyai.eval.lmeval.permitOnline}'
 ```
+
+</details>
 
 ## The Demo
 
@@ -249,7 +258,8 @@ oc get lmevaljob granite-8b-agent-eval -n private-ai \
 - Benchmark served models with standard tasks using TrustyAI tooling
 - Keep evaluation results versioned, reviewable, and tied to the deployed platform
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### LM-Eval job fails with "online access denied"
 
@@ -275,9 +285,6 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector_
 ```
 
 If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.sh acme && ./steps/step-07-rag/run-batch-ingestion.sh whoami`
-
-<details>
-<summary>Additional troubleshooting</summary>
 
 ### KFP eval pipeline can't reach mistral-3-bf16
 

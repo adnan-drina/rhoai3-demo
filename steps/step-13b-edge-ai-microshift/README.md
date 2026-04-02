@@ -100,16 +100,14 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 | `GRPC_ENDPOINT` | `face-recognition-edge-predictor:8001` | `face-recognition-edge-stable:8001` |
 | `MODEL_NAME` | `face-recognition-edge` | `face-recognition-edge` |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
 
 > **gRPC for inference** instead of REST. Both OVMS (step-13) and Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. Using `tritonclient[grpc]` provides ~30x lower latency compared to REST JSON, with the same client code working against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 
 > **ModelCar OCI format** with Triton directory layout (`/models/<model-name>/<version>/model.onnx`). Built with `sudo podman` so CRI-O can access it directly from root container storage. Uses tag `v2` (not `latest`) so `imagePullPolicy` is `IfNotPresent`.
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **Non-headless stable service** (`face-recognition-edge-stable`) for gRPC connectivity. KServe creates a headless service (`ClusterIP: None`) which doesn't provide a stable ClusterIP. The stable service ensures the edge-camera can use a DNS name that survives pod restarts.
 
@@ -125,7 +123,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 **Prerequisites:**
 
@@ -154,7 +153,10 @@ ssh dev@<edge-host>
 
 The script walks through 5 sections with pause-and-talk flow: edge platform, GPU-powered inference, model serving stack, edge AI workloads (with camera app URL), and embedded GitOps (ArgoCD syncing from Git).
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 SSH into the edge host and verify:
 
@@ -191,6 +193,8 @@ From your laptop (not the edge host):
 curl -sk "https://edge-camera-edge-ai.<public-ip>.nip.io/_stcore/health"
 # Expected: ok
 ```
+
+</details>
 
 ## The Demo
 
@@ -351,7 +355,8 @@ sudo subscription-manager register --username=<your-rh-email>
 
 **Workaround:** Use Photo mode on phones. Live Video works on laptops.
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### InferenceService stuck in "Not Ready"
 
@@ -381,6 +386,8 @@ oc get pods -n argocd
 # Check application status
 oc get application edge-ai -n argocd -o yaml | grep -A 5 status
 ```
+
+</details>
 
 ## References
 

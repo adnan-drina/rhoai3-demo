@@ -40,7 +40,8 @@ Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-met
 | RHOAI | Optimized model serving | Used |
 | OCP | Monitoring (Prometheus — user workload metrics) | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.
 
@@ -52,7 +53,10 @@ Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-met
 
 > **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook reads GuideLLM JSON output from S3 (uploaded by the KFP benchmark pipeline) or from on-demand Job results.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-06-model-metrics/deploy.sh         # Deploy Grafana + GuideLLM via ArgoCD
@@ -66,7 +70,10 @@ Additional operations:
 ./steps/step-06-model-metrics/run-pipeline.sh   # Dashboard benchmark (KFP pipeline via DSPA)
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 `validate.sh` runs 5 checks: Grafana health, dashboards, CronJob, and tuned vLLM config.
 
@@ -93,6 +100,8 @@ oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
 oc logs deploy/mistral-3-bf16-predictor -n private-ai -c kserve-container \
   | grep 'KV cache size'
 ```
+
+</details>
 
 ## The Demo
 
@@ -202,7 +211,8 @@ After both benchmarks complete, compare the results (tuned configuration):
 - Correlate application metrics with GPU utilization and cache behavior
 - Build a repeatable path for performance baselining on the same platform
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### Grafana dashboard shows "No data"
 
@@ -245,6 +255,8 @@ oc get inferenceservice -n private-ai
 oc get operatorgroup -n private-ai
 # Should have exactly 1 OperatorGroup
 ```
+
+</details>
 
 ## References
 

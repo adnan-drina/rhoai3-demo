@@ -35,7 +35,8 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 | RHOAI | Model development and customization (JupyterLab workbench) | Used |
 | RHOAI | Optimized model serving (OpenVINO) | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **KServe RawDeployment** (not ModelMesh) because ModelMesh is deprecated in RHOAI 3.3 ([release notes section 6.1.9](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/support-removals_relnotes)). The `kserve-ovms` template is the platform-recommended approach for ONNX/OpenVINO models.
 
@@ -53,7 +54,10 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 > **Dashboard template annotations on ServingRuntime.** The RHOAI Dashboard identifies runtimes by matching `opendatahub.io/template-name` and `opendatahub.io/template-display-name` annotations against platform templates in `redhat-ods-applications`. Without these, runtimes show as "Unknown Serving Runtime" in the Model Deployments view. The `kserve-ovms` ServingRuntime includes `template-name: kserve-ovms` and `template-display-name: OpenVINO Model Server` to match the platform template.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 **Prerequisites:**
 
@@ -96,7 +100,10 @@ This copies folders to the workbench pod via `oc cp`:
 
 These folders are gitignored (binary assets). The workbench PVC persists them across pod restarts.
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -113,6 +120,8 @@ oc get inferenceservice face-recognition -n private-ai
 oc get pod face-recognition-wb-0 -n private-ai
 ./steps/step-11-face-recognition/validate.sh
 ```
+
+</details>
 
 ## The Demo
 
@@ -175,7 +184,8 @@ oc get pod face-recognition-wb-0 -n private-ai
 - Reuse serving, observability, and governance patterns already in place
 - Show that efficient CPU inference can fit real deployment needs
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### InferenceService stuck in "Not Ready"
 
@@ -229,6 +239,8 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- ls my_phot
 oc describe pod face-recognition-wb-0 -n private-ai | tail -20
 oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition | tail -10
 ```
+
+</details>
 
 ## References
 

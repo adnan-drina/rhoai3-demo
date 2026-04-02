@@ -51,7 +51,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | RHOAI | Intelligent GPU and hardware speed (Hardware Profiles) | Used |
 | OCP | Service Mesh 3 (Istio) | Introduced |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.
 
@@ -61,14 +62,20 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-02-rhoai/deploy.sh     # ArgoCD app: RHOAI operator + DSC + Hardware Profiles
 ./steps/step-02-rhoai/validate.sh   # Verify Dashboard, GenAI Studio, DSC health
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -77,6 +84,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
 | Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |
+
+</details>
 
 ## The Demo
 
@@ -127,7 +136,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 - Use hardware profiles to match workloads to the right compute
 - Centralize serving, development, and governance in one DataScienceCluster
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### Dashboard "Application is not available" — Gateway stuck at "Waiting for controller"
 
@@ -168,6 +178,8 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 ```
 
 > **Note (RHOAI 3.3):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step.
+
+</details>
 
 ## References
 

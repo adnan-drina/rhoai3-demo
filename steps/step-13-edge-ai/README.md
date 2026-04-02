@@ -85,16 +85,14 @@ BUILD_EDGE_CAMERA=true ./steps/step-13-edge-ai/deploy.sh
 
 Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deployment.yaml` if you use a different registry path. The quay.io repository must be **public** for the cluster to pull it.
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Separate `edge-ai-demo` namespace** to simulate the network boundary of a real SNO edge site. All edge components are self-contained in this namespace. Migration to actual SNO or MicroShift requires only changing the ArgoCD destination and adding a model sync mechanism.
 
 > **Shared MinIO (`storageUri`)** for single-cluster demo. Both the central (`private-ai`) and edge (`edge-ai-demo`) InferenceServices read from the same S3 bucket. In production, a model sync mechanism (Tekton task, CronJob, or S3 replication) would push models to edge-local storage.
 
 > **`camera_input_live`** for Live Video instead of `streamlit-webrtc`. WebRTC failed because the pod can't reach STUN servers over UDP (restricted egress). `camera_input_live` captures frames via `getUserMedia` + `canvas.toDataURL` and sends them over the existing Streamlit WebSocket — plain HTTPS, no STUN/TURN required.
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **gRPC for inference** using `tritonclient[grpc]`. Both OVMS (this step) and NVIDIA Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. gRPC provides ~30x lower latency compared to REST JSON. The same `inference.py` client code works against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 
@@ -126,7 +124,8 @@ The `camera_input_live` community component was not designed for mobile viewport
 - **Model sync:** Tekton task that copies models from central MinIO to edge-local S3 on version change
 - **Multiple edge sites:** Parameterize the namespace and deploy multiple edge instances via ArgoCD ApplicationSets
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 **Prerequisites:**
 
@@ -147,7 +146,10 @@ The script:
 4. Waits for the edge InferenceService to become Ready
 5. Waits for the Streamlit Deployment to have ready replicas
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 ```bash
 # Namespace exists
@@ -175,6 +177,8 @@ oc exec -n edge-ai-demo deploy/face-recognition-edge-predictor -- \
 # Validate all checks
 ./steps/step-13-edge-ai/validate.sh
 ```
+
+</details>
 
 ## The Demo
 
@@ -278,7 +282,8 @@ oc delete pod -n edge-ai-demo -l app=face-recognition-edge-predictor
 
 **Status:** Live Video works well on laptops where the viewport is large enough to keep the camera iframe on-screen. A proper mobile fix requires a custom Streamlit component that either: (a) renders results as a lightweight overlay inside the camera iframe itself, or (b) uses `IntersectionObserver` to detect when the iframe scrolls off-screen and compensate. See [Future Improvements](#future-improvements).
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### edge-camera pod — "Exec format error"
 
@@ -308,9 +313,6 @@ oc exec -n minio-storage deploy/minio -- mc ls local/models/face-recognition/1/
 # Verify storage-config secret
 oc get secret storage-config -n edge-ai-demo -o yaml
 ```
-
-<details>
-<summary>Additional troubleshooting</summary>
 
 ### edge-camera pod in CrashLoopBackOff / ImagePullBackOff
 

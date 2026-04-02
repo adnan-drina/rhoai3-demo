@@ -35,7 +35,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 | RHOAI | Model observability and governance (AI guardrails) | Used |
 | RHOAI | Optimized model serving (detector ISVCs) | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **CPU-only detectors:** granite-guardian-hap-38m (38M params) and deberta-v3 (86M params) each use 1 CPU core and 2GB RAM. No GPU contention with the LLM workloads.
 
@@ -45,14 +46,20 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 > **Dashboard template annotations on ServingRuntime.** The `guardrails-detector-runtime` includes `opendatahub.io/template-name` and `template-display-name` annotations matching the platform template `guardrails-detector-huggingface-serving-template`. Without these, the Dashboard shows "Unknown Serving Runtime" for HAP and prompt injection detectors.
 
-### Deploy
+</details>
+
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-09-guardrails/deploy.sh     # ArgoCD app: detectors + orchestrator
 ./steps/step-09-guardrails/validate.sh   # 12 checks: infrastructure + functional detector tests
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 `validate.sh` runs 12 checks: 8 infrastructure + 4 functional detector tests.
 
@@ -67,6 +74,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 | **PII regex functional** | Email + Dutch phone number | >= 2 detections |
 | **Clean input functional** | Normal question | 0 detections (no false positives) |
 | LlamaStack safety provider | `trustyai_fms` registered in lsd-rag | Provider found |
+
+</details>
 
 ## The Demo
 
@@ -132,7 +141,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 - Run detectors without competing for LLM GPU resources
 - Apply platform-native guardrails as part of the serving path
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### Detector InferenceServices stuck in "Not Ready"
 
@@ -172,6 +182,8 @@ oc exec deploy/lsd-rag -n private-ai -- \
 # Expected: ['trustyai_fms']
 ```
 If missing, re-run `deploy.sh` or manually register the safety provider.
+
+</details>
 
 ## References
 

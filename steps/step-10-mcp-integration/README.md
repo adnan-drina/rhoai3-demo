@@ -84,16 +84,14 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | RHOAI | Model development and customization (RAG) | Used |
 | RHOAI | Model observability and governance (guardrails) | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.
 
 > **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
 
 > **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
 
@@ -103,14 +101,18 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP tool_group registration
 ./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 `validate.sh` runs 19 checks: 12 infrastructure + 7 functional MCP tests.
 
@@ -127,6 +129,8 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | **Database MCP** | `list_schemas` | Returns public schema |
 | **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
 | **Slack MCP** | `channels_list` | Returns demo channel |
+
+</details>
 
 ## The Demo
 
@@ -188,7 +192,8 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 - Connect models to databases, infrastructure, and messaging systems
 - Reuse evaluation, guardrails, and governance already established in earlier steps
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### Dashboard shows "Error" for MCP servers
 
@@ -225,6 +230,8 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
   "description": "..."
 }
 ```
+
+</details>
 
 ## References
 

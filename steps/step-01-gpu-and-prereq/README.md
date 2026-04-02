@@ -44,16 +44,14 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 | OCP | Monitoring (Prometheus) | Introduced |
 | OCP | OpenShift GitOps (ArgoCD) | Introduced |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Default GPU driver (no pin):** RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.
 
 > **Driver Toolkit over RHEL entitlements:** OCP 4.20 uses DTK for pre-compiled driver images, eliminating RHEL entitlement secrets on GPU nodes.
 
 > **GPU node taints (`nvidia.com/gpu=true:NoSchedule`):** Reserves expensive GPU instances exclusively for workloads that explicitly request GPU resources.
-
-<details>
-<summary>Additional design decisions</summary>
 
 > **RHCL stack for Inference Gateway (commented out):** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway. These are defined in the kustomization file but commented out until llm-d distributed inference is added to the demo.
 
@@ -68,14 +66,18 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-01-gpu-and-prereq/deploy.sh     # ArgoCD app: operators + GPU MachineSets
 ./steps/step-01-gpu-and-prereq/validate.sh   # Verify GPUs, operators, KnativeServing
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -83,6 +85,8 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 | DCGM dashboard | GPU utilization, temperature, and memory | Visible in OpenShift Monitoring |
 | All operators Succeeded | 8 CSVs across their respective namespaces | All Succeeded |
 | KnativeServing Ready | Control plane healthy | Ready in `knative-serving` |
+
+</details>
 
 ## The Demo
 
@@ -124,7 +128,8 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 - Reserve GPU nodes for workloads that explicitly request them
 - Manage the GPU layer as OpenShift-native, GitOps-friendly infrastructure
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### GPU MachineSet stuck in Provisioning
 
@@ -156,6 +161,8 @@ oc get installplan -n nvidia-gpu-operator -o name | xargs -I {} oc patch {} -n n
 ```bash
 oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 ```
+
+</details>
 
 ## References
 

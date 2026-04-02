@@ -36,7 +36,8 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 | RHOAI | Catalog and registry (Model Registry) | Used |
 | RHOAI | Intelligent GPU and hardware speed | Used |
 
-### Design Decisions
+<details>
+<summary>Design Decisions</summary>
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.
 
@@ -57,9 +58,6 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 >
 > **ITL is hardware-bound on L4 GPUs:** Granite ~40ms, Mistral ~53ms. These are near the L4 memory bandwidth floor (~300 GB/s). Reducing ITL further requires higher-bandwidth GPUs (e.g., A100, H100). See [Practical strategies for vLLM performance tuning](https://developers.redhat.com/articles/2026/03/03/practical-strategies-vllm-performance-tuning).
 
-<details>
-<summary>Additional design decisions</summary>
-
 > **GPU tolerations in ISVC manifests:** All InferenceService manifests include explicit `nvidia.com/gpu` tolerations and `nodeSelector` for GPU node targeting. GPU nodes are tainted with `nvidia.com/gpu=true:NoSchedule`; every GPU pod must tolerate this taint.
 
 > **Registry-first for on-demand models:** Rather than deploying standby models with `minReplicas: 0` and managing scale-down logic in deploy.sh, additional models are registered in the Model Registry only. Users deploy them from GenAI Studio when needed, which aligns with the RHOAI Dashboard-driven workflow.
@@ -70,14 +68,18 @@ Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm
 
 </details>
 
-### Deploy
+<details>
+<summary>Deploy</summary>
 
 ```bash
 ./steps/step-05-llm-on-vllm/deploy.sh    # Deploy runtime + 2 models + register 5 in catalog
 ./steps/step-05-llm-on-vllm/validate.sh  # Verify InferenceServices + GPU scheduling
 ```
 
-### What to Verify After Deployment
+</details>
+
+<details>
+<summary>What to Verify After Deployment</summary>
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -93,6 +95,8 @@ oc get pods -n private-ai -l serving.kserve.io/inferenceservice -o wide
 oc exec deploy/granite-8b-agent-predictor -n private-ai -c kserve-container -- \
   curl -s http://localhost:8080/v1/models
 ```
+
+</details>
 
 ## The Demo
 
@@ -156,7 +160,8 @@ oc get inferenceservice -n private-ai
 - Reuse the registry and governed namespace model already in place
 - Optimize serving for throughput, latency, and practical GPU sizing
 
-## Troubleshooting
+<details>
+<summary>Troubleshooting</summary>
 
 ### InferenceService stuck in Pending (untolerated taint)
 
@@ -189,6 +194,8 @@ oc delete pvc mistral-3-bf16-pvc -n private-ai
 **Root Cause:** `--gpu-memory-utilization` set too high (e.g., 0.95). CUDA graph capture needs headroom.
 
 **Solution:** Reduce to 0.92 (Granite) or 0.90 (Mistral). Current manifests already use these tuned values.
+
+</details>
 
 ## References
 
