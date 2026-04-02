@@ -274,15 +274,15 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 
 **For business stakeholders:**
 
-- ML models move from artisanal notebook training to automated, governed pipelines — every model version is traceable, evaluated, and registered before deployment
-- Quality gates prevent model regressions from reaching production — governance is built into the pipeline, not bolted on afterward
-- Model observability with TrustyAI tracks fairness and drift in the RHOAI Dashboard — compliance teams get the metrics they need
+- Repeatable automation from experimentation to production on one governed platform — every model version is traceable, evaluated, and registered
+- Quality gates prevent regressions from reaching production — only models that pass evaluation deploy
+- Governance and monitoring are reused from earlier themes, not a separate MLOps stack
 
 **For technical teams:**
 
-- Kubeflow Pipelines v2 on RHOAI reuses the existing DSPA infrastructure from Step 07 — one pipeline server handles RAG, evaluation, and ML training workflows
-- The Model Registry stores versioned artifacts with metrics, and the Tekton ModelCar pipeline bridges data science (KFP) to CI/CD (OCI image build + GitOps update)
-- TrustyAI's adapter pattern extends fairness monitoring to computer vision models that produce tensor I/O — the same Dashboard metrics view works for tabular and CV workloads
+- KFP v2 pipeline automates training, evaluation, registry registration, and conditional deployment in one workflow
+- TrustyAI provides drift detection and bias monitoring for production models on the same platform
+- ModelCar OCI packaging bridges data science (KFP) and CI/CD (Tekton) for edge model promotion
 
 ## Troubleshooting
 

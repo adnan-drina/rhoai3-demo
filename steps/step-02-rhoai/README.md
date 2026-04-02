@@ -119,7 +119,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 **For business stakeholders:**
 
-- RHOAI 3.3 provides a complete AI platform with one operator install — model serving, training, pipelines, governance, and a curated model catalog
+- RHOAI 3.3 provides a governed AI platform with one operator install — model serving, training, pipelines, governance, and a curated model catalog
 - Self-service Hardware Profiles eliminate the "which GPU do I use?" question — the platform admin defines the options, every team uses the same curated list
 - 48+ Red Hat-validated models are available out of the box with no external dependencies or procurement
 

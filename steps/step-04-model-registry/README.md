@@ -111,13 +111,12 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 - The Model Catalog provides 48+ Red Hat-validated models out of the box — no procurement, no license negotiation, no external dependencies
 - The Model Registry provides an auditable record of who approved which model, when, and where it is stored — essential for compliance
 - Role-based access ensures only vetted models reach production — no shadow AI
-- *"Red Hat has always believed in the power of open source to propel innovation, and a transparent approach to software development that gives customers control over the choices they make."* That same philosophy now extends to AI — and the Model Catalog is where it starts
 
 **For technical teams:**
 
 - Model Catalog uses OCI ModelCar format — models pull through the cluster's existing container pull secret, no separate model download infrastructure
 - The Registry is backed by MariaDB with explicit PVC control — simple backup, restore, and GitOps lifecycle
-- Seed jobs automate initial model registration via the internal service on port 8080 — no OAuth token negotiation needed
+- Internal service API simplifies automation and pipeline integration
 
 ## Troubleshooting
 

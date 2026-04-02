@@ -14,6 +14,12 @@ AI in the enterprise is not just about models. It is about building a governed A
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
+## Key Takeaways
+
+- One governed, open, hybrid-cloud platform for predictive and generative AI
+- One operating model across private, hybrid, and edge environments
+- Trust, choice, and consistency as the three value pillars
+
 ## Architecture
 
 *One platform to build, serve, and govern AI across hybrid cloud*

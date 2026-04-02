@@ -125,7 +125,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 **For business stakeholders:**
 
 - AI guardrails are an RHOAI platform capability — no additional procurement, no third-party integration
-- PII stays within the platform boundary — your AI chatbot answers questions without exposing personal data, supporting GDPR and data sovereignty requirements
+- PII stays within the platform boundary — your AI chatbot answers questions without exposing personal data, supporting privacy and data control requirements
 - Three layers of defense at single-digit millisecond latency — safety adds no perceptible delay to the user experience
 
 **For technical teams:**

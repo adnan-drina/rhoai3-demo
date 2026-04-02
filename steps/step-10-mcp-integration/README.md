@@ -175,8 +175,8 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 
 **For business stakeholders:**
 
-- AI agents move from answering questions to resolving incidents — the model investigates, correlates, and notifies without human intervention
-- MCP provides a standardized protocol for connecting AI to any enterprise system — databases, infrastructure, messaging — without custom integration code
+- AI agents move from answers to assisted action across enterprise workflows — investigating, correlating, and notifying in a single conversation
+- MCP provides a standardized protocol for connecting AI to enterprise systems such as databases, infrastructure, and messaging — without custom integration code
 - MCP servers are available from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers), extending the trusted supply chain to AI tooling
 
 **For technical teams:**

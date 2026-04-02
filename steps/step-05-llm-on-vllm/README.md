@@ -145,13 +145,13 @@ oc get inferenceservice -n private-ai
 
 - LLM inference runs entirely on your infrastructure — no external API calls, no data leaving the platform
 - The GenAI Playground gives developers immediate access to experiment with models, reducing time to first value
-- A model portfolio strategy (agent model + enterprise model) optimizes GPU cost per use case
+- Different models can be matched to different cost and performance needs
 
 **For technical teams:**
 
 - Red Hat AI Inference Server with vLLM supports OCI ModelCar and S3 model sources — choose based on model size and deployment speed
 - KServe RawDeployment with `Recreate` strategy avoids dual-pod GPU contention on constrained nodes
-- vLLM performance tuning (FP8 KV cache, chunked prefill) doubles effective capacity — see Step 06 for benchmarks
+- vLLM performance tuning doubles effective KV cache capacity — see Step 06 for benchmarks and methodology
 
 ## Troubleshooting
 

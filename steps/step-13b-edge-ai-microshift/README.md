@@ -267,7 +267,7 @@ oc get inferenceservice face-recognition-edge -n edge-ai -o jsonpath='{.spec.pre
 
 **For business stakeholders:**
 
-- AI models deploy to real edge hardware — a RHEL host running MicroShift — with the same operational model as the datacenter. *"Red Hat's open hybrid cloud approach helps organizations integrate AI to improve consistency, scalability, and flexibility"* — managing AI workloads across multiple environments, optimizing data placement, and enabling smooth migration from datacenter to edge
+- AI models deploy to real edge hardware — a RHEL host with MicroShift and GPU — using the same operational model as the datacenter
 - Models flow from central training to edge devices via GitOps — no manual intervention, no site visits, no custom deployment scripts
 - GPU-accelerated inference at the edge handles workloads that CPU-only cannot — real-time video analysis, high-throughput detection, latency-sensitive applications
 
@@ -275,7 +275,7 @@ oc get inferenceservice face-recognition-edge -n edge-ai -o jsonpath='{.spec.pre
 
 - MicroShift 4.20 with `microshift-ai-model-serving` provides KServe at the edge — the same InferenceService API works on central OCP and MicroShift
 - ModelCar OCI images package models as container images, enabling standard container registry workflows for model delivery and version management
-- Embedded ArgoCD core (no UI, no API server) provides GitOps on edge devices with minimal footprint — model updates are Git commits that auto-sync within minutes
+- Embedded ArgoCD core provides GitOps on edge devices with minimal footprint — model updates are Git commits that auto-sync within minutes
 
 ## Edge Fleet Management: Three Tiers
 

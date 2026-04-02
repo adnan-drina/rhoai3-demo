@@ -112,8 +112,8 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 **For business stakeholders:**
 
 - GPU infrastructure is provisioned as code — no manual hardware requests, no ticket queues
-- GPU nodes are tainted and isolated for AI workloads, preventing accidental consumption by non-AI applications
-- The entire operator stack deploys via GitOps, making the AI platform reproducible across any OpenShift cluster
+- AI compute is isolated and governed for shared enterprise use
+- The compute foundation is repeatable, governed, and ready for private AI workloads
 
 **For technical teams:**
 

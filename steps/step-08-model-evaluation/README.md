@@ -249,7 +249,7 @@ oc get lmevaljob granite-8b-agent-eval -n private-ai \
 
 - RAG evaluation runs as a Kubeflow Pipeline — automated, tracked in DSPA, with HTML reports published to MinIO
 - LM-Eval is an RHOAI-native capability via the TrustyAI operator — no additional tooling to install or manage
-- The LLM-as-judge pattern (small candidate + large judge) provides reliable grading without manual review of every answer
+- The LLM-as-judge pattern (small candidate + large judge) provides scalable grading without manual review of every answer
 
 ## Troubleshooting
 

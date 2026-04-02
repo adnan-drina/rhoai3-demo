@@ -123,13 +123,12 @@ echo "https://${MINIO_URL}"
 - GPU-as-a-Service eliminates the ticket queue — data scientists self-serve GPU workbenches in minutes, not days
 - Role-based access control separates platform governors from data science consumers — governance without bottlenecks
 - Pre-configured S3 storage and data connections remove infrastructure friction from every AI workflow
-- The platform delivers simplified operations on proven infrastructure — *"IT operations benefit from simplified configurations and more automated workflows on a proven platform that can scale up or down with low effort, while providing better governance and security"*
 
 **For technical teams:**
 
 - Hardware Profiles use direct `nodeSelector` + `tolerations` — reliable GPU scheduling without Kueue's SchedulingGate side effects
 - Data connections are GitOps-managed secrets that auto-appear in Dashboard dropdowns for workbenches and model serving
-- The `opendatahub.io/managed` label must be omitted from `storage-config` to prevent the ODH model controller delete loop
+- GitOps-managed secrets require careful label handling to avoid conflicts with the ODH model controller
 
 ## Troubleshooting
 
