@@ -124,15 +124,15 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 **For business stakeholders:**
 
-- AI guardrails are an RHOAI platform capability — no additional procurement, no third-party integration
-- PII stays within the platform boundary — your AI chatbot answers questions without exposing personal data, supporting privacy and data control requirements
-- Three layers of defense at single-digit millisecond latency — safety adds no perceptible delay to the user experience
+- Add policy boundaries before GenAI reaches broader use
+- Reduce privacy and misuse risk without adding a separate safety stack
+- Make useful AI more governable in production
 
 **For technical teams:**
 
-- All detectors run on CPU (HAP 38MB, prompt injection 86MB) — zero GPU budget impact
-- TrustyAI Guardrails Orchestrator deploys via ArgoCD like every other RHOAI component — consistent GitOps lifecycle
-- PII regex patterns are customizable for your data (Dutch phone numbers, EU formats, social URLs)
+- Enforce safety controls on both prompts and responses
+- Run detectors without competing for LLM GPU resources
+- Apply platform-native guardrails as part of the serving path
 
 ## Troubleshooting
 

@@ -194,15 +194,15 @@ After both benchmarks complete, compare the results (tuned configuration):
 
 **For business stakeholders:**
 
-- Model observability transforms GPU investment from guesswork into data-driven capacity planning
-- Performance baselines enable SLO commitments — P95 latency, throughput, and concurrency limits are measurable
-- Self-service benchmarking via the RHOAI Dashboard puts performance validation in the hands of every team, not just platform operators
+- Measure latency, throughput, and hardware use before widening adoption
+- Replace guesswork with data for capacity planning
+- Treat observability as part of production readiness, not an afterthought
 
 **For technical teams:**
 
-- vLLM exposes Prometheus metrics natively; KServe auto-creates ServiceMonitors — zero custom instrumentation
-- FP8 KV cache tuning doubles effective concurrency without additional GPUs
-- GuideLLM graduated concurrency tests (1-10 req/s) reveal saturation points and hardware-bound limits
+- Benchmark served models under load with GuideLLM
+- Correlate application metrics with GPU utilization and cache behavior
+- Build a repeatable path for performance baselining on the same platform
 
 ## Troubleshooting
 

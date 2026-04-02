@@ -267,15 +267,15 @@ oc get inferenceservice face-recognition-edge -n edge-ai -o jsonpath='{.spec.pre
 
 **For business stakeholders:**
 
-- AI models deploy to real edge hardware — a RHEL host with MicroShift and GPU — using the same operational model as the datacenter
-- Models flow from central training to edge devices via GitOps — no manual intervention, no site visits, no custom deployment scripts
-- GPU-accelerated inference at the edge handles workloads that CPU-only cannot — real-time video analysis, high-throughput detection, latency-sensitive applications
+- Prove the edge story on real hardware, not just in simulation
+- Keep low-latency inference aligned to central standards
+- Extend the same governed approach to smaller edge footprints
 
 **For technical teams:**
 
-- MicroShift 4.20 with `microshift-ai-model-serving` provides KServe at the edge — the same InferenceService API works on central OCP and MicroShift
-- ModelCar OCI images package models as container images, enabling standard container registry workflows for model delivery and version management
-- Embedded ArgoCD core provides GitOps on edge devices with minimal footprint — model updates are Git commits that auto-sync within minutes
+- Use the same operating model on MicroShift and central OpenShift
+- Deliver models to edge through GitOps and existing release patterns
+- Reuse the same application flow while changing only the edge runtime and target
 
 ## Edge Fleet Management: Three Tiers
 

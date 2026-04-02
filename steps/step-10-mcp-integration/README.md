@@ -175,15 +175,15 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 
 **For business stakeholders:**
 
-- AI agents move from answers to assisted action across enterprise workflows — investigating, correlating, and notifying in a single conversation
-- MCP provides a standardized protocol for connecting AI to enterprise systems such as databases, infrastructure, and messaging — without custom integration code
-- MCP servers are available from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers), extending the trusted supply chain to AI tooling
+- Move from answers to assisted action across enterprise workflows
+- Connect models to live systems on the same governed platform
+- Build on an open ecosystem of tools and integrations
 
 **For technical teams:**
 
-- MCP servers deploy as standard containers from `quay.io/mcp-servers/` — zero on-cluster builds, managed via GitOps like every other component
-- The Llama Stack API provides a unified entry point for tool orchestration — tool_groups register once and persist across restarts
-- The agent discovers database schemas and writes SQL autonomously — no application-specific APIs or predefined queries required
+- Add tool access through MCP and Llama Stack on top of the secured RAG flow
+- Connect models to databases, infrastructure, and messaging systems
+- Reuse evaluation, guardrails, and governance already established in earlier steps
 
 ## Troubleshooting
 

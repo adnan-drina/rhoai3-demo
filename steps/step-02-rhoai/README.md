@@ -119,15 +119,15 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 **For business stakeholders:**
 
-- RHOAI 3.3 provides a governed AI platform with one operator install — model serving, training, pipelines, governance, and a curated model catalog
-- Self-service Hardware Profiles eliminate the "which GPU do I use?" question — the platform admin defines the options, every team uses the same curated list
-- 48+ Red Hat-validated models are available out of the box with no external dependencies or procurement
+- Turn governed GPU capacity into a shared AI platform for teams
+- Give data scientists, developers, and platform teams one consistent workspace
+- Build on open source with a supported Red Hat AI platform
 
 **For technical teams:**
 
-- The DataScienceCluster CR manages 11 components declaratively — deploy the full stack with a single GitOps manifest
-- Hardware Profiles use direct `nodeSelector` + `tolerations` for GPU placement, providing reliable scheduling without queuing complexity
-- Service Mesh 3 is auto-installed by DSCInitialization — no separate mesh deployment required
+- Install the core OpenShift AI stack through one managed platform layer
+- Use hardware profiles to match workloads to the right compute
+- Centralize serving, development, and governance in one DataScienceCluster
 
 ## Troubleshooting
 

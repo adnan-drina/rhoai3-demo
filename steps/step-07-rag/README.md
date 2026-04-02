@@ -196,15 +196,15 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 **For business stakeholders:**
 
-- RAG grounds answers in enterprise knowledge and reduces hallucination risk
-- Document ingestion runs as a repeatable Kubeflow Pipeline — new documents are one pipeline run away from being searchable
-- The entire RAG stack runs on private infrastructure with no external API calls, supporting data sovereignty requirements
+- Ground model answers in enterprise knowledge
+- Improve relevance and reduce hallucination risk with your own data
+- Keep the whole RAG workflow on the same governed platform
 
 **For technical teams:**
 
-- The Llama Stack API provides a unified interface for embedding, vector storage, and agent queries — no separate services to manage
-- pgvector replaces Milvus with a single PostgreSQL instance, simplifying operations and reducing resource footprint
-- Agent-based retrieval via the Responses API gives the model autonomy to refine searches — production-grade RAG with minimal custom orchestration
+- Ingest documents through repeatable pipelines
+- Convert, embed, and store enterprise content in a reusable retrieval layer
+- Connect fast inference to private data without creating a separate stack
 
 ## Troubleshooting
 

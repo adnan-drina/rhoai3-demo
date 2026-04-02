@@ -176,15 +176,15 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
 
 **For business stakeholders:**
 
-- RHOAI handles both generative AI (LLMs) and predictive AI (computer vision) on the same platform — no separate infrastructure or procurement
-- A personalized face recognition model was trained from raw photos to production deployment in a single RHOAI environment
-- CPU-only inference keeps operational costs low — no dedicated GPU required for serving
+- Support predictive and generative AI on one platform
+- Reuse the same controls and operations for computer vision workloads
+- Avoid a separate toolchain for classical ML
 
 **For technical teams:**
 
-- KServe RawDeployment with OpenVINO serves ONNX models on CPU at ~100ms latency — the platform-recommended pattern after ModelMesh deprecation in RHOAI 3.3
-- The workbench git-sync initContainer keeps notebooks version-controlled while binary assets (photos, video) are uploaded separately via `oc cp`
-- The same `kserve-ovms` ServingRuntime template from the RHOAI Dashboard works for any ONNX model
+- Train and serve a predictive model in the same governed environment used for GenAI
+- Reuse serving, observability, and governance patterns already in place
+- Show that efficient CPU inference can fit real deployment needs
 
 ## Troubleshooting
 

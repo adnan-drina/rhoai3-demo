@@ -253,15 +253,15 @@ oc delete pod -n edge-ai-demo -l app=face-recognition-edge-predictor
 
 **For business stakeholders:**
 
-- AI inference runs where the data lives — the same model trained centrally deploys to edge sites with zero code changes and minimal hardware (CPU-only)
-- The Red Hat Edge + On-Premise pattern separates concerns: data acquisition and inference at the edge, model development and governance in the datacenter
-- GitOps-driven model delivery means edge devices always run the latest approved model — no manual intervention, no site visits
+- Bring AI closer to where decisions happen
+- Support low-latency use cases without creating a separate operating model
+- Reuse the same governed lifecycle from core to edge
 
 **For technical teams:**
 
-- KServe + OpenVINO serves ONNX models at ~100ms on CPU — the same `kserve-ovms` ServingRuntime works identically on central OCP and edge namespaces
-- The edge namespace is fully self-contained — migration to actual SNO or MicroShift requires only changing the ArgoCD destination
-- Same inference protocol (gRPC) works against both central and edge model servers — same client code for OpenVINO (this step) and NVIDIA Triton (step 13b)
+- Reuse the same model artifacts and deployment patterns at the edge
+- Keep central governance while running inference near the data source
+- Extend the platform story from datacenter to distributed environments
 
 ## Known Limitations
 

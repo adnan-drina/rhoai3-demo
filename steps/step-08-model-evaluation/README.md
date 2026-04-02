@@ -241,15 +241,15 @@ oc get lmevaljob granite-8b-agent-eval -n private-ai \
 
 **For business stakeholders:**
 
-- RAG value is measurable: ~20% baseline to ~90% with documents — a 70-point improvement quantified through automated evaluation
-- Every evaluation run is versioned, auditable, and stored in object storage — supporting compliance and governance requirements
-- Standard benchmarks baseline model capabilities before production deployment, reducing the risk of deploying undertested models
+- Replace "it feels right" with evidence stakeholders can review
+- Measure whether grounding actually improves answer quality
+- Create a repeatable basis for governance and production decisions
 
 **For technical teams:**
 
-- RAG evaluation runs as a Kubeflow Pipeline — automated, tracked in DSPA, with HTML reports published to MinIO
-- LM-Eval is an RHOAI-native capability via the TrustyAI operator — no additional tooling to install or manage
-- The LLM-as-judge pattern (small candidate + large judge) provides scalable grading without manual review of every answer
+- Evaluate RAG quality in a tracked pipeline
+- Benchmark served models with standard tasks using TrustyAI tooling
+- Keep evaluation results versioned, reviewable, and tied to the deployed platform
 
 ## Troubleshooting
 

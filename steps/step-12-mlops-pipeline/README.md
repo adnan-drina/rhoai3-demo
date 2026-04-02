@@ -274,15 +274,15 @@ ArgoCD-managed copies (synced to cluster): [`gitops/step-13b-edge-ai-microshift/
 
 **For business stakeholders:**
 
-- Repeatable automation from experimentation to production on one governed platform — every model version is traceable, evaluated, and registered
-- Quality gates prevent regressions from reaching production — only models that pass evaluation deploy
-- Governance and monitoring are reused from earlier themes, not a separate MLOps stack
+- Improve repeatability from experimentation to production
+- Keep model quality gates and promotion decisions on one platform
+- Reuse existing controls for governance, monitoring, and operations
 
 **For technical teams:**
 
-- KFP v2 pipeline automates training, evaluation, registry registration, and conditional deployment in one workflow
-- TrustyAI provides drift detection and bias monitoring for production models on the same platform
-- ModelCar OCI packaging bridges data science (KFP) and CI/CD (Tekton) for edge model promotion
+- Automate dataset prep, training, evaluation, registration, and deployment in one workflow
+- Use pipeline quality gates to prevent regressions from reaching production
+- Extend the same model lifecycle toward release and edge promotion paths
 
 ## Troubleshooting
 

@@ -111,15 +111,15 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 **For business stakeholders:**
 
-- GPU infrastructure is provisioned as code — no manual hardware requests, no ticket queues
-- AI compute is isolated and governed for shared enterprise use
-- The compute foundation is repeatable, governed, and ready for private AI workloads
+- Create the governed compute base for enterprise AI
+- Isolate expensive AI resources for shared use across teams
+- Start private AI with infrastructure you control
 
 **For technical teams:**
 
-- NVIDIA L4 GPUs run on AWS G6 instances with Driver Toolkit — no RHEL entitlement secrets required
-- Three operator prerequisites are managed declaratively: NFD, GPU Operator, Serverless (llm-d stack available in kustomization when needed)
-- Custom ArgoCD health checks ensure accurate sync status for PVCs, InferenceServices, and TrustyAI CRDs
+- Deploy GPU discovery, drivers, serving prerequisites, and monitoring in a repeatable way
+- Reserve GPU nodes for workloads that explicitly request them
+- Manage the GPU layer as OpenShift-native, GitOps-friendly infrastructure
 
 ## Troubleshooting
 

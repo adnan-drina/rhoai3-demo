@@ -120,15 +120,15 @@ echo "https://${MINIO_URL}"
 
 **For business stakeholders:**
 
-- GPU-as-a-Service eliminates the ticket queue — data scientists self-serve GPU workbenches in minutes, not days
-- Role-based access control separates platform governors from data science consumers — governance without bottlenecks
-- Pre-configured S3 storage and data connections remove infrastructure friction from every AI workflow
+- Run AI with more control in regulated and sovereignty-sensitive environments
+- Separate access to GPUs, data, and projects by role
+- Keep shared AI capacity usable without turning it into a free-for-all
 
 **For technical teams:**
 
-- Hardware Profiles use direct `nodeSelector` + `tolerations` — reliable GPU scheduling without Kueue's SchedulingGate side effects
-- Data connections are GitOps-managed secrets that auto-appear in Dashboard dropdowns for workbenches and model serving
-- GitOps-managed secrets require careful label handling to avoid conflicts with the ODH model controller
+- Add multitenancy, RBAC, and shared object storage to the AI platform
+- Enforce who can use GPUs and where artifacts live
+- Make private AI operational with identity, quotas, and governed access patterns
 
 ## Troubleshooting
 
