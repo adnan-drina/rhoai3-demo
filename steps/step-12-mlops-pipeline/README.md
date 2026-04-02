@@ -3,11 +3,11 @@
 
 ## Overview
 
-**Build, train, and operationalize predictive AI on the same platform as generative AI.** Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, and registry-backed promotion **on the same RHOAI footprint** as your GenAI work, not a parallel MLOps island. You **reuse** the pipeline server, registry, and observability story from earlier themes: the **same pipeline infrastructure** that powers RAG document ingestion (Step 07) now runs dataset prep, training, evaluation, Model Registry updates, and conditional deploy for face recognition.
+**Build, train, and operationalize predictive AI on the same platform as generative AI.** Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, and registry-backed promotion **on the same RHOAI footprint** as your GenAI work, not a separate toolchain. You **reuse** the pipeline server, registry, and observability story from earlier themes: the **same pipeline infrastructure** that powers RAG document ingestion (Step 07) now runs dataset prep, training, evaluation, Model Registry updates, and conditional deploy for face recognition.
 
 As Red Hat's AI adoption guide states: *"AI pipelines can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows."* **Red Hat OpenShift AI 3.3** provides **Kubeflow Pipelines (KFP v2)** and a **Model Registry** so that workflow runs unattended with governance. Ongoing model health still matters: *"Implement drift monitoring to track model behavior over time, including changes in accuracy, response quality, and adherence to safety guidelines. Models can degrade as the world changes around them; monitoring catches this before users do."*
 
-This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with pipelines that are versioned, tracked, and managed, plus TrustyAI drift and bias monitoring in production.
+This is where Consistency shows up for predictive AI: the same platform governs experimentation, automation, promotion, and monitoring. This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with pipelines that are versioned, tracked, and managed, plus TrustyAI drift and bias monitoring in production.
 
 ### What Gets Deployed
 

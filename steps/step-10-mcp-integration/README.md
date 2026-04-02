@@ -1,13 +1,13 @@
 # Step 10: Agentic AI with MCP
-**"Enterprise Tool Orchestration"** — Give the AI agent access to live enterprise systems through Model Context Protocol.
+**"From answers to action"** — Give the AI agent access to live enterprise systems through Model Context Protocol.
 
 ## Overview
 
-Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **autonomous action**, not only document answers. Theme 2 closes the loop: models grounded in data, held to policy, and now able to query equipment databases, inspect OpenShift workloads, and notify teams in Slack when something fails. As Red Hat's AI adoption guide describes: *"Agentic architectures orchestrate multiple AI agents that can query databases, call APIs, search internal knowledge bases, and take actions based on results. This moves AI from answering questions to completing tasks."* As the guide notes: *"Modern models also now support function calling, allowing them to interact with external tools, APIs, and databases, transforming them from text generators to action-takers."*
+Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **tool-enabled action**, not only document answers. Theme 2 closes the loop: models grounded in data, held to policy, and now able to query equipment databases, inspect OpenShift workloads, and notify teams in Slack when something fails. As Red Hat's AI adoption guide describes: *"Agentic architectures orchestrate multiple AI agents that can query databases, call APIs, search internal knowledge bases, and take actions based on results. This moves AI from answering questions to completing tasks."* As the guide notes: *"Modern models also now support function calling, allowing them to interact with external tools, APIs, and databases, transforming them from text generators to action-takers."*
 
 **Red Hat OpenShift AI 3.3** supports that pattern through the **Model Context Protocol (MCP)** — standardized communication between AI applications and external services. MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) plug the model into operational systems on private infrastructure, with the **Llama Stack API** orchestrating tool use.
 
-This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building autonomous systems that perform complex tasks with limited supervision.
+This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building tool-enabled workflows that perform complex tasks with limited supervision.
 
 ### What Gets Deployed
 

@@ -7,7 +7,7 @@
 
 **Red Hat OpenShift AI 3.3** pairs the **Model Catalog** (48+ Red Hat-validated models in OCI ModelCar format — many from **open-source** communities, deployable without external dependencies) with the **Model Registry** (versions, ownership, approval). Together they deliver *"centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts"* — discover in the Catalog, govern in the Registry. This **completes the Private AI foundation** for the demo: compute, platform, access and storage, and now model lifecycle.
 
-This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts — ensuring that the same governed model lifecycle works across any OpenShift cluster.
+This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts — ensuring that the same governed model lifecycle works across any OpenShift cluster. This completes the Private AI foundation. From here, every model served, evaluated, or promoted carries accountability through the registry.
 
 ### What Gets Deployed
 

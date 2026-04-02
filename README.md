@@ -16,7 +16,7 @@ AI in the enterprise is not just about models. It is about building a governed A
 
 ## Architecture
 
-*Single platform to run any model, on any accelerator, on any cloud*
+*One platform to build, serve, and govern AI across hybrid cloud*
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────┐

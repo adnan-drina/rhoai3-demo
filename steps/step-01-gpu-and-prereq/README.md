@@ -1,9 +1,9 @@
 # Step 01: GPU Infrastructure & Prerequisites
-**"AI-Ready Infrastructure"** — Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.3 depends on.
+**"GPU foundation for private AI"** — Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.3 depends on.
 
 ## Overview
 
-**Private AI** means running AI with control over data, operations, and deployment choices. That control starts with compute you govern: this step establishes the **compute foundation** for the platform — GPU-accelerated capacity, hardware discovery, and the networking primitives inference depends on — so workloads run where you operate, not as an afterthought.
+**Private AI** means running AI with control over data, operations, and deployment choices. That control starts with compute you govern: this step establishes the **compute foundation** for the platform — GPU-accelerated capacity, hardware discovery, and the networking primitives inference depends on — so workloads run where you operate, not as an afterthought. This is where Trust becomes operational: the compute layer is open, governed, and under the organization's control.
 
 **Red Hat OpenShift Container Platform** and the operators installed here (NFD, NVIDIA GPU Operator, Serverless, monitoring) are **open source**; you retain operational choice over how the stack is deployed and updated. **Red Hat OpenShift AI 3.3** adds intelligent GPU and hardware acceleration to that stack — self-service GPU access, intelligent scheduling, and discovery that labels and provisions GPU resources — managed as first-class OpenShift resources and GitOps-friendly objects.
 

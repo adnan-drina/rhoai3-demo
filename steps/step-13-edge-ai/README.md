@@ -1,5 +1,5 @@
 # Step 13: Edge AI — Face Recognition at the Edge
-**"From Datacenter to Edge"** — Deploy the face recognition model to a simulated edge environment with a camera app, demonstrating the Red Hat Edge + On-Premise AI/ML pattern.
+**"From core to edge"** — Deploy the face recognition model to a simulated edge environment with a camera app, demonstrating the Red Hat Edge + On-Premise AI/ML pattern.
 
 ## Overview
 
@@ -7,7 +7,7 @@
 
 As Red Hat states: *"Red Hat OpenShift AI allows training, deployment, and monitoring AI/ML workloads across various environments — cloud, on-premise datacenters, or at the edge."* Step 13 simulates that pattern: a local OpenVINO server answers the edge camera, while the model artifact still flows from the same central story (MinIO, pipeline, registry) you already trust. The adoption guide frames the payoff: *"Edge and on-premise deployments deliver low-latency inference for real-time applications without round-trip calls to external APIs."*
 
-This step demonstrates RHOAI's **Disconnected environments and edge** capability: the same model trained centrally deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI supports deployment across cloud, on-premise, and edge environments.
+Edge is not a new AI platform — it is the same governed lifecycle pushed outward. This step demonstrates RHOAI's **Disconnected environments and edge** capability: the same model trained centrally deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI supports deployment across cloud, on-premise, and edge environments.
 
 ### What Gets Deployed
 

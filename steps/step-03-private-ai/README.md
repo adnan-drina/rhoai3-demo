@@ -3,7 +3,7 @@
 
 ## Overview
 
-**Private AI** means running AI with control over data, operations, and deployment choices. At platform scale, that requires a **governance layer**: who may use GPUs, where artifacts live, and how roles are separated — so multi-tenant use stays **sovereign-ready** (data and workloads remain under your operational control, on-prem, in-region, or in a boundary you define). Without it, shared GPU capacity and storage become a free-for-all.
+**Private AI** means running AI with control over data, operations, and deployment choices. At platform scale, that requires a **governance layer**: who may use GPUs, where artifacts live, and how roles are separated — so multi-tenant use stays **sovereign-ready** (data and workloads remain under your operational control, on-prem, in-region, or in a boundary you define). Without it, shared GPU capacity and storage become a free-for-all. This is where Trust becomes operational for teams: who can use GPUs, where artifacts live, and how roles are separated.
 
 **Red Hat OpenShift AI 3.3** supplies the operational pieces — *"self-service GPU access... intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles"* — alongside **open-source** OpenShift patterns for identity and RBAC. Integrated S3-style storage and OpenShift-native RBAC separate Service Governors from Service Consumers so access is deliberate, not accidental.
 

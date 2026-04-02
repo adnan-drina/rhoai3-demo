@@ -1,5 +1,5 @@
 # Step 06: Model Performance Metrics
-**"Measure What Matters"** — Understand how your models perform under load with Grafana dashboards and GuideLLM benchmarks.
+**"From experiment to production"** — Understand how your models perform under load with Grafana dashboards and GuideLLM benchmarks.
 
 ## Overview
 
@@ -7,7 +7,7 @@ Building on **model serving** from Step 05 — still on the same governed platfo
 
 **Red Hat OpenShift AI 3.3** wires this through **OpenShift User Workload Monitoring**, scraping vLLM's Prometheus metrics via KServe-managed ServiceMonitors. Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load; **DCGM** (Data Center GPU Manager) ties results back to hardware utilization.
 
-This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to assist real-world inference deployments and right-size GPU spend.
+This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to assist real-world inference deployments and right-size GPU spend. This is where Trust becomes measurable for generative AI: cost, latency, throughput, and behavior under load.
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 

@@ -7,7 +7,7 @@ Building on **optimized model serving** — reusing the governed inference stack
 
 **Red Hat OpenShift AI 3.3** implements that path through the **Llama Stack API** — embedding, vector storage, and agent queries in one surface. Ingestion runs on **Kubeflow Pipelines** with **Docling** for PDF conversion, **PostgreSQL with pgvector** for storage, with repeatable, dashboard-visible runs. *"Docling, an open source framework included in Red Hat AI, handles this complexity by extracting text, tables, and structure from PDFs and other documents."*
 
-*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This step demonstrates RHOAI's **Model development and customization** capability — specifically Retrieval Augmented Generation (RAG) for private data connection — and **AI pipelines** that automate document ingestion, ensuring models produce content grounded in your documents rather than hallucinating from training data.
+*"RAG and fine-tuning solve different problems. RAG gives models access to current information they weren't trained on. Fine-tuning changes how a model behaves, reasons, or responds. Many production systems use both."* This is where Choice shows up: teams can keep enterprise data private while deciding how and where models access it. This step demonstrates RHOAI's **Model development and customization** capability — specifically Retrieval Augmented Generation (RAG) for private data connection — and **AI pipelines** that automate document ingestion, ensuring models produce content grounded in your documents rather than hallucinating from training data.
 
 ### What Gets Deployed
 

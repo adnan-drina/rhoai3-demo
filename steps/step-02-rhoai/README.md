@@ -1,9 +1,9 @@
 # Step 02: Red Hat OpenShift AI 3.3 Platform
-**"The AI Platform"** — Install the full RHOAI 3.3 platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a GPU-accelerated OpenShift cluster.
+**"Governed AI platform layer"** — Install the full RHOAI 3.3 platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a GPU-accelerated OpenShift cluster.
 
 ## Overview
 
-**Private AI** is about control over data, operations, and deployment choices — and teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models without duplicating siloed tooling.
+**Private AI** is about control over data, operations, and deployment choices — and teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models without duplicating siloed tooling. This is what turns raw GPU capacity into a shared platform for teams.
 
 RHOAI is **open source**, built on the **Open Data Hub** community project and delivered as a supported Red Hat product. **Red Hat OpenShift AI 3.3** provides centralized management for predictive and generative AI — *"a consistent user experience that empowers data scientists, AI engineers, developers, and DevOps teams to collaborate effectively to deliver timely AI solutions,"* with GenAI Studio for *"rapid prototyping and evaluation before committing to production,"* Hardware Profiles for the right GPU placement, and a DataScienceCluster that manages the component stack from serving and training through pipelines and governance.
 

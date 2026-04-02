@@ -7,7 +7,7 @@ Building on **RAG** from Step 07 — within the same governed platform ACME alre
 
 **Red Hat OpenShift AI 3.3** provides two paths. **RAG Evaluation** runs the same questions with and without context, scores the gap with an LLM-as-judge inside a **Kubeflow Pipeline**, and publishes HTML reports to MinIO. **Standard Model Evaluation** uses the **LMEvalJob** CR and **TrustyAI** operator for benchmarks (HellaSwag, ARC Challenge, WinoGrande, BoolQ) against any served model.
 
-This step demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
+This step supports Trust by making quality and improvement reviewable for stakeholders. It demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
 
 ### What Gets Deployed
 

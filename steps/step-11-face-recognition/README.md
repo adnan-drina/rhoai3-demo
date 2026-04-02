@@ -7,7 +7,7 @@
 
 The **same platform** that serves LLMs with vLLM (Steps 05–10) also supports computer vision: this step trains a YOLO11 model, exports to ONNX, and serves it with OpenVINO on KServe — **one infrastructure footprint, one operational model** for both generative and predictive AI. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.3** alongside your GenAI stack, not on an island.
 
-This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
+This is where Choice shows up at the platform level: the same governed platform supports both generative and predictive patterns. This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
 
 ### What Gets Deployed
 
