@@ -38,16 +38,6 @@ Model Evaluation
 | **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | `private-ai` |
 | **HTML Reports** | Per-scenario pre/post RAG results in MinIO | `minio-storage` |
 
-#### Scoring Scale (RAG Evaluation)
-
-| Score | Meaning | Color | Quality |
-|-------|---------|-------|---------|
-| **(A)** | Exact match — same key facts | Green | Best |
-| **(B)** | Superset — all expected points plus additional correct detail | Green | Great |
-| **(C)** | Subset — covers some but not all expected points | Yellow | Partial |
-| **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
-| **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
-
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
 
 #### Platform Features
@@ -57,6 +47,16 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | RHOAI | Model observability and governance (LM-Eval, LLM-as-Judge) | Used |
 | RHOAI | AI pipelines (KFP v2) | Used |
 | RHOAI | Optimized model serving (judge model) | Used |
+
+#### Scoring Scale (RAG Evaluation)
+
+| Score | Meaning | Color | Quality |
+|-------|---------|-------|---------|
+| **(A)** | Exact match — same key facts | Green | Best |
+| **(B)** | Superset — all expected points plus additional correct detail | Green | Great |
+| **(C)** | Subset — covers some but not all expected points | Yellow | Partial |
+| **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
+| **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
 
 ### Design Decisions
 

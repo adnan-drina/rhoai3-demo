@@ -1,5 +1,5 @@
 # Step 03: Private AI — GPU as a Service
-**"From Static Platform to GPU-as-a-Service"** — Dynamic GPU allocation, S3 storage, quota enforcement, and role-based access control.
+**"Governed GPU-as-a-Service"** — Dynamic GPU allocation, S3 storage, quota enforcement, and role-based access control.
 
 ## Overview
 

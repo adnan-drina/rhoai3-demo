@@ -100,28 +100,19 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 
 ### What to Verify After Deployment
 
+| Check | What It Tests | Pass Criteria |
+|-------|--------------|---------------|
+| ServingRuntime | `kserve-ovms` exists in namespace | Listed |
+| Model upload | `upload-face-model` job completed | succeeded = 1 |
+| InferenceService | `face-recognition` is Ready | READY = True |
+| Workbench | `face-recognition-wb-0` pod running | 2/2 Running |
+| Notebook assets | images, videos, my_photos directories populated | Files present |
+
 ```bash
-# ServingRuntime exists
 oc get servingruntime kserve-ovms -n private-ai
-
-# Model uploaded to MinIO
 oc get job upload-face-model -n minio-storage -o jsonpath='{.status.succeeded}'
-# Expected: 1
-
-# InferenceService is Ready
 oc get inferenceservice face-recognition -n private-ai
-# Expected: READY = True
-
-# Workbench is Running
-oc get notebook face-recognition-wb -n private-ai
 oc get pod face-recognition-wb-0 -n private-ai
-# Expected: 2/2 Running
-
-# Notebook assets uploaded
-oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- \
-  bash -c 'for d in images videos my_photos; do [ -d $d ] && echo "$d: $(ls $d | wc -l) files"; done'
-
-# Validate all checks
 ./steps/step-11-face-recognition/validate.sh
 ```
 
