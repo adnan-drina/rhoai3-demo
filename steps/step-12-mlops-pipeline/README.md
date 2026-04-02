@@ -42,6 +42,15 @@ Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
 
 Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pipeline/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | AI pipelines (KFP v2 training pipeline) | Used |
+| RHOAI | Catalog and registry (Model Registry) | Used |
+| RHOAI | Model observability and governance (TrustyAI drift/bias) | Used |
+| OCP | OpenShift Pipelines (Tekton — ModelCar build) | Introduced |
+
 ### Design Decisions
 
 > **Reuse existing DSPA** (`dspa-rag`). One pipeline server handles RAG ingestion, evaluation, benchmarks, and now training. No additional infrastructure needed.

@@ -34,6 +34,18 @@ OpenShift 4.20 Cluster
 
 Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-prereq/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Intelligent GPU and hardware speed | Introduced |
+| OCP | Operator Lifecycle Manager (OLM) | Introduced |
+| OCP | Node Feature Discovery (NFD) | Introduced |
+| OCP | NVIDIA GPU Operator | Introduced |
+| OCP | OpenShift Serverless (Knative) | Introduced |
+| OCP | Monitoring (Prometheus) | Introduced |
+| OCP | OpenShift GitOps (ArgoCD) | Introduced |
+
 ### Design Decisions
 
 > **Default GPU driver (no pin):** RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.

@@ -31,6 +31,15 @@ LLM Serving
 
 Manifests: [`gitops/step-05-llm-on-vllm/base/`](../../gitops/step-05-llm-on-vllm/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Optimized model serving (vLLM) | Introduced |
+| RHOAI | Agentic AI and gen AI UIs (GenAI Playground) | Used |
+| RHOAI | Catalog and registry (Model Registry) | Used |
+| RHOAI | Intelligent GPU and hardware speed | Used |
+
 ### Design Decisions
 
 > **Recreate deployment strategy:** All InferenceServices use `deploymentStrategy.type: Recreate` to avoid dual-pod GPU contention — rolling updates would require two GPU allocations simultaneously on constrained nodes.

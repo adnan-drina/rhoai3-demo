@@ -45,6 +45,14 @@ RHOAI 3.3 Platform
 
 Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Agentic AI and gen AI UIs (GenAI Studio) | Introduced |
+| RHOAI | Intelligent GPU and hardware speed (Hardware Profiles) | Used |
+| OCP | Service Mesh 3 (Istio) | Introduced |
+
 ### Design Decisions
 
 > **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.

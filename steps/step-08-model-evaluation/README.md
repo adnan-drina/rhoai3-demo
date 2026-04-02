@@ -50,6 +50,14 @@ Model Evaluation
 
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Model observability and governance (LM-Eval, LLM-as-Judge) | Used |
+| RHOAI | AI pipelines (KFP v2) | Used |
+| RHOAI | Optimized model serving (judge model) | Used |
+
 ### Design Decisions
 
 > **Two separate models for RAG eval:** `granite-8b-agent` as candidate, `mistral-3-bf16` as judge. Using the same small model for both roles causes hallucinated judgments — it injects biases instead of faithfully comparing texts.

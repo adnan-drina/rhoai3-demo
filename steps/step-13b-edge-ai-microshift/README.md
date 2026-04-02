@@ -38,6 +38,14 @@ Edge AI on MicroShift (real edge hardware)
 | **edge-camera** Route | HTTPS (nip.io, edge TLS) | `edge-ai` |
 | **ArgoCD core** (controller + repo-server + redis) | Embedded GitOps — syncs workloads from Git | `argocd` |
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Disconnected environments and edge (real hardware) | Used |
+| OCP | MicroShift 4.20 | Introduced |
+| OCP | OpenShift Pipelines (Tekton — ModelCar build) | Used |
+
 #### Architecture
 
 ```text

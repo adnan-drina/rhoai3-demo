@@ -34,6 +34,14 @@ Model Performance Metrics
 
 Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Model observability and governance (GuideLLM, Grafana) | Introduced |
+| RHOAI | Optimized model serving | Used |
+| OCP | Monitoring (Prometheus — user workload metrics) | Used |
+
 ### Design Decisions
 
 > **CronJob + Job templates instead of Tekton:** Tekton adds unnecessary complexity for simple benchmark jobs. Jobs with `nodeSelector` and GPU `tolerations` are simpler and more reliable.

@@ -32,6 +32,14 @@ RAG Pipeline
 
 Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Model development and customization (RAG, Docling) | Introduced |
+| RHOAI | AI pipelines (KFP v2, DSPA) | Introduced |
+| RHOAI | Optimized model serving | Used |
+
 ### Design Decisions
 
 > **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.

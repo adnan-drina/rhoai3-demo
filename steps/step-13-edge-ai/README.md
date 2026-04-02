@@ -31,6 +31,13 @@ Edge AI (simulated SNO)
 
 Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
 
+#### Platform Features
+
+| | Feature | Status |
+|---|---|---|
+| RHOAI | Disconnected environments and edge | Introduced |
+| RHOAI | Optimized model serving (OpenVINO at edge) | Used |
+
 #### Architecture
 
 ```text
