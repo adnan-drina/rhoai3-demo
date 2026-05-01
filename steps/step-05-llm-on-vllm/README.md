@@ -7,6 +7,10 @@ Building on the governed platform — reusing the catalog, GPU placement, and na
 
 This step demonstrates RHOAI's **Optimized model serving** capability: serving models via vLLM, optimized for high throughput and low latency, with access to validated gen AI models — and the **Agentic AI and gen AI UIs** through the GenAI Playground for immediate experimentation.
 
+## Architecture
+
+![Step 05 capability map](../../docs/assets/architecture/step-05-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

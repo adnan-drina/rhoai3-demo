@@ -7,6 +7,10 @@ Step 11 was the notebook inner loop; this step is the **outer loop** — automat
 
 This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with TrustyAI drift and bias monitoring in production.
 
+## Architecture
+
+![Step 12 capability map](../../docs/assets/architecture/step-12-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

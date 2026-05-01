@@ -7,6 +7,10 @@ Teams need one **consistent, self-service environment** instead of ad hoc stacks
 
 This step demonstrates RHOAI's **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster.
 
+## Architecture
+
+![Step 02 capability map](../../docs/assets/architecture/step-02-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

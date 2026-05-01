@@ -7,6 +7,10 @@ At platform scale, private AI requires a **governance layer** — who may use GP
 
 This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability — quota management, priority access, and visibility of use through hardware profiles — with governance that scales from a single team to an entire organization.
 
+## Architecture
+
+![Step 03 capability map](../../docs/assets/architecture/step-03-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

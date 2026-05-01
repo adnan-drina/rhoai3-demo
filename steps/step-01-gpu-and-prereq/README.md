@@ -7,6 +7,10 @@
 
 This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload on the platform depends on.
 
+## Architecture
+
+![Step 01 capability map](../../docs/assets/architecture/step-01-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

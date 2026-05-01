@@ -7,6 +7,10 @@
 
 This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
 
+## Architecture
+
+![Step 11 capability map](../../docs/assets/architecture/step-11-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

@@ -7,6 +7,10 @@ Private AI extends to **models**: you need control over what is discovered, regi
 
 This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts. This completes the Private AI foundation — compute, platform, access, storage, and now model lifecycle.
 
+## Architecture
+
+![Step 04 capability map](../../docs/assets/architecture/step-04-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

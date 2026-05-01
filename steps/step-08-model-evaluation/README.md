@@ -7,6 +7,10 @@ Building on **RAG** from Step 07 — within the same governed platform — this 
 
 This step demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
 
+## Architecture
+
+![Step 08 capability map](../../docs/assets/architecture/step-08-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

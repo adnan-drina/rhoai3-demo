@@ -1,0 +1,147 @@
+---
+description: Use whenever creating/updating a README for a demo step. Enforce the Tell-Show-Tell demo structure, Red Hat narrative alignment, and official references.
+globs: **/README.md,**/README.mdx
+alwaysApply: false
+---
+
+# README Requirements for Demo Steps
+
+Each demo step README is a **demo document** — it IS the demo, not a script about a demo. The structure follows an invisible Tell-Show-Tell methodology: set context, show proof, deliver value. The audience should never see methodology labels — only a polished, well-organized README that tells the official Red Hat story.
+
+## Red Hat Narrative Alignment
+
+Before writing or updating any README, consult the relevant Red Hat official content:
+
+- [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
+- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
+- [Red Hat Developer Blog](https://developers.redhat.com/blog)
+- [RHOAI 3.3 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
+
+Use Red Hat's official terminology and value propositions. Connect each step to the relevant RHOAI feature from the [datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
+
+| RHOAI Feature | Demo Steps |
+|---------------|-----------|
+| **Intelligent GPU and hardware speed** | 01, 02, 03 |
+| **Catalog and registry** | 04 |
+| **Optimized model serving** | 05, 06 |
+| **Model development and customization** | 07, 11 |
+| **AI pipelines** | 07, 08, 12 |
+| **Model observability and governance** | 06, 08, 09, 12 |
+| **Agentic AI and gen AI UIs** | 05, 09, 10 |
+| **Model training and experimentation** | 11, 12 |
+| **Disconnected environments and edge** | 13, 13b |
+
+## Architecture diagrams (SVG)
+
+Include a **`## Architecture` section with a Markdown image** that points at an SVG under `docs/assets/architecture/`:
+
+| README | Markdown path convention |
+|--------|---------------------------|
+| Root `README.md` | `docs/assets/architecture/rhoai3-demo-capability-map.svg` |
+| `steps/step-NN-*/README.md` | `../../docs/assets/architecture/step-NN-capability-map.svg` (extension step `13b` uses `step-13b-capability-map.svg`) |
+
+**Placement:** put `## Architecture` immediately **after motivation** — for example following `### Why it matters`, `## Why This Workshop Exists`, or the intro paragraphs inside `## Overview` — and **before** the first technical breakdown such as **`### What Gets Deployed`**, `## What This Step Adds`, or `## What We Are Building`. Never place the diagram before the title or before motivation—the reader should see motivation first, then the platform map, then specifics.
+
+Regenerate diagrams from the repo root with:
+
+```bash
+python3 scripts/generate-readme-visuals.py
+```
+
+**Diagram preference:** use these layered capability SVGs for the cross-step platform story. Reserve ASCII diagrams for localized component-tree views (for example under **What Gets Deployed**) when documenting manifest layouts; do not substitute large ASCII platform maps where an SVG capability diagram is appropriate.
+
+## Required Sections
+
+### 1) Title and one-liner
+- H1 with step number and name
+- Bold tagline below the title
+
+### 2) Overview
+Blends the former "Business Story", "What It Does", "Design Decisions", and "Deploy" into a single narrative section:
+
+- **`## Architecture` first** — layered capability SVG (`docs/assets/architecture/step-NN-capability-map.svg`) immediately **before** `### What Gets Deployed`, after the Overview intro paragraphs — see **Architecture diagrams (SVG)** above
+- **Problem framing** — why this capability matters, using Red Hat's language where possible
+- **Red Hat product introduction** — name the RHOAI capability and connect to its AI pillar
+- **What Gets Deployed** (H3) — ASCII tree diagram + component table with columns: Component, Purpose, Namespace. End with manifests link.
+- **Design Decisions** (H3) — blockquoted rationale for non-obvious choices, linked to official docs
+- **Deploy** (H3) — deploy.sh and validate.sh commands
+- **What to Verify After Deployment** (H3) — deterministic checks confirming deployment success
+- The Overview section transitions to The Demo; no explicit preview blockquote is required if the Demo section opens with its own introductory blockquote
+
+### 3) The Demo
+- Opens with an introductory `>` blockquote that frames what we will demonstrate
+- Each demo scene is an H3 with:
+  - A `>` blockquote that sets context (what we are about to see and why)
+  - Numbered action steps (copy-pastable commands, prompts, UI actions)
+  - `**Expect:**` line describing what the audience sees on screen
+  - A `>` blockquote that summarizes what we just saw and its business value
+- Include `--insecure-skip-tls-verify=true` where needed for self-signed clusters
+- Narrative blockquotes focus on Red Hat products and business value, not technical features
+
+### 4) Key Takeaways
+- Split into two groups with bold labels:
+  - **For business stakeholders:** — 1-3 bullets connecting to business value, compliance, cost
+  - **For technical teams:** — 1-3 bullets connecting to platform operations, GitOps, resource efficiency
+- Use Red Hat's value messaging language
+
+### 5) Troubleshooting (when applicable)
+- Known issues with symptom, root cause, and solution
+- Cross-references to related steps
+
+### 6) References (required)
+- Official RHOAI 3.3 and/or RHOCP 4.20 documentation sections used
+- Official Red Hat product pages, datasheets, or overviews when they add context
+- If a manifest field/value is derived from docs, reference it here
+
+### 7) Next Steps (required)
+- Link to the next step in the demo sequence
+- This is always the final section of the README
+
+## Demo Scene Structure (within The Demo)
+
+```markdown
+### Scene Title
+
+> Context blockquote: what we are about to see and why it matters.
+> Frame the problem or set up the contrast. 1-3 sentences. No commands.
+
+1. Action step
+2. Action step
+3. Action step
+
+**Expect:** What the audience sees on screen — the proof moment.
+
+> Value blockquote: what we just saw and why it matters to the audience.
+> Connect to Red Hat products and business outcomes. 1-3 sentences.
+```
+
+## Scenario Alignment
+- Platform steps (01-04) frame the value for any AI workload — don't tie to a specific scenario
+- GenAI steps (05-10) use the ACME Semiconductor scenario
+- Predictive AI steps (11-13b) use the WhoAmI Face Recognition scenario
+
+## Markdown Formatting
+
+- Use heading levels sequentially — never skip from H2 to H4
+- Use `-` as the unordered list marker (not `*` or `+`)
+- Always specify the language identifier on fenced code blocks (e.g., ` ```bash `, ` ```yaml `)
+- Use backticks for inline references to filenames, commands, config keys, and resource names
+- Use relative paths for links within the repository
+- Use descriptive link text — never "click here" or bare URLs
+
+## Style Rules
+- Use copy-pastable commands
+- Mention any expected delays and what to wait for (pods ready, CR reconciled, etc.)
+- Narrative blockquotes (`>`) are spoken-word text — write them as if presenting to an audience
+- Never expose methodology labels (Tell, Show, Tell) in the README content
+
+## Agent Behavior
+
+After modifying a README:
+- Verify **`## Architecture` exists**, uses an SVG path under `docs/assets/architecture/`, and sits **after motivation** and **before** the first technical section (`### What Gets Deployed`, `What This Step Adds`, `What We Are Building`, or equivalent).
+- Verify heading hierarchy is sequential (H1 → H2 → H3, no skips)
+- Verify all fenced code blocks have a language identifier
+- Verify relative links to other files resolve correctly (e.g., `../step-03-private-ai/README.md`)
+- Verify narrative blockquotes use Red Hat product names and business value language
+- Verify References section includes both technical docs and Red Hat product pages where relevant

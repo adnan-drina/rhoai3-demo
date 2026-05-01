@@ -7,6 +7,10 @@ Building on **optimized model serving** — reusing the governed inference stack
 
 This is where Choice shows up: teams can keep enterprise data private while deciding how and where models access it. This step demonstrates RHOAI's **Model development and customization** capability — specifically RAG for private data connection — and **AI pipelines** that automate document ingestion.
 
+## Architecture
+
+![Step 07 capability map](../../docs/assets/architecture/step-07-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

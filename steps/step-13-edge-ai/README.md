@@ -7,6 +7,10 @@
 
 Edge is not a new AI platform — it is the same governed lifecycle pushed outward. This step demonstrates RHOAI's **Disconnected environments and edge** capability: the same model trained centrally deploys to edge sites with zero code changes, proving that Red Hat OpenShift AI supports deployment across cloud, on-premise, and edge environments.
 
+## Architecture
+
+![Step 13 capability map](../../docs/assets/architecture/step-13-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

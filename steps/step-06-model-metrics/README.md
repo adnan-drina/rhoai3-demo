@@ -9,6 +9,10 @@ This step demonstrates RHOAI's **Model observability and governance** capability
 
 > **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
 
+## Architecture
+
+![Step 06 capability map](../../docs/assets/architecture/step-06-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

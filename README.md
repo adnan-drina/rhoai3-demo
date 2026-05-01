@@ -14,51 +14,15 @@ AI in the enterprise is not just about models. It is about building a governed A
 
 **Target audience:** Solution Architects, Platform Engineers, AI/ML Engineers evaluating Red Hat's AI platform.
 
+## Architecture
+
+![Red Hat OpenShift AI 3.3 demo platform capability map](docs/assets/architecture/rhoai3-demo-capability-map.svg)
+
 ## Key Takeaways
 
 - One governed, open, hybrid-cloud platform for predictive and generative AI
 - One operating model across private, hybrid, and edge environments
 - Trust, choice, and consistency as the three value pillars
-
-## Architecture
-
-*One platform to build, serve, and govern AI across hybrid cloud*
-
-```text
-┌───────────────────────────────────────────────────────────────────────┐
-│                 GitOps-Driven AI Lifecycle                            │
-│                                                                       │
-│ Ingest ──→ Train ──→ Evaluate ──→ Register ──→ Deploy ──→ Monitor     │
-│   ↑                                                         │         │
-│   └──────────────────── Retrain ────────────────────────────┘         │
-├───────────────────────────────────────────────────────────────────────┤
-│                  RHOAI 3.3 — AI/ML Platform                           │
-│                                                                       │
-│ Model Dev &       Model Training   Intelligent GPU   AI Pipelines     │
-│ Customization     & Experimentation & Hardware Speed                  │
-│                                                                       │
-│ Optimized Model   Agentic AI &     Model Observability  Catalog &     │
-│ Serving           Gen AI UIs       & Governance         Registry      │
-│                                                                       │
-│ Feature Store*    Models-as-a-Service*                                │
-├───────────────────────────────────────────────────────────────────────┤
-│              Compute Accelerators — NVIDIA L4 GPU                     │
-├───────────────────────────────────────────────────────────────────────┤
-│               OpenShift Container Platform 4.20                       │
-│                                                                       │
-│ NFD        NVIDIA GPU  Serverless   Service Mesh     Monitoring       │
-│ Operator   Operator    (Knative)    (Istio)          (Prometheus)     │
-│                                                                       │
-│ Auth       GitOps    Pipelines    Data Foundation*   Streams*         │
-│ Operator   (ArgoCD)  (Tekton)     (Ceph)             (Kafka)          │
-├───────────────────────────────────────────────────────────────────────┤
-│                        Infrastructure                                 │
-│                                                                       │
-│    Cloud (AWS)        Edge Simulated (OCP)      Edge (MicroShift)     │
-│    OCP 4.20           namespace on OCP          RHEL 9.5 + L4 GPU     │
-└───────────────────────────────────────────────────────────────────────┘
-  * Planned — see BACKLOG.md
-```
 
 ## RHOAI 3.3 Features and Benefits Coverage
 

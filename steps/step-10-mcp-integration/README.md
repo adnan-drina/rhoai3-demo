@@ -7,6 +7,10 @@ Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and gu
 
 This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building tool-enabled workflows that perform complex tasks with limited supervision.
 
+## Architecture
+
+![Step 10 capability map](../../docs/assets/architecture/step-10-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

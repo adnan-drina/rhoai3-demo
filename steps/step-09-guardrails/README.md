@@ -7,6 +7,10 @@ RAG made the assistant useful; evaluation proved it. The next step before produc
 
 This step demonstrates RHOAI's **Model observability and governance** capability — specifically AI guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
 
+## Architecture
+
+![Step 09 capability map](../../docs/assets/architecture/step-09-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text

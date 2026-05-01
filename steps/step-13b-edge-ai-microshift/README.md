@@ -9,6 +9,10 @@ This optional step demonstrates RHOAI's **Disconnected environments and edge** c
 
 > **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
 
+## Architecture
+
+![Step 13b capability map](../../docs/assets/architecture/step-13b-capability-map.svg)
+
 ### What Gets Deployed
 
 ```text
