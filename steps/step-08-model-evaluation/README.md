@@ -5,7 +5,7 @@
 
 Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. **Red Hat OpenShift AI 3.3** provides two paths: **RAG Evaluation** (LLM-as-judge inside a Kubeflow Pipeline with HTML reports) and **Standard Model Evaluation** (LMEvalJob CR with TrustyAI for benchmarks like HellaSwag, ARC Challenge, WinoGrande, BoolQ).
 
-This step demonstrates RHOAI's **Model observability and governance** capability — specifically LLM evaluation (LM-Eval) for standard benchmarks and AI pipelines for RAG quality scoring — ensuring that model capabilities are measurable and baselined before production deployment.
+This step demonstrates RHOAI's **Evaluation** capability — repeatable scoring and benchmarking for models and RAG pipelines — while reusing **AI pipelines** and **Model observability and governance** to make model quality measurable before production deployment.
 
 ## Architecture
 
@@ -47,7 +47,8 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 | | Feature | Status |
 |---|---|---|
-| RHOAI | Model observability and governance (LM-Eval, LLM-as-Judge) | Used |
+| RHOAI | Evaluation (LM-Eval, LLM-as-Judge) | Introduced |
+| RHOAI | Model observability and governance | Used |
 | RHOAI | AI pipelines (KFP v2) | Used |
 | RHOAI | Optimized model serving (judge model) | Used |
 
@@ -324,7 +325,7 @@ The KFP pipeline connects to `http://mistral-3-bf16-predictor.private-ai.svc.clu
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) — Engine behind RHOAI LM-Eval
 - [TrustyAI Documentation](https://trustyai.org/docs/main/main) — Tutorials for LM-Eval setup
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
-- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps

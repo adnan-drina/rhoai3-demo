@@ -87,7 +87,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 |---|---|---|
 | RHOAI | Agentic AI and gen AI UIs (MCP, Llama Stack API) | Used |
 | RHOAI | Model development and customization (RAG) | Used |
-| RHOAI | Model observability and governance (guardrails) | Used |
+| RHOAI | AI safety and security (guardrails) | Used |
 
 <details>
 </details>
@@ -247,7 +247,7 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
-- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps

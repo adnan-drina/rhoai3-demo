@@ -5,7 +5,7 @@
 
 RAG made the assistant useful; evaluation proved it. The next step before production is making it **governable** — ensuring every prompt and response meets policy before that assistant faces broader risk. Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Red Hat OpenShift AI 3.3** delivers safety through the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — deployed via GitOps with CPU-based detectors that avoid competing with inference GPUs.
 
-This step demonstrates RHOAI's **Model observability and governance** capability — specifically AI guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
+This step demonstrates RHOAI's **AI safety and security** capability — specifically guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 | | Feature | Status |
 |---|---|---|
-| RHOAI | Model observability and governance (AI guardrails) | Used |
+| RHOAI | AI safety and security (TrustyAI Guardrails) | Introduced |
 | RHOAI | Optimized model serving (detector ISVCs) | Used |
 
 <details>
@@ -197,7 +197,7 @@ If missing, re-run `deploy.sh` or manually register the safety provider.
 - [RHOAI 3.3 — Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails)
 - [RHOAI 3.3 — Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
-- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
 - [rhoai-genaiops/lab-instructions — Guardrails](https://github.com/rhoai-genaiops/lab-instructions/tree/main/docs/7-honor-code)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)

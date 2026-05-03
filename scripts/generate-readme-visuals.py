@@ -164,9 +164,8 @@ ROWS = (
         label=("AI lifecycle", "and governance"),
         y=130,
         h=190,
-        cols=3,
+        cols=4,
         caps=(
-            Capability("data-ingestion", "step-07-rag", ("Data ingestion", "and grounding")),
             Capability(
                 "development-customization",
                 "step-07-rag",
@@ -177,13 +176,16 @@ ROWS = (
                 "step-11-face-recognition",
                 ("Model training", "and experimentation"),
             ),
+            Capability("catalog-registry", "step-04-model-registry", ("Catalog", "and registry")),
             Capability("model-evaluation", "step-08-model-evaluation", ("Evaluation", "and benchmarking")),
-            Capability("catalog-registry", "step-04-model-registry", ("Model catalog", "and registry")),
             Capability(
                 "observability-governance",
                 "step-06-model-metrics",
                 ("Model observability", "and governance"),
             ),
+            Capability("ai-safety-security", "step-09-guardrails", ("AI safety", "and security")),
+            Capability("data-ingestion", "step-07-rag", ("Data ingestion", "and grounding")),
+            Capability("disconnected-edge", "step-13-edge-ai", ("Disconnected", "environments", "and edge")),
         ),
     ),
     Row(
@@ -216,9 +218,7 @@ ROWS = (
             Capability("openvino-serving", "step-11-face-recognition", ("OpenVINO", "predictive serving")),
             Capability("genai-studio", "step-02-rhoai", ("GenAI Studio", "and Playground")),
             Capability("llama-stack-rag", "step-07-rag", ("Llama Stack API", "and RAG")),
-            Capability("ai-guardrails", "step-09-guardrails", ("AI safety", "and security")),
             Capability("mcp-tools", "step-10-mcp-integration", ("MCP and", "agentic APIs")),
-            Capability("edge-inference", "step-13-edge-ai", ("Disconnected", "environments", "and edge")),
         ),
     ),
     Row(
