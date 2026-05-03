@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Generate layered Red Hat branded SVG capability diagrams for workshop documentation.
+"""Generate Red Hat layered capability-map SVGs for README architecture sections.
 
-Writes to ``docs/assets/architecture/`` with stems ``rhoai3-demo-capability-map`` (root README)
-and ``step-NN-capability-map`` (steps; step ``13b`` uses ``step-13b-capability-map``).
+The generator is the source of truth for:
 
-README files embed these with a dedicated ``## Architecture`` section — see `.cursor/rules/20-readme-standard.mdc`.
+- ``docs/assets/architecture/rhoai3-demo-capability-map.svg``
+- ``docs/assets/architecture/step-NN-capability-map.svg``
+- ``docs/assets/architecture/step-13b-capability-map.svg``
+
+Do not hand-edit generated SVGs. Update this file and regenerate from the
+repository root with ``python3 scripts/generate-readme-visuals.py``.
 """
 
+from __future__ import annotations
+
+from dataclasses import dataclass
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 OUT = Path("docs/assets/architecture")
 
-# Filenames referenced from README.md (rhoai3-demo-capability-map.svg) and step READMEs (step-NN-capability-map.svg).
 OUTPUT_STEM = {
     "overview": "rhoai3-demo-capability-map",
     "step-01-gpu-and-prereq": "step-01-capability-map",
@@ -30,296 +36,680 @@ OUTPUT_STEM = {
     "step-13-edge-ai": "step-13-capability-map",
     "step-13b-edge-ai-microshift": "step-13b-capability-map",
 }
-W, H = 1800, 1080
-
-CAPS = {
-    "lifecycle": ["Ingest", "Train", "Evaluate", "Register", "Deploy", "Monitor"],
-    "rhoai": [
-        "Model catalog\nand registry",
-        "Models\nas-a-service",
-        "Model development\nand customization",
-        "Model training\nand experimentation",
-        "Feature store",
-        "Optimized model\nserving",
-        "GPU acceleration\nand optimization",
-        "Model observability\nand governance",
-        "AI pipelines",
-        "Agentic AI and GenAI\nuser interfaces",
-    ],
-    "gpu": ["NFD Operator", "GPU support", "NVIDIA GPU Operator"],
-    "ocp": [
-        "Data foundation",
-        "Pipelines\n(Tekton)",
-        "Serverless\n(Knative)",
-        "Monitoring\n(Prometheus)",
-        "Streams\n(Kafka)",
-        "GitOps\n(Argo CD)",
-        "Service Mesh\n(Istio)",
-        "Access control\nand multitenancy",
-    ],
-    "infra": ["Bare metal", "Virtualization", "Cloud", "Cloud secured", "Edge"],
-}
-
-BASE_INTRODUCED = {
-    "lifecycle": set(),
-    "rhoai": set(),
-    "gpu": set(),
-    "ocp": set(),
-    "infra": set(),
-}
 
 STEPS = [
-    ("overview", "Red Hat OpenShift AI Private AI Platform Workshop", "your models, your data, your choice."),
-    ("step-01-gpu-and-prereq", "Step 01: GPU Infrastructure And Prerequisites", "Accelerator capacity becomes a governed platform resource."),
-    ("step-02-rhoai", "Step 02: Red Hat OpenShift AI Platform", "Infrastructure becomes governed AI self-service."),
-    ("step-03-private-ai", "Step 03: Private AI Workspace", "Identity, access, and storage define the private platform boundary."),
-    ("step-04-model-registry", "Step 04: Model Registry And Catalog", "Models gain a lifecycle record before they become endpoints."),
-    ("step-05-llm-on-vllm", "Step 05: LLM Serving On vLLM", "Private model serving turns GenAI into a platform capability."),
-    ("step-06-model-metrics", "Step 06: Model Metrics And Benchmarking", "Observability connects user experience, GPU capacity, and cost."),
-    ("step-07-rag", "Step 07: RAG Pipeline", "Enterprise knowledge grounds local model answers."),
-    ("step-08-model-evaluation", "Step 08: Model Evaluation", "Repeatable evidence replaces ad hoc answer inspection."),
-    ("step-09-guardrails", "Step 09: Guardrails", "Safety checks become a shared platform control point."),
-    ("step-10-mcp-integration", "Step 10: MCP Integration", "Agentic tools are explicit, permissioned, and observable."),
-    ("step-11-face-recognition", "Step 11: Face Recognition", "The same platform serves predictive computer-vision models."),
-    ("step-12-mlops-pipeline", "Step 12: MLOps Pipeline", "Training, validation, promotion, and monitoring become repeatable."),
-    ("step-13-edge-ai", "Step 13: Edge AI", "Inference moves outward while lifecycle control stays central."),
-    ("step-13b-edge-ai-microshift", "Step 13b: Edge AI On MicroShift", "The edge pattern lands on a smaller OpenShift-derived footprint."),
+    (
+        "step-01-gpu-and-prereq",
+        "Step 01: GPU Infrastructure and Prerequisites",
+        "Accelerator capacity becomes a governed platform resource.",
+    ),
+    (
+        "step-02-rhoai",
+        "Step 02: Red Hat OpenShift AI 3.3 Platform",
+        "Infrastructure becomes governed AI self-service.",
+    ),
+    (
+        "step-03-private-ai",
+        "Step 03: Private AI Workspace",
+        "Identity, access, and storage define the private platform boundary.",
+    ),
+    (
+        "step-04-model-registry",
+        "Step 04: Model Registry and Catalog",
+        "Models gain a lifecycle record before they become endpoints.",
+    ),
+    (
+        "step-05-llm-on-vllm",
+        "Step 05: LLM Serving on vLLM",
+        "Private model serving turns GenAI into a platform capability.",
+    ),
+    (
+        "step-06-model-metrics",
+        "Step 06: Model Metrics and Benchmarking",
+        "Observability connects user experience, GPU capacity, and cost.",
+    ),
+    (
+        "step-07-rag",
+        "Step 07: RAG Pipeline",
+        "Enterprise knowledge grounds local model answers.",
+    ),
+    (
+        "step-08-model-evaluation",
+        "Step 08: Model Evaluation",
+        "Repeatable evidence replaces ad hoc answer inspection.",
+    ),
+    (
+        "step-09-guardrails",
+        "Step 09: Guardrails",
+        "Safety checks become a shared platform control point.",
+    ),
+    (
+        "step-10-mcp-integration",
+        "Step 10: MCP Integration",
+        "Agentic tools are explicit, permissioned, and observable.",
+    ),
+    (
+        "step-11-face-recognition",
+        "Step 11: Face Recognition",
+        "The same platform serves predictive computer-vision models.",
+    ),
+    (
+        "step-12-mlops-pipeline",
+        "Step 12: MLOps Pipeline",
+        "Training, validation, promotion, and monitoring become repeatable.",
+    ),
+    (
+        "step-13-edge-ai",
+        "Step 13: Edge AI",
+        "Inference moves outward while lifecycle control stays central.",
+    ),
+    (
+        "step-13b-edge-ai-microshift",
+        "Step 13b: Edge AI on MicroShift",
+        "The edge pattern lands on a smaller OpenShift-derived footprint.",
+    ),
 ]
 
-NEW = {
-    "overview": {
-        "lifecycle": {"Ingest", "Train", "Evaluate", "Register", "Deploy", "Monitor"},
-        "rhoai": {
-            "Model catalog\nand registry",
-            "Model development\nand customization",
-            "Model training\nand experimentation",
-            "Optimized model\nserving",
-            "GPU acceleration\nand optimization",
-            "Model observability\nand governance",
-            "AI pipelines",
-            "Agentic AI and GenAI\nuser interfaces",
-        },
-        "gpu": {"NFD Operator", "GPU support", "NVIDIA GPU Operator"},
-        "ocp": {
-            "Data foundation",
-            "Pipelines\n(Tekton)",
-            "Serverless\n(Knative)",
-            "Monitoring\n(Prometheus)",
-            "GitOps\n(Argo CD)",
-            "Service Mesh\n(Istio)",
-            "Access control\nand multitenancy",
-        },
-        "infra": {"Cloud", "Edge"},
-    },
-    "step-01-gpu-and-prereq": {
-        "gpu": {"NFD Operator", "GPU support", "NVIDIA GPU Operator"},
-        "ocp": {"Serverless\n(Knative)", "Monitoring\n(Prometheus)", "GitOps\n(Argo CD)"},
-        "infra": {"Cloud"},
-    },
-    "step-02-rhoai": {
-        "rhoai": {
-            "Model catalog\nand registry",
-            "Model development\nand customization",
-            "Model training\nand experimentation",
-            "Optimized model\nserving",
-            "GPU acceleration\nand optimization",
-            "Model observability\nand governance",
-            "AI pipelines",
-            "Agentic AI and GenAI\nuser interfaces",
-        },
-        "ocp": {"Service Mesh\n(Istio)"},
-    },
-    "step-03-private-ai": {
-        "ocp": {"Data foundation", "Access control\nand multitenancy"},
-    },
-    "step-04-model-registry": {
-        "lifecycle": {"Register"},
-        "rhoai": {"Model catalog\nand registry"},
-    },
-    "step-05-llm-on-vllm": {
-        "lifecycle": {"Deploy"},
-        "rhoai": {"Optimized model\nserving", "Models\nas-a-service"},
-    },
-    "step-06-model-metrics": {
-        "lifecycle": {"Monitor"},
-        "rhoai": {"Model observability\nand governance"},
-    },
-    "step-07-rag": {
-        "lifecycle": {"Ingest"},
-        "rhoai": {"Model development\nand customization", "AI pipelines", "Agentic AI and GenAI\nuser interfaces"},
-    },
-    "step-08-model-evaluation": {
-        "lifecycle": {"Evaluate"},
-        "rhoai": {"Model observability\nand governance", "AI pipelines"},
-    },
-    "step-09-guardrails": {
-        "rhoai": {"Model observability\nand governance"},
-    },
-    "step-10-mcp-integration": {
-        "rhoai": {"Agentic AI and GenAI\nuser interfaces"},
-    },
-    "step-11-face-recognition": {
-        "rhoai": {"Model development\nand customization", "Model training\nand experimentation", "Optimized model\nserving"},
-    },
-    "step-12-mlops-pipeline": {
-        "lifecycle": {"Train", "Evaluate", "Register", "Deploy", "Monitor"},
-        "rhoai": {"Model training\nand experimentation", "AI pipelines", "Model catalog\nand registry", "Model observability\nand governance"},
-        "ocp": {"Pipelines\n(Tekton)"},
-    },
-    "step-13-edge-ai": {
-        "lifecycle": {"Deploy"},
-        "infra": {"Edge"},
-    },
-    "step-13b-edge-ai-microshift": {
-        "lifecycle": {"Deploy", "Monitor"},
-        "ocp": {"Pipelines\n(Tekton)", "GitOps\n(Argo CD)"},
-        "infra": {"Edge"},
-    },
+STEP_ORDER = {step_id: idx + 1 for idx, (step_id, _title, _desc) in enumerate(STEPS)}
+
+
+@dataclass(frozen=True)
+class Product:
+    label: tuple[str, ...]
+    color: str
+
+
+@dataclass(frozen=True)
+class Capability:
+    id: str
+    introduced: str | None
+    label: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Row:
+    id: str
+    product: str
+    label: tuple[str, ...]
+    y: int
+    h: int
+    cols: int
+    caps: tuple[Capability, ...]
+
+
+COLORS = {
+    "black": "#000000",
+    "gray95": "#151515",
+    "gray90": "#1f1f1f",
+    "gray80": "#292929",
+    "gray70": "#383838",
+    "gray60": "#4d4d4d",
+    "gray50": "#707070",
+    "gray30": "#c7c7c7",
+    "gray20": "#e0e0e0",
+    "white": "#ffffff",
+    "red": "#ee0000",
+    "teal": "#147878",
 }
 
-DEFERRED = {
-    "rhoai": {"Feature store", "Models\nas-a-service"},
-    "ocp": {"Streams\n(Kafka)"},
-    "infra": {"Bare metal", "Virtualization", "Cloud secured"},
+PRODUCTS = {
+    "openshift_ai": Product(("Red Hat", "OpenShift AI"), COLORS["teal"]),
+    "openshift": Product(("Red Hat", "OpenShift"), COLORS["red"]),
+}
+
+ROWS = (
+    Row(
+        id="mlops-automation",
+        product="openshift_ai",
+        label=("MLOps", "automation"),
+        y=130,
+        h=130,
+        cols=7,
+        caps=(
+            Capability("mlops-ingest", "step-07-rag", ("Ingest",)),
+            Capability("mlops-train", "step-12-mlops-pipeline", ("Train",)),
+            Capability("mlops-evaluate", "step-08-model-evaluation", ("Evaluate",)),
+            Capability("mlops-register", "step-12-mlops-pipeline", ("Register",)),
+            Capability("mlops-deploy", "step-12-mlops-pipeline", ("Deploy",)),
+            Capability("mlops-monitor", "step-06-model-metrics", ("Monitor",)),
+            Capability("mlops-retrain", "step-12-mlops-pipeline", ("Retrain",)),
+        ),
+    ),
+    Row(
+        id="ai-lifecycle-governance",
+        product="openshift_ai",
+        label=("AI lifecycle", "and governance"),
+        y=285,
+        h=190,
+        cols=4,
+        caps=(
+            Capability("catalog-registry", "step-04-model-registry", ("Catalog", "and registry")),
+            Capability(
+                "development-customization",
+                "step-07-rag",
+                ("Model development", "and customization"),
+            ),
+            Capability(
+                "training-experimentation",
+                "step-11-face-recognition",
+                ("Model training", "and experimentation"),
+            ),
+            Capability("model-evaluation", "step-08-model-evaluation", ("Evaluation", "and benchmarking")),
+            Capability(
+                "observability-governance",
+                "step-06-model-metrics",
+                ("Model observability", "and governance"),
+            ),
+            Capability("ai-safety-security", "step-09-guardrails", ("AI safety", "and security")),
+            Capability("data-ingestion", "step-07-rag", ("Data ingestion", "and grounding")),
+            Capability("feature-store", None, ("Feature store",)),
+        ),
+    ),
+    Row(
+        id="pipelines-operations",
+        product="openshift_ai",
+        label=("AI pipelines", "and model", "operations"),
+        y=500,
+        h=130,
+        cols=5,
+        caps=(
+            Capability("ai-pipelines", "step-07-rag", ("AI pipelines", "(KFP v2)")),
+            Capability("rag-ingestion-pipeline", "step-07-rag", ("RAG ingestion", "pipeline")),
+            Capability("llm-judge-eval", "step-08-model-evaluation", ("LLM-as-judge", "evaluation")),
+            Capability("mlops-training-pipeline", "step-12-mlops-pipeline", ("MLOps training", "pipeline")),
+            Capability("modelcar-promotion", "step-12-mlops-pipeline", ("ModelCar", "edge promotion")),
+        ),
+    ),
+    Row(
+        id="serving-agentic-apps",
+        product="openshift_ai",
+        label=("Serving,", "GenAI, and", "agentic apps"),
+        y=655,
+        h=190,
+        cols=4,
+        caps=(
+            Capability("optimized-serving", "step-05-llm-on-vllm", ("Optimized", "model serving")),
+            Capability("rhaiis-vllm", "step-05-llm-on-vllm", ("Red Hat AI", "Inference Server")),
+            Capability("kserve-raw", "step-05-llm-on-vllm", ("KServe", "RawDeployment")),
+            Capability("openvino-serving", "step-11-face-recognition", ("OpenVINO", "predictive serving")),
+            Capability("models-as-service", None, ("Models-as-a-service",)),
+            Capability("genai-studio", "step-02-rhoai", ("GenAI Studio", "and Playground")),
+            Capability("llama-stack-rag", "step-07-rag", ("Llama Stack API", "and RAG")),
+            Capability("mcp-tools", "step-10-mcp-integration", ("MCP and", "agentic APIs")),
+        ),
+    ),
+    Row(
+        id="gpu-support",
+        product="openshift_ai",
+        label=("Intelligent GPU", "and hardware", "speed"),
+        y=870,
+        h=130,
+        cols=5,
+        caps=(
+            Capability(
+                "gpu-acceleration",
+                "step-01-gpu-and-prereq",
+                ("GPU acceleration", "and optimization"),
+            ),
+            Capability("hardware-profiles", "step-02-rhoai", ("Hardware", "profiles")),
+            Capability("self-service-gpu", "step-03-private-ai", ("Self-service", "accelerator access")),
+            Capability("gpu-capacity-metrics", "step-06-model-metrics", ("GPU visibility", "and consumption")),
+            Capability("disconnected-edge", "step-13-edge-ai", ("Disconnected", "environments", "and edge")),
+        ),
+    ),
+    Row(
+        id="container-services",
+        product="openshift",
+        label=("Container", "platform", "services"),
+        y=1025,
+        h=210,
+        cols=5,
+        caps=(
+            Capability("operators-olm", "step-01-gpu-and-prereq", ("Operators and", "lifecycle management")),
+            Capability("nfd-operator", "step-01-gpu-and-prereq", ("Node Feature", "Discovery")),
+            Capability("nvidia-gpu-operator", "step-01-gpu-and-prereq", ("NVIDIA GPU", "Operator")),
+            Capability("gitops-argocd", "step-01-gpu-and-prereq", ("OpenShift GitOps", "and Argo CD")),
+            Capability("serverless", "step-01-gpu-and-prereq", ("OpenShift", "Serverless")),
+            Capability("service-mesh", "step-02-rhoai", ("Service Mesh", "networking")),
+            Capability("identity-rbac", "step-03-private-ai", ("Identity, RBAC,", "and multitenancy")),
+            Capability("monitoring", "step-01-gpu-and-prereq", ("Monitoring", "and metrics")),
+            Capability("tekton", "step-12-mlops-pipeline", ("OpenShift Pipelines", "(Tekton)")),
+            Capability("routes-secrets-storage", "step-03-private-ai", ("Routes, secrets,", "and storage")),
+        ),
+    ),
+    Row(
+        id="hybrid-edge",
+        product="openshift",
+        label=("Hybrid", "infrastructure", "and edge"),
+        y=1260,
+        h=130,
+        cols=6,
+        caps=(
+            Capability("cloud-gpu-cluster", "step-01-gpu-and-prereq", ("Cloud GPU", "cluster")),
+            Capability("gpu-worker-nodes", "step-01-gpu-and-prereq", ("GPU worker", "nodes")),
+            Capability("object-storage", "step-03-private-ai", ("Object storage", "and data connections")),
+            Capability("edge-target", "step-13-edge-ai", ("Edge deployment", "target")),
+            Capability("microshift-runtime", "step-13b-edge-ai-microshift", ("MicroShift", "edge runtime")),
+            Capability("embedded-edge-gitops", "step-13b-edge-ai-microshift", ("Embedded", "edge GitOps")),
+        ),
+    ),
+)
+
+LAYOUT = {
+    "width": 2400,
+    "height": 1495,
+    "product_x": 140,
+    "product_w": 210,
+    "row_x": 365,
+    "row_w": 250,
+    "content_x": 635,
+    "content_w": 1675,
+    "gap": 20,
 }
 
 
-def lines(text):
-    return text.split("\n")
+def esc(value: object) -> str:
+    return escape(str(value), {'"': "&quot;"})
 
 
-def text_block(x, y, text, size=28, weight=500, fill="#ffffff", anchor="middle", line_height=34):
-    parts = []
-    for i, line in enumerate(lines(text)):
-        parts.append(
-            f'<text x="{x}" y="{y + i * line_height}" text-anchor="{anchor}" '
-            f'font-family="Red Hat Text, Arial, sans-serif" font-size="{size}" '
-            f'font-weight="{weight}" fill="{fill}">{escape(line)}</text>'
-        )
-    return "\n".join(parts)
-
-
-def rect(x, y, w, h, state="none"):
-    if state == "new":
-        return (
-            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3" '
-            f'fill="#3f1f1f" stroke="#ee0000" stroke-width="5" filter="url(#shadow)"/>'
-        )
-    if state == "prev":
-        return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3" fill="#4d4d4d" stroke="#707070" stroke-width="2"/>'
-    if state == "support":
-        return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3" fill="#2b2020" stroke="#ee0000" stroke-width="2" opacity=".92"/>'
-    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3" fill="#151515" stroke="#707070" stroke-width="2"/>'
-
-
-def state_for(layer, cap, new, prev):
-    if cap in new.get(layer, set()):
-        return "new"
-    if cap in prev.get(layer, set()):
-        return "prev"
-    if cap in DEFERRED.get(layer, set()):
-        return "none"
-    if layer in {"ocp", "infra"} and cap in {"Cloud", "Serverless\n(Knative)", "Monitoring\n(Prometheus)", "Service Mesh\n(Istio)", "Access control\nand multitenancy", "Data foundation", "GitOps\n(Argo CD)", "Pipelines\n(Tekton)", "Edge"}:
-        return "support"
-    return "none"
-
-
-def draw_row(label, x, y, w, h, red=False):
-    color = "#ee0000" if red else "#000000"
+def rect(
+    *,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    fill: str,
+    stroke: str | None = None,
+    stroke_width: float = 2,
+    rx: float = 2,
+    opacity: str | None = None,
+) -> str:
+    stroke_value = stroke if stroke is not None else fill
+    opacity_attr = f' opacity="{opacity}"' if opacity is not None else ""
     return (
-        f'<rect x="42" y="{y}" width="270" height="{h}" rx="3" fill="{color}"/>'
-        + text_block(177, y + h / 2 - 14, label, size=28, weight=800, anchor="middle", line_height=34)
-        + f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3" fill="#000000" fill-opacity=".12" stroke="{("#f56e6e" if red else "#707070")}" stroke-width="3"/>'
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" '
+        f'fill="{fill}" stroke="{stroke_value}" stroke-width="{stroke_width}"{opacity_attr}/>'
     )
 
 
-def capability(x, y, w, h, label, state, size=24):
-    fill = "#ffffff" if state != "prev" else "#151515"
-    return rect(x, y, w, h, state) + text_block(x + w / 2, y + h / 2 - (12 if "\n" not in label else 26), label, size=size, weight=700 if state == "new" else 500, fill=fill, anchor="middle", line_height=30)
+def text_lines(
+    lines: tuple[str, ...],
+    x: float,
+    y: float,
+    size: int,
+    fill: str,
+    weight: int = 400,
+    anchor: str = "middle",
+    line_height: int | None = None,
+) -> str:
+    line_height = line_height or round(size * 1.18)
+    first_y = y - ((len(lines) - 1) * line_height) / 2
+    return "\n".join(
+        (
+            f'<text x="{x}" y="{first_y + idx * line_height}" class="body" '
+            f'font-size="{size}" fill="{fill}" font-weight="{weight}" '
+            f'text-anchor="{anchor}">{esc(line)}</text>'
+        )
+        for idx, line in enumerate(lines)
+    )
 
 
-def render(step_id, title, subtitle, prev):
-    new = NEW[step_id]
-    out = []
-    out.append(f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-labelledby="title desc">
-  <title id="title">{escape(title)}</title>
-  <desc id="desc">Dark themed layered architecture capability map showing newly introduced and previously introduced platform capabilities for {escape(title)}.</desc>
-  <defs>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#ee0000" flood-opacity=".42"/>
-    </filter>
-    <style>
-      .heading {{ font-family: "Red Hat Display", "Red Hat Text", Arial, sans-serif; }}
-      .mono {{ font-family: "Red Hat Mono", monospace; }}
-    </style>
-  </defs>
-  <rect width="{W}" height="{H}" fill="#000000"/>
-  <circle cx="1520" cy="120" r="390" fill="#ee0000" opacity=".12"/>
-''')
-    out.append(f'<text x="48" y="74" class="heading" font-size="48" font-weight="800" fill="#ffffff">{escape(title)}</text>')
-    out.append(f'<text x="48" y="116" font-family="Red Hat Text, Arial, sans-serif" font-size="26" font-weight="500" fill="#c7c7c7">{escape(subtitle)}</text>')
+def capability_style(cap: Capability, row: Row, step_id: str | None) -> dict[str, object]:
+    product_color = PRODUCTS[row.product].color
 
-    x0, row_w = 330, 1428
-    out.append(draw_row("AI Lifecycle", x0, 150, row_w, 168))
-    life_xs = [x0 + 48 + i * 205 for i in range(6)]
-    for x, cap in zip(life_xs, CAPS["lifecycle"]):
-        out.append(capability(x, 222, 170, 68, cap, state_for("lifecycle", cap, new, prev), size=23))
-    out.append('<rect x="830" y="170" width="460" height="44" rx="2" fill="#000000" stroke="#707070" stroke-width="2"/>')
-    out.append(text_block(1060, 201, "Retrain", size=23, weight=800))
-    out.append('<path d="M1060 170 L432 170 L432 210" fill="none" stroke="#c7c7c7" stroke-width="2"/>')
+    if cap.introduced is None:
+        return {
+            "fill": COLORS["gray90"],
+            "stroke": COLORS["gray70"],
+            "stroke_width": 2,
+            "text": COLORS["gray50"],
+            "weight": 450,
+            "filter": "",
+            "opacity": "0.62",
+            "stripe": None,
+        }
 
-    out.append(draw_row("OpenShift\nAI/ML\nplatform", x0, 334, row_w, 230))
-    rhoai_positions = [
-        (350, 354), (590, 354), (830, 354), (1070, 354), (1310, 354), (1550, 354),
-        (830, 470), (1070, 470), (1310, 470), (1550, 470),
+    if step_id is None:
+        return {
+            "fill": COLORS["gray80"],
+            "stroke": COLORS["gray70"],
+            "stroke_width": 2,
+            "text": COLORS["white"],
+            "weight": 550,
+            "filter": "",
+            "opacity": None,
+            "stripe": product_color,
+        }
+
+    current_order = STEP_ORDER[step_id]
+    introduced_order = STEP_ORDER[cap.introduced]
+
+    if introduced_order == current_order:
+        return {
+            "fill": COLORS["gray95"],
+            "stroke": product_color,
+            "stroke_width": 5,
+            "text": COLORS["white"],
+            "weight": 700,
+            "filter": ' filter="url(#lift)"',
+            "opacity": None,
+            "stripe": None,
+        }
+
+    if introduced_order < current_order:
+        return {
+            "fill": COLORS["gray80"],
+            "stroke": COLORS["gray70"],
+            "stroke_width": 2,
+            "text": COLORS["white"],
+            "weight": 550,
+            "filter": "",
+            "opacity": None,
+            "stripe": product_color,
+        }
+
+    return {
+        "fill": COLORS["gray90"],
+        "stroke": COLORS["gray70"],
+        "stroke_width": 2,
+        "text": COLORS["gray50"],
+        "weight": 450,
+        "filter": "",
+        "opacity": "0.62",
+        "stripe": None,
+    }
+
+
+def capability_font_size(label: tuple[str, ...]) -> int:
+    longest = max(len(line) for line in label)
+    if len(label) > 2 or longest > 24:
+        return 18
+    return 19
+
+
+def draw_capability(cap: Capability, row: Row, idx: int, step_id: str | None) -> str:
+    cols = row.cols
+    row_index = idx // cols
+    col_index = idx % cols
+    row_count = (len(row.caps) + cols - 1) // cols
+    box_w = (LAYOUT["content_w"] - 60 - LAYOUT["gap"] * (cols - 1)) / cols
+    box_h = min(76, (row.h - 48 - LAYOUT["gap"] * (row_count - 1)) / row_count)
+    x = LAYOUT["content_x"] + 30 + col_index * (box_w + LAYOUT["gap"])
+    y = row.y + 24 + row_index * (box_h + LAYOUT["gap"])
+    style = capability_style(cap, row, step_id)
+    opacity_attr = f' opacity="{style["opacity"]}"' if style["opacity"] else ""
+    font_size = capability_font_size(cap.label)
+
+    parts = [
+        f'<g{style["filter"]}{opacity_attr}>',
+        rect(
+            x=x,
+            y=y,
+            w=box_w,
+            h=box_h,
+            fill=str(style["fill"]),
+            stroke=str(style["stroke"]),
+            stroke_width=float(style["stroke_width"]),
+        ),
     ]
-    for (x, y), cap in zip(rhoai_positions, CAPS["rhoai"]):
-        out.append(capability(x, y, 210, 86, cap, state_for("rhoai", cap, new, prev), size=21))
-    out.append('<text x="376" y="528" class="heading" font-size="34" font-weight="800" fill="#ffffff">Red Hat</text>')
-    out.append('<text x="376" y="560" class="heading" font-size="34" font-weight="500" fill="#ffffff">OpenShift AI</text>')
-    out.append('<ellipse cx="344" cy="520" rx="34" ry="17" fill="#ee0000" transform="rotate(12 344 520)"/>')
-
-    out.append(draw_row("GPU accelerators", x0, 580, row_w, 88))
-    out.append(capability(350, 604, 465, 44, "NFD Operator", state_for("gpu", "NFD Operator", new, prev), size=22))
-    out.append(text_block(1044, 635, "GPU support", size=27, weight=800))
-    out.append(capability(1324, 604, 410, 44, "NVIDIA GPU Operator", state_for("gpu", "NVIDIA GPU Operator", new, prev), size=22))
-
-    out.append(draw_row("OpenShift\nContainer\nPlatform", x0, 686, row_w, 216, red=True))
-    ocp_positions = [(820, 708), (1060, 708), (1300, 708), (1540, 708), (820, 812), (1060, 812), (1300, 812), (1540, 812)]
-    for (x, y), cap in zip(ocp_positions, CAPS["ocp"]):
-        out.append(capability(x, y, 210, 86, cap, state_for("ocp", cap, new, prev), size=21))
-    out.append('<text x="376" y="846" class="heading" font-size="34" font-weight="800" fill="#ffffff">Red Hat</text>')
-    out.append('<text x="376" y="878" class="heading" font-size="34" font-weight="500" fill="#ffffff">OpenShift</text>')
-    out.append('<ellipse cx="344" cy="838" rx="34" ry="17" fill="#ee0000" transform="rotate(12 344 838)"/>')
-
-    out.append(draw_row("Infrastructure", x0, 918, row_w, 92, red=True))
-    for x, cap in zip([505, 735, 970, 1215, 1480], CAPS["infra"]):
-        state = state_for("infra", cap, new, prev)
-        color = "#ee0000" if state == "new" else ("#c7c7c7" if state == "prev" else "#707070")
-        out.append(f'<circle cx="{x}" cy="954" r="22" fill="none" stroke="{color}" stroke-width="4"/>')
-        out.append(text_block(x, 996, cap, size=22, weight=700, fill="#ffffff"))
-
-    out.append('<rect x="430" y="1032" width="34" height="34" rx="2" fill="#3f1f1f" stroke="#ee0000" stroke-width="4"/>')
-    out.append(text_block(482, 1057, "New in this step", size=21, anchor="start"))
-    out.append('<rect x="765" y="1032" width="34" height="34" rx="2" fill="#4d4d4d" stroke="#707070" stroke-width="2"/>')
-    out.append(text_block(817, 1057, "Previously introduced", size=21, anchor="start"))
-    out.append('<rect x="1165" y="1032" width="34" height="34" rx="2" fill="#151515" stroke="#707070" stroke-width="2"/>')
-    out.append(text_block(1217, 1057, "Not yet covered / not demonstrated", size=21, anchor="start"))
-    out.append("</svg>\n")
-    return "\n".join(out)
+    if style["stripe"]:
+        parts.append(
+            rect(
+                x=x,
+                y=y,
+                w=10,
+                h=box_h,
+                fill=str(style["stripe"]),
+                stroke=str(style["stripe"]),
+                stroke_width=0,
+                rx=2,
+            )
+        )
+    parts.append(
+        text_lines(
+            cap.label,
+            x + box_w / 2,
+            y + box_h / 2 + 7,
+            font_size,
+            str(style["text"]),
+            int(style["weight"]),
+        )
+    )
+    parts.append("</g>")
+    return "".join(parts)
 
 
-def main():
+def draw_row(row: Row, step_id: str | None) -> str:
+    product = PRODUCTS[row.product]
+    parts = [
+        rect(
+            x=LAYOUT["row_x"],
+            y=row.y,
+            w=LAYOUT["row_w"],
+            h=row.h,
+            fill=product.color,
+            stroke=product.color,
+            stroke_width=0,
+        ),
+        text_lines(
+            row.label,
+            LAYOUT["row_x"] + LAYOUT["row_w"] / 2,
+            row.y + row.h / 2 + 8,
+            22,
+            COLORS["white"],
+            700,
+        ),
+        rect(
+            x=LAYOUT["content_x"],
+            y=row.y,
+            w=LAYOUT["content_w"],
+            h=row.h,
+            fill=COLORS["gray90"],
+            stroke=COLORS["gray70"],
+            stroke_width=2,
+        ),
+    ]
+    parts.extend(draw_capability(cap, row, idx, step_id) for idx, cap in enumerate(row.caps))
+    return "".join(parts)
+
+
+def product_groups() -> list[tuple[str, int, int]]:
+    groups: list[tuple[str, int, int]] = []
+    start_row = ROWS[0]
+    current_product = start_row.product
+    start_y = start_row.y
+    end_y = start_row.y + start_row.h
+
+    for row in ROWS[1:]:
+        if row.product == current_product:
+            end_y = row.y + row.h
+            continue
+        groups.append((current_product, start_y, end_y - start_y))
+        current_product = row.product
+        start_y = row.y
+        end_y = row.y + row.h
+
+    groups.append((current_product, start_y, end_y - start_y))
+    return groups
+
+
+def draw_product_rail() -> str:
+    parts = []
+    for product_id, y, h in product_groups():
+        product = PRODUCTS[product_id]
+        parts.append(
+            rect(
+                x=LAYOUT["product_x"],
+                y=y,
+                w=LAYOUT["product_w"],
+                h=h,
+                fill=product.color,
+                stroke=product.color,
+                stroke_width=0,
+            )
+        )
+        parts.append(
+            text_lines(
+                product.label,
+                LAYOUT["product_x"] + LAYOUT["product_w"] / 2,
+                y + h / 2 + 8,
+                22,
+                COLORS["white"],
+                700,
+            )
+        )
+    return "".join(parts)
+
+
+def draw_striped_legend_box(x: int, y: int, fill: str = COLORS["gray80"], opacity: str | None = None) -> str:
+    box_y = y - 23
+    parts = [
+        rect(x=x, y=box_y, w=34, h=34, fill=fill, stroke=COLORS["gray70"], stroke_width=2, opacity=opacity),
+        rect(x=x, y=box_y, w=10, h=17, fill=PRODUCTS["openshift_ai"].color, stroke=PRODUCTS["openshift_ai"].color, stroke_width=0, rx=0),
+        rect(x=x, y=box_y + 17, w=10, h=17, fill=PRODUCTS["openshift"].color, stroke=PRODUCTS["openshift"].color, stroke_width=0, rx=0),
+        rect(x=x, y=box_y, w=34, h=34, fill="none", stroke=COLORS["gray70"], stroke_width=2),
+    ]
+    return "".join(parts)
+
+
+def current_step_products(step_id: str) -> list[str]:
+    products: list[str] = []
+    for row in ROWS:
+        if any(cap.introduced == step_id for cap in row.caps) and row.product not in products:
+            products.append(row.product)
+    return products
+
+
+def draw_legend(step_id: str | None) -> str:
+    y = LAYOUT["height"] - 55
+
+    if step_id is None:
+        return "".join(
+            [
+                draw_striped_legend_box(650, y),
+                f'<text x="708" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray20"]}">Capability used in this demo</text>',
+                rect(
+                    x=1125,
+                    y=y - 23,
+                    w=34,
+                    h=34,
+                    fill=COLORS["gray90"],
+                    stroke=COLORS["gray70"],
+                    stroke_width=2,
+                    opacity="0.62",
+                ),
+                f'<text x="1183" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray20"]}">Not demonstrated in this demo</text>',
+                f'<text x="1645" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray30"]}">Left stripe and product rail show Red Hat product layer ownership</text>',
+            ]
+        )
+
+    products = current_step_products(step_id)
+    legend_color = PRODUCTS[products[0] if products else "openshift_ai"].color
+    return "".join(
+        [
+            rect(x=440, y=y - 23, w=34, h=34, fill=COLORS["gray95"], stroke=legend_color, stroke_width=5),
+            f'<text x="498" y="{y + 1}" class="body" font-size="21" fill="{COLORS["gray20"]}">New in this step</text>',
+            draw_striped_legend_box(800, y),
+            f'<text x="858" y="{y + 1}" class="body" font-size="21" fill="{COLORS["gray20"]}">Previously introduced</text>',
+            rect(
+                x=1225,
+                y=y - 23,
+                w=34,
+                h=34,
+                fill=COLORS["gray90"],
+                stroke=COLORS["gray70"],
+                stroke_width=2,
+                opacity="0.62",
+            ),
+            f'<text x="1283" y="{y + 1}" class="body" font-size="21" fill="{COLORS["gray20"]}">Not introduced yet</text>',
+            f'<text x="1645" y="{y + 1}" class="body" font-size="21" fill="{COLORS["gray30"]}">Border and stripe colors follow the product layer</text>',
+        ]
+    )
+
+
+def title_markup(title: str, step_id: str | None) -> str:
+    if step_id is not None and ": " in title:
+        prefix, rest = title.split(": ", 1)
+        return f'<tspan fill="{COLORS["gray30"]}" font-weight="500">{esc(prefix)}:</tspan> {esc(rest)}'
+    return esc(title)
+
+
+def render_diagram(step_id: str | None, title: str, desc: str) -> str:
+    is_root = step_id is None
+    image_desc = (
+        "Canonical Red Hat OpenShift AI 3.3 demo capability map."
+        if is_root
+        else f"Capability map showing new, previously introduced, and future capabilities for {title}."
+    )
+
+    parts = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{LAYOUT["width"]}" '
+            f'height="{LAYOUT["height"]}" viewBox="0 0 {LAYOUT["width"]} {LAYOUT["height"]}" '
+            'role="img" aria-labelledby="title desc">'
+        ),
+        f'<title id="title">{esc(title)}</title>',
+        f'<desc id="desc">{esc(image_desc)}</desc>',
+        (
+            "<style>"
+            ".display{font-family:'Red Hat Display','Arial',sans-serif}"
+            ".body{font-family:'Red Hat Text','Arial',sans-serif}"
+            "</style>"
+        ),
+        (
+            "<defs>"
+            '<filter id="lift" x="-20%" y="-20%" width="140%" height="140%">'
+            '<feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000" flood-opacity="0.55"/>'
+            "</filter>"
+            '<filter id="panelShadow" x="-8%" y="-8%" width="116%" height="116%">'
+            '<feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#000" flood-opacity="0.45"/>'
+            "</filter>"
+            "</defs>"
+        ),
+        '<g filter="url(#panelShadow)">',
+        rect(
+            x=LAYOUT["product_x"],
+            y=26,
+            w=LAYOUT["content_x"] + LAYOUT["content_w"] - LAYOUT["product_x"],
+            h=82,
+            fill=COLORS["gray90"],
+            stroke=COLORS["gray70"],
+            stroke_width=2,
+        ),
+        (
+            f'<text x="{LAYOUT["width"] / 2}" y="60" class="display" font-size="42" '
+            f'fill="{COLORS["white"]}" font-weight="700" text-anchor="middle">'
+            f"{title_markup(title, step_id)}</text>"
+        ),
+        (
+            f'<text x="{LAYOUT["width"] / 2}" y="91" class="body" font-size="21" '
+            f'fill="{COLORS["gray30"]}" text-anchor="middle">{esc(desc)}</text>'
+        ),
+        draw_product_rail(),
+    ]
+
+    parts.extend(draw_row(row, step_id) for row in ROWS)
+    parts.append(draw_legend(step_id))
+    parts.append("</g>")
+    parts.append("</svg>\n")
+    return "".join(parts)
+
+
+def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    prev = {k: set(v) for k, v in BASE_INTRODUCED.items()}
-    for step_id, title, subtitle in STEPS:
-        svg = render(step_id, title, subtitle, prev)
-        stem = OUTPUT_STEM[step_id]
-        (OUT / f"{stem}.svg").write_text(svg)
-        if step_id != "overview":
-            for layer, caps in NEW[step_id].items():
-                prev[layer].update(caps)
-    print(f"Generated {len(STEPS)} SVG files in {OUT}")
+
+    root_svg = render_diagram(
+        None,
+        "Red Hat OpenShift AI 3.3 demo capability map",
+        "One governed platform across private, generative, predictive, and edge AI.",
+    )
+    (OUT / f"{OUTPUT_STEM['overview']}.svg").write_text(root_svg, encoding="utf-8")
+
+    for step_id, title, desc in STEPS:
+        svg = render_diagram(step_id, title, desc)
+        (OUT / f"{OUTPUT_STEM[step_id]}.svg").write_text(svg, encoding="utf-8")
+
+    print(f"Generated {len(STEPS) + 1} SVG files in {OUT}")
 
 
 if __name__ == "__main__":

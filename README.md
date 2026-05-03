@@ -26,21 +26,23 @@ AI in the enterprise is not just about models. It is about building a governed A
 
 ## RHOAI 3.3 Features and Benefits Coverage
 
-This demo covers 9 of 11 features from the [Red Hat OpenShift AI datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
+This demo covers 11 of 13 features from the [Red Hat OpenShift AI production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet):
 
 | RHOAI Feature | Benefit (from datasheet) | Demo Steps |
 |---------------|--------------------------|------------|
-| **Intelligent GPU and hardware speed** | Self-service GPU access is available. Offers intelligent GPU use for workload scheduling, quota management, priority access and visibility of use through hardware profiles. | Steps 01, 02, 03 |
-| **Catalog and registry** | Centralized management for predictive and gen AI models and MCP servers and their metadata, and artifacts. | Step 04 |
-| **Optimized model serving** | Serves models from various providers and frameworks via a virtual large language model (vLLM), optimized for high throughput and low latency. The llm-d distributed inference framework supports predictable and scalable performance and efficient resource management. Includes LLM compressor and access to common, optimized and validated gen AI models. | Steps 05, 06 |
-| **Model development and customization** | An interactive JupyterLab interface with AI/ML libraries and workbenches. Integrates data ingestion, synthetic data generation, InstructLab toolkit, and Retrieval Augmented Generation (RAG) for private data connection. | Steps 07, 11 |
-| **AI pipelines** | Can automate model delivery and testing. Pipelines are versioned, tracked and managed to reduce user error and simplify experimentation and production workflows. | Steps 07, 08, 12 |
-| **Model observability and governance** | Common open source tooling for lifecycle management, performance, and management. Tracks metrics, including performance, data drift and bias detection and AI guardrails or inference. Offers LLM evaluation (LM Eval) and LLM benchmarking (GuideLLM) to assist real world inference deployments. | Steps 06, 08, 09, 12 |
-| **Agentic AI and gen AI user interfaces (UIs)** | Speeds agentic AI workflows with core platform services. A unified application programming interface (API) layer (MCP and Llama Stack API) and dedicated dashboard experience (AI hub and gen AI studio). | Steps 05, 09, 10 |
-| **Model training and experimentation** | Organizes development files and artifacts. Supports distributed workloads for efficient training and tuning. Features experiment tracking and simplified hardware allocation. | Steps 11, 12 |
-| **Disconnected environments and edge** | Supports disconnected and air-gapped clusters for security and regulatory compliance. | Steps 13, 13b |
-| Feature store | *A UI for managing clean, well-defined data features for ML models, enhancing performance and accelerating workflows.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
-| Models-as-a-service | *Allows AI engineers to use models via a managed, built-in API gateway for self-service access and usage tracking (developer preview feature).* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| **Model development and customization** | Self-service notebooks and IDEs with curated AI/ML libraries, plus data ingestion and RAG for faster model development. | Steps 07, 11 |
+| **Model training and experimentation** | Training workflows with versioned artifacts and reproducible experimentation. | Steps 11, 12 |
+| **Intelligent GPU and hardware speed** | Intelligent workload scheduling, quota enforcement, priority access, hardware profiles, and accelerator visibility. | Steps 01, 02, 03, 06 |
+| **AI pipelines** | Automated, versioned, tracked AI workflows that reduce manual handoffs and support reproducible runs. | Steps 07, 08, 12 |
+| **Optimized model serving** | Production-scale LLM serving with vLLM and predictive model serving with out-of-the-box and custom runtimes. | Steps 05, 11, 13, 13b |
+| **Agentic AI and gen AI user interfaces (UIs)** | GenAI Studio, Playground, Llama Stack API, MCP, and agentic APIs for tool-enabled workflows. | Steps 02, 05, 07, 10 |
+| **Model observability and governance** | Runtime metrics, drift and bias monitoring, benchmarking, and audit evidence for governed AI operations. | Steps 06, 08, 12 |
+| **Evaluation** | Repeatable scoring and benchmarking for models, RAG pipelines, and AI agents before production use. | Step 08 |
+| **Catalog and registry** | Central registry and curated catalog for predictive and gen AI models, metadata, and deployment artifacts. | Steps 04, 05, 12 |
+| **AI safety and security** | Guardrails and detector chains for prompt injection, toxic content, and PII leakage before broader deployment. | Step 09 |
+| **Disconnected environments and edge** | Portable AI workloads across edge and constrained environments for data locality and operational consistency. | Steps 13, 13b |
+| Feature store | *Centralized, reusable feature definitions for reducing redundant feature engineering and training-serving skew.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| Models-as-a-service | *Self-service API access to approved models through a managed gateway with usage tracking, quota, and showback.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
 
 ## OpenShift Container Platform 4.20 Features Used
 
@@ -85,8 +87,8 @@ Building on the private AI base, this theme adds scalable serving, data groundin
 | 05 | LLM Serving | Optimized model serving | GPU (01), Registry (04) |
 | 06 | Performance Monitoring | Model observability and governance | Monitoring (01), Serving (05) |
 | 07 | RAG Pipeline | Model development and customization, AI pipelines | Serving (05) |
-| 08 | Model Evaluation | — (uses observability from 06, pipelines from 07) | Pipelines (07), Observability (06) |
-| 09 | AI Safety | — (uses observability: guardrails) | Serving (05), Observability (06) |
+| 08 | Model Evaluation | Evaluation | Pipelines (07), Observability (06) |
+| 09 | AI Safety | AI safety and security | Serving (05), Evaluation (08) |
 | 10 | Agentic AI & MCP | Agentic AI and gen AI UIs (MCP, Llama Stack) | RAG (07), Guardrails (09) |
 
 ### Theme 3: Predictive AI — WhoAmI Face Recognition (Steps 11-12)
@@ -219,7 +221,7 @@ Validate the ACME demo flow:
 ## References
 
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
-- [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
+- [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
 - [Get started with AI for enterprise organizations](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 - [RHOAI 3.3 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
