@@ -122,7 +122,7 @@ class Product:
 @dataclass(frozen=True)
 class Capability:
     id: str
-    introduced: str
+    introduced: str | None
     label: tuple[str, ...]
 
 
@@ -159,13 +159,32 @@ PRODUCTS = {
 
 ROWS = (
     Row(
-        id="ai-lifecycle",
+        id="mlops-automation",
         product="openshift_ai",
-        label=("AI lifecycle", "and governance"),
+        label=("MLOps", "automation"),
         y=130,
-        h=190,
+        h=150,
+        cols=7,
+        caps=(
+            Capability("mlops-ingest", "step-07-rag", ("Ingest",)),
+            Capability("mlops-train", "step-12-mlops-pipeline", ("Train",)),
+            Capability("mlops-evaluate", "step-08-model-evaluation", ("Evaluate",)),
+            Capability("mlops-register", "step-12-mlops-pipeline", ("Register",)),
+            Capability("mlops-deploy", "step-12-mlops-pipeline", ("Deploy",)),
+            Capability("mlops-monitor", "step-06-model-metrics", ("Monitor",)),
+            Capability("mlops-retrain", "step-12-mlops-pipeline", ("Retrain",)),
+        ),
+    ),
+    Row(
+        id="openshift-ai-platform",
+        product="openshift_ai",
+        label=("OpenShift AI", "platform", "capabilities"),
+        y=305,
+        h=360,
         cols=4,
         caps=(
+            Capability("catalog-registry", "step-04-model-registry", ("Catalog", "and registry")),
+            Capability("models-as-service", None, ("Models-as-a-service",)),
             Capability(
                 "development-customization",
                 "step-07-rag",
@@ -176,7 +195,9 @@ ROWS = (
                 "step-11-face-recognition",
                 ("Model training", "and experimentation"),
             ),
-            Capability("catalog-registry", "step-04-model-registry", ("Catalog", "and registry")),
+            Capability("feature-store", None, ("Feature store",)),
+            Capability("optimized-serving", "step-05-llm-on-vllm", ("Optimized", "model serving")),
+            Capability("ai-pipelines", "step-07-rag", ("AI pipelines", "(KFP v2)")),
             Capability("model-evaluation", "step-08-model-evaluation", ("Evaluation", "and benchmarking")),
             Capability(
                 "observability-governance",
@@ -184,50 +205,19 @@ ROWS = (
                 ("Model observability", "and governance"),
             ),
             Capability("ai-safety-security", "step-09-guardrails", ("AI safety", "and security")),
+            Capability("genai-studio", "step-02-rhoai", ("GenAI Studio", "and Playground")),
+            Capability("mcp-tools", "step-10-mcp-integration", ("MCP and", "agentic APIs")),
             Capability("data-ingestion", "step-07-rag", ("Data ingestion", "and grounding")),
             Capability("disconnected-edge", "step-13-edge-ai", ("Disconnected", "environments", "and edge")),
         ),
     ),
     Row(
-        id="pipelines-ops",
-        product="openshift_ai",
-        label=("AI pipelines", "and model", "operations"),
-        y=345,
-        h=170,
-        cols=3,
-        caps=(
-            Capability("ai-pipelines", "step-07-rag", ("AI pipelines", "(KFP v2)")),
-            Capability("rag-ingestion-pipeline", "step-07-rag", ("RAG ingestion", "pipeline")),
-            Capability("llm-judge-eval", "step-08-model-evaluation", ("LLM-as-judge", "evaluation")),
-            Capability("guidellm-benchmarking", "step-06-model-metrics", ("GuideLLM", "benchmarking")),
-            Capability("mlops-training-pipeline", "step-12-mlops-pipeline", ("MLOps training", "pipeline")),
-            Capability("modelcar-promotion", "step-12-mlops-pipeline", ("ModelCar", "edge promotion")),
-        ),
-    ),
-    Row(
-        id="serving-apps",
-        product="openshift_ai",
-        label=("Serving,", "GenAI, and", "agentic apps"),
-        y=540,
-        h=260,
-        cols=3,
-        caps=(
-            Capability("optimized-serving", "step-05-llm-on-vllm", ("Optimized", "model serving")),
-            Capability("rhaiis-vllm", "step-05-llm-on-vllm", ("Red Hat AI", "Inference Server")),
-            Capability("kserve-raw", "step-05-llm-on-vllm", ("KServe", "RawDeployment")),
-            Capability("openvino-serving", "step-11-face-recognition", ("OpenVINO", "predictive serving")),
-            Capability("genai-studio", "step-02-rhoai", ("GenAI Studio", "and Playground")),
-            Capability("llama-stack-rag", "step-07-rag", ("Llama Stack API", "and RAG")),
-            Capability("mcp-tools", "step-10-mcp-integration", ("MCP and", "agentic APIs")),
-        ),
-    ),
-    Row(
-        id="gpu-self-service",
+        id="gpu-support",
         product="openshift_ai",
         label=("Intelligent GPU", "and hardware", "speed"),
-        y=825,
+        y=690,
         h=150,
-        cols=4,
+        cols=6,
         caps=(
             Capability(
                 "gpu-acceleration",
@@ -237,13 +227,15 @@ ROWS = (
             Capability("hardware-profiles", "step-02-rhoai", ("Hardware", "profiles")),
             Capability("self-service-gpu", "step-03-private-ai", ("Self-service", "accelerator access")),
             Capability("gpu-capacity-metrics", "step-06-model-metrics", ("GPU visibility", "and consumption")),
+            Capability("nfd-operator", "step-01-gpu-and-prereq", ("NFD", "Operator")),
+            Capability("nvidia-gpu-operator", "step-01-gpu-and-prereq", ("NVIDIA GPU", "Operator")),
         ),
     ),
     Row(
         id="container-services",
         product="openshift",
         label=("Container", "platform", "services"),
-        y=1000,
+        y=865,
         h=220,
         cols=4,
         caps=(
@@ -261,9 +253,9 @@ ROWS = (
         id="hybrid-edge",
         product="openshift",
         label=("Hybrid", "infrastructure", "and edge"),
-        y=1245,
-        h=170,
-        cols=3,
+        y=1110,
+        h=150,
+        cols=6,
         caps=(
             Capability("cloud-gpu-cluster", "step-01-gpu-and-prereq", ("Cloud GPU", "cluster")),
             Capability("gpu-worker-nodes", "step-01-gpu-and-prereq", ("GPU worker", "nodes")),
@@ -277,7 +269,7 @@ ROWS = (
 
 LAYOUT = {
     "width": 2400,
-    "height": 1535,
+    "height": 1390,
     "product_x": 140,
     "product_w": 210,
     "row_x": 365,
@@ -336,6 +328,18 @@ def text_lines(
 
 def capability_style(cap: Capability, row: Row, step_id: str | None) -> dict[str, object]:
     product_color = PRODUCTS[row.product].color
+
+    if cap.introduced is None:
+        return {
+            "fill": COLORS["gray90"],
+            "stroke": COLORS["gray70"],
+            "stroke_width": 2,
+            "text": COLORS["gray50"],
+            "weight": 450,
+            "filter": "",
+            "opacity": "0.62",
+            "stripe": None,
+        }
 
     if step_id is None:
         return {
@@ -549,14 +553,25 @@ def current_step_products(step_id: str) -> list[str]:
 
 
 def draw_legend(step_id: str | None) -> str:
-    y = 1480
+    y = LAYOUT["height"] - 55
 
     if step_id is None:
         return "".join(
             [
                 draw_striped_legend_box(650, y),
                 f'<text x="708" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray20"]}">Capability used in this demo</text>',
-                f'<text x="1125" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray30"]}">Left stripe and product rail show Red Hat product layer ownership</text>',
+                rect(
+                    x=1125,
+                    y=y - 23,
+                    w=34,
+                    h=34,
+                    fill=COLORS["gray90"],
+                    stroke=COLORS["gray70"],
+                    stroke_width=2,
+                    opacity="0.62",
+                ),
+                f'<text x="1183" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray20"]}">Not demonstrated in this demo</text>',
+                f'<text x="1645" y="{y + 1}" class="body" font-size="22" fill="{COLORS["gray30"]}">Left stripe and product rail show Red Hat product layer ownership</text>',
             ]
         )
 
