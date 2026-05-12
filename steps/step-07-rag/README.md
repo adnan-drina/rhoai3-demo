@@ -107,7 +107,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 ```bash
 ./steps/step-07-rag/deploy.sh              # Deploy pgvector, LlamaStack, DSPA, chatbot
-./steps/step-07-rag/validate.sh            # Verify all components + vector store health
+./steps/step-07-rag/validate.sh            # Verify all components + vector store health and freshness
 ```
 
 </details>
@@ -121,6 +121,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | LlamaStack RAG | lsd-rag LlamaStackDistribution | phase = Ready |
 | DSPA | dspa-rag pipeline server | Ready condition = True |
 | Vector stores | acme_corporate and whoami populated | 8 files + 1 file |
+| Ingestion freshness | Latest vector-store file timestamp | Within `DEMO_FRESHNESS_HOURS` (default 24h) |
 | Chatbot route | rag-chatbot HTTPS route | URL accessible |
 
 ```bash

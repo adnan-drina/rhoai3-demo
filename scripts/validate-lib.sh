@@ -18,6 +18,7 @@ VALIDATE_FAIL=0
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$REPO_ROOT/scripts/lib.sh"
+check_oc_logged_in
 
 check() {
     local label="$1" cmd="$2" expected="$3"
@@ -45,11 +46,71 @@ check_warn() {
     fi
 }
 
+check_recent_timestamp() {
+    local label="$1" timestamp="$2" max_age_hours="${3:-${DEMO_FRESHNESS_HOURS:-24}}" severity="${4:-warn}"
+    local actual rc
+
+    set +e
+    actual=$(python3 - "$timestamp" "$max_age_hours" 2>/dev/null <<'PY'
+import datetime
+import sys
+import time
+
+value = sys.argv[1].strip()
+max_age_hours = float(sys.argv[2])
+
+if not value or value in {"<none>", "None", "0", "ERROR"}:
+    print("missing timestamp")
+    sys.exit(2)
+
+try:
+    if value.isdigit():
+        epoch = float(value)
+    else:
+        epoch = datetime.datetime.fromisoformat(
+            value.replace("Z", "+00:00")
+        ).timestamp()
+except Exception as exc:
+    print(f"unparseable timestamp ({exc})")
+    sys.exit(2)
+
+age_hours = (time.time() - epoch) / 3600
+stamp = datetime.datetime.fromtimestamp(
+    epoch, datetime.timezone.utc
+).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+if age_hours < -1:
+    print(f"{stamp}, from the future ({age_hours:.1f}h)")
+    sys.exit(1)
+
+if age_hours <= max_age_hours:
+    print(f"{stamp}, age {age_hours:.1f}h <= {max_age_hours:.1f}h")
+    sys.exit(0)
+
+print(f"{stamp}, age {age_hours:.1f}h > {max_age_hours:.1f}h")
+sys.exit(1)
+PY
+)
+    rc=$?
+    set -e
+
+    if [[ $rc -eq 0 ]]; then
+        echo -e "${GREEN}[PASS]${NC} $label is fresh ($actual)"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    elif [[ "$severity" == "fail" ]]; then
+        echo -e "${RED}[FAIL]${NC} $label is stale or missing ($actual)"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} $label is stale or missing ($actual)"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+}
+
 check_argocd_app() {
     local app_name="$1"
     local sync health
-    sync=$(oc get application "$app_name" -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
-    health=$(oc get application "$app_name" -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+    sync=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+    health=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
 
     if [[ "$sync" == "Synced" ]]; then
         echo -e "${GREEN}[PASS]${NC} Argo CD app '$app_name' sync: Synced"

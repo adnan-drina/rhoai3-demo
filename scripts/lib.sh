@@ -24,6 +24,21 @@ load_env() {
 
 check_oc_logged_in() {
     oc whoami &>/dev/null || { log_error "Not logged in. Run: oc login <cluster>"; exit 1; }
+
+    local server expected
+    server="$(oc whoami --show-server 2>/dev/null || true)"
+    expected="${RHOAI_EXPECTED_API_SERVER:-${RHOAI_EXPECTED_CLUSTER:-}}"
+
+    if [[ -n "$expected" && "$server" != *"$expected"* ]]; then
+        log_error "OpenShift API server guard failed"
+        log_error "  expected: $expected"
+        log_error "  actual:   $server"
+        exit 42
+    fi
+
+    if [[ -n "$server" ]]; then
+        log_info "OpenShift API: $server"
+    fi
 }
 
 ensure_namespace() {

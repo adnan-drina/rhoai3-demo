@@ -122,8 +122,8 @@ echo "  Model updates = change the ModelCar tag in Git, push, done."
 echo ""
 
 cmd "oc get pods -n argocd"
-cmd "oc get app -n argocd edge-ai"
-cmd "oc get app -n argocd edge-ai -o jsonpath='Repo: {.spec.source.repoURL}  Path: {.spec.source.path}  Sync: {.status.sync.status}'; echo ''"
+cmd "oc get applications.argoproj.io -n argocd edge-ai"
+cmd "oc get applications.argoproj.io -n argocd edge-ai -o jsonpath='Repo: {.spec.source.repoURL}  Path: {.spec.source.path}  Sync: {.status.sync.status}'; echo ''"
 
 pause
 

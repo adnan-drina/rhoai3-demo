@@ -67,13 +67,13 @@ Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-met
 
 ```bash
 ./steps/step-06-model-metrics/deploy.sh         # Deploy Grafana + GuideLLM via ArgoCD
-./steps/step-06-model-metrics/validate.sh       # Verify Grafana health, dashboards, CronJob
+./steps/step-06-model-metrics/validate.sh       # Verify Grafana health, dashboards, CronJob, fresh benchmark runs
 ```
 
 Additional operations:
 
 ```bash
-./steps/step-06-model-metrics/run-benchmark.sh  # CLI benchmark (Job template or CronJob)
+./steps/step-06-model-metrics/run-benchmark.sh --wait  # CLI benchmark and wait for dispatcher/single job
 ./steps/step-06-model-metrics/run-pipeline.sh   # Dashboard benchmark (KFP pipeline via DSPA)
 ```
 
@@ -82,7 +82,7 @@ Additional operations:
 <details>
 <summary>What to Verify After Deployment</summary>
 
-`validate.sh` runs 5 checks: Grafana health, dashboards, CronJob, and tuned vLLM config.
+`validate.sh` checks Grafana health, dashboards, the CronJob, and whether each model has a recent completed GuideLLM benchmark job. Set `DEMO_FRESHNESS_HOURS` to override the default 24-hour freshness window.
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -90,8 +90,7 @@ Additional operations:
 | GrafanaDashboards | vLLM + DCGM dashboards | 2 dashboards |
 | Grafana health | API health endpoint | `database: ok` |
 | GuideLLM CronJob | Daily benchmark schedule | `0 2 * * *`, not suspended |
-| Granite KV cache | Tuned vLLM startup logs | 155,184 tokens (fp8, 0.92) |
-| Mistral KV cache | Tuned vLLM startup logs | 426,160 tokens (fp8, 0.90) |
+| Fresh benchmark data | Completed GuideLLM jobs for each model | Completion within `DEMO_FRESHNESS_HOURS` |
 
 ```bash
 oc get grafana -n private-ai
@@ -101,11 +100,6 @@ GRAFANA_HOST=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host
 curl -sk "https://$GRAFANA_HOST/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin))"
 
 oc get cronjob guidellm-daily -n private-ai
-
-oc logs deploy/granite-8b-agent-predictor -n private-ai -c kserve-container \
-  | grep 'KV cache size'
-oc logs deploy/mistral-3-bf16-predictor -n private-ai -c kserve-container \
-  | grep 'KV cache size'
 ```
 
 </details>
@@ -140,6 +134,7 @@ oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-
 **Expect:** The GuideLLM Job runs graduated concurrency tests while vLLM metrics flow to Prometheus. KServe auto-creates the ServiceMonitors.
 
 > GuideLLM generates real load at production-level concurrency. Combined with vLLM's native Prometheus metrics and KServe's automatic ServiceMonitor creation, we get end-to-end observability without custom instrumentation.
+> Current GuideLLM images write results with `--output-dir` and `--outputs`; the jobs fail fast if `results.json` is not produced.
 
 ### vLLM Performance Dashboard
 
@@ -249,6 +244,19 @@ oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
 ```bash
 oc get inferenceservice -n private-ai
 # Both models must show READY=True
+```
+
+### GuideLLM job fails with output path conflict
+
+**Symptom:** GuideLLM prints `Cannot use --output-path with --output-dir`.
+
+**Root Cause:** Newer GuideLLM images set an output directory by default and reject the legacy `--output-path` flag.
+
+**Solution:**
+```bash
+# Use the GitOps job templates from this step. They use:
+#   --output-dir /tmp --outputs results.json
+./steps/step-06-model-metrics/run-benchmark.sh granite --wait
 ```
 
 ### Grafana Operator OperatorGroup health empty

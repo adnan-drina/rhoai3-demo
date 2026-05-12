@@ -62,9 +62,9 @@ sleep 5
 TIMEOUT=300
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    SYNC=$(oc get application "$STEP_NAME" -n openshift-gitops \
+    SYNC=$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops \
         -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
-    HEALTH=$(oc get application "$STEP_NAME" -n openshift-gitops \
+    HEALTH=$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops \
         -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
 
     log_info "  Sync: $SYNC | Health: $HEALTH"

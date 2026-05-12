@@ -90,7 +90,7 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 ```bash
 ./steps/step-08-model-evaluation/deploy.sh     # ArgoCD app + compile pipeline + launch eval
-./steps/step-08-model-evaluation/validate.sh   # Verify eval ConfigMaps, providers, judge model
+./steps/step-08-model-evaluation/validate.sh   # Verify eval ConfigMaps, providers, judge model, fresh results
 ```
 
 Additional operations:
@@ -119,9 +119,11 @@ Additional operations:
 | Eval provider | LlamaStack eval provider registered | At least 1 provider |
 | Judge model | mistral-3-bf16 InferenceService | READY=True |
 | LM-Eval config | DataScienceCluster LM-Eval permissions | `permitOnline: allow` |
+| RAG eval reports | HTML reports in MinIO | Latest report within `DEMO_FRESHNESS_HOURS` |
+| LM-Eval runs | LMEvalJob CRs | Recent completed job per model |
 
 ```bash
-oc get application step-08-model-evaluation -n openshift-gitops \
+oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
   -o jsonpath='{.status.sync.status} / {.status.health.status}'
 
 oc get configmap eval-configs eval-test-cases -n private-ai

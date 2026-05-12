@@ -145,7 +145,7 @@ if [[ -n "$LSD_POD" ]]; then
     SLACK_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
         curl -s http://localhost:8321/v1/tool-runtime/invoke \
         -H "Content-Type: application/json" \
-        -d '{"tool_name":"channels_list","kwargs":{},"tool_group_id":"mcp::slack"}' 2>/dev/null || echo "ERROR")
+        -d '{"tool_name":"channels_list","kwargs":{"channel_types":"public_channel","limit":20},"tool_group_id":"mcp::slack"}' 2>/dev/null || echo "ERROR")
     if echo "$SLACK_RESULT" | grep -qi "acme-mcp-demo\|mcp-demo"; then
         echo -e "${GREEN}[PASS]${NC} Slack MCP: channels_list returned demo channel"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))

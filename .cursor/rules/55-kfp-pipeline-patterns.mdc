@@ -1,0 +1,464 @@
+---
+description: KFP pipeline coding standards. Enforces the step-12 reference implementation patterns for pipeline definitions, components, and runner scripts, aligned with official KFP v2 best practices. Use when creating or modifying KFP pipelines.
+globs: "**/kfp/**/*.py,**/run-*.sh,**/run-pipeline.sh,**/run-*-pipeline.sh"
+alwaysApply: false
+---
+
+# KFP Pipeline Patterns (Reference: Step-12)
+
+Step-12 (`steps/step-12-mlops-pipeline/kfp/`) is the reference implementation for
+all KFP v2 pipelines in this project. These patterns ensure consistency, readability,
+and Dashboard-friendly pipelines across steps 06, 07, 08, and 12.
+
+Official KFP v2 docs: https://www.kubeflow.org/docs/components/pipelines/
+RHOAI 3.3 pipelines: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+
+## Pipeline Definition (`kfp/pipeline.py`)
+
+### Module docstring
+
+Every pipeline file starts with a docstring containing: KFP version, pipeline purpose,
+component list, which DSPA it reuses, and the official docs reference.
+
+```python
+"""
+KFP v2 <Pipeline Purpose>
+
+<Brief description of what the pipeline does, N steps.>
+
+Components are in kfp/components/ following KFP modular best practices.
+Reuses the existing DSPA (dspa-rag) in private-ai namespace.
+
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+"""
+```
+
+### Constants at top
+
+Extract secret names, PVC names, and other shared strings to module-level constants.
+Note: only pipeline-level constants are allowed outside functions. Component functions
+must remain hermetic (self-contained) per KFP requirements.
+
+```python
+MINIO_SECRET = "dspa-minio-credentials"
+PIPELINE_PVC = "face-pipeline-workspace"
+```
+
+### DRY wiring helpers
+
+Extract repetitive KFP wiring into private helpers. These are pipeline-level functions
+(not component functions), so they are not subject to the hermeticism requirement:
+
+```python
+def _set_resources(
+    task: PipelineTask,
+    cpu_req: str = "500m", cpu_lim: str = "2",
+    mem_req: str = "1Gi", mem_lim: str = "4Gi",
+) -> None:
+    task.set_cpu_request(cpu_req)
+    task.set_cpu_limit(cpu_lim)
+    task.set_memory_request(mem_req)
+    task.set_memory_limit(mem_lim)
+
+def _inject_minio(task: PipelineTask) -> None:
+    kubernetes.use_secret_as_env(
+        task, secret_name=MINIO_SECRET,
+        secret_key_to_env={...},
+    )
+
+def _mount_pvc(task: PipelineTask) -> None:
+    kubernetes.mount_pvc(task, pvc_name=PIPELINE_PVC, mount_path="/shared-data")
+```
+
+### Pipeline function
+
+- Decorate with `@dsl.pipeline(name=..., description=..., pipeline_root="s3://pipelines/")`
+- All parameters must have type annotations and defaults
+- Number each step with a section comment: `# --- Step N: <Name> ---`
+- Wire each task in order: create → inject secrets → mount PVC → set resources → disable caching
+- Use `.after()` for explicit ordering beyond data-dependency ordering
+
+```python
+@dsl.pipeline(
+    name="pipeline-name",
+    description="What this pipeline does",
+    pipeline_root="s3://pipelines/",
+)
+def my_pipeline(param: str = "default"):
+    # --- Step 1: Prepare ---
+    prep = prepare(param=param)
+    _mount_pvc(prep)
+    _set_resources(prep, cpu_req="1", mem_req="2Gi")
+    prep.set_caching_options(False)
+
+    # --- Step 2: Process ---
+    proc = process(input=prep.outputs["Output"])
+    _inject_minio(proc)
+    _mount_pvc(proc)
+    _set_resources(proc)
+    proc.after(prep)
+    proc.set_caching_options(False)
+```
+
+### Compiler block
+
+```python
+if __name__ == "__main__":
+    kfp.compiler.Compiler().compile(
+        my_pipeline, "pipeline-name.yaml",
+    )
+    print("Compiled: pipeline-name.yaml")
+```
+
+Compiled YAML goes to `artifacts/` at the repo root. The runner script moves it there.
+
+## Component Style (`kfp/components/*.py`)
+
+### One component per file
+
+Each `@component` function lives in its own file under `kfp/components/`. The filename
+matches the function name (e.g., `prepare_dataset.py` → `def prepare_dataset()`).
+Inline components in `pipeline.py` are only acceptable for single-step pipelines.
+
+### Component decorator
+
+```python
+from kfp.dsl import component, Output, Metrics
+
+@component(
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    packages_to_install=["boto3>=1.34.0", "..."],
+)
+def my_component(
+    param: str,
+    metrics: Output[Metrics],
+) -> str:
+    """Does something useful.
+
+    Args:
+        param: Description of param.
+
+    Returns:
+        Output: Description of output.
+    """
+    ...
+```
+
+- Always specify `base_image` explicitly — KFP default is `python:3.7`
+- Use the RHOAI-provided base image: `registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0`
+  - Python 3.12, pre-configured Red Hat Python index, RHEL RPM repos enabled
+  - RHOCP clusters have pull secrets for `registry.redhat.io` by default
+  - Do NOT use Docker Hub `python:X.Y` or generic `ubi9/python-*` images
+- Pin package minimum versions in `packages_to_install`
+- The RHAI base image has the Red Hat Python index pre-configured. If you add
+  `pip_index_urls`, KFP **replaces** the image defaults — it does NOT append. To keep
+  PyPI access alongside a private index, list both explicitly:
+  ```python
+  pip_index_urls=["https://pypi.org/simple"]  # overrides image default
+  ```
+  Ref: https://www.kubeflow.org/docs/components/pipelines/user-guides/components/lightweight-python-components/
+- KFP auto-installs `kfp` at runtime in every Lightweight Component. The RHAI image
+  ships `kfp==2.15.2`; if the local SDK is newer (e.g. 2.16.0), the compiled YAML
+  requests the newer version. With `pip_index_urls` pointing to PyPI, this installs
+  fine. Without it, the Red Hat index may not have the exact version, causing failure.
+- **When to add `pip_index_urls`:** Required for any component that uses packages
+  NOT in Red Hat's Python index (e.g. `ultralytics`, `onnxruntime`, `onnxslim`,
+  `huggingface_hub`, `lapx`). Standard packages like `boto3`, `requests`, `pyyaml`
+  are available from the Red Hat index without `pip_index_urls`.
+
+### Type annotations are mandatory
+
+KFP requires type annotations on all component inputs and outputs. Valid parameter types:
+`int`, `float`, `str`, `bool`, `typing.Dict`, `typing.List`.
+
+For ML artifacts, use the KFP artifact types: `Artifact`, `Dataset`, `Model`, `Metrics`,
+`ClassificationMetrics`, `HTML`, `Markdown`. `Metrics` provides special Dashboard
+rendering and is the most commonly used in this project.
+
+### Hermeticism: components must be self-contained
+
+Lightweight Python Components (which we use) must be hermetic — the function body cannot
+reference symbols defined outside of it. This means:
+- All `import` statements go inside the function body
+- Constants used by the component must be defined inside the function
+- Module-level constants like `MINIO_SECRET` are for pipeline wiring only, not component code
+
+This is a KFP compilation requirement, not a style choice.
+
+### Sharing utility functions across components
+
+The hermeticism rule means you can't import shared helpers from adjacent modules.
+KFP provides `additional_funcs` to solve this without breaking hermeticism:
+
+```python
+def create_s3_client(endpoint: str):
+    """Shared S3 client factory — available inside the component at runtime."""
+    import boto3
+    from botocore.config import Config
+    import os
+    return boto3.client("s3",
+        endpoint_url=os.environ.get("AWS_S3_ENDPOINT", endpoint),
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        config=Config(signature_version="s3v4"))
+
+@component(
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    packages_to_install=["boto3>=1.34.0"],
+    additional_funcs=[create_s3_client],
+)
+def my_component(minio_endpoint: str) -> str:
+    s3 = create_s3_client(minio_endpoint)
+    ...
+```
+
+Functions passed via `additional_funcs` are inlined into the component at compile time.
+They must be self-contained themselves (no external references). Use this for repeated
+patterns like S3 client creation, metrics directory setup, or the
+`opencv-python-headless` force-reinstall workaround that appears in multiple step-12
+components.
+
+### KFP docstring format
+
+KFP parses component docstrings in a Google-style variant. Use `Args:` and `Returns:`
+sections — these appear in the RHOAI Dashboard pipeline visualization:
+
+```python
+def my_component(param: str) -> str:
+    """Brief description.
+
+    Args:
+        param: What this parameter does.
+
+    Returns:
+        Output: What is returned.
+    """
+```
+
+### Multiple named outputs
+
+When a component returns more than one value, use `typing.NamedTuple`. Access named
+outputs with `.outputs['name']` in the pipeline:
+
+```python
+from typing import NamedTuple
+
+@component(base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0")
+def evaluate(data_path: str) -> NamedTuple('outputs', score=float, passed=bool):
+    outputs = NamedTuple('outputs', score=float, passed=bool)
+    return outputs(0.85, True)
+
+# In pipeline:
+eval_task = evaluate(data_path="...")
+next_step(score=eval_task.outputs["score"])
+```
+
+Single unnamed outputs use `.output` (no brackets). Named outputs use `.outputs["name"]`.
+KFP serializes all parameters as JSON under the hood.
+
+### Inside the function
+
+- Import libraries inside the function body
+- Use `/shared-data` as the PVC mount path (project convention)
+- Use `Output[Metrics]` to log metrics visible in the RHOAI Dashboard
+- Return typed values that downstream steps can consume
+- Raise descriptive `RuntimeError` for pipeline-visible failures (these show in the
+  Dashboard as the failure reason)
+
+### Shared PVC convention
+
+All inter-step data flows through a shared PVC mounted at `/shared-data`:
+```python
+SHARED = Path("/shared-data")
+DATASET_DIR = SHARED / "dataset"
+MODEL_DIR = SHARED / "model"
+METRICS_DIR = SHARED / "metrics"
+```
+
+Subdirectory names should be descriptive and step-specific.
+
+## Control Flow
+
+KFP v2 provides `dsl.If`/`dsl.Elif`/`dsl.Else` for conditional execution and
+`dsl.ParallelFor` for parallel loops. Use these when appropriate:
+
+| Pattern | When to use | Example in this project |
+|---------|-------------|------------------------|
+| `dsl.ParallelFor` | Process items in parallel | Step-07 batch ingestion |
+| `RuntimeError` as quality gate | Fail-fast: stop pipeline if condition not met | Step-12 mAP threshold |
+| `dsl.If`/`dsl.Else` | Conditional branches that both produce outputs | Not yet used |
+| `dsl.ExitHandler` | Cleanup tasks that run regardless of success | Not yet used |
+
+Step-12 uses `RuntimeError` in `evaluate_model` as a quality gate because a failed
+step is more visible in the Dashboard than a skipped conditional branch (red vs grey).
+This is a deliberate design choice for demo clarity.
+
+`dsl.Collected` gathers outputs from parallel loops for downstream consumption.
+Note: RHOAI 3.3's DSPA backend does not support `dsl.Collected` at runtime
+(fails with "producer task not in tasks"). Step-07 uses `.after(insert)` to
+order the `ingestion_summary` step after the ParallelFor, and reads results
+from a shared PVC log file (`ingestion-log.jsonl`) instead.
+
+## Caching
+
+KFP caching is enabled by default. Our demo pipelines disable caching on every task
+with `.set_caching_options(False)` because:
+- Demo runs should always execute fresh (not return stale cached results)
+- Timestamps and external state (S3 data, model weights) change between runs
+- Cached results hide failures that would occur in production
+
+For production pipelines, enable caching selectively on expensive, deterministic steps.
+
+## Artifact Types for Dashboard Visibility
+
+KFP provides artifact types that get special Dashboard UI rendering:
+
+| Type | Dashboard rendering | Recommended for |
+|------|-------------------|-----------------|
+| `Metrics` | Key-value metrics table | Training metrics, eval scores |
+| `ClassificationMetrics` | Confusion matrix, ROC | Classification eval results |
+| `HTML` | Rendered HTML viewer | Eval reports, visualizations |
+| `Model` | Model lineage tracking | Trained model outputs |
+| `Dataset` | Dataset lineage tracking | Prepared datasets |
+
+Our pipelines use:
+- `Output[Metrics]` — all steps with numeric metrics (training, eval scores)
+- `Output[Model]` — step-12 `train_model` (ONNX model lineage in Dashboard)
+- `Output[Dataset]` — step-12 `prepare_dataset` (dataset lineage with train/val split counts)
+- `Output[HTML]` — step-08 `run_and_score_tests` (inline eval report in Dashboard)
+
+- `Output[Metrics]` — step-07 `ingestion_summary` (per-scenario document counts and names)
+
+`Output[Model]` and `Output[HTML]` are additive — they don't replace the PVC-based or
+S3-based data flow. They provide Dashboard visibility alongside existing mechanisms.
+
+## Component Authoring Styles
+
+This project uses **Lightweight Python Components** (`@dsl.component` with
+`packages_to_install`). Dependencies install from the Red Hat Python index at runtime.
+For Containerized Components, Container Components, KFP 2.15 features, and local
+execution, see `model-evaluation` skill `references/kfp-advanced-patterns.md`.
+
+## Runner Script (`run-*.sh`)
+
+### Structure
+
+```bash
+#!/bin/bash
+# <Purpose and usage>
+# Usage: ./run-<name>.sh [options]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+NAMESPACE="private-ai"
+
+source "$REPO_ROOT/scripts/lib.sh"
+load_env
+
+# 1. Parse arguments
+# 2. Check oc login
+# 3. Create venv / install kfp if needed
+# 4. Compile pipeline if YAML missing
+# 5. Get cluster info (DSPA route, tokens)
+# 6. Submit via embedded Python heredoc
+```
+
+- Always source `scripts/lib.sh` for `log_info`, `log_error`, `log_success`, `log_step`,
+  `check_oc_logged_in`, `load_env`
+- Never use inline color codes — use the `log_*` functions
+- Parse CLI args with `--key=value` pattern (not positional, except for the simplest cases)
+
+### RHOAI DSPA authentication
+
+RHOAI uses DSPA, not standard Kubeflow Pipelines. Auth: `kfp.Client(host=DSPA_URL,
+namespace=NAMESPACE, existing_token=OC_TOKEN)`. Inside pipeline pods, set
+`KF_PIPELINES_SA_TOKEN_PATH` for SA token auth. See `references/kfp-advanced-patterns.md`
+for details.
+
+### KFP client pattern (idempotent)
+
+The embedded Python heredoc follows this idempotent pattern:
+
+```python
+# 1. Upload pipeline (or find existing by name)
+try:
+    pipeline = kfp_client.upload_pipeline(...)
+except Exception:
+    pipelines = kfp_client.list_pipelines(...)
+    pipeline = next(p for p in pipelines if p.name == NAME)
+
+# 2. Upload new version
+version = kfp_client.upload_pipeline_version(...)
+
+# 3. Create or find experiment
+try:
+    exp = kfp_client.create_experiment(name=..., namespace=...)
+except Exception:
+    exps = kfp_client.list_experiments(...)
+    exp = next(e for e in exps if e.display_name == name)
+
+# 4. Create run
+run = kfp_client.run_pipeline(
+    experiment_id=..., job_name=...,
+    pipeline_id=..., version_id=...,
+    params={...},
+)
+```
+
+This pattern is safe to run repeatedly — it uploads a new version each time and creates
+a new run, but reuses existing pipeline and experiment objects.
+
+### Venv management
+
+All runner scripts share a single venv at `$REPO_ROOT/.venv-kfp`:
+```bash
+VENV_PATH="$REPO_ROOT/.venv-kfp"
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
+    "$VENV_PATH/bin/pip" install -q --upgrade pip kfp kfp-kubernetes
+fi
+```
+
+## GitOps Integration
+
+Pipeline **infrastructure** (PVCs, RBAC, supporting services) lives in GitOps and is
+ArgoCD-managed. The **pipeline definition itself** is compiled and uploaded to the
+existing DSPA — it is not an ArgoCD-managed resource.
+
+```
+gitops/step-XX/base/
+  kustomization.yaml     # PVC, RBAC, supporting services only
+  pipeline-pvc.yaml
+  pipeline-rbac.yaml
+
+steps/step-XX/
+  kfp/
+    pipeline.py          # Compiled to artifacts/ and uploaded via runner script
+    components/
+      step_one.py
+      step_two.py
+  run-<name>.sh          # Compiles + uploads + runs
+  deploy.sh              # ArgoCD Application (infra only)
+```
+
+## Checklist for New Pipelines
+
+- [ ] Module docstring with KFP version, purpose, DSPA reference
+- [ ] Constants for secret names, PVC names at module level
+- [ ] `_set_resources()` helper (at minimum)
+- [ ] `@dsl.pipeline()` with `name`, `description`, `pipeline_root`
+- [ ] All parameters have type annotations and defaults
+- [ ] Step comments: `# --- Step N: Name ---`
+- [ ] Caching disabled on all tasks (demo pipelines should not cache)
+- [ ] Components in separate files under `kfp/components/`
+- [ ] All component I/O has type annotations (KFP requirement)
+- [ ] Component functions are hermetic (imports inside body)
+- [ ] KFP-style docstrings with Args/Returns sections
+- [ ] `Output[Metrics]` for Dashboard-visible metrics; `Output[Model]`/`Output[HTML]` where appropriate
+- [ ] `base_image` uses `registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0` (not Docker Hub or generic UBI9)
+- [ ] Runner script sources `lib.sh`
+- [ ] Runner uses `--key=value` arg parsing
+- [ ] Idempotent KFP client pattern
+- [ ] Infrastructure in GitOps, pipeline definition compiled and uploaded

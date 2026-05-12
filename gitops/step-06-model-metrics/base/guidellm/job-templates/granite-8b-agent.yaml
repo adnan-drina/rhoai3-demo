@@ -57,8 +57,10 @@ spec:
                 --rate-type constant \
                 --max-seconds 60 \
                 --max-requests 50 \
-                --output-path /tmp/results.json \
-                --disable-console-interactive || true
+                --output-dir /tmp \
+                --outputs results.json \
+                --disable-console-interactive
+              test -s /tmp/results.json
               echo "Benchmark complete"
           resources:
             requests:

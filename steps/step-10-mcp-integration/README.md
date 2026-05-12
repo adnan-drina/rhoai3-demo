@@ -104,6 +104,8 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
+> **Database MCP starts after PostgreSQL is queryable:** `deploy.sh` verifies the seeded ACME schema before refreshing `database-mcp`. This prevents the MCP server from keeping a closed connection pool if it starts while the PostgreSQL container is still replaying startup scripts.
+
 > **Slack credentials at deploy time:** Bot token is created from `.env` by deploy.sh (not stored in git).
 
 </details>
@@ -135,7 +137,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | **OpenShift MCP** | `pods_list_in_namespace(acme-corp)` | Returns acme-equipment pods |
 | **Database MCP** | `list_schemas` | Returns public schema |
 | **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
-| **Slack MCP** | `channels_list` | Returns demo channel |
+| **Slack MCP** | `channels_list(channel_types="public_channel")` | Returns demo channel |
 
 </details>
 

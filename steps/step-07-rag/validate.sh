@@ -16,8 +16,8 @@ echo ""
 # --- Argo CD Application ---
 # step-07 ArgoCD app shows Unknown sync due to ignoreDifferences on LSD spec
 log_step "Argo CD Application"
-SYNC=$(oc get application step-07-rag -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
-HEALTH=$(oc get application step-07-rag -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+SYNC=$(oc get applications.argoproj.io step-07-rag -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+HEALTH=$(oc get applications.argoproj.io step-07-rag -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
 if [[ "$SYNC" == "Synced" ]]; then
     echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-07-rag' sync: Synced"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
@@ -84,6 +84,15 @@ if [[ -n "$LSD_POD" ]]; then
         curl -s http://localhost:8321/v1/vector_stores 2>/dev/null || echo '{"data":[]}')
 
     for vs_name in acme_corporate whoami; do
+        VS_ID=$(echo "$VS_JSON" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    store = next((v for v in data.get('data', []) if v['name'] == '$vs_name'), None)
+    print(store['id'] if store else '')
+except:
+    print('')
+" 2>/dev/null || echo "")
         VS_FILES=$(echo "$VS_JSON" | python3 -c "
 import sys, json
 try:
@@ -96,6 +105,22 @@ except:
         if [[ "$VS_FILES" -ge 1 ]]; then
             echo -e "${GREEN}[PASS]${NC} Vector store '$vs_name' has $VS_FILES file(s)"
             VALIDATE_PASS=$((VALIDATE_PASS + 1))
+
+            LATEST_FILE_EPOCH=""
+            if [[ -n "$VS_ID" ]]; then
+                LATEST_FILE_EPOCH=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+                    curl -s "http://localhost:8321/v1/vector_stores/${VS_ID}/files" 2>/dev/null | \
+                    python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    epochs = [f.get('created_at', 0) for f in data.get('data', []) if f.get('created_at')]
+    print(max(epochs) if epochs else '')
+except:
+    print('')
+" 2>/dev/null || echo "")
+            fi
+            check_recent_timestamp "Vector store '$vs_name' latest ingested file" "$LATEST_FILE_EPOCH" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
         else
             echo -e "${RED}[FAIL]${NC} Vector store '$vs_name' missing or empty — run: ./steps/step-07-rag/run-batch-ingestion.sh $vs_name"
             VALIDATE_FAIL=$((VALIDATE_FAIL + 1))

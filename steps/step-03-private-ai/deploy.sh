@@ -20,7 +20,7 @@ log_step "Step 03: Private AI - GPU as a Service"
 
 log_step "Checking prerequisites..."
 
-if ! oc get applications -n openshift-gitops step-02-rhoai &>/dev/null; then
+if ! oc get applications.argoproj.io -n openshift-gitops step-02-rhoai &>/dev/null; then
     log_error "step-02-rhoai Argo CD Application not found!"
     log_info "Please run: ./steps/step-02-rhoai/deploy.sh first"
     exit 1

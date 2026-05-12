@@ -15,8 +15,8 @@ echo ""
 log_step "Argo CD Application"
 # Note: Operator-managed resources may show transient OutOfSync.
 # Treat sync as warn-only for step-02 since the operator owns the reconciliation.
-SYNC=$(oc get application step-02-rhoai -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
-HEALTH=$(oc get application step-02-rhoai -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+SYNC=$(oc get applications.argoproj.io step-02-rhoai -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+HEALTH=$(oc get applications.argoproj.io step-02-rhoai -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
 if [[ "$SYNC" == "Synced" ]]; then
     echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-02-rhoai' sync: Synced"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))

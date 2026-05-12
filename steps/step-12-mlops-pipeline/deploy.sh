@@ -50,7 +50,7 @@ log_step "Waiting for ArgoCD sync..."
 TIMEOUT=120
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    HEALTH=$(oc get application "$STEP_NAME" -n openshift-gitops \
+    HEALTH=$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops \
         -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
     if [ "$HEALTH" = "Healthy" ]; then
         log_success "ArgoCD sync complete"
