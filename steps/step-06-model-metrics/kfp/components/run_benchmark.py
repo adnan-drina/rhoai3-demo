@@ -40,6 +40,7 @@ def run_benchmark(
     results_dir = "/shared-data"
     os.makedirs(results_dir, exist_ok=True)
     results_path = f"{results_dir}/results.json"
+    results_name = "results.json"
 
     prompts_json = json.dumps([
         {"prompt": "Explain the difference between containers and virtual machines in detail."},
@@ -66,8 +67,10 @@ guidellm benchmark run \
   --rate-type constant \
   --max-seconds {max_seconds} \
   --max-requests {max_requests} \
-  --output-path "{results_path}" \
-  --disable-console-interactive || true
+  --output-dir "{results_dir}" \
+  --outputs "{results_name}" \
+  --disable-console-interactive
+test -s "{results_path}"
 echo "Benchmark complete for {model_name}"
 """
     with open("/tmp/run_benchmark.sh", "w") as f:

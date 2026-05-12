@@ -134,6 +134,7 @@ oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-
 **Expect:** The GuideLLM Job runs graduated concurrency tests while vLLM metrics flow to Prometheus. KServe auto-creates the ServiceMonitors.
 
 > GuideLLM generates real load at production-level concurrency. Combined with vLLM's native Prometheus metrics and KServe's automatic ServiceMonitor creation, we get end-to-end observability without custom instrumentation.
+> Current GuideLLM images write results with `--output-dir` and `--outputs`; the jobs fail fast if `results.json` is not produced.
 
 ### vLLM Performance Dashboard
 
@@ -243,6 +244,19 @@ oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
 ```bash
 oc get inferenceservice -n private-ai
 # Both models must show READY=True
+```
+
+### GuideLLM job fails with output path conflict
+
+**Symptom:** GuideLLM prints `Cannot use --output-path with --output-dir`.
+
+**Root Cause:** Newer GuideLLM images set an output directory by default and reject the legacy `--output-path` flag.
+
+**Solution:**
+```bash
+# Use the GitOps job templates from this step. They use:
+#   --output-dir /tmp --outputs results.json
+./steps/step-06-model-metrics/run-benchmark.sh granite --wait
 ```
 
 ### Grafana Operator OperatorGroup health empty
