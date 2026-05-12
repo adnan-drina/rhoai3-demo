@@ -1,0 +1,73 @@
+---
+description: Chatbot-specific patterns for the RAG chatbot UI. Preserve upstream alignment, test via rebuild+restart, respect agent mode constraints.
+globs: "steps/step-07-rag/chatbot/**/*.py"
+alwaysApply: false
+---
+
+# Chatbot Development Patterns
+
+## Architecture Awareness
+
+The chatbot is a Streamlit app (`rag-chatbot`) that talks to LlamaStack (`lsd-rag`).
+It has two modes (Direct, Agent) with different APIs and prompt patterns. Changes to
+one mode should not break the other.
+
+## Key Constraints
+
+### tool_choice = "required" in agent mode
+`agent.py` sets `tool_choice="required"` when tools are present. This is intentional —
+Granite 8B frequently skips tools when set to "auto". Do not change without extensive
+testing across all 4 agentic test scenarios.
+
+### max_output_tokens = 512
+The 16K context window fills up fast with MCP/file_search results (12-16K). A larger
+`max_output_tokens` causes vLLM to reject requests. Only increase if the model's
+`max-model-len` is also increased.
+
+### System prompt brevity
+Granite 8B narrates verbose prompts instead of acting on them. Keep the agent system
+prompt action-oriented and under ~100 words. Use positive framing ("You MUST use tools")
+instead of negative ("Do NOT explain your reasoning").
+
+## Testing Cycle
+
+After code changes:
+```
+oc start-build rag-chatbot -n private-ai --follow
+oc rollout restart deployment/rag-chatbot -n private-ai
+oc rollout status deployment/rag-chatbot -n private-ai
+```
+
+After env-only changes (e.g., `RAG_QUESTION_SUGGESTIONS`):
+```
+oc rollout restart deployment/rag-chatbot -n private-ai
+```
+
+Always test in both Direct and Agent modes after changes.
+
+## Container Image Guidelines
+
+The chatbot's `Containerfile` follows [OCP 4.20 container image guidelines](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/images/creating-images):
+- Base: `registry.access.redhat.com/ubi9/python-312:latest` (Red Hat UBI9, not Docker Hub)
+- Runs as `USER 1001` (OCP random UID compatible)
+- Single process (`streamlit run`)
+- No `hostPath`, no privileged capabilities
+
+When modifying the `Containerfile`:
+- Do NOT switch to a Docker Hub base image — use Red Hat UBI or RHOAI images
+- Do NOT remove `USER 1001` — OpenShift requires non-root by default
+- Group `RUN` commands to minimize layers (per [RHOAI custom image guidelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/creating-custom-workbench-images))
+- Pin package versions in pip install commands for reproducibility
+
+## What NOT to Change Without Full Testing
+
+- `tool_choice` value in `agent.py`
+- Guardrails orchestrator endpoint or API version in `guardrails.py`
+- `RAG_QUESTION_SUGGESTIONS` JSON key names (must match vector store names)
+- The `LlamaStackApi` singleton pattern in `api.py`
+
+## References
+
+- [RHOAI 3.3 — Working with LlamaStack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
+- [RHOAI 3.3 — AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/ai_safety_with_guardrails/)
+- [OCP 4.20 — Container Image Guidelines](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/images/creating-images)

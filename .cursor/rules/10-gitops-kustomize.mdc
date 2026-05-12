@@ -1,0 +1,168 @@
+---
+description: Use for any work in gitops/ or Kustomize files. Enforce GitOps + Kustomize best practices and reproducible steps.
+globs: gitops/**,**/kustomization.yaml,**/kustomization.yml
+alwaysApply: false
+---
+
+# GitOps & Kustomize Rules
+
+## Golden rule
+Every demo step must be reproducible from the `gitops/` folder (either via `deploy.sh` or by following the step README).
+
+## Mandatory: ArgoCD Application in every deploy.sh
+Every step's `deploy.sh` MUST apply its ArgoCD Application as its **first cluster-modifying action** (after any prerequisite secrets that the step's manifests depend on):
+```bash
+oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
+```
+Every step MUST have all three components:
+1. `gitops/step-XX-name/base/` — Kustomize manifests (source of truth)
+2. `gitops/argocd/app-of-apps/step-XX-name.yaml` — ArgoCD Application
+3. `steps/step-XX-name/deploy.sh` — applies the ArgoCD Application + non-GitOps tasks
+
+**Never** apply step manifests directly with `oc apply -k` or `oc apply -f` for ArgoCD-managed resources.
+
+## Repository layout (this project)
+
+This repository uses a **split layout** separating manifests from deployment documentation:
+
+```
+rhoai3-demo/
+├── gitops/                              # Kustomize manifests (GitOps source of truth)
+│   ├── argocd/
+│   │   └── app-of-apps/                 # Argo CD Application definitions
+│   │       ├── kustomization.yaml
+│   │       ├── step-01-gpu-and-prereq.yaml
+│   │       ├── step-02-rhoai.yaml
+│   │       └── ...
+│   │
+│   ├── step-01-gpu-and-prereq/          # Step manifests
+│   │   ├── base/                        # Environment-agnostic resources
+│   │   │   ├── kustomization.yaml
+│   │   │   ├── nfd/
+│   │   │   ├── gpu-operator/
+│   │   │   └── ...
+│   │   └── overlays/                    # Environment-specific deltas
+│   │       └── aws/
+│   │           ├── kustomization.yaml
+│   │           └── machinesets/
+│   │
+│   ├── step-02-rhoai/
+│   │   └── base/
+│   │
+│   ├── step-03-private-ai/
+│   │   └── base/
+│   │
+│   ├── step-04-model-registry/
+│   │   └── base/
+│   │
+│   ├── step-05-llm-on-vllm/
+│   │   └── base/
+│   │
+│   └── ... (through step-12-mlops-pipeline/base/)
+│
+├── steps/                               # Deployment documentation (per-step)
+│   ├── step-01-gpu-and-prereq/
+│   │   ├── deploy.sh                    # One-shot deployment script
+│   │   └── README.md                    # Full documentation
+│   ├── step-02-rhoai/
+│   │   ├── deploy.sh
+│   │   └── README.md
+│   └── ...
+│
+├── scripts/                             # Shared utilities
+│   ├── bootstrap.sh                     # Initial GitOps setup
+│   └── lib.sh                           # Common shell functions
+│
+├── env.example                          # Environment template
+└── README.md                            # Project overview
+```
+
+## Kustomize structure rules
+- Prefer `base/` + `overlays/<env-or-purpose>/` within each step.
+- Keep `base/` environment-agnostic; put environment/step deltas in overlays.
+- Avoid duplicating full resources across overlays—use patches.
+- Prefer `resources:` + `patches:` (strategic merge or JSON6902) with minimal diffs.
+- Use consistent naming and labels to make `oc get` and `oc diff` readable.
+
+## Naming conventions
+- Step folders: `step-XX-descriptive-name/` (e.g., `step-01-gpu-and-prereq`)
+- Overlays: `overlays/<purpose>/` (e.g., `overlays/aws/`, `overlays/demo/`)
+- Operator folders: group by operator name (e.g., `nfd/`, `gpu-operator/`, `rhoai-operator/`)
+
+## Output hygiene
+- Never require manual, out-of-band edits to cluster state (except secrets created per the secrets rule).
+- If a resource must be created by CLI (non-secret), it should still be described in README with rationale and verification.
+
+## Validation commands to include in README (as applicable)
+- `kustomize build <path> | oc apply --dry-run=server -f -`
+- `kustomize build <path> | oc diff -f -`
+- `kustomize build <path> | oc apply -f -`
+
+## Argo CD Application Standards
+
+### AppProject
+All Applications MUST use `project: rhoai-demo` — never `default`.
+The `rhoai-demo` AppProject is created by `scripts/bootstrap.sh`.
+
+### Required metadata
+Every Application in `gitops/argocd/app-of-apps/` MUST include:
+```yaml
+metadata:
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "XX"
+  annotations:
+    argocd.argoproj.io/sync-wave: "<step-number * 10>"
+    argocd.argoproj.io/manifest-generate-paths: gitops/step-XX-name
+```
+The `manifest-generate-paths` annotation prevents ArgoCD from re-reconciling this Application when files change in unrelated step directories.
+
+### Version pinning policy
+- **Active development:** `targetRevision: main` is acceptable.
+- **Demo releases:** Tag the repo (e.g., `v1.0`) and set `targetRevision: v1.0` across all Applications.
+- **Never** use `HEAD` as a targetRevision value.
+
+### Required syncPolicy
+| Setting | Value | Why |
+|---------|-------|-----|
+| `automated.prune` | `true` | Remove resources deleted from Git |
+| `automated.selfHeal` | `true` (default) | Revert imperative changes. **Exception:** steps 01 and 05 use `false` to allow manual scaling (see `manage-resources` skill). |
+| `retry.limit` | `10` | Operators need time to install CRDs |
+| `retry.backoff` | `5s / factor 2 / max 3m` | Exponential backoff |
+| `SkipDryRunOnMissingResource` | `true` | CRDs may not exist at first sync |
+| `ServerSideDiff` | `true` | Accurate diff for custom CRDs |
+| `RespectIgnoreDifferences` | `true` | Enables ignoreDifferences with ServerSideDiff |
+
+**Do NOT use:** `ServerSideApply=true` (breaks sync waves) or `Replace=true` (breaks PVCs).
+
+### Universal ignoreDifferences
+All Applications MUST include:
+```yaml
+ignoreDifferences:
+  - group: ""
+    kind: PersistentVolumeClaim
+    jsonPointers:
+      - /spec
+```
+PVC spec is immutable after creation; the cluster adds `storageClassName` and `volumeName`.
+
+### Resource tracking
+`bootstrap.sh` sets `resourceTrackingMethod: annotation`. This MUST remain `annotation` only — never `annotation+label` or `label`. Annotation tracking prevents false Out-of-Sync statuses from operator-generated resources in OpenShift.
+
+### Deployment pattern
+- Each step has an Argo CD Application in `gitops/argocd/app-of-apps/`
+- Applications point to `gitops/step-XX-name/base/` by default
+- Use `deploy.sh` scripts to apply the Argo CD Application and wait for sync
+
+## References
+
+- [RHOAI 3.3 — Working with AI Pipelines (DSPA)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/)
+- [OCP 4.20 — OpenShift GitOps (ArgoCD)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cicd/gitops)
+- [ArgoCD — Sync Options](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/)
+
+## Agent Behavior
+
+After modifying files in `gitops/`:
+- If an ArgoCD Application was changed, verify it uses `project: rhoai-demo`, has `manifest-generate-paths`, and has required labels (`app.kubernetes.io/part-of`, `demo.rhoai.io/step`)
+- If a `kustomization.yaml` was changed, run `kustomize build <path>` to verify it renders without errors
+- If resources were added or removed from a kustomization, verify the resource file exists and is listed

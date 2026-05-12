@@ -1,0 +1,77 @@
+---
+description: Reuse and enhance project knowledge from READMEs. Consult existing documentation before implementing, and update docs with new learnings.
+globs:
+alwaysApply: true
+---
+
+# Knowledge Base & Continuous Documentation
+
+## Golden rule: Read before you write
+Before implementing any change, **consult the relevant step README** in `steps/step-XX-name/README.md`. These files contain:
+- Design decisions and their rationale
+- Known limitations and workarounds
+- Troubleshooting guides from real deployments
+- Official documentation references
+
+## Knowledge sources in this repo
+
+| Source | Purpose | When to consult |
+|--------|---------|-----------------|
+| `README.md` (root) | Project overview, quick start | Understanding overall architecture |
+| `steps/step-XX/README.md` | Step-specific deep knowledge | Before modifying that step |
+| Troubleshooting sections | Known issues and solutions | When debugging failures |
+| References sections | Official doc links | When validating YAML/APIs |
+
+## Enhance documentation when you learn something new
+
+When resolving an issue or discovering a pattern, **update the relevant README**:
+
+### 1. Troubleshooting discoveries
+Add new issues to the Troubleshooting section:
+```markdown
+### <Symptom/Error Message>
+
+**Root Cause:** <explanation>
+
+**Solution:**
+```bash
+<fix commands>
+```
+```
+
+### 2. Design decisions
+Document "why" not just "what":
+```markdown
+> **Design Decision:** We use X instead of Y because...
+```
+
+### 3. Workarounds for known limitations
+If something doesn't work as expected with RHOAI 3.3 or RHOCP 4.20:
+```markdown
+> **Known Limitation (RHOAI 3.3):** <description>
+> **Workaround:** <solution>
+> **Ref:** <link to issue/KB article if available>
+```
+
+### 4. Version-specific notes
+Tag version-sensitive information:
+```markdown
+> **Note (RHOAI 3.3 / RHOCP 4.20):** This behavior may change in future versions.
+```
+
+## Cross-reference related steps
+When changes in one step affect another, add cross-references:
+```markdown
+> **See also:** [Step 03 - Private AI](../step-03-private-ai/README.md)
+```
+
+## Keep the knowledge base growing
+- Every bug fix is an opportunity to document a troubleshooting entry
+- Every workaround is a design decision worth explaining
+- Every deployment validates (or corrects) existing documentation
+- Every question asked twice should become documentation
+
+## Official docs remain the source of truth
+- README knowledge supplements, not replaces, official documentation
+- Always link to official RHOAI 3.3 / RHOCP 4.20 docs
+- When official docs conflict with our implementation, note it explicitly and explain why

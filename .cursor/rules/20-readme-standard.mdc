@@ -49,6 +49,21 @@ Regenerate diagrams from the repo root with:
 python3 scripts/generate-readme-visuals.py
 ```
 
+Treat `scripts/generate-readme-visuals.py` as the single source of truth for the root and step capability maps. Do not hand-edit generated SVG files except for emergency inspection; change the generator and regenerate the full set.
+
+Current diagram design target:
+
+- Use the Red Hat Layout B layered table pattern: a left product rail, logical layer labels, and capability boxes to the right.
+- Use the same canonical logical capability list in the root map and every step map. Step maps change only visual state, not the component vocabulary.
+- Use Red Hat product-layer colors: Red Hat red for OpenShift / container platform layers, teal for Red Hat OpenShift AI platform layers, and neutral dark panels for table structure. Add another product color only when the demo story has a real Red Hat product layer that needs it.
+- Use a transparent outer SVG canvas with dark neutral panels, gray borders, white text, and product-colored state marks.
+- Root capability boxes use a dark fill with a product-colored left stripe to show product-layer ownership.
+- Step diagrams distinguish capability state:
+  - New in this step: dark fill, heavy product-colored border, bold white text.
+  - Previously introduced: dark fill, gray border, white text, product-colored left stripe.
+  - Not yet introduced / not demonstrated: dimmed dark fill, muted text, gray border.
+- Keep capability labels logical and aligned with Red Hat terminology such as optimized model serving, model catalog and registry, model observability and governance, AI pipelines, GPU acceleration and optimization, agentic AI and GenAI user interfaces, access control and multitenancy, and disconnected environments and edge.
+
 **Diagram preference:** use these layered capability SVGs for the cross-step platform story. Reserve ASCII diagrams for localized component-tree views (for example under **What Gets Deployed**) when documenting manifest layouts; do not substitute large ASCII platform maps where an SVG capability diagram is appropriate.
 
 ## Required Sections
