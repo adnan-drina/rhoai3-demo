@@ -58,6 +58,24 @@ check_warn "GuideLLM CronJob exists" \
     "echo $CJ_COUNT" \
     "1"
 
+# --- Fresh benchmark traffic ---
+log_step "Fresh Benchmark Results"
+for model in granite-8b-agent mistral-3-bf16; do
+    LATEST_COMPLETION=$(oc get jobs -n "$NAMESPACE" -l "app=guidellm,model=$model" -o json 2>/dev/null | \
+        python3 -c "
+import json, sys
+items = json.load(sys.stdin).get('items', [])
+times = [
+    j.get('status', {}).get('completionTime')
+    for j in items
+    if j.get('status', {}).get('succeeded', 0) >= 1
+]
+times = [t for t in times if t]
+print(max(times) if times else '')
+" 2>/dev/null || echo "")
+    check_recent_timestamp "GuideLLM benchmark for $model" "$LATEST_COMPLETION" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+done
+
 # --- Summary ---
 echo ""
 validation_summary

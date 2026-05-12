@@ -7,8 +7,9 @@
 #
 # Usage:
 #   ./run-benchmark.sh              # Trigger CronJob (all running models)
+#   ./run-benchmark.sh --wait       # Trigger CronJob and wait for dispatcher
 #   ./run-benchmark.sh granite      # Single model job template
-#   ./run-benchmark.sh mistral-bf16 # Single model job template
+#   ./run-benchmark.sh granite --wait
 # =============================================================================
 set -euo pipefail
 
@@ -20,7 +21,21 @@ NAMESPACE="private-ai"
 
 check_oc_logged_in
 
-MODEL="${1:-}"
+MODEL=""
+WAIT=false
+for arg in "$@"; do
+    case "$arg" in
+        --wait)
+            WAIT=true
+            ;;
+        --no-wait)
+            WAIT=false
+            ;;
+        *)
+            MODEL="$arg"
+            ;;
+    esac
+done
 
 if [[ -n "$MODEL" ]]; then
     case "$MODEL" in
@@ -38,8 +53,16 @@ if [[ -n "$MODEL" ]]; then
     esac
 
     log_step "Creating benchmark job for $MODEL..."
-    oc create -f "$JOB_FILE"
-    log_success "Job created. Watch with: oc get pods -n $NAMESPACE -l app=guidellm -w"
+    CREATED_JOB=$(oc create -f "$JOB_FILE" -o name)
+    log_success "Job created: $CREATED_JOB"
+
+    if [ "$WAIT" = true ]; then
+        log_info "Waiting for $CREATED_JOB to complete..."
+        oc wait --for=condition=complete "$CREATED_JOB" -n "$NAMESPACE" --timeout=20m
+        log_success "$CREATED_JOB completed"
+    else
+        log_info "Watch with: oc get pods -n $NAMESPACE -l app=guidellm -w"
+    fi
 else
     log_step "Triggering GuideLLM CronJob (benchmarks all running models)..."
 
@@ -51,6 +74,13 @@ else
     JOB_NAME="bench-$(date +%Y%m%d-%H%M)"
     oc create job "$JOB_NAME" --from=cronjob/guidellm-daily -n "$NAMESPACE"
     log_success "Job '$JOB_NAME' created"
+
+    if [ "$WAIT" = true ]; then
+        log_info "Waiting for dispatcher job/$JOB_NAME to complete..."
+        oc wait --for=condition=complete "job/$JOB_NAME" -n "$NAMESPACE" --timeout=10m
+        log_success "Dispatcher job/$JOB_NAME completed"
+        log_info "Validate model benchmark jobs with: ./steps/step-06-model-metrics/validate.sh"
+    fi
 
     echo ""
     log_info "Watch progress:"

@@ -16,10 +16,10 @@ echo ""
 # --- ArgoCD ---
 log_step "ArgoCD Application"
 check "step-08-model-evaluation ArgoCD app exists" \
-    "oc get application step-08-model-evaluation -n openshift-gitops -o jsonpath='{.metadata.name}'" \
+    "oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops -o jsonpath='{.metadata.name}'" \
     "step-08-model-evaluation"
 
-SYNC_STATUS=$(oc get application step-08-model-evaluation -n openshift-gitops \
+SYNC_STATUS=$(oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
     -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Missing")
 if [ "$SYNC_STATUS" = "Synced" ]; then
     echo -e "${GREEN}[PASS]${NC} ArgoCD app is Synced"
@@ -173,6 +173,24 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
+for job in granite-8b-agent-eval mistral-3-bf16-eval; do
+    JOB_CREATED=$(oc get lmevaljob "$job" -n "$NAMESPACE" \
+        -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")
+    JOB_STATE=$(oc get lmevaljob "$job" -n "$NAMESPACE" \
+        -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+    if [[ "$JOB_STATE" == "Complete" ]]; then
+        echo -e "${GREEN}[PASS]${NC} LMEvalJob $job completed"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    elif [[ -n "$JOB_CREATED" ]]; then
+        echo -e "${YELLOW}[WARN]${NC} LMEvalJob $job state: ${JOB_STATE:-Unknown}"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} LMEvalJob $job not found — run: ./steps/step-08-model-evaluation/run-lmeval.sh ${job%-eval}"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+    check_recent_timestamp "LMEvalJob $job" "$JOB_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+done
+
 # --- Dashboard LM-Eval UI ---
 DISABLE_LMEVAL=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
     -o jsonpath='{.spec.dashboardConfig.disableLMEval}' 2>/dev/null || echo "true")
@@ -189,7 +207,7 @@ log_step "Eval Reports (MinIO)"
 if [[ -n "$LSD_POD" ]]; then
     MINIO_ACCESS=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null | base64 -d)
     MINIO_SECRET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' 2>/dev/null | base64 -d)
-    REPORT_COUNT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- python3 -c "
+    REPORT_INFO=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- python3 -c "
 import boto3, os
 try:
     s3 = boto3.client('s3',
@@ -197,12 +215,18 @@ try:
         aws_access_key_id='${MINIO_ACCESS}',
         aws_secret_access_key='${MINIO_SECRET}',
         verify=False)
-    resp = s3.list_objects_v2(Bucket='rhoai-storage', Prefix='eval-results/', MaxKeys=100)
-    reports = [o['Key'] for o in resp.get('Contents',[]) if o['Key'].endswith('_report.html')]
-    print(len(reports))
+    objects = []
+    paginator = s3.get_paginator('list_objects_v2')
+    for page in paginator.paginate(Bucket='rhoai-storage', Prefix='eval-results/'):
+        objects.extend(page.get('Contents', []))
+    reports = [o for o in objects if o['Key'].endswith('_report.html')]
+    latest = max([o['LastModified'].isoformat() for o in reports] or [''])
+    print(str(len(reports)) + '|' + latest)
 except Exception:
-    print(0)
+    print('0|')
 " 2>/dev/null || echo "0")
+    REPORT_COUNT="${REPORT_INFO%%|*}"
+    REPORT_LATEST="${REPORT_INFO#*|}"
     if [ "$REPORT_COUNT" -ge 4 ]; then
         echo -e "${GREEN}[PASS]${NC} $REPORT_COUNT eval reports found in MinIO"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
@@ -213,6 +237,7 @@ except Exception:
         echo -e "${YELLOW}[WARN]${NC} No eval reports in MinIO — run evaluation first"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
+    check_recent_timestamp "Latest RAG eval report" "$REPORT_LATEST" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
 else
     echo -e "${YELLOW}[WARN]${NC} Cannot check MinIO reports (lsd-rag pod not available)"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))

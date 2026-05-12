@@ -252,8 +252,8 @@ echo "https://edge-camera-edge-ai.<public-ip>.nip.io"
 1. Show the ArgoCD state on the edge host:
 
 ```bash
-oc get applications -n argocd
-oc get application edge-ai -n argocd -o jsonpath='{.status.sync.status}'
+oc get applications.argoproj.io -n argocd
+oc get applications.argoproj.io edge-ai -n argocd -o jsonpath='{.status.sync.status}'
 ```
 
 2. Show the current model version:
@@ -391,7 +391,7 @@ oc get nodes -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'
 oc get pods -n argocd
 
 # Check application status
-oc get application edge-ai -n argocd -o yaml | grep -A 5 status
+oc get applications.argoproj.io edge-ai -n argocd -o yaml | grep -A 5 status
 ```
 
 </details>

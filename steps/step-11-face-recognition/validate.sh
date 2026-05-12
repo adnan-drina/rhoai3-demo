@@ -25,9 +25,44 @@ check "kserve-ovms ServingRuntime exists" \
 
 # --- Model Upload ---
 log_step "Model Upload"
-check "upload-face-model job succeeded" \
-    "oc get job upload-face-model -n minio-storage -o jsonpath='{.status.succeeded}'" \
-    "1"
+UPLOAD_JOB_SUCCEEDED=$(oc get job upload-face-model -n minio-storage \
+    -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "")
+UPLOAD_JOB_CREATED=$(oc get job upload-face-model -n minio-storage \
+    -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")
+if [[ "$UPLOAD_JOB_SUCCEEDED" == "1" ]]; then
+    echo -e "${GREEN}[PASS]${NC} upload-face-model job succeeded"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    check_recent_timestamp "upload-face-model job" "$UPLOAD_JOB_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+else
+    echo -e "${YELLOW}[WARN]${NC} upload-face-model job not found or cleaned up — checking model artifact"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+MODEL_INFO=$(oc exec deploy/minio -n minio-storage -- \
+    mc stat --json demo/models/face-recognition/1/model.onnx 2>/dev/null | \
+    python3 -c "
+import json, sys
+for line in sys.stdin:
+    try:
+        item = json.loads(line)
+    except Exception:
+        continue
+    if item.get('name') == 'model.onnx':
+        print(str(item.get('size', 0)) + '|' + item.get('lastModified', ''))
+        break
+" 2>/dev/null || echo "")
+MODEL_SIZE="${MODEL_INFO%%|*}"
+MODEL_LAST_MODIFIED="${MODEL_INFO#*|}"
+if [[ "$MODEL_SIZE" =~ ^[0-9]+$ ]] && [ "$MODEL_SIZE" -gt 0 ]; then
+    echo -e "${GREEN}[PASS]${NC} face-recognition model artifact exists in MinIO ($MODEL_SIZE bytes)"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    if [[ "$UPLOAD_JOB_SUCCEEDED" != "1" ]]; then
+        check_recent_timestamp "face-recognition model artifact" "$MODEL_LAST_MODIFIED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+    fi
+else
+    echo -e "${RED}[FAIL]${NC} face-recognition model artifact missing in MinIO"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
 
 # --- InferenceService ---
 log_step "InferenceService"

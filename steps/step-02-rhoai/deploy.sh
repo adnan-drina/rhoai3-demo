@@ -22,7 +22,7 @@ log_step "Step 02: Red Hat OpenShift AI 3.3"
 
 log_step "Checking prerequisites..."
 
-if ! oc get applications -n openshift-gitops step-01-gpu-and-prereq &>/dev/null; then
+if ! oc get applications.argoproj.io -n openshift-gitops step-01-gpu-and-prereq &>/dev/null; then
     log_error "step-01-gpu-and-prereq Argo CD Application not found!"
     log_info "Please run: ./steps/step-01-gpu-and-prereq/deploy.sh first"
     exit 1
@@ -179,7 +179,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 log_info "Argo CD Application status:"
-echo "  oc get applications -n openshift-gitops ${STEP_NAME}"
+echo "  oc get applications.argoproj.io -n openshift-gitops ${STEP_NAME}"
 echo ""
 log_info "RHOAI status:"
 echo "  oc get datasciencecluster default-dsc"

@@ -41,7 +41,7 @@ echo ""
 log_step "Checking prerequisites..."
 
 # Check step-03-private-ai was deployed
-if ! oc get applications -n openshift-gitops step-03-private-ai &>/dev/null; then
+if ! oc get applications.argoproj.io -n openshift-gitops step-03-private-ai &>/dev/null; then
     log_error "step-03-private-ai Argo CD Application not found!"
     log_info "Please run: ./steps/step-03-private-ai/deploy.sh first"
     exit 1

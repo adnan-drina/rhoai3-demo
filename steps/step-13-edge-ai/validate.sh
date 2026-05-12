@@ -61,7 +61,7 @@ check "storage-config secret exists" \
     "oc get secret storage-config -n $NAMESPACE"
 
 check "ArgoCD Application exists" \
-    "oc get application step-13-edge-ai -n openshift-gitops"
+    "oc get applications.argoproj.io step-13-edge-ai -n openshift-gitops"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -33,12 +33,62 @@ check "Pipeline RBAC (Role)" \
 
 # --- Pipeline Execution ---
 log_step "Pipeline Execution"
-COMPLETED_RUNS=$(oc get pods -n "$NAMESPACE" -l pipeline/runid --no-headers 2>/dev/null | grep -c "Completed" || echo "0")
+COMPLETED_RUNS=$(oc get pods -n "$NAMESPACE" -l pipeline/runid --no-headers 2>/dev/null | grep -c "Completed" || true)
 if [ "$COMPLETED_RUNS" -ge 1 ]; then
     echo -e "${GREEN}[PASS]${NC} Pipeline has completed runs ($COMPLETED_RUNS pods)"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${YELLOW}[WARN]${NC} No completed pipeline runs found — run: ./steps/step-12-mlops-pipeline/run-training-pipeline.sh"
+    echo -e "${YELLOW}[WARN]${NC} No completed pipeline pods found — checking KFP run history"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+TRAIN_RUN_INFO=""
+if [[ -x "$REPO_ROOT/.venv-kfp/bin/python3" ]]; then
+    DSPA_ROUTE=$(oc get route ds-pipeline-dspa-rag -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+    OC_TOKEN=$(oc whoami -t 2>/dev/null || echo "")
+    if [[ -n "$DSPA_ROUTE" && -n "$OC_TOKEN" ]]; then
+        set +e
+        TRAIN_RUN_INFO=$(DSPA_ROUTE="$DSPA_ROUTE" OC_TOKEN="$OC_TOKEN" "$REPO_ROOT/.venv-kfp/bin/python3" - 2>/dev/null <<'PY'
+import os
+from kfp import client
+
+c = client.Client(
+    host="https://" + os.environ["DSPA_ROUTE"],
+    namespace="private-ai",
+    existing_token=os.environ["OC_TOKEN"],
+)
+runs = c.list_runs(page_size=50, sort_by="created_at desc").runs or []
+for run in runs:
+    name = getattr(run, "display_name", "") or ""
+    if name.startswith("train-"):
+        state = getattr(run, "state", "") or ""
+        created = getattr(run, "created_at", "") or ""
+        print(f"{state}|{created}|{name}")
+        break
+PY
+)
+        set -e
+    fi
+else
+    echo -e "${YELLOW}[WARN]${NC} KFP client venv not found — run ./steps/step-12-mlops-pipeline/run-training-pipeline.sh first"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+if [[ -n "$TRAIN_RUN_INFO" ]]; then
+    TRAIN_STATE="${TRAIN_RUN_INFO%%|*}"
+    REST="${TRAIN_RUN_INFO#*|}"
+    TRAIN_CREATED="${REST%%|*}"
+    TRAIN_NAME="${REST#*|}"
+    if [[ "$TRAIN_STATE" == "SUCCEEDED" ]]; then
+        echo -e "${GREEN}[PASS]${NC} Latest KFP training run succeeded: $TRAIN_NAME"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} Latest KFP training run $TRAIN_NAME state: $TRAIN_STATE"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+    check_recent_timestamp "Latest KFP training run" "$TRAIN_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+else
+    echo -e "${YELLOW}[WARN]${NC} No KFP training run found — run: ./steps/step-12-mlops-pipeline/run-training-pipeline.sh"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 

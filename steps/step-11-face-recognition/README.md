@@ -76,7 +76,7 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 ```bash
 ./steps/step-11-face-recognition/deploy.sh     # ArgoCD app: ServingRuntime + ISVC + Workbench + model upload
-./steps/step-11-face-recognition/validate.sh   # Infrastructure + model readiness checks
+./steps/step-11-face-recognition/validate.sh   # Infrastructure + model artifact/readiness checks
 ```
 
 The script:
@@ -115,7 +115,7 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
 | ServingRuntime | `kserve-ovms` exists in namespace | Listed |
-| Model upload | `upload-face-model` job completed | succeeded = 1 |
+| Model upload | `upload-face-model` job or MinIO model artifact | fresh job or artifact exists |
 | InferenceService | `face-recognition` is Ready | READY = True |
 | Workbench | `face-recognition-wb-0` pod running | 2/2 Running |
 | Notebook assets | images, videos, my_photos directories populated | Files present |
@@ -123,6 +123,7 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 ```bash
 oc get servingruntime kserve-ovms -n private-ai
 oc get job upload-face-model -n minio-storage -o jsonpath='{.status.succeeded}'
+oc exec deploy/minio -n minio-storage -- mc stat demo/models/face-recognition/1/model.onnx
 oc get inferenceservice face-recognition -n private-ai
 oc get pod face-recognition-wb-0 -n private-ai
 ./steps/step-11-face-recognition/validate.sh

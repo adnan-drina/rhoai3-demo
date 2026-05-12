@@ -87,7 +87,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 ```bash
 ./steps/step-12-mlops-pipeline/deploy.sh     # ArgoCD app: pipeline PVC + RBAC + TrustyAI
-./steps/step-12-mlops-pipeline/validate.sh   # Infrastructure checks
+./steps/step-12-mlops-pipeline/validate.sh   # Infrastructure checks + latest training run freshness
 ```
 
 This creates the pipeline PVC and RBAC via ArgoCD. The pipeline server (DSPA) is reused from step 07.
@@ -107,7 +107,7 @@ Options:
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--version` | timestamp | Model version string |
-| `--epochs` | 15 | Training epochs |
+| `--epochs` | 100 | Training epochs |
 | `--threshold` | 0.7 | Minimum mAP50 for deployment |
 
 Monitor the run in the RHOAI Dashboard: **Data Science Projects** → **private-ai** → **Pipelines**.
@@ -127,6 +127,8 @@ oc get dspa dspa-rag -n private-ai
 # Validate
 ./steps/step-12-mlops-pipeline/validate.sh
 ```
+
+`validate.sh` checks the DSPA run history for the latest `train-*` KFP run and warns when it is older than `DEMO_FRESHNESS_HOURS` (default 24h).
 
 </details>
 

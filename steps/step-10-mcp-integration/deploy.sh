@@ -59,9 +59,9 @@ log_step "Waiting for ArgoCD sync (no builds — all catalog images)..."
 TIMEOUT=300
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    SYNC=$(oc get application "$STEP_NAME" -n openshift-gitops \
+    SYNC=$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops \
         -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
-    HEALTH=$(oc get application "$STEP_NAME" -n openshift-gitops \
+    HEALTH=$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops \
         -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
 
     log_info "  Sync: $SYNC | Health: $HEALTH"
@@ -77,6 +77,27 @@ echo ""
 log_step "Waiting for PostgreSQL..."
 oc wait deploy/postgresql -n "$NAMESPACE" --for=condition=Available --timeout=120s 2>/dev/null || \
     log_error "PostgreSQL did not become available"
+
+log_step "Verifying PostgreSQL demo schema..."
+POSTGRES_READY=false
+for _ in {1..30}; do
+    ROW_COUNT=$(oc exec deploy/postgresql -n "$NAMESPACE" -- \
+        /bin/sh -c 'psql -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" -tAc "SELECT count(*) FROM acme_pod_equipment_map;"' \
+        2>/dev/null | tr -d '[:space:]' || true)
+    if [[ "$ROW_COUNT" =~ ^[0-9]+$ ]] && [ "$ROW_COUNT" -ge 3 ]; then
+        POSTGRES_READY=true
+        log_success "PostgreSQL demo schema ready ($ROW_COUNT pod mappings)"
+        break
+    fi
+    sleep 2
+done
+
+if [ "$POSTGRES_READY" != true ]; then
+    log_error "PostgreSQL demo schema was not queryable. Database MCP may fail until PostgreSQL is healthy."
+else
+    log_step "Restarting database-mcp after PostgreSQL readiness..."
+    oc rollout restart deployment/database-mcp -n "$NAMESPACE" 2>/dev/null || true
+fi
 
 log_step "Waiting for MCP servers..."
 for server in database-mcp openshift-mcp slack-mcp; do
