@@ -85,21 +85,21 @@ until oc get subscription servicemeshoperator3 -n openshift-operators &>/dev/nul
     sleep 10
 done
 
-SM_INSTALL_PLAN=$(oc get subscription servicemeshoperator3 -n openshift-operators \
-    -o jsonpath='{.status.installplan.name}' 2>/dev/null || true)
-if [[ -n "$SM_INSTALL_PLAN" ]]; then
-    APPROVED=$(oc get installplan "$SM_INSTALL_PLAN" -n openshift-operators \
-        -o jsonpath='{.spec.approved}' 2>/dev/null || echo "true")
-    if [[ "$APPROVED" == "false" ]]; then
-        log_info "Approving Service Mesh 3 install plan: $SM_INSTALL_PLAN"
-        oc patch installplan "$SM_INSTALL_PLAN" -n openshift-operators \
+SM_PLANS_APPROVED=0
+while IFS='|' read -r plan approved csvs; do
+    [[ -z "$plan" || "$approved" == "true" ]] && continue
+    if [[ "${csvs,,}" == *"servicemeshoperator3"* ]]; then
+        log_info "Approving Service Mesh 3 install plan: $plan"
+        oc patch installplan "$plan" -n openshift-operators \
             --type merge -p '{"spec":{"approved":true}}'
-        log_success "Install plan approved"
-    else
-        log_success "Service Mesh 3 install plan already approved"
+        SM_PLANS_APPROVED=$((SM_PLANS_APPROVED + 1))
     fi
+done < <(oc get installplan -n openshift-operators -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.spec.approved}{"|"}{.spec.clusterServiceVersionNames}{"\n"}{end}' 2>/dev/null || true)
+
+if [[ "$SM_PLANS_APPROVED" -eq 0 ]]; then
+    log_success "No pending Service Mesh 3 install plans require approval"
 else
-    log_info "No pending Service Mesh install plan found"
+    log_success "Approved Service Mesh 3 install plans: $SM_PLANS_APPROVED"
 fi
 
 SM_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators \

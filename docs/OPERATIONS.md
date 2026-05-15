@@ -60,8 +60,8 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 
 | Step | Runtime Work |
 |------|--------------|
-| 01 | Detects cluster ID, AMI, region, and availability zone; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
-| 02 | Approves Service Mesh 3 install plan when RHOAI creates it manually; patches DSCI CA bundle; re-enables GenAI Studio if reconciled away. |
+| 01 | Detects cluster ID, AMI, region, and availability zone; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
+| 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
 | 05 | Creates Hugging Face token secret if available; uploads large Mistral model to MinIO; registers models. |
 | 07 | Builds or deploys ingestion/chatbot resources and initializes RAG data. |

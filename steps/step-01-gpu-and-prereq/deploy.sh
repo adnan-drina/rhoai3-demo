@@ -43,6 +43,20 @@ wait_for_csv() {
     log_success "${label} ready (${installed_csv})"
 }
 
+approve_matching_installplans() {
+    local namespace="$1"
+    local pattern="$2"
+    local plan approved csvs
+
+    while IFS='|' read -r plan approved csvs; do
+        [[ -z "$plan" || "$approved" == "true" ]] && continue
+        if [[ "${csvs,,}" =~ $pattern ]]; then
+            log_info "Approving install plan ${plan} in ${namespace} (${csvs})"
+            oc patch installplan "$plan" -n "$namespace" --type merge -p '{"spec":{"approved":true}}'
+        fi
+    done < <(oc get installplan -n "$namespace" -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.spec.approved}{"|"}{.spec.clusterServiceVersionNames}{"\n"}{end}' 2>/dev/null || true)
+}
+
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
 AMI_ID=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.ami.id}')
 REGION=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
@@ -92,7 +106,14 @@ log_step "Waiting for Red Hat Connectivity Link stack..."
 wait_for_csv "authorino-operator" "openshift-authorino" "Authorino Operator"
 wait_for_csv "limitador-operator" "openshift-limitador-operator" "Limitador Operator"
 wait_for_csv "dns-operator" "openshift-dns-operator" "DNS Operator"
-wait_for_csv "rhcl-operator" "openshift-operators" "Red Hat Connectivity Link Operator"
+until RHCL_CSV=$(oc get subscription rhcl-operator -n openshift-operators -o jsonpath='{.status.installedCSV}' 2>/dev/null) && \
+      [[ -n "$RHCL_CSV" ]] && \
+      [[ "$(oc get csv "$RHCL_CSV" -n openshift-operators -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
+    approve_matching_installplans "openshift-operators" "rhcl-operator|authorino-operator|limitador-operator|dns-operator"
+    log_info "Waiting for Red Hat Connectivity Link Operator..."
+    sleep 10
+done
+log_success "Red Hat Connectivity Link Operator ready (${RHCL_CSV})"
 
 for crd in \
     authconfigs.authorino.kuadrant.io \
