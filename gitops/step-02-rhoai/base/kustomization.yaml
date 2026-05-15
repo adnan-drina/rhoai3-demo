@@ -15,6 +15,7 @@ resources:
   - rhoai-operator/subscription.yaml
   # Must be created before DataScienceCluster
   - rhoai-operator/dsci.yaml
+  - rhoai-operator/maas-gateway.yaml
   - rhoai-operator/datasciencecluster.yaml
   - rhoai-operator/auth.yaml
   - rhoai-operator/dashboard-config.yaml

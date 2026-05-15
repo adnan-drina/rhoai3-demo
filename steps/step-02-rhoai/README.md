@@ -17,6 +17,7 @@ This step demonstrates RHOAI's **model development and customization**, **optimi
 RHOAI 3.4 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
 ├── DSCInitialization      → Service Mesh 3 auto-installed
+├── MaaS Gateway           → Gateway API endpoint required by modelsAsService
 ├── DataScienceCluster     → Full component stack (see table)
 ├── GenAI Studio           → Agent Playground + Model Catalog UI
 └── Hardware Profiles      → GPU/CPU profiles with GPU node scheduling
@@ -30,6 +31,7 @@ RHOAI 3.4 Platform
 | LlamaStack Operator | Managed | GenAI Playground, agentic workflows |
 | GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
 | KServe | Managed | Model serving (RawDeployment mode) |
+| MaaS Gateway | Managed | `maas-default-gateway` for the Technology Preview MaaS component |
 | Model Registry | Managed | Model versioning and catalog |
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
@@ -68,6 +70,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 > **DSCI CA bundle (runtime patch):** `deploy.sh` patches `DSCInitialization` with the cluster CA certificate (`kube-root-ca.crt`) so LlamaStack distributions can reach internal services over TLS. This is a runtime patch because the CA cert is cluster-specific and should not be committed to git. Ref: [Working with certificates](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/working-with-certificates_certs).
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
+
+> **MaaS gateway prerequisite:** RHOAI 3.4 Models-as-a-Service is Technology Preview and requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
 </details>
 

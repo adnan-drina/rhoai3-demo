@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-15T22:26:25Z
+**Generated:** 2026-05-15T22:40:11Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -72,6 +72,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server --validate=strict -f -`.
 - [DEFERRED] Verify with `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`.
 - [DEFERRED] Verify with `oc explain DSCInitialization --api-version=dscinitialization.opendatahub.io/v1`.
+- [DEFERRED] Verify with `oc explain Gateway --api-version=gateway.networking.k8s.io/v1`.
 - [DEFERRED] Verify with `oc explain HardwareProfile --api-version=infrastructure.opendatahub.io/v1`.
 - [DEFERRED] Verify with `oc explain OdhDashboardConfig --api-version=opendatahub.io/v1alpha`.
 - [DEFERRED] Verify with `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`.
