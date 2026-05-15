@@ -6,7 +6,5 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  targetNamespaces:
-    - openshift-kueue-operator
+  # Red Hat build of Kueue supports AllNamespaces install mode.
   upgradeStrategy: Default
-
