@@ -129,12 +129,12 @@ for crd in \
 done
 
 log_step "Re-syncing Step 01 after RHCL CRDs are available"
-while [[ "$(oc get application "$STEP_NAME" -n openshift-gitops -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)" == "Running" ]]; do
+while [[ "$(oc get applications.argoproj.io "$STEP_NAME" -n openshift-gitops -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)" == "Running" ]]; do
     log_info "Waiting for current Argo CD sync operation to finish..."
     sleep 10
 done
-oc annotate application "$STEP_NAME" -n openshift-gitops argocd.argoproj.io/refresh=hard --overwrite || true
-oc patch application "$STEP_NAME" -n openshift-gitops --type merge -p \
+oc annotate applications.argoproj.io "$STEP_NAME" -n openshift-gitops argocd.argoproj.io/refresh=hard --overwrite || true
+oc patch applications.argoproj.io "$STEP_NAME" -n openshift-gitops --type merge -p \
     '{"operation":{"sync":{"prune":true,"syncOptions":["CreateNamespace=true","ServerSideDiff=true","SkipDryRunOnMissingResource=true","RespectIgnoreDifferences=true"]}}}' || true
 
 until oc get kuadrant kuadrant -n kuadrant-system &>/dev/null; do
@@ -168,7 +168,7 @@ oc -n kuadrant-system set env deployment/authorino \
     SSL_CERT_FILE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt \
     REQUESTS_CA_BUNDLE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt
 
-oc wait --for=condition=ready pod -l authorino-resource=authorino -n kuadrant-system --timeout=150s
+oc wait --for=condition=Ready pod -l authorino-resource=authorino -n kuadrant-system --timeout=150s
 log_success "Authorino TLS configured"
 
 # Deploy MachineSets (cluster-specific, not in GitOps)
