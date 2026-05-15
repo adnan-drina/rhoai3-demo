@@ -16,6 +16,10 @@ resources:
   # Must be created before DataScienceCluster
   - rhoai-operator/dsci.yaml
   - rhoai-operator/maas-gateway.yaml
+  - rhoai-operator/maas-postgres-secret.yaml
+  - rhoai-operator/maas-postgres-pvc.yaml
+  - rhoai-operator/maas-postgres-service.yaml
+  - rhoai-operator/maas-postgres-deployment.yaml
   - rhoai-operator/datasciencecluster.yaml
   - rhoai-operator/auth.yaml
   - rhoai-operator/dashboard-config.yaml

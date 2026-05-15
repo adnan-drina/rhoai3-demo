@@ -47,6 +47,9 @@ log_step "DataScienceCluster"
 check "DataScienceCluster phase Ready" \
     "oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'" \
     "Ready"
+check "MLflow Operator managed" \
+    "oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}'" \
+    "Managed"
 
 # --- Hardware Profiles ---
 log_step "Hardware Profiles"
@@ -79,6 +82,15 @@ check "MaaS vLLM dashboard flag enabled" \
 check "MaaS admin policies enabled" \
     "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.maasAuthPolicies}'" \
     "true"
+MAAS_DB_URL=$(oc get secret maas-db-config -n redhat-ods-applications -o jsonpath='{.data.DB_CONNECTION_URL}' 2>/dev/null || true)
+if [[ -n "$MAAS_DB_URL" ]]; then
+    echo -e "${GREEN}[PASS]${NC} MaaS DB connection secret exists"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} MaaS DB connection secret missing"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+check_pods_ready "redhat-ods-applications" "app=maas-postgres" 1
 check "MaaS Gateway programmed" \
     "oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.status.conditions[?(@.type==\"Programmed\")].status}'" \
     "True"

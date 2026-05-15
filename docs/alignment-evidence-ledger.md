@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-15T23:01:14Z
+**Generated:** 2026-05-15T23:09:04Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -66,11 +66,13 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-02-rhoai/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [PASS] No unpinned `:latest` image references found in GitOps path.
+- [WARN] Unpinned `:latest` image references found:
+  - gitops/step-02-rhoai/base/rhoai-operator/maas-postgres-deployment.yaml:30:          image: registry.redhat.io/rhel9/postgresql-16:latest
 
 **Schema Verification**
 
 - [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server --validate=strict -f -`.
+- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
 - [DEFERRED] Verify with `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`.
 - [DEFERRED] Verify with `oc explain DSCInitialization --api-version=dscinitialization.opendatahub.io/v1`.
 - [DEFERRED] Verify with `oc explain Gateway --api-version=gateway.networking.k8s.io/v1`.
@@ -80,6 +82,9 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [DEFERRED] Verify with `oc explain OperatorGroup --api-version=operators.coreos.com/v1`.
 - [DEFERRED] Verify with `oc explain Auth --api-version=services.platform.opendatahub.io/v1alpha1`.
 - [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
+- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
+- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
+- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
 
 **rh-brain Research Sources**
 
@@ -539,6 +544,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 25 |
+| Notes / deferred checks | 26 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.

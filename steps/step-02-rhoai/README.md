@@ -18,6 +18,7 @@ RHOAI 3.4 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
 ├── DSCInitialization      → Service Mesh 3 auto-installed
 ├── MaaS Gateway           → Gateway API endpoint with RHCL/Authorino bootstrap
+├── MaaS PostgreSQL        → Demo database and `maas-db-config` connection Secret
 ├── DataScienceCluster     → Full component stack (see table)
 ├── GenAI Studio           → Agent Playground + Model Catalog UI
 └── Hardware Profiles      → GPU/CPU profiles with GPU node scheduling
@@ -32,7 +33,9 @@ RHOAI 3.4 Platform
 | GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
 | KServe | Managed | Model serving (RawDeployment mode) |
 | MaaS Gateway | Managed | `maas-default-gateway` for the Technology Preview MaaS component, annotated for RHCL/Authorino TLS |
+| MaaS PostgreSQL | Managed | Demo PostgreSQL 16 database and required `maas-db-config` Secret |
 | Model Registry | Managed | Model versioning and catalog |
+| MLflow Operator | Managed | Experiment tracking foundation for `enterprise-mlops` |
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
 | TrustyAI | Managed | Explainability, bias detection, drift monitoring |
@@ -63,7 +66,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 <summary>Design Decisions</summary>
 
-> **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use direct `nodeSelector` and `tolerations` for GPU node placement. No workload queuing is used.
+> **GPU scheduling via Hardware Profiles:** All GPU Hardware Profiles use `spec.scheduling.type: Node` with node selectors and tolerations for GPU node placement. No workload queuing is used.
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users. The RHOAI operator may reset this field during reconciliation, so `deploy.sh` patches it explicitly after DSC is Ready.
 
@@ -74,6 +77,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 > **MaaS gateway prerequisite:** RHOAI 3.4 Models-as-a-Service is Technology Preview and requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
 > **MaaS feature flags and RHCL prerequisite:** Step 01 installs RHCL 1.2+, creates `Kuadrant` in `kuadrant-system`, and configures Authorino TLS. This step then enables `modelAsService`, `vLLMDeploymentOnMaaS`, and `maasAuthPolicies` in `OdhDashboardConfig`. vLLM on MaaS remains Technology Preview in RHOAI 3.4.
+
+> **MaaS demo database:** RHOAI 3.4 MaaS requires a PostgreSQL 14+ database and a `maas-db-config` Secret with `DB_CONNECTION_URL` in `redhat-ods-applications`. This demo deploys a small PostgreSQL 16 instance with committed demo credentials. Production deployments should replace this with an enterprise PostgreSQL service and externalized secrets.
 
 </details>
 
@@ -94,7 +99,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 |-------|--------------|---------------|
 | Dashboard URL | RHOAI console accessible | `https://data-science-gateway.apps.<cluster>` responds |
 | GenAI Studio visible | Agent Playground and Model Catalog in left nav | Both menu items present |
-| MaaS enabled | `modelsAsService`, MaaS dashboard flags, and Gateway annotations | Managed/true and Gateway `Programmed=True` |
+| MaaS enabled | `modelsAsService`, MaaS dashboard flags, database Secret, and Gateway annotations | Managed/true, Secret present, Gateway `Programmed=True` |
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
 | Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |
@@ -122,7 +127,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 1. Navigate to **Settings** → **Hardware profiles**
 
-**Expect:** Four profiles — CPU Small, NVIDIA L4 1GPU, NVIDIA L4 1GPU (Default), NVIDIA L4 4GPUs. Each shows nodeSelector and tolerations targeting the correct GPU node type.
+**Expect:** Four profiles — CPU Small, NVIDIA L4 1GPU, NVIDIA L4 1GPU (Default), NVIDIA L4 4GPUs. Each GPU profile shows node scheduling that targets the correct GPU node type.
 
 > Intelligent GPU and hardware acceleration — self-service GPU access with workload scheduling that ensures the right workload lands on the right hardware. No guessing, no overprovisioning, no resource conflicts between teams.
 

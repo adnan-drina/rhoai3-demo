@@ -14,7 +14,6 @@ spec:
     disableModelCatalog: false
     disableKServeMetrics: false
     genAiStudio: true
-    mlflow: true
     modelAsService: true
     vLLMDeploymentOnMaaS: true
     maasAuthPolicies: true
