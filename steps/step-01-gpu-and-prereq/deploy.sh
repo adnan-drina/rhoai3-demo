@@ -5,8 +5,7 @@
 # - NFD Operator + Instance
 # - GPU Operator + ClusterPolicy + DCGM Dashboard
 # - OpenShift Serverless + KnativeServing
-# - LeaderWorkerSet Operator
-# - Red Hat Connectivity Link (RHCL, Authorino, Limitador, DNS)
+# - Red Hat build of Kueue Operator
 # - GPU MachineSets (AWS)
 set -euo pipefail
 
@@ -62,19 +61,19 @@ until oc get crd knativeservings.operator.knative.dev &>/dev/null; do
 done
 log_success "Serverless CRD available"
 
-log_step "Waiting for LeaderWorkerSet Operator..."
-until oc get csv -n openshift-lws-operator -o jsonpath='{.items[?(@.spec.displayName=="Red Hat build of Leader Worker Set")].status.phase}' 2>/dev/null | grep -q "Succeeded"; do
-    log_info "Waiting for LWS Operator..."
+log_step "Waiting for Red Hat build of Kueue Operator..."
+until oc get csv -n openshift-kueue-operator -o jsonpath='{.items[*].status.phase}' 2>/dev/null | grep -q "Succeeded"; do
+    log_info "Waiting for Kueue Operator..."
     sleep 10
 done
-log_success "LeaderWorkerSet Operator ready"
+log_success "Kueue Operator ready"
 
-log_step "Waiting for Red Hat Connectivity Link (RHCL)..."
-until oc get crd authpolicies.kuadrant.io &>/dev/null; do
-    log_info "Waiting for RHCL AuthPolicy CRD..."
+log_step "Waiting for Kueue CRD..."
+until oc get crd kueues.kueue.openshift.io &>/dev/null; do
+    log_info "Waiting for Kueue CRD..."
     sleep 10
 done
-log_success "RHCL AuthPolicy CRD available"
+log_success "Kueue CRD available"
 
 # Deploy MachineSets (cluster-specific, not in GitOps)
 log_step "Deploying GPU MachineSets"
@@ -193,11 +192,8 @@ echo "  - User Workload Monitoring"
 echo "  - NFD Operator (openshift-nfd)"
 echo "  - GPU Operator (nvidia-gpu-operator)"
 echo "  - OpenShift Serverless + KnativeServing"
-echo "  - LeaderWorkerSet (openshift-lws-operator)"
-echo "  - Authorino (openshift-authorino)"
-echo "  - Limitador (openshift-limitador-operator)"
-echo "  - DNS Operator (openshift-dns-operator)"
-echo "  - Red Hat Connectivity Link (rhcl-operator)"
+echo "  - Red Hat build of Kueue (openshift-kueue-operator)"
+echo "  - llm-d prerequisites (LWS/RHCL stack) remain deferred in BACKLOG.md"
 echo ""
 echo "MachineSets (replicas=1):"
 echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${AZ}"
@@ -215,6 +211,5 @@ echo "  oc get csv -n openshift-nfd | grep nfd"
 echo "  oc get csv -n nvidia-gpu-operator | grep gpu"
 echo "  oc get csv -n openshift-serverless | grep serverless"
 echo "  oc get knativeserving -n knative-serving"
-echo "  oc get csv -n openshift-lws-operator | grep leader"
-echo "  oc get csv -n rhcl-operator | grep rhcl"
-echo "  oc get crd authpolicies.kuadrant.io"
+echo "  oc get csv -n openshift-kueue-operator"
+echo "  oc get crd kueues.kueue.openshift.io"

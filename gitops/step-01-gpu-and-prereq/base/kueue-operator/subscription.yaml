@@ -6,9 +6,8 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  channel: stable
+  channel: stable-v1.3
   installPlanApproval: Automatic
   name: kueue-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-

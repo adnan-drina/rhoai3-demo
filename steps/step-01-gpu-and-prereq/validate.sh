@@ -20,16 +20,14 @@ log_step "Required CRDs"
 check_crd_exists "nodefeaturediscoveries.nfd.openshift.io"
 check_crd_exists "clusterpolicies.nvidia.com"
 check_crd_exists "knativeservings.operator.knative.dev"
-check_crd_exists "leaderworkersetoperators.operator.openshift.io"
-check_crd_exists "authpolicies.kuadrant.io"
+check_crd_exists "kueues.kueue.openshift.io"
 
 # --- Operator CSVs ---
 log_step "Operator CSVs"
 check_csv_succeeded "openshift-nfd" "nfd"
 check_csv_succeeded "nvidia-gpu-operator" "gpu"
 check_csv_succeeded "openshift-serverless" "serverless"
-check_csv_succeeded "openshift-lws-operator" "leader"
-check_csv_succeeded "rhcl-operator" "rhcl"
+check_csv_succeeded "openshift-kueue-operator" "kueue"
 
 # --- KnativeServing ---
 log_step "KnativeServing"

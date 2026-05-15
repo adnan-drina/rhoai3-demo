@@ -188,7 +188,7 @@ Validate the ACME demo flow:
 
 | Step | Name | RHOAI Capability | Ref |
 |------|------|-----------------|-----|
-| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LeaderWorkerSet, RHCL | [Installing dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies) |
+| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, Kueue Operator | [Installing dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies) |
 | 02 | [RHOAI Platform](steps/step-02-rhoai/README.md) | DataScienceCluster, GenAI Studio, Hardware Profiles | [Installing RHOAI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index) |
 | 03 | [Enterprise Projects and Storage](steps/step-03-enterprise-projects/README.md) | Projects, users, MinIO, RBAC, Kueue LocalQueue | [Managing OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/) |
 | 04 | [Model Governance](steps/step-04-model-registry/README.md) | Model Registry, Model Catalog, seed job, RBAC | [Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index) |

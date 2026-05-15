@@ -26,7 +26,7 @@ Run bootstrap once, then deploy steps in order.
 
 | Phase | Steps | Purpose |
 |-------|-------|---------|
-| Platform | 01-02 | GPU prerequisites, OpenShift Serverless, RHCL/LWS dependencies, RHOAI operator, DataScienceCluster, hardware profiles. |
+| Platform | 01-02 | GPU prerequisites, OpenShift Serverless, Red Hat build of Kueue Operator, RHOAI operator, DataScienceCluster, hardware profiles. |
 | Governance | 03-04 | Project boundary, users, RBAC, MinIO, data connections, model registry. |
 | Generative AI | 05-10 | LLM serving, metrics, RAG, evaluation, guardrails, MCP tools. |
 | Predictive AI | 11-12 | Face recognition serving, notebooks, training pipeline, TrustyAI monitoring. |
