@@ -62,11 +62,13 @@ done
 log_success "Serverless CRD available"
 
 log_step "Waiting for Red Hat build of Kueue Operator..."
-until oc get csv -n openshift-kueue-operator -o jsonpath='{.items[*].status.phase}' 2>/dev/null | grep -q "Succeeded"; do
+until KUEUE_CSV=$(oc get subscription kueue-operator -n openshift-kueue-operator -o jsonpath='{.status.installedCSV}' 2>/dev/null) && \
+      [[ -n "$KUEUE_CSV" ]] && \
+      [[ "$(oc get csv "$KUEUE_CSV" -n openshift-kueue-operator -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
     log_info "Waiting for Kueue Operator..."
     sleep 10
 done
-log_success "Kueue Operator ready"
+log_success "Kueue Operator ready (${KUEUE_CSV})"
 
 log_step "Waiting for Kueue CRD..."
 until oc get crd kueues.kueue.openshift.io &>/dev/null; do
