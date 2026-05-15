@@ -34,7 +34,7 @@ metadata:
     opendatahub.io/hardware-profile-name: nvidia-l4-4gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Mistral-3 BF16 (4-GPU)"
-    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/deploymentMode: Standard
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "enterprise chat assistant"
     security.opendatahub.io/enable-auth: "false"
@@ -42,6 +42,10 @@ spec:
   predictor:
     minReplicas: 1
     maxReplicas: 1
+    autoScaling:
+      behavior:
+        scaleDown:
+          selectPolicy: Disabled
     # Recreate avoids GPU resource contention during updates
     deploymentStrategy:
       type: Recreate

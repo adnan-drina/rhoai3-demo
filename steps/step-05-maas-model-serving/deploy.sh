@@ -153,16 +153,14 @@ if [[ -n "$REGISTRY_ROUTE" ]]; then
     TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     API_BASE="https://${REGISTRY_ROUTE}/api/model_registry/v1alpha3"
 
-    declare -A REGISTRY_MAP=(
-        ["Granite-3.1-8B-Agent"]="granite-8b-agent"
-        ["Mistral-3-BF16"]="mistral-3-bf16"
-    )
-
     MODELS_JSON=$(curl -sk -H "Authorization: Bearer $TOKEN" \
         "${API_BASE}/registered_models" 2>/dev/null || echo '{"items":[]}')
 
-    for REG_NAME in "${!REGISTRY_MAP[@]}"; do
-        ISVC_NAME="${REGISTRY_MAP[$REG_NAME]}"
+    for REG_NAME in "Granite-3.1-8B-Agent" "Mistral-3-BF16"; do
+        case "$REG_NAME" in
+            Granite-3.1-8B-Agent) ISVC_NAME="granite-8b-agent" ;;
+            Mistral-3-BF16)        ISVC_NAME="mistral-3-bf16" ;;
+        esac
 
         RM_ID=$(echo "$MODELS_JSON" | python3 -c "
 import json, sys

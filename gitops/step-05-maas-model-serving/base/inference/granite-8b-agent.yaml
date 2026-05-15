@@ -42,7 +42,7 @@ metadata:
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     openshift.io/display-name: "Granite-3.1-8B Agent (1-GPU FP8)"
-    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/deploymentMode: Standard
     opendatahub.io/model-type: generative
     opendatahub.io/genai-use-case: "agentic tool-calling"
     security.opendatahub.io/enable-auth: "false"
@@ -51,6 +51,10 @@ spec:
     # Always running — workhorse for RAG, MCP, Guardrails (Steps 06-12)
     minReplicas: 1
     maxReplicas: 1
+    autoScaling:
+      behavior:
+        scaleDown:
+          selectPolicy: Disabled
     # Recreate avoids GPU resource contention during updates
     deploymentStrategy:
       type: Recreate

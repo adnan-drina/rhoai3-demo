@@ -10,11 +10,12 @@ metadata:
   name: mistral-bf16-pvc
   namespace: minio-storage
 spec:
+  storageClassName: gp3-csi
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Gi
+      storage: 150Gi
 ---
 apiVersion: batch/v1
 kind: Job
@@ -135,4 +136,3 @@ spec:
             limits:
               cpu: "4"
               memory: 8Gi
-

@@ -7,7 +7,6 @@ kind: Kustomization
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index
 
 resources:
-  - model-upload/
   - model-registration/
   - serving-runtime/
   - inference/

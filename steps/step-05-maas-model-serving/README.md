@@ -3,7 +3,7 @@
 
 ## Overview
 
-This step moves LLM serving out of the old shared project model and into `maas`, the dedicated namespace for shared model endpoints. The active implementation is still KServe RawDeployment with the Red Hat AI Inference Server powered by vLLM, but the platform posture is now RHOAI 3.4 MaaS-ready:
+This step moves LLM serving out of the old shared project model and into `maas`, the dedicated namespace for shared model endpoints. The active implementation uses KServe `Standard` deployment mode with the Red Hat AI Inference Server powered by vLLM, and the platform posture is now RHOAI 3.4 MaaS-ready:
 
 - `kserve.modelsAsService.managementState: Managed` is enabled in the DSC.
 - The dashboard exposes Model Catalog, Model Registry, GenAI Studio, MaaS, MLflow, and Kueue controls.
@@ -24,6 +24,7 @@ MaaS Model Serving
 ├── vLLM ServingRuntime
 ├── granite-8b-agent InferenceService      → 1 GPU, OCI ModelCar, FP8
 ├── mistral-3-bf16 InferenceService        → 4 GPUs, S3/MinIO, BF16
+├── deploy.sh upload helper                → one-shot Mistral sync into MinIO
 ├── maas-default LocalQueue                → Kueue admission for MaaS workloads
 └── enterprise-ai-registry links           → model/version metadata
 ```
@@ -46,7 +47,11 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **OCI ModelCar for small models, S3 for large models:** Granite uses OCI ModelCar from `registry.redhat.io`. Mistral BF16 uses S3/MinIO because the model is large enough that object storage remains the safer demo path.
 
+> **Upload helper outside Argo desired state:** The Mistral upload PVC and Job are applied by `deploy.sh` before the Argo CD app syncs. They are not part of the steady-state Kustomize base because bound PVC specs do not safely round-trip through GitOps after dynamic provisioning.
+
 > **Recreate deployment strategy:** LLM InferenceServices use `deploymentStrategy.type: Recreate` to avoid double-allocating scarce L4 GPUs during updates.
+
+> **Fixed serving capacity:** These demo endpoints set KServe autoscaling scale-down policy to `Disabled`. That keeps long cold-starting GPU models from being scaled down by generated HPAs before metrics samples exist.
 
 </details>
 
@@ -102,7 +107,7 @@ oc exec deploy/granite-8b-agent-predictor -n maas -c kserve-container -- \
 
 ## References
 
-- [RHOAI 3.4 — Deploy large models with KServe RawDeployment](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/deploying-large-models_serving-large-models)
+- [RHOAI 3.4 — Deploy large models with KServe](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/deploying-large-models_serving-large-models)
 - [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/govern_llm_access_with_models-as-a-service/deploy-and-manage-models-as-a-service_maas)
 - [RHOAI 3.4 — GenAI Playground prerequisites](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user)
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/OpenShift AI vLLM and llm-d Inference Baseline.md`
