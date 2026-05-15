@@ -12,7 +12,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   # This role is auto-created by the Model Registry operator
-  name: registry-user-private-ai-registry
+  name: registry-user-enterprise-ai-registry
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: User

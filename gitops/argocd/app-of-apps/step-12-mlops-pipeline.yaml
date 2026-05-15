@@ -19,7 +19,7 @@ spec:
     path: gitops/step-12-mlops-pipeline/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: private-ai
+    namespace: enterprise-mlops
   syncPolicy:
     automated:
       prune: true

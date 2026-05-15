@@ -1,4 +1,4 @@
-# Required for KServe model serving in RHOAI 3.3
+# Required for KServe model serving in RHOAI 3.4
 apiVersion: v1
 kind: Namespace
 metadata:

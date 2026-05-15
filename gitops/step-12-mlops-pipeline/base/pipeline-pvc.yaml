@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: face-pipeline-workspace
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app.kubernetes.io/part-of: face-recognition
     app.kubernetes.io/component: pipeline

@@ -11,7 +11,7 @@ Components are in kfp/components/ following KFP modular best practices.
 Reuses lsd-rag (step-07) for generation and dspa-rag (step-07) for pipeline execution.
 Judge model (mistral-3-bf16) is called directly via its vLLM endpoint.
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate
 """
 
 import kfp
@@ -62,7 +62,7 @@ def _mount_pvc(task: PipelineTask) -> None:
     pipeline_root="s3://pipelines/",
 )
 def rag_eval_pipeline(
-    llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
+    llamastack_url: str = "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321",
     run_id: str = "eval",
     minio_console_url: str = "",
 ):

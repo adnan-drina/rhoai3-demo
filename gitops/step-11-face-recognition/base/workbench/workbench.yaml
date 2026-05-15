@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: face-recognition-wb
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app: face-recognition-wb
     app.kubernetes.io/part-of: face-recognition
@@ -14,7 +14,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: face-recognition-wb-storage
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app: face-recognition-wb
     app.kubernetes.io/part-of: face-recognition
@@ -34,7 +34,7 @@ apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
   name: face-recognition-wb
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app: face-recognition-wb
     app.kubernetes.io/part-of: face-recognition
@@ -120,7 +120,7 @@ spec:
                 --ServerApp.port=8888
                 --ServerApp.token=''
                 --ServerApp.password=''
-                --ServerApp.base_url=/notebook/private-ai/face-recognition-wb
+                --ServerApp.base_url=/notebook/enterprise-mlops/face-recognition-wb
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
@@ -136,7 +136,7 @@ spec:
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             # Face recognition model server endpoint
             - name: FACE_RECOGNITION_ENDPOINT
-              value: "http://face-recognition-predictor.private-ai.svc.cluster.local:8888"
+              value: "http://face-recognition-predictor.enterprise-mlops.svc.cluster.local:8888"
             # HuggingFace token for authenticated model downloads (optional)
             - name: HF_TOKEN
               valueFrom:
@@ -157,7 +157,7 @@ spec:
               memory: 2Gi
           livenessProbe:
             httpGet:
-              path: /notebook/private-ai/face-recognition-wb/api
+              path: /notebook/enterprise-mlops/face-recognition-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -167,7 +167,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /notebook/private-ai/face-recognition-wb/api
+              path: /notebook/enterprise-mlops/face-recognition-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -203,7 +203,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: face-recognition-wb-controller
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app: face-recognition-wb
     app.kubernetes.io/part-of: face-recognition
@@ -221,7 +221,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: face-recognition-wb-controller
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app: face-recognition-wb
     app.kubernetes.io/part-of: face-recognition
@@ -234,4 +234,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: face-recognition-wb
-    namespace: private-ai
+    namespace: enterprise-mlops

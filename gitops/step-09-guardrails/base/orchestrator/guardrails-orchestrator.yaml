@@ -1,12 +1,12 @@
 # The TrustyAI operator creates a Deployment, Service, and Route from this CR.
 # Verification:
-#   oc get guardrailsorchestrator -n private-ai
-#   oc get pods -l app=guardrails-orchestrator -n private-ai
+#   oc get guardrailsorchestrator -n enterprise-rag
+#   oc get pods -l app=guardrails-orchestrator -n enterprise-rag
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: GuardrailsOrchestrator
 metadata:
   name: guardrails-orchestrator
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/part-of: guardrails
     app.kubernetes.io/component: orchestrator

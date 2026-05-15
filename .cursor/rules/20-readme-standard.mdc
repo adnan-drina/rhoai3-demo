@@ -16,7 +16,7 @@ Before writing or updating any README, consult the relevant Red Hat official con
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
 - [Red Hat Developer Blog](https://developers.redhat.com/blog)
-- [RHOAI 3.3 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
+- [RHOAI 3.4 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)
 
 Use Red Hat's official terminology and value propositions. Connect each step to the relevant RHOAI feature from the [datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet):
 
@@ -105,7 +105,7 @@ Blends the former "Business Story", "What It Does", "Design Decisions", and "Dep
 - Cross-references to related steps
 
 ### 6) References (required)
-- Official RHOAI 3.3 and/or RHOCP 4.20 documentation sections used
+- Official RHOAI 3.4 and/or RHOCP 4.20 documentation sections used
 - Official Red Hat product pages, datasheets, or overviews when they add context
 - If a manifest field/value is derived from docs, reference it here
 

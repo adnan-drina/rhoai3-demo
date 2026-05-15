@@ -2,7 +2,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: slack-mcp
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: slack-mcp
     app.kubernetes.io/part-of: mcp-integration

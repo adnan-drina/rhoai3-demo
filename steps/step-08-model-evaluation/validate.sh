@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 08: Model Evaluation — Validation                        ║"
@@ -128,10 +129,10 @@ fi
 
 # --- Judge Model (mistral-3-bf16) ---
 log_step "Judge Model (mistral-3-bf16)"
-JUDGE_READY=$(oc get inferenceservice mistral-3-bf16 -n "$NAMESPACE" \
+JUDGE_READY=$(oc get inferenceservice mistral-3-bf16 -n "$MODEL_NAMESPACE" \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
 if [ "$JUDGE_READY" = "True" ]; then
-    echo -e "${GREEN}[PASS]${NC} mistral-3-bf16 InferenceService is Ready"
+    echo -e "${GREEN}[PASS]${NC} mistral-3-bf16 InferenceService is Ready in $MODEL_NAMESPACE"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
     echo -e "${RED}[FAIL]${NC} mistral-3-bf16 not ready (required as judge model)"

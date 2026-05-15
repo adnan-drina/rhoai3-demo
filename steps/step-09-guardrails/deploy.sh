@@ -7,7 +7,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 STEP_NAME="step-09-guardrails"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -38,11 +39,11 @@ if [ "$TRUSTYAI_STATE" != "Managed" ]; then
 fi
 log_success "trustyai: Managed"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent present"
+log_success "granite-8b-agent present in $MODEL_NAMESPACE"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 12: MLOps Training Pipeline — Validation                  ║"
@@ -24,12 +24,32 @@ check "face-pipeline-workspace PVC exists" \
     "face-pipeline-workspace"
 
 check "DSPA pipeline server" \
-    "oc get dspa dspa-rag -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
+    "oc get dspa dspa-mlops -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
     "True"
 
 check "Pipeline RBAC (Role)" \
     "oc get role face-pipeline-controller -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "face-pipeline-controller"
+
+# --- MLflow ---
+log_step "MLflow"
+MLFLOW_FLAG=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+    -o jsonpath='{.spec.dashboardConfig.mlflow}' 2>/dev/null || echo "")
+if [[ "$MLFLOW_FLAG" == "true" ]]; then
+    echo -e "${GREEN}[PASS]${NC} RHOAI Dashboard MLflow feature flag enabled"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} MLflow dashboard flag not confirmed; verify OdhDashboardConfig schema on this cluster"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+if oc api-resources 2>/dev/null | grep -qi mlflow; then
+    echo -e "${GREEN}[PASS]${NC} MLflow API resources discovered"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} No documented MLflow CRD discovered; create MLflow server through RHOAI dashboard until a supported GitOps API is confirmed"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
 
 # --- Pipeline Execution ---
 log_step "Pipeline Execution"
@@ -44,7 +64,7 @@ fi
 
 TRAIN_RUN_INFO=""
 if [[ -x "$REPO_ROOT/.venv-kfp/bin/python3" ]]; then
-    DSPA_ROUTE=$(oc get route ds-pipeline-dspa-rag -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+    DSPA_ROUTE=$(oc get route ds-pipeline-dspa-mlops -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
     OC_TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     if [[ -n "$DSPA_ROUTE" && -n "$OC_TOKEN" ]]; then
         set +e
@@ -54,7 +74,7 @@ from kfp import client
 
 c = client.Client(
     host="https://" + os.environ["DSPA_ROUTE"],
-    namespace="private-ai",
+    namespace="enterprise-mlops",
     existing_token=os.environ["OC_TOKEN"],
 )
 runs = c.list_runs(page_size=50, sort_by="created_at desc").runs or []
@@ -94,7 +114,7 @@ fi
 
 # --- Model Registry ---
 log_step "Model Registry Integration"
-REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 if [[ -n "$REGISTRY_ROUTE" ]]; then
     TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     FACE_MODEL=$(curl -sk -H "Authorization: Bearer $TOKEN" \

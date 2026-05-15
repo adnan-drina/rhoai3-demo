@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 source "$REPO_ROOT/scripts/lib.sh"
 load_env
@@ -61,14 +61,14 @@ if [ -z "$OC_TOKEN" ]; then
     exit 1
 fi
 
-DSPA_ROUTE=$(oc get route ds-pipeline-dspa-rag -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+DSPA_ROUTE=$(oc get route ds-pipeline-dspa-mlops -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 if [ -z "$DSPA_ROUTE" ]; then
     log_error "DSPA route not found. Ensure Step-07 is deployed."
     exit 1
 fi
 DSPA_URL="https://$DSPA_ROUTE"
 
-REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 REGISTRY_URL="https://$REGISTRY_ROUTE"
 
 CLUSTER_DOMAIN=$(echo "$DSPA_ROUTE" | sed 's/.*\.apps\./apps./')
@@ -169,5 +169,5 @@ run = kfp_client.run_pipeline(
 
 print(f"\nPipeline run created: {run.run_id}")
 print(f"  Name: train-{VERSION}")
-print(f"  Monitor: RHOAI Dashboard → Data Science Projects → private-ai → Pipelines")
+print(f"  Monitor: RHOAI Dashboard → Data Science Projects → enterprise-mlops → Pipelines")
 PYTHON_SCRIPT

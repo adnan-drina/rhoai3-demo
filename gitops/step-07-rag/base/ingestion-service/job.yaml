@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: rag-ingestion
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: rag-ingestion-service
     app.kubernetes.io/name: rag-ingestion-service
@@ -19,7 +19,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: ingest
-          image: image-registry.openshift-image-registry.svc:5000/private-ai/rag-ingestion-service:latest
+          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest
           env:
             - name: INGESTION_CONFIG
               value: /config/ingestion-config.yaml

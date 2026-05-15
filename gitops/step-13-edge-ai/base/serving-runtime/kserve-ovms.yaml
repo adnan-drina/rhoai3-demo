@@ -1,7 +1,7 @@
 # OpenVINO Model Server for the edge namespace.
 # Same runtime as step-11 (central), duplicated here because
 # ServingRuntimes are namespace-scoped.
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:

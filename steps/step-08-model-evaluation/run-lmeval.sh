@@ -1,6 +1,6 @@
 #!/bin/bash
 # Trigger a standard LM-Eval benchmark run for a deployed model.
-# Uses RHOAI 3.3 LMEvalJob CR (TrustyAI operator).
+# Uses RHOAI 3.4 LMEvalJob CR (TrustyAI operator).
 #
 # Usage:
 #   ./run-lmeval.sh <model>           # Apply template with default limit (50)
@@ -13,7 +13,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
@@ -62,11 +63,11 @@ echo ""
 
 check_oc_logged_in
 
-if ! oc get inferenceservice "$MODEL" -n "$NAMESPACE" &>/dev/null; then
-    log_error "InferenceService $MODEL not found in $NAMESPACE"
+if ! oc get inferenceservice "$MODEL" -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "InferenceService $MODEL not found in $MODEL_NAMESPACE"
     exit 1
 fi
-log_success "InferenceService $MODEL found"
+log_success "InferenceService $MODEL found in $MODEL_NAMESPACE"
 
 # Delete previous run if exists (LMEvalJob names are fixed per template)
 if oc get lmevaljob "$JOB_NAME" -n "$NAMESPACE" &>/dev/null; then

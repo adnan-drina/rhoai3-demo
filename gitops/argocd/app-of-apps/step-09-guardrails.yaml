@@ -19,7 +19,7 @@ spec:
     path: gitops/step-09-guardrails/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: private-ai
+    namespace: enterprise-rag
   syncPolicy:
     automated:
       prune: true

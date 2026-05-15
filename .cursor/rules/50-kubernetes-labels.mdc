@@ -208,4 +208,4 @@ When updating existing resources:
 - [Kubernetes Recommended Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)
 - [Guidelines for Labels and Annotations for OpenShift Applications](https://github.com/redhat-developer/app-labels/blob/master/labels-annotation-for-openshift.adoc)
 - [OpenShift 4.20 Topology View — Labels and Annotations](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
-- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
+- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)

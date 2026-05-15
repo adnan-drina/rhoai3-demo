@@ -11,7 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
 RUN_ID="eval-$(date +%Y%m%d-%H%M%S)"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -60,7 +60,7 @@ import requests as http
 # --- Config ---
 LLAMASTACK_URL = 'http://localhost:8321'
 CANDIDATE_MODEL = 'vllm-inference/granite-8b-agent'
-JUDGE_URL = 'http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions'
+JUDGE_URL = 'http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/chat/completions'
 JUDGE_MODEL = 'mistral-3-bf16'
 RUN_ID = '$RUN_ID'
 S3_ENDPOINT = '$MINIO_ENDPOINT'

@@ -3,7 +3,7 @@
 
 ## Overview
 
-Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. **Red Hat OpenShift AI 3.3** provides two paths: **RAG Evaluation** (LLM-as-judge inside a Kubeflow Pipeline with HTML reports) and **Standard Model Evaluation** (LMEvalJob CR with TrustyAI for benchmarks like HellaSwag, ARC Challenge, WinoGrande, BoolQ).
+Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. **Red Hat OpenShift AI 3.4** provides two paths: **RAG Evaluation** (LLM-as-judge inside a Kubeflow Pipeline with HTML reports) and **Standard Model Evaluation** (LMEvalJob CR with TrustyAI for benchmarks like HellaSwag, ARC Challenge, WinoGrande, BoolQ).
 
 This step demonstrates RHOAI's **Evaluation** capability — repeatable scoring and benchmarking for models and RAG pipelines — while reusing **AI pipelines** and **Model observability and governance** to make model quality measurable before production deployment.
 
@@ -33,11 +33,11 @@ Model Evaluation
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| **Test YAMLs** | Version-controlled Q&A pairs with expected answers | `private-ai` (ConfigMaps) |
-| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | `private-ai` |
-| **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | `private-ai` |
-| **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | `private-ai` |
-| **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | `private-ai` |
+| **Test YAMLs** | Version-controlled Q&A pairs with expected answers | `enterprise-rag` (ConfigMaps) |
+| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | `enterprise-rag` |
+| **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | `enterprise-rag` |
+| **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | `enterprise-rag` |
+| **LMEvalJob CRs** | TrustyAI-managed benchmark jobs | `enterprise-rag` |
 | **HTML Reports** | Per-scenario pre/post RAG results in MinIO | `minio-storage` |
 
 Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-evaluation/base/)
@@ -71,13 +71,13 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 > **Identical test sets:** Pre-RAG and Post-RAG use the same questions and expected answers. The only variable is document context. The score difference directly quantifies RAG value.
 
-> **Judge model hardcoded in pipeline:** `mistral-3-bf16` is called directly via its vLLM endpoint (`http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions`). This bypasses LlamaStack's scoring API for more reliable A–E grading.
+> **Judge model hardcoded in pipeline:** `mistral-3-bf16` is called directly via its vLLM endpoint (`http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/chat/completions`). This bypasses LlamaStack's scoring API for more reliable A–E grading.
 
 > **Two eval scripts coexist:** `run-rag-eval.sh` (KFP pipeline, platform-native, tracked) and `run-eval-report.sh` (quick pod-based, localhost access, simpler debugging). KFP is the primary path; the shell script is the fast demo path.
 
 > **Tests in GitOps:** Test YAMLs deploy as ConfigMaps via ArgoCD. A PostSync Job copies them to the shared PVC for the KFP pipeline. `run-eval-report.sh` copies them directly to the lsd-rag pod.
 
-> **LM-Eval via LMEvalJob CR:** RHOAI 3.3's native evaluation service, managed by the TrustyAI operator. Templates are stored in `gitops/step-08-model-evaluation/base/lmeval/` and applied on demand.
+> **LM-Eval via LMEvalJob CR:** RHOAI 3.4's native evaluation service, managed by the TrustyAI operator. Templates are stored in `gitops/step-08-model-evaluation/base/lmeval/` and applied on demand.
 
 > **Configurable sample limits:** LMEvalJob templates default to 50 samples per task for fast demo runs (~10 min). Increase via CLI (`run-lmeval.sh model 200`) or remove for full benchmarks.
 
@@ -126,13 +126,13 @@ Additional operations:
 oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
   -o jsonpath='{.status.sync.status} / {.status.health.status}'
 
-oc get configmap eval-configs eval-test-cases -n private-ai
+oc get configmap eval-configs eval-test-cases -n enterprise-rag
 
-oc exec deploy/lsd-rag -n private-ai -- \
+oc exec deploy/lsd-rag -n enterprise-rag -- \
   curl -s http://localhost:8321/v1/providers | \
   python3 -c "import json,sys; print([p['provider_id'] for p in json.load(sys.stdin)['data'] if p['api']=='eval'])"
 
-oc get inferenceservice mistral-3-bf16 -n private-ai \
+oc get inferenceservice mistral-3-bf16 -n maas \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 
 oc get datasciencecluster default-dsc \
@@ -152,7 +152,7 @@ oc get datasciencecluster default-dsc \
 1. Ask the LLM about ACME Corp without RAG context:
 
 ```bash
-oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1/chat/completions \
+oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:8321/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"vllm-inference/granite-8b-agent",
        "messages":[{"role":"user","content":"What is ACME Corp?"}],
@@ -238,13 +238,13 @@ oc exec deploy/lsd-rag -n private-ai -- curl -s -X POST http://localhost:8321/v1
 2. Monitor progress:
 
 ```bash
-oc get lmevaljob granite-8b-agent-eval -n private-ai -w
+oc get lmevaljob granite-8b-agent-eval -n enterprise-rag -w
 ```
 
 3. View results when complete:
 
 ```bash
-oc get lmevaljob granite-8b-agent-eval -n private-ai \
+oc get lmevaljob granite-8b-agent-eval -n enterprise-rag \
   -o template --template='{{.status.results}}' | jq '.results'
 ```
 
@@ -290,7 +290,7 @@ Should show `permitOnline: allow` and `permitCodeExecution: allow`. If not, rede
 **Solution:**
 
 ```bash
-oc exec deploy/lsd-rag -n private-ai -- curl -s http://localhost:8321/v1/vector_stores | \
+oc exec deploy/lsd-rag -n enterprise-rag -- curl -s http://localhost:8321/v1/vector_stores | \
   python3 -c "import json,sys; [print(f\"{v['name']}: {v['file_counts']['completed']} files\") for v in json.load(sys.stdin)['data']]"
 ```
 
@@ -303,11 +303,11 @@ If stores show 0 files, run ingestion: `./steps/step-07-rag/run-batch-ingestion.
 **Solution:**
 
 ```bash
-oc get inferenceservice mistral-3-bf16 -n private-ai
-oc get svc -n private-ai | grep mistral
+oc get inferenceservice mistral-3-bf16 -n maas
+oc get svc -n maas | grep mistral
 ```
 
-The KFP pipeline connects to `http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080`. Verify the service exists and the model is Ready.
+The KFP pipeline connects to `http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080`. Verify the service exists in maas and the model is Ready.
 
 ### Evaluations page not visible in Dashboard
 
@@ -319,9 +319,9 @@ The KFP pipeline connects to `http://mistral-3-bf16-predictor.private-ai.svc.clu
 
 ## References
 
-- [RHOAI 3.3 — Evaluating Large Language Models (LM-Eval)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-large-language-models_evaluate)
-- [RHOAI 3.3 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
-- [RHOAI 3.3 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
+- [RHOAI 3.4 — Evaluating Large Language Models (LM-Eval)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-large-language-models_evaluate)
+- [RHOAI 3.4 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
+- [RHOAI 3.4 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
 - [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — KFP pipeline pattern for LlamaStack scoring
 - [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples
 - [EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) — Engine behind RHOAI LM-Eval

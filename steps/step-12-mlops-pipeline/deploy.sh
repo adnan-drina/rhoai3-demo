@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 STEP_NAME="step-12-mlops-pipeline"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 load_env
 check_oc_logged_in
@@ -20,11 +20,11 @@ echo ""
 
 log_step "Checking prerequisites..."
 
-if ! oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
-    log_error "DSPA 'dspa-rag' not found. Run Step-07 first."
-    exit 1
+if oc get dspa dspa-mlops -n "$NAMESPACE" &>/dev/null; then
+    log_success "DSPA pipeline server available"
+else
+    log_info "DSPA 'dspa-mlops' not found in $NAMESPACE yet; Step 12 GitOps will create it"
 fi
-log_success "DSPA pipeline server available"
 
 if ! oc get inferenceservice face-recognition -n "$NAMESPACE" &>/dev/null; then
     log_error "InferenceService 'face-recognition' not found. Run Step-11 first."
@@ -32,7 +32,7 @@ if ! oc get inferenceservice face-recognition -n "$NAMESPACE" &>/dev/null; then
 fi
 log_success "face-recognition InferenceService exists"
 
-REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 if [[ -z "$REGISTRY_ROUTE" ]]; then
     log_warn "Model Registry route not found. Run Step-04 first for full MLOps flow."
 else
@@ -61,6 +61,24 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
 done
 if [ $ELAPSED -ge $TIMEOUT ]; then
     log_warn "ArgoCD sync not complete — continuing (resources may sync in background)"
+fi
+echo ""
+
+log_step "Waiting for Enterprise MLOps DSPA..."
+TIMEOUT=300
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    READY=$(oc get dspa dspa-mlops -n "$NAMESPACE" \
+        -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+    if [ "$READY" = "True" ]; then
+        log_success "DSPA pipeline server ready"
+        break
+    fi
+    sleep 10
+    ELAPSED=$((ELAPSED + 10))
+done
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    log_warn "DSPA not Ready yet — pipeline upload may fail until the server finishes reconciling"
 fi
 echo ""
 
@@ -160,8 +178,8 @@ echo ""
 
 log_step "Deployment Complete"
 echo ""
-echo "  Pipeline runs: RHOAI Dashboard → Data Science Projects → private-ai → Pipelines"
-echo "  Model Registry: RHOAI Dashboard → Settings → Model registries → private-ai-registry"
+echo "  Pipeline runs: RHOAI Dashboard → Data Science Projects → enterprise-mlops → Pipelines"
+echo "  Model Registry: RHOAI Dashboard → Settings → Model registries → enterprise-ai-registry"
 echo "  TrustyAI metrics: RHOAI Dashboard → Model Serving → face-recognition → Model bias"
 echo ""
 log_info "Validate: ./steps/step-12-mlops-pipeline/validate.sh"

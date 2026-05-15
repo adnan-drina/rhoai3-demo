@@ -1,11 +1,11 @@
 # TrustyAI service for monitoring face-recognition model inference.
 # Tracks confidence score distribution and class balance drift.
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/monitoring_your_ai_systems/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/monitoring_your_ai_systems/
 apiVersion: trustyai.opendatahub.io/v1
 kind: TrustyAIService
 metadata:
   name: trustyai-service
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app.kubernetes.io/part-of: face-recognition
     app.kubernetes.io/component: monitoring

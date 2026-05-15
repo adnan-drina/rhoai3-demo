@@ -14,7 +14,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
     packages_to_install=["llama_stack_client>=0.4,<0.5"],
     pip_index_urls=["https://pypi.org/simple"],
 )

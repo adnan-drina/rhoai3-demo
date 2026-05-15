@@ -1,5 +1,5 @@
 # Step 01: GPU Infrastructure & Prerequisites
-**"GPU foundation for private AI"** — Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.3 depends on.
+**"GPU foundation for private AI"** — Transform a vanilla OpenShift 4.20 cluster into an AI-ready platform with GPU compute, hardware discovery, and the operator stack that RHOAI 3.4 depends on.
 
 ## Overview
 
@@ -54,7 +54,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 <summary>Design Decisions</summary>
 
-> **Default GPU driver (no pin):** RHOAI 3.3 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.
+> **Default GPU driver (no pin):** RHOAI 3.4 AI Inference Server uses CUDA 13.0 (vLLM v0.13.0), which is compatible with GPU Operator 25.10's default driver 580.x. The CUDA 12.8 vs 13.0 conflict documented in [KB 7134740](https://access.redhat.com/solutions/7134740) no longer applies. Subscription uses `installPlanApproval: Automatic`.
 
 > **Driver Toolkit over RHEL entitlements:** OCP 4.20 uses DTK for pre-compiled driver images, eliminating RHEL entitlement secrets on GPU nodes.
 
@@ -97,7 +97,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 ## The Demo
 
-> In this demo, we verify that the OpenShift cluster has been transformed into an AI-ready platform — GPU nodes are online, drivers are active, and every operator prerequisite for RHOAI 3.3 is in place.
+> In this demo, we verify that the OpenShift cluster has been transformed into an AI-ready platform — GPU nodes are online, drivers are active, and every operator prerequisite for RHOAI 3.4 is in place.
 
 ### GPU Nodes Online
 
@@ -112,14 +112,14 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 ### Operator Stack
 
-> GPU nodes are ready, but inference networking, distributed training, and model serving require additional platform capabilities. The RHOAI 3.3 installation guide defines eight operator prerequisites — we verify they are all deployed and healthy.
+> GPU nodes are ready, but inference networking, distributed training, and model serving require additional platform capabilities. The RHOAI 3.4 installation guide defines eight operator prerequisites — we verify they are all deployed and healthy.
 
 1. Navigate to **Operators** → **Installed Operators**
 2. Filter by the GPU and AI-related namespaces
 
 **Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless.
 
-> Every operator prerequisite for RHOAI 3.3 model serving is deployed and healthy. This is the AI-ready foundation — GPU drivers and KServe networking — all managed via GitOps on Red Hat OpenShift Container Platform.
+> Every operator prerequisite for RHOAI 3.4 model serving is deployed and healthy. This is the AI-ready foundation — GPU drivers and KServe networking — all managed via GitOps on Red Hat OpenShift Container Platform.
 
 ## Key Takeaways
 
@@ -173,8 +173,8 @@ oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 
 ## References
 
-- [RHOAI 3.3 — Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [RHOAI 3.3 — Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
+- [RHOAI 3.4 — Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.4 — Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
 - [OCP 4.20 — Understanding the Driver Toolkit](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/using-the-driver-toolkit)
 - [OCP 4.20 — NVIDIA GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [NVIDIA GPU driver 580.105.08 compatibility (KB 7134740)](https://access.redhat.com/solutions/7134740)
@@ -184,4 +184,4 @@ oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 
 ## Next Steps
 
-- **Step 02**: [Red Hat OpenShift AI 3.3 Platform](../step-02-rhoai/README.md) — Install the full RHOAI platform with GenAI Studio, Hardware Profiles, and model serving
+- **Step 02**: [Red Hat OpenShift AI 3.4 Platform](../step-02-rhoai/README.md) — Install the full RHOAI platform with GenAI Studio, Hardware Profiles, and model serving

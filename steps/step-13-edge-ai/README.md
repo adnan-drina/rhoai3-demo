@@ -56,7 +56,7 @@ Manifests: [`gitops/step-13-edge-ai/base/`](../../gitops/step-13-edge-ai/base/)
         │                                            │
         │                        ┌───── GitOps model delivery ─────┐
         │                        │                                  │
-┌───────┼──── private-ai namespace (datacenter) ───────────────────────────┐
+┌───────┼──── enterprise-mlops namespace (datacenter) ───────────────────────────┐
 │       │                                                                   │
 │       │    Step 12 Pipeline ──→ Model Registry ──→ MinIO (model.onnx)    │
 │       │    (train + evaluate)   (versioned)         (source of truth)    │
@@ -97,7 +97,7 @@ Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deploymen
 
 > **Separate `edge-ai-demo` namespace** to simulate the network boundary of a real SNO edge site. All edge components are self-contained in this namespace. Migration to actual SNO or MicroShift requires only changing the ArgoCD destination and adding a model sync mechanism.
 
-> **Shared MinIO (`storageUri`)** for single-cluster demo. Both the central (`private-ai`) and edge (`edge-ai-demo`) InferenceServices read from the same S3 bucket. In production, a model sync mechanism (Tekton task, CronJob, or S3 replication) would push models to edge-local storage.
+> **Shared MinIO (`storageUri`)** for single-cluster demo. Both the central (`enterprise-mlops`) and edge (`edge-ai-demo`) InferenceServices read from the same S3 bucket. In production, a model sync mechanism (Tekton task, CronJob, or S3 replication) would push models to edge-local storage.
 
 > **`camera_input_live`** for Live Video instead of `streamlit-webrtc`. WebRTC failed because the pod can't reach STUN servers over UDP (restricted egress). `camera_input_live` captures frames via `getUserMedia` + `canvas.toDataURL` and sends them over the existing Streamlit WebSocket — plain HTTPS, no STUN/TURN required.
 
@@ -198,7 +198,7 @@ oc exec -n edge-ai-demo deploy/face-recognition-edge-predictor -- \
 1. Show the `edge-ai-demo` namespace in the OpenShift Topology view or ArgoCD dashboard
 2. Point out the two components: OpenVINO model server + Streamlit camera app
 
-**Expect:** The namespace contains a self-contained edge deployment: model server, camera app, route — no dependencies on the `private-ai` datacenter namespace at runtime.
+**Expect:** The namespace contains a self-contained edge deployment: model server, camera app, route — no dependencies on the `enterprise-mlops` datacenter namespace at runtime.
 
 > All edge components are self-contained in one namespace. Red Hat OpenShift AI deploys the same model serving infrastructure — KServe, OpenVINO — to any namespace, any cluster, any site. The architecture is identical whether this runs on the central OCP cluster or a Single Node OpenShift at a remote location.
 
@@ -235,7 +235,7 @@ echo "https://$(oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.hos
 > The model was trained centrally, evaluated by an automated pipeline, and registered in the Model Registry. Both the datacenter and the edge serve the same version. When we retrain, the new model flows to every edge device via GitOps.
 
 1. Open the **Model Registry** in the RHOAI Dashboard (from Step 12)
-2. Show that both `private-ai` and `edge-ai-demo` serve the same model
+2. Show that both `enterprise-mlops` and `edge-ai-demo` serve the same model
 
 **Expect:** The same model version is deployed at both locations, with the Model Registry tracking provenance.
 
@@ -347,7 +347,7 @@ oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 
 ## References
 
-- [RHOAI 3.3 — Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
+- [RHOAI 3.4 — Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/)
 - [Red Hat Edge + On-Premise AI/ML Architecture](https://www.redhat.com/en/topics/ai/ai-at-the-edge)
 - [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
 - [MicroShift documentation](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/)
@@ -359,7 +359,7 @@ oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
-> **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (real edge hardware), [Step 03 — Private AI](../step-03-private-ai/README.md) (MinIO + namespace)
+> **See also:** [Step 11 — Face Recognition](../step-11-face-recognition/README.md) (model training), [Step 12 — MLOps Pipeline](../step-12-mlops-pipeline/README.md) (automated lifecycle), [Step 13b — Edge AI on MicroShift](../step-13b-edge-ai-microshift/README.md) (real edge hardware), [Step 03 — Private AI](../step-03-enterprise-projects/README.md) (MinIO + namespace)
 
 ## Next Steps
 

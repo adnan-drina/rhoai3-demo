@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Step 01: GPU Infrastructure & RHOAI Prerequisites - Deploy Script
-# Deploys all prerequisites for RHOAI 3.3:
+# Deploys all prerequisites for RHOAI 3.4:
 # - User Workload Monitoring
 # - NFD Operator + Instance
 # - GPU Operator + ClusterPolicy + DCGM Dashboard

@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = os.getenv(
     "GUARDRAILS_ORCHESTRATOR_URL",
-    "https://guardrails-orchestrator-service.private-ai.svc:8032"
+    "https://guardrails-orchestrator-service.enterprise-rag.svc:8032"
 )
 VERIFY_SSL = False
 HEALTH_URL = os.getenv(
     "GUARDRAILS_HEALTH_URL",
-    "http://guardrails-orchestrator-service.private-ai.svc:8034"
+    "http://guardrails-orchestrator-service.enterprise-rag.svc:8034"
 )
 
 

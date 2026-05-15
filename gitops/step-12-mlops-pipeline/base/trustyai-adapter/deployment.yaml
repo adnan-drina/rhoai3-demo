@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: trustyai-adapter
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app.kubernetes.io/name: trustyai-adapter
     app.kubernetes.io/part-of: face-recognition
@@ -31,7 +31,7 @@ spec:
               protocol: TCP
           env:
             - name: TRUSTYAI_URL
-              value: "http://trustyai-service.private-ai.svc.cluster.local"
+              value: "http://trustyai-service.enterprise-mlops.svc.cluster.local"
             - name: MODEL_NAME
               value: "face-recognition"
             - name: PORT

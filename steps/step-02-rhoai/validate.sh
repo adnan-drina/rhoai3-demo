@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 02: Red Hat OpenShift AI 3.3 — Validation Script
+# Step 02: Red Hat OpenShift AI 3.4 — Validation Script
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 02: Red Hat OpenShift AI 3.3 — Validation                ║"
+echo "║  Step 02: Red Hat OpenShift AI 3.4 — Validation                ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -67,11 +67,11 @@ check "GenAI Studio enabled" \
 
 # --- Dashboard Access ---
 log_step "Dashboard Access"
-# RHOAI 3.3 uses Gateway API (HTTPRoute), not OpenShift Routes
+# RHOAI 3.4 uses Gateway API (HTTPRoute), not OpenShift Routes
 DASHBOARD_HTTPROUTE=$(oc get httproute rhods-dashboard -n redhat-ods-applications -o jsonpath='{.metadata.name}' 2>/dev/null || echo "")
 DASHBOARD_ROUTE=$(oc get route rhods-dashboard -n redhat-ods-applications -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 if [[ -n "$DASHBOARD_HTTPROUTE" ]]; then
-    echo -e "${GREEN}[PASS]${NC} Dashboard HTTPRoute exists (RHOAI 3.3 Gateway API)"
+    echo -e "${GREEN}[PASS]${NC} Dashboard HTTPRoute exists (RHOAI 3.4 Gateway API)"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 elif [[ -n "$DASHBOARD_ROUTE" ]]; then
     echo -e "${GREEN}[PASS]${NC} Dashboard Route exists"

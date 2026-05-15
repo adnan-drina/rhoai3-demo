@@ -3,7 +3,7 @@
 
 ## Overview
 
-Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **tool-enabled action**, not only document answers. The loop closes: models grounded in data, held to policy, and now able to use tools — querying equipment databases, inspecting OpenShift workloads, and notifying teams in Slack. **Red Hat OpenShift AI 3.3** supports this through the **Model Context Protocol (MCP)** — standardized communication between AI applications and external services — with MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) and the **Llama Stack API** orchestrating tool use.
+Building on the **secured RAG chatbot** from Steps 07–09 — evaluation and guardrails already part of the governed platform — this step connects the agent to **live enterprise systems** so ACME Semiconductor gets **tool-enabled action**, not only document answers. The loop closes: models grounded in data, held to policy, and now able to use tools — querying equipment databases, inspecting OpenShift workloads, and notifying teams in Slack. **Red Hat OpenShift AI 3.4** supports this through the **Model Context Protocol (MCP)** — standardized communication between AI applications and external services — with MCP servers from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers) and the **Llama Stack API** orchestrating tool use.
 
 This step demonstrates RHOAI's **Agentic AI and gen AI UIs** capability: a unified API layer (MCP and Llama Stack API) that speeds agentic AI workflows, building tool-enabled workflows that perform complex tasks with limited supervision.
 
@@ -26,10 +26,10 @@ MCP Integration
 
 | Component | Image Source | Purpose | Namespace |
 |-----------|-------------|---------|-----------|
-| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp` | Generic SQL access to ACME equipment DB | `private-ai` |
-| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server` | Read-only cluster inspection | `private-ai` |
-| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server` | Slack workspace messaging | `private-ai` |
-| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data | `private-ai` |
+| **database-mcp** | `quay.io/mcp-servers/edb-postgres-mcp` | Generic SQL access to ACME equipment DB | `enterprise-rag` |
+| **openshift-mcp** | `quay.io/mcp-servers/kubernetes-mcp-server` | Read-only cluster inspection | `enterprise-rag` |
+| **slack-mcp** | `quay.io/mcp-servers/slack-mcp-server` | Slack workspace messaging | `enterprise-rag` |
+| **PostgreSQL** | `registry.redhat.io/rhel9/postgresql-15` | ACME equipment/calibration data | `enterprise-rag` |
 
 All MCP server images come from the [Red Hat Ecosystem Catalog](https://catalog.redhat.com/en/categories/ai/mcpservers). Zero on-cluster builds required.
 
@@ -98,11 +98,11 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
 
-> **MCP transport configuration (RHOAI 3.3):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
+> **MCP transport configuration (RHOAI 3.4):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
 
 > **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
 
-> **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.3 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
+> **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.4 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
 > **Database MCP starts after PostgreSQL is queryable:** `deploy.sh` verifies the seeded ACME schema before refreshing `database-mcp`. This prevents the MCP server from keeping a closed connection pool if it starts while the PostgreSQL container is still replaying startup scripts.
 
@@ -208,7 +208,7 @@ In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and t
 
 **Symptom:** MCP servers show "Error" status in Gen AI Studio > AI asset endpoints > MCP servers tab, despite pods running and responding correctly.
 
-**Root Cause:** The RHOAI 3.3 gen-ai backend defaults to `streamable-http` transport, which POSTs an `initialize` JSON-RPC call directly to the configured URL. MCP servers using SSE transport return `405 Method Not Allowed` because their `/sse` endpoint only accepts GET.
+**Root Cause:** The RHOAI 3.4 gen-ai backend defaults to `streamable-http` transport, which POSTs an `initialize` JSON-RPC call directly to the configured URL. MCP servers using SSE transport return `405 Method Not Allowed` because their `/sse` endpoint only accepts GET.
 
 **Diagnosis:**
 ```bash
@@ -244,7 +244,7 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 
 ## References
 
-- [RHOAI 3.3 — Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
+- [RHOAI 3.4 — Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
 - [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)

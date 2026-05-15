@@ -15,7 +15,7 @@ from kfp.dsl import component, Output, HTML
 
 
 @component(
-    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
     packages_to_install=[
         "boto3>=1.34.0",
         "pyyaml>=6.0",
@@ -49,7 +49,7 @@ def run_and_score_tests_component(
 
     EVAL_CONFIGS_DIR = "/shared-data/eval-configs"
     OAI_MODEL_PREFIX = "vllm-inference"
-    JUDGE_URL = "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions"
+    JUDGE_URL = "http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/chat/completions"
     JUDGE_MODEL = "mistral-3-bf16"
 
     def replace_txt_files(obj, base_path="."):

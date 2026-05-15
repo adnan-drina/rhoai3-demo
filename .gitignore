@@ -20,6 +20,11 @@ Thumbs.db
 .cursor/**
 !.cursor/rules/
 !.cursor/rules/**
+!.cursor/agents/
+!.cursor/agents/doc-alignment-reviewer.md
+!.cursor/skills/
+!.cursor/skills/maintain-rules-and-skills/
+!.cursor/skills/maintain-rules-and-skills/SKILL.md
 
 .claude/
 CLAUDE.md
@@ -42,6 +47,9 @@ venv/
 
 # Session prompts and local working docs (except shared SVG diagrams for README embedding)
 /docs/**
+!/docs/README.md
+!/docs/OPERATIONS.md
+!/docs/alignment-evidence-ledger.md
 !/docs/assets/
 !/docs/assets/architecture/
 !/docs/assets/architecture/**/*.svg

@@ -1,9 +1,9 @@
-# Step 02: Red Hat OpenShift AI 3.3 Platform
-**"Governed AI platform layer"** — Install the full RHOAI 3.3 platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a GPU-accelerated OpenShift cluster.
+# Step 02: Red Hat OpenShift AI 3.4 Platform
+**"Governed AI platform layer"** — Install the full RHOAI 3.4 platform — GenAI Studio, Hardware Profiles, model serving, distributed training, and governance — on a GPU-accelerated OpenShift cluster.
 
 ## Overview
 
-Teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys **Red Hat OpenShift AI 3.3** — the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models. Built on the **open-source** Open Data Hub project, RHOAI provides GenAI Studio for rapid prototyping, Hardware Profiles for GPU placement, and a DataScienceCluster that manages serving, training, pipelines, and governance in one surface.
+Teams need one **consistent, self-service environment** instead of ad hoc stacks per project. This step deploys **Red Hat OpenShift AI 3.4** — the full AI platform layer that turns governed GPU capacity into a shared place to develop, serve, and observe models. Built on the **open-source** Open Data Hub project, RHOAI provides GenAI Studio for rapid prototyping, Hardware Profiles for GPU placement, and a DataScienceCluster that manages serving, training, pipelines, and governance in one surface.
 
 This step demonstrates RHOAI's **model development and customization**, **optimized model serving**, **AI pipelines**, **model observability and governance**, and **agentic AI UIs** — all managed through a single DataScienceCluster.
 
@@ -14,7 +14,7 @@ This step demonstrates RHOAI's **model development and customization**, **optimi
 ### What Gets Deployed
 
 ```text
-RHOAI 3.3 Platform
+RHOAI 3.4 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
 ├── DSCInitialization      → Service Mesh 3 auto-installed
 ├── DataScienceCluster     → Full component stack (see table)
@@ -65,7 +65,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users. The RHOAI operator may reset this field during reconciliation, so `deploy.sh` patches it explicitly after DSC is Ready.
 
-> **DSCI CA bundle (runtime patch):** `deploy.sh` patches `DSCInitialization` with the cluster CA certificate (`kube-root-ca.crt`) so LlamaStack distributions can reach internal services over TLS. This is a runtime patch because the CA cert is cluster-specific and should not be committed to git. Ref: [Working with certificates](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/working-with-certificates_certs).
+> **DSCI CA bundle (runtime patch):** `deploy.sh` patches `DSCInitialization` with the cluster CA certificate (`kube-root-ca.crt`) so LlamaStack distributions can reach internal services over TLS. This is a runtime patch because the CA cert is cluster-specific and should not be committed to git. Ref: [Working with certificates](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/working-with-certificates_certs).
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
 
@@ -96,7 +96,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 ## The Demo
 
-> In this demo, we tour the RHOAI 3.3 platform — the self-service AI environment that data scientists and ML engineers will use for every subsequent step. We see the Dashboard, Hardware Profiles that control GPU scheduling, and the Model Catalog with 48+ validated models ready to deploy.
+> In this demo, we tour the RHOAI 3.4 platform — the self-service AI environment that data scientists and ML engineers will use for every subsequent step. We see the Dashboard, Hardware Profiles that control GPU scheduling, and the Model Catalog with 48+ validated models ready to deploy.
 
 ### RHOAI Dashboard
 
@@ -184,20 +184,20 @@ oc get gateway data-science-gateway -n openshift-ingress
 curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<cluster>
 ```
 
-> **Note (RHOAI 3.3):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step.
+> **Note (RHOAI 3.4):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step.
 
 </details>
 
 ## References
 
-- [RHOAI 3.3 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/index)
-- [RHOAI 3.3 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
-- [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
-- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_accelerators/index#working-with-hardware-profiles)
+- [RHOAI 3.4 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/index)
+- [RHOAI 3.4 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
+- [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 
-- **Step 03**: [Private AI — GPU as a Service](../step-03-private-ai/README.md) — Dynamic GPU allocation, S3 storage, and role-based access control
+- **Step 03**: [Private AI — GPU as a Service](../step-03-enterprise-projects/README.md) — Dynamic GPU allocation, S3 storage, and role-based access control

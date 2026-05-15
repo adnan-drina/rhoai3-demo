@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 WB_NAME="face-recognition-wb"
 WB_POD="${WB_NAME}-0"
 WB_CONTAINER="$WB_NAME"

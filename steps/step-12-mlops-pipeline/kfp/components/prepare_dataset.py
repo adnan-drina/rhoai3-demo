@@ -6,7 +6,7 @@ from kfp.dsl import component, Output, Dataset, Metrics
 
 
 @component(
-    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
     packages_to_install=[
         "ultralytics>=8.3.0",
         "huggingface_hub>=0.20.0",

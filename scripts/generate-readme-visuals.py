@@ -23,9 +23,9 @@ OUTPUT_STEM = {
     "overview": "rhoai3-demo-capability-map",
     "step-01-gpu-and-prereq": "step-01-capability-map",
     "step-02-rhoai": "step-02-capability-map",
-    "step-03-private-ai": "step-03-capability-map",
+    "step-03-enterprise-projects": "step-03-capability-map",
     "step-04-model-registry": "step-04-capability-map",
-    "step-05-llm-on-vllm": "step-05-capability-map",
+    "step-05-maas-model-serving": "step-05-capability-map",
     "step-06-model-metrics": "step-06-capability-map",
     "step-07-rag": "step-07-capability-map",
     "step-08-model-evaluation": "step-08-capability-map",
@@ -45,11 +45,11 @@ STEPS = [
     ),
     (
         "step-02-rhoai",
-        "Step 02: Red Hat OpenShift AI 3.3 Platform",
+        "Step 02: Red Hat OpenShift AI 3.4 Platform",
         "Infrastructure becomes governed AI self-service.",
     ),
     (
-        "step-03-private-ai",
+        "step-03-enterprise-projects",
         "Step 03: Private AI Workspace",
         "Identity, access, and storage define the private platform boundary.",
     ),
@@ -59,7 +59,7 @@ STEPS = [
         "Models gain a lifecycle record before they become endpoints.",
     ),
     (
-        "step-05-llm-on-vllm",
+        "step-05-maas-model-serving",
         "Step 05: LLM Serving on vLLM",
         "Private model serving turns GenAI into a platform capability.",
     ),
@@ -228,9 +228,9 @@ ROWS = (
         h=190,
         cols=4,
         caps=(
-            Capability("optimized-serving", "step-05-llm-on-vllm", ("Optimized", "model serving")),
-            Capability("rhaiis-vllm", "step-05-llm-on-vllm", ("Red Hat AI", "Inference Server")),
-            Capability("kserve-raw", "step-05-llm-on-vllm", ("KServe", "RawDeployment")),
+            Capability("optimized-serving", "step-05-maas-model-serving", ("Optimized", "model serving")),
+            Capability("rhaiis-vllm", "step-05-maas-model-serving", ("Red Hat AI", "Inference Server")),
+            Capability("kserve-raw", "step-05-maas-model-serving", ("KServe", "RawDeployment")),
             Capability("openvino-serving", "step-11-face-recognition", ("OpenVINO", "predictive serving")),
             Capability("models-as-service", None, ("Models-as-a-service",)),
             Capability("genai-studio", "step-02-rhoai", ("GenAI Studio", "and Playground")),
@@ -252,7 +252,7 @@ ROWS = (
                 ("GPU acceleration", "and optimization"),
             ),
             Capability("hardware-profiles", "step-02-rhoai", ("Hardware", "profiles")),
-            Capability("self-service-gpu", "step-03-private-ai", ("Self-service", "accelerator access")),
+            Capability("self-service-gpu", "step-03-enterprise-projects", ("Self-service", "accelerator access")),
             Capability("gpu-capacity-metrics", "step-06-model-metrics", ("GPU visibility", "and consumption")),
             Capability("disconnected-edge", "step-13-edge-ai", ("Disconnected", "environments", "and edge")),
         ),
@@ -271,10 +271,10 @@ ROWS = (
             Capability("gitops-argocd", "step-01-gpu-and-prereq", ("OpenShift GitOps", "and Argo CD")),
             Capability("serverless", "step-01-gpu-and-prereq", ("OpenShift", "Serverless")),
             Capability("service-mesh", "step-02-rhoai", ("Service Mesh", "networking")),
-            Capability("identity-rbac", "step-03-private-ai", ("Identity, RBAC,", "and multitenancy")),
+            Capability("identity-rbac", "step-03-enterprise-projects", ("Identity, RBAC,", "and multitenancy")),
             Capability("monitoring", "step-01-gpu-and-prereq", ("Monitoring", "and metrics")),
             Capability("tekton", "step-12-mlops-pipeline", ("OpenShift Pipelines", "(Tekton)")),
-            Capability("routes-secrets-storage", "step-03-private-ai", ("Routes, secrets,", "and storage")),
+            Capability("routes-secrets-storage", "step-03-enterprise-projects", ("Routes, secrets,", "and storage")),
         ),
     ),
     Row(
@@ -287,7 +287,7 @@ ROWS = (
         caps=(
             Capability("cloud-gpu-cluster", "step-01-gpu-and-prereq", ("Cloud GPU", "cluster")),
             Capability("gpu-worker-nodes", "step-01-gpu-and-prereq", ("GPU worker", "nodes")),
-            Capability("object-storage", "step-03-private-ai", ("Object storage", "and data connections")),
+            Capability("object-storage", "step-03-enterprise-projects", ("Object storage", "and data connections")),
             Capability("edge-target", "step-13-edge-ai", ("Edge deployment", "target")),
             Capability("microshift-runtime", "step-13b-edge-ai-microshift", ("MicroShift", "edge runtime")),
             Capability("embedded-edge-gitops", "step-13b-edge-ai-microshift", ("Embedded", "edge GitOps")),
@@ -637,7 +637,7 @@ def title_markup(title: str, step_id: str | None) -> str:
 def render_diagram(step_id: str | None, title: str, desc: str) -> str:
     is_root = step_id is None
     image_desc = (
-        "Canonical Red Hat OpenShift AI 3.3 demo capability map."
+        "Canonical Red Hat OpenShift AI 3.4 demo capability map."
         if is_root
         else f"Capability map showing new, previously introduced, and future capabilities for {title}."
     )
@@ -700,7 +700,7 @@ def main() -> None:
 
     root_svg = render_diagram(
         None,
-        "Red Hat OpenShift AI 3.3 demo capability map",
+        "Red Hat OpenShift AI 3.4 demo capability map",
         "One governed platform across private, generative, predictive, and edge AI.",
     )
     (OUT / f"{OUTPUT_STEM['overview']}.svg").write_text(root_svg, encoding="utf-8")

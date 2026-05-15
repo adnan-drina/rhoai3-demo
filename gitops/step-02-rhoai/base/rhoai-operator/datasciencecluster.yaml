@@ -1,4 +1,5 @@
-# Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/02-02-deploy-dsc.html
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
@@ -12,26 +13,27 @@ spec:
       managementState: Managed
     workbenches:
       managementState: Managed
-    # Renamed in 3.0: datasciencepipelines -> aipipelines
     aipipelines:
       managementState: Managed
-    # KServe - Primary model serving platform (RawDeployment mode in 3.0)
     kserve:
       managementState: Managed
+      modelsAsService:
+        managementState: Managed
     modelregistry:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
     llamastackoperator:
       managementState: Managed
-    # NOTE (RHOAI 3.3): Kubeflow Trainer v2 is Generally Available (GA).
-    # distributedinference is NOT a valid DSC v2 component;
-    # llm-d is enabled via LeaderWorkerSet + RHCL operators (step-01-gpu-and-prereq)
+    codeflare:
+      managementState: Managed
     trainingoperator:
       managementState: Managed
     ray:
       managementState: Managed
+    # RHOAI 3.4 integrates with the Red Hat build of Kueue Operator in Unmanaged mode.
+    # Managed mode is the deprecated embedded Kueue distribution and conflicts with the OCP operator.
     kueue:
-      managementState: Removed
+      managementState: Unmanaged
     trustyai:
       managementState: Managed
       eval:

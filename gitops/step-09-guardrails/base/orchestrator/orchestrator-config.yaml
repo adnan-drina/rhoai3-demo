@@ -7,7 +7,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: guardrails-orchestrator-config
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/part-of: guardrails
     app.kubernetes.io/component: orchestrator
@@ -17,7 +17,7 @@ data:
   config.yaml: |
     chat_generation:
       service:
-        hostname: granite-8b-agent-predictor.private-ai.svc.cluster.local
+        hostname: granite-8b-agent-predictor.maas.svc.cluster.local
         port: 8080
     detectors:
       regex:
@@ -30,14 +30,14 @@ data:
       hap:
         type: text_contents
         service:
-          hostname: hap-detector-predictor.private-ai.svc.cluster.local
+          hostname: hap-detector-predictor.enterprise-rag.svc.cluster.local
           port: 8000
         chunker_id: whole_doc_chunker
         default_threshold: 0.5
       prompt_injection:
         type: text_contents
         service:
-          hostname: prompt-injection-detector-predictor.private-ai.svc.cluster.local
+          hostname: prompt-injection-detector-predictor.enterprise-rag.svc.cluster.local
           port: 8000
         chunker_id: whole_doc_chunker
         default_threshold: 0.5

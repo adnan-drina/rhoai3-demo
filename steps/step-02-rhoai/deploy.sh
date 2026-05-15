@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Step 02: Red Hat OpenShift AI 3.3 - Deploy Script
-# Deploys RHOAI 3.3 Platform Layer:
+# Step 02: Red Hat OpenShift AI 3.4 - Deploy Script
+# Deploys RHOAI 3.4 Platform Layer:
 # - RHOAI Operator (stable-3.x channel)
 # - DSCInitialization (Service Mesh: Managed)
-# - DataScienceCluster with full 3.3 components
+# - DataScienceCluster with full 3.4 components
 # - Auth resource for user/admin groups
 # - GenAI Studio configuration
 # - Hardware Profiles for AWS G6 GPU nodes
@@ -18,7 +18,7 @@ STEP_NAME="step-02-rhoai"
 load_env
 check_oc_logged_in
 
-log_step "Step 02: Red Hat OpenShift AI 3.3"
+log_step "Step 02: Red Hat OpenShift AI 3.4"
 
 log_step "Checking prerequisites..."
 
@@ -163,7 +163,7 @@ log_step "Deployment Complete"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "RHOAI 3.3 Platform Deployed Successfully"
+echo "RHOAI 3.4 Platform Deployed Successfully"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Enabled Components:"

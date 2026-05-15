@@ -19,7 +19,7 @@ spec:
     path: gitops/step-08-model-evaluation/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: private-ai
+    namespace: enterprise-rag
   syncPolicy:
     automated:
       prune: true

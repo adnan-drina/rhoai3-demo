@@ -1,13 +1,14 @@
-# RHOAI 3.3: Uses notebooks.opendatahub.io/inject-auth: "true" for kube-rbac-proxy sidecar
+# RHOAI 3.4: Uses notebooks.opendatahub.io/inject-auth: "true" for kube-rbac-proxy sidecar
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: model-benchmarking-wb
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
     app.kubernetes.io/part-of: benchmarking
     opendatahub.io/dashboard: "true"
+    kueue.x-k8s.io/queue-name: maas-default
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 ---
@@ -15,7 +16,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: model-benchmarking-wb-storage
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
     app.kubernetes.io/part-of: benchmarking
@@ -35,7 +36,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: guidellm-results
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
     app.kubernetes.io/part-of: benchmarking
@@ -53,7 +54,7 @@ apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
   name: model-benchmarking-wb
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
     app.kubernetes.io/part-of: benchmarking
@@ -133,7 +134,7 @@ spec:
                 --ServerApp.port=8888
                 --ServerApp.token=''
                 --ServerApp.password=''
-                --ServerApp.base_url=/notebook/private-ai/model-benchmarking-wb
+                --ServerApp.base_url=/notebook/maas/model-benchmarking-wb
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.2
@@ -162,7 +163,7 @@ spec:
               memory: 4Gi
           livenessProbe:
             httpGet:
-              path: /notebook/private-ai/model-benchmarking-wb/api
+              path: /notebook/maas/model-benchmarking-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -172,7 +173,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /notebook/private-ai/model-benchmarking-wb/api
+              path: /notebook/maas/model-benchmarking-wb/api
               port: notebook-port
               scheme: HTTP
             initialDelaySeconds: 10
@@ -214,7 +215,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: model-benchmarking-controller
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
   annotations:
@@ -237,7 +238,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: model-benchmarking-controller
-  namespace: private-ai
+  namespace: maas
   labels:
     app: model-benchmarking-wb
   annotations:
@@ -249,5 +250,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: model-benchmarking-wb
-    namespace: private-ai
-
+    namespace: maas

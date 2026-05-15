@@ -10,6 +10,7 @@ When responding with changes, always include:
 2) **What to add/modify** (small diffs or full file content if short)
 3) **How to apply** (from GitOps folder, or `deploy.sh`, or exact commands)
 4) **How to validate** (deterministic `oc` checks)
+5) **Documentation alignment evidence** for GitOps component changes (`./scripts/audit-doc-alignment.sh --base origin/main`)
 
 **Code and documentation MUST be aligned.** Never update a README design decision without changing the corresponding manifest/script, and never change a manifest without updating the README. Partial changes are prohibited — every change must be atomic: code + docs in the same commit.
 
@@ -22,6 +23,7 @@ Avoid:
 If there is ambiguity in docs or versions:
 - State the assumption explicitly
 - Provide a verification command to confirm the assumption on the target cluster
+- Refresh `docs/alignment-evidence-ledger.md` before merge when GitOps-managed components changed
 
 ## Branching strategy: GitHub Flow + Trunk-Based Development
 

@@ -14,12 +14,12 @@ scenario-docs/
 
 ## Sourcing Documents
 
-Copy the PDF files from the previous `private-ai-demo` repository:
+Copy the PDF files from the previous `enterprise-rag-demo` repository:
 
 ```bash
-git clone https://github.com/adnan-drina/private-ai-demo.git /tmp/private-ai-demo
+git clone https://github.com/adnan-drina/enterprise-rag-demo.git /tmp/enterprise-rag-demo
 
-cp /tmp/private-ai-demo/stages/stage2-model-alignment/scenario-docs/scenario2-acme/*.pdf \
+cp /tmp/enterprise-rag-demo/stages/stage2-model-alignment/scenario-docs/scenario2-acme/*.pdf \
    scenario-docs/acme/
 # Source uses old naming (scenario2-acme) — our directory is just 'acme'
 ```

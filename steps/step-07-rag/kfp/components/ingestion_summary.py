@@ -9,7 +9,7 @@ from kfp.dsl import component, Output, Metrics
 
 
 @component(
-    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
     pip_index_urls=["https://pypi.org/simple"],
 )
 def ingestion_summary_component(

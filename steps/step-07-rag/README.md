@@ -3,7 +3,7 @@
 
 ## Overview
 
-Building on **optimized model serving** — reusing the governed inference stack already in place — this step **grounds models in ACME Semiconductor's enterprise knowledge**. A model that only reflects its training cutoff cannot reliably answer questions about internal documentation. RAG connects fast inference to organizational data, turning generic chat into answers grounded in what ACME actually knows. **Red Hat OpenShift AI 3.3** implements RAG through the **Llama Stack API** — embedding, vector storage, and agent queries in one surface — with **Kubeflow Pipelines** and **Docling** for repeatable document ingestion into **PostgreSQL with pgvector**.
+Building on **optimized model serving** — reusing the governed inference stack already in place — this step **grounds models in ACME Semiconductor's enterprise knowledge**. A model that only reflects its training cutoff cannot reliably answer questions about internal documentation. RAG connects fast inference to organizational data, turning generic chat into answers grounded in what ACME actually knows. **Red Hat OpenShift AI 3.4** implements RAG through the **Llama Stack API** — embedding, vector storage, and agent queries in one surface — with **Kubeflow Pipelines** and **Docling** for repeatable document ingestion into **PostgreSQL with pgvector**.
 
 This is where Choice shows up: teams can keep enterprise data private while deciding how and where models access it. This step demonstrates RHOAI's **Model development and customization** capability — specifically RAG for private data connection — and **AI pipelines** that automate document ingestion.
 
@@ -25,12 +25,12 @@ RAG Pipeline
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| **PostgreSQL + pgvector** | Persistent vector database + metadata store | `private-ai` |
-| **Docling** | PDF-to-Markdown intelligent conversion | `private-ai` |
-| **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | `private-ai` |
-| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | `private-ai` |
-| **RAG Chatbot UI** | Web frontend for interactive RAG queries | `private-ai` |
-| **Ingestion Service** | BuildConfig + ImageStream for KFP pipeline components | `private-ai` |
+| **PostgreSQL + pgvector** | Persistent vector database + metadata store | `enterprise-rag` |
+| **Docling** | PDF-to-Markdown intelligent conversion | `enterprise-rag` |
+| **DSPA (KFP v2)** | Pipeline orchestration for repeatable ingestion | `enterprise-rag` |
+| **LlamaStack (lsd-rag)** | RAG backend: embedding, vector IO, agent queries | `enterprise-rag` |
+| **RAG Chatbot UI** | Web frontend for interactive RAG queries | `enterprise-rag` |
+| **Ingestion Service** | BuildConfig + ImageStream for KFP pipeline components | `enterprise-rag` |
 
 Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
@@ -48,7 +48,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 <summary>Design Decisions</summary>
 
-> **Known Limitation (RHOAI 3.3):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
+> **Known Limitation (RHOAI 3.4):** The DSPA operator creates 6-7 child Deployments (`ds-pipeline-*`, `mariadb-dspa-rag`) without `app.kubernetes.io/part-of` labels. The DSPA CRD has no field for label propagation, so these resources appear ungrouped in the OpenShift Topology view. The DSPA CR itself carries `part-of: rag`, but the operator does not propagate it to child resources.
 
 > **pgvector replaces Milvus.** A single PostgreSQL instance (`pgvector/pgvector:pg16`) serves as both metadata store and vector database via `ENABLE_PGVECTOR=true`. This eliminates Milvus, etcd, and simplifies configuration.
 
@@ -82,9 +82,9 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **PostgreSQL PVC sync wave aligned with Deployment.** The `llamastack-postgres-pvc` PVC uses sync wave `"2"` (same as the Deployment) to avoid the `WaitForFirstConsumer` deadlock where ArgoCD waits for the PVC to bind before creating the pod that triggers binding.
 
-#### LlamaStack Configuration (RHOAI 3.3 Example D — pgvector with `rh-dev`)
+#### LlamaStack Configuration (RHOAI 3.4 Example D — pgvector with `rh-dev`)
 
-| Env Var | Value / Source | Purpose | RHOAI 3.3 Ref |
+| Env Var | Value / Source | Purpose | RHOAI 3.4 Ref |
 |---------|---------------|---------|---------------|
 | `ENABLE_PGVECTOR` | `true` | Activates pgvector vector store provider | Example D |
 | `PGVECTOR_HOST/PORT/DB/USER/PASSWORD` | `llamastack-pgvector-secret` | pgvector connection (same PostgreSQL instance) | Example D |
@@ -98,7 +98,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | No `userConfig` | — | `rh-dev` template manages all provider wiring | Recommended for pgvector |
 | PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 
-> Ref: [RHOAI 3.3 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
+> Ref: [RHOAI 3.4 — Example D: pgvector with rh-dev template](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 
 </details>
 
@@ -125,14 +125,14 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | Chatbot route | rag-chatbot HTTPS route | URL accessible |
 
 ```bash
-oc get deploy llamastack-postgres -n private-ai -o jsonpath='{.status.readyReplicas}'
-oc get llamastackdistribution lsd-rag -n private-ai -o jsonpath='{.status.phase}'
-oc get dspa dspa-rag -n private-ai -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+oc get deploy llamastack-postgres -n enterprise-rag -o jsonpath='{.status.readyReplicas}'
+oc get llamastackdistribution lsd-rag -n enterprise-rag -o jsonpath='{.status.phase}'
+oc get dspa dspa-rag -n enterprise-rag -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 
-oc exec deploy/lsd-rag -n private-ai -- \
+oc exec deploy/lsd-rag -n enterprise-rag -- \
   curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
 
-oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
+oc get route rag-chatbot -n enterprise-rag -o jsonpath='{.spec.host}'
 ```
 
 </details>
@@ -148,7 +148,7 @@ oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'
 1. List the vector stores populated during deployment:
 
 ```bash
-oc exec deploy/lsd-rag -n private-ai -- \
+oc exec deploy/lsd-rag -n enterprise-rag -- \
   curl -s http://localhost:8321/v1/vector_stores | python3 -m json.tool
 ```
 
@@ -165,7 +165,7 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 > Direct mode is the simplest RAG pattern. It does a vector search, finds the top chunks, stuffs them into the prompt, and asks the model to answer. No tool calls, no agent loop — just search and generate. Fast and predictable.
 
-1. Open the RAG Chatbot UI (`https://rag-chatbot-private-ai.apps.<cluster>/`)
+1. Open the RAG Chatbot UI (`https://rag-chatbot-enterprise-rag.apps.<cluster>/`)
 2. Select **Direct** mode
 3. Ask: *"What products does ACME Corp manufacture?"*
 
@@ -194,7 +194,7 @@ oc exec deploy/lsd-rag -n private-ai -- \
 
 > The ingestion pipeline is what makes RAG repeatable. Every time your team adds new documents to MinIO, this pipeline runs — Docling converts the PDFs to Markdown, LlamaStack chunks and embeds them, and pgvector stores the vectors.
 
-1. Open the RHOAI Dashboard → **Data Science Projects** → `private-ai` → **Pipelines**
+1. Open the RHOAI Dashboard → **Data Science Projects** → `enterprise-rag` → **Pipelines**
 2. View completed pipeline runs showing: download → register_db → ParallelFor(docling → insert) → ingestion_summary
 
 **Expect:** The summary step reports document counts and names per scenario.
@@ -236,12 +236,12 @@ FATAL: data directory "/var/lib/postgresql/data/pgdata" has wrong ownership
 
 **Solution:** The deployment uses a dedicated `llamastack-postgres` ServiceAccount with `anyuid` SCC. Verify:
 ```bash
-oc get sa llamastack-postgres -n private-ai
-oc adm policy who-can use scc anyuid -n private-ai | grep llamastack-postgres
+oc get sa llamastack-postgres -n enterprise-rag
+oc adm policy who-can use scc anyuid -n enterprise-rag | grep llamastack-postgres
 ```
 If the SCC grant is missing (fresh cluster), run:
 ```bash
-oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai
+oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n enterprise-rag
 ```
 
 > **Warning:** Do NOT grant `anyuid` to the `default` ServiceAccount — this breaks KServe modelcar FUSE mounts for inference pods (granite-8b-agent, etc.) in the same namespace.
@@ -270,7 +270,7 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 
 **Symptom:** In the Dashboard pipeline graph, the `process-pdf` ParallelFor group node shows a spinner/running status even after the downstream `ingestion_summary` step has completed successfully.
 
-**Root Cause:** KFP backend bug where sub-DAG group status updates when the first task completes instead of waiting for all tasks. Tracked as [kubeflow/pipelines#10830](https://github.com/kubeflow/pipelines/issues/10830), fixed in [PR #11651](https://github.com/kubeflow/pipelines/pull/11651) (KFP 2.5.0, Feb 2025). RHOAI 3.3's DSPA may not include the full fix for dynamic ParallelFor groups.
+**Root Cause:** KFP backend bug where sub-DAG group status updates when the first task completes instead of waiting for all tasks. Tracked as [kubeflow/pipelines#10830](https://github.com/kubeflow/pipelines/issues/10830), fixed in [PR #11651](https://github.com/kubeflow/pipelines/pull/11651) (KFP 2.5.0, Feb 2025). RHOAI 3.4's DSPA may not include the full fix for dynamic ParallelFor groups.
 
 **Impact:** Cosmetic only. Pipeline execution order is correct — the `ingestion_summary` step properly waits for all ParallelFor iterations via `.after(insert)`, as confirmed by the compiled YAML `dependentTasks: [for-loop-1]`.
 
@@ -280,9 +280,9 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 
 ## References
 
-- [RHOAI 3.3 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
-- [RHOAI 3.3 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag)
-- [RHOAI 3.3 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
+- [RHOAI 3.4 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
+- [RHOAI 3.4 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag)
+- [RHOAI 3.4 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)

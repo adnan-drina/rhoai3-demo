@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
 ACME_NS="acme-corp"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
@@ -181,9 +181,9 @@ log_step "Layer 2: Agentic — Responses API"
 ACME_VS_ID_FOR_AGENT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- curl -s http://localhost:8321/v1/vector_stores 2>/dev/null | \
     python3 -c "import sys,json; d=json.load(sys.stdin); print(next((s['id'] for s in d.get('data',[]) if s['name']=='acme_corporate'),'acme_corporate'))" 2>/dev/null || echo "acme_corporate")
 
-OPENSHIFT_TOOLS='[{"type":"mcp","server_label":"openshift","server_url":"http://openshift-mcp.private-ai.svc:8000/sse","require_approval":"never"}]'
-DATABASE_TOOLS='[{"type":"mcp","server_label":"database","server_url":"http://database-mcp.private-ai.svc:8080/sse","require_approval":"never"}]'
-SLACK_TOOLS='[{"type":"mcp","server_label":"slack","server_url":"http://slack-mcp.private-ai.svc:8080/sse","require_approval":"never"}]'
+OPENSHIFT_TOOLS='[{"type":"mcp","server_label":"openshift","server_url":"http://openshift-mcp.enterprise-rag.svc:8000/sse","require_approval":"never"}]'
+DATABASE_TOOLS='[{"type":"mcp","server_label":"database","server_url":"http://database-mcp.enterprise-rag.svc:8080/sse","require_approval":"never"}]'
+SLACK_TOOLS='[{"type":"mcp","server_label":"slack","server_url":"http://slack-mcp.enterprise-rag.svc:8080/sse","require_approval":"never"}]'
 RAG_TOOLS="[{\"type\":\"file_search\",\"vector_store_ids\":[\"${ACME_VS_ID_FOR_AGENT}\"]}]"
 
 AGENT_INSTRUCTIONS="You are a helpful assistant. You MUST use your tools to answer questions. Base your answer on the tool results, not prior knowledge. If a tool call fails, retry with corrected parameters. For database lookups, use execute_sql on the acme_pod_equipment_map table (columns: pod_name, equipment_id, product_name)."

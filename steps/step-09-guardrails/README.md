@@ -3,7 +3,7 @@
 
 ## Overview
 
-RAG made the assistant useful; evaluation proved it. The next step before production is making it **governable** — ensuring every prompt and response meets policy before that assistant faces broader risk. Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Red Hat OpenShift AI 3.3** delivers safety through the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — deployed via GitOps with CPU-based detectors that avoid competing with inference GPUs.
+RAG made the assistant useful; evaluation proved it. The next step before production is making it **governable** — ensuring every prompt and response meets policy before that assistant faces broader risk. Uncontrolled output can leak PII from ingested content; unfiltered input invites abuse and jailbreaks. **Red Hat OpenShift AI 3.4** delivers safety through the **TrustyAI Guardrails Orchestrator** — customizable protection for inputs and outputs against abusive content, personal data exposure, and prompt injection — deployed via GitOps with CPU-based detectors that avoid competing with inference GPUs.
 
 This step demonstrates RHOAI's **AI safety and security** capability — specifically guardrails that protect model inputs and outputs from harmful information — and lays the safety foundation for the **Agentic AI** workflows in Step 10.
 
@@ -24,11 +24,11 @@ AI Safety & Guardrails
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| **Guardrails Orchestrator** | Routes requests through detector chain (input + output) | `private-ai` |
-| **HAP Detector** | Hate, abuse, profanity detection (38M params, CPU-only) | `private-ai` |
-| **Prompt Injection Detector** | Jailbreak attempt detection (86M params, CPU-only) | `private-ai` |
-| **PII Regex** | Email, phone, LinkedIn, GitHub — built-in, no model needed | `private-ai` |
-| **Gateway Routes** | `/passthrough` (none), `/pii` (output), `/safe` (input + output) | `private-ai` |
+| **Guardrails Orchestrator** | Routes requests through detector chain (input + output) | `enterprise-rag` |
+| **HAP Detector** | Hate, abuse, profanity detection (38M params, CPU-only) | `enterprise-rag` |
+| **Prompt Injection Detector** | Jailbreak attempt detection (86M params, CPU-only) | `enterprise-rag` |
+| **PII Regex** | Email, phone, LinkedIn, GitHub — built-in, no model needed | `enterprise-rag` |
+| **Gateway Routes** | `/passthrough` (none), `/pii` (output), `/safe` (input + output) | `enterprise-rag` |
 
 Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/base/)
 
@@ -159,8 +159,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 **Solution:**
 ```bash
-oc get pods -n private-ai -l serving.kserve.io/inferenceservice=hap-detector
-oc logs deploy/hap-detector-predictor -n private-ai
+oc get pods -n enterprise-rag -l serving.kserve.io/inferenceservice=hap-detector
+oc logs deploy/hap-detector-predictor -n enterprise-rag
 ```
 
 ### Guardrails Orchestrator health endpoint unreachable
@@ -171,8 +171,8 @@ oc logs deploy/hap-detector-predictor -n private-ai
 
 **Solution:**
 ```bash
-oc get pods -n private-ai -l app.kubernetes.io/name=guardrails-orchestrator
-oc logs -n private-ai -l app.kubernetes.io/name=guardrails-orchestrator --tail=50
+oc get pods -n enterprise-rag -l app.kubernetes.io/name=guardrails-orchestrator
+oc logs -n enterprise-rag -l app.kubernetes.io/name=guardrails-orchestrator --tail=50
 ```
 
 ### LlamaStack `trustyai_fms` safety provider not registered
@@ -183,7 +183,7 @@ oc logs -n private-ai -l app.kubernetes.io/name=guardrails-orchestrator --tail=5
 
 **Solution:**
 ```bash
-oc exec deploy/lsd-rag -n private-ai -- \
+oc exec deploy/lsd-rag -n enterprise-rag -- \
   curl -s http://localhost:8321/v1/providers | \
   python3 -c "import json,sys; print([p['provider_id'] for p in json.load(sys.stdin)['data'] if p['api']=='safety'])"
 # Expected: ['trustyai_fms']
@@ -194,8 +194,8 @@ If missing, re-run `deploy.sh` or manually register the safety provider.
 
 ## References
 
-- [RHOAI 3.3 — Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails)
-- [RHOAI 3.3 — Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
+- [RHOAI 3.4 — Enabling AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails)
+- [RHOAI 3.4 — Using Guardrails for AI Safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/using-guardrails-for-ai-safety_safety)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)

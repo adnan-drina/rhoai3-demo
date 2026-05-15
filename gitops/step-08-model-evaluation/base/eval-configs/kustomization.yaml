@@ -10,7 +10,7 @@ generatorOptions:
 
 configMapGenerator:
   - name: eval-test-cases
-    namespace: private-ai
+    namespace: enterprise-rag
     options:
       labels:
         app.kubernetes.io/name: rag-evaluation

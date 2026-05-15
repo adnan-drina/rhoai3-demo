@@ -36,7 +36,7 @@ spec:
             # Uses internal service (port 8080) - bypasses OAuth proxy
             # The primary service (8443) remains protected for Dashboard/UI access
             - name: REGISTRY_URL
-              value: "http://private-ai-registry-internal.rhoai-model-registries.svc:8080"
+              value: "http://enterprise-ai-registry-internal.rhoai-model-registries.svc:8080"
             - name: MODEL_NAME
               value: "Granite-3.1-8b-Instruct-FP8"
             - name: MODEL_VERSION
@@ -124,7 +124,7 @@ spec:
                   "customProperties": {
                     "License": {"metadataType": "MetadataStringValue", "string_value": "https://www.apache.org/licenses/LICENSE-2.0"},
                     "Provider": {"metadataType": "MetadataStringValue", "string_value": "IBM"},
-                    "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.3"},
+                    "validated_on": {"metadataType": "MetadataStringValue", "string_value": "RHOAI 3.4"},
                     "granite": {"metadataType": "MetadataStringValue", "string_value": ""},
                     "fp8": {"metadataType": "MetadataStringValue", "string_value": ""},
                     "validated": {"metadataType": "MetadataStringValue", "string_value": ""},

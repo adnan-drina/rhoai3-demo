@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: modelcar-release
-  namespace: private-ai
+  namespace: enterprise-mlops
 spec:
   description: >
     Build a ModelCar OCI image from the latest ONNX model in MinIO,

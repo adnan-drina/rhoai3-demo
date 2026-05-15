@@ -18,7 +18,7 @@ class LlamaStackApi:
         self.client = LlamaStackClient(
             base_url=os.environ.get(
                 "LLAMA_STACK_URL",
-                os.environ.get("LLAMA_STACK_ENDPOINT", "http://lsd-rag-service.private-ai.svc.cluster.local:8321")
+                os.environ.get("LLAMA_STACK_ENDPOINT", "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321")
             ),
             timeout=timeout,
         )

@@ -6,11 +6,12 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: bench-bf16-
-  namespace: private-ai
+  namespace: maas
   labels:
     app: guidellm
     app.kubernetes.io/part-of: benchmarking
     model: mistral-3-bf16
+    kueue.x-k8s.io/queue-name: maas-default
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 900
@@ -20,6 +21,7 @@ spec:
       labels:
         app: guidellm
         model: mistral-3-bf16
+        kueue.x-k8s.io/queue-name: maas-default
 
     spec:
       restartPolicy: Never
@@ -48,7 +50,7 @@ spec:
               ]
               EOF
               guidellm benchmark run \
-                --target "http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1" \
+                --target "http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1" \
                 --model "mistral-3-bf16" \
                 --data /tmp/prompts.json \
                 --rate "1,3,5,8,10,15" \

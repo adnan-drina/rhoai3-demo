@@ -6,7 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 STEP_NAME="step-10-mcp-integration"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -21,11 +22,11 @@ log_step "Checking prerequisites..."
 
 check_oc_logged_in
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent present"
+log_success "granite-8b-agent present in $MODEL_NAMESPACE"
 
 if ! oc get llamastackdistribution -n "$NAMESPACE" &>/dev/null 2>&1; then
     log_error "No LlamaStackDistribution found. Deploy step-05/07 first."

@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: eval-config-sync
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: rag-evaluation
     app.kubernetes.io/component: eval-config-sync

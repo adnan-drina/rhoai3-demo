@@ -1,4 +1,4 @@
-# Allow all pods in private-ai namespace to reach lsd-rag on port 8321.
+# Allow all pods in enterprise-rag namespace to reach lsd-rag on port 8321.
 # The LlamaStack operator creates a restrictive NetworkPolicy (lsd-rag-network-policy)
 # that only allows pods with app.kubernetes.io/part-of=llama-stack label.
 # This additional policy opens access for pipeline executor pods, workbenches,
@@ -7,7 +7,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: lsd-rag-allow-namespace
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/part-of: rag
   annotations:

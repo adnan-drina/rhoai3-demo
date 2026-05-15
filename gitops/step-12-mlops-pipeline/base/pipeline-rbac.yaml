@@ -4,7 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: face-pipeline-controller
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app.kubernetes.io/part-of: face-recognition
     app.kubernetes.io/component: pipeline
@@ -22,7 +22,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: face-pipeline-controller
-  namespace: private-ai
+  namespace: enterprise-mlops
   labels:
     app.kubernetes.io/part-of: face-recognition
     app.kubernetes.io/component: pipeline
@@ -34,11 +34,11 @@ roleRef:
   name: face-pipeline-controller
 subjects:
   - kind: ServiceAccount
-    name: dspa-rag
-    namespace: private-ai
+    name: dspa-mlops
+    namespace: enterprise-mlops
   - kind: ServiceAccount
-    name: pipeline-runner-dspa-rag
-    namespace: private-ai
+    name: pipeline-runner-dspa-mlops
+    namespace: enterprise-mlops
 ---
 # Pipeline SA needs cluster view to access Model Registry route (cross-namespace)
 apiVersion: rbac.authorization.k8s.io/v1
@@ -56,5 +56,5 @@ roleRef:
   name: view
 subjects:
   - kind: ServiceAccount
-    name: pipeline-runner-dspa-rag
-    namespace: private-ai
+    name: pipeline-runner-dspa-mlops
+    namespace: enterprise-mlops

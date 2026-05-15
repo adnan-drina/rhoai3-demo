@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Tekton pipeline for building ModelCar OCI images and promoting
-# models to the edge fleet via GitOps. Runs in private-ai namespace
+# models to the edge fleet via GitOps. Runs in enterprise-mlops namespace
 # alongside the KFP training pipeline.
 #
 # Secrets (quay-push-credentials, github-push-credentials) are

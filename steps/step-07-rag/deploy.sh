@@ -6,7 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 STEP_NAME="step-07-rag"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -27,7 +28,7 @@ fi
 log_success "Namespace $NAMESPACE exists"
 
 if ! oc get crd llamastackdistributions.llamastack.io &>/dev/null; then
-    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.3 installed (step-02)?"
+    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.4 installed (step-02)?"
     exit 1
 fi
 log_success "LlamaStackDistribution CRD available"
@@ -38,11 +39,11 @@ if ! oc get crd datasciencepipelinesapplications.datasciencepipelinesapplication
 fi
 log_success "DSPA CRD available"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent InferenceService present"
+log_success "granite-8b-agent InferenceService present in $MODEL_NAMESPACE"
 
 if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
     log_error "minio-connection secret not found in $NAMESPACE. Deploy step-03 first."

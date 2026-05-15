@@ -56,7 +56,7 @@ The chatbot's `Containerfile` follows [OCP 4.20 container image guidelines](http
 When modifying the `Containerfile`:
 - Do NOT switch to a Docker Hub base image — use Red Hat UBI or RHOAI images
 - Do NOT remove `USER 1001` — OpenShift requires non-root by default
-- Group `RUN` commands to minimize layers (per [RHOAI custom image guidelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/creating-custom-workbench-images))
+- Group `RUN` commands to minimize layers (per [RHOAI custom image guidelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/creating-custom-workbench-images))
 - Pin package versions in pip install commands for reproducibility
 
 ## What NOT to Change Without Full Testing
@@ -68,6 +68,6 @@ When modifying the `Containerfile`:
 
 ## References
 
-- [RHOAI 3.3 — Working with LlamaStack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
-- [RHOAI 3.3 — AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/ai_safety_with_guardrails/)
+- [RHOAI 3.4 — Working with LlamaStack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/)
+- [RHOAI 3.4 — AI Safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/ai_safety_with_guardrails/)
 - [OCP 4.20 — Container Image Guidelines](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/images/creating-images)

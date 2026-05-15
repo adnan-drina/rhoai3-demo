@@ -6,11 +6,12 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: bench-granite-
-  namespace: private-ai
+  namespace: maas
   labels:
     app: guidellm
     app.kubernetes.io/part-of: benchmarking
     model: granite-8b-agent
+    kueue.x-k8s.io/queue-name: maas-default
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 900
@@ -20,6 +21,7 @@ spec:
       labels:
         app: guidellm
         model: granite-8b-agent
+        kueue.x-k8s.io/queue-name: maas-default
 
     spec:
       restartPolicy: Never
@@ -50,7 +52,7 @@ spec:
               ]
               EOF
               guidellm benchmark run \
-                --target "http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1" \
+                --target "http://granite-8b-agent-predictor.maas.svc.cluster.local:8080/v1" \
                 --model "granite-8b-agent" \
                 --data /tmp/prompts.json \
                 --rate "1,3,5,8,10" \

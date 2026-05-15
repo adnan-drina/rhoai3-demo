@@ -19,7 +19,7 @@ source "$REPO_ROOT/scripts/lib.sh"
 PHOTOS_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/my_photos"
 UNKNOWN_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/unknown_face"
 IMAGES_DIR="$REPO_ROOT/steps/step-11-face-recognition/notebooks/images"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 check_oc_logged_in
 

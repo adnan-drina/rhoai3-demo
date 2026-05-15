@@ -1,13 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Infrastructure and operators required for RHOAI 3.3 GPU workloads, KServe, and llm-d
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index
+# Infrastructure and operators required for RHOAI 3.4 GPU workloads, KServe, Kueue, and future llm-d expansion.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install
+# Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/red-hat-build-of-kueue
 # NOTE: Service Mesh 3 is installed automatically via DataScienceCluster CR
 
 resources:
   - gitops-rbac/cluster-admin-binding.yaml
   - monitoring/
+  - cert-manager/namespace.yaml
+  - cert-manager/operatorgroup.yaml
+  - cert-manager/subscription.yaml
+  - kueue-operator/namespace.yaml
+  - kueue-operator/operatorgroup.yaml
+  - kueue-operator/subscription.yaml
   - nfd/namespace.yaml
   - nfd/operatorgroup.yaml
   - nfd/subscription.yaml
@@ -39,4 +46,3 @@ resources:
   # - rhcl-operator/namespace.yaml
   # - rhcl-operator/operatorgroup.yaml
   # - rhcl-operator/subscription.yaml
-

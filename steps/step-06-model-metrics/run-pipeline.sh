@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+DSPA_NAMESPACE="enterprise-rag"
 MODEL_INPUT="${1:-granite}"
 RUN_ID="${2:-bench-$(date +%s)}"
 
@@ -53,25 +53,25 @@ if [ -z "$OC_TOKEN" ]; then
     log_error "Unable to obtain oc token. Run 'oc login' first."
     exit 1
 fi
-export NAMESPACE MODEL_NAME RUN_ID PIPELINE_YAML PIPELINE_NAME
+export DSPA_NAMESPACE MODEL_NAME RUN_ID PIPELINE_YAML PIPELINE_NAME
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys, time
 from kfp import client
 
-NAMESPACE = os.environ["NAMESPACE"]
+DSPA_NAMESPACE = os.environ["DSPA_NAMESPACE"]
 MODEL_NAME = os.environ["MODEL_NAME"]
 RUN_ID = os.environ["RUN_ID"]
 PIPELINE_YAML = os.environ["PIPELINE_YAML"]
 AUTH_TOKEN = os.popen("oc whoami -t 2>/dev/null").read().strip()
 
 DSPA_ROUTE = os.popen(
-    f"oc get route ds-pipeline-dspa-rag -n {NAMESPACE} -o jsonpath='{{.spec.host}}' 2>/dev/null"
+    f"oc get route ds-pipeline-dspa-rag -n {DSPA_NAMESPACE} -o jsonpath='{{.spec.host}}' 2>/dev/null"
 ).read().strip()
 
 if not DSPA_ROUTE:
     DSPA_ROUTE = os.popen(
-        f"oc get route -n {NAMESPACE} -l app=ds-pipeline-dspa-rag -o jsonpath='{{.items[0].spec.host}}' 2>/dev/null"
+        f"oc get route -n {DSPA_NAMESPACE} -l app=ds-pipeline-dspa-rag -o jsonpath='{{.items[0].spec.host}}' 2>/dev/null"
     ).read().strip()
 
 if not DSPA_ROUTE:
@@ -86,7 +86,7 @@ PIPELINE_NAME = os.environ["PIPELINE_NAME"]
 try:
     kfp_client = client.Client(
         host=DSPA_URL,
-        namespace=NAMESPACE,
+        namespace=DSPA_NAMESPACE,
         existing_token=AUTH_TOKEN,
     )
 except Exception as e:
@@ -124,7 +124,7 @@ print(f"Pipeline version: {version_id}")
 
 experiment_name = "model-benchmarking"
 try:
-    experiment = kfp_client.create_experiment(name=experiment_name, namespace=NAMESPACE)
+    experiment = kfp_client.create_experiment(name=experiment_name, namespace=DSPA_NAMESPACE)
     experiment_id = experiment.experiment_id
 except Exception:
     experiments = kfp_client.list_experiments(page_size=100).experiments or []

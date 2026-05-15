@@ -1,4 +1,4 @@
-# RHOAI 3.3 "Example D: pgvector with rh-dev" + annotation override:
+# RHOAI 3.4 "Example D: pgvector with rh-dev" + annotation override:
 #   - rh-dev template with minimal userConfig (disables citation annotations)
 #   - pgvector for vector store (same PostgreSQL instance as metadata)
 #   - Sentence-transformers for inline embeddings (no GPU needed)
@@ -7,12 +7,12 @@
 # <|file-xxx|> citation markers that LlamaStack injects into model responses.
 # All other rh-dev auto-wiring (persistence, Ragas, safety) is preserved.
 # MCP tool_groups are registered at runtime via the LlamaStack API.
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag
 apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
 metadata:
   name: lsd-rag
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: llamastack-rag
     app.kubernetes.io/part-of: rag
@@ -116,7 +116,7 @@ spec:
               name: llamastack-pgvector-secret
               key: PGVECTOR_PASSWORD
         - name: FMS_ORCHESTRATOR_URL
-          value: "http://guardrails-orchestrator-service.private-ai.svc:8034"
+          value: "http://guardrails-orchestrator-service.enterprise-rag.svc:8034"
 
       resources:
         requests:

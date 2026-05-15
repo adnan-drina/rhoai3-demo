@@ -5,9 +5,9 @@ Automates the full MLOps lifecycle: dataset preparation, training,
 evaluation with quality gate, Model Registry registration, and deployment.
 
 Components are in kfp/components/ following KFP modular best practices.
-Reuses the existing DSPA (dspa-rag) in private-ai namespace.
+Reuses the existing DSPA (dspa-mlops) in enterprise-mlops namespace.
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
 """
 
 import kfp
@@ -65,8 +65,8 @@ def face_recognition_training_pipeline(
     epochs: int = 100,
     mAP_threshold: float = 0.7,
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
-    registry_url: str = "https://private-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com",
-    isvc_namespace: str = "private-ai",
+    registry_url: str = "https://enterprise-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com",
+    isvc_namespace: str = "enterprise-mlops",
     release_to_edge: bool = False,
     modelcar_registry: str = "quay.io/adrina/face-recognition-modelcar",
     modelcar_version: str = "",

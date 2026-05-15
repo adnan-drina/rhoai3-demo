@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: private-ai-registry-internal-access
+  name: enterprise-ai-registry-internal-access
   namespace: rhoai-model-registries
   annotations:
     argocd.argoproj.io/sync-wave: "6"
@@ -11,7 +11,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: private-ai-registry
+      app: enterprise-ai-registry
       component: model-registry
   policyTypes:
     - Ingress

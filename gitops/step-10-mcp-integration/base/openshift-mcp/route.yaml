@@ -2,7 +2,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: openshift-mcp
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: openshift-mcp
     app.kubernetes.io/part-of: mcp-integration

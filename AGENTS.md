@@ -1,12 +1,12 @@
-# RHOAI 3.3 Demo — Codex Instructions
+# RHOAI 3.4 Demo — Codex Instructions
 
 Demo of building Private AI platform infrastructure for enterprise generative and
-predictive AI use cases using **Red Hat OpenShift AI (RHOAI) 3.3** on
+predictive AI use cases using **Red Hat OpenShift AI (RHOAI) 3.4** on
 **Red Hat OpenShift Container Platform (RHOCP) 4.20**.
 
 ## Documentation first
 
-- Official RHOAI 3.3 and RHOCP 4.20 docs are the source of truth
+- Official RHOAI 3.4 and RHOCP 4.20 docs are the source of truth
 - Do not invent CR fields, API versions, annotations, or operator configurations
 - If unsure, propose a verification command (`oc explain`, `oc get crd`)
 
@@ -77,7 +77,7 @@ Scope: step number for step-specific, component name for cross-cutting.
 
 | Node | GPUs | Model | Role |
 |------|------|-------|------|
-| g6.4xlarge | 1 | granite-8b-agent (FP8) | RAG, MCP, Guardrails |
+| g6.4xlarge | 1 | granite-8b-agent (FP8) | MaaS, RAG, MCP, Guardrails |
 | g6.12xlarge | 4 | mistral-3-bf16 (BF16) | Judge, Benchmarking |
 
 ## Detailed rules
@@ -114,4 +114,4 @@ Skills in `.cursor/skills/` provide workflows for:
 Subagents in `.cursor/agents/` for context-isolated tasks:
 - `cluster-inspector` (readonly, fast) — gather cluster state safely
 - `manifest-reviewer` (readonly) — review manifests for compliance
-- `doc-alignment-reviewer` (readonly) — verify manifests match RHOAI docs
+- `doc-alignment-reviewer` (readonly) — verify manifests match pinned RHOAI 3.4/OCP 4.20 docs

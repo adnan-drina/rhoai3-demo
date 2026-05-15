@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STEP_NAME="step-08-model-evaluation"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
 RUN_ID="eval-$(date +%s)"
 
 source "$REPO_ROOT/scripts/lib.sh"
