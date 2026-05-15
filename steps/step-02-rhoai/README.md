@@ -17,7 +17,7 @@ This step demonstrates RHOAI's **model development and customization**, **optimi
 RHOAI 3.4 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
 ├── DSCInitialization      → Service Mesh 3 auto-installed
-├── MaaS Gateway           → Gateway API endpoint required by modelsAsService
+├── MaaS Gateway           → Gateway API endpoint with RHCL/Authorino bootstrap
 ├── DataScienceCluster     → Full component stack (see table)
 ├── GenAI Studio           → Agent Playground + Model Catalog UI
 └── Hardware Profiles      → GPU/CPU profiles with GPU node scheduling
@@ -31,7 +31,7 @@ RHOAI 3.4 Platform
 | LlamaStack Operator | Managed | GenAI Playground, agentic workflows |
 | GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
 | KServe | Managed | Model serving (RawDeployment mode) |
-| MaaS Gateway | Managed | `maas-default-gateway` for the Technology Preview MaaS component |
+| MaaS Gateway | Managed | `maas-default-gateway` for the Technology Preview MaaS component, annotated for RHCL/Authorino TLS |
 | Model Registry | Managed | Model versioning and catalog |
 | Training Operator | Managed | Kubernetes-native distributed training |
 | Ray | Managed | Distributed computing framework |
@@ -73,6 +73,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **MaaS gateway prerequisite:** RHOAI 3.4 Models-as-a-Service is Technology Preview and requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
+> **MaaS feature flags and RHCL prerequisite:** Step 01 installs RHCL 1.2+, creates `Kuadrant` in `kuadrant-system`, and configures Authorino TLS. This step then enables `modelAsService`, `vLLMDeploymentOnMaaS`, and `maasAuthPolicies` in `OdhDashboardConfig`. vLLM on MaaS remains Technology Preview in RHOAI 3.4.
+
 </details>
 
 <details>
@@ -92,6 +94,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 |-------|--------------|---------------|
 | Dashboard URL | RHOAI console accessible | `https://data-science-gateway.apps.<cluster>` responds |
 | GenAI Studio visible | Agent Playground and Model Catalog in left nav | Both menu items present |
+| MaaS enabled | `modelsAsService`, MaaS dashboard flags, and Gateway annotations | Managed/true and Gateway `Programmed=True` |
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
 | Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |
@@ -196,6 +199,7 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 
 - [RHOAI 3.4 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/index)
 - [RHOAI 3.4 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service)
 - [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)

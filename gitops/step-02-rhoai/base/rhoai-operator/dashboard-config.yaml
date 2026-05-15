@@ -16,6 +16,8 @@ spec:
     genAiStudio: true
     mlflow: true
     modelAsService: true
+    vLLMDeploymentOnMaaS: true
+    maasAuthPolicies: true
     disableLMEval: false
     disableDistributedWorkloads: false
     disableKueue: false

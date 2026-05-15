@@ -6,6 +6,7 @@
 # - GPU Operator + ClusterPolicy + DCGM Dashboard
 # - OpenShift Serverless + KnativeServing
 # - Red Hat build of Kueue Operator
+# - Red Hat Connectivity Link stack for Models-as-a-Service
 # - GPU MachineSets (AWS)
 set -euo pipefail
 
@@ -25,6 +26,22 @@ GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
 
 log_info "Git Repo: $GIT_REPO_URL"
 log_info "Branch: $GIT_REPO_BRANCH"
+
+wait_for_csv() {
+    local subscription="$1"
+    local namespace="$2"
+    local label="$3"
+    local installed_csv
+
+    until installed_csv=$(oc get subscription "$subscription" -n "$namespace" -o jsonpath='{.status.installedCSV}' 2>/dev/null) && \
+          [[ -n "$installed_csv" ]] && \
+          [[ "$(oc get csv "$installed_csv" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
+        log_info "Waiting for ${label}..."
+        sleep 10
+    done
+
+    log_success "${label} ready (${installed_csv})"
+}
 
 CLUSTER_ID=$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}')
 AMI_ID=$(oc get machineset -n openshift-machine-api -o jsonpath='{.items[0].spec.template.spec.providerSpec.value.ami.id}')
@@ -62,13 +79,7 @@ done
 log_success "Serverless CRD available"
 
 log_step "Waiting for Red Hat build of Kueue Operator..."
-until KUEUE_CSV=$(oc get subscription kueue-operator -n openshift-kueue-operator -o jsonpath='{.status.installedCSV}' 2>/dev/null) && \
-      [[ -n "$KUEUE_CSV" ]] && \
-      [[ "$(oc get csv "$KUEUE_CSV" -n openshift-kueue-operator -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
-    log_info "Waiting for Kueue Operator..."
-    sleep 10
-done
-log_success "Kueue Operator ready (${KUEUE_CSV})"
+wait_for_csv "kueue-operator" "openshift-kueue-operator" "Kueue Operator"
 
 log_step "Waiting for Kueue CRD..."
 until oc get crd kueues.kueue.openshift.io &>/dev/null; do
@@ -76,6 +87,68 @@ until oc get crd kueues.kueue.openshift.io &>/dev/null; do
     sleep 10
 done
 log_success "Kueue CRD available"
+
+log_step "Waiting for Red Hat Connectivity Link stack..."
+wait_for_csv "authorino-operator" "openshift-authorino" "Authorino Operator"
+wait_for_csv "limitador-operator" "openshift-limitador-operator" "Limitador Operator"
+wait_for_csv "dns-operator" "openshift-dns-operator" "DNS Operator"
+wait_for_csv "rhcl-operator" "openshift-operators" "Red Hat Connectivity Link Operator"
+
+for crd in \
+    authconfigs.authorino.kuadrant.io \
+    authorinos.operator.authorino.kuadrant.io \
+    kuadrants.kuadrant.io \
+    authpolicies.kuadrant.io \
+    tokenratelimitpolicies.kuadrant.io; do
+    until oc get crd "$crd" &>/dev/null; do
+        log_info "Waiting for RHCL CRD: $crd"
+        sleep 10
+    done
+    log_success "RHCL CRD available: $crd"
+done
+
+log_step "Re-syncing Step 01 after RHCL CRDs are available"
+while [[ "$(oc get application "$STEP_NAME" -n openshift-gitops -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)" == "Running" ]]; do
+    log_info "Waiting for current Argo CD sync operation to finish..."
+    sleep 10
+done
+oc annotate application "$STEP_NAME" -n openshift-gitops argocd.argoproj.io/refresh=hard --overwrite || true
+oc patch application "$STEP_NAME" -n openshift-gitops --type merge -p \
+    '{"operation":{"sync":{"prune":true,"syncOptions":["CreateNamespace=true","ServerSideDiff=true","SkipDryRunOnMissingResource=true","RespectIgnoreDifferences=true"]}}}' || true
+
+until oc get kuadrant kuadrant -n kuadrant-system &>/dev/null; do
+    log_info "Waiting for Kuadrant custom resource..."
+    sleep 10
+done
+
+oc wait kuadrant kuadrant -n kuadrant-system --for=condition=Ready --timeout=10m
+log_success "Kuadrant ready"
+
+log_step "Configuring Authorino TLS for MaaS"
+until oc get service authorino-authorino-authorization -n kuadrant-system &>/dev/null; do
+    log_info "Waiting for Authorino authorization service..."
+    sleep 10
+done
+
+oc annotate service authorino-authorino-authorization \
+    -n kuadrant-system \
+    service.beta.openshift.io/serving-cert-secret-name=authorino-server-cert \
+    --overwrite
+
+until oc get secret authorino-server-cert -n kuadrant-system &>/dev/null; do
+    log_info "Waiting for Authorino serving certificate..."
+    sleep 5
+done
+
+oc patch authorino authorino -n kuadrant-system --type=merge --patch \
+    '{"spec":{"listener":{"tls":{"enabled":true,"certSecretRef":{"name":"authorino-server-cert"}}}}}'
+
+oc -n kuadrant-system set env deployment/authorino \
+    SSL_CERT_FILE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt
+
+oc wait --for=condition=ready pod -l authorino-resource=authorino -n kuadrant-system --timeout=150s
+log_success "Authorino TLS configured"
 
 # Deploy MachineSets (cluster-specific, not in GitOps)
 log_step "Deploying GPU MachineSets"
@@ -195,7 +268,8 @@ echo "  - NFD Operator (openshift-nfd)"
 echo "  - GPU Operator (nvidia-gpu-operator)"
 echo "  - OpenShift Serverless + KnativeServing"
 echo "  - Red Hat build of Kueue (openshift-kueue-operator)"
-echo "  - llm-d prerequisites (LWS/RHCL stack) remain deferred in BACKLOG.md"
+echo "  - Red Hat Connectivity Link stack for Models-as-a-Service"
+echo "  - LeaderWorkerSet remains deferred for llm-d distributed inference in BACKLOG.md"
 echo ""
 echo "MachineSets (replicas=1):"
 echo "  - ${CLUSTER_ID}-gpu-g6-4xlarge-${AZ}"
@@ -215,3 +289,4 @@ echo "  oc get csv -n openshift-serverless | grep serverless"
 echo "  oc get knativeserving -n knative-serving"
 echo "  oc get csv -n openshift-kueue-operator"
 echo "  oc get crd kueues.kueue.openshift.io"
+echo "  oc get kuadrant kuadrant -n kuadrant-system"

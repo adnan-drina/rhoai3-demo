@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-15T22:40:11Z
+**Generated:** 2026-05-15T22:51:01Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -36,6 +36,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Schema Verification**
 
 - [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-01-gpu-and-prereq/base | oc apply --dry-run=server --validate=strict -f -`.
+- [DEFERRED] Verify with `oc explain Kuadrant --api-version=kuadrant.io/v1beta1`.
 - [DEFERRED] Verify with `oc explain NodeFeatureDiscovery --api-version=nfd.openshift.io/v1`.
 - [DEFERRED] Verify with `oc explain ClusterPolicy --api-version=nvidia.com/v1`.
 - [DEFERRED] Verify with `oc explain KnativeServing --api-version=operator.knative.dev/v1beta1`.

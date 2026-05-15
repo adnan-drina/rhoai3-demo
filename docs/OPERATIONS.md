@@ -26,7 +26,7 @@ Run bootstrap once, then deploy steps in order.
 
 | Phase | Steps | Purpose |
 |-------|-------|---------|
-| Platform | 01-02 | GPU prerequisites, OpenShift Serverless, Red Hat build of Kueue Operator, RHOAI operator, DataScienceCluster, hardware profiles. |
+| Platform | 01-02 | GPU prerequisites, OpenShift Serverless, Red Hat build of Kueue Operator, RHCL/Kuadrant for MaaS, RHOAI operator, DataScienceCluster, hardware profiles. |
 | Governance | 03-04 | Project boundary, users, RBAC, MinIO, data connections, model registry. |
 | Generative AI | 05-10 | LLM serving, metrics, RAG, evaluation, guardrails, MCP tools. |
 | Predictive AI | 11-12 | Face recognition serving, notebooks, training pipeline, TrustyAI monitoring. |
@@ -60,7 +60,7 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 
 | Step | Runtime Work |
 |------|--------------|
-| 01 | Detects cluster ID, AMI, region, and availability zone; creates GPU MachineSets. |
+| 01 | Detects cluster ID, AMI, region, and availability zone; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
 | 02 | Approves Service Mesh 3 install plan when RHOAI creates it manually; patches DSCI CA bundle; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
 | 05 | Creates Hugging Face token secret if available; uploads large Mistral model to MinIO; registers models. |

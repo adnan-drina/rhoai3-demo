@@ -3,7 +3,7 @@
 
 ## Overview
 
-**Private AI** starts with compute you govern. This step establishes the **compute foundation** — GPU-accelerated capacity, hardware discovery, model-serving prerequisites, and queue-aware workload management — so workloads run where you operate. The operators installed here (NFD, NVIDIA GPU Operator, Serverless, Kueue, monitoring) are managed as GitOps-friendly OpenShift resources. This is where Trust becomes operational: the compute layer is open, governed, and under the organization's control.
+**Private AI** starts with compute you govern. This step establishes the **compute foundation** — GPU-accelerated capacity, hardware discovery, model-serving prerequisites, queue-aware workload management, and the Red Hat Connectivity Link stack required by RHOAI 3.4 Models-as-a-Service — so workloads run where you operate. The operators installed here (NFD, NVIDIA GPU Operator, Serverless, Kueue, Authorino, Limitador, DNS Operator, RHCL, monitoring) are managed as GitOps-friendly OpenShift resources. This is where Trust becomes operational: the compute layer is open, governed, and under the organization's control.
 
 This step demonstrates RHOAI's **Intelligent GPU and hardware speed** capability: self-service GPU access, intelligent workload scheduling, and hardware discovery — the foundation that every AI workload on the platform depends on.
 
@@ -20,6 +20,7 @@ OpenShift 4.20 Cluster
 ├── GPU MachineSets       → g6.4xlarge (1×L4) + g6.12xlarge (4×L4) = 5 GPUs
 ├── OpenShift Serverless  → KnativeServing for KServe networking
 ├── Red Hat build of Kueue → Queue management for MaaS GPU workloads
+├── RHCL + Kuadrant       → MaaS authorization and token-limit policy CRDs
 └── User Workload Mon.    → Prometheus scraping for GPU telemetry
 ```
 
@@ -30,9 +31,14 @@ OpenShift 4.20 Cluster
 | GPU MachineSets (AWS G6) | 1×g6.4xl + 1×g6.12xl = 5 NVIDIA L4 GPUs | `openshift-machine-api` |
 | OpenShift Serverless | Knative infrastructure for KServe | `openshift-serverless` |
 | Red Hat build of Kueue | Queue controller used by the MaaS namespace in Step 03 | `openshift-kueue-operator` |
+| Authorino Operator | AuthConfig CRDs and authorization service for MaaS/RHCL | `openshift-authorino` |
+| Limitador Operator | Rate-limit backing service for RHCL token policies | `openshift-limitador-operator` |
+| DNS Operator | DNS resources used by the RHCL gateway stack | `openshift-dns-operator` |
+| Red Hat Connectivity Link Operator | Kuadrant, AuthPolicy, and token rate-limit policy CRDs | `openshift-operators` |
+| Kuadrant | RHCL control-plane instance for MaaS policy enforcement | `kuadrant-system` |
 | User Workload Monitoring | Prometheus scraping for DCGM metrics | `openshift-monitoring` |
 
-> **llm-d prerequisites (commented out):** LeaderWorkerSet, Authorino, Limitador, DNS Operator, and RHCL are defined in the kustomization file but commented out. They are prerequisites for the llm-d Inference Gateway, which is planned but not yet demonstrated. See [BACKLOG.md](../../BACKLOG.md).
+> **MaaS dependency correction:** RHOAI 3.4 MaaS requires RHCL 1.2+, a ready `Kuadrant` custom resource, and Authorino TLS configuration before `kserve.modelsAsService.managementState: Managed` can reconcile cleanly. LeaderWorkerSet remains deferred because it is needed for distributed inference with llm-d, not for this first MaaS foundation slice.
 
 > **AWS Quota:** Requires "Running On-Demand G and VT instances" >= 64 vCPU (16 + 48). Sandbox accounts default to 64.
 
@@ -62,7 +68,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 > **GPU node taints (`nvidia.com/gpu=true:NoSchedule`):** Reserves expensive GPU instances exclusively for workloads that explicitly request GPU resources.
 
-> **RHCL stack for Inference Gateway (commented out):** Authorino, Limitador, DNS Operator, and RHCL provide the AuthPolicy CRD and networking primitives required by the llm-d Inference Gateway. These are defined in the kustomization file but commented out until llm-d distributed inference is added to the demo.
+> **RHCL stack for MaaS:** RHOAI 3.4 MaaS uses RHCL and Kuadrant for authorization policy and token-limit enforcement. The RHCL operator is installed in `openshift-operators`, and the `Kuadrant` CR is created in `kuadrant-system` to match the RHOAI 3.4 MaaS prerequisites. `deploy.sh` performs the documented Authorino TLS runtime configuration because the target Service and generated certificate are created by the operator at install time.
 
 > **GPU MachineSet AZ auto-detection:** `deploy.sh` detects the availability zone from existing worker machinesets (`items[0].spec.template.spec.providerSpec.value.placement.availabilityZone`) rather than hardcoding `${REGION}b`. AWS sandbox clusters may only have subnets in a single AZ (e.g. `us-east-2a`), causing MachineSet creation to fail silently if the hardcoded AZ has no subnet.
 
@@ -80,7 +86,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 ```bash
 ./steps/step-01-gpu-and-prereq/deploy.sh     # ArgoCD app: operators + GPU MachineSets
-./steps/step-01-gpu-and-prereq/validate.sh   # Verify GPUs, operators, KnativeServing
+./steps/step-01-gpu-and-prereq/validate.sh   # Verify GPUs, operators, KnativeServing, Kueue, RHCL
 ```
 
 </details>
@@ -92,8 +98,9 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 |-------|--------------|---------------|
 | GPU nodes online | Two nodes with `nvidia.com/gpu` allocatable | 1 GPU + 4 GPUs |
 | DCGM dashboard | GPU utilization, temperature, and memory | Visible in OpenShift Monitoring |
-| All operators Succeeded | 8 CSVs across their respective namespaces | All Succeeded |
+| All operators Succeeded | NFD, GPU, Serverless, Kueue, Authorino, Limitador, DNS, RHCL | All Succeeded |
 | KnativeServing Ready | Control plane healthy | Ready in `knative-serving` |
+| Kuadrant Ready | MaaS policy control plane | Ready in `kuadrant-system` |
 
 </details>
 
@@ -114,14 +121,14 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 ### Operator Stack
 
-> GPU nodes are ready, but inference networking, queued scheduling, and model serving require additional platform capabilities. This foundation slice installs the operators needed by RHOAI model serving and MaaS queue management; llm-d-specific dependencies remain deferred.
+> GPU nodes are ready, but inference networking, queued scheduling, and governed model access require additional platform capabilities. This foundation slice installs the operators needed by RHOAI model serving, MaaS policy enforcement, and MaaS queue management; llm-d multi-node serving remains deferred.
 
 1. Navigate to **Operators** → **Installed Operators**
 2. Filter by the GPU and AI-related namespaces
 
-**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, and Kueue.
+**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, Kueue, Authorino, Limitador, DNS Operator, and Red Hat Connectivity Link. `Kuadrant` should be `Ready` in `kuadrant-system`.
 
-> Every operator prerequisite for this RHOAI 3.4 foundation slice is deployed and healthy. This is the AI-ready foundation — GPU drivers, KServe networking, and Kueue queue control — all managed via GitOps on Red Hat OpenShift Container Platform.
+> Every operator prerequisite for this RHOAI 3.4 foundation slice is deployed and healthy. This is the AI-ready foundation — GPU drivers, KServe networking, Kueue queue control, and MaaS policy infrastructure — all managed via GitOps on Red Hat OpenShift Container Platform.
 
 ## Key Takeaways
 
@@ -133,7 +140,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 **For technical teams:**
 
-- Deploy GPU discovery, drivers, serving prerequisites, Kueue, and monitoring in a repeatable way
+- Deploy GPU discovery, drivers, serving prerequisites, Kueue, RHCL, and monitoring in a repeatable way
 - Reserve GPU nodes for workloads that explicitly request them
 - Manage the GPU layer as OpenShift-native, GitOps-friendly infrastructure
 
@@ -176,6 +183,7 @@ oc delete pods -n nvidia-gpu-operator -l app=nvidia-driver-daemonset
 ## References
 
 - [RHOAI 3.4 — Installing and Uninstalling](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
+- [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service)
 - [RHOAI 3.4 — Distributed Inference Dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies)
 - [OCP 4.20 — Understanding the Driver Toolkit](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/using-the-driver-toolkit)
 - [OCP 4.20 — NVIDIA GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)

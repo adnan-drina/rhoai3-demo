@@ -65,6 +65,27 @@ check "GenAI Studio enabled" \
     "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.genAiStudio}'" \
     "true"
 
+# --- Models-as-a-Service ---
+log_step "Models-as-a-Service"
+check "MaaS component enabled" \
+    "oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.kserve.modelsAsService.managementState}'" \
+    "Managed"
+check "MaaS dashboard enabled" \
+    "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.modelAsService}'" \
+    "true"
+check "MaaS vLLM dashboard flag enabled" \
+    "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.vLLMDeploymentOnMaaS}'" \
+    "true"
+check "MaaS admin policies enabled" \
+    "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.maasAuthPolicies}'" \
+    "true"
+check "MaaS Gateway programmed" \
+    "oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.status.conditions[?(@.type==\"Programmed\")].status}'" \
+    "True"
+check "MaaS Gateway Authorino TLS bootstrap" \
+    "oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.metadata.annotations.security\\.opendatahub\\.io/authorino-tls-bootstrap}'" \
+    "true"
+
 # --- Dashboard Access ---
 log_step "Dashboard Access"
 # RHOAI 3.4 uses Gateway API (HTTPRoute), not OpenShift Routes
