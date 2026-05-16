@@ -23,6 +23,7 @@ Official documentation remains the source of truth:
 | [phase-2-develop-deploy.md](phase-2-develop-deploy.md) | Projects, workbenches, storage, pipelines, model catalog/registry usage, RAG, Gen AI Playground, KServe, MaaS, llm-d, and distributed workloads. |
 | [phase-3-safety-eval-monitor.md](phase-3-safety-eval-monitor.md) | Model customization, LM-Eval, NeMo Guardrails, TrustyAI monitoring, drift/bias, and model quality. |
 | [phase-4-supported-config-cross-cutting.md](phase-4-supported-config-cross-cutting.md) | Supported configurations, support status, preview claims, rh-brain narrative alignment, and cross-cutting gaps. |
+| [rhoai-3.4-opportunity-map.md](rhoai-3.4-opportunity-map.md) | Second-pass, opportunity-led review of RHOAI 3.4 features the demo should adopt or explicitly defer. |
 | [remediation-backlog.md](remediation-backlog.md) | Consolidated backlog grouped by priority and demo area. |
 
 ## Rating Model
@@ -40,3 +41,5 @@ Official documentation remains the source of truth:
 The demo strongly covers platform installation, project/RBAC/storage setup, GPU prerequisites, KServe RawDeployment, MaaS, model registry, RAG with Llama Stack and pgvector, LM-Eval, NeMo Guardrails, MCP-based agentic workflows, predictive model serving, MLOps pipelines, MLflow, TrustyAI, and edge deployment patterns.
 
 The largest remaining gaps are Feature Store, AutoML, AutoRAG, full distributed training/data processing, disconnected installation, production API support-tier governance, llm-d, production-grade external databases, and supported-configuration proof beyond the current AWS GPU demo baseline.
+
+The second-pass opportunity map adds a different lens: several 3.4 features are enabled or available on the cluster but not yet demonstrated as product value. The most important next opportunities are MLflow run tracking, MaaS subscriptions/API keys/quotas, product-native Gen AI Playground scenes, EvalHub/RAGAS/Garak evaluation, Model Catalog embedding/tool-calling metadata, optional llm-d distributed inference, and live NeMo Guardrails reconciliation.

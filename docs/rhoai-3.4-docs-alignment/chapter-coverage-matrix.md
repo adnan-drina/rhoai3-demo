@@ -2,6 +2,8 @@
 
 This matrix covers the chapter-level entries in the Red Hat OpenShift AI Self-Managed 3.4 documentation index.
 
+This matrix is coverage-oriented. For the second-pass view of new 3.4 capabilities the demo should adopt or explicitly defer, see [rhoai-3.4-opportunity-map.md](rhoai-3.4-opportunity-map.md).
+
 | Category | Chapter | Official docs | Demo mapping | Rating | Primary gap / improvement |
 |---|---|---|---|---|---|
 | What's New | Release Notes | [Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes) | Root README, Step 02, Step 05, Step 07, Step 09, audit docs | `partially-covered` | Add a release-note traceability table for 3.4 features used/deferred. |
