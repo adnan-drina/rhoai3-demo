@@ -5,7 +5,8 @@
 #   - All credentials via Secrets
 # userConfig overrides only vector_stores.annotation_prompt_params to disable
 # <|file-xxx|> citation markers that LlamaStack injects into model responses.
-# All other rh-dev auto-wiring (persistence, Ragas, safety) is preserved.
+# NeMo Guardrails is deployed separately in Step 09 and called by the chatbot.
+# Other rh-dev auto-wiring such as persistence and Ragas is preserved.
 # MCP tool_groups are registered at runtime via the LlamaStack API.
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag
 apiVersion: llamastack.io/v1alpha1
@@ -115,9 +116,6 @@ spec:
             secretKeyRef:
               name: llamastack-pgvector-secret
               key: PGVECTOR_PASSWORD
-        - name: FMS_ORCHESTRATOR_URL
-          value: "http://guardrails-orchestrator-service.enterprise-rag.svc:8034"
-
       resources:
         requests:
           cpu: 250m

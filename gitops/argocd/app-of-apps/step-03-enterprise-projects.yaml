@@ -21,8 +21,6 @@ spec:
     server: https://kubernetes.default.svc
   # NOTE: OpenShift Groups are created via deploy.sh (not GitOps)
   # because ArgoCD cannot parse user.openshift.io/v1 Group schema
-  # NOTE: MinIO Route is applied via deploy.sh (not GitOps)
-  # due to ArgoCD structured merge diff bug with Routes
   # NOTE: PVC uses WaitForFirstConsumer, treated as Progressing until pod starts
   syncPolicy:
     automated:
@@ -57,3 +55,9 @@ spec:
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec
+    # Routes: OpenShift router controller adds host/status fields
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status

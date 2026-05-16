@@ -21,6 +21,3 @@ spec:
       targetPort: 9001
       protocol: TCP
   type: ClusterIP
-# NOTE: Route is in route.yaml but NOT managed by ArgoCD due to structured merge diff bug.
-# Apply manually: oc apply -f gitops/step-03-enterprise-projects/base/minio/route.yaml
-

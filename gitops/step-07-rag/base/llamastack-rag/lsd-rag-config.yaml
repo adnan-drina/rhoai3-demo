@@ -21,7 +21,6 @@ data:
     - eval
     - inference
     - responses
-    - safety
     - scoring
     - tool_runtime
     - connectors
@@ -129,14 +128,6 @@ data:
           persistence:
             backend: kv_default
             namespace: vector_io::qdrant_remote
-      safety:
-        - provider_id: trustyai_fms
-          provider_type: remote::trustyai_fms
-          module: llama_stack_provider_trustyai_fms==0.3.2
-          config:
-            orchestrator_url: ${env.FMS_ORCHESTRATOR_URL:=}
-            ssl_cert_path: ${env.FMS_SSL_CERT_PATH:=}
-            shields: {}
       responses:
       - provider_id: builtin
         provider_type: inline::builtin

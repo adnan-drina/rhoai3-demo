@@ -98,6 +98,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **PostgreSQL PVC sync wave aligned with Deployment.** The `llamastack-postgres-pvc` PVC uses sync wave `"2"` (same as the Deployment) to avoid the `WaitForFirstConsumer` deadlock where ArgoCD waits for the PVC to bind before creating the pod that triggers binding.
 
+> **Workbench network access is handled by NetworkPolicy, not invalid Notebook fields.** The `Notebook` CR follows the live `kubeflow.org/v1` schema and does not set unsupported `spec.template.metadata`. The `lsd-rag-allow-namespace` NetworkPolicy allows same-namespace access to Llama Stack for workbenches, pipeline pods, and the chatbot.
+
 #### LlamaStack Configuration (RHOAI 3.4 Example D — pgvector with `rh-dev`)
 
 | Env Var | Value / Source | Purpose | RHOAI 3.4 Ref |
@@ -110,7 +112,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
 | `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
 | `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
-| `FMS_ORCHESTRATOR_URL` | Service URL | Guardrails safety (auto-wired by `rh-dev`) | Guardrails docs |
+| `NEMO_GUARDRAILS_URL` | `rag-chatbot` env | Step 09 shield adapter calls NeMo Guardrails directly | Guardrails docs |
 | No `userConfig` | — | `rh-dev` template manages all provider wiring | Recommended for pgvector |
 | PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 
@@ -316,7 +318,7 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 - [RHOAI 3.4 — Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
 - [RHOAI 3.4 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 - [RHOAI 3.4 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
-- [RHOAI 3.4 — Ensuring AI safety with guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety)
+- [RHOAI 3.4 — Deploying NeMo Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/deploying-nemo-guardrails_nemo-guardrails)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
@@ -325,4 +327,4 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 ## Next Steps
 
 - **Step 08**: [Model Evaluation](../step-08-model-evaluation/README.md) — Pre/Post RAG evaluation with LLM-as-Judge
-- **Step 09**: [Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI
+- **Step 09**: [Guardrails](../step-09-guardrails/README.md) — AI safety with TrustyAI-managed NeMo Guardrails

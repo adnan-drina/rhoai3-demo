@@ -60,30 +60,6 @@ fi
 log_success "aipipelines: Managed"
 echo ""
 
-log_step "Creating DSPA MinIO credentials secret..."
-
-ACCESS_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
-SECRET_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
-
-oc create secret generic dspa-minio-credentials \
-    -n "$NAMESPACE" \
-    --from-literal=accesskey="$ACCESS_KEY" \
-    --from-literal=secretkey="$SECRET_KEY" \
-    --dry-run=client -o yaml | oc apply -f -
-
-log_success "dspa-minio-credentials secret ready"
-echo ""
-
-# Step 1b: Ensure anyuid SCC for llamastack-postgres SA
-# The RoleBinding is GitOps-managed (scc-rolebinding.yaml) but we ensure
-# the SA exists before ArgoCD sync to avoid race conditions.
-log_step "Ensuring llamastack-postgres SA has anyuid SCC..."
-
-oc create serviceaccount llamastack-postgres -n "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
-oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n "$NAMESPACE" 2>/dev/null || true
-log_success "llamastack-postgres SA with anyuid SCC ready"
-echo ""
-
 log_step "Deploying Step 07 via ArgoCD..."
 
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"

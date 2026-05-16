@@ -28,11 +28,16 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
-if [[ "$APP_HEALTH" == "Healthy" || "$APP_HEALTH" == "Degraded" ]]; then
-    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' health: $APP_HEALTH (expected for failing ACME pod demo)"
+ACME_0007_REASON=$(oc get pod acme-equipment-0007 -n acme-corp \
+    -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+if [[ "$APP_HEALTH" == "Healthy" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' health: Healthy"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+elif [[ "$APP_HEALTH" == "Degraded" && "$ACME_0007_REASON" == "CrashLoopBackOff" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app health is Degraded only for intentional acme-equipment-0007 CrashLoopBackOff demo state"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${RED}[FAIL]${NC} Argo CD app 'step-10-mcp-integration' health (expected: Healthy or Degraded, got: $APP_HEALTH)"
+    echo -e "${RED}[FAIL]${NC} Argo CD app health unexpected (got: $APP_HEALTH, acme-equipment-0007 reason: ${ACME_0007_REASON:-unknown})"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
@@ -79,6 +84,27 @@ if [[ "$ACME_PODS" -ge 3 ]]; then
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
     echo -e "${YELLOW}[WARN]${NC} ACME equipment pods: $ACME_PODS (expected 3)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+for pod in acme-equipment-0001 acme-equipment-0005; do
+    PHASE=$(oc get pod "$pod" -n acme-corp -o jsonpath='{.status.phase}' 2>/dev/null || echo "NOT_FOUND")
+    if [[ "$PHASE" == "Running" ]]; then
+        echo -e "${GREEN}[PASS]${NC} $pod is Running"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} $pod expected Running, got $PHASE"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+done
+
+ACME_0007_REASON=$(oc get pod acme-equipment-0007 -n acme-corp \
+    -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+if [[ "$ACME_0007_REASON" == "CrashLoopBackOff" ]]; then
+    echo -e "${GREEN}[PASS]${NC} acme-equipment-0007 is intentionally CrashLoopBackOff for the RAG/MCP troubleshooting story"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} acme-equipment-0007 expected CrashLoopBackOff, got ${ACME_0007_REASON:-unknown}"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 

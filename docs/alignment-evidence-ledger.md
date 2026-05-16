@@ -1,7 +1,7 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T07:48:41Z
-**Command:** `./scripts/audit-doc-alignment.sh --component step-07-rag`
+**Generated:** 2026-05-16T08:17:40Z
+**Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
 **rh-brain source:** `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
@@ -71,7 +71,22 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with `kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server --validate=strict -f -`.
+- [WARN] Server dry-run reported existing PVC immutable spec drift, but the matching Argo CD app intentionally ignores PVC `/spec`.
+  Exact warning:
+  The PersistentVolumeClaim "maas-postgres-data" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
+    core.PersistentVolumeClaimSpec{
+        AccessModes:      {"ReadWriteOnce"},
+        Selector:         nil,
+        Resources:        {Requests: {s"storage": {i: {...}, s: "5Gi", Format: "BinarySI"}}},
+  -     VolumeName:       "pvc-75b7c9cc-3c07-4bc7-9c17-c890be84c51c",
+  +     VolumeName:       "",
+  -     StorageClassName: &"gp3-csi",
+  +     StorageClassName: nil,
+        VolumeMode:       &"Filesystem",
+        DataSource:       nil,
+        ... // 2 identical fields
+    }
+
 - [PASS] `oc explain Deployment --api-version=apps/v1`
 - [PASS] `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`
 - [PASS] `oc explain DSCInitialization --api-version=dscinitialization.opendatahub.io/v1`
@@ -121,6 +136,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `oc explain LocalQueue --api-version=kueue.x-k8s.io/v1beta1`
 - [PASS] `oc explain ResourceFlavor --api-version=kueue.x-k8s.io/v1beta1`
 - [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
 - [PASS] `oc explain Namespace --api-version=v1`
 - [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
 - [PASS] `oc explain Secret --api-version=v1`
@@ -262,7 +278,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [WARN] Unpinned `:latest` image references found:
   - gitops/step-07-rag/base/chatbot/chatbot.yaml:59:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest
   - gitops/step-07-rag/base/docling/deployment.yaml:34:          image: quay.io/docling-project/docling-serve:latest
-  - gitops/step-07-rag/base/rag-wb/workbench.yaml:69:          image: alpine/git:latest
+  - gitops/step-07-rag/base/rag-wb/workbench.yaml:65:          image: alpine/git:latest
   - gitops/step-07-rag/base/minio-rag-bucket/init-job.yaml:28:          image: quay.io/minio/mc:latest
   - gitops/step-07-rag/base/ingestion-service/job.yaml:22:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest
 - [PASS] Chatbot example prompts are GitOps-managed in `RAG_QUESTION_SUGGESTIONS` and grouped by RAG/MCP use case.
@@ -274,7 +290,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with `kustomize build gitops/step-07-rag/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
 - [PASS] `oc explain Deployment --api-version=apps/v1`
 - [PASS] `oc explain Job --api-version=batch/v1`
 - [PASS] `oc explain BuildConfig --api-version=build.openshift.io/v1`
@@ -350,10 +366,11 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Schema Verification**
 
 - [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
-- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
-- [PASS] `oc explain GuardrailsOrchestrator --api-version=trustyai.opendatahub.io/v1alpha1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain NemoGuardrails --api-version=trustyai.opendatahub.io/v1alpha1`
 - [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -576,6 +593,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 14 |
+| Notes / deferred checks | 13 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.

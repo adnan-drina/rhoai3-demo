@@ -189,8 +189,22 @@ oc_explain_kind() {
 }
 
 oc_server_dry_run() {
-    local rendered_file="$1"
-    oc --request-timeout="$OC_REQUEST_TIMEOUT" apply --dry-run=server --validate=strict -f "$rendered_file" >/dev/null 2>&1
+    local rendered_file="$1" err_file="${2:-/dev/null}"
+    oc --request-timeout="$OC_REQUEST_TIMEOUT" apply --dry-run=server --validate=strict -f "$rendered_file" >/dev/null 2>"$err_file"
+}
+
+app_ignores_pvc_spec() {
+    local app_path="$1"
+    [[ -n "$app_path" && -f "$app_path" ]] || return 1
+    grep -q 'kind: PersistentVolumeClaim' "$app_path" && grep -q '/spec' "$app_path"
+}
+
+is_pvc_immutable_drift() {
+    local err_file="$1"
+    [[ -s "$err_file" ]] || return 1
+    grep -q 'PersistentVolumeClaim' "$err_file" \
+        && grep -q 'spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims' "$err_file" \
+        && ! grep -Eq 'strict decoding error|unknown field|no matches for kind' "$err_file"
 }
 
 rh_brain_terms_for() {
@@ -410,14 +424,22 @@ while IFS= read -r component; do
         ' "$rendered" | sort -u > "$tmp_dir/$component.kinds"
 
         if [[ "$OC_CLUSTER_AVAILABLE" == "true" ]]; then
-            if oc_server_dry_run "$rendered"; then
+            dry_run_err="$tmp_dir/$component.server-dry-run.err"
+            if oc_server_dry_run "$rendered" "$dry_run_err"; then
                 echo "- [PASS] \`oc apply --dry-run=server --validate=strict -f rendered.yaml\` accepted rendered resources." >> "$schema"
             else
-                if [[ "$STRICT_CLUSTER" == "true" ]]; then
+                if is_pvc_immutable_drift "$dry_run_err" && app_ignores_pvc_spec "$app_path"; then
+                    echo "- [WARN] Server dry-run reported existing PVC immutable spec drift, but the matching Argo CD app intentionally ignores PVC \`/spec\`." >> "$schema"
+                    echo "  Exact warning:" >> "$schema"
+                    awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
+                    warnings=$((warnings + 1))
+                elif [[ "$STRICT_CLUSTER" == "true" ]]; then
                     echo "- [BLOCKED] \`oc apply --dry-run=server --validate=strict -f rendered.yaml\` failed." >> "$schema"
+                    awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
                     blocked=$((blocked + 1))
                 else
                     echo "- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with \`kustomize build $gitops_path | oc apply --dry-run=server --validate=strict -f -\`." >> "$schema"
+                    awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
                     warnings=$((warnings + 1))
                 fi
             fi
