@@ -23,6 +23,18 @@ check "kserve-ovms ServingRuntime exists" \
     "oc get servingruntime kserve-ovms -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "kserve-ovms"
 
+PLATFORM_OVMS_IMAGE=$(oc process -n redhat-ods-applications kserve-ovms \
+    -o jsonpath='{.items[0].spec.containers[0].image}' 2>/dev/null || echo "")
+RUNTIME_OVMS_IMAGE=$(oc get servingruntime kserve-ovms -n "$NAMESPACE" \
+    -o jsonpath='{.spec.containers[0].image}' 2>/dev/null || echo "")
+if [[ -n "$PLATFORM_OVMS_IMAGE" && "$RUNTIME_OVMS_IMAGE" == "$PLATFORM_OVMS_IMAGE" ]]; then
+    echo -e "${GREEN}[PASS]${NC} kserve-ovms image matches the RHOAI 3.4 platform template"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} kserve-ovms image drift: ${RUNTIME_OVMS_IMAGE:-missing}"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
 # --- Model Upload ---
 log_step "Model Upload"
 UPLOAD_JOB_SUCCEEDED=$(oc get job upload-face-model -n minio-storage \

@@ -103,6 +103,20 @@ check "MaaS Gateway programmed" \
 check "MaaS Gateway Authorino TLS bootstrap" \
     "oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.metadata.annotations.security\\.opendatahub\\.io/authorino-tls-bootstrap}'" \
     "true"
+MAAS_GATEWAY_ROUTE=$(oc get route maas-gateway -n openshift-ingress -o jsonpath='{.spec.host}' 2>/dev/null || true)
+if [[ -n "$MAAS_GATEWAY_ROUTE" ]]; then
+    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" "https://${MAAS_GATEWAY_ROUTE}/maas-api/health" 2>/dev/null || echo "000")
+    if [[ "$HTTP_CODE" == "200" ]]; then
+        echo -e "${GREEN}[PASS]${NC} MaaS Gateway route health responds"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} MaaS Gateway route health returned HTTP $HTTP_CODE"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+else
+    echo -e "${RED}[FAIL]${NC} MaaS Gateway route missing"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
 
 # --- Dashboard Access ---
 log_step "Dashboard Access"

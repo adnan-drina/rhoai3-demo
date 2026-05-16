@@ -5,7 +5,8 @@
 # Deploys via ArgoCD:
 #   - Grafana Operator + Instance + 2 Dashboards
 #   - GuideLLM CronJob (daily benchmarks) + Job templates
-#   - Model Benchmarking Workbench
+#   - GuideLLM jobs and dashboards; notebook workbench intentionally omitted
+#     because the MaaS namespace is Kueue-managed for serving workloads.
 # =============================================================================
 set -euo pipefail
 
@@ -117,7 +118,7 @@ echo "  Components deployed:"
 echo "    - Grafana Operator + Instance (anonymous access)"
 echo "    - 2 GrafanaDashboards (vLLM Latency/Throughput/Cache, DCGM GPU Metrics)"
 echo "    - GuideLLM CronJob (daily at 2:00 AM UTC)"
-echo "    - Model Benchmarking Workbench"
+echo "    - No MaaS workbench (Kueue-managed namespace is reserved for serving workloads)"
 echo "    - GuideLLM KFP Pipeline (if DSPA available)"
 echo ""
 echo "  Run a benchmark:"

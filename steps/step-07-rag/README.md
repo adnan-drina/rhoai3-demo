@@ -60,6 +60,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Product-native Playground RAG is shown as experimentation, not the durable knowledge base.** The RHOAI Dashboard Playground can upload files into a playground-scoped vector database and tune chunk length, overlap, and delimiter settings. The durable ACME implementation remains this step's GitOps/KFP/Llama Stack ingestion pipeline because it is repeatable, auditable, and backed by pgvector.
 
+> **Non-human MaaS consumption.** The RHOAI MaaS guide documents that users generate a MaaS API key from the Models as a service endpoint dialog and use that key as the Bearer token for `/v1/models` and `/v1/chat/completions`. For the chatbot, `deploy.sh` performs the same key-management flow with the current OpenShift identity, stores the generated `sk-oai-*` MaaS key in `enterprise-rag/rag-maas-api-key`, and patches `llamastack-vllm-secret`. Runtime calls use the MaaS API key, not an OpenShift user token.
+
 > **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
@@ -114,7 +116,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | `ENABLE_SENTENCE_TRANSFORMERS` | `true` | Inline embeddings (no GPU needed) | Example D |
 | `EMBEDDING_PROVIDER` | `sentence-transformers` | Routes to sentence-transformers (not vllm-embedding) | Required |
 | `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
-| `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
+| `VLLM_URL` | `llamastack-vllm-secret` | MaaS gateway `/v1` endpoint | MaaS docs |
+| `VLLM_API_TOKEN` | runtime-patched by `deploy.sh` from `rag-maas-api-key` | MaaS API key for non-human system access | MaaS API key docs |
 | `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
 | `NEMO_GUARDRAILS_URL` | `https://nemo-guardrails.enterprise-rag.svc.cluster.local` | Step 09 shield adapter calls the NeMo Guardrails OpenAI-compatible `/v1/chat/completions` API over the operator-created HTTPS service | Guardrails docs |
 | No `userConfig` | — | `rh-dev` template manages all provider wiring | Recommended for pgvector |
@@ -198,6 +201,22 @@ oc exec deploy/lsd-rag -n enterprise-rag -- \
 | Asset database lookup | Agent-based + `database-mcp` | `Fetch the equipment name for pod acme-equipment-0007` |
 
 > The examples intentionally avoid Slack-send actions. Slack remains covered by the Step 10 MCP flow, but the chatbot browser regression suite does not trigger external side effects.
+
+### Gen AI Studio Prompts
+
+> RHOAI 3.4 adds reusable system instructions in Gen AI Studio. In this demo, the prompt is no longer hidden inside a chatbot code path only; it becomes a named, versioned artifact that domain experts can review in the product UI and that Step 08 can evaluate through MLflow.
+
+1. Open the RHOAI Dashboard -> **Gen AI Studio** -> **Prompts**
+2. Create these prompt templates from [`prompts/`](prompts/):
+   - `acme-rag-direct`
+   - `acme-rag-agentic`
+   - `acme-rag-troubleshooting`
+   - `acme-rag-guarded`
+3. In the Playground, load `acme-rag-agentic` and ask: *"What products does ACME Corp manufacture?"*
+
+**Expect:** The Playground uses a saved prompt version from the project-scoped MLflow prompt store. The answer remains grounded in ACME documents, and the prompt can be revised without changing the chatbot image.
+
+> The Git copy of each prompt gives us reviewable workshop source. The product copy in Gen AI Studio gives presenters the Red Hat-aligned UI story: prompt reuse, versioning, commit messages, and collaboration before Step 08 records the demo promotion label in MLflow evaluation metadata.
 
 ### RAG Chatbot — Direct Mode
 
@@ -338,10 +357,12 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 - [RHOAI 3.4 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 - [RHOAI 3.4 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
 - [RHOAI 3.4 — Deploying NeMo Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/deploying-nemo-guardrails_nemo-guardrails)
+- [RHOAI 3.4 — Reusable system instructions in Gen AI Studio](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/reusable-system-instructions_rhoai-user)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
+- `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Prompt Registry for LLMs & Agents.md`
 
 ## Next Steps
 

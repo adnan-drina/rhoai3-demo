@@ -54,6 +54,7 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | RHOAI | Model observability and governance | Used |
 | RHOAI | AI pipelines (KFP v2) | Used |
 | RHOAI | MLflow tracking server | Technology Preview; used when Step 12 MLflow server is present |
+| RHOAI | Gen AI Studio Prompts | Technology Preview; prompt identity is logged as MLflow run metadata |
 | RHOAI | Optimized model serving (judge model) | Used |
 
 #### Scoring Scale (RAG Evaluation)
@@ -85,6 +86,8 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 > **MLflow evidence for enterprise RAG.** RHOAI 3.4 documents MLflow as the central tracking server for parameters, metrics, and artifacts. The `log_rag_mlflow` component records the same RAG evaluation summary that appears in the Dashboard into an `enterprise-rag` MLflow experiment. This gives teams before/after comparison across prompt, model, retriever, vector-store, and guardrail changes.
 
+> **Prompt versions are evaluation inputs.** RHOAI 3.4 Gen AI Studio stores reusable system instructions as project-scoped Prompts. Step 08 accepts prompt metadata (`PROMPT_NAME`, `PROMPT_VERSION`, `PROMPT_ALIAS`, `PROMPT_SOURCE`, `PROMPT_COMMIT_MESSAGE`) and logs it to MLflow with the scenario quality metrics. `PROMPT_ALIAS` is a demo promotion label, not a required RHOAI UI field. This keeps prompt iteration auditable without claiming direct runtime loading from the Prompt Registry.
+
 > **EvalHub alignment without overclaiming.** RHOAI 3.4 also documents EvalHub with MLflow experiment tracking for evaluation jobs. This step does not deploy EvalHub yet; it implements the same tracking intent directly from the KFP RAG evaluation pipeline and keeps EvalHub as a follow-up platform enhancement.
 
 > **Configurable sample limits:** LMEvalJob templates default to 50 samples per task for fast demo runs (~10 min). Increase via CLI (`run-lmeval.sh model 200`) or remove for full benchmarks.
@@ -108,6 +111,14 @@ Additional operations:
 ./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]   # KFP pipeline (tracked in DSPA)
 ./steps/step-08-model-evaluation/run-eval-report.sh          # Quick eval via lsd-rag pod
 ./steps/step-07-rag/run-batch-ingestion.sh acme --eval       # Trigger eval after ingestion
+
+# Evaluate a Gen AI Studio prompt version
+PROMPT_NAME=acme-rag-agentic \
+PROMPT_VERSION=v1 \
+PROMPT_ALIAS=staging \
+PROMPT_SOURCE=rhoai-gen-ai-studio-prompts \
+PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
+./steps/step-08-model-evaluation/run-rag-eval.sh prompt-agentic-v1
 
 # Standard Model Evaluation (LM-Eval)
 ./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent      # 50 samples (~10 min)
@@ -191,7 +202,7 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 ./steps/step-08-model-evaluation/run-rag-eval.sh
 ```
 
-**Expect:** A 4-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary` → `log_rag_mlflow`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO. When the MLflow server is present, `log_rag_mlflow` creates an `enterprise-rag` run with metrics, params, tags, and compact JSON evidence artifacts.
+**Expect:** A 4-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary` → `log_rag_mlflow`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO. When the MLflow server is present, `log_rag_mlflow` creates an `enterprise-rag` run with only per-scenario quality metrics, params, tags, and compact JSON evidence artifacts.
 
 > The evaluation pipeline is a Kubeflow Pipeline — tracked, versioned, and visible in the RHOAI Dashboard. Every run is reproducible and auditable, not a one-off script execution.
 
@@ -207,12 +218,14 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 2. Check the MLflow experiment:
    - Experiment: `enterprise-rag`
    - Run name: `rag-eval-<run_id>`
+   - Metrics: one quality percentage per scenario/mode, such as `scenario_ACME_Corporate_Post-RAG_Evaluation_post-rag_quality_pct`
+   - Params: `prompt_name`, `prompt_version`, `prompt_alias`, `prompt_source`, `prompt_commit_message`
    - Tags: `rhoai.demo.step=08`, `rhoai.demo.capability=enterprise-rag-evaluation`
-   - Artifacts: `rag-eval-summary.json`, `rag-eval-context.json`, `rag-eval-references.json`
+   - Artifacts: `rag-eval-summary.json`, `rag-eval-context.json`, `rag-eval-references.json`, including the aggregate rollup for audit review
 
 **Expect:** A clear quality gap — ~20% without documents to ~90% with them.
 
-> Every evaluation run is versioned and stored in object storage. The summary shows the quality improvement from RAG — the measurable proof that connecting your model to your data transforms answer quality.
+> Every evaluation run is versioned and stored in object storage. MLflow keeps the scenario-level evidence easy to compare across runs, while the aggregate RAG improvement remains in the pipeline summary and JSON artifacts.
 
 ### Scoring Breakdown
 
@@ -355,6 +368,7 @@ If the MLflow server is not deployed yet, deploy Step 12 and rerun the RAG evalu
 - [RHOAI 3.4 — Evaluating Large Language Models (LM-Eval)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-large-language-models_evaluate)
 - [RHOAI 3.4 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
 - [RHOAI 3.4 — Working with MLflow](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/index)
+- [RHOAI 3.4 — Reusable system instructions in Gen AI Studio](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/reusable-system-instructions_rhoai-user)
 - [RHOAI 3.4 — Configure MLflow experiment tracking for EvalHub evaluation jobs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-llms-with-evalhub_evaluate)
 - [RHOAI 3.4 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
 - [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — KFP pipeline pattern for LlamaStack scoring
@@ -364,6 +378,7 @@ If the MLflow server is not deployed yet, deploy Step 12 and rerun the RAG evalu
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Synthetic data for RAG evaluation Why your RAG system needs better testing.md`
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Evaluation Quickstart  MLflow AI Platform.md`
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Evaluating (Production) Traces  MLflow AI Platform 1.md`
+- `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Prompt Registry for LLMs & Agents.md`
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Build resilient guardrails for OpenClaw AI agents on Kubernetes 1.md`
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)

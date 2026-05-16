@@ -59,7 +59,7 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 > **Pre-trained model fallback.** A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
 
-> **Dashboard template annotations on ServingRuntime.** The RHOAI Dashboard identifies runtimes by matching `opendatahub.io/template-name` and `opendatahub.io/template-display-name` annotations against platform templates in `redhat-ods-applications`. Without these, runtimes show as "Unknown Serving Runtime" in the Model Deployments view. The `kserve-ovms` ServingRuntime includes `template-name: kserve-ovms` and `template-display-name: OpenVINO Model Server` to match the platform template.
+> **Dashboard template annotations on ServingRuntime.** The RHOAI Dashboard identifies runtimes by matching `opendatahub.io/template-name` and `opendatahub.io/template-display-name` annotations against platform templates in `redhat-ods-applications`. Without these, runtimes show as "Unknown Serving Runtime" in the Model Deployments view. The `kserve-ovms` ServingRuntime includes `template-name: kserve-ovms` and `template-display-name: OpenVINO Model Server` to match the platform template. Validation also compares the GitOps image digest with the live `kserve-ovms` platform template, so a RHOAI upgrade surfaces image drift immediately.
 
 </details>
 
@@ -215,7 +215,7 @@ oc get secret storage-config -n enterprise-mlops
 
 ### kserve-ovms ServingRuntime image not pulling
 
-**Root Cause:** The placeholder image digest in the ServingRuntime YAML needs to be replaced with the actual image from your cluster.
+**Root Cause:** The ServingRuntime image digest in GitOps is behind the current `kserve-ovms` platform template.
 
 **Solution:**
 ```bash
@@ -223,7 +223,8 @@ oc get secret storage-config -n enterprise-mlops
 oc process -n redhat-ods-applications kserve-ovms \
   -o jsonpath='{.items[0].spec.containers[0].image}'
 
-# Update the ServingRuntime manifest with the correct digest
+# Update gitops/step-11-face-recognition/base/serving-runtime/kserve-ovms.yaml
+# and rerun ./steps/step-11-face-recognition/validate.sh
 ```
 
 ### Training notebook fails with "No photos found"

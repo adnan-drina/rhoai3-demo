@@ -37,6 +37,9 @@ fi
 check "NeMo ConfigMap exists" \
     "oc get configmap nemo-guardrails-config -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "nemo-guardrails-config"
+check "NeMo config uses MaaS gateway" \
+    "oc get configmap nemo-guardrails-config -n $NAMESPACE -o jsonpath='{.data.config\\.yaml}'" \
+    "maas-default-gateway"
 
 ROUTE_HOST=$(oc get route nemo-guardrails -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
 if [[ -n "$ROUTE_HOST" ]]; then

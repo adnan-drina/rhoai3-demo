@@ -1,0 +1,64 @@
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: enterprise-demo-subscription
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/name: enterprise-demo-subscription
+    app.kubernetes.io/component: maas-governance
+    app.kubernetes.io/part-of: llm-serving
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  owner:
+    users:
+      - kube:admin
+      - ai-admin
+      - ai-developer
+    groups:
+      - name: rhoai-admins
+      - name: rhoai-users
+  priority: 100
+  modelRefs:
+    - name: granite-8b-agent
+      namespace: maas
+      tokenRateLimits:
+        - limit: 1000000
+          window: 1h
+    - name: mistral-3-bf16
+      namespace: maas
+      tokenRateLimits:
+        - limit: 1000000
+          window: 1h
+  tokenMetadata:
+    organizationId: rhoai3-demo
+    costCenter: enterprise-ai
+    labels:
+      environment: demo
+      project: rhoai3-demo
+---
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: enterprise-demo-policy
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/name: enterprise-demo-policy
+    app.kubernetes.io/component: maas-governance
+    app.kubernetes.io/part-of: llm-serving
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  subjects:
+    users:
+      - kube:admin
+      - ai-admin
+      - ai-developer
+    groups:
+      - name: rhoai-admins
+      - name: rhoai-users
+  modelRefs:
+    - name: granite-8b-agent
+      namespace: maas
+    - name: mistral-3-bf16
+      namespace: maas

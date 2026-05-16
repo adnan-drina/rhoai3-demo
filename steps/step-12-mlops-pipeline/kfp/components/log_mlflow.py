@@ -17,6 +17,11 @@ def log_mlflow_run(
     model_name: str,
     version: str,
     minio_endpoint: str,
+    epochs: int,
+    mAP_threshold: float,
+    max_user_photos: int,
+    max_unknown_photos: int,
+    num_hf_portraits: int,
     mlflow_tracking_uri: str = "https://mlflow.redhat-ods-applications.svc:8443",
     mlflow_workspace: str = "enterprise-mlops",
 ) -> str:
@@ -57,6 +62,19 @@ def log_mlflow_run(
                 hasher.update(chunk)
         model_sha256 = hasher.hexdigest()
 
+    threshold = float(metrics_data.get("mAP_threshold", mAP_threshold))
+    profile = "smoke" if epochs <= 5 or threshold <= 0.0 else "quality-gated"
+    metrics_data.update({
+        "mAP50_pct": round(100.0 * float(metrics_data.get("mAP50", mAP50)), 4),
+        "mAP50_95_pct": round(100.0 * float(metrics_data.get("mAP50_95", 0.0)), 4),
+        "adnan_mAP50_pct": round(100.0 * float(metrics_data.get("adnan_mAP50", 0.0)), 4),
+        "mAP_threshold_pct": round(100.0 * threshold, 4),
+        "quality_gate_margin_pct": round(
+            100.0 * float(metrics_data.get("quality_gate_margin", float(mAP50) - threshold)),
+            4,
+        ),
+    })
+
     numeric_metrics = {}
     for key, value in metrics_data.items():
         try:
@@ -69,6 +87,12 @@ def log_mlflow_run(
         "version": version,
         "onnx_path": onnx_path,
         "model_size_bytes": str(model_size_bytes),
+        "training_profile": profile,
+        "epochs": str(epochs),
+        "mAP_threshold": str(threshold),
+        "max_user_photos": str(max_user_photos),
+        "max_unknown_photos": str(max_unknown_photos),
+        "num_hf_portraits": str(num_hf_portraits),
     }
     if model_sha256:
         params["model_sha256"] = model_sha256
@@ -93,6 +117,7 @@ def log_mlflow_run(
         "rhoai.demo.model_name": model_name,
         "rhoai.demo.version": version,
         "rhoai.demo.quality_gate": "passed",
+        "rhoai.demo.training_profile": profile,
     }
 
     client = MlflowClient(tracking_uri=mlflow_tracking_uri)

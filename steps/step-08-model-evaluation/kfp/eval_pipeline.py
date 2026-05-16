@@ -67,6 +67,11 @@ def rag_eval_pipeline(
     run_id: str = "eval",
     minio_console_url: str = "",
     mlflow_tracking_uri: str = "https://mlflow.redhat-ods-applications.svc:8443",
+    prompt_name: str = "acme-rag-agentic",
+    prompt_version: str = "v1",
+    prompt_alias: str = "staging",
+    prompt_source: str = "rhoai-gen-ai-studio-prompts",
+    prompt_commit_message: str = "Initial agentic RAG prompt",
     enable_mlflow_tracking: bool = True,
 ):
     # --- Step 1: Discover Tests ---
@@ -101,6 +106,11 @@ def rag_eval_pipeline(
         llamastack_url=llamastack_url,
         minio_console_url=minio_console_url,
         mlflow_tracking_uri=mlflow_tracking_uri,
+        prompt_name=prompt_name,
+        prompt_version=prompt_version,
+        prompt_alias=prompt_alias,
+        prompt_source=prompt_source,
+        prompt_commit_message=prompt_commit_message,
         enable_mlflow_tracking=enable_mlflow_tracking,
     )
     mlflow.after(report)

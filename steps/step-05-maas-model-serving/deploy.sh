@@ -111,6 +111,36 @@ oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${STEP_NAME}.yaml"
 log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
+log_step "Configuring MaaS model publication..."
+
+for model in granite-8b-agent mistral-3-bf16; do
+    for attempt in $(seq 1 24); do
+        if oc get maasmodelref "$model" -n "$NAMESPACE" &>/dev/null; then
+            break
+        fi
+        sleep 5
+    done
+
+    route_host="$(oc get route "$model" -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)"
+    if [[ -z "$route_host" ]]; then
+        log_warn "  Route for ${model} not available yet — MaaSModelRef will be patched during validation/deploy retry"
+        continue
+    fi
+
+    oc patch externalmodel "$model" -n "$NAMESPACE" --type merge \
+        -p "{\"spec\":{\"endpoint\":\"${route_host}\"}}" >/dev/null 2>&1 || true
+    oc patch maasmodelref "$model" -n "$NAMESPACE" --type merge \
+        -p "{\"spec\":{\"endpointOverride\":\"https://${route_host}\"}}" >/dev/null 2>&1 || true
+    log_success "${model} published for MaaS through route ${route_host}"
+done
+
+if oc get route maas-gateway -n openshift-ingress &>/dev/null; then
+    log_success "MaaS gateway route: https://$(oc get route maas-gateway -n openshift-ingress -o jsonpath='{.spec.host}')"
+else
+    log_warn "MaaS gateway route not found — deploy step-02 to expose system API key creation"
+fi
+echo ""
+
 log_step "Applying AI Asset labels for GenAI Playground..."
 
 MODELS="mistral-3-bf16 granite-8b-agent"

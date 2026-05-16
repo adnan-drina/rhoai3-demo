@@ -6,7 +6,6 @@ kind: Kustomization
 resources:
   - grafana-operator/
   - guidellm/
-  - model-benchmarking-wb/
 
 # Labels are applied directly in individual manifests (not commonLabels)
 # to avoid Service selector mismatch issues.

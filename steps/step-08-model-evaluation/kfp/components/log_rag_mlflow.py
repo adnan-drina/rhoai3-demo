@@ -17,6 +17,11 @@ def log_rag_mlflow_component(
     run_id: str,
     llamastack_url: str,
     minio_console_url: str,
+    prompt_name: str = "acme-rag-agentic",
+    prompt_version: str = "v1",
+    prompt_alias: str = "staging",
+    prompt_source: str = "rhoai-gen-ai-studio-prompts",
+    prompt_commit_message: str = "Initial agentic RAG prompt",
     mlflow_tracking_uri: str = "https://mlflow.redhat-ods-applications.svc:8443",
     enable_mlflow_tracking: bool = True,
 ) -> str:
@@ -46,45 +51,35 @@ def log_rag_mlflow_component(
     def safe_key(value: str) -> str:
         return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_")[:180] or "unknown"
 
-    def quality_counts(mode: str) -> tuple[int, int]:
-        good = 0
-        total = 0
-        for item in summary:
-            if item.get("mode") != mode:
-                continue
-            scores = item.get("scores", {})
-            good += int(scores.get("A", 0)) + int(scores.get("B", 0))
-            total += int(item.get("tests", 0))
-        return good, total
-
-    pre_good, pre_total = quality_counts("pre-rag")
-    post_good, post_total = quality_counts("post-rag")
-
-    metrics_data: dict[str, float] = {
+    metrics_data: dict[str, float] = {}
+    rollup: dict[str, float] = {
         "scenarios": float(len(summary)),
         "total_tests": float(sum(int(item.get("tests", 0)) for item in summary)),
-        "pre_rag_good_answers": float(pre_good),
-        "pre_rag_total_answers": float(pre_total),
-        "post_rag_good_answers": float(post_good),
-        "post_rag_total_answers": float(post_total),
     }
-    if pre_total:
-        metrics_data["pre_rag_quality_pct"] = round(100.0 * pre_good / pre_total, 4)
-    if post_total:
-        metrics_data["post_rag_quality_pct"] = round(100.0 * post_good / post_total, 4)
-    if pre_total and post_total:
-        metrics_data["rag_improvement_pp"] = round(
-            metrics_data["post_rag_quality_pct"] - metrics_data["pre_rag_quality_pct"],
-            4,
-        )
-
     for item in summary:
         tests = int(item.get("tests", 0))
         scores = item.get("scores", {})
         good = int(scores.get("A", 0)) + int(scores.get("B", 0))
+        mode = safe_key(item.get("mode", "unknown"))
+        rollup[f"{mode}_good_answers"] = rollup.get(f"{mode}_good_answers", 0.0) + float(good)
+        rollup[f"{mode}_total_answers"] = rollup.get(f"{mode}_total_answers", 0.0) + float(tests)
         if tests:
             metric_name = f"scenario_{safe_key(item.get('scenario', 'unknown'))}_{safe_key(item.get('mode', 'unknown'))}_quality_pct"
             metrics_data[metric_name] = round(100.0 * good / tests, 4)
+
+    for mode in ("pre-rag", "post-rag"):
+        key = safe_key(mode)
+        total = rollup.get(f"{key}_total_answers", 0.0)
+        if total:
+            rollup[f"{key}_quality_pct"] = round(
+                100.0 * rollup.get(f"{key}_good_answers", 0.0) / total,
+                4,
+            )
+    if rollup.get("pre-rag_total_answers") and rollup.get("post-rag_total_answers"):
+        rollup["rag_improvement_pp"] = round(
+            rollup.get("post-rag_quality_pct", 0.0) - rollup.get("pre-rag_quality_pct", 0.0),
+            4,
+        )
 
     os.environ.setdefault("MLFLOW_TRACKING_URI", mlflow_tracking_uri)
     os.environ.setdefault("MLFLOW_TRACKING_AUTH", "kubernetes-namespaced")
@@ -108,12 +103,19 @@ def log_rag_mlflow_component(
         "rhoai.demo.candidate_model": "granite-8b-agent",
         "rhoai.demo.judge_model": "mistral-3-bf16",
         "rhoai.demo.evidence": "pre-post-rag-quality",
+        "rhoai.demo.prompt_name": prompt_name,
+        "rhoai.demo.prompt_alias": prompt_alias,
         "rhoai.docs.rhoai34": "evaluating-rag-systems-with-ragas,working-with-mlflow",
-        "rh-brain.pattern": "rag-evaluation-plus-mlflow-tracking",
+        "rh-brain.pattern": "rag-evaluation-plus-mlflow-prompt-registry",
     }
     params = {
         "run_id": run_id,
         "llamastack_url": llamastack_url,
+        "prompt_name": prompt_name,
+        "prompt_version": prompt_version,
+        "prompt_alias": prompt_alias,
+        "prompt_source": prompt_source,
+        "prompt_commit_message": prompt_commit_message,
         "candidate_model": "granite-8b-agent",
         "judge_model": "mistral-3-bf16",
         "evaluation_mode": "pre-rag-vs-post-rag",
@@ -133,7 +135,15 @@ def log_rag_mlflow_component(
         "run_id": run_id,
         "experiment_name": experiment_name,
         "run_name": run_name,
+        "prompt": {
+            "name": prompt_name,
+            "version": prompt_version,
+            "alias": prompt_alias,
+            "source": prompt_source,
+            "commit_message": prompt_commit_message,
+        },
         "metrics": metrics_data,
+        "rollup": rollup,
         "params": params,
         "tags": tags,
     }, indent=2, sort_keys=True), encoding="utf-8")
@@ -141,11 +151,13 @@ def log_rag_mlflow_component(
         "official_docs": [
             "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate",
             "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/index",
+            "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/reusable-system-instructions_rhoai-user",
         ],
         "rh_brain_sources": [
             "raw/Synthetic data for RAG evaluation Why your RAG system needs better testing.md",
             "raw/Evaluation Quickstart  MLflow AI Platform.md",
             "raw/Evaluating (Production) Traces  MLflow AI Platform 1.md",
+            "raw/Prompt Registry for LLMs & Agents.md",
             "raw/Build resilient guardrails for OpenClaw AI agents on Kubernetes 1.md",
         ],
     }, indent=2, sort_keys=True), encoding="utf-8")

@@ -9,8 +9,9 @@ This step moves LLM serving out of the old shared project model and into `maas`,
 - The dashboard exposes Model Catalog, Model Registry, GenAI Studio, MaaS, MLflow, and Kueue controls.
 - `maas` is the only Kueue-managed workload namespace in this slice.
 - InferenceServices carry `kueue.x-k8s.io/queue-name: maas-default`.
+- `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy` publish the running models for governed MaaS consumption.
 
-MaaS governance resources are treated as verified-GitOps only. The live cluster exposes MaaS CRDs such as `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`; this first remediation batch does not commit them until the supported binding from the active KServe `InferenceService` endpoints to MaaS model references is documented and schema-verified. The demo uses the supported dashboard/API workflow and records the GitOps gap instead of inventing manifests.
+MaaS model publication uses the installed RHOAI 3.4 CRDs. The model servers still run as KServe `InferenceService` resources, so this step uses `ExternalModel` plus `MaaSModelRef` as a bridge and patches the cluster-generated route hosts during `deploy.sh`. The follow-on cleanup is to move the serving resources to `LLMInferenceService` once the S3-backed Mistral path is fully validated.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/OpenShift AI vLLM and llm-d Inference Baseline.md` and `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/A guide to Models-as-a-Service.md`. API correctness stays pinned to official RHOAI 3.4 and OCP 4.20 docs.
 
@@ -24,6 +25,7 @@ MaaS Model Serving
 ├── vLLM ServingRuntime
 ├── granite-8b-agent InferenceService      → 1 GPU, OCI ModelCar, FP8
 ├── mistral-3-bf16 InferenceService        → 4 GPUs, S3/MinIO, BF16
+├── MaaSModelRefs + subscription           → governed API key access
 ├── deploy.sh upload helper                → one-shot Mistral sync into MinIO
 ├── maas-default LocalQueue                → Kueue admission for MaaS workloads
 └── enterprise-ai-registry links           → model/version metadata
@@ -39,9 +41,9 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 <details>
 <summary>Design Decisions</summary>
 
-> **MaaS namespace boundary:** LLM runtime ownership is separated from RAG and MLOps workloads. RAG consumers call `*.maas.svc.cluster.local` endpoints, but do not own serving runtime resources.
+> **MaaS namespace boundary:** LLM runtime ownership is separated from RAG and MLOps workloads. RAG consumers use MaaS API keys and the MaaS gateway, but do not own serving runtime resources.
 
-> **Verified GitOps for MaaS governance:** RHOAI 3.4 release notes classify MaaS as Generally Available, while some MaaS subfeatures remain Technology Preview or Developer Preview. This repo only commits MaaS governance resources that are documented and schema-verified against the installed CRDs. Subscription-plan and publish-endpoint resources remain documented/deferred until the KServe-to-MaaS binding is explicit enough for repeatable GitOps.
+> **Verified GitOps for MaaS governance:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview. This repo commits only installed, schema-verified MaaS CRDs (`ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`) and validates them with `oc explain` and live API-key calls.
 
 > **Kueue on MaaS only:** Queue enforcement applies only to `maas`; every GitOps-managed model-serving workload in this namespace is labeled for `maas-default`.
 
@@ -75,6 +77,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Runtime | vLLM `ServingRuntime` exists in `maas` |
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
 | AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true` |
+| MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |
 | Registry linkage | deployed models have model registry labels after `deploy.sh` linking |
 | Playground | deployed model appears in GenAI Playground / AI assets |
 
@@ -82,7 +85,9 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 oc get localqueue maas-default -n maas
 oc get servingruntime -n maas
 oc get inferenceservice -n maas
-oc get inferenceservice -n maas -o custom-columns=NAME:.metadata.name,DASHBOARD:.metadata.labels.opendatahub\.io/dashboard,GENAI:.metadata.labels.opendatahub\.io/genai-asset
+oc get inferenceservice -n maas -o custom-columns=NAME:.metadata.name,DASHBOARD:.metadata.labels.opendatahub\\.io/dashboard,GENAI:.metadata.labels.opendatahub\\.io/genai-asset
+oc get maasmodelref -n maas
+oc get maassubscription,maasauthpolicy -n models-as-a-service
 oc get pods -n maas -l serving.kserve.io/inferenceservice -o wide
 ```
 
@@ -97,7 +102,7 @@ Then open GenAI Studio and select a running model. The user experience is simple
 - Model metadata comes from the enterprise registry.
 - Serving is backed by vLLM/KServe.
 - GPU placement is explicit through hardware profiles and node selectors.
-- MaaS is enabled for governed publishing and consumption.
+- MaaS is enabled for governed publishing and API-key consumption.
 - Kueue admission is scoped to this serving namespace.
 
 For API validation:

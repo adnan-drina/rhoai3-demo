@@ -199,6 +199,30 @@ except:
             VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
         fi
     done
+
+    # --- MaaS-backed inference ---
+    log_step "MaaS-backed Inference"
+    VLLM_URL=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- sh -c 'printf "%s" "$VLLM_URL"' 2>/dev/null || true)
+    if [[ "$VLLM_URL" == *"maas-default-gateway"* ]]; then
+        echo -e "${GREEN}[PASS]${NC} LlamaStack VLLM_URL uses MaaS gateway"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} LlamaStack VLLM_URL does not use MaaS gateway (${VLLM_URL:-empty})"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+
+    CHAT_CODE=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+        curl -s -o /tmp/lsd-maas-chat.json -w "%{http_code}" \
+        -H "Content-Type: application/json" \
+        -d '{"model":"vllm-inference/granite-8b-agent","messages":[{"role":"user","content":"Reply with ready"}],"max_tokens":8}' \
+        http://localhost:8321/v1/chat/completions 2>/dev/null || echo "000")
+    if [[ "$CHAT_CODE" == "200" ]]; then
+        echo -e "${GREEN}[PASS]${NC} LlamaStack chat completion succeeds through MaaS"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} LlamaStack MaaS chat completion returned HTTP $CHAT_CODE"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
 else
     echo -e "${RED}[FAIL]${NC} lsd-rag pod not found"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))

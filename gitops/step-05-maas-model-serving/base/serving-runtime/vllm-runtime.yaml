@@ -1,9 +1,9 @@
-# Uses the SAME image and configuration as RHOAI 3.4 platform-provided vllm-cuda-runtime-template.
+# Uses the image from the RHOAI 3.4 platform-provided LLMInferenceServiceConfig.
 # Image: vLLM v0.13.0 (RHOAI 3.4)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/
 # To verify alignment with the platform default:
-#   oc get template vllm-cuda-runtime-template -n redhat-ods-applications \
-#     -o jsonpath='{.objects[0].spec.containers[0].image}'
+#   oc get llminferenceserviceconfig v3-4-0-kserve-config-llm-template \
+#     -n redhat-ods-applications -o jsonpath='{.spec.template.containers[0].image}'
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
@@ -32,7 +32,7 @@ spec:
   containers:
     - name: kserve-container
       # RHOAI 3.4 default vLLM image (v0.13.0)
-      image: registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:ec799bb5eeb7e25b4b25a8917ab5161da6b6f1ab830cbba61bba371cffb0c34d
+      image: registry.redhat.io/rhaii/vllm-cuda-rhel9@sha256:ad06abf3bb5235ebb5b2df84cd1b9fd09e823f0ff2eebfc82bb4590275ccfe0b
       args:
         - --port=8080
         - --model=/mnt/models

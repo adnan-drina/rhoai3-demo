@@ -185,10 +185,15 @@ def prepare_dataset(
     metrics.log_metric("user_photos", len(user_photos))
     metrics.log_metric("unknown_photos", len(unknown_photos))
 
-    # Record dataset artifact for ML lineage tracking
-    dataset.uri = str(DATASET_DIR / "data.yaml")
-    dataset.metadata["train_images"] = total["train"]
-    dataset.metadata["val_images"] = total["val"]
-    dataset.metadata["classes"] = ["adnan", "unknown_face"]
+    # Record dataset artifact for ML lineage tracking. Write to the KFP artifact
+    # path so the launcher uploads it to the artifact store; setting dataset.uri
+    # to /shared-data would create a non-clickable URI in the Dashboard.
+    if dataset is not None:
+        import shutil
+
+        shutil.copy2(DATASET_DIR / "data.yaml", dataset.path)
+        dataset.metadata["train_images"] = total["train"]
+        dataset.metadata["val_images"] = total["val"]
+        dataset.metadata["classes"] = ["adnan", "unknown_face"]
 
     return total["train"] + total["val"]

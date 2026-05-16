@@ -1,8 +1,8 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T13:24:13Z
-**Command:** `./scripts/audit-doc-alignment.sh --base 1899185`
-**Base ref:** `1899185`
+**Generated:** 2026-05-16T15:25:47Z
+**Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
+**Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
 **rh-brain source:** `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
 
@@ -49,7 +49,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **rh-brain Research Sources**
 
 - `rh-brain: raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md`
-- `rh-brain: raw/Customize Models for Gen AI and Agentic AI Applications  Red Hat OpenShift AI Self-Managed  3.4.md`
+- `rh-brain: raw/Chapter 9. Reusable system instructions  Experimenting with models in the gen AI playground  Red Hat OpenShift AI Self-Managed  3.4.md`
 
 ### step-02-rhoai
 
@@ -74,18 +74,18 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [WARN] Server dry-run reported existing PVC immutable spec drift, but the matching Argo CD app intentionally ignores PVC `/spec`.
   Exact warning:
   The PersistentVolumeClaim "maas-postgres-data" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
-    core.PersistentVolumeClaimSpec{
-        AccessModes:      {"ReadWriteOnce"},
-        Selector:         nil,
-        Resources:        {Requests: {s"storage": {i: {...}, s: "5Gi", Format: "BinarySI"}}},
-  -     VolumeName:       "pvc-75b7c9cc-3c07-4bc7-9c17-c890be84c51c",
-  +     VolumeName:       "",
-  -     StorageClassName: &"gp3-csi",
-  +     StorageClassName: nil,
-        VolumeMode:       &"Filesystem",
-        DataSource:       nil,
-        ... // 2 identical fields
-    }
+    core.PersistentVolumeClaimSpec{
+        AccessModes:      {"ReadWriteOnce"},
+        Selector:         nil,
+        Resources:        {Requests: {s"storage": {i: {...}, s: "5Gi", Format: "BinarySI"}}},
+  -     VolumeName:       "pvc-75b7c9cc-3c07-4bc7-9c17-c890be84c51c",
+  +     VolumeName:       "",
+  -     StorageClassName: &"gp3-csi",
+  +     StorageClassName: nil,
+        VolumeMode:       &"Filesystem",
+        DataSource:       nil,
+        ... // 2 identical fields
+    }
 
 - [PASS] `oc explain Deployment --api-version=apps/v1`
 - [PASS] `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`
@@ -95,6 +95,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `oc explain OdhDashboardConfig --api-version=opendatahub.io/v1alpha`
 - [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
 - [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
+- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
 - [PASS] `oc explain Auth --api-version=services.platform.opendatahub.io/v1alpha1`
 - [PASS] `oc explain Namespace --api-version=v1`
 - [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
@@ -104,7 +105,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **rh-brain Research Sources**
 
 - `rh-brain: raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md`
-- `rh-brain: raw/Customize Models for Gen AI and Agentic AI Applications  Red Hat OpenShift AI Self-Managed  3.4.md`
+- `rh-brain: raw/Chapter 9. Reusable system instructions  Experimenting with models in the gen AI playground  Red Hat OpenShift AI Self-Managed  3.4.md`
 
 ### step-03-enterprise-projects
 
@@ -145,7 +146,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **rh-brain Research Sources**
 
 - `rh-brain: raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md`
-- `rh-brain: raw/Customize Models for Gen AI and Agentic AI Applications  Red Hat OpenShift AI Self-Managed  3.4.md`
+- `rh-brain: raw/Chapter 9. Reusable system instructions  Experimenting with models in the gen AI playground  Red Hat OpenShift AI Self-Managed  3.4.md`
 
 ### step-04-model-registry
 
@@ -182,7 +183,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **rh-brain Research Sources**
 
 - `rh-brain: raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md`
-- `rh-brain: raw/Customize Models for Gen AI and Agentic AI Applications  Red Hat OpenShift AI Self-Managed  3.4.md`
+- `rh-brain: raw/Chapter 9. Reusable system instructions  Experimenting with models in the gen AI playground  Red Hat OpenShift AI Self-Managed  3.4.md`
 
 ### step-05-maas-model-serving
 
@@ -206,15 +207,63 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 - [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
 - [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain ExternalModel --api-version=maas.opendatahub.io/v1alpha1`
+- [PASS] `oc explain MaaSAuthPolicy --api-version=maas.opendatahub.io/v1alpha1`
+- [PASS] `oc explain MaaSModelRef --api-version=maas.opendatahub.io/v1alpha1`
+- [PASS] `oc explain MaaSSubscription --api-version=maas.opendatahub.io/v1alpha1`
 - [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
 - [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
+- [PASS] `oc explain Secret --api-version=v1`
 
 **rh-brain Research Sources**
 
 - `rh-brain: raw/A guide to Models-as-a-Service.md`
 - `rh-brain: raw/Building on the outstanding performance of vLLM with llm-d.md`
 - `rh-brain: raw/Combining KServe and llm-d for optimized generative AI inference.md`
-- `rh-brain: raw/Models-as-a-Service - ODH Models-as-a-Service Documentation.md`
+- `rh-brain: raw/Govern LLM access with Models-as-a-Service  Red Hat OpenShift AI Self-Managed  3.4.md`
+
+### step-06-model-metrics
+
+| Field | Evidence |
+|-------|----------|
+| Status | `aligned` |
+| GitOps path | `gitops/step-06-model-metrics/base` |
+| Argo CD app | `gitops/argocd/app-of-apps/step-06-model-metrics.yaml` |
+| README | `steps/step-06-model-metrics/README.md` |
+| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
+
+**Findings**
+
+- [PASS] `kustomize build gitops/step-06-model-metrics/base` rendered successfully.
+- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
+- [PASS] README contains pinned official product documentation references.
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-06-model-metrics/base/guidellm/cronjob.yaml:43:              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest (OpenShift platform ImageStream)
+
+**Schema Verification**
+
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain CronJob --api-version=batch/v1`
+- [PASS] `oc explain Grafana --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain GrafanaDashboard --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain GrafanaDatasource --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
+- [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
+- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
+
+**rh-brain Research Sources**
+
+- `rh-brain: raw/A guide to Models-as-a-Service.md`
+- `rh-brain: raw/Building on the outstanding performance of vLLM with llm-d.md`
+- `rh-brain: raw/Combining KServe and llm-d for optimized generative AI inference.md`
+- `rh-brain: raw/Govern LLM access with Models-as-a-Service  Red Hat OpenShift AI Self-Managed  3.4.md`
 
 ### step-07-rag
 
@@ -397,16 +446,16 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [WARN] Server dry-run reported existing PVC immutable spec drift, but the matching Argo CD app intentionally ignores PVC `/spec`.
   Exact warning:
   The PersistentVolumeClaim "face-pipeline-workspace" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
-    core.PersistentVolumeClaimSpec{
-        AccessModes:      {"ReadWriteOnce"},
-        Selector:         nil,
-        Resources:        {Requests: {s"storage": {i: {...}, s: "10Gi", Format: "BinarySI"}}},
-  -     VolumeName:       "pvc-f1257313-8b0c-438b-878f-8d7217f4d929",
-  +     VolumeName:       "",
-        StorageClassName: &"gp3-csi",
-        VolumeMode:       &"Filesystem",
-        ... // 3 identical fields
-    }
+    core.PersistentVolumeClaimSpec{
+        AccessModes:      {"ReadWriteOnce"},
+        Selector:         nil,
+        Resources:        {Requests: {s"storage": {i: {...}, s: "10Gi", Format: "BinarySI"}}},
+  -     VolumeName:       "pvc-f1257313-8b0c-438b-878f-8d7217f4d929",
+  +     VolumeName:       "",
+        StorageClassName: &"gp3-csi",
+        VolumeMode:       &"Filesystem",
+        ... // 3 identical fields
+    }
 
 - [PASS] `oc explain Deployment --api-version=apps/v1`
 - [PASS] `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`

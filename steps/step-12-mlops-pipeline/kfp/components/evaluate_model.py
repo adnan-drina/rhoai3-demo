@@ -68,13 +68,8 @@ def evaluate_model(
     metrics.log_metric("mAP50", mAP50)
     metrics.log_metric("mAP50_95", mAP50_95)
     metrics.log_metric("adnan_mAP50", adnan_map)
-
-    # Save metrics for register step
-    import json
-    (METRICS_DIR / "results.json").write_text(json.dumps({
-        "mAP50": mAP50, "mAP50_95": mAP50_95,
-        "adnan_mAP50": adnan_map,
-    }))
+    metrics.log_metric("mAP50_pct", round(100.0 * mAP50, 4))
+    metrics.log_metric("mAP_threshold_pct", round(100.0 * mAP_threshold, 4))
 
     # Query previous model from registry (pattern from rhoai-mlops/jukebox)
     prev_mAP50 = 0.0
@@ -97,7 +92,20 @@ def evaluate_model(
     except Exception as e:
         print(f"Could not query registry (first run?): {e}")
 
+    quality_gate_margin = mAP50 - mAP_threshold
     metrics.log_metric("prev_mAP50", prev_mAP50)
+    metrics.log_metric("quality_gate_margin_pct", round(100.0 * quality_gate_margin, 4))
+
+    # Save metrics for downstream registration and MLflow evidence.
+    import json
+    (METRICS_DIR / "results.json").write_text(json.dumps({
+        "mAP50": mAP50,
+        "mAP50_95": mAP50_95,
+        "adnan_mAP50": adnan_map,
+        "mAP_threshold": mAP_threshold,
+        "prev_mAP50": prev_mAP50,
+        "quality_gate_margin": quality_gate_margin,
+    }))
 
     # Quality gate
     if mAP50 < mAP_threshold:

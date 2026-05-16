@@ -58,7 +58,7 @@ Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-met
 
 > **CronJob uses 1,3,5,8,10 for both models:** The daily CronJob benchmarks all active models with 5 rate levels. Mistral's 15 RPS level is available only through the on-demand job template. This keeps daily runs shorter while still providing meaningful saturation data.
 
-> **Model Benchmarking Workbench:** A Jupyter notebook (`Model-Benchmarking.ipynb`) is deployed as an RHOAI workbench for interactive result analysis. The notebook reads GuideLLM JSON output from S3 (uploaded by the KFP benchmark pipeline) or from on-demand Job results.
+> **No benchmarking workbench in `maas`:** The MaaS namespace is Kueue-managed for model serving. A notebook pod in that namespace can be scheduling-gated without a matching Kueue workload, so interactive analysis is deferred to the RAG/MLOps workbenches while GuideLLM Jobs and Grafana remain GitOps-managed here.
 
 </details>
 

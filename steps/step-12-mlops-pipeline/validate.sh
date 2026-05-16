@@ -184,6 +184,55 @@ else
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
+# --- Pipeline Metadata Hygiene ---
+log_step "Pipeline Metadata Hygiene"
+if [[ -n "${DSPA_ROUTE:-}" && -n "${OC_TOKEN:-}" ]]; then
+    ARTIFACT_RESPONSE=$(curl -sk --max-time 20 \
+        -H "Authorization: Bearer $OC_TOKEN" \
+        "https://${DSPA_ROUTE}/apis/v2beta1/artifacts?namespace=${NAMESPACE}&max_page_size=10" 2>/dev/null || true)
+    ARTIFACT_ERROR=$(echo "$ARTIFACT_RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null || true)
+    if [[ "$ARTIFACT_ERROR" == *"unrecognized uri format"* ]]; then
+        echo -e "${RED}[FAIL]${NC} KFP artifact API has invalid artifact URIs"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} KFP artifact API responds without URI parse errors"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    fi
+else
+    echo -e "${YELLOW}[WARN]${NC} Cannot check KFP artifact API — DSPA route or token missing"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+if [[ -x "$REPO_ROOT/.venv-kfp/bin/python3" && -n "${DSPA_ROUTE:-}" && -n "${OC_TOKEN:-}" ]]; then
+    ACTIVE_STALE_RUNS=$(DSPA_ROUTE="$DSPA_ROUTE" OC_TOKEN="$OC_TOKEN" "$REPO_ROOT/.venv-kfp/bin/python3" - 2>/dev/null <<'PY'
+import os
+from kfp import client
+
+c = client.Client(
+    host="https://" + os.environ["DSPA_ROUTE"],
+    namespace="enterprise-mlops",
+    existing_token=os.environ["OC_TOKEN"],
+)
+runs = c.list_runs(page_size=50, sort_by="created_at desc").runs or []
+bad = []
+for run in runs:
+    name = getattr(run, "display_name", "") or ""
+    state = getattr(run, "state", "") or ""
+    storage = getattr(run, "storage_state", "") or ""
+    if name.startswith("train-") and storage == "AVAILABLE" and state in {"RUNNING", "CANCELING"}:
+        bad.append(f"{name}:{state}")
+print(",".join(bad))
+PY
+)
+    if [[ -z "$ACTIVE_STALE_RUNS" ]]; then
+        echo -e "${GREEN}[PASS]${NC} No available KFP training runs are stuck in RUNNING/CANCELING"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} Stale active KFP runs: $ACTIVE_STALE_RUNS"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+fi
+
 # --- Model Registry ---
 log_step "Model Registry Integration"
 REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")

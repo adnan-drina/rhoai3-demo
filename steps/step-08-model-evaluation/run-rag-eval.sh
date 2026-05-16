@@ -1,6 +1,10 @@
 #!/bin/bash
 # Trigger a RAG evaluation pipeline run.
 # Usage: ./run-rag-eval.sh [run_id]
+#
+# Optional prompt metadata env vars:
+#   PROMPT_NAME, PROMPT_VERSION, PROMPT_ALIAS, PROMPT_SOURCE,
+#   PROMPT_COMMIT_MESSAGE
 
 set -euo pipefail
 
@@ -8,6 +12,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="enterprise-rag"
 RUN_ID="${1:-eval-$(date +%s)}"
+PROMPT_NAME="${PROMPT_NAME:-acme-rag-agentic}"
+PROMPT_VERSION="${PROMPT_VERSION:-v1}"
+PROMPT_ALIAS="${PROMPT_ALIAS:-staging}"
+PROMPT_SOURCE="${PROMPT_SOURCE:-rhoai-gen-ai-studio-prompts}"
+PROMPT_COMMIT_MESSAGE="${PROMPT_COMMIT_MESSAGE:-Initial agentic RAG prompt}"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
@@ -21,6 +30,7 @@ fi
 (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" eval_pipeline.py)
 
 log_info "Launching eval pipeline (run_id=$RUN_ID)..."
+log_info "Prompt metadata: ${PROMPT_NAME}@${PROMPT_VERSION} (${PROMPT_ALIAS})"
 
 OC_TOKEN=$(oc whoami -t 2>/dev/null || true)
 if [ -z "$OC_TOKEN" ]; then
@@ -45,6 +55,7 @@ else
 fi
 
 export NAMESPACE RUN_ID PIPELINE_YAML MINIO_CONSOLE_URL MLFLOW_TRACKING_URI
+export PROMPT_NAME PROMPT_VERSION PROMPT_ALIAS PROMPT_SOURCE PROMPT_COMMIT_MESSAGE
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys, time
@@ -132,6 +143,11 @@ params = {
     "run_id": RUN_ID,
     "minio_console_url": MINIO_CONSOLE_URL,
     "mlflow_tracking_uri": MLFLOW_TRACKING_URI,
+    "prompt_name": os.environ.get("PROMPT_NAME", "acme-rag-agentic"),
+    "prompt_version": os.environ.get("PROMPT_VERSION", "v1"),
+    "prompt_alias": os.environ.get("PROMPT_ALIAS", "staging"),
+    "prompt_source": os.environ.get("PROMPT_SOURCE", "rhoai-gen-ai-studio-prompts"),
+    "prompt_commit_message": os.environ.get("PROMPT_COMMIT_MESSAGE", "Initial agentic RAG prompt"),
     "enable_mlflow_tracking": True,
 }
 

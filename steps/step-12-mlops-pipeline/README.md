@@ -173,9 +173,11 @@ oc get dspa dspa-mlops -n enterprise-mlops
 2. Open **MLflow** and select the `enterprise-mlops` workspace
 3. Open the `face-recognition` experiment and inspect the latest run
 
-**Expect:** A finished run named `face-recognition-<version>` with `mAP50`, `mAP50_95`, `adnan_mAP50`, model parameters, demo tags, and compact artifacts such as `results.json` and `run-context.json`.
+**Expect:** A finished run named `face-recognition-<version>` with raw model scores (`mAP50`, `mAP50_95`, `adnan_mAP50`) plus presentation metrics (`mAP50_pct`, `mAP50_95_pct`, `adnan_mAP50_pct`, `mAP_threshold_pct`, `quality_gate_margin_pct`). The run parameters show the training profile, epoch count, threshold, and bounded dataset sample counts, so the result is easy to classify as a smoke run or a quality-gated training run. Compact artifacts such as `results.json` and `run-context.json` retain the exact evaluation payload.
 
-> The pipeline now leaves a product-native experiment trail. MLflow becomes the searchable memory for training quality, while Model Registry remains the promotion and deployment record.
+> The pipeline now leaves a product-native experiment trail. MLflow becomes the searchable memory for training quality, while Model Registry remains the promotion and deployment record. Low mAP values in a smoke run prove instrumentation and gating, not model readiness; a production-quality run should use more epochs, broader data, and a nonzero quality threshold.
+
+> **KFP artifact hygiene:** Dataset lineage is written to the KFP-provided artifact path so the Dashboard stores it under the pipeline artifact bucket. Do not set KFP artifact URIs to local PVC paths such as `/shared-data/...`; those paths are not valid Dashboard artifact links.
 
 ### Model Registry Integration
 

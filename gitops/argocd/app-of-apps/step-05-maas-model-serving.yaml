@@ -41,8 +41,25 @@ spec:
       jsonPointers:
         - /status
         - /spec/predictor/model/runtime
+    - group: maas.opendatahub.io
+      kind: ExternalModel
+      jsonPointers:
+        - /status
+        - /spec/endpoint
+    - group: maas.opendatahub.io
+      kind: MaaSModelRef
+      jsonPointers:
+        - /status
+        - /spec/endpointOverride
+    - group: maas.opendatahub.io
+      kind: MaaSSubscription
+      jsonPointers:
+        - /status
+    - group: maas.opendatahub.io
+      kind: MaaSAuthPolicy
+      jsonPointers:
+        - /status
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec
-

@@ -39,11 +39,11 @@ if ! oc get crd datasciencepipelinesapplications.datasciencepipelinesapplication
 fi
 log_success "DSPA CRD available"
 
-if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
+if ! oc get maasmodelref granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent MaaSModelRef not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent InferenceService present in $MODEL_NAMESPACE"
+log_success "granite-8b-agent MaaSModelRef present in $MODEL_NAMESPACE"
 
 if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
     log_error "minio-connection secret not found in $NAMESPACE. Deploy step-03 first."
@@ -92,6 +92,16 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 echo ""
 
+log_step "Configuring RAG model access through MaaS..."
+ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" "enterprise-demo-subscription" "24h"
+MAAS_API_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' | base64 -d)
+MAAS_BASE_URL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_BASE_URL}' | base64 -d)
+patch_secret_literal "$NAMESPACE" "llamastack-vllm-secret" "VLLM_URL" "$MAAS_BASE_URL"
+patch_secret_literal "$NAMESPACE" "llamastack-vllm-secret" "VLLM_API_TOKEN" "$MAAS_API_KEY"
+patch_secret_literal "$NAMESPACE" "llamastack-vllm-secret" "VLLM_TLS_VERIFY" "false"
+log_success "llamastack-vllm-secret points to MaaS gateway"
+echo ""
+
 log_step "Waiting for PostgreSQL+pgvector..."
 if ! oc wait deploy/llamastack-postgres -n "$NAMESPACE" \
     --for=condition=Available --timeout=180s 2>/dev/null; then
@@ -111,6 +121,11 @@ if ! oc wait llamastackdistribution/lsd-rag -n "$NAMESPACE" \
     --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null; then
     log_error "LlamaStack lsd-rag did not reach Ready state"
     exit 1
+fi
+if oc get deployment/lsd-rag -n "$NAMESPACE" &>/dev/null; then
+    oc rollout restart deployment/lsd-rag -n "$NAMESPACE" >/dev/null 2>&1 || true
+    oc rollout status deployment/lsd-rag -n "$NAMESPACE" --timeout=300s 2>/dev/null || \
+        log_warn "LlamaStack rollout did not complete after MaaS secret refresh"
 fi
 
 log_step "Triggering rag-chatbot build..."

@@ -14,7 +14,7 @@ data:
       - type: main
         engine: openai
         parameters:
-          openai_api_base: "http://granite-8b-agent-predictor.maas.svc.cluster.local:8080/v1"
+          openai_api_base: "https://maas-default-gateway-data-science-gateway-class.openshift-ingress.svc/v1"
           model_name: "granite-8b-agent"
     rails:
       config:

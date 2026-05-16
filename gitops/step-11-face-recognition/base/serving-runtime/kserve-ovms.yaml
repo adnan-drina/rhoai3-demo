@@ -14,7 +14,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
     opendatahub.io/apiProtocol: REST
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-    opendatahub.io/runtime-version: v2025.4
+    opendatahub.io/runtime-version: v2026.1.0
     opendatahub.io/template-name: kserve-ovms
     opendatahub.io/template-display-name: OpenVINO Model Server
     openshift.io/display-name: OpenVINO Model Server
@@ -47,7 +47,7 @@ spec:
       version: "2"
   containers:
     - name: kserve-container
-      image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:defd01ac5a37a6138de73a8f1b10c676a2efa617238049378f8bc63fb0eb00c6
+      image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:1ab58519c50e2c3a9ebf0fee6d0708b1b5a0ae972aefcc722d87b2f62239a033
       args:
         - --model_name={{.Name}}
         - --port=8001

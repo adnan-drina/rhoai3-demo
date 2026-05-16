@@ -121,6 +121,11 @@ def face_recognition_training_pipeline(
         model_name=model_name,
         version=version,
         minio_endpoint=minio_endpoint,
+        epochs=epochs,
+        mAP_threshold=mAP_threshold,
+        max_user_photos=max_user_photos,
+        max_unknown_photos=max_unknown_photos,
+        num_hf_portraits=num_hf_portraits,
     )
     _inject_minio(mlflow_task)
     _mount_pvc(mlflow_task)

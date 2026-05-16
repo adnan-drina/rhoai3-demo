@@ -10,3 +10,4 @@ resources:
   - model-registration/
   - serving-runtime/
   - inference/
+  - maas-registration/

@@ -39,11 +39,11 @@ if ! oc get crd nemoguardrails.trustyai.opendatahub.io &>/dev/null; then
 fi
 log_success "NemoGuardrails CRD available"
 
-if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
+if ! oc get maasmodelref granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent MaaSModelRef not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent present in $MODEL_NAMESPACE"
+log_success "granite-8b-agent MaaSModelRef present in $MODEL_NAMESPACE"
 echo ""
 
 log_step "Deploying Step 09 via ArgoCD..."
@@ -76,6 +76,13 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 echo ""
 
+log_step "Configuring NeMo model access through MaaS..."
+ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" "enterprise-demo-subscription" "24h"
+MAAS_API_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' | base64 -d)
+patch_secret_literal "$NAMESPACE" "nemo-guardrails-api-token" "token" "$MAAS_API_KEY"
+log_success "nemo-guardrails-api-token refreshed from MaaS API key"
+echo ""
+
 log_step "Waiting for NemoGuardrails service..."
 if ! oc wait nemoguardrails/nemo-guardrails -n "$NAMESPACE" \
     --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null; then
@@ -87,6 +94,16 @@ if ! oc get route nemo-guardrails -n "$NAMESPACE" &>/dev/null; then
     exit 1
 fi
 log_success "NeMo Guardrails route available"
+NEMO_DEPLOY=$(oc get deploy -n "$NAMESPACE" -l app.kubernetes.io/instance=nemo-guardrails \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+if [[ -z "$NEMO_DEPLOY" ]]; then
+    NEMO_DEPLOY=$(oc get deploy -n "$NAMESPACE" --no-headers 2>/dev/null | awk '/nemo|guardrails/{print $1; exit}' || true)
+fi
+if [[ -n "$NEMO_DEPLOY" ]]; then
+    oc rollout restart "deployment/${NEMO_DEPLOY}" -n "$NAMESPACE" >/dev/null 2>&1 || true
+    oc rollout status "deployment/${NEMO_DEPLOY}" -n "$NAMESPACE" --timeout=180s 2>/dev/null || \
+        log_warn "NeMo deployment rollout did not complete after MaaS token refresh"
+fi
 echo ""
 
 log_step "Restarting chatbot to pick up NeMo guardrails settings..."
