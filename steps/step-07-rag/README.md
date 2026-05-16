@@ -60,6 +60,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
 
+> **DSPA object storage uses the in-cluster MinIO service.** The DSPA `externalStorage.host` is `minio.minio-storage.svc.cluster.local:9000` so the GitOps manifest works across fresh clusters. Generated OpenShift route hostnames are cluster-specific and are not committed into the DSPA spec.
+
 > **KFP v2 requires `version_id`.** The `run-batch-ingestion.sh` script uses `list_pipeline_versions()` to obtain the version ID after uploading — KFP v2 `run_pipeline()` requires both `pipeline_id` and `version_id`.
 
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.

@@ -65,6 +65,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 > **Project-local DSPA** (`dspa-mlops`). Enterprise MLOps owns its own pipeline server so predictive training runs are separated from the Enterprise RAG DSPA.
 
+> **DSPA object storage uses the in-cluster MinIO service.** The pipeline server points at `minio.minio-storage.svc.cluster.local:9000` so the GitOps manifest stays portable across clusters. Generated OpenShift route hostnames are intentionally kept out of committed DSPA specs.
+
 > **Threshold-based quality gate with Registry context.** The evaluate step computes mAP50 and compares it against a configurable threshold (default 0.7). It also queries the Model Registry for the previous version's mAP50 for informational logging. If the new model's mAP50 is below the threshold, the pipeline fails and deployment is skipped. Inspired by the [AI500 MLOps Jukebox](https://github.com/rhoai-mlops/jukebox) pattern.
 
 > **Shared PVC** (not KFP artifacts) for inter-component data. The training dataset and model files are too large for KFP artifact passing. The shared PVC pattern follows [step-07 RAG pipeline](../step-07-rag/kfp/).

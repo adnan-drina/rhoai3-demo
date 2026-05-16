@@ -17,12 +17,11 @@ spec:
   objectStorage:
     externalStorage:
       bucket: pipelines
-      host: minio-api-minio-storage.apps.cluster-v2zvn.v2zvn.sandbox2890.opentlc.com
-      port: ""
-      scheme: https
+      host: minio.minio-storage.svc.cluster.local
+      port: "9000"
+      scheme: http
       secure: false
       s3CredentialsSecret:
         secretName: dspa-minio-credentials
         accessKey: accesskey
         secretKey: secretkey
-
