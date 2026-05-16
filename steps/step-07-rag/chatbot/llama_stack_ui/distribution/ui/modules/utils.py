@@ -85,6 +85,9 @@ def get_question_suggestions():
     try:
         suggestions_json = os.environ.get("RAG_QUESTION_SUGGESTIONS", "{}")
         suggestions = json.loads(suggestions_json)
+        if not isinstance(suggestions, dict):
+            st.warning("Question suggestions must be a JSON object.")
+            return {}
         return suggestions
     except json.JSONDecodeError:
         st.warning("Failed to parse question suggestions from environment variable.")
@@ -103,7 +106,7 @@ def get_suggestions_for_databases(selected_dbs, all_vector_dbs):
         all_vector_dbs: List of all vector DB objects from API
 
     Returns:
-        List of tuples (question, source_db_name)
+        List of suggestion dictionaries with normalized metadata.
     """
     suggestions_map = get_question_suggestions()
     combined_suggestions = []
@@ -140,6 +143,49 @@ def get_suggestions_for_databases(selected_dbs, all_vector_dbs):
 
         if questions:
             for question in questions:
-                combined_suggestions.append((question, db_name))
+                normalized = normalize_question_suggestion(question, db_name)
+                if normalized:
+                    combined_suggestions.append(normalized)
 
     return combined_suggestions
+
+
+def normalize_question_suggestion(suggestion, db_name):
+    """
+    Normalize legacy string suggestions and structured suggestion objects.
+
+    Structured objects support:
+      - question: prompt text
+      - use_case: business or technical use case shown in the UI
+      - mode: Direct or Agent-based
+      - tool: optional MCP connector id such as database-mcp
+      - expected: optional validation regex used by browser tests
+      - select_collection: false when a domain example should not attach RAG
+    """
+    if isinstance(suggestion, str):
+        return {
+            "question": suggestion,
+            "source_db": db_name,
+            "use_case": "General RAG",
+            "mode": "Direct",
+            "tool": None,
+            "expected": None,
+            "select_collection": True,
+        }
+
+    if not isinstance(suggestion, dict):
+        return None
+
+    question = suggestion.get("question") or suggestion.get("prompt")
+    if not question:
+        return None
+
+    return {
+        "question": str(question),
+        "source_db": str(suggestion.get("source_db") or db_name),
+        "use_case": str(suggestion.get("use_case") or "General RAG"),
+        "mode": str(suggestion.get("mode") or "Direct"),
+        "tool": suggestion.get("tool"),
+        "expected": suggestion.get("expected"),
+        "select_collection": bool(suggestion.get("select_collection", True)),
+    }

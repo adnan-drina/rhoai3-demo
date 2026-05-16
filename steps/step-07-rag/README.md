@@ -76,7 +76,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Chatbot Inspect page dependencies are packaged in the image.** The image installs `streamlit-option-menu` because the Inspect tab imports `streamlit_option_menu` for its resource selector.
 
-> **Chatbot validation has a browser-level regression check.** The lightweight Step 07 validator checks the chatbot pod and health route. For the full UI path, run `./scripts/validate-chatbot-ui.sh`; it exercises page load, Direct RAG, Agent-based file search, database MCP tool use, prompt-injection guardrails, and the Inspect page.
+> **Chatbot validation has a browser-level regression check.** The lightweight Step 07 validator checks the chatbot pod and health route. For the full UI path, run `./scripts/validate-chatbot-ui.sh`; it exercises page load, every configured example prompt, Agent-based file search, MCP tool use, prompt-injection guardrails, and the Inspect page.
 
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 
@@ -176,6 +176,22 @@ oc exec deploy/lsd-rag -n enterprise-rag -- \
 | **whoami** | `whoami` | 1 file | Personal CV — strong pre/post RAG contrast |
 
 > Both document sets were ingested through Kubeflow Pipelines and stored in pgvector. These aren't ephemeral — they're persisted in PostgreSQL, so they survive pod restarts. The Llama Stack API manages the full lifecycle: chunking, embedding, and retrieval.
+
+### Example Prompts by Use Case
+
+> The chatbot surfaces example prompts for each demo use case. The examples are GitOps-managed through `RAG_QUESTION_SUGGESTIONS`, and the browser validator reads the same deployed configuration so prompt drift is caught before the demo.
+
+| Use Case | Mode | Prompt |
+|----------|------|--------|
+| Identity grounding | Direct | `Who is Adnan Drina and what is his current role?` |
+| Expertise discovery | Direct | `What are Adnan Drina key areas of expertise?` |
+| Event discovery | Direct | `What events has Adnan Drina spoken at?` |
+| Corporate profile | Direct | `What is ACME Corp?` |
+| Equipment troubleshooting | Direct | `Search for known issues related to the L-900 EUV scanner` |
+| OpenShift operations | Agent-based + `openshift-mcp` | `List all pods in the acme-corp namespace` |
+| Asset database lookup | Agent-based + `database-mcp` | `Fetch the equipment name for pod acme-equipment-0007` |
+
+> The examples intentionally avoid Slack-send actions. Slack remains covered by the Step 10 MCP flow, but the chatbot browser regression suite does not trigger external side effects.
 
 ### RAG Chatbot — Direct Mode
 

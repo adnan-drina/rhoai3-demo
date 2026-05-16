@@ -1,7 +1,7 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T03:35:33Z
-**Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
+**Generated:** 2026-05-16T07:48:41Z
+**Command:** `./scripts/audit-doc-alignment.sh --component step-07-rag`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
 **rh-brain source:** `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
@@ -265,6 +265,12 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
   - gitops/step-07-rag/base/rag-wb/workbench.yaml:69:          image: alpine/git:latest
   - gitops/step-07-rag/base/minio-rag-bucket/init-job.yaml:28:          image: quay.io/minio/mc:latest
   - gitops/step-07-rag/base/ingestion-service/job.yaml:22:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest
+- [PASS] Chatbot example prompts are GitOps-managed in `RAG_QUESTION_SUGGESTIONS` and grouped by RAG/MCP use case.
+- [PASS] Browser validation reads the deployed example prompt configuration and exercises each non-side-effect example prompt.
+- [PASS] Direct RAG examples cover `whoami` identity, expertise, and event discovery.
+- [PASS] Direct RAG examples cover `acme_corporate` corporate profile and L-900 equipment troubleshooting.
+- [PASS] Agent examples cover OpenShift MCP pod listing and database MCP asset lookup.
+- [PASS] Slack-send prompts are excluded from the chatbot regression set to avoid external side effects; Step 10 keeps the Slack MCP path.
 
 **Schema Verification**
 

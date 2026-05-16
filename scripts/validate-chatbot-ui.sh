@@ -138,6 +138,20 @@ else
     fail "Streamlit health endpoint did not return ok"
 fi
 
+SUGGESTIONS_JSON=""
+if [[ -n "$ROUTE_URL" ]]; then
+    SUGGESTIONS_JSON="$(
+        oc get deployment "$ROUTE_NAME" -n "$NAMESPACE" \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="chatbot")].env[?(@.name=="RAG_QUESTION_SUGGESTIONS")].value}' \
+            2>/dev/null || true
+    )"
+    if [[ -n "$SUGGESTIONS_JSON" ]]; then
+        pass "Loaded configured chatbot example prompts"
+    else
+        fail "Deployment is missing RAG_QUESTION_SUGGESTIONS example prompts"
+    fi
+fi
+
 if [[ "$RUN_BROWSER" == "true" ]]; then
     if ! command -v node >/dev/null 2>&1; then
         fail "node is required for browser validation"
@@ -159,6 +173,7 @@ if [[ "$RUN_BROWSER" == "true" ]]; then
             CHROME_PATH="$chrome_path" \
             RUN_MCP="$RUN_MCP" \
             RUN_GUARDRAILS="$RUN_GUARDRAILS" \
+            RAG_QUESTION_SUGGESTIONS_JSON="$SUGGESTIONS_JSON" \
             node --input-type=module <<'JS'
 const playwright = await import(process.env.PLAYWRIGHT_CORE_MODULE);
 const { chromium } = playwright.default || playwright;
@@ -191,6 +206,20 @@ async function selectCollection(page, name) {
   await page.waitForTimeout(2500);
 }
 
+async function selectMode(page, mode) {
+  if (normalizeMode(mode) === "Agent-based") {
+    await page.getByText("Agent-based").click();
+    await page.waitForTimeout(2500);
+  }
+}
+
+async function selectMcpConnector(page, tool) {
+  if (!tool) return;
+  const connector = tool.replace(/^mcp::/, "");
+  await page.getByText(connector).click();
+  await page.waitForTimeout(1500);
+}
+
 async function ask(page, prompt) {
   await page.locator('textarea[placeholder="Ask a question..."]').first().fill(prompt);
   await page.locator('button[aria-label="Send message"]').click();
@@ -213,6 +242,119 @@ async function record(test, pass, page, extra = {}) {
   results.push({ test, pass, screenshot, ...extra });
 }
 
+function normalizeMode(mode) {
+  const normalized = String(mode || "Direct").trim().toLowerCase();
+  return ["agent", "agent-based", "agent_based"].includes(normalized) ? "Agent-based" : "Direct";
+}
+
+function slugify(value) {
+  return String(value || "example")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70);
+}
+
+function loadExamplePrompts() {
+  let parsed;
+  try {
+    parsed = JSON.parse(process.env.RAG_QUESTION_SUGGESTIONS_JSON || "{}");
+  } catch (error) {
+    return [{ invalid: true, error: String(error) }];
+  }
+
+  const examples = [];
+  for (const [sourceDb, prompts] of Object.entries(parsed)) {
+    if (!Array.isArray(prompts)) continue;
+    for (const promptConfig of prompts) {
+      const example = typeof promptConfig === "string"
+        ? { question: promptConfig, source_db: sourceDb, mode: "Direct" }
+        : { ...promptConfig, source_db: promptConfig.source_db || sourceDb };
+      if (!example.question || example.side_effect) continue;
+      examples.push({
+        ...example,
+        mode: normalizeMode(example.mode),
+        select_collection: example.select_collection !== false,
+      });
+    }
+  }
+  return examples;
+}
+
+async function runExamplePrompt(example, index) {
+  const testName = `chatbot-example-${slugify(example.use_case)}-${index + 1}`;
+  if (example.invalid) {
+    const page = await setupPage();
+    await record(testName, false, page, { excerpt: example.error });
+    await page.close();
+    return;
+  }
+  if (example.tool && !runMcp) {
+    results.push({ test: testName, pass: true, skipped: true, reason: "MCP validation skipped" });
+    return;
+  }
+
+  const page = await setupPage();
+  await selectMode(page, example.mode);
+  if (example.select_collection && example.source_db) {
+    await selectCollection(page, example.source_db);
+  }
+  if (example.mode === "Agent-based" && example.tool) {
+    await selectMcpConnector(page, example.tool);
+  }
+  await ask(page, example.question);
+
+  const expected = example.expected ? new RegExp(example.expected, "i") : /.+/i;
+  const timeoutMs = example.mode === "Agent-based" ? 240000 : 180000;
+  await waitForOutcome(page, expected, timeoutMs);
+  const text = await page.locator("body").innerText();
+
+  let passed = !hasFailure(text) && expected.test(text);
+  if (example.mode === "Direct" && example.select_collection && example.source_db) {
+    const searchPattern = new RegExp(`Searched vector stores: ${example.source_db}|Search Results from '${example.source_db}'`, "i");
+    passed = passed && searchPattern.test(text);
+  }
+  if (example.tool) {
+    passed = passed && /MCP Tool Output/i.test(text);
+  }
+
+  const excerptPattern = new RegExp(`${example.question.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s\\S]{0,900}`, "i");
+  await record(testName, passed, page, {
+    use_case: example.use_case || "General RAG",
+    mode: example.mode,
+    prompt: example.question,
+    excerpt: (text.match(excerptPattern) || [text.slice(-1200)])[0],
+  });
+  await page.close();
+}
+
+async function verifyExamplePromptButtons(examples) {
+  const page = await setupPage();
+  const sourceDbs = [...new Set(examples.filter((example) => !example.invalid).map((example) => example.source_db).filter(Boolean))];
+  for (const sourceDb of sourceDbs) {
+    await selectCollection(page, sourceDb);
+  }
+  await page.waitForTimeout(1500);
+
+  const text = await page.locator("body").innerText();
+  const missing = [];
+  for (const example of examples) {
+    if (example.invalid || !example.question) continue;
+    const visible = await page.getByRole("button", { name: example.question, exact: true })
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!visible) missing.push(example.question);
+  }
+  await record(
+    "chatbot-example-prompts-render",
+    !hasFailure(text) && /Example Prompts/i.test(text) && missing.length === 0,
+    page,
+    { missing }
+  );
+  await page.close();
+}
+
 try {
   {
     const page = await setupPage();
@@ -220,19 +362,16 @@ try {
     await record("chatbot-smoke", !hasFailure(text) && /Ask a question|Configuration|vllm-inference\/granite-8b-agent/i.test(text), page);
     await page.close();
   }
-  {
+  const examplePrompts = loadExamplePrompts();
+  if (!examplePrompts.length) {
     const page = await setupPage();
-    await selectCollection(page, "whoami");
-    await ask(page, "Who is Adnan Drina and what is his current role?");
-    await waitForOutcome(page, /Searched vector stores: whoami|Principal Solution Architect|Red Hat/i);
-    const text = await page.locator("body").innerText();
-    await record(
-      "chatbot-direct-rag-whoami",
-      !hasFailure(text) && /Searched vector stores: whoami|Search Results from 'whoami'/i.test(text) && /Principal Solution Architect|Red Hat/i.test(text),
-      page,
-      { excerpt: (text.match(/Adnan Drina[\s\S]{0,420}/) || [""])[0] }
-    );
+    await record("chatbot-example-prompts-configured", false, page, { excerpt: "No example prompts configured" });
     await page.close();
+  } else {
+    await verifyExamplePromptButtons(examplePrompts);
+    for (const [index, example] of examplePrompts.entries()) {
+      await runExamplePrompt(example, index);
+    }
   }
   {
     const page = await setupPage();
@@ -247,23 +386,6 @@ try {
       !hasFailure(text) && /Using file_search tool with vector store: whoami/i.test(text) && /Principal Solution Architect|Red Hat/i.test(text),
       page,
       { excerpt: (text.match(/Adnan Drina[\s\S]{0,420}/) || [""])[0] }
-    );
-    await page.close();
-  }
-  if (runMcp) {
-    const page = await setupPage();
-    await page.getByText("Agent-based").click();
-    await page.waitForTimeout(3000);
-    await page.getByText("database-mcp").click();
-    await page.waitForTimeout(1500);
-    await ask(page, "Fetch the equipment name for pod acme-equipment-0007");
-    await waitForOutcome(page, /MCP Tool Output|execute_sql|L-900|EUV|Calibration/i, 240000);
-    const text = await page.locator("body").innerText();
-    await record(
-      "chatbot-agent-database-mcp",
-      !hasFailure(text) && /MCP Tool Output|execute_sql|L-900|EUV|Calibration/i.test(text),
-      page,
-      { excerpt: (text.match(/acme-equipment-0007[\s\S]{0,700}/i) || [""])[0] }
     );
     await page.close();
   }

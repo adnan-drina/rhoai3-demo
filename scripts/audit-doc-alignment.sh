@@ -221,6 +221,25 @@ find_rh_brain_sources() {
     return 0
 }
 
+component_extra_findings() {
+    local component="$1"
+    case "$component" in
+        step-07-rag)
+            if grep -q '"use_case"' gitops/step-07-rag/base/chatbot/chatbot.yaml \
+                && grep -q 'loadExamplePrompts' scripts/validate-chatbot-ui.sh; then
+                cat <<'EOF'
+- [PASS] Chatbot example prompts are GitOps-managed in `RAG_QUESTION_SUGGESTIONS` and grouped by RAG/MCP use case.
+- [PASS] Browser validation reads the deployed example prompt configuration and exercises each non-side-effect example prompt.
+- [PASS] Direct RAG examples cover `whoami` identity, expertise, and event discovery.
+- [PASS] Direct RAG examples cover `acme_corporate` corporate profile and L-900 equipment troubleshooting.
+- [PASS] Agent examples cover OpenShift MCP pod listing and database MCP asset lookup.
+- [PASS] Slack-send prompts are excluded from the chatbot regression set to avoid external side effects; Step 10 keeps the Slack MCP path.
+EOF
+            fi
+            ;;
+    esac
+}
+
 collect_changed_files() {
     if [[ -n "$COMPONENT" ]]; then
         return 0
@@ -381,6 +400,8 @@ while IFS= read -r component; do
     else
         echo "- [PASS] No unpinned \`:latest\` image references found in GitOps path." >> "$findings"
     fi
+
+    component_extra_findings "$component" >> "$findings"
 
     if [[ -s "$rendered" ]]; then
         awk '

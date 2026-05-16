@@ -66,7 +66,59 @@ spec:
             - name: INFERENCE_MODEL
               value: "vllm-inference/granite-8b-agent"
             - name: RAG_QUESTION_SUGGESTIONS
-              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is ACME Corp?", "Who is the Managing Director of ACME Corp, and how can I contact them?", "List all pods in the acme-corp namespace", "Fetch the equipment name for pod acme-equipment-0007", "Search for known issues related to the L-900 EUV scanner", "Send a brief summary of the L-900-08 issue to Slack channel C09JL81TUQJ"]}'
+              value: >-
+                {
+                  "whoami": [
+                    {
+                      "use_case": "Identity grounding",
+                      "mode": "Direct",
+                      "question": "Who is Adnan Drina and what is his current role?",
+                      "expected": "Principal Solution Architect|Red Hat"
+                    },
+                    {
+                      "use_case": "Expertise discovery",
+                      "mode": "Direct",
+                      "question": "What are Adnan Drina key areas of expertise?",
+                      "expected": "OpenShift|Kubernetes|AI|platform|developer|architecture"
+                    },
+                    {
+                      "use_case": "Event discovery",
+                      "mode": "Direct",
+                      "question": "What events has Adnan Drina spoken at?",
+                      "expected": "HOPE Amsterdam 2025|Red Hat Summit: Connect Utrecht"
+                    }
+                  ],
+                  "acme_corporate": [
+                    {
+                      "use_case": "Corporate profile",
+                      "mode": "Direct",
+                      "question": "What is ACME Corp?",
+                      "expected": "ACME Corp|semiconductor|Amsterdam|lithography"
+                    },
+                    {
+                      "use_case": "Equipment troubleshooting",
+                      "mode": "Direct",
+                      "question": "Search for known issues related to the L-900 EUV scanner",
+                      "expected": "L-900|EUV|Dose Drift|Overlay Residual|Focus Map|calibration"
+                    },
+                    {
+                      "use_case": "OpenShift operations",
+                      "mode": "Agent-based",
+                      "tool": "openshift-mcp",
+                      "select_collection": false,
+                      "question": "List all pods in the acme-corp namespace",
+                      "expected": "MCP Tool Output|pods_list_in_namespace|acme-equipment|acme-corp|pod"
+                    },
+                    {
+                      "use_case": "Asset database lookup",
+                      "mode": "Agent-based",
+                      "tool": "database-mcp",
+                      "select_collection": false,
+                      "question": "Fetch the equipment name for pod acme-equipment-0007",
+                      "expected": "MCP Tool Output|execute_sql|L-900|EUV|Calibration"
+                    }
+                  ]
+                }
           resources:
             requests:
               cpu: 100m
