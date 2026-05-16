@@ -49,7 +49,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 > **NeMo Guardrails over legacy FMS Orchestrator:** RHOAI 3.4 documents both architectures and explicitly provides a NeMo Guardrails deployment path. This step now follows that path and removes the old `GuardrailsOrchestrator`, detector `InferenceService`, gateway, and `rawDeploymentServiceConfig: Headed` dependency.
 
-> **Programmable rails:** The guardrails policy lives in `config.yaml`, `rails.co`, and `actions.py`, matching the Red Hat documentation model for NeMo Guardrails. Demo checks cover sensitive data rails, message length, prompt injection phrases, and abusive content.
+> **Programmable rails:** The guardrails policy lives in `config.yaml`, `rails.co`, and `actions.py`, matching the Red Hat documentation model for NeMo Guardrails. Demo checks cover sensitive data rails, message length, common prompt-injection wording variants, and abusive content.
 
 > **OpenAI-compatible integration:** NeMo calls the existing `granite-8b-agent` vLLM endpoint at `http://granite-8b-agent-predictor.maas.svc.cluster.local:8080/v1`, matching the model endpoint deployed in Step 05.
 

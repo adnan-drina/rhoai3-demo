@@ -70,8 +70,8 @@ data:
     async def check_acme_forbidden_content(context: Optional[dict] = None) -> str:
         user_message = (context or {}).get("user_message", "").lower()
         patterns = [
-            r"\bignore\s+all\s+previous\s+instructions\b",
-            r"\breveal\s+(your\s+)?system\s+prompt\b",
+            r"\bignore\s+(all\s+)?previous\s+instructions\b",
+            r"\breveal\s+(your\s+|the\s+)?system\s+prompt\b",
             r"\bjailbreak\b",
             r"\bhate\s+you\b",
             r"\bstupid\s+bot\b",
