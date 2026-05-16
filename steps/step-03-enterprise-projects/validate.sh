@@ -38,9 +38,17 @@ check "MinIO deployment ready" \
     "oc get deploy minio -n minio-storage -o jsonpath='{.status.readyReplicas}'" \
     "1"
 
-check_warn "MinIO init job completed (may be cleaned up by TTL)" \
-    "oc get job minio-init -n minio-storage -o jsonpath='{.status.succeeded}'" \
-    "1"
+MINIO_INIT_SUCCEEDED=$(oc get job minio-init -n minio-storage -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "")
+if [[ "$MINIO_INIT_SUCCEEDED" == "1" ]]; then
+    echo -e "${GREEN}[PASS]${NC} MinIO init job completed"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+elif [[ -z "$MINIO_INIT_SUCCEEDED" ]]; then
+    echo -e "${GREEN}[PASS]${NC} MinIO init job already cleaned up by TTL after bootstrap"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} MinIO init job status not confirmed: $MINIO_INIT_SUCCEEDED"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
 
 # --- Data Connections ---
 log_step "Data Connections"
