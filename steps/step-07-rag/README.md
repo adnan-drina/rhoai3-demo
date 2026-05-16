@@ -68,6 +68,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Batch ingestion is serialized on the shared RWO PVC.** The KFP batch pipeline uses `ParallelFor(..., parallelism=1)` because each Docling/insert task mounts `rag-pipeline-workspace`. Running these pods concurrently can hit multi-attach delays when the scheduler places them on different nodes.
 
+> **KFP Llama Stack components use the 0.7 client line.** The RHOAI 3.4 Llama Stack server in this demo reports `0.7.1+rhaiv.1`; older `llama_stack_client` 0.4.x calls are rejected with HTTP 426. The KFP components install `llama-stack-client>=0.7,<0.8` and fail the run on vector-store API errors.
+
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 
 > **`max_output_tokens=512` prevents vLLM context overflow.** MCP tool results (especially file_search with 5 document chunks + MCP tool schemas for 31 tools) consume 12-16K of the 16K context window. Without explicitly passing `max_output_tokens`, LlamaStack defaults to requesting 4096 tokens from vLLM, which exceeds the remaining context space and causes `response.failed: Unknown error`. The chatbot now passes `max_output_tokens` from the sidebar slider (default 512) to the Responses API.

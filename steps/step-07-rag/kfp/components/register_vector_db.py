@@ -11,7 +11,7 @@ from kfp.dsl import component
 
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
-    packages_to_install=["llama_stack_client>=0.4,<0.5"],
+    packages_to_install=["llama-stack-client>=0.7,<0.8"],
     pip_index_urls=["https://pypi.org/simple"],
 )
 def register_vector_db_component(
@@ -78,10 +78,7 @@ def register_vector_db_component(
                 print(f"  [OK] Already exists, using name as ID: {created_id}")
             else:
                 print(f"  [FAIL] {e}")
-                return VectorDBOutput(
-                    vector_db_status={"status": "error", "error": str(e), "ready": False},
-                    vector_db_ids=[],
-                )
+                raise RuntimeError(f"Vector store create failed: {e}") from e
 
     status = {
         "status": "success",

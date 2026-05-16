@@ -5,7 +5,7 @@ and ingests it into pgvector through LlamaStack's vector_stores.files.create() A
 Server-side chunking and embedding: LlamaStack handles both using the
 granite-embedding-125m model registered in the LSD configuration.
 
-Uses 0.4.x API: files.create() for upload, then vector_stores.files.create()
+Uses the 0.7 client API: files.create() for upload, then vector_stores.files.create()
 for indexing with static chunking strategy.
 """
 
@@ -15,7 +15,7 @@ from kfp.dsl import component
 
 @component(
     base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
-    packages_to_install=["llama_stack_client>=0.4,<0.5"],
+    packages_to_install=["llama-stack-client>=0.7,<0.8"],
     pip_index_urls=["https://pypi.org/simple"],
 )
 def insert_via_llamastack_component(
@@ -68,7 +68,7 @@ def insert_via_llamastack_component(
         print(f"  Uploaded: {uploaded.id} ({upload_name})")
     except Exception as e:
         print(f"  [FAIL] File upload: {e}")
-        return InsertOutput(status="error", chunks_inserted=0)
+        raise RuntimeError(f"LlamaStack file upload failed: {e}") from e
 
     chunk_overlap = max(1, chunk_size_tokens // 4)
     chunking_strategy = {
@@ -96,7 +96,7 @@ def insert_via_llamastack_component(
             inserted += 1
         except Exception as e:
             print(f"  [FAIL] Index into '{db_id}': {e}")
-            return InsertOutput(status="error", chunks_inserted=inserted)
+            raise RuntimeError(f"LlamaStack vector store attach failed for {db_id}: {e}") from e
 
     import json as _json
     log_path = "/shared-data/ingestion-log.jsonl"
