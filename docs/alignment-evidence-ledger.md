@@ -519,16 +519,21 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Field | Evidence |
 |-------|----------|
 | Status | `aligned-with-notes` |
-| GitOps path | `gitops/step-13b-edge-ai-microshift/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
+| GitOps path | `gitops/step-13b-edge-ai-microshift/operator`, `gitops/step-13b-edge-ai-microshift/base` |
+| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift-operator.yaml`, `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
 | README | `steps/step-13b-edge-ai-microshift/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
+| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/), [Red Hat OpenShift Pipelines 1.22](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.22/html/installing_and_configuring/) |
 
 **Findings**
 
+- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/operator` rendered successfully.
 - [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
+- [PASS] Central deployment completed with OpenShift Pipelines CSV `openshift-pipelines-operator-rh.v1.22.0` in `Succeeded` phase.
+- [PASS] `./steps/step-13b-edge-ai-microshift/validate.sh` passed central checks: 11 passed, 0 failed.
+- [NOTE] MicroShift host deployment remains environment-gated by `EDGE_HOST` and `EDGE_PASS`; central OCP ModelCar release GitOps is validated on the provided cluster.
+- [NOTE] A custom ArgoCD `Subscription` health check was added because OLM can keep stale `InstallPlanFailed` conditions after the subscription reaches `AtLatestKnown` and the CSV succeeds.
 - [WARN] Unpinned `:latest` image references found:
   - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:28:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
   - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:30:      image: registry.access.redhat.com/ubi9/python-311:latest
@@ -536,9 +541,11 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-13b-edge-ai-microshift/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Pipeline --api-version=tekton.dev/v1`.
-- [DEFERRED] Verify with `oc explain Task --api-version=tekton.dev/v1`.
+- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/operator | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] `oc explain subscription.spec.installPlanApproval --api-version=operators.coreos.com/v1alpha1` confirmed `Automatic` and `Manual` values.
+- [PASS] `oc explain Pipeline --api-version=tekton.dev/v1`.
+- [PASS] `oc explain Task --api-version=tekton.dev/v1`.
 
 **rh-brain Research Sources**
 
