@@ -196,11 +196,13 @@ async function setupPage() {
   const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1050 } });
   await page.goto(routeUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
   await page.waitForLoadState("networkidle", { timeout: 45000 }).catch(() => {});
+  await page.waitForSelector('textarea[placeholder="Ask a question..."]', { timeout: 120000 }).catch(() => {});
   await page.waitForTimeout(2500);
   return page;
 }
 
 async function selectCollection(page, name) {
+  await page.waitForSelector('input[aria-label="Select Document Collections for RAG queries"]', { timeout: 120000 });
   await page.locator('input[aria-label="Select Document Collections for RAG queries"]').first().click();
   await page.getByRole("option", { name }).click();
   await page.waitForTimeout(2500);
