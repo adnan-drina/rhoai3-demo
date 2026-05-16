@@ -14,7 +14,6 @@ metadata:
   namespace: enterprise-rag
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    argocd.argoproj.io/hook: Skip
 spec:
   source:
     type: Git
@@ -30,7 +29,8 @@ spec:
     to:
       kind: ImageStreamTag
       name: rag-chatbot:latest
-  triggers: []
+  triggers:
+    - type: ConfigChange
 ---
 apiVersion: apps/v1
 kind: Deployment

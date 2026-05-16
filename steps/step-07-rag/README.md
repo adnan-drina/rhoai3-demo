@@ -72,7 +72,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **File citations controlled via LlamaStack annotation template.** LlamaStack's `annotation_instruction_template` tells the model how to cite sources. The default instructs `<|file-id|>` format which produces opaque markers. The `lsd-rag-config` ConfigMap overrides this to instruct "Never include any citation that is in the form file-id" — eliminating the markers. The ingestion pipeline also sets `attributes={"source": upload_name}` for clean filenames in the File Search Results panel.
 
-> **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. `deploy.sh` checks `lastVersion` and runs `oc start-build` if needed.
+> **rag-chatbot build trigger.** The `rag-chatbot` BuildConfig uses a `ConfigChange` trigger so the first deploy produces the `rag-chatbot:latest` ImageStreamTag before the chatbot Deployment becomes healthy. `deploy.sh` still checks `lastVersion` and starts a build if a cluster is recovering from a partial deploy.
 
 > **RAG dropdown visibility.** The chatbot UI's RAG collection dropdown only appears when vector stores contain data. If the KFP ingestion pipelines haven't run, the dropdown is hidden.
 
