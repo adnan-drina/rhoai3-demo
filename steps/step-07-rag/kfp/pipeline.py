@@ -177,10 +177,10 @@ def batch_docling_rag_pipeline(
     reg_db.set_caching_options(False)
     reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 3: Process & insert each document in parallel ---
+    # --- Step 3: Process & insert each document serially on the shared RWO PVC ---
     with dsl.ParallelFor(
         items=download.outputs["downloaded_files"],
-        parallelism=2,
+        parallelism=1,
         name="process-pdf",
     ) as doc_path:
         docling = process_with_docling_component(
