@@ -108,6 +108,36 @@ The full ACME flow has a separate validator:
 
 It checks tool runtime, agentic behavior, and guardrail behavior across the RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
 
+The Streamlit chatbot also has a browser-level validator:
+
+```bash
+./scripts/validate-chatbot-ui.sh
+```
+
+It checks route health, Chat page load, Direct RAG, Agent-based file search, database MCP tool use, prompt-injection guardrails, and the Inspect page. Use `--skip-mcp` or `--skip-guardrails` only when those dependencies are intentionally not deployed.
+
+## RHOAI 3.4 Chatbot Alignment Notes
+
+The Step 07 chatbot is aligned for an RHOAI 3.4 demo with explicit preview/developer-preview posture:
+
+| Component | Alignment |
+|-----------|-----------|
+| Llama Stack runtime | RHOAI 3.4 documents Llama Stack as Technology Preview. The chatbot uses the 0.7 client line and isolates live REST endpoints behind `llama_stack_compat.py`. |
+| RAG vector stores | Uses the RHOAI 3.4 Llama Stack vector store and file search path with pgvector-backed storage and source metadata. |
+| Responses API | Agent-based mode uses Responses API `file_search` and constrained output tokens to avoid vLLM context overflow. |
+| MCP connectors | Release notes describe Llama Stack connector and MCP HTTP streaming compatibility. Product docs are still lighter than the live `/v1beta/connectors` API, so keep this path clearly labeled as demo/preview. |
+| Guardrails | The chatbot calls the Guardrails Orchestrator for input and output checks. Prompt-injection blocking is validated in the UI test. |
+
+Product-aligned next improvements:
+
+| Candidate | Why It Helps |
+|-----------|--------------|
+| Guardrails AutoConfig | Reduces hand-maintained detector/generator wiring once detector labels and model names are stable. |
+| Guardrails OpenTelemetry | Adds traces and metrics for safety decisions, detector latency, and blocked prompts. |
+| Guardrails Gateway | Provides a governed guarded endpoint demo in addition to the chatbot's direct detector-control path. |
+| RHOAI Gen AI Playground comparison | RHOAI 3.4 adds product-native comparison flows across models, MCP servers, guardrails, and knowledge sources. Use it as a product comparison path, not as a replacement for the custom workflow app. |
+| MLflow/EvalHub integration | Persists RAG evaluation evidence beyond generated HTML reports and aligns with the RHOAI 3.4 MLflow/EvalHub direction. |
+
 ## Day-2 Operational Notes
 
 | Task | Command Or Guidance |
