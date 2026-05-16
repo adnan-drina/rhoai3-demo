@@ -10,6 +10,7 @@ the chatbot uses the orchestrator API for fine-grained detector control).
 import os
 import logging
 import requests
+import urllib3
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ ORCHESTRATOR_URL = os.getenv(
     "https://guardrails-orchestrator-service.enterprise-rag.svc:8032"
 )
 VERIFY_SSL = False
+if not VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 HEALTH_URL = os.getenv(
     "GUARDRAILS_HEALTH_URL",
     "http://guardrails-orchestrator-service.enterprise-rag.svc:8034"
