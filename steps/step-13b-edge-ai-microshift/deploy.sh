@@ -87,16 +87,25 @@ approve_pipelines_install_plan() {
 
 wait_for_argocd_app() {
     local app_name="$1"
+    local require_healthy="${2:-true}"
 
-    log_info "Waiting for ArgoCD application ${app_name} to become Synced/Healthy..."
+    if [[ "$require_healthy" == "true" ]]; then
+        log_info "Waiting for ArgoCD application ${app_name} to become Synced/Healthy..."
+    else
+        log_info "Waiting for ArgoCD application ${app_name} to become Synced..."
+    fi
     for i in $(seq 1 90); do
         local sync_status
         local health_status
         sync_status=$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
         health_status=$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
 
-        if [[ "$sync_status" == "Synced" && "$health_status" == "Healthy" ]]; then
-            log_success "ArgoCD application is Synced and Healthy"
+        if [[ "$sync_status" == "Synced" && ( "$require_healthy" != "true" || "$health_status" == "Healthy" ) ]]; then
+            if [[ "$require_healthy" == "true" ]]; then
+                log_success "ArgoCD application is Synced and Healthy"
+            else
+                log_success "ArgoCD application is Synced"
+            fi
             return 0
         fi
 
@@ -106,7 +115,11 @@ wait_for_argocd_app() {
         sleep 10
     done
 
-    log_error "ArgoCD application ${app_name} did not become Synced/Healthy"
+    if [[ "$require_healthy" == "true" ]]; then
+        log_error "ArgoCD application ${app_name} did not become Synced/Healthy"
+    else
+        log_error "ArgoCD application ${app_name} did not become Synced"
+    fi
     oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o wide || true
     return 1
 }
@@ -140,7 +153,7 @@ deploy_central_gitops() {
     approve_pipelines_install_plan
     wait_for_tekton_crds
 
-    wait_for_argocd_app "$OPERATOR_APP_NAME"
+    wait_for_argocd_app "$OPERATOR_APP_NAME" false
 
     oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${PIPELINE_APP_NAME}.yaml"
     oc annotate applications.argoproj.io "$PIPELINE_APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
