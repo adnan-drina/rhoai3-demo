@@ -53,6 +53,8 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 > **Dashboard template annotations on ServingRuntime.** The `guardrails-detector-runtime` includes `opendatahub.io/template-name` and `template-display-name` annotations matching the platform template `guardrails-detector-huggingface-serving-template`. Without these, the Dashboard shows "Unknown Serving Runtime" for HAP and prompt injection detectors.
 
+> **Detector InferenceServices use Standard deployment mode.** On RHOAI 3.4, KServe normalizes the detector `InferenceService` deployment mode to `Standard`; the manifests set `serving.kserve.io/deploymentMode: Standard` so Argo CD does not fight the admission result.
+
 </details>
 
 <details>
