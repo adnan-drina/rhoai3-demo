@@ -104,15 +104,17 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Findings**
 
 - [PASS] `kustomize build gitops/step-03-enterprise-projects/base` rendered successfully.
+- [PASS] `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -` completed on the OCP 4.20/RHOAI 3.4 cluster.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
+- [PASS] `enterprise-mlops` is labeled `rhoai.redhat.com/mlflow-workspace=true` for the Step 12 MLflow workspace selector.
 - [WARN] Unpinned `:latest` image references found:
   - gitops/step-03-enterprise-projects/base/minio/init-job.yaml:31:          image: quay.io/minio/mc:latest
   - gitops/step-03-enterprise-projects/base/minio/deployment.yaml:26:          image: quay.io/minio/minio:latest
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] Rendered schema and CR fields verified with `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -`.
 - [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
 - [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
 - [DEFERRED] Verify with `oc explain OAuth --api-version=config.openshift.io/v1`.
@@ -449,6 +451,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Findings**
 
 - [PASS] `kustomize build gitops/step-12-mlops-pipeline/base` rendered successfully.
+- [PASS] `kustomize build gitops/step-12-mlops-pipeline/base | oc apply --dry-run=server --validate=strict -f -` completed on the OCP 4.20/RHOAI 3.4 cluster.
+- [PASS] MLflow Developer Preview resources are schema-backed: `oc explain mlflow.spec`, `oc explain mlflowconfig.spec`, `oc explain mlflow.status.conditions`.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
 - [WARN] Unpinned `:latest` image references found:
@@ -456,7 +460,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-12-mlops-pipeline/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] Rendered schema and CR fields verified with `kustomize build gitops/step-12-mlops-pipeline/base | oc apply --dry-run=server --validate=strict -f -`.
 - [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
 - [DEFERRED] Verify with `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`.
 - [DEFERRED] Verify with `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`.
@@ -467,6 +471,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
 - [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
 - [DEFERRED] Verify with `oc explain Service --api-version=v1`.
+- [PASS] Verified with `oc explain MLflow --api-version=mlflow.opendatahub.io/v1`.
+- [PASS] Verified with `oc explain MLflowConfig --api-version=mlflow.kubeflow.org/v1`.
 
 **rh-brain Research Sources**
 

@@ -98,6 +98,12 @@ check "minio-storage namespace exists" \
     "oc get namespace minio-storage -o jsonpath='{.metadata.name}'" \
     "minio-storage"
 
+# --- MLflow Workspace ---
+log_step "MLflow Workspace"
+check "enterprise-mlops namespace is selected for MLflow workspace" \
+    "oc get namespace enterprise-mlops -o jsonpath='{.metadata.labels.rhoai\\.redhat\\.com/mlflow-workspace}'" \
+    "true"
+
 # --- Kueue ---
 log_step "Kueue"
 check "maas namespace is Kueue-managed" \

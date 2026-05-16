@@ -33,23 +33,28 @@ check "Pipeline RBAC (Role)" \
 
 # --- MLflow ---
 log_step "MLflow"
-MLFLOW_FLAG=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
-    -o jsonpath='{.spec.dashboardConfig.mlflow}' 2>/dev/null || echo "")
-if [[ "$MLFLOW_FLAG" == "true" ]]; then
-    echo -e "${GREEN}[PASS]${NC} RHOAI Dashboard MLflow feature flag enabled"
-    VALIDATE_PASS=$((VALIDATE_PASS + 1))
-else
-    echo -e "${YELLOW}[WARN]${NC} MLflow dashboard flag not confirmed; verify OdhDashboardConfig schema on this cluster"
-    VALIDATE_WARN=$((VALIDATE_WARN + 1))
-fi
+check "RHOAI MLflow operator component managed" \
+    "oc get dsc default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}'" \
+    "Managed"
 
-if oc api-resources 2>/dev/null | grep -qi mlflow; then
-    echo -e "${GREEN}[PASS]${NC} MLflow API resources discovered"
-    VALIDATE_PASS=$((VALIDATE_PASS + 1))
-else
-    echo -e "${YELLOW}[WARN]${NC} No documented MLflow CRD discovered; create MLflow server through RHOAI dashboard until a supported GitOps API is confirmed"
-    VALIDATE_WARN=$((VALIDATE_WARN + 1))
-fi
+check_crd_exists "mlflows.mlflow.opendatahub.io"
+check_crd_exists "mlflowconfigs.mlflow.kubeflow.org"
+
+check "MLflow server exists" \
+    "oc get mlflow mlflow -o jsonpath='{.metadata.name}'" \
+    "mlflow"
+
+check "MLflow server available" \
+    "oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type==\"Available\")].status}'" \
+    "True"
+
+check "enterprise-mlops MLflowConfig exists" \
+    "oc get mlflowconfig mlflow -n $NAMESPACE -o jsonpath='{.spec.artifactRootSecret}'" \
+    "mlflow-artifact-connection"
+
+check "MLflow artifact connection secret exists" \
+    "oc get secret mlflow-artifact-connection -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "mlflow-artifact-connection"
 
 # --- Pipeline Execution ---
 log_step "Pipeline Execution"
@@ -58,8 +63,7 @@ if [ "$COMPLETED_RUNS" -ge 1 ]; then
     echo -e "${GREEN}[PASS]${NC} Pipeline has completed runs ($COMPLETED_RUNS pods)"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${YELLOW}[WARN]${NC} No completed pipeline pods found — checking KFP run history"
-    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    log_info "No completed pipeline pods found — checking KFP run history"
 fi
 
 TRAIN_RUN_INFO=""

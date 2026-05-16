@@ -64,6 +64,9 @@ def face_recognition_training_pipeline(
     version: str = "",
     epochs: int = 100,
     mAP_threshold: float = 0.7,
+    max_user_photos: int = 40,
+    max_unknown_photos: int = 40,
+    num_hf_portraits: int = 0,
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
     registry_url: str = "https://enterprise-ai-registry-rest.apps.cluster-kb4dq.kb4dq.sandbox2381.opentlc.com",
     isvc_namespace: str = "enterprise-mlops",
@@ -80,6 +83,9 @@ def face_recognition_training_pipeline(
         photos_s3_prefix=photos_s3_prefix,
         unknown_s3_prefix=unknown_s3_prefix,
         minio_endpoint=minio_endpoint,
+        max_user_photos=max_user_photos,
+        max_unknown_photos=max_unknown_photos,
+        num_hf_portraits=num_hf_portraits,
     )
     _inject_minio(prep_task)
     _mount_pvc(prep_task)
@@ -87,15 +93,11 @@ def face_recognition_training_pipeline(
     prep_task.set_caching_options(False)
     prep_task.set_retry(num_retries=2, backoff_duration="30s", backoff_factor=2.0)
 
-    # --- Step 2: Train Model (GPU-accelerated) ---
+    # --- Step 2: Train Model (GPU when available, CPU fallback) ---
     train_task = train_model(epochs=epochs)
     _mount_pvc(train_task)
     train_task.set_cpu_request("2").set_cpu_limit("4")
     train_task.set_memory_request("4Gi").set_memory_limit("8Gi")
-    train_task.set_accelerator_type("nvidia.com/gpu")
-    train_task.set_gpu_limit(1)
-    kubernetes.add_toleration(train_task, key="nvidia.com/gpu", operator="Exists", effect="NoSchedule")
-    kubernetes.add_node_selector(train_task, label_key="node-role.kubernetes.io/gpu", label_value="")
     train_task.after(prep_task)
     train_task.set_caching_options(False)
 

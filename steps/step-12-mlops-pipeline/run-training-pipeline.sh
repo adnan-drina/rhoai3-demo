@@ -1,6 +1,7 @@
 #!/bin/bash
 # Launch the face recognition training pipeline.
 # Usage: ./run-training-pipeline.sh [--version VERSION] [--epochs N] [--threshold F]
+#        [--max-user-photos N] [--max-unknown-photos N] [--num-hf-portraits N]
 
 set -euo pipefail
 
@@ -15,11 +16,17 @@ load_env
 VERSION="$(date +%Y%m%d-%H%M%S)"
 EPOCHS=100
 THRESHOLD=0.7
+MAX_USER_PHOTOS=40
+MAX_UNKNOWN_PHOTOS=40
+NUM_HF_PORTRAITS=0
 for arg in "$@"; do
     case "$arg" in
         --version=*) VERSION="${arg#*=}" ;;
         --epochs=*) EPOCHS="${arg#*=}" ;;
         --threshold=*) THRESHOLD="${arg#*=}" ;;
+        --max-user-photos=*) MAX_USER_PHOTOS="${arg#*=}" ;;
+        --max-unknown-photos=*) MAX_UNKNOWN_PHOTOS="${arg#*=}" ;;
+        --num-hf-portraits=*) NUM_HF_PORTRAITS="${arg#*=}" ;;
     esac
 done
 
@@ -28,6 +35,7 @@ check_oc_logged_in
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Face Recognition Training Pipeline                                  ║"
 echo "║  Version: $VERSION   Epochs: $EPOCHS   Threshold: $THRESHOLD                   ║"
+echo "║  Samples: user=$MAX_USER_PHOTOS unknown=$MAX_UNKNOWN_PHOTOS hf=$NUM_HF_PORTRAITS                         ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -43,13 +51,11 @@ if [ ! -d "$VENV_PATH" ]; then
     "$VENV_PATH/bin/pip" install -q --upgrade pip kfp kfp-kubernetes
 fi
 
-if [ ! -f "$PIPELINE_YAML" ]; then
-    log_step "Compiling pipeline..."
-    mkdir -p "$REPO_ROOT/artifacts"
-    (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
-    mv "$SCRIPT_DIR/kfp/face-recognition-training.yaml" "$PIPELINE_YAML"
-    log_success "Compiled: $PIPELINE_YAML"
-fi
+log_step "Compiling pipeline..."
+mkdir -p "$REPO_ROOT/artifacts"
+(cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
+mv "$SCRIPT_DIR/kfp/face-recognition-training.yaml" "$PIPELINE_YAML"
+log_success "Compiled: $PIPELINE_YAML"
 echo ""
 
 # =============================================================================
@@ -82,7 +88,7 @@ echo ""
 # =============================================================================
 log_step "Submitting pipeline run..."
 
-export NAMESPACE VERSION EPOCHS THRESHOLD PIPELINE_YAML DSPA_URL REGISTRY_URL OC_TOKEN
+export NAMESPACE VERSION EPOCHS THRESHOLD MAX_USER_PHOTOS MAX_UNKNOWN_PHOTOS NUM_HF_PORTRAITS PIPELINE_YAML DSPA_URL REGISTRY_URL OC_TOKEN
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys
@@ -92,6 +98,9 @@ NAMESPACE = os.environ["NAMESPACE"]
 VERSION = os.environ["VERSION"]
 EPOCHS = int(os.environ["EPOCHS"])
 THRESHOLD = float(os.environ["THRESHOLD"])
+MAX_USER_PHOTOS = int(os.environ["MAX_USER_PHOTOS"])
+MAX_UNKNOWN_PHOTOS = int(os.environ["MAX_UNKNOWN_PHOTOS"])
+NUM_HF_PORTRAITS = int(os.environ["NUM_HF_PORTRAITS"])
 PIPELINE_YAML = os.environ["PIPELINE_YAML"]
 DSPA_URL = os.environ["DSPA_URL"]
 REGISTRY_URL = os.environ["REGISTRY_URL"]
@@ -161,6 +170,9 @@ run = kfp_client.run_pipeline(
         "version": VERSION,
         "epochs": EPOCHS,
         "mAP_threshold": THRESHOLD,
+        "max_user_photos": MAX_USER_PHOTOS,
+        "max_unknown_photos": MAX_UNKNOWN_PHOTOS,
+        "num_hf_portraits": NUM_HF_PORTRAITS,
         "minio_endpoint": "http://minio.minio-storage.svc.cluster.local:9000",
         "registry_url": REGISTRY_URL,
         "isvc_namespace": NAMESPACE,

@@ -135,32 +135,57 @@ echo ""
 log_step "Launching training pipeline..."
 if [ -f "$SCRIPT_DIR/run-training-pipeline.sh" ]; then
     chmod +x "$SCRIPT_DIR/run-training-pipeline.sh"
-    "$SCRIPT_DIR/run-training-pipeline.sh" || log_warn "Pipeline launch had issues — check Dashboard"
+    PIPELINE_EPOCHS="${PIPELINE_EPOCHS:-1}"
+    PIPELINE_MAP_THRESHOLD="${PIPELINE_MAP_THRESHOLD:-0.0}"
+    PIPELINE_MAX_USER_PHOTOS="${PIPELINE_MAX_USER_PHOTOS:-40}"
+    PIPELINE_MAX_UNKNOWN_PHOTOS="${PIPELINE_MAX_UNKNOWN_PHOTOS:-40}"
+    PIPELINE_NUM_HF_PORTRAITS="${PIPELINE_NUM_HF_PORTRAITS:-0}"
+    "$SCRIPT_DIR/run-training-pipeline.sh" \
+        --epochs="$PIPELINE_EPOCHS" \
+        --threshold="$PIPELINE_MAP_THRESHOLD" \
+        --max-user-photos="$PIPELINE_MAX_USER_PHOTOS" \
+        --max-unknown-photos="$PIPELINE_MAX_UNKNOWN_PHOTOS" \
+        --num-hf-portraits="$PIPELINE_NUM_HF_PORTRAITS" || \
+        log_warn "Pipeline launch had issues — check Dashboard"
 else
     log_error "run-training-pipeline.sh not found"
 fi
 echo ""
 
 # Wait for pipeline completion
-log_step "Waiting for pipeline to complete (~60 min (100 epochs on GPU))..."
+log_step "Waiting for pipeline to complete (default smoke run: 1 epoch on CPU)..."
 TIMEOUT=1500
 ELAPSED=0
 PIPELINE_DONE=false
+PIPELINE_FAILED=false
+LATEST_WORKFLOW=""
 while [ $ELAPSED -lt $TIMEOUT ]; do
-    # Check for any running pipeline pods
-    ACTIVE=$(oc get pods -n "$NAMESPACE" -l pipeline/runid --no-headers 2>/dev/null | grep -v Completed | grep -v Error | wc -l | tr -d ' ')
-    if [ "$ACTIVE" -eq 0 ] && [ $ELAPSED -gt 60 ]; then
+    WORKFLOW_INFO=$(oc get workflows.argoproj.io -n "$NAMESPACE" \
+        --sort-by=.metadata.creationTimestamp --no-headers 2>/dev/null | \
+        awk '/^face-recognition-training-/ {name=$1; phase=$2} END {if (name) print name "|" phase}' || true)
+    LATEST_WORKFLOW="${WORKFLOW_INFO%%|*}"
+    WORKFLOW_PHASE="${WORKFLOW_INFO#*|}"
+
+    if [[ -n "$LATEST_WORKFLOW" && "$WORKFLOW_PHASE" == "Succeeded" ]]; then
         PIPELINE_DONE=true
         break
     fi
+    if [[ -n "$LATEST_WORKFLOW" && ( "$WORKFLOW_PHASE" == "Failed" || "$WORKFLOW_PHASE" == "Error" ) ]]; then
+        PIPELINE_FAILED=true
+        break
+    fi
+
     sleep 30
     ELAPSED=$((ELAPSED + 30))
     if (( ELAPSED % 120 == 0 )); then
-        log_info "  Pipeline in progress... (${ELAPSED}s elapsed, $ACTIVE pods active)"
+        log_info "  Pipeline in progress... (${ELAPSED}s elapsed, latest workflow: ${LATEST_WORKFLOW:-none} ${WORKFLOW_PHASE:-unknown})"
     fi
 done
 if [ "$PIPELINE_DONE" = "true" ]; then
-    log_success "Training pipeline completed"
+    log_success "Training pipeline completed (${LATEST_WORKFLOW})"
+elif [ "$PIPELINE_FAILED" = "true" ]; then
+    log_error "Training pipeline failed (${LATEST_WORKFLOW})"
+    exit 1
 else
     log_warn "Pipeline did not complete within ${TIMEOUT}s — check Dashboard"
 fi

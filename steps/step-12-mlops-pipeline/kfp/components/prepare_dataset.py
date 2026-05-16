@@ -21,6 +21,9 @@ def prepare_dataset(
     photos_s3_prefix: str,
     minio_endpoint: str,
     unknown_s3_prefix: str = "s3://face-training-photos/unknown/",
+    max_user_photos: int = 40,
+    max_unknown_photos: int = 40,
+    num_hf_portraits: int = 0,
     dataset: Output[Dataset] = None,
     metrics: Output[Metrics] = None,
 ) -> int:
@@ -31,6 +34,9 @@ def prepare_dataset(
         minio_endpoint: MinIO endpoint URL (fallback if env var not set).
         unknown_s3_prefix: S3 URI to unknown face photos (class 1).
             Falls back to LFW dataset if empty.
+        max_user_photos: Maximum user photos to use for this run.
+        max_unknown_photos: Maximum MinIO unknown photos to use for this run.
+        num_hf_portraits: Number of HuggingFace portraits to add as extra unknowns.
         metrics: KFP Metrics artifact for Dashboard visibility.
 
     Returns:
@@ -82,38 +88,40 @@ def prepare_dataset(
 
     # --- Download user photos from MinIO ---
     n_user = download_s3_photos(photos_s3_prefix, PHOTOS_DIR)
-    user_photos = sorted(PHOTOS_DIR.glob("*"))
+    user_photos = sorted(PHOTOS_DIR.glob("*"))[:max_user_photos]
     print(f"Downloaded {n_user} user photos from {photos_s3_prefix}")
+    print(f"Using {len(user_photos)} user photos for this run")
 
     # --- Download unknown photos from MinIO, fall back to LFW ---
     n_unknown = download_s3_photos(unknown_s3_prefix, UNKNOWN_DIR)
     print(f"Downloaded {n_unknown} unknown photos from {unknown_s3_prefix}")
 
     # Augment with HuggingFace portraits for diversity
-    NUM_PORTRAITS = 200
-    print(f"Downloading {NUM_PORTRAITS} realistic face portraits from HuggingFace...")
-    try:
-        from datasets import load_dataset
-        from PIL import Image
-        ds = load_dataset("prithivMLmods/Realistic-Face-Portrait-1024px", split="train", streaming=True)
-        p_count = 0
-        for example in ds:
-            if p_count >= NUM_PORTRAITS:
-                break
-            try:
-                img = example["image"]
-                if img.width >= 256:
-                    img = img.resize((512, 512))
-                    img.save(UNKNOWN_DIR / f"portrait_{p_count:04d}.jpg", quality=95)
-                    p_count += 1
-            except:
-                continue
-        print(f"Added {p_count} HuggingFace portraits")
-    except Exception as e:
-        print(f"Portrait download failed ({e}) — continuing with MinIO photos only")
+    if num_hf_portraits > 0:
+        print(f"Downloading {num_hf_portraits} realistic face portraits from HuggingFace...")
+        try:
+            from datasets import load_dataset
+            from PIL import Image
+            ds = load_dataset("prithivMLmods/Realistic-Face-Portrait-1024px", split="train", streaming=True)
+            p_count = 0
+            for example in ds:
+                if p_count >= num_hf_portraits:
+                    break
+                try:
+                    img = example["image"]
+                    if img.width >= 256:
+                        img = img.resize((512, 512))
+                        img.save(UNKNOWN_DIR / f"portrait_{p_count:04d}.jpg", quality=95)
+                        p_count += 1
+                except:
+                    continue
+            print(f"Added {p_count} HuggingFace portraits")
+        except Exception as e:
+            print(f"Portrait download failed ({e}) — continuing with MinIO photos only")
 
     unknown_photos = sorted(UNKNOWN_DIR.glob("*.jpg")) + sorted(UNKNOWN_DIR.glob("*.jpeg"))
-    print(f"Total unknown faces: {len(unknown_photos)}")
+    unknown_photos = unknown_photos[:max_unknown_photos]
+    print(f"Using {len(unknown_photos)} unknown faces for this run")
 
     # --- Auto-annotate ---
     print("Auto-annotating with YOLO11-face detector...")
@@ -141,8 +149,7 @@ def prepare_dataset(
                 f.write(f"{class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
         return True
 
-    unknown_photos = sorted(UNKNOWN_DIR.glob("*.jpg"))
-    random.shuffle(list(user_photos))
+    random.shuffle(user_photos)
     random.shuffle(unknown_photos)
 
     total = {"train": 0, "val": 0}

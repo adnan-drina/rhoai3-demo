@@ -72,21 +72,31 @@ except Exception:
 
 def upload_dir(local_dir, s3_prefix):
     files = sorted(local_dir.glob("*.jpeg")) + sorted(local_dir.glob("*.jpg")) + sorted(local_dir.glob("*.png"))
+    uploaded = 0
+    skipped = 0
     for f in files:
-        s3.upload_file(str(f), BUCKET, f"{s3_prefix}/{f.name}")
-    return len(files)
+        key = f"{s3_prefix}/{f.name}"
+        try:
+            s3.head_object(Bucket=BUCKET, Key=key)
+            skipped += 1
+            continue
+        except Exception:
+            pass
+        s3.upload_file(str(f), BUCKET, key)
+        uploaded += 1
+    return uploaded, skipped, len(files)
 
-n = upload_dir(PHOTOS_DIR, "adnan")
-print(f"Uploaded {n} selfie photos -> s3://{BUCKET}/adnan/")
+uploaded, skipped, total = upload_dir(PHOTOS_DIR, "adnan")
+print(f"Selfie photos -> s3://{BUCKET}/adnan/: {uploaded} uploaded, {skipped} already present, {total} total")
 
 if UNKNOWN_DIR.exists():
-    n = upload_dir(UNKNOWN_DIR, "unknown")
-    print(f"Uploaded {n} unknown photos -> s3://{BUCKET}/unknown/")
+    uploaded, skipped, total = upload_dir(UNKNOWN_DIR, "unknown")
+    print(f"Unknown photos -> s3://{BUCKET}/unknown/: {uploaded} uploaded, {skipped} already present, {total} total")
 else:
     print("No unknown_face directory — pipeline will still add HuggingFace portraits")
 
-n = upload_dir(IMAGES_DIR, "test-images")
-print(f"Uploaded {n} test images -> s3://{BUCKET}/test-images/")
+uploaded, skipped, total = upload_dir(IMAGES_DIR, "test-images")
+print(f"Test images -> s3://{BUCKET}/test-images/: {uploaded} uploaded, {skipped} already present, {total} total")
 
 print(f"\nAll data uploaded to s3://{BUCKET}/")
 PYEOF
