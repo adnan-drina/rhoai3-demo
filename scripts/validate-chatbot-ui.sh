@@ -364,6 +364,23 @@ async function verifyExamplePromptButtons(examples) {
   }
 }
 
+async function runAgentRagWhoami() {
+  const page = await setupPage();
+  await page.getByText("Agent-based").click();
+  await page.waitForTimeout(2500);
+  await selectCollection(page, "whoami");
+  await ask(page, "Who is Adnan Drina and what is his current role?");
+  await waitForOutcome(page, /Using file_search tool with vector store: whoami|Principal Solution Architect|Red Hat/i);
+  const text = await page.locator("body").innerText();
+  await record(
+    "chatbot-agent-rag-whoami",
+    !hasFailure(text) && /Using file_search tool with vector store: whoami/i.test(text) && /Principal Solution Architect|Red Hat/i.test(text),
+    page,
+    { excerpt: (text.match(/Adnan Drina[\s\S]{0,420}/) || [""])[0] }
+  );
+  await page.close();
+}
+
 try {
   {
     const page = await setupPage();
@@ -378,25 +395,10 @@ try {
     await page.close();
   } else {
     await verifyExamplePromptButtons(examplePrompts);
+    await runAgentRagWhoami();
     for (const [index, example] of examplePrompts.entries()) {
       await runExamplePrompt(example, index);
     }
-  }
-  {
-    const page = await setupPage();
-    await page.getByText("Agent-based").click();
-    await page.waitForTimeout(2500);
-    await selectCollection(page, "whoami");
-    await ask(page, "Who is Adnan Drina and what is his current role?");
-    await waitForOutcome(page, /Using file_search tool with vector store: whoami|Principal Solution Architect|Red Hat/i);
-    const text = await page.locator("body").innerText();
-    await record(
-      "chatbot-agent-rag-whoami",
-      !hasFailure(text) && /Using file_search tool with vector store: whoami/i.test(text) && /Principal Solution Architect|Red Hat/i.test(text),
-      page,
-      { excerpt: (text.match(/Adnan Drina[\s\S]{0,420}/) || [""])[0] }
-    );
-    await page.close();
   }
   if (runGuardrails) {
     const page = await setupPage();
