@@ -100,7 +100,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > **MCP transport configuration (RHOAI 3.4):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its Dashboard URL uses `/mcp` instead of `/sse`. The `lsd-rag` runtime registers the same servers as Llama Stack connectors using in-cluster `/sse` service URLs.
 
-> **Connector-based lsd-rag integration:** RHOAI 3.4 packages Llama Stack 0.7, where the old `/v1/toolgroups` and `/v1/tool-runtime/invoke` endpoints are no longer part of the served API. The `lsd-rag` ConfigMap enables `connectors`, stores connector metadata in PostgreSQL, and registers `openshift-mcp`, `database-mcp`, and `slack-mcp` at startup.
+> **Connector-based lsd-rag integration:** RHOAI 3.4 packages Llama Stack 0.7, where the old `/v1/toolgroups` and `/v1/tool-runtime/invoke` endpoints are no longer part of the served API. The `lsd-rag` ConfigMap enables `connectors`, stores connector metadata on the Llama Stack PVC, and registers `openshift-mcp`, `database-mcp`, and `slack-mcp` at startup.
 
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.4 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 

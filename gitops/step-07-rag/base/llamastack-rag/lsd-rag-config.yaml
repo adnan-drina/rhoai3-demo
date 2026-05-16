@@ -262,6 +262,9 @@ data:
           db: ${env.POSTGRES_DB:=llamastack}
           user: ${env.POSTGRES_USER:=llamastack}
           password: ${env.POSTGRES_PASSWORD:=llamastack}
+        sqlite_connectors:
+          type: kv_sqlite
+          db_path: /opt/app-root/src/.llama/distributions/rh/connectors.db
       stores:
         metadata:
           backend: kv_default
@@ -279,7 +282,7 @@ data:
           backend: kv_default
         connectors:
           namespace: connectors
-          backend: kv_default
+          backend: sqlite_connectors
     registered_resources:
       models:
       - metadata: {}
