@@ -9,4 +9,3 @@ spec:
   targetNamespaces:
     - cert-manager-operator
   upgradeStrategy: Default
-

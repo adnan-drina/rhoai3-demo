@@ -16,4 +16,3 @@ spec:
         - Deployment
     preemption:
       preemptionPolicy: Classical
-

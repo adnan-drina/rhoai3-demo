@@ -6,4 +6,3 @@ resources:
   - resource-flavor.yaml
   - cluster-queue.yaml
   - local-queue.yaml
-

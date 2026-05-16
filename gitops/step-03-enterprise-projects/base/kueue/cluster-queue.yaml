@@ -24,4 +24,3 @@ spec:
               nominalQuota: 240Gi
             - name: nvidia.com/gpu
               nominalQuota: "5"
-

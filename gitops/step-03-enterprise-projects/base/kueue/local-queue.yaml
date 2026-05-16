@@ -12,4 +12,3 @@ metadata:
     kueue.x-k8s.io/default-queue: "true"
 spec:
   clusterQueue: maas-gpu
-
