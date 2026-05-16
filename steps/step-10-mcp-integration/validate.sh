@@ -15,7 +15,26 @@ echo ""
 
 # --- Argo CD Application ---
 log_step "Argo CD Application"
-check_argocd_app "step-10-mcp-integration"
+APP_SYNC=$(oc get applications.argoproj.io step-10-mcp-integration -n openshift-gitops \
+    -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+APP_HEALTH=$(oc get applications.argoproj.io step-10-mcp-integration -n openshift-gitops \
+    -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+
+if [[ "$APP_SYNC" == "Synced" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' sync: Synced"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Argo CD app 'step-10-mcp-integration' sync (expected: Synced, got: $APP_SYNC)"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+if [[ "$APP_HEALTH" == "Healthy" || "$APP_HEALTH" == "Degraded" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' health: $APP_HEALTH (expected for failing ACME pod demo)"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Argo CD app 'step-10-mcp-integration' health (expected: Healthy or Degraded, got: $APP_HEALTH)"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
 
 # --- MCP Server Deployments ---
 log_step "MCP Server Deployments"
