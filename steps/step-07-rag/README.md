@@ -112,7 +112,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | `INFERENCE_MODEL` | `llamastack-vllm-secret` | granite-8b-agent | — |
 | `VLLM_URL` | `llamastack-vllm-secret` | vLLM endpoint | — |
 | `ENABLE_RAGAS` | `true` | Ragas evaluation providers (auto-wired by `rh-dev`) | Ragas docs |
-| `NEMO_GUARDRAILS_URL` | `rag-chatbot` env | Step 09 shield adapter calls the NeMo Guardrails OpenAI-compatible `/v1/chat/completions` API | Guardrails docs |
+| `NEMO_GUARDRAILS_URL` | `https://nemo-guardrails.enterprise-rag.svc.cluster.local` | Step 09 shield adapter calls the NeMo Guardrails OpenAI-compatible `/v1/chat/completions` API over the operator-created HTTPS service | Guardrails docs |
 | No `userConfig` | — | `rh-dev` template manages all provider wiring | Recommended for pgvector |
 | PostgreSQL image | `pgvector/pgvector:pg16` | Dual-purpose: metadata + vector store | Documented image |
 

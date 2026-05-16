@@ -1,8 +1,8 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T11:48:47Z
-**Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
-**Base ref:** `origin/main`
+**Generated:** 2026-05-16T12:18:35Z
+**Command:** `./scripts/audit-doc-alignment.sh --base 1899185`
+**Base ref:** `1899185`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
 **rh-brain source:** `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
 

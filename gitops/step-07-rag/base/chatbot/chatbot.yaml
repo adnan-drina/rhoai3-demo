@@ -66,7 +66,7 @@ spec:
             - name: INFERENCE_MODEL
               value: "vllm-inference/granite-8b-agent"
             - name: NEMO_GUARDRAILS_URL
-              value: "http://nemo-guardrails.enterprise-rag.svc.cluster.local:8000"
+              value: "https://nemo-guardrails.enterprise-rag.svc.cluster.local"
             - name: NEMO_GUARDRAILS_MODEL
               value: "granite-8b-agent"
             - name: RAG_QUESTION_SUGGESTIONS

@@ -96,7 +96,7 @@ def log_mlflow_run(
     }
 
     client = MlflowClient(tracking_uri=mlflow_tracking_uri)
-    experiments = client.search_experiments(filter_string=f"name = '{experiment_name}'")
+    experiments = client.search_experiments(filter_string=f'name = "{experiment_name}"')
     if experiments:
         experiment_id = experiments[0].experiment_id
     else:

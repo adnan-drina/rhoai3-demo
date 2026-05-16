@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 NEMO_GUARDRAILS_URL = os.getenv(
     "NEMO_GUARDRAILS_URL",
-    "http://nemo-guardrails.enterprise-rag.svc.cluster.local:8000"
+    "https://nemo-guardrails.enterprise-rag.svc.cluster.local"
 )
 NEMO_MODEL = os.getenv("NEMO_GUARDRAILS_MODEL", "granite-8b-agent")
 NEMO_TOKEN = os.getenv("NEMO_GUARDRAILS_TOKEN")

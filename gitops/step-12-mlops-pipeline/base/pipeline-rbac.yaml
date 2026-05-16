@@ -58,3 +58,25 @@ subjects:
   - kind: ServiceAccount
     name: pipeline-runner-dspa-mlops
     namespace: enterprise-mlops
+---
+# MLflow SDK writes use the pipeline runner's Kubernetes identity.
+# The namespace edit role lets MLflow authorize experiment run creation and
+# artifact logging for the enterprise-mlops workspace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: face-pipeline-mlflow-client
+  namespace: enterprise-mlops
+  labels:
+    app.kubernetes.io/part-of: face-recognition
+    app.kubernetes.io/component: pipeline
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: pipeline-runner-dspa-mlops
+    namespace: enterprise-mlops

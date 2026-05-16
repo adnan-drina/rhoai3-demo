@@ -8,6 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="enterprise-mlops"
+EXPERIMENT_NAME="face-recognition"
 
 source "$REPO_ROOT/scripts/lib.sh"
 load_env
@@ -76,12 +77,45 @@ DSPA_URL="https://$DSPA_ROUTE"
 
 REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 REGISTRY_URL="https://$REGISTRY_ROUTE"
+MLFLOW_URL=$(oc get mlflow mlflow -o jsonpath='{.status.url}' 2>/dev/null || echo "")
 
 CLUSTER_DOMAIN=$(echo "$DSPA_ROUTE" | sed 's/.*\.apps\./apps./')
 
 log_info "DSPA: $DSPA_URL"
 log_info "Registry: $REGISTRY_URL"
+log_info "MLflow: ${MLFLOW_URL:-not found}"
 echo ""
+
+# =============================================================================
+# Ensure MLflow experiment exists
+# =============================================================================
+if [[ -n "$MLFLOW_URL" ]]; then
+    log_step "Ensuring MLflow experiment..."
+    EXPERIMENT_JSON=$(curl -sk --max-time 20 -X POST "$MLFLOW_URL/api/2.0/mlflow/experiments/search" \
+        -H "Authorization: Bearer $OC_TOKEN" \
+        -H "x-mlflow-workspace: $NAMESPACE" \
+        -H "Content-Type: application/json" \
+        -d "{\"filter\":\"name = '$EXPERIMENT_NAME'\",\"max_results\":1}" 2>/dev/null || true)
+    EXPERIMENT_ID=$(echo "$EXPERIMENT_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); ex=d.get('experiments') or []; print(ex[0].get('experiment_id','') if ex else '')" 2>/dev/null || true)
+    if [[ -n "$EXPERIMENT_ID" ]]; then
+        log_success "MLflow experiment exists: $EXPERIMENT_NAME ($EXPERIMENT_ID)"
+    else
+        CREATE_JSON=$(curl -sk --max-time 20 -X POST "$MLFLOW_URL/api/2.0/mlflow/experiments/create" \
+            -H "Authorization: Bearer $OC_TOKEN" \
+            -H "x-mlflow-workspace: $NAMESPACE" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"$EXPERIMENT_NAME\"}" 2>/dev/null || true)
+        EXPERIMENT_ID=$(echo "$CREATE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('experiment_id',''))" 2>/dev/null || true)
+        if [[ -n "$EXPERIMENT_ID" ]]; then
+            log_success "Created MLflow experiment: $EXPERIMENT_NAME ($EXPERIMENT_ID)"
+        else
+            log_warn "Could not verify MLflow experiment; pipeline will attempt to use existing MLflow configuration"
+        fi
+    fi
+    echo ""
+else
+    log_warn "MLflow URL not found; skipping experiment preflight"
+fi
 
 # =============================================================================
 # Upload and run pipeline
