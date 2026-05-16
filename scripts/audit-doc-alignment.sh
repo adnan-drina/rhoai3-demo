@@ -18,6 +18,7 @@ LEDGER_PATH="$REPO_ROOT/docs/alignment-evidence-ledger.md"
 RH_BRAIN_DIR="${RH_BRAIN_DIR:-/Users/adrina/Sandbox/rh-brain/Red Hat Brain}"
 STRICT_CLUSTER="${AUDIT_STRICT_CLUSTER:-false}"
 OC_REQUEST_TIMEOUT="${OC_REQUEST_TIMEOUT:-5s}"
+OC_SERVER_DRY_RUN_TIMEOUT_SECONDS="${OC_SERVER_DRY_RUN_TIMEOUT_SECONDS:-90}"
 
 RHOAI_DOCS="https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/"
 RHOAI_RELEASE_NOTES="https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/release_notes/index"
@@ -36,6 +37,7 @@ Environment:
   RH_BRAIN_DIR=/path/to/rh-brain/Red Hat Brain
   AUDIT_STRICT_CLUSTER=true   # fail when live oc explain checks fail
   OC_REQUEST_TIMEOUT=5s       # timeout for live oc whoami/explain checks
+  OC_SERVER_DRY_RUN_TIMEOUT_SECONDS=90
 EOF
 }
 
@@ -190,7 +192,38 @@ oc_explain_kind() {
 
 oc_server_dry_run() {
     local rendered_file="$1" err_file="${2:-/dev/null}"
-    oc --request-timeout="$OC_REQUEST_TIMEOUT" apply --dry-run=server --validate=strict -f "$rendered_file" >/dev/null 2>"$err_file"
+    python3 - "$OC_REQUEST_TIMEOUT" "$OC_SERVER_DRY_RUN_TIMEOUT_SECONDS" "$rendered_file" "$err_file" <<'PY'
+import subprocess
+import sys
+
+request_timeout, timeout_seconds, rendered_file, err_file = sys.argv[1:5]
+cmd = [
+    "oc",
+    f"--request-timeout={request_timeout}",
+    "apply",
+    "--dry-run=server",
+    "--validate=strict",
+    "-f",
+    rendered_file,
+]
+
+with open(err_file, "wb") as stderr:
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr,
+            timeout=int(timeout_seconds),
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        stderr.write(
+            f"oc server dry-run timed out after {timeout_seconds}s\n".encode()
+        )
+        sys.exit(124)
+
+sys.exit(result.returncode)
+PY
 }
 
 latest_image_classification() {
@@ -257,6 +290,26 @@ find_rh_brain_sources() {
 component_extra_findings() {
     local component="$1"
     case "$component" in
+        step-02-rhoai)
+            if grep -q 'termination: reencrypt' gitops/step-02-rhoai/base/rhoai-operator/maas-gateway-route.yaml \
+                && grep -q 'configure_maas_gateway_route' steps/step-02-rhoai/deploy.sh \
+                && grep -q '/spec/tls/destinationCACertificate' gitops/argocd/app-of-apps/step-02-rhoai.yaml; then
+                cat <<'EOF'
+- [PASS] MaaS gateway Route uses re-encrypt TLS and deploy-time product host/CA reconciliation for dashboard BFF discovery.
+- [PASS] Argo CD ignores only the MaaS Route host and backend CA, preserving cluster-specific values while keeping the route GitOps-managed.
+EOF
+            fi
+            ;;
+        step-05-maas-model-serving)
+            if grep -q 'configure_maas_gateway_route' steps/step-05-maas-model-serving/deploy.sh \
+                && grep -q 'api/v1/maas/models' steps/step-05-maas-model-serving/validate.sh \
+                && grep -q '/v1/models' steps/step-05-maas-model-serving/validate.sh; then
+                cat <<'EOF'
+- [PASS] MaaS model-serving deployment retries gateway product-host reconciliation before publishing model references.
+- [PASS] MaaS validation checks the public `/v1/models` API and GenAI AI asset MaaS BFF API list both published demo models.
+EOF
+            fi
+            ;;
         step-07-rag)
             if grep -q '"use_case"' gitops/step-07-rag/base/chatbot/chatbot.yaml \
                 && grep -q 'loadExamplePrompts' scripts/validate-chatbot-ui.sh; then
@@ -309,9 +362,9 @@ while IFS= read -r component; do
     done < <(dependencies_for "$component")
 done < "$components"
 
-if [[ -n "$COMPONENT" && -f "$LEDGER_PATH" ]]; then
-    # Scoped audits should not discard unrelated evidence that is already in
-    # the committed ledger. Refresh existing component sections as well until
+if [[ -s "$audit_components" && -f "$LEDGER_PATH" ]]; then
+    # Audits should not discard unrelated evidence that is already in the
+    # committed ledger. Refresh existing component sections as well until
     # section-level replacement is implemented.
     while IFS= read -r existing_component; do
         add_unique "$existing_component" "$audit_components"

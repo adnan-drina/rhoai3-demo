@@ -91,9 +91,18 @@ spec:
               # Check if already in MinIO
               try:
                   resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"{S3_PREFIX}/", MaxKeys=100)
-                  safetensors = [o['Key'] for o in resp.get('Contents', []) if o['Key'].endswith('.safetensors')]
-                  if len(safetensors) >= 1 and resp.get('KeyCount', 0) >= 5:
-                      print(f"✓ Model already in MinIO ({len(safetensors)} safetensors, {resp['KeyCount']} total files) - skipping")
+                  keys = [o['Key'] for o in resp.get('Contents', [])]
+                  shard_keys = [
+                      key for key in keys
+                      if Path(key).name.startswith("model-") and key.endswith(".safetensors")
+                  ]
+                  index_key = f"{S3_PREFIX}/model.safetensors.index.json"
+                  consolidated_key = f"{S3_PREFIX}/consolidated.safetensors"
+                  if index_key in keys and len(shard_keys) >= 10:
+                      if consolidated_key in keys:
+                          print(f"Pruning redundant {consolidated_key}; vLLM uses the indexed sharded safetensors set")
+                          s3.delete_object(Bucket=BUCKET, Key=consolidated_key)
+                      print(f"✓ Model already in MinIO ({len(shard_keys)} shards, {resp['KeyCount']} total files) - skipping")
                       sys.exit(0)
               except Exception: pass
 
@@ -103,7 +112,7 @@ spec:
                   print(f"Downloading {HF_REPO}...")
                   snapshot_download(repo_id=HF_REPO, local_dir=MODEL_DIR,
                       token=os.environ.get("HF_TOKEN"),
-                      ignore_patterns=["*.md", "*.txt", "*.git*"])
+                      ignore_patterns=["*.md", "*.txt", "*.git*", "consolidated.safetensors"])
               else:
                   print(f"✓ Model found on PVC")
 

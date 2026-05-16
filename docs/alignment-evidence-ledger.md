@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T15:25:47Z
+**Generated:** 2026-05-16T18:06:11Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -68,6 +68,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] README contains pinned official product documentation references.
 - [PASS] Managed or internal `:latest` image references are classified and accepted:
   - gitops/step-02-rhoai/base/rhoai-operator/maas-postgres-deployment.yaml:30:          image: registry.redhat.io/rhel9/postgresql-16:latest (Red Hat managed version stream)
+- [PASS] MaaS gateway Route uses re-encrypt TLS and deploy-time product host/CA reconciliation for dashboard BFF discovery.
+- [PASS] Argo CD ignores only the MaaS Route host and backend CA, preserving cluster-specific values while keeping the route GitOps-managed.
 
 **Schema Verification**
 
@@ -152,7 +154,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-04-model-registry/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-04-model-registry.yaml` |
 | README | `steps/step-04-model-registry/README.md` |
@@ -163,8 +165,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-04-model-registry/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unmanaged external `:latest` image references found:
-  - gitops/step-04-model-registry/base/seed-job.yaml:30:          image: quay.io/curl/curl:latest (unmanaged external dependency)
 - [PASS] Managed or internal `:latest` image references are classified and accepted:
   - gitops/step-04-model-registry/base/database/deployment.yaml:32:          image: registry.redhat.io/rhel9/mariadb-1011:latest (Red Hat managed version stream)
 
@@ -189,7 +189,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-05-maas-model-serving/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-05-maas-model-serving.yaml` |
 | README | `steps/step-05-maas-model-serving/README.md` |
@@ -200,8 +200,9 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-05-maas-model-serving/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unmanaged external `:latest` image references found:
-  - gitops/step-05-maas-model-serving/base/model-registration/seed-job.yaml:38:          image: quay.io/curl/curl:latest (unmanaged external dependency)
+- [PASS] No unpinned `:latest` image references found in GitOps path.
+- [PASS] MaaS model-serving deployment retries gateway product-host reconciliation before publishing model references.
+- [PASS] MaaS validation checks the public `/v1/models` API and GenAI AI asset MaaS BFF API list both published demo models.
 
 **Schema Verification**
 
@@ -482,6 +483,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 7 |
+| Notes / deferred checks | 5 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.

@@ -51,9 +51,17 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **Upload helper outside Argo desired state:** The Mistral upload PVC and Job are applied by `deploy.sh` before the Argo CD app syncs. They are not part of the steady-state Kustomize base because bound PVC specs do not safely round-trip through GitOps after dynamic provisioning.
 
+> **Sharded safetensors only:** The Mistral upload helper ignores and prunes `consolidated.safetensors` when `model.safetensors.index.json` and the sharded safetensors files are present. That keeps KServe's S3 storage initializer from copying a redundant ~47 GiB payload on every cold start.
+
+> **Pinned helper image:** The model registration job uses a pinned `quay.io/curl/curl` tag so MaaS registration behavior does not change when upstream `latest` moves.
+
+> **AI asset endpoint shape:** RHOAI 3.4 documents MaaS under Gen AI studio → AI asset endpoints → Models as a service, with published models shown as Ready and exposed through OpenAI-compatible `/v1/models` and chat completion APIs. `validate.sh` checks both the public MaaS API and the GenAI BFF MaaS model-discovery API so the UI model list is not treated as healthy unless the backend discovery path works.
+
 > **Recreate deployment strategy:** LLM InferenceServices use `deploymentStrategy.type: Recreate` to avoid double-allocating scarce L4 GPUs during updates.
 
 > **Fixed serving capacity:** These demo endpoints set KServe autoscaling scale-down policy to `Disabled`. That keeps long cold-starting GPU models from being scaled down by generated HPAs before metrics samples exist.
+
+> **GPU scale-up guard:** `deploy.sh` checks the cluster-specific `g6.4xlarge` and `g6.12xlarge` MachineSets created by Step 01. If they were scaled to zero for cost control, the script scales them back to one replica and waits until the nodes report 1 and 4 L4 GPUs respectively. Set `RHOAI_SKIP_GPU_SCALE=true` when intentionally validating manifests without starting GPU capacity.
 
 </details>
 
@@ -76,7 +84,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Queue | `LocalQueue/maas-default` exists in `maas` |
 | Runtime | vLLM `ServingRuntime` exists in `maas` |
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
-| AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true` |
+| AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true`; MaaS `/v1/models` and GenAI MaaS API list both models |
 | MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |
 | Registry linkage | deployed models have model registry labels after `deploy.sh` linking |
 | Playground | deployed model appears in GenAI Playground / AI assets |

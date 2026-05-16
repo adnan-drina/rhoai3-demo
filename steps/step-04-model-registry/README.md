@@ -52,6 +52,8 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 
 > **Internal service on port 8080:** Bypasses OAuth so Kubernetes Jobs can seed models without token negotiation.
 
+> **Pinned helper image:** The seed job uses a pinned `quay.io/curl/curl` tag so the registry bootstrap path does not drift when upstream `latest` moves.
+
 > **PVC sync wave aligned with consumer:** The MariaDB PVC (`model-registry-db-pvc`) uses sync wave `"2"` — the same wave as the MariaDB Deployment. With `WaitForFirstConsumer` storage class, a PVC in an earlier wave than its consumer creates a deadlock: ArgoCD waits for the PVC to become Healthy (Bound), but binding requires a pod to schedule, and the pod is in a later wave that hasn't started. Placing both in the same wave eliminates this.
 
 </details>

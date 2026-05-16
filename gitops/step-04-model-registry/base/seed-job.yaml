@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: seed
-          image: quay.io/curl/curl:latest
+          image: quay.io/curl/curl:8.20.0
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -169,4 +169,3 @@ spec:
               echo "  The model is now visible in:"
               echo "  → GenAI Studio → AI Available Assets"
               echo "════════════════════════════════════════════════════════════════"
-

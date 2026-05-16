@@ -82,11 +82,24 @@ if [[ -n "$MAAS_ROUTE" ]]; then
     API_KEY=$(printf '%s' "$RESP" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("key",""))' 2>/dev/null || true)
     API_KEY_ID=$(printf '%s' "$RESP" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)
     if [[ -n "$API_KEY" ]]; then
+        MODELS_HTTP_CODE=$(curl -sk --max-time 20 -o /tmp/step-05-maas-models.json -w "%{http_code}" \
+            -H "Authorization: Bearer $API_KEY" \
+            "${MAAS_HOST}/v1/models" 2>/dev/null || echo "000")
+        if [[ "$MODELS_HTTP_CODE" == "200" ]] \
+            && grep -q "granite-8b-agent" /tmp/step-05-maas-models.json \
+            && grep -q "mistral-3-bf16" /tmp/step-05-maas-models.json; then
+            echo -e "${GREEN}[PASS]${NC} MaaS /v1/models lists both published demo models"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} MaaS /v1/models did not list both demo models (HTTP $MODELS_HTTP_CODE)"
+            VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        fi
+
         HTTP_CODE=$(curl -sk --max-time 60 -o /tmp/step-05-maas-chat.json -w "%{http_code}" \
             -H "Authorization: Bearer $API_KEY" \
             -H "Content-Type: application/json" \
             -d '{"model":"granite-8b-agent","messages":[{"role":"user","content":"Reply with ready"}],"max_tokens":8}' \
-            "${MAAS_HOST}/v1/chat/completions" 2>/dev/null || echo "000")
+            "${MAAS_HOST}/llm/granite-8b-agent/v1/chat/completions" 2>/dev/null || echo "000")
         if [[ "$HTTP_CODE" == "200" ]]; then
             echo -e "${GREEN}[PASS]${NC} MaaS API key can call granite-8b-agent through gateway"
             VALIDATE_PASS=$((VALIDATE_PASS + 1))
@@ -100,6 +113,19 @@ if [[ -n "$MAAS_ROUTE" ]]; then
         fi
     else
         echo -e "${RED}[FAIL]${NC} Could not create temporary MaaS API key"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+
+    GENAI_MAAS_RESPONSE=$(oc exec -n redhat-ods-applications deploy/rhods-dashboard -c gen-ai-ui -- \
+        curl -ksS --max-time 20 \
+        -H "x-forwarded-access-token: $(oc whoami -t)" \
+        "https://localhost:8143/api/v1/maas/models?namespace=${NAMESPACE}" 2>/dev/null || true)
+    if printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "granite-8b-agent" \
+        && printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "mistral-3-bf16"; then
+        echo -e "${GREEN}[PASS]${NC} GenAI AI asset MaaS API lists both MaaS models"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} GenAI AI asset MaaS API did not list both MaaS models"
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 else

@@ -65,6 +65,142 @@ wait_for_crd() {
     done
 }
 
+find_machineset_for_instance_type() {
+    local instance_type="$1"
+    oc get machineset -n openshift-machine-api -o json 2>/dev/null | python3 -c '
+import json
+import sys
+
+instance_type = sys.argv[1]
+data = json.load(sys.stdin)
+for item in data.get("items", []):
+    provider = (
+        item.get("spec", {})
+        .get("template", {})
+        .get("spec", {})
+        .get("providerSpec", {})
+        .get("value", {})
+    )
+    if provider.get("instanceType") == instance_type:
+        print(item["metadata"]["name"])
+        break
+' "$instance_type"
+}
+
+gpu_ready_node_count() {
+    local instance_type="$1" required_gpus="$2"
+    oc get nodes -l "node.kubernetes.io/instance-type=${instance_type}" -o json 2>/dev/null | python3 -c '
+import json
+import sys
+
+required = int(sys.argv[1])
+data = json.load(sys.stdin)
+count = 0
+for node in data.get("items", []):
+    ready = any(
+        condition.get("type") == "Ready" and condition.get("status") == "True"
+        for condition in node.get("status", {}).get("conditions", [])
+    )
+    raw_gpu = node.get("status", {}).get("allocatable", {}).get("nvidia.com/gpu", "0")
+    try:
+        gpus = int(raw_gpu)
+    except ValueError:
+        gpus = 0
+    if ready and gpus >= required:
+        count += 1
+print(count)
+' "$required_gpus"
+}
+
+ensure_gpu_machineset_ready() {
+    local instance_type="$1" required_gpus="$2" timeout="${3:-1200}" elapsed=0
+    local machineset desired ready_count
+
+    machineset="$(find_machineset_for_instance_type "$instance_type")"
+    if [[ -z "$machineset" ]]; then
+        log_warn "No GPU MachineSet found for ${instance_type}; run Step 01 before serving MaaS models"
+        return 1
+    fi
+
+    desired="$(oc get machineset "$machineset" -n openshift-machine-api -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")"
+    if [[ "${desired:-0}" -lt 1 ]]; then
+        log_info "Scaling MachineSet ${machineset} (${instance_type}) to 1 replica"
+        oc scale machineset "$machineset" -n openshift-machine-api --replicas=1 >/dev/null
+    fi
+
+    log_info "Waiting for ${instance_type} node to report ${required_gpus} GPU(s)"
+    while [[ $elapsed -le $timeout ]]; do
+        ready_count="$(gpu_ready_node_count "$instance_type" "$required_gpus")"
+        if [[ "${ready_count:-0}" -ge 1 ]]; then
+            log_success "${instance_type} GPU node is ready"
+            return 0
+        fi
+        sleep 20
+        elapsed=$((elapsed + 20))
+        if (( elapsed % 120 == 0 )); then
+            log_info "  Waiting for ${instance_type} GPU readiness... (${elapsed}s elapsed)"
+        fi
+    done
+
+    log_warn "${instance_type} did not report ${required_gpus} GPU(s) within ${timeout}s"
+    return 1
+}
+
+get_apps_domain() {
+    oc get ingresscontroller default -n openshift-ingress-operator \
+        -o jsonpath='{.status.domain}' 2>/dev/null
+}
+
+get_service_ca_bundle() {
+    oc get configmap openshift-service-ca.crt -n openshift-ingress \
+        -o jsonpath='{.data.service-ca\.crt}' 2>/dev/null \
+        || oc get configmap service-ca-bundle -n openshift-ingress \
+            -o jsonpath='{.data.service-ca\.crt}' 2>/dev/null
+}
+
+configure_maas_gateway_route() {
+    local apps_domain maas_host service_ca ca_json http_code token
+
+    apps_domain="$(get_apps_domain)"
+    if [[ -z "$apps_domain" ]]; then
+        log_warn "Could not determine OpenShift apps domain; MaaS route host was not patched"
+        return 1
+    fi
+
+    service_ca="$(get_service_ca_bundle)"
+    if [[ -z "$service_ca" ]]; then
+        log_warn "Could not read OpenShift service CA bundle; MaaS route TLS was not patched"
+        return 1
+    fi
+
+    if ! oc get route maas-gateway -n openshift-ingress &>/dev/null; then
+        log_warn "MaaS route openshift-ingress/maas-gateway is not available yet"
+        return 1
+    fi
+
+    maas_host="maas.${apps_domain}"
+    ca_json="$(printf '%s' "$service_ca" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
+
+    oc patch route maas-gateway -n openshift-ingress --type merge \
+        -p "{\"spec\":{\"host\":\"${maas_host}\",\"tls\":{\"termination\":\"reencrypt\",\"insecureEdgeTerminationPolicy\":\"Redirect\",\"destinationCACertificate\":${ca_json}}}}" >/dev/null
+    oc annotate route maas-gateway -n openshift-ingress openshift.io/host.generated- >/dev/null 2>&1 || true
+
+    token="$(oc whoami -t 2>/dev/null || true)"
+    if [[ -n "$token" ]]; then
+        http_code="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            "https://${maas_host}/maas-api/health" 2>/dev/null || echo "000")"
+        if [[ "$http_code" == "200" ]]; then
+            log_success "MaaS gateway route configured: https://${maas_host}/maas-api"
+            return 0
+        fi
+        log_warn "MaaS gateway route patched, but health returned HTTP ${http_code}"
+        return 1
+    fi
+
+    log_success "MaaS gateway route configured: https://${maas_host}/maas-api"
+}
+
 maas_external_url() {
     local host
     host="$(oc get route maas-gateway -n openshift-ingress -o jsonpath='{.spec.host}' 2>/dev/null || true)"

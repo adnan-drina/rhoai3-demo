@@ -105,9 +105,23 @@ check "MaaS Gateway Authorino TLS bootstrap" \
     "true"
 MAAS_GATEWAY_ROUTE=$(oc get route maas-gateway -n openshift-ingress -o jsonpath='{.spec.host}' 2>/dev/null || true)
 if [[ -n "$MAAS_GATEWAY_ROUTE" ]]; then
-    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" "https://${MAAS_GATEWAY_ROUTE}/maas-api/health" 2>/dev/null || echo "000")
+    APPS_DOMAIN=$(get_apps_domain)
+    EXPECTED_MAAS_ROUTE="maas.${APPS_DOMAIN}"
+    if [[ "$MAAS_GATEWAY_ROUTE" == "$EXPECTED_MAAS_ROUTE" ]]; then
+        echo -e "${GREEN}[PASS]${NC} MaaS Gateway route uses product host: $MAAS_GATEWAY_ROUTE"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} MaaS Gateway route host drift (expected: $EXPECTED_MAAS_ROUTE, got: $MAAS_GATEWAY_ROUTE)"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+    check "MaaS Gateway route uses re-encrypt TLS" \
+        "oc get route maas-gateway -n openshift-ingress -o jsonpath='{.spec.tls.termination}'" \
+        "reencrypt"
+    HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer $(oc whoami -t)" \
+        "https://${MAAS_GATEWAY_ROUTE}/maas-api/health" 2>/dev/null || echo "000")
     if [[ "$HTTP_CODE" == "200" ]]; then
-        echo -e "${GREEN}[PASS]${NC} MaaS Gateway route health responds"
+        echo -e "${GREEN}[PASS]${NC} MaaS Gateway route health responds with verified TLS"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
         echo -e "${YELLOW}[WARN]${NC} MaaS Gateway route health returned HTTP $HTTP_CODE"

@@ -45,6 +45,13 @@ if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
 fi
 log_success "minio-connection secret exists"
 
+if [[ "${RHOAI_SKIP_GPU_SCALE:-false}" == "true" ]]; then
+    log_warn "RHOAI_SKIP_GPU_SCALE=true — not scaling GPU MachineSets"
+else
+    ensure_gpu_machineset_ready "g6.4xlarge" 1 1200 || true
+    ensure_gpu_machineset_ready "g6.12xlarge" 4 1200 || true
+fi
+
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.product=NVIDIA-L4 --no-headers 2>/dev/null | wc -l | tr -d ' ')
 log_info "GPU nodes available: ${GPU_NODES}"
 echo ""
@@ -112,6 +119,8 @@ log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
 log_step "Configuring MaaS model publication..."
+
+configure_maas_gateway_route || log_warn "MaaS gateway route still needs Step 02 reconciliation"
 
 for model in granite-8b-agent mistral-3-bf16; do
     for attempt in $(seq 1 24); do

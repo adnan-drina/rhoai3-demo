@@ -18,6 +18,6 @@ spec:
   port:
     targetPort: 443
   tls:
-    termination: passthrough
+    termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
   wildcardPolicy: None

@@ -78,6 +78,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **MaaS gateway prerequisite:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview and documents the subscription/API key governance model. The service still requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
+> **MaaS product host and TLS:** The MaaS and GenAI BFFs discover MaaS through `https://maas.<apps-domain>/maas-api`. `deploy.sh` patches the OpenShift Route to that host and switches it to re-encrypt TLS with the OpenShift service CA as a cluster-specific runtime value; the Argo CD Application ignores only the route host and backend CA so self-heal does not remove those live-cluster values. Without this, the dashboard can show `Models as a Service could not be loaded` even when the MaaS CRDs and model gateway are healthy.
+
 > **MaaS feature flags and RHCL prerequisite:** Step 01 installs RHCL 1.2+, creates `Kuadrant` in `kuadrant-system`, and configures Authorino TLS. This step then enables `modelAsService`, `vLLMDeploymentOnMaaS`, and `maasAuthPolicies` in `OdhDashboardConfig`. vLLM on MaaS remains Technology Preview in RHOAI 3.4.
 
 > **MaaS demo database:** RHOAI 3.4 MaaS requires a PostgreSQL 14+ database and a `maas-db-config` Secret with `DB_CONNECTION_URL` in `redhat-ods-applications`. This demo deploys a small PostgreSQL 16 instance with committed demo credentials. Production deployments should replace this with an enterprise PostgreSQL service and externalized secrets.
@@ -102,7 +104,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | Dashboard URL | RHOAI console accessible | `https://data-science-gateway.apps.<cluster>` responds |
 | GenAI Studio visible | Playground, AI asset endpoints, and Model Catalog in left nav | All menu items present |
 | Internal custom endpoints | `aiAssetCustomEndpoints=true`, `externalProviders=false` | Internal endpoints enabled, third-party providers disabled |
-| MaaS enabled | `modelsAsService`, MaaS dashboard flags, database Secret, and Gateway annotations | Managed/true, Secret present, Gateway `Programmed=True` |
+| MaaS enabled | `modelsAsService`, MaaS dashboard flags, database Secret, Gateway annotations, and product route | Managed/true, Secret present, Gateway `Programmed=True`, `https://maas.apps.<cluster>/maas-api/health` returns 200 |
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
 | Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |

@@ -159,6 +159,9 @@ oc patch odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
     && log_success "GenAI Studio, internal custom endpoints, and MaaS dashboard flags enabled" \
     || log_warn "Dashboard feature-flag patch failed"
 
+log_step "Configuring MaaS gateway route for dashboard integration..."
+configure_maas_gateway_route || log_warn "MaaS gateway route will be retried by Step 05"
+
 log_step "Deployment Complete"
 
 echo ""
