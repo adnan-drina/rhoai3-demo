@@ -331,30 +331,37 @@ async function runExamplePrompt(example, index) {
 }
 
 async function verifyExamplePromptButtons(examples) {
-  const page = await setupPage();
-  const sourceDbs = [...new Set(examples.filter((example) => !example.invalid).map((example) => example.source_db).filter(Boolean))];
-  for (const sourceDb of sourceDbs) {
-    await selectCollection(page, sourceDb);
-  }
-  await page.waitForTimeout(1500);
-
-  const text = await page.locator("body").innerText();
-  const missing = [];
+  const examplesBySource = new Map();
   for (const example of examples) {
-    if (example.invalid || !example.question) continue;
-    const visible = await page.getByRole("button", { name: example.question, exact: true })
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (!visible) missing.push(example.question);
+    if (example.invalid || !example.source_db) continue;
+    const group = examplesBySource.get(example.source_db) || [];
+    group.push(example);
+    examplesBySource.set(example.source_db, group);
   }
-  await record(
-    "chatbot-example-prompts-render",
-    !hasFailure(text) && /Example Prompts/i.test(text) && missing.length === 0,
-    page,
-    { missing }
-  );
-  await page.close();
+
+  for (const [sourceDb, sourceExamples] of examplesBySource.entries()) {
+    const page = await setupPage();
+    await selectCollection(page, sourceDb);
+    await page.waitForTimeout(1500);
+
+    const text = await page.locator("body").innerText();
+    const missing = [];
+    for (const example of sourceExamples) {
+      if (!example.question) continue;
+      const visible = await page.getByRole("button", { name: example.question, exact: true })
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (!visible) missing.push(example.question);
+    }
+    await record(
+      `chatbot-example-prompts-render-${slugify(sourceDb)}`,
+      !hasFailure(text) && /Example Prompts/i.test(text) && missing.length === 0,
+      page,
+      { source_db: sourceDb, missing }
+    );
+    await page.close();
+  }
 }
 
 try {
