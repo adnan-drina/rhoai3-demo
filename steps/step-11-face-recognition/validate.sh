@@ -46,8 +46,7 @@ if [[ "$UPLOAD_JOB_SUCCEEDED" == "1" ]]; then
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
     check_recent_timestamp "upload-face-model job" "$UPLOAD_JOB_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
 else
-    echo -e "${YELLOW}[WARN]${NC} upload-face-model job not found or cleaned up — checking model artifact"
-    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    echo -e "${BLUE}[INFO]${NC} upload-face-model job not found or cleaned up — checking model artifact"
 fi
 
 MODEL_INFO=$(oc exec deploy/minio -n minio-storage -- \
