@@ -56,6 +56,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **RHOAI 3.4 Llama Stack config.** The `lsd-rag-config` user config follows the Llama Stack 0.7 `responses` API shape exposed by the RHOAI 3.4 runtime and uses the built-in `file_search` tool for RAG. It also overrides the annotation instruction template to prevent `<|file-xxx|>` citation markers in model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs).
 
+> **Preview posture is explicit.** RHOAI 3.4 documents Llama Stack as Technology Preview and selected OpenAI-compatible APIs such as Responses and Vector Store Files as Developer Preview. This demo is appropriate for a workshop and validation environment, not a production support claim.
+
 > **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
@@ -73,6 +75,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 > **Chatbot Llama Stack client uses the same 0.7 client line.** The Streamlit chatbot image also installs `llama-stack-client>=0.7,<0.8`; otherwise the Chat page fails while listing models and tools because the RHOAI 3.4 Llama Stack server rejects 0.4 clients with HTTP 426. The chatbot lists built-in tools from `/v1/tools` and MCP connectors from `/v1beta/connectors` because those APIs replace the older `toolgroups` client surface.
 
 > **Chatbot Inspect page dependencies are packaged in the image.** The image installs `streamlit-option-menu` because the Inspect tab imports `streamlit_option_menu` for its resource selector.
+
+> **Chatbot validation has a browser-level regression check.** The lightweight Step 07 validator checks the chatbot pod and health route. For the full UI path, run `./scripts/validate-chatbot-ui.sh`; it exercises page load, Direct RAG, Agent-based file search, database MCP tool use, prompt-injection guardrails, and the Inspect page.
 
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 
@@ -293,8 +297,10 @@ If responses still fail, reduce the Max Tokens slider in the chatbot sidebar.
 ## References
 
 - [RHOAI 3.4 — Deploying a RAG Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag)
+- [RHOAI 3.4 — Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
 - [RHOAI 3.4 — Example D: pgvector with rh-dev](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag)
 - [RHOAI 3.4 — Deploying PostgreSQL with pgvector](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag)
+- [RHOAI 3.4 — Ensuring AI safety with guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/enabling-ai-safety-with-guardrails_safety)
 - [Llama Stack — pgvector Provider](https://llama-stack.readthedocs.io/en/latest/providers/vector_io/remote_pgvector.html)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)

@@ -257,6 +257,15 @@ while IFS= read -r component; do
     done < <(dependencies_for "$component")
 done < "$components"
 
+if [[ -n "$COMPONENT" && -f "$LEDGER_PATH" ]]; then
+    # Scoped audits should not discard unrelated evidence that is already in
+    # the committed ledger. Refresh existing component sections as well until
+    # section-level replacement is implemented.
+    while IFS= read -r existing_component; do
+        add_unique "$existing_component" "$audit_components"
+    done < <(awk '/^### / { print $2 }' "$LEDGER_PATH")
+fi
+
 sort -u "$audit_components" -o "$audit_components"
 
 ledger_tmp="$tmp_dir/alignment-evidence-ledger.md"

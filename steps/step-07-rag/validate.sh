@@ -57,6 +57,25 @@ check "LlamaStackDistribution lsd-rag Ready" \
     "oc get llamastackdistribution lsd-rag -n $NAMESPACE -o jsonpath='{.status.phase}'" \
     "Ready"
 
+CHATBOT_READY=$(oc get pods -n "$NAMESPACE" -l app=rag-chatbot --no-headers 2>/dev/null \
+    | grep -c "Running" || true)
+if [[ "$CHATBOT_READY" -ge 1 ]]; then
+    echo -e "${GREEN}[PASS]${NC} Streamlit chatbot pod running"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Streamlit chatbot pod not running ($CHATBOT_READY pods)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+CHATBOT_ROUTE=$(oc get route rag-chatbot -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
+if [[ -n "$CHATBOT_ROUTE" ]] && curl -sk --max-time 15 "https://${CHATBOT_ROUTE}/_stcore/health" | grep -qx "ok"; then
+    echo -e "${GREEN}[PASS]${NC} Streamlit chatbot health route responds"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Streamlit chatbot health route unavailable"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
 # --- pgvector Extension ---
 log_step "pgvector Extension"
 PGVECTOR=$(oc exec deploy/llamastack-postgres -n "$NAMESPACE" -- \

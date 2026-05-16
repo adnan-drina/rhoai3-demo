@@ -4,16 +4,21 @@
 # This source code is licensed under the terms described in the LICENSE file in
 # the root directory of this source tree.
 import logging
+import os
 
 import streamlit as st
 
 
 def main():
-    # Configure logging to show DEBUG messages by default
+    log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=log_level,
         format='[%(levelname)s] %(name)s: %(message)s'
     )
+    for noisy_logger in ("httpcore", "httpx", "watchdog", "urllib3"):
+        logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
     # Define available pages: path and icon
     pages = {
         "Chat": ("page/playground/chat.py", "💬"),

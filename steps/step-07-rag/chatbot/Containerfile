@@ -10,7 +10,8 @@ ENV PIP_NO_CACHE_DIR=1 \
 COPY pyproject.toml ./
 
 RUN pip install --no-cache-dir pip --upgrade && \
-    pip install --no-cache-dir streamlit streamlit-option-menu pandas "llama-stack-client>=0.7,<0.8" requests
+    python -c 'import tomllib; print("\n".join(tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]))' > /tmp/requirements.txt && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY . /app/
 
