@@ -18,7 +18,6 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
     modelmesh-enabled: "false"
-    rhoai-demo/mlflow-workspace: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Enterprise RAG"
@@ -31,7 +30,6 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
     modelmesh-enabled: "false"
-    rhoai-demo/mlflow-workspace: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "3"
     openshift.io/display-name: "Enterprise MLOps"

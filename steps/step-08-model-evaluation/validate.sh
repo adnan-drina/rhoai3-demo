@@ -81,10 +81,19 @@ check "RAG pipeline ServiceAccount has MLflow integration RoleBinding" \
     "oc get rolebinding rag-eval-pipeline-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "mlflow-operator-mlflow-integration"
 
-MLFLOW_SELECTOR=$(oc get mlflow mlflow -o json 2>/dev/null | \
-    python3 -c "import json,sys; print(json.load(sys.stdin).get('spec', {}).get('workspaceLabelSelector', {}).get('matchLabels', {}).get('rhoai-demo/mlflow-workspace', ''))" 2>/dev/null || true)
-if [[ "$MLFLOW_SELECTOR" == "true" ]]; then
-    echo -e "${GREEN}[PASS]${NC} MLflow server selects rhoai-demo/mlflow-workspace namespaces"
+MLFLOW_SELECTOR=$(oc get mlflow mlflow -o json 2>/dev/null | python3 -c '
+import json
+import sys
+
+selector = json.load(sys.stdin).get("spec", {}).get("workspaceLabelSelector", {})
+values = []
+for expr in selector.get("matchExpressions", []):
+    if expr.get("key") == "kubernetes.io/metadata.name" and expr.get("operator") == "In":
+        values.extend(expr.get("values") or [])
+print(",".join(sorted(values)))
+' 2>/dev/null || true)
+if [[ "$MLFLOW_SELECTOR" == *"enterprise-rag"* && "$MLFLOW_SELECTOR" == *"enterprise-mlops"* ]]; then
+    echo -e "${GREEN}[PASS]${NC} MLflow server selects enterprise-rag and enterprise-mlops workspaces"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
     echo -e "${YELLOW}[WARN]${NC} MLflow server does not yet select enterprise-rag workspaces"

@@ -91,7 +91,7 @@ try:
     pipeline_id = pipeline.pipeline_id
     print(f"Pipeline uploaded: {pipeline_id}")
 except Exception as e:
-    if "already exists" in str(e):
+    if "already exists" in str(e) or "409" in str(e) or "Conflict" in str(e):
         pipelines = kfp_client.list_pipelines(page_size=100).pipelines or []
         pipeline = next((p for p in pipelines if p.name == PIPELINE_NAME), None)
         if pipeline:

@@ -12,7 +12,7 @@ RHOAI 3.4 is the point where the demo stops treating every workload as one `priv
 The storage and identity story remains common across all three. MinIO provides the S3-compatible storage layer, RHOAI data connection secrets make that storage visible in the dashboard, and OpenShift RBAC maps `ai-admin` and `ai-developer` to the right project roles.
 
 `maas` is the only Kueue-managed project in this slice. RHOAI 3.4 documents namespace-level Kueue enforcement, so this step deliberately avoids applying `kueue.openshift.io/managed=true` to `enterprise-rag` or `enterprise-mlops` until those workloads are made queue-aware.
-`enterprise-rag` and `enterprise-mlops` are selected as MLflow workspaces through the stable `rhoai-demo/mlflow-workspace=true` namespace label. Step 08 configures the RAG evaluation workspace; Step 12 deploys the Technology Preview MLflow server and the predictive MLOps workspace.
+`enterprise-rag` and `enterprise-mlops` are selected as MLflow workspaces through the stable Kubernetes namespace-name label. Step 08 configures the RAG evaluation workspace; Step 12 deploys the Technology Preview MLflow server and the predictive MLOps workspace.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/products/Red Hat OpenShift AI.md` for the enterprise platform framing. Configuration correctness is pinned to official RHOAI 3.4 and OCP 4.20 documentation.
 
@@ -36,7 +36,7 @@ Enterprise AI Foundation
 | Data connections | Dashboard-visible S3 connection secrets | `maas`, `enterprise-rag`, `enterprise-mlops` |
 | Storage config | KServe storage-initializer S3 credentials | `maas`, `enterprise-rag`, `enterprise-mlops` |
 | Kueue queue | `maas-default` LocalQueue backed by `maas-gpu` ClusterQueue | `maas` |
-| MLflow workspace selector | Step 12 selects projects labeled `rhoai-demo/mlflow-workspace=true` | `enterprise-rag`, `enterprise-mlops` |
+| MLflow workspace selector | Step 12 selects `enterprise-rag` and `enterprise-mlops` by `kubernetes.io/metadata.name` | `enterprise-rag`, `enterprise-mlops` |
 | RBAC | `ai-admin` gets `admin`, `ai-developer` gets `edit` | all three enterprise projects |
 
 Manifests: [`gitops/step-03-enterprise-projects/base/`](../../gitops/step-03-enterprise-projects/base/)
@@ -74,7 +74,7 @@ Manifests: [`gitops/step-03-enterprise-projects/base/`](../../gitops/step-03-ent
 | Data connections | `minio-connection` exists in all three enterprise projects |
 | Storage config | `storage-config` exists in all three enterprise projects |
 | Kueue | `maas` has `kueue.openshift.io/managed=true` and `LocalQueue/maas-default` |
-| MLflow workspaces | `enterprise-rag` and `enterprise-mlops` have `rhoai-demo/mlflow-workspace=true` |
+| MLflow workspaces | `enterprise-rag` and `enterprise-mlops` have the stable `kubernetes.io/metadata.name` label |
 | RBAC | `ai-admin-admin` and `ai-developer-edit` exist in all three enterprise projects |
 
 </details>

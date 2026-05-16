@@ -20,8 +20,12 @@ spec:
       requests:
         storage: 10Gi
   workspaceLabelSelector:
-    matchLabels:
-      rhoai-demo/mlflow-workspace: "true"
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values:
+          - enterprise-mlops
+          - enterprise-rag
   resources:
     requests:
       cpu: 250m

@@ -49,8 +49,8 @@ check "MLflow server available" \
     "True"
 
 check "MLflow server selects demo MLflow workspaces" \
-    "oc get mlflow mlflow -o json | python3 -c \"import json,sys; print(json.load(sys.stdin).get('spec', {}).get('workspaceLabelSelector', {}).get('matchLabels', {}).get('rhoai-demo/mlflow-workspace', ''))\"" \
-    "true"
+    "oc get mlflow mlflow -o json | python3 -c \"import json,sys; d=json.load(sys.stdin).get('spec', {}).get('workspaceLabelSelector', {}); vals=[]; [vals.extend(e.get('values') or []) for e in d.get('matchExpressions', []) if e.get('key') == 'kubernetes.io/metadata.name' and e.get('operator') == 'In']; print(','.join(sorted(vals)))\"" \
+    "enterprise-mlops,enterprise-rag"
 
 check "enterprise-mlops MLflowConfig exists" \
     "oc get mlflowconfig mlflow -n $NAMESPACE -o jsonpath='{.spec.artifactRootSecret}'" \
