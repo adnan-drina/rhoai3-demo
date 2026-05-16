@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T08:17:40Z
+**Generated:** 2026-05-16T08:31:25Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -66,8 +66,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-02-rhoai/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-02-rhoai/base/rhoai-operator/maas-postgres-deployment.yaml:30:          image: registry.redhat.io/rhel9/postgresql-16:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-02-rhoai/base/rhoai-operator/maas-postgres-deployment.yaml:30:          image: registry.redhat.io/rhel9/postgresql-16:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -121,9 +121,9 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-03-enterprise-projects/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-03-enterprise-projects/base/minio/init-job.yaml:31:          image: quay.io/minio/mc:latest
-  - gitops/step-03-enterprise-projects/base/minio/deployment.yaml:26:          image: quay.io/minio/minio:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-03-enterprise-projects/base/minio/init-job.yaml:31:          image: quay.io/minio/mc:latest (unmanaged external dependency)
+  - gitops/step-03-enterprise-projects/base/minio/deployment.yaml:26:          image: quay.io/minio/minio:latest (unmanaged external dependency)
 
 **Schema Verification**
 
@@ -162,9 +162,10 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-04-model-registry/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-04-model-registry/base/database/deployment.yaml:32:          image: registry.redhat.io/rhel9/mariadb-1011:latest
-  - gitops/step-04-model-registry/base/seed-job.yaml:30:          image: quay.io/curl/curl:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-04-model-registry/base/seed-job.yaml:30:          image: quay.io/curl/curl:latest (unmanaged external dependency)
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-04-model-registry/base/database/deployment.yaml:32:          image: registry.redhat.io/rhel9/mariadb-1011:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -198,8 +199,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-05-maas-model-serving/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-05-maas-model-serving/base/model-registration/seed-job.yaml:38:          image: quay.io/curl/curl:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-05-maas-model-serving/base/model-registration/seed-job.yaml:38:          image: quay.io/curl/curl:latest (unmanaged external dependency)
 
 **Schema Verification**
 
@@ -230,9 +231,10 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-06-model-metrics/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-06-model-metrics/base/guidellm/cronjob.yaml:43:              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
-  - gitops/step-06-model-metrics/base/model-benchmarking-wb/workbench.yaml:87:          image: alpine/git:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-06-model-metrics/base/model-benchmarking-wb/workbench.yaml:87:          image: alpine/git:latest (unmanaged external dependency)
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-06-model-metrics/base/guidellm/cronjob.yaml:43:              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest (OpenShift platform ImageStream)
 
 **Schema Verification**
 
@@ -275,12 +277,13 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-07-rag/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-07-rag/base/chatbot/chatbot.yaml:59:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest
-  - gitops/step-07-rag/base/docling/deployment.yaml:34:          image: quay.io/docling-project/docling-serve:latest
-  - gitops/step-07-rag/base/rag-wb/workbench.yaml:65:          image: alpine/git:latest
-  - gitops/step-07-rag/base/minio-rag-bucket/init-job.yaml:28:          image: quay.io/minio/mc:latest
-  - gitops/step-07-rag/base/ingestion-service/job.yaml:22:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-07-rag/base/docling/deployment.yaml:34:          image: quay.io/docling-project/docling-serve:latest (unmanaged external dependency)
+  - gitops/step-07-rag/base/rag-wb/workbench.yaml:65:          image: alpine/git:latest (unmanaged external dependency)
+  - gitops/step-07-rag/base/minio-rag-bucket/init-job.yaml:28:          image: quay.io/minio/mc:latest (unmanaged external dependency)
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-07-rag/base/chatbot/chatbot.yaml:59:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest (internal demo build output)
+  - gitops/step-07-rag/base/ingestion-service/job.yaml:22:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest (internal demo build output)
 - [PASS] Chatbot example prompts are GitOps-managed in `RAG_QUESTION_SUGGESTIONS` and grouped by RAG/MCP use case.
 - [PASS] Browser validation reads the deployed example prompt configuration and exercises each non-side-effect example prompt.
 - [PASS] Direct RAG examples cover `whoami` identity, expertise, and event discovery.
@@ -319,7 +322,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-08-model-evaluation/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-08-model-evaluation.yaml` |
 | README | `steps/step-08-model-evaluation/README.md` |
@@ -330,8 +333,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-08-model-evaluation/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-08-model-evaluation/base/eval-configs/job-copy-configs.yaml:25:          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-08-model-evaluation/base/eval-configs/job-copy-configs.yaml:25:          image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -381,7 +384,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-10-mcp-integration/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-10-mcp-integration.yaml` |
 | README | `steps/step-10-mcp-integration/README.md` |
@@ -392,11 +395,11 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-10-mcp-integration/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-10-mcp-integration/base/postgresql/deployment.yaml:27:          image: registry.redhat.io/rhel9/postgresql-15:latest
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:24:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:66:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:110:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-10-mcp-integration/base/postgresql/deployment.yaml:27:          image: registry.redhat.io/rhel9/postgresql-15:latest (Red Hat managed version stream)
+  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:24:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
+  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:66:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
+  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:110:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -436,8 +439,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-11-face-recognition/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-11-face-recognition/base/workbench/workbench.yaml:65:          image: alpine/git:latest
+- [WARN] Unmanaged external `:latest` image references found:
+  - gitops/step-11-face-recognition/base/workbench/workbench.yaml:65:          image: alpine/git:latest (unmanaged external dependency)
 
 **Schema Verification**
 
@@ -462,7 +465,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-12-mlops-pipeline/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-12-mlops-pipeline.yaml` |
 | README | `steps/step-12-mlops-pipeline/README.md` |
@@ -473,8 +476,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-12-mlops-pipeline/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-12-mlops-pipeline/base/trustyai-adapter/deployment.yaml:27:          image: registry.redhat.io/ubi9/python-312:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-12-mlops-pipeline/base/trustyai-adapter/deployment.yaml:27:          image: registry.redhat.io/ubi9/python-312:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -503,7 +506,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-13-edge-ai/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-13-edge-ai.yaml` |
 | README | `steps/step-13-edge-ai/README.md` |
@@ -514,8 +517,8 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-13-edge-ai/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-13-edge-ai/base/edge-camera/deployment.yaml:31:          image: quay.io/adrina/edge-camera:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-13-edge-ai/base/edge-camera/deployment.yaml:31:          image: quay.io/adrina/edge-camera:latest (internal demo build output)
 
 **Schema Verification**
 
@@ -536,7 +539,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-13b-edge-ai-microshift/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
 | README | `steps/step-13b-edge-ai-microshift/README.md` |
@@ -547,10 +550,10 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:30:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:32:      image: registry.access.redhat.com/ubi9/python-311:latest
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:71:      image: registry.access.redhat.com/ubi9/buildah:latest
+- [PASS] Managed or internal `:latest` image references are classified and accepted:
+  - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:30:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
+  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:32:      image: registry.access.redhat.com/ubi9/python-311:latest (Red Hat managed version stream)
+  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:71:      image: registry.access.redhat.com/ubi9/buildah:latest (Red Hat managed version stream)
 
 **Schema Verification**
 
@@ -593,6 +596,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 13 |
+| Notes / deferred checks | 7 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.

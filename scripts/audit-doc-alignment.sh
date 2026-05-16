@@ -193,6 +193,24 @@ oc_server_dry_run() {
     oc --request-timeout="$OC_REQUEST_TIMEOUT" apply --dry-run=server --validate=strict -f "$rendered_file" >/dev/null 2>"$err_file"
 }
 
+latest_image_classification() {
+    local image="$1"
+    case "$image" in
+        registry.redhat.io/rhel9/postgresql-*:*|registry.redhat.io/rhel9/mariadb-*:*|registry.redhat.io/ubi9/*:*|registry.access.redhat.com/ubi9/*:*)
+            echo "Red Hat managed version stream"
+            ;;
+        image-registry.openshift-image-registry.svc:5000/openshift/*:*)
+            echo "OpenShift platform ImageStream"
+            ;;
+        image-registry.openshift-image-registry.svc:5000/enterprise-rag/*:*|quay.io/adrina/edge-camera:*)
+            echo "internal demo build output"
+            ;;
+        *)
+            echo "unmanaged external dependency"
+            ;;
+    esac
+}
+
 app_ignores_pvc_spec() {
     local app_path="$1"
     [[ -n "$app_path" && -f "$app_path" ]] || return 1
@@ -403,14 +421,32 @@ while IFS= read -r component; do
     fi
 
     latest_matches="$tmp_dir/$component.latest-images.txt"
-    touch "$latest_matches"
+    latest_allowed="$tmp_dir/$component.latest-images.allowed.txt"
+    latest_unmanaged="$tmp_dir/$component.latest-images.unmanaged.txt"
+    touch "$latest_matches" "$latest_allowed" "$latest_unmanaged"
     if [[ -n "$gitops_path" && -e "$gitops_path" ]]; then
         grep -RInE 'image:[[:space:]]+[^#]*:latest([[:space:]]|$)' "$gitops_path" >> "$latest_matches" 2>/dev/null || true
     fi
     if [[ -s "$latest_matches" ]]; then
-        echo "- [WARN] Unpinned \`:latest\` image references found:" >> "$findings"
-        sed 's/^/  - /' "$latest_matches" >> "$findings"
-        warnings=$((warnings + 1))
+        while IFS= read -r latest_line; do
+            image="$(sed -E 's/^.*image:[[:space:]]+([^[:space:]#]+).*$/\1/' <<< "$latest_line")"
+            classification="$(latest_image_classification "$image")"
+            if [[ "$classification" == "unmanaged external dependency" ]]; then
+                echo "$latest_line ($classification)" >> "$latest_unmanaged"
+            else
+                echo "$latest_line ($classification)" >> "$latest_allowed"
+            fi
+        done < "$latest_matches"
+
+        if [[ -s "$latest_unmanaged" ]]; then
+            echo "- [WARN] Unmanaged external \`:latest\` image references found:" >> "$findings"
+            sed 's/^/  - /' "$latest_unmanaged" >> "$findings"
+            warnings=$((warnings + 1))
+        fi
+        if [[ -s "$latest_allowed" ]]; then
+            echo "- [PASS] Managed or internal \`:latest\` image references are classified and accepted:" >> "$findings"
+            sed 's/^/  - /' "$latest_allowed" >> "$findings"
+        fi
     else
         echo "- [PASS] No unpinned \`:latest\` image references found in GitOps path." >> "$findings"
     fi

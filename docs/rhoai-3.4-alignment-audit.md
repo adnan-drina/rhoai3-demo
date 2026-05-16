@@ -66,20 +66,21 @@ Validated baseline:
 
 ## Image Tag Classification
 
-Broad image pinning is deferred to a follow-up backlog. Current `:latest` references are classified below so reviewers can distinguish internal build outputs, demo utilities, and external dependencies.
+Broad image pinning is not the default policy for this demo. Red Hat and OpenShift managed version streams are allowed to move with their owning catalog or platform, while unmanaged third-party `:latest` images remain visible as warnings.
 
 | Classification | Images / Areas | Decision |
 |---|---|---|
-| Internal build output | `enterprise-rag/rag-chatbot:latest`, `enterprise-rag/rag-ingestion-service:latest`, `quay.io/adrina/edge-camera:latest` | Accept for demo build artifacts; pin or promote immutable tags for production. |
-| Demo utility | `alpine/git:latest`, `quay.io/curl/curl:latest`, `registry.access.redhat.com/ubi9/ubi-minimal:latest`, `registry.access.redhat.com/ubi9/python-311:latest`, `registry.redhat.io/ubi9/python-312:latest`, `image-registry.openshift-image-registry.svc:5000/openshift/cli:latest`, `quay.io/minio/mc:latest` | Accept temporarily for short-lived Jobs/init tasks; pin in supply-chain hardening backlog. |
-| External service dependency | `quay.io/minio/minio:latest`, `registry.redhat.io/rhel9/postgresql-15:latest`, `registry.redhat.io/rhel9/postgresql-16:latest`, `registry.redhat.io/rhel9/mariadb-1011:latest`, `quay.io/docling-project/docling-serve:latest` | Higher priority for follow-up pinning because these are long-running services. |
+| Red Hat managed version stream | `registry.redhat.io/rhel9/postgresql-15:latest`, `registry.redhat.io/rhel9/postgresql-16:latest`, `registry.redhat.io/rhel9/mariadb-1011:latest`, `registry.redhat.io/ubi9/*:latest`, `registry.access.redhat.com/ubi9/*:latest` | Accepted. Let the Red Hat catalog stream own patch movement for demo dependencies. |
+| OpenShift platform ImageStream | `image-registry.openshift-image-registry.svc:5000/openshift/cli:latest` | Accepted. The platform owns this stream. |
+| Internal build output | `enterprise-rag/rag-chatbot:latest`, `enterprise-rag/rag-ingestion-service:latest`, `quay.io/adrina/edge-camera:latest` | Accepted for demo build artifacts; promote immutable tags for production. |
+| Unmanaged external dependency | `quay.io/minio/minio:latest`, `quay.io/minio/mc:latest`, `quay.io/docling-project/docling-serve:latest`, `alpine/git:latest`, `quay.io/curl/curl:latest` | Keep as warnings until pinned or explicitly replaced with supported streams. |
 | Removed by this batch | `quay.io/trustyai_testing/detectors/granite-guardian-hap-38m:latest` | Removed with the FMS detector stack during the NeMo migration. |
 
 ## Remaining Backlog
 
 P1:
 
-1. Pin high-risk long-running external dependency images by digest or immutable version.
+1. Pin or replace unmanaged third-party `:latest` images where they are not intentionally demo-only.
 2. Normalize Step 13b Argo CD sync options and ignore differences to match the shared app standard.
 3. Decide whether deferred `qwen3-8b-agent.yaml` should be documented as future scope or removed.
 
