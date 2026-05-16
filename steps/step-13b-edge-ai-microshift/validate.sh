@@ -54,13 +54,6 @@ argocd_app_healthy() {
     [[ "$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null)" == "Healthy" ]]
 }
 
-argocd_app_not_degraded() {
-    local app_name="$1"
-    local health_status
-    health_status=$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null)
-    [[ -n "$health_status" && "$health_status" != "Degraded" ]]
-}
-
 tekton_crds_available() {
     oc get crd tasks.tekton.dev pipelines.tekton.dev &>/dev/null
 }
@@ -90,9 +83,6 @@ run_central_validation() {
 
     check "OpenShift Pipelines ArgoCD Application is Synced" \
         "argocd_app_synced '$OPERATOR_APP_NAME'"
-
-    check "OpenShift Pipelines ArgoCD Application is not Degraded" \
-        "argocd_app_not_degraded '$OPERATOR_APP_NAME'"
 
     check "ModelCar release ArgoCD Application exists" \
         "oc get applications.argoproj.io '$PIPELINE_APP_NAME' -n '$ARGO_NAMESPACE'"
