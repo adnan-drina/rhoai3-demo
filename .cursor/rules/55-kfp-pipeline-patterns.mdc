@@ -11,7 +11,7 @@ all KFP v2 pipelines in this project. These patterns ensure consistency, readabi
 and Dashboard-friendly pipelines across steps 06, 07, 08, and 12.
 
 Official KFP v2 docs: https://www.kubeflow.org/docs/components/pipelines/
-RHOAI 3.3 pipelines: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+RHOAI 3.4 pipelines: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
 
 ## Pipeline Definition (`kfp/pipeline.py`)
 
@@ -29,7 +29,7 @@ KFP v2 <Pipeline Purpose>
 Components are in kfp/components/ following KFP modular best practices.
 Reuses the existing DSPA (dspa-rag) in private-ai namespace.
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
 """
 ```
 
@@ -294,7 +294,7 @@ step is more visible in the Dashboard than a skipped conditional branch (red vs 
 This is a deliberate design choice for demo clarity.
 
 `dsl.Collected` gathers outputs from parallel loops for downstream consumption.
-Note: RHOAI 3.3's DSPA backend does not support `dsl.Collected` at runtime
+Note: RHOAI 3.4's DSPA backend does not support `dsl.Collected` at runtime
 (fails with "producer task not in tasks"). Step-07 uses `.after(insert)` to
 order the `ingestion_summary` step after the ParallelFor, and reads results
 from a shared PVC log file (`ingestion-log.jsonl`) instead.

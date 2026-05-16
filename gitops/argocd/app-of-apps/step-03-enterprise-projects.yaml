@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: step-03-enterprise-projects
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/step: "03"
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+    argocd.argoproj.io/manifest-generate-paths: gitops/step-03-enterprise-projects
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: rhoai-demo
+  source:
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/step-03-enterprise-projects/base
+  destination:
+    server: https://kubernetes.default.svc
+  # NOTE: OpenShift Groups are created via deploy.sh (not GitOps)
+  # because ArgoCD cannot parse user.openshift.io/v1 Group schema
+  # NOTE: PVC uses WaitForFirstConsumer, treated as Progressing until pod starts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideDiff=true
+      - SkipDryRunOnMissingResource=true
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    # Namespaces may have additional annotations/labels from OLM/operators
+    - group: ""
+      kind: Namespace
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+    # Secrets: ignore annotations (operator-managed)
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /metadata/annotations
+    # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec
+    # Routes: OpenShift router controller adds host/status fields
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /status

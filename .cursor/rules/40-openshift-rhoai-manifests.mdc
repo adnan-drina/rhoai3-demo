@@ -1,5 +1,5 @@
 ---
-description: Use for OpenShift/RHOAI manifests. Ensure CRDs/operators match RHOAI 3.3 and RHOCP 4.20 and include verification steps.
+description: Use for OpenShift/RHOAI manifests. Ensure CRDs/operators match RHOAI 3.4 and RHOCP 4.20 and include verification steps.
 globs: gitops/**/*.yaml,gitops/**/*.yml,manifests/**/*.yaml,manifests/**/*.yml,**/*.openshift*.yaml,**/*rhoai*.yaml
 alwaysApply: false
 ---
@@ -25,7 +25,7 @@ alwaysApply: false
 ## Version alignment
 - Ensure all manifests align with:
   - RHOCP 4.20 behaviors/APIs
-  - RHOAI 3.3 operator/CR APIs
+  - RHOAI 3.4 operator/CR APIs
 - If the cluster exposes different API versions than expected, call it out and adapt the manifest accordingly.
 
 ## Every step must include validation
@@ -52,7 +52,7 @@ Comments in YAML manifests must explain **why**, never restate **what**.
 ### DO add
 - **Why / design decisions**: explain non-obvious choices, workarounds, caveats.
 - **Ref links**: `# Ref: https://docs.redhat.com/...`
-- **Warnings**: `# DEMO VALUES ONLY`, `# IMPORTANT:`, `# NOTE (RHOAI 3.3):`
+- **Warnings**: `# DEMO VALUES ONLY`, `# IMPORTANT:`, `# NOTE (RHOAI 3.4):`
 - **Constraints**: things that will break if changed (e.g., ordering, naming conventions).
 
 ### kustomization.yaml resources lists
@@ -134,3 +134,4 @@ After modifying Kubernetes/OpenShift YAML manifests:
 - After mutations, confirm resource state: `oc get <resource> -n <namespace>`
 - When removing a resource from `kustomization.yaml`, also delete the unreferenced file to prevent orphaned manifests
 - **Verify cross-resource consistency**: check that selector labels, ConfigMap/Secret names, ServiceAccount names, and port references resolve to existing resources in the kustomize base
+- Before merge, run `./scripts/audit-doc-alignment.sh --base origin/main` and commit the refreshed `docs/alignment-evidence-ledger.md`

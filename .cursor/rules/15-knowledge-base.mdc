@@ -21,6 +21,8 @@ Before implementing any change, **consult the relevant step README** in `steps/s
 | `steps/step-XX/README.md` | Step-specific deep knowledge | Before modifying that step |
 | Troubleshooting sections | Known issues and solutions | When debugging failures |
 | References sections | Official doc links | When validating YAML/APIs |
+| `docs/alignment-evidence-ledger.md` | Pre-merge product-doc alignment evidence | Before merging GitOps component changes |
+| `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` | Read-only Red Hat article/wiki research corpus | When improving step README narrative and Red Hat article alignment |
 
 ## Enhance documentation when you learn something new
 
@@ -46,9 +48,9 @@ Document "why" not just "what":
 ```
 
 ### 3. Workarounds for known limitations
-If something doesn't work as expected with RHOAI 3.3 or RHOCP 4.20:
+If something doesn't work as expected with RHOAI 3.4 or RHOCP 4.20:
 ```markdown
-> **Known Limitation (RHOAI 3.3):** <description>
+> **Known Limitation (RHOAI 3.4):** <description>
 > **Workaround:** <solution>
 > **Ref:** <link to issue/KB article if available>
 ```
@@ -56,7 +58,7 @@ If something doesn't work as expected with RHOAI 3.3 or RHOCP 4.20:
 ### 4. Version-specific notes
 Tag version-sensitive information:
 ```markdown
-> **Note (RHOAI 3.3 / RHOCP 4.20):** This behavior may change in future versions.
+> **Note (RHOAI 3.4 / RHOCP 4.20):** This behavior may change in future versions.
 ```
 
 ## Cross-reference related steps
@@ -70,8 +72,10 @@ When changes in one step affect another, add cross-references:
 - Every workaround is a design decision worth explaining
 - Every deployment validates (or corrects) existing documentation
 - Every question asked twice should become documentation
+- Every GitOps component change should refresh the alignment evidence ledger
 
 ## Official docs remain the source of truth
 - README knowledge supplements, not replaces, official documentation
-- Always link to official RHOAI 3.3 / RHOCP 4.20 docs
+- Always link to official RHOAI 3.4 / RHOCP 4.20 docs
 - When official docs conflict with our implementation, note it explicitly and explain why
+- Use `rh-brain` only for research-backed narrative and article alignment; do not treat it as product configuration authority

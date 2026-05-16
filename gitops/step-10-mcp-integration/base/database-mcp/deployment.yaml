@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: database-mcp
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: database-mcp
     app.kubernetes.io/name: database-mcp
@@ -46,7 +46,7 @@ spec:
                   name: postgresql-credentials
                   key: POSTGRESQL_PASSWORD
             - name: DATABASE_URI
-              value: "postgresql://$(PGUSER):$(PGPASSWORD)@postgresql.private-ai.svc.cluster.local:5432/acme_equipment"
+              value: "postgresql://$(PGUSER):$(PGPASSWORD)@postgresql.enterprise-rag.svc.cluster.local:5432/acme_equipment"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

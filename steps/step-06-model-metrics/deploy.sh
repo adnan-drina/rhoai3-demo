@@ -14,7 +14,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 STEP_NAME="step-06-model-metrics"
-NAMESPACE="private-ai"
+NAMESPACE="maas"
+DSPA_NAMESPACE="enterprise-rag"
 
 load_env
 check_oc_logged_in
@@ -84,7 +85,7 @@ echo ""
 # =============================================================================
 # GuideLLM KFP Pipeline (optional — requires step-07 DSPA)
 # =============================================================================
-if oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
+if oc get dspa dspa-rag -n "$DSPA_NAMESPACE" &>/dev/null; then
     log_step "Compiling GuideLLM benchmark pipeline..."
 
     VENV_PATH="$REPO_ROOT/.venv-kfp"
@@ -102,7 +103,7 @@ if oc get dspa dspa-rag -n "$NAMESPACE" &>/dev/null; then
         log_warn "Pipeline compilation failed — dashboard benchmarking not available"
     fi
 else
-    log_info "DSPA not found (deploy step-07 first for dashboard pipeline support)"
+    log_info "DSPA not found in $DSPA_NAMESPACE (deploy step-07 first for dashboard pipeline support)"
 fi
 echo ""
 

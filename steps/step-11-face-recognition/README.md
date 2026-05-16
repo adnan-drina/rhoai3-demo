@@ -1,9 +1,9 @@
 # Step 11: Face Recognition — Predictive AI on RHOAI
-**"Beyond LLMs"** — Train a YOLO11 face recognition model, export to ONNX, and serve it via KServe RawDeployment with OpenVINO Model Server. CPU-only inference, no GPU required.
+**"Beyond LLMs"** — Train a YOLO11 face recognition model, export to ONNX, and serve it through KServe Standard mode with OpenVINO Model Server. CPU-only inference, no GPU required.
 
 ## Overview
 
-**Predictive AI on the same platform as generative AI.** The serving, pipelines, observability, and governance established for LLMs carry forward for traditional ML — you do not adopt a separate toolchain. Computer vision enables object detection and image classification particularly valuable in manufacturing and quality control. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.3** alongside the GenAI stack, not on an island — one infrastructure footprint, one operational model.
+**Predictive AI on the same platform as generative AI.** The serving, pipelines, observability, and governance established for LLMs carry forward for traditional ML — you do not adopt a separate toolchain. Computer vision enables object detection and image classification particularly valuable in manufacturing and quality control. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.4** alongside the GenAI stack, not on an island — one infrastructure footprint, one operational model.
 
 This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
 
@@ -24,9 +24,9 @@ Face Recognition
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| **kserve-ovms** ServingRuntime | OpenVINO Model Server for ONNX models | `private-ai` |
-| **face-recognition** InferenceService | Serves the YOLO11 ONNX model (CPU-only) | `private-ai` |
-| **face-recognition-wb** Notebook | JupyterLab workbench with git-synced notebooks | `private-ai` |
+| **kserve-ovms** ServingRuntime | OpenVINO Model Server for ONNX models | `enterprise-mlops` |
+| **face-recognition** InferenceService | Serves the YOLO11 ONNX model (CPU-only) | `enterprise-mlops` |
+| **face-recognition-wb** Notebook | JupyterLab workbench with git-synced notebooks | `enterprise-mlops` |
 | **upload-face-model** Job | Downloads pre-trained ONNX from HuggingFace to MinIO | `minio-storage` |
 
 Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-recognition/base/)
@@ -45,7 +45,7 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 <summary>Design Decisions</summary>
 
-> **KServe RawDeployment** (not ModelMesh) because ModelMesh is deprecated in RHOAI 3.3 ([release notes section 6.1.9](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/support-removals_relnotes)). The `kserve-ovms` template is the platform-recommended approach for ONNX/OpenVINO models.
+> **KServe Standard mode** (not ModelMesh) because ModelMesh is deprecated in RHOAI 3.4 ([release notes section 6.1.9](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/support-removals_relnotes)). The `kserve-ovms` template is the platform-recommended approach for ONNX/OpenVINO models. RHOAI normalizes this InferenceService to `serving.kserve.io/deploymentMode: Standard`.
 
 > **CPU inference, GPU training.** OpenVINO serves the ONNX model on CPU workers (no GPU needed for inference). Training uses GPU when available (`device=0`, `workers=0` to avoid `/dev/shm` limits in containers) for ~1 hour on L4, with CPU fallback (~6 hours). The YOLO11m ONNX model is ~77MB.
 
@@ -121,11 +121,11 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 | Notebook assets | images, videos, my_photos directories populated | Files present |
 
 ```bash
-oc get servingruntime kserve-ovms -n private-ai
+oc get servingruntime kserve-ovms -n enterprise-mlops
 oc get job upload-face-model -n minio-storage -o jsonpath='{.status.succeeded}'
 oc exec deploy/minio -n minio-storage -- mc stat demo/models/face-recognition/1/model.onnx
-oc get inferenceservice face-recognition -n private-ai
-oc get pod face-recognition-wb-0 -n private-ai
+oc get inferenceservice face-recognition -n enterprise-mlops
+oc get pod face-recognition-wb-0 -n enterprise-mlops
 ./steps/step-11-face-recognition/validate.sh
 ```
 
@@ -139,7 +139,7 @@ oc get pod face-recognition-wb-0 -n private-ai
 
 > YOLO11 is a state-of-the-art object detection model. Out of the box, it detects faces — but it can't tell whose face it is. We start by exploring what the base model can and can't do.
 
-1. Open the workbench from the RHOAI Dashboard: **Data Science Projects** → **private-ai** → **Workbenches** → **face-recognition-wb** → **Open**
+1. Open the workbench from the RHOAI Dashboard: **Data Science Projects** → **enterprise-mlops** → **Workbenches** → **face-recognition-wb** → **Open**
 2. Run `01-explore-yolo11-face.ipynb`
 
 **Expect:** YOLO11 detects faces in test images with bounding boxes, confidence scores, and pixel coordinates. All detections are labelled as the generic class `face`.
@@ -176,7 +176,7 @@ oc get pod face-recognition-wb-0 -n private-ai
 
 **Expect:** Same recognition results, but now coming from the KServe REST API endpoint served by OpenVINO.
 
-> Same model, same accuracy — now served on OpenVINO Model Server via KServe RawDeployment. No GPU needed for inference. This is how Red Hat OpenShift AI serves predictive AI models in production: a REST API that any service can call, deployed and managed via GitOps like every other platform component.
+> Same model, same accuracy — now served on OpenVINO Model Server via KServe Standard mode. No GPU needed for inference. This is how Red Hat OpenShift AI serves predictive AI models in production: a REST API that any service can call, deployed and managed via GitOps like every other platform component.
 
 ## Key Takeaways
 
@@ -202,14 +202,15 @@ oc get pod face-recognition-wb-0 -n private-ai
 **Solution:**
 ```bash
 # Check the predictor pod logs
-oc logs -n private-ai deploy/face-recognition-predictor
+oc logs -n enterprise-mlops deploy/face-recognition-predictor
 
 # Verify model exists in MinIO
-oc exec -n minio-storage deploy/minio -- mc ls local/models/face-recognition/1/
+oc exec -n minio-storage deploy/minio -- sh -c \
+  'mc alias set demo http://localhost:9000 rhoai-access-key rhoai-secret-key-12345 >/dev/null && mc ls demo/models/face-recognition/1/'
 # Expected: model.onnx
 
 # Verify storage-config secret exists
-oc get secret storage-config -n private-ai
+oc get secret storage-config -n enterprise-mlops
 ```
 
 ### kserve-ovms ServingRuntime image not pulling
@@ -235,7 +236,7 @@ oc process -n redhat-ods-applications kserve-ovms \
 ./steps/step-11-face-recognition/upload-to-workbench.sh
 
 # Or verify they're already there
-oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- ls my_photos/ | head
+oc exec -n enterprise-mlops face-recognition-wb-0 -c face-recognition-wb -- ls my_photos/ | head
 ```
 
 ### Workbench pod not starting
@@ -244,16 +245,16 @@ oc exec -n private-ai face-recognition-wb-0 -c face-recognition-wb -- ls my_phot
 
 **Solution:**
 ```bash
-oc describe pod face-recognition-wb-0 -n private-ai | tail -20
-oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition | tail -10
+oc describe pod face-recognition-wb-0 -n enterprise-mlops | tail -20
+oc get events -n enterprise-mlops --sort-by='.lastTimestamp' | grep face-recognition | tail -10
 ```
 
 </details>
 
 ## References
 
-- [RHOAI 3.3 — Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/)
-- [RHOAI 3.3 — Release notes: ModelMesh deprecation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/release_notes/support-removals_relnotes)
+- [RHOAI 3.4 — Deploying models with KServe](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/)
+- [RHOAI 3.4 — Release notes: ModelMesh deprecation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/support-removals_relnotes)
 - [Ultralytics YOLO11 documentation](https://docs.ultralytics.com/models/yolo11/)
 - [YOLO11 data augmentation](https://docs.ultralytics.com/guides/yolo-data-augmentation/)
 - [OpenVINO Model Server KServe-compatible API](https://docs.openvino.ai/2026/model-server/ovms_docs_rest_api_kfs.html)
@@ -263,7 +264,7 @@ oc get events -n private-ai --sort-by='.lastTimestamp' | grep face-recognition |
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
-> **See also:** [Step 05 — LLM Serving on vLLM](../step-05-llm-on-vllm/README.md) (GPU model serving pattern), [Step 09 — Guardrails](../step-09-guardrails/README.md) (CPU-only InferenceService pattern)
+> **See also:** [Step 05 — LLM Serving on vLLM](../step-05-maas-model-serving/README.md) (GPU model serving pattern), [Step 09 — Guardrails](../step-09-guardrails/README.md) (CPU-only InferenceService pattern)
 
 ## Next Steps
 

@@ -43,7 +43,7 @@ def enforce_identity_uniqueness(detections, identity_class_id=0):
 
 TRUSTYAI_ADAPTER_URL = os.environ.get(
     "TRUSTYAI_ADAPTER_URL",
-    "http://trustyai-adapter.private-ai.svc.cluster.local:8090",
+    "http://trustyai-adapter.enterprise-mlops.svc.cluster.local:8090",
 )
 
 

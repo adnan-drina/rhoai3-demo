@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: database-mcp
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: database-mcp
     app.kubernetes.io/part-of: mcp-integration

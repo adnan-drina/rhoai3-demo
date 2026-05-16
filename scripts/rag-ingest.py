@@ -13,7 +13,7 @@ Usage (port-forwarded):
 import os, sys, requests
 from llama_stack_client import LlamaStackClient
 
-LLAMA_STACK_URL = os.getenv("LLAMA_STACK_URL", "http://lsd-rag-service.private-ai.svc.cluster.local:8321")
+LLAMA_STACK_URL = os.getenv("LLAMA_STACK_URL", "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321")
 MINIO_URL = os.getenv("MINIO_URL", "http://minio.minio-storage.svc.cluster.local:9000")
 
 client = LlamaStackClient(base_url=LLAMA_STACK_URL)

@@ -4,8 +4,8 @@ kind: Kustomization
 # Model Registry Instance
 # Deployed in rhoai-model-registries namespace (operator-managed)
 # Services:
-#   - private-ai-registry:8443      - OAuth-protected (Dashboard/UI)
-#   - private-ai-registry-internal:8080 - Internal API (automation jobs)
+#   - enterprise-ai-registry:8443      - OAuth-protected (Dashboard/UI)
+#   - enterprise-ai-registry-internal:8080 - Internal API (automation jobs)
 
 resources:
   - model-registry.yaml

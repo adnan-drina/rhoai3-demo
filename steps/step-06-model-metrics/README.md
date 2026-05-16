@@ -3,11 +3,11 @@
 
 ## Overview
 
-Building on **model serving** from Step 05 — still on the same governed platform — this step gives teams the **visibility to move from experiment to production**. Production AI requires visibility into latency, throughput, GPU headroom, and cost. **Red Hat OpenShift AI 3.3** wires this through **OpenShift User Workload Monitoring** and KServe-managed ServiceMonitors; Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load.
+Building on **model serving** from Step 05 — still on the same governed platform — this step gives teams the **visibility to move from experiment to production**. Production AI requires visibility into latency, throughput, GPU headroom, and cost. **Red Hat OpenShift AI 3.4** wires this through **OpenShift User Workload Monitoring** and KServe-managed ServiceMonitors; Grafana dashboards surface latency, cache pressure, and throughput in real time; **GuideLLM** stress tests show where each model saturates under load.
 
 This step demonstrates RHOAI's **Model observability and governance** capability: tracking metrics including performance, data drift, and capacity — with LLM benchmarking (GuideLLM) to right-size GPU spend.
 
-> **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.3 components.
+> **Community Tooling:** Grafana Operator and GuideLLM are community-driven tools, not officially supported RHOAI 3.4 components.
 
 ## Architecture
 
@@ -28,11 +28,11 @@ Model Performance Metrics
 | Component | Description | Namespace |
 |-----------|-------------|-----------|
 | **Grafana Operator** | Kubernetes-native Grafana from OperatorHub (community) | `grafana-operator` |
-| **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) | `private-ai` |
-| **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC | `private-ai` |
-| **Job Templates** | On-demand: per-model benchmarks at 1,3,5,8,10 req/s | `private-ai` |
-| **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis | `private-ai` |
-| **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) | `private-ai` |
+| **2 GrafanaDashboards** | vLLM metrics (latency/throughput/cache), GPU hardware (DCGM) | `maas` |
+| **GuideLLM CronJob** | Daily benchmarks at 2:00 AM UTC | `maas` |
+| **Job Templates** | On-demand: per-model benchmarks at 1,3,5,8,10 req/s | `maas` |
+| **Model Benchmarking Workbench** | Jupyter notebook for interactive analysis | `maas` |
+| **GuideLLM KFP Pipeline** | Dashboard-triggerable benchmark (requires step-07 DSPA) | `maas` |
 
 Manifests: [`gitops/step-06-model-metrics/base/`](../../gitops/step-06-model-metrics/base/)
 
@@ -93,13 +93,13 @@ Additional operations:
 | Fresh benchmark data | Completed GuideLLM jobs for each model | Completion within `DEMO_FRESHNESS_HOURS` |
 
 ```bash
-oc get grafana -n private-ai
-oc get grafanadashboard -n private-ai
+oc get grafana -n maas
+oc get grafanadashboard -n maas
 
-GRAFANA_HOST=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
+GRAFANA_HOST=$(oc get route grafana-route -n maas -o jsonpath='{.spec.host}')
 curl -sk "https://$GRAFANA_HOST/api/health" | python3 -c "import sys,json; print(json.load(sys.stdin))"
 
-oc get cronjob guidellm-daily -n private-ai
+oc get cronjob guidellm-daily -n maas
 ```
 
 </details>
@@ -115,7 +115,7 @@ oc get cronjob guidellm-daily -n private-ai
 1. Get the Grafana URL:
 
 ```bash
-GRAFANA_URL=$(oc get route grafana-route -n private-ai -o jsonpath='{.spec.host}')
+GRAFANA_URL=$(oc get route grafana-route -n maas -o jsonpath='{.spec.host}')
 echo "https://${GRAFANA_URL}"
 ```
 
@@ -140,7 +140,7 @@ oc create -f gitops/step-06-model-metrics/base/guidellm/job-templates/mistral-3-
 
 > With the benchmark running, we open Grafana to see real-time model performance — latency distributions, token throughput, and KV cache pressure across concurrency levels.
 
-1. Open Grafana → select `namespace=private-ai`, `model_name=granite-8b-agent`
+1. Open Grafana → select `namespace=maas`, `model_name=granite-8b-agent`
 2. Observe key panels:
    - **E2E Request Latency** — P50/P95/P99 across concurrency levels
    - **Token Throughput** — output tokens/second
@@ -242,7 +242,7 @@ oc exec -n openshift-user-workload-monitoring prometheus-user-workload-0 -- \
 
 **Solution:**
 ```bash
-oc get inferenceservice -n private-ai
+oc get inferenceservice -n maas
 # Both models must show READY=True
 ```
 
@@ -267,7 +267,7 @@ oc get inferenceservice -n private-ai
 
 **Solution:**
 ```bash
-oc get operatorgroup -n private-ai
+oc get operatorgroup -n maas
 # Should have exactly 1 OperatorGroup
 ```
 
@@ -275,7 +275,7 @@ oc get operatorgroup -n private-ai
 
 ## References
 
-- [RHOAI 3.3 — Managing and Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index)
+- [RHOAI 3.4 — Managing and Monitoring Models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_and_monitoring_models/index)
 - [OpenShift User Workload Monitoring (4.20)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/enabling-monitoring-for-user-defined-projects)
 - [GuideLLM — Evaluate LLM Deployments (Red Hat Developers)](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference)
 - [vLLM Production Metrics](https://docs.vllm.ai/en/latest/usage/metrics/)

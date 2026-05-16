@@ -1,4 +1,4 @@
-# Red Hat OpenShift AI 3.3 Demo
+# Red Hat OpenShift AI 3.4 Demo
 
 **One governed, open, hybrid-cloud AI platform for private, generative, predictive, and edge AI.**
 
@@ -16,7 +16,7 @@ AI in the enterprise is not just about models. It is about building a governed A
 
 ## Architecture
 
-![Red Hat OpenShift AI 3.3 demo platform capability map](docs/assets/architecture/rhoai3-demo-capability-map.svg)
+![Red Hat OpenShift AI 3.4 demo platform capability map](docs/assets/architecture/rhoai3-demo-capability-map.svg)
 
 ## Key Takeaways
 
@@ -24,7 +24,7 @@ AI in the enterprise is not just about models. It is about building a governed A
 - One operating model across private, hybrid, and edge environments
 - Trust, choice, and consistency as the three value pillars
 
-## RHOAI 3.3 Features and Benefits Coverage
+## RHOAI 3.4 Features and Benefits Coverage
 
 This demo covers 11 of 13 features from the [Red Hat OpenShift AI production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet):
 
@@ -32,7 +32,7 @@ This demo covers 11 of 13 features from the [Red Hat OpenShift AI production AI 
 |---------------|--------------------------|------------|
 | **Model development and customization** | Self-service notebooks and IDEs with curated AI/ML libraries, plus data ingestion and RAG for faster model development. | Steps 07, 11 |
 | **Model training and experimentation** | Training workflows with versioned artifacts and reproducible experimentation. | Steps 11, 12 |
-| **Intelligent GPU and hardware speed** | Intelligent workload scheduling, quota enforcement, priority access, hardware profiles, and accelerator visibility. | Steps 01, 02, 03, 06 |
+| **Intelligent GPU and hardware speed** | Intelligent workload scheduling, quota enforcement, priority access, hardware profiles, Kueue, and accelerator visibility. | Steps 01, 02, 03, 05, 06 |
 | **AI pipelines** | Automated, versioned, tracked AI workflows that reduce manual handoffs and support reproducible runs. | Steps 07, 08, 12 |
 | **Optimized model serving** | Production-scale LLM serving with vLLM and predictive model serving with out-of-the-box and custom runtimes. | Steps 05, 11, 13, 13b |
 | **Agentic AI and gen AI user interfaces (UIs)** | GenAI Studio, Playground, Llama Stack API, MCP, and agentic APIs for tool-enabled workflows. | Steps 02, 05, 07, 10 |
@@ -42,7 +42,7 @@ This demo covers 11 of 13 features from the [Red Hat OpenShift AI production AI 
 | **AI safety and security** | Guardrails and detector chains for prompt injection, toxic content, and PII leakage before broader deployment. | Step 09 |
 | **Disconnected environments and edge** | Portable AI workloads across edge and constrained environments for data locality and operational consistency. | Steps 13, 13b |
 | Feature store | *Centralized, reusable feature definitions for reducing redundant feature engineering and training-serving skew.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
-| Models-as-a-service | *Self-service API access to approved models through a managed gateway with usage tracking, quota, and showback.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| **Models-as-a-service** | Self-service API access to approved models through a managed gateway with usage tracking, quota, and showback. Preview posture is called out in the step README and evidence ledger. | Step 05 |
 
 ## OpenShift Container Platform 4.20 Features Used
 
@@ -65,7 +65,7 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 
 ## Four Demo Themes
 
-### Theme 1: Private AI (Steps 01-04)
+### Theme 1: Enterprise AI Foundation (Steps 01-04)
 **Run AI with control over data, operations, and deployment choices.**
 
 OpenShift AI adds GPU enablement, governance, multitenancy, and consistent operations to OpenShift. Built on open source and designed for hybrid cloud, it helps organizations establish a sovereign-ready foundation for predictive and generative AI without creating a separate stack.
@@ -74,7 +74,7 @@ OpenShift AI adds GPU enablement, governance, multitenancy, and consistent opera
 |------|-----------|--------------------------|------------------------|
 | 01 | GPU Infrastructure | Intelligent GPU and hardware speed | OLM, NFD, NVIDIA GPU Operator, Serverless, Monitoring |
 | 02 | RHOAI Platform | Agentic AI and gen AI UIs (GenAI Studio) | Service Mesh 3 |
-| 03 | Multitenancy | — (uses GPU features from 01) | Authentication and Authorization |
+| 03 | Enterprise Projects | — (uses GPU and Kueue features from 01/02) | Authentication and Authorization, Kueue |
 | 04 | Model Governance | Catalog and registry | — |
 
 ### Theme 2: Generative AI — ACME Semiconductor (Steps 05-10)
@@ -84,7 +84,7 @@ Building on the private AI base, this theme adds scalable serving, data groundin
 
 | Step | Capability | RHOAI Features Introduced | Reuses From |
 |------|-----------|--------------------------|-------------|
-| 05 | LLM Serving | Optimized model serving | GPU (01), Registry (04) |
+| 05 | MaaS Model Serving | Optimized model serving, Models-as-a-Service | GPU (01), Registry (04), Projects/Kueue (03) |
 | 06 | Performance Monitoring | Model observability and governance | Monitoring (01), Serving (05) |
 | 07 | RAG Pipeline | Model development and customization, AI pipelines | Serving (05) |
 | 08 | Model Evaluation | Evaluation | Pipelines (07), Observability (06) |
@@ -158,11 +158,11 @@ Deploy by theme or all steps in order:
 # Theme 1: Platform (required for all other themes)
 ./steps/step-01-gpu-and-prereq/deploy.sh
 ./steps/step-02-rhoai/deploy.sh
-./steps/step-03-private-ai/deploy.sh
+./steps/step-03-enterprise-projects/deploy.sh
 ./steps/step-04-model-registry/deploy.sh
 
 # Theme 2: Generative AI
-./steps/step-05-llm-on-vllm/deploy.sh
+./steps/step-05-maas-model-serving/deploy.sh
 ./steps/step-06-model-metrics/deploy.sh
 ./steps/step-07-rag/deploy.sh
 ./steps/step-08-model-evaluation/deploy.sh
@@ -188,19 +188,19 @@ Validate the ACME demo flow:
 
 | Step | Name | RHOAI Capability | Ref |
 |------|------|-----------------|-----|
-| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, LeaderWorkerSet, RHCL | [Installing dependencies](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index#installing-distributed-inference-dependencies) |
-| 02 | [RHOAI Platform](steps/step-02-rhoai/README.md) | DataScienceCluster, GenAI Studio, Hardware Profiles | [Installing RHOAI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/installing_and_uninstalling_openshift_ai_self-managed/index) |
-| 03 | [Multitenancy & GPU-as-a-Service](steps/step-03-private-ai/README.md) | Projects, users, GPU scheduling, MinIO, RBAC | [Managing OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_openshift_ai/) |
-| 04 | [Model Governance](steps/step-04-model-registry/README.md) | Model Registry, Model Catalog, seed job, RBAC | [Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index) |
-| 05 | [LLM Serving on vLLM](steps/step-05-llm-on-vllm/README.md) | Red Hat Validated models on GPU, Model Registry, GenAI Playground | [Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
-| 06 | [Performance Monitoring](steps/step-06-model-metrics/README.md) | Grafana dashboards, GuideLLM benchmarks, KFP pipelines | [Managing and monitoring models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/managing_and_monitoring_models/index) |
-| 07 | [RAG Pipeline](steps/step-07-rag/README.md) | pgvector, Docling, DSPA, LlamaStack RAG chatbot | [Deploying a RAG stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag) |
-| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | Pre/post RAG eval (LLM-as-Judge), LM-Eval benchmarks | [Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/evaluating_ai_systems/) |
-| 09 | [AI Safety & Guardrails](steps/step-09-guardrails/README.md) | TrustyAI: HAP, prompt injection, PII — CPU-only | [Enabling AI safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/enabling_ai_safety_with_guardrails/) |
-| 10 | [Agentic AI & MCP](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers | [Configuring MCP servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user) |
-| 11 | [Face Recognition](steps/step-11-face-recognition/README.md) | YOLO11 ONNX, KServe + OpenVINO, CPU-only inference | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
-| 12 | [MLOps Pipeline](steps/step-12-mlops-pipeline/README.md) | KFP v2 training, Model Registry, TrustyAI monitoring | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/) |
-| 13 | [Edge AI](steps/step-13-edge-ai/README.md) | Phone camera app, edge inference, GitOps model delivery | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/deploying_models/) |
+| 01 | [GPU Infrastructure](steps/step-01-gpu-and-prereq/README.md) | NFD, GPU Operator, Serverless, Kueue, RHCL/Kuadrant | [MaaS prerequisites](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service#deploy-and-manage-models-as-a-service_maas) |
+| 02 | [RHOAI Platform](steps/step-02-rhoai/README.md) | DataScienceCluster, GenAI Studio, Hardware Profiles, MaaS flags | [Installing RHOAI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index) |
+| 03 | [Enterprise Projects and Storage](steps/step-03-enterprise-projects/README.md) | Projects, users, MinIO, RBAC, Kueue LocalQueue | [Managing OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/) |
+| 04 | [Model Governance](steps/step-04-model-registry/README.md) | Model Registry, Model Catalog, seed job, RBAC | [Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index) |
+| 05 | [MaaS Model Serving on vLLM](steps/step-05-maas-model-serving/README.md) | Red Hat Validated models on GPU, MaaS enablement, Model Registry, GenAI Playground | [Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/) |
+| 06 | [Performance Monitoring](steps/step-06-model-metrics/README.md) | Grafana dashboards, GuideLLM benchmarks, KFP pipelines | [Managing and monitoring models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_and_monitoring_models/index) |
+| 07 | [RAG Pipeline](steps/step-07-rag/README.md) | pgvector, Docling, DSPA, LlamaStack RAG chatbot | [Deploying a RAG stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag) |
+| 08 | [Model Evaluation](steps/step-08-model-evaluation/README.md) | Pre/post RAG eval (LLM-as-Judge), LM-Eval benchmarks | [Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/) |
+| 09 | [AI Safety & Guardrails](steps/step-09-guardrails/README.md) | TrustyAI: HAP, prompt injection, PII — CPU-only | [Enabling AI safety](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails/) |
+| 10 | [Agentic AI & MCP](steps/step-10-mcp-integration/README.md) | Database, OpenShift, Slack MCP servers | [Configuring MCP servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user) |
+| 11 | [Face Recognition](steps/step-11-face-recognition/README.md) | YOLO11 ONNX, KServe + OpenVINO, CPU-only inference | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/) |
+| 12 | [MLOps Pipeline](steps/step-12-mlops-pipeline/README.md) | KFP v2 training, Model Registry, TrustyAI monitoring | [Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/) |
+| 13 | [Edge AI](steps/step-13-edge-ai/README.md) | Phone camera app, edge inference, GitOps model delivery | [Deploying models (KServe)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/) |
 | 13b | [Edge AI on MicroShift](steps/step-13b-edge-ai-microshift/README.md) *(optional)* | Real edge: MicroShift 4.20 on RHEL, ModelCar OCI, NVIDIA L4 | [Using AI models on MicroShift](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/using_ai_models/) |
 
 ## GitOps Architecture
@@ -224,8 +224,8 @@ Validate the ACME demo flow:
 - [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [An Open Platform for AI Models in the Hybrid Cloud](https://www.redhat.com/en/resources/openshift-ai-overview)
 - [Get started with AI for enterprise organizations](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
-- [RHOAI 3.3 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
-- [RHOAI 3.3 Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/)
+- [RHOAI 3.4 Documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)
+- [RHOAI 3.4 Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/)
 - [OpenShift 4.20 GPU Architecture](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/hardware_accelerators/nvidia-gpu-architecture)
 - [Red Hat AI Validated Models](https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index)
 - [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)

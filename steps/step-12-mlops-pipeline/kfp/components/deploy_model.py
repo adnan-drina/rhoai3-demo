@@ -4,7 +4,7 @@ from kfp.dsl import component
 
 
 @component(
-    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.3.0",
+    base_image="registry.redhat.io/rhai/base-image-cpu-rhel9:3.4.0",
     packages_to_install=["kubernetes>=28.0.0", "model-registry>=0.3.7"],
     pip_index_urls=["https://pypi.org/simple"],
 )

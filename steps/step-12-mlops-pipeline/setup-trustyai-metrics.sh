@@ -19,7 +19,7 @@
 # SPD measures: whether known faces get detected at the same rate as unknowns.
 # Fair range: -0.1 to 0.1
 #
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/monitoring_your_ai_systems/
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/monitoring_your_ai_systems/
 # =============================================================================
 
 set -euo pipefail
@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 load_env
 check_oc_logged_in

@@ -53,37 +53,27 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
             # Convert search tools to web_search format
             agent_tools.append({"type": "web_search"})
         elif toolgroup_name.startswith("mcp::"):
-            try:
-                toolgroups = client.toolgroups.list()
-                for toolgroup in toolgroups:
-                    if str(toolgroup.identifier) == toolgroup_name:
-                        args = toolgroup.args or {}
-                        label = args.get("name", str(toolgroup.identifier)) if isinstance(args, dict) else str(toolgroup.identifier)
-                        agent_tools.append({
-                            "type": "mcp",
-                            "server_label": label,
-                            "server_url": toolgroup.mcp_endpoint.uri,
-                            "require_approval": "never",
-                        })
-                        break
-            except Exception:
-                pass
+            connector_id = toolgroup_name.removeprefix("mcp::")
+            connectors = llama_stack_api.list_connectors()
+            connector = next(
+                (
+                    candidate for candidate in connectors
+                    if isinstance(candidate, dict)
+                    and candidate.get("connector_id") == connector_id
+                ),
+                None,
+            )
+            if connector and connector.get("url"):
+                agent_tools.append({
+                    "type": "mcp",
+                    "server_label": connector.get("server_label") or connector_id,
+                    "server_url": connector["url"],
+                    "require_approval": "never",
+                })
+            else:
+                logger.debug("Selected MCP connector %s is not registered", connector_id)
         else:
-            # For other toolgroups, get individual tools and convert to function format
-            try:
-                tools_in_group = client.tools.list(toolgroup_id=toolgroup_name)
-                for tool in tools_in_group:
-                    # Convert to function tool dict
-                    agent_tools.append({
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description or "",
-                            "parameters": tool.parameters or {}
-                        }
-                    })
-            except Exception as e:
-                logger.logger.debug("Failed to get tools for %s: %s", toolgroup_name, e)
+            logger.debug("Skipping unsupported tool selection %s", toolgroup_name)
 
     return agent_tools
 
@@ -367,7 +357,7 @@ def save_agent_response_to_session(state):
 
 
 def agent_process_prompt(prompt, state, config):
-    """Agent-based mode: Use Responses API with automatic tool calling + guardrails."""
+    """Agent-based mode: Use Responses API with automatic tool calling and NeMo guardrails."""
     from llama_stack_ui.distribution.ui.modules import guardrails
 
     shields_on = config.shields_enabled
@@ -378,14 +368,15 @@ def agent_process_prompt(prompt, state, config):
                 shield_status.update(label="🛡️ Input blocked", state="error")
                 detector = violation['detector']
                 score = violation['score']
+                message = violation.get('message') or "Please rephrase your message."
                 st.error(
                     f"🛡️ **Safety Shield Activated** — Your message was blocked by the "
                     f"**{detector}** detector (confidence: {score:.2f}).\n\n"
-                    f"Please rephrase your message."
+                    f"{message}"
                 )
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). Please rephrase.",
+                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). {message}",
                 })
                 return
             shield_status.update(label="🛡️ Input safe", state="complete")
@@ -425,17 +416,21 @@ def agent_process_prompt(prompt, state, config):
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
 
-    # --- Output guardrails (HAP + PII regex) ---
+    # --- Output guardrails (NeMo output rails) ---
     if shields_on and state.full_response:
         violations = guardrails.check_output(state.full_response)
         if violations:
             redacted = state.full_response
             details = []
+            replacement = next((v.get('message') for v in violations if v.get('message')), None)
             for v in violations:
                 matched = v.get('text', '')
                 if matched and matched in redacted:
                     redacted = redacted.replace(matched, '█' * min(len(matched), 12))
-                details.append(f"  • {v['detector']}: \"{matched}\" (score: {v['score']:.2f})")
+                details.append(f"  • {v['detector']}: policy response (score: {v['score']:.2f})")
+
+            if replacement:
+                redacted = replacement
 
             state.full_response = redacted
             state.containers.message.markdown(redacted)

@@ -11,7 +11,7 @@ Provides both Direct mode (manual RAG) and Agent-based mode (automatic tool call
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import streamlit as st
 
@@ -73,27 +73,85 @@ def render_history():
 
 
 def fetch_models_and_tools():
-    """Fetch and categorize models and toolgroups from LlamaStack."""
+    """Fetch and categorize models and tools from Llama Stack."""
     client = llama_stack_api.client
 
     # Fetch models
     models = client.models.list()
     model_list = [model.id for model in models if model.custom_metadata.get("model_type") == "llm"]
-    
 
-    # Fetch and categorize toolgroups
-    tool_groups = client.toolgroups.list()
-    logger.debug("Raw tool groups from LlamaStack: %s", tool_groups)
-    tool_groups_list = [tool_group.identifier for tool_group in tool_groups]
-    logger.debug("Tool group identifiers: %s", tool_groups_list)
+    # RHOAI 3.4 Llama Stack exposes tools and connectors through REST endpoints.
+    tools = llama_stack_api.list_tools()
+    logger.debug("Raw tools from Llama Stack: %s", tools)
 
-    mcp_tools_list = [tool for tool in tool_groups_list if tool.startswith("mcp::")]
-    logger.debug("MCP tools: %s", mcp_tools_list)
+    builtin_tools_list = []
+    toolgroup_ids = {
+        tool.get("toolgroup_id")
+        for tool in tools
+        if isinstance(tool, dict) and tool.get("toolgroup_id")
+    }
+    if "builtin::file_search" in toolgroup_ids:
+        builtin_tools_list.append("builtin::rag")
+    if "builtin::websearch" in toolgroup_ids:
+        builtin_tools_list.append("builtin::websearch")
 
-    builtin_tools_list = [tool for tool in tool_groups_list if not tool.startswith("mcp::")]
+    vector_dbs = list(client.vector_stores.list() or [])
+    if vector_dbs and "builtin::rag" not in builtin_tools_list:
+        builtin_tools_list.insert(0, "builtin::rag")
+
+    connectors = llama_stack_api.list_connectors()
+    logger.debug("Raw connectors from Llama Stack: %s", connectors)
+    mcp_tools_list = [
+        f"mcp::{connector.get('connector_id')}"
+        for connector in connectors
+        if isinstance(connector, dict)
+        and connector.get("connector_type") == "mcp"
+        and connector.get("connector_id")
+    ]
+
+    logger.debug("MCP connectors: %s", mcp_tools_list)
     logger.debug("Built-in tools: %s", builtin_tools_list)
 
     return model_list, builtin_tools_list, mcp_tools_list
+
+
+def _selected_tool_summary(toolgroup_selection):
+    """Build a display summary for selected tools without legacy toolgroups APIs."""
+    tools = llama_stack_api.list_tools()
+    connectors = llama_stack_api.list_connectors()
+    grouped_tools = {}
+
+    for toolgroup_id in toolgroup_selection:
+        if toolgroup_id == "builtin::rag":
+            selected = [
+                tool.get("name", "file_search")
+                for tool in tools
+                if isinstance(tool, dict)
+                and tool.get("toolgroup_id") == "builtin::file_search"
+            ]
+            grouped_tools[toolgroup_id] = selected or ["file_search"]
+        elif toolgroup_id == "builtin::websearch":
+            selected = [
+                tool.get("name", "web_search")
+                for tool in tools
+                if isinstance(tool, dict)
+                and tool.get("toolgroup_id") == "builtin::websearch"
+            ]
+            grouped_tools[toolgroup_id] = selected or ["web_search"]
+        elif toolgroup_id.startswith("mcp::"):
+            connector_id = toolgroup_id.removeprefix("mcp::")
+            connector = next(
+                (
+                    candidate for candidate in connectors
+                    if isinstance(candidate, dict)
+                    and candidate.get("connector_id") == connector_id
+                ),
+                {},
+            )
+            endpoint = connector.get("url", "endpoint unavailable")
+            grouped_tools[toolgroup_id] = [f"MCP connector: {endpoint}"]
+
+    return grouped_tools
 
 
 def render_toolgroup_selection(builtin_tools_list, mcp_tools_list, selected_vector_dbs,
@@ -133,15 +191,8 @@ def render_toolgroup_selection(builtin_tools_list, mcp_tools_list, selected_vect
         toolgroup_selection = list(toolgroup_selection) + list(mcp_selection)
 
     # Display active tools summary
-    client = llama_stack_api.client
-    grouped_tools = {}
-    total_tools = 0
-
-    for toolgroup_id in toolgroup_selection:
-        tools = client.tools.list(toolgroup_id=toolgroup_id)
-        logger.debug("Raw tools from toolgroup '%s': %s", toolgroup_id, tools)
-        grouped_tools[toolgroup_id] = [tool.name for tool in tools]
-        total_tools += len(tools)
+    grouped_tools = _selected_tool_summary(toolgroup_selection)
+    total_tools = sum(len(tools) for tools in grouped_tools.values())
 
     logger.debug("Grouped tools summary: %s", grouped_tools)
 
@@ -252,14 +303,14 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             shields_enabled = st.toggle(
                 "Enable Guardrails",
                 value=True,
-                help="Input: HAP + Prompt Injection · Output: HAP + PII Regex",
+                help="Use the Step 09 NeMo Guardrails policy service before and after agent responses.",
             )
             if shields_enabled:
-                st.caption("Input: HAP + Prompt Injection · Output: HAP + PII Regex")
+                st.caption("NeMo Guardrails: input policy rails · output sensitive-data rails")
             else:
                 st.caption("⚠️ Shields disabled — no input/output safety checks")
         else:
-            st.caption("⚠️ Guardrails Orchestrator not available. Deploy step-09 to enable.")
+            st.caption("⚠️ NeMo Guardrails not available. Deploy step-09 to enable.")
 
     # Sampling Parameters
     st.subheader("Sampling Parameters")
@@ -290,22 +341,7 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
 
     # System Prompt (mode-specific defaults)
     st.subheader("System Prompt")
-    if processing_mode == "Direct":
-        default_prompt = (
-            "You are a helpful AI assistant. Answer questions using the provided context. "
-            "If the context doesn't contain enough information, say so clearly."
-        )
-    else:
-        default_prompt = (
-            "You are a helpful assistant. Use your tools to answer questions. "
-            "Base your answer on tool results, not prior knowledge. "
-            "If a tool call fails, retry with corrected parameters. "
-            "For equipment database lookups, use execute_sql on the acme_pod_equipment_map table "
-            "(columns: pod_name, equipment_id, product_name). "
-            "For pod and cluster queries, use the OpenShift tools. "
-            "Be concise — answer in 2-4 sentences. "
-            "Reply only with an answer, don't print Sources."
-        )
+    default_prompt = default_system_prompt_for_mode(processing_mode)
     system_prompt = st.text_area(
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
     )
@@ -387,6 +423,29 @@ def initialize_session_state():
 
     if "selected_question" not in st.session_state:
         st.session_state["selected_question"] = None
+
+    if "selected_question_context" not in st.session_state:
+        st.session_state["selected_question_context"] = None
+
+
+def default_system_prompt_for_mode(processing_mode):
+    """Return the mode-specific default system prompt."""
+    if processing_mode == "Direct":
+        return (
+            "You are a helpful AI assistant. Answer questions using the provided context. "
+            "If the context doesn't contain enough information, say so clearly."
+        )
+
+    return (
+        "You are a helpful assistant. Use your tools to answer questions. "
+        "Base your answer on tool results, not prior knowledge. "
+        "If a tool call fails, retry with corrected parameters. "
+        "For equipment database lookups, use execute_sql on the acme_pod_equipment_map table "
+        "(columns: pod_name, equipment_id, product_name). "
+        "For pod and cluster queries, use the OpenShift tools. "
+        "Be concise — answer in 2-4 sentences. "
+        "Reply only with an answer, don't print Sources."
+    )
 
 
 # ============================================================================
@@ -530,9 +589,20 @@ class ResponseState:
 # Suggested Questions UI
 # ============================================================================
 
-def render_question_button(question, db_name, idx):
+def render_question_button(suggestion, idx):
     """Render a single question button."""
-    button_key = f"question_btn_{idx}_{hash(question)}"
+    question = suggestion["question"]
+    db_name = suggestion.get("source_db", "unknown")
+    mode = suggestion.get("mode", "Direct")
+    use_case = suggestion.get("use_case", "General RAG")
+    tool = suggestion.get("tool")
+    label_parts = [use_case, mode]
+    if tool:
+        label_parts.append(tool.removeprefix("mcp::"))
+
+    st.caption(" · ".join(label_parts))
+
+    button_key = f"question_btn_{idx}_{hash((question, db_name, use_case))}"
     if st.button(
         question,
         key=button_key,
@@ -540,6 +610,7 @@ def render_question_button(question, db_name, idx):
         help=f"From: {db_name}"
     ):
         st.session_state.selected_question = question
+        st.session_state.selected_question_context = suggestion
         st.rerun()
 
 
@@ -551,9 +622,8 @@ def render_question_grid(suggestions, num_to_show):
         for j in range(cols_per_row):
             idx = i + j
             if idx < num_to_show:
-                question, db_name = suggestions[idx]
                 with cols[j]:
-                    render_question_button(question, db_name, idx)
+                    render_question_button(suggestions[idx], idx)
 
 
 def render_show_more_button(suggestions):
@@ -585,7 +655,7 @@ def display_suggested_questions(selected_vector_dbs):
     if not suggestions:
         return
 
-    st.markdown("### 💡 Suggested Questions")
+    st.markdown("### Example Prompts")
 
     # Determine how many questions to show
     num_to_show = (
@@ -620,6 +690,93 @@ def process_prompt(prompt, config):
             agent_process_prompt(prompt, state, config)
 
     st.rerun()
+
+
+def _dedupe(values):
+    """Return values without duplicates while preserving order."""
+    seen = set()
+    result = []
+    for value in values:
+        if value not in seen:
+            result.append(value)
+            seen.add(value)
+    return result
+
+
+def _normalize_example_mode(mode):
+    """Normalize example prompt modes to the UI mode names."""
+    normalized = str(mode or "").strip().lower()
+    if normalized in {"agent", "agent-based", "agent_based"}:
+        return "Agent-based"
+    return "Direct"
+
+
+def _normalize_example_tool(tool):
+    """Normalize an example tool id to the internal toolgroup id."""
+    if not tool:
+        return None
+    tool = str(tool)
+    if tool.startswith("mcp::") or tool.startswith("builtin::"):
+        return tool
+    return f"mcp::{tool}"
+
+
+def _set_direct_example_collection(example_context):
+    """Set Direct mode vector DB state for a selected example prompt."""
+    if not example_context or not example_context.get("select_collection", True):
+        return
+
+    source_db = example_context.get("source_db")
+    if not source_db:
+        return
+
+    vector_dbs = list(llama_stack_api.client.vector_stores.list() or [])
+    selected = [
+        vdb for vdb in vector_dbs
+        if source_db in {
+            getattr(vdb, "vector_store_name", None),
+            getattr(vdb, "identifier", None),
+            getattr(vdb, "id", None),
+            getattr(vdb, "name", None),
+            get_vector_db_name(vdb),
+        }
+    ]
+    if selected:
+        st.session_state["direct_vector_dbs"] = selected
+
+
+def apply_example_context(config, example_context):
+    """Apply structured example metadata before submitting a prompt."""
+    if not isinstance(example_context, dict):
+        return config
+
+    mode = _normalize_example_mode(example_context.get("mode"))
+    tool = _normalize_example_tool(example_context.get("tool"))
+    select_collection = example_context.get("select_collection", True)
+    source_db = example_context.get("source_db")
+
+    selected_vector_dbs = list(config.selected_vector_dbs or [])
+    if select_collection and source_db:
+        selected_vector_dbs = [source_db]
+    elif not select_collection:
+        selected_vector_dbs = []
+
+    toolgroup_selection = list(config.toolgroup_selection or [])
+    if mode == "Agent-based":
+        if select_collection and selected_vector_dbs:
+            toolgroup_selection.append("builtin::rag")
+        if tool:
+            toolgroup_selection.append(tool)
+    elif mode == "Direct":
+        _set_direct_example_collection(example_context)
+
+    return replace(
+        config,
+        processing_mode=mode,
+        selected_vector_dbs=selected_vector_dbs,
+        toolgroup_selection=_dedupe(toolgroup_selection),
+        system_prompt=default_system_prompt_for_mode(mode),
+    )
 
 
 def tool_chat_page():
@@ -664,8 +821,10 @@ def tool_chat_page():
     # Handle selected question from suggestions
     if st.session_state.selected_question:
         prompt = st.session_state.selected_question
+        example_context = st.session_state.selected_question_context
         st.session_state.selected_question = None
-        process_prompt(prompt, chat_config)
+        st.session_state.selected_question_context = None
+        process_prompt(prompt, apply_example_context(chat_config, example_context))
 
     # Handle manual chat input
     if prompt := st.chat_input(placeholder="Ask a question..."):

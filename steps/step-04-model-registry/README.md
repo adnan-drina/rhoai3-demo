@@ -3,7 +3,7 @@
 
 ## Overview
 
-Private AI extends to **models**: you need control over what is discovered, registered, and promoted — not only compute and tenancy. This step adds a **catalog** for discovery and a **registry** for lifecycle and accountability, closing the loop on *who* can serve *which* artifact *where*. **Red Hat OpenShift AI 3.3** pairs the **Model Catalog** (48+ Red Hat-validated models in OCI ModelCar format) with the **Model Registry** (versions, ownership, approval) — discover in the Catalog, govern in the Registry.
+Private AI extends to **models**: you need control over what is discovered, registered, and promoted — not only compute and tenancy. This step adds a **catalog** for discovery and a **registry** for lifecycle and accountability, closing the loop on *who* can serve *which* artifact *where*. **Red Hat OpenShift AI 3.4** pairs the **Model Catalog** (48+ Red Hat-validated models in OCI ModelCar format) with the **Model Registry** (versions, ownership, approval) — discover in the Catalog, govern in the Registry.
 
 This step demonstrates RHOAI's **Catalog and registry** capability: centralized management for predictive and gen AI models, their metadata and artifacts. This completes the Private AI foundation — compute, platform, access, storage, and now model lifecycle.
 
@@ -26,7 +26,7 @@ Model Governance
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
 | **Model Catalog** | 48+ Red Hat-validated models (OCI ModelCar), browse in GenAI Studio | platform-wide |
-| **Model Registry** (`private-ai-registry`) | Custom governance: versions, owners, approval status | `rhoai-model-registries` |
+| **Model Registry** (`enterprise-ai-registry`) | Custom governance: versions, owners, approval status | `rhoai-model-registries` |
 | **MariaDB 10.11** | Registry metadata storage (5 Gi PVC) | `rhoai-model-registries` |
 | **Internal Service** (`:8080`) | Unauthenticated endpoint for seed job automation | `rhoai-model-registries` |
 | **RBAC** | `ai-admin` = full control, `ai-developer` = read-only | `rhoai-model-registries` |
@@ -46,7 +46,7 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 
 <summary>Design Decisions</summary>
 
-> **Model Catalog for discovery, Registry for governance:** The Catalog provides 48+ OCI-ready models for rapid deployment. The Registry adds custom metadata, versioning, and RBAC. In production, the ideal flow is: discover in Catalog → register for governance → deploy from Registry. Our demo uses OCI ModelCar for small models (Granite 8B FP8, Mistral INT4) pulled directly from the Red Hat Registry, and S3/MinIO for large BF16 models (>20GB) where OCI image layers may hit CRI-O overlay limits. Ref: [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_the_model_catalog/).
+> **Model Catalog for discovery, Registry for governance:** The Catalog provides 48+ OCI-ready models for rapid deployment. The Registry adds custom metadata, versioning, and RBAC. In production, the ideal flow is: discover in Catalog → register for governance → deploy from Registry. Our demo uses OCI ModelCar for small models (Granite 8B FP8, Mistral INT4) pulled directly from the Red Hat Registry, and S3/MinIO for large BF16 models (>20GB) where OCI image layers may hit CRI-O overlay limits. Ref: [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_the_model_catalog/).
 
 > **External MariaDB instead of embedded:** Explicit PVC control and simpler backup/restore for the demo.
 
@@ -72,10 +72,10 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
 | MariaDB running | Registry metadata storage | 1 pod Running in `rhoai-model-registries` |
-| ModelRegistry CR | `private-ai-registry` resource | CR exists |
+| ModelRegistry CR | `enterprise-ai-registry` resource | CR exists |
 | Registry pods | Application pods running | At least 1 Running |
 | Seed job | Initial model registration | Succeeded (may be cleaned up by TTL) |
-| Internal service | Unauthenticated endpoint | `private-ai-registry-internal` on port 8080 |
+| Internal service | Unauthenticated endpoint | `enterprise-ai-registry-internal` on port 8080 |
 
 </details>
 
@@ -101,7 +101,7 @@ Manifests: [`gitops/step-04-model-registry/base/`](../../gitops/step-04-model-re
 > The Catalog is for discovery. The Registry is for governance. When a model is approved for production use, it gets registered with version metadata, ownership, and an artifact path — creating the audit trail that compliance teams require.
 
 1. Switch to `ai-admin`
-2. Navigate to **Settings → Model registries → private-ai-registry**
+2. Navigate to **Settings → Model registries → enterprise-ai-registry**
 
 **Expect:** The Granite 3.1 8B Instruct FP8 model appears — registered by the automated seed job during deployment.
 
@@ -155,7 +155,7 @@ oc get pvc model-registry-db-pvc -n rhoai-model-registries -o jsonpath='{.metada
 
 **Solution:** The seed job retries. If it exhausts retries, wait for registry pods to be Running and recreate:
 ```bash
-oc wait pods -l app=private-ai-registry -n rhoai-model-registries --for=condition=Ready --timeout=120s
+oc wait pods -l app=enterprise-ai-registry -n rhoai-model-registries --for=condition=Ready --timeout=120s
 oc delete job model-registry-seed -n rhoai-model-registries
 oc apply -f gitops/step-04-model-registry/base/seed-job.yaml
 ```
@@ -176,14 +176,14 @@ oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.modelregist
 
 ## References
 
-- [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_the_model_catalog/)
-- [Deploying a Model from the Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_the_model_catalog/deploying-a-model-from-the-model-catalog_working-model-catalog)
-- [Working with Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/working_with_model_registries/working_with_model_registries)
-- [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_model_registries/index)
+- [Working with the Model Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_the_model_catalog/)
+- [Deploying a Model from the Catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_the_model_catalog/deploying-a-model-from-the-model-catalog_working-model-catalog)
+- [Working with Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_model_registries/working_with_model_registries)
+- [Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Datasheet](https://www.redhat.com/en/resources/red-hat-openshift-ai-hybrid-cloud-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
 
 ## Next Steps
 
-- **Step 05**: [LLM Serving on vLLM](../step-05-llm-on-vllm/README.md) — Deploy models as live inference endpoints and validate in the GenAI Playground
+- **Step 05**: [LLM Serving on vLLM](../step-05-maas-model-serving/README.md) — Deploy models as live inference endpoints and validate in the GenAI Playground

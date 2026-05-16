@@ -1,0 +1,25 @@
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: NemoGuardrails
+metadata:
+  name: nemo-guardrails
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/component: safety
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    security.opendatahub.io/enable-auth: "true"
+spec:
+  replicas: 1
+  nemoConfigs:
+    - name: acme-safety
+      configMaps:
+        - nemo-guardrails-config
+      default: true
+  env:
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: nemo-guardrails-api-token
+          key: token

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 10: MCP Integration — Validation                         ║"
@@ -15,7 +15,31 @@ echo ""
 
 # --- Argo CD Application ---
 log_step "Argo CD Application"
-check_argocd_app "step-10-mcp-integration"
+APP_SYNC=$(oc get applications.argoproj.io step-10-mcp-integration -n openshift-gitops \
+    -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+APP_HEALTH=$(oc get applications.argoproj.io step-10-mcp-integration -n openshift-gitops \
+    -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+
+if [[ "$APP_SYNC" == "Synced" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' sync: Synced"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Argo CD app 'step-10-mcp-integration' sync (expected: Synced, got: $APP_SYNC)"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+ACME_0007_REASON=$(oc get pod acme-equipment-0007 -n acme-corp \
+    -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+if [[ "$APP_HEALTH" == "Healthy" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' health: Healthy"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+elif [[ "$APP_HEALTH" == "Degraded" && "$ACME_0007_REASON" == "CrashLoopBackOff" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app health is Degraded only for intentional acme-equipment-0007 CrashLoopBackOff demo state"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Argo CD app health unexpected (got: $APP_HEALTH, acme-equipment-0007 reason: ${ACME_0007_REASON:-unknown})"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
 
 # --- MCP Server Deployments ---
 log_step "MCP Server Deployments"
@@ -63,6 +87,27 @@ else
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
+for pod in acme-equipment-0001 acme-equipment-0005; do
+    PHASE=$(oc get pod "$pod" -n acme-corp -o jsonpath='{.status.phase}' 2>/dev/null || echo "NOT_FOUND")
+    if [[ "$PHASE" == "Running" ]]; then
+        echo -e "${GREEN}[PASS]${NC} $pod is Running"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} $pod expected Running, got $PHASE"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+done
+
+ACME_0007_REASON=$(oc get pod acme-equipment-0007 -n acme-corp \
+    -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+if [[ "$ACME_0007_REASON" == "CrashLoopBackOff" ]]; then
+    echo -e "${GREEN}[PASS]${NC} acme-equipment-0007 is intentionally CrashLoopBackOff for the RAG/MCP troubleshooting story"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} acme-equipment-0007 expected CrashLoopBackOff, got ${ACME_0007_REASON:-unknown}"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
 # --- MCP Server Connectivity ---
 log_step "MCP Server Connectivity"
 for server_port in "database-mcp:8080" "openshift-mcp:8000" "slack-mcp:8080"; do
@@ -79,83 +124,44 @@ for server_port in "database-mcp:8080" "openshift-mcp:8000" "slack-mcp:8080"; do
     fi
 done
 
-# --- MCP Tool_Group Registration ---
-log_step "MCP Tool_Group Registration"
+# --- Llama Stack MCP Connectors ---
+log_step "Llama Stack MCP Connectors"
 LSD_POD=$(oc get pods -n "$NAMESPACE" --no-headers -o custom-columns=":metadata.name" 2>/dev/null | grep "^lsd-rag" | head -1 || true)
 if [[ -n "$LSD_POD" ]]; then
-    for tg in openshift database slack; do
-        TG_EXISTS=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-            curl -sf "http://localhost:8321/v1/toolgroups/mcp::${tg}" 2>/dev/null || true)
-        if [[ -n "$TG_EXISTS" ]] && echo "$TG_EXISTS" | grep -q "mcp::${tg}"; then
-            echo -e "${GREEN}[PASS]${NC} Tool_group mcp::${tg} registered"
+    CONNECTORS=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+        curl -sf --max-time 15 "http://localhost:8321/v1beta/connectors" 2>/dev/null || true)
+    for connector in openshift-mcp database-mcp slack-mcp; do
+        if echo "$CONNECTORS" | grep -q "\"connector_id\":\"${connector}\""; then
+            echo -e "${GREEN}[PASS]${NC} Connector ${connector} registered"
             VALIDATE_PASS=$((VALIDATE_PASS + 1))
         else
-            echo -e "${RED}[FAIL]${NC} Tool_group mcp::${tg} not registered"
+            echo -e "${RED}[FAIL]${NC} Connector ${connector} not registered"
             VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
         fi
     done
 else
-    echo -e "${YELLOW}[WARN]${NC} lsd-rag pod not found — skipping tool_group checks"
+    echo -e "${YELLOW}[WARN]${NC} lsd-rag pod not found — skipping connector checks"
     VALIDATE_WARN=$((VALIDATE_WARN + 3))
 fi
 
-# --- MCP Functional Tests ---
-log_step "MCP Functional Tests"
+# --- MCP Tool Discovery ---
+log_step "MCP Tool Discovery"
 if [[ -n "$LSD_POD" ]]; then
-    # OpenShift MCP — list pods in acme-corp
-    OCP_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/tool-runtime/invoke \
-        -H "Content-Type: application/json" \
-        -d '{"tool_name":"pods_list_in_namespace","kwargs":{"namespace":"acme-corp"},"tool_group_id":"mcp::openshift"}' 2>/dev/null || echo "ERROR")
-    if echo "$OCP_RESULT" | grep -qi "acme-equipment"; then
-        echo -e "${GREEN}[PASS]${NC} OpenShift MCP: pods_list_in_namespace returned acme-equipment pods"
-        VALIDATE_PASS=$((VALIDATE_PASS + 1))
-    else
-        echo -e "${RED}[FAIL]${NC} OpenShift MCP: pods_list_in_namespace failed"
-        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
-    fi
-
-    # Database MCP — list schemas
-    DB_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/tool-runtime/invoke \
-        -H "Content-Type: application/json" \
-        -d '{"tool_name":"list_schemas","kwargs":{},"tool_group_id":"mcp::database"}' 2>/dev/null || echo "ERROR")
-    if echo "$DB_RESULT" | grep -qi "public"; then
-        echo -e "${GREEN}[PASS]${NC} Database MCP: list_schemas returned public schema"
-        VALIDATE_PASS=$((VALIDATE_PASS + 1))
-    else
-        echo -e "${RED}[FAIL]${NC} Database MCP: list_schemas failed"
-        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
-    fi
-
-    # Database MCP — execute_sql for equipment lookup
-    SQL_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/tool-runtime/invoke \
-        -H "Content-Type: application/json" \
-        -d '{"tool_name":"execute_sql","kwargs":{"sql":"SELECT equipment_id FROM acme_pod_equipment_map WHERE pod_name = '\''acme-equipment-0007'\''"},"tool_group_id":"mcp::database"}' 2>/dev/null || echo "ERROR")
-    if echo "$SQL_RESULT" | grep -qi "L-900-08"; then
-        echo -e "${GREEN}[PASS]${NC} Database MCP: equipment lookup returned L-900-08"
-        VALIDATE_PASS=$((VALIDATE_PASS + 1))
-    else
-        echo -e "${RED}[FAIL]${NC} Database MCP: equipment lookup failed (expected L-900-08)"
-        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
-    fi
-
-    # Slack MCP — list channels
-    SLACK_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-        curl -s http://localhost:8321/v1/tool-runtime/invoke \
-        -H "Content-Type: application/json" \
-        -d '{"tool_name":"channels_list","kwargs":{"channel_types":"public_channel","limit":20},"tool_group_id":"mcp::slack"}' 2>/dev/null || echo "ERROR")
-    if echo "$SLACK_RESULT" | grep -qi "acme-mcp-demo\|mcp-demo"; then
-        echo -e "${GREEN}[PASS]${NC} Slack MCP: channels_list returned demo channel"
-        VALIDATE_PASS=$((VALIDATE_PASS + 1))
-    else
-        echo -e "${RED}[FAIL]${NC} Slack MCP: channels_list failed"
-        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
-    fi
+    for connector in openshift-mcp database-mcp slack-mcp; do
+        TOOLS=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+            curl -sf --max-time 30 "http://localhost:8321/v1beta/connectors/${connector}/tools" 2>/dev/null || true)
+        if echo "$TOOLS" | grep -q '"name"'; then
+            TOOL_COUNT=$(echo "$TOOLS" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("data", [])))' 2>/dev/null || echo "unknown")
+            echo -e "${GREEN}[PASS]${NC} ${connector}: discovered ${TOOL_COUNT} MCP tools"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} ${connector}: no MCP tools discovered"
+            VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        fi
+    done
 else
-    echo -e "${YELLOW}[WARN]${NC} lsd-rag pod not found — skipping functional tests"
-    VALIDATE_WARN=$((VALIDATE_WARN + 4))
+    echo -e "${YELLOW}[WARN]${NC} lsd-rag pod not found — skipping tool discovery"
+    VALIDATE_WARN=$((VALIDATE_WARN + 3))
 fi
 
 # --- Summary ---

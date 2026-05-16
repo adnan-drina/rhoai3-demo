@@ -9,8 +9,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "streamlit",
+    "streamlit-option-menu",
     "pandas",
-    "llama-stack-client>=0.4,<0.5",
+    "llama-stack-client>=0.7,<0.8",
     "requests",
 ]
 

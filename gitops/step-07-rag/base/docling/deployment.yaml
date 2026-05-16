@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: docling-service
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: docling
     app.kubernetes.io/name: docling

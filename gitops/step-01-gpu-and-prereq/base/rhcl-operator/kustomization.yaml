@@ -1,12 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Provides Gateway policy CRDs used by llm-d (for example AuthPolicy).
-# Ref: https://docs.redhat.com/en/documentation/red_hat_connectivity_link/
+# Provides Gateway policy CRDs used by RHOAI 3.4 Models-as-a-Service and llm-d.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service
 
 resources:
-  - namespace.yaml
-  - operatorgroup.yaml
+  - kuadrant-system-namespace.yaml
   - subscription.yaml
-
+  - kuadrant.yaml
 

@@ -1,4 +1,4 @@
-# Required prerequisite for KServe model serving in RHOAI 3.3
+# Required prerequisite for KServe model serving in RHOAI 3.4
 # Even with RawDeployment mode, Knative infrastructure is needed for the serving platform
 apiVersion: operator.knative.dev/v1beta1
 kind: KnativeServing

@@ -2,7 +2,7 @@
 # =============================================================================
 # Step 11: Face Recognition with YOLO11 + OpenVINO
 # =============================================================================
-# Deploys a YOLO11 face recognition model (ONNX) on KServe RawDeployment
+# Deploys a YOLO11 face recognition model (ONNX) on KServe Standard mode
 # using the OpenVINO Model Server runtime. CPU-only — no GPU required.
 #
 # Components:
@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 STEP_NAME="step-11-face-recognition"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 load_env
 check_oc_logged_in
@@ -35,7 +35,7 @@ echo ""
 log_step "Checking prerequisites..."
 
 if ! oc get namespace "$NAMESPACE" &>/dev/null; then
-    log_error "'private-ai' namespace does not exist. Run Step-03 first."
+    log_error "'enterprise-mlops' namespace does not exist. Run Step-03 first."
     exit 1
 fi
 log_success "Namespace '$NAMESPACE' exists"
@@ -154,7 +154,7 @@ echo "    oc exec -n $NAMESPACE deploy/face-recognition-predictor -- \\"
 echo "      curl -s localhost:8888/v2/models/face-recognition/ready"
 echo ""
 echo "  Workbench:"
-echo "    Open JupyterLab from RHOAI Dashboard → private-ai → face-recognition-wb"
+echo "    Open JupyterLab from RHOAI Dashboard → enterprise-mlops → face-recognition-wb"
 echo "    Or upload assets manually: ./steps/step-11-face-recognition/upload-to-workbench.sh"
 echo ""
 log_info "Validate: ./steps/step-11-face-recognition/validate.sh"

@@ -2,7 +2,9 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: update-gitops
-  namespace: private-ai
+  namespace: enterprise-mlops
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   description: >
     Update the ModelCar image tag in the edge GitOps manifest and push
@@ -53,7 +55,7 @@ spec:
         echo "Current storageUri:"
         grep storageUri "$FILE"
 
-        sed -i 's|storageUri:.*oci://[^"]*|storageUri: "$(params.image-ref)|' "$FILE"
+        sed -i -E 's|^([[:space:]]*storageUri:[[:space:]]*).*$|\1"$(params.image-ref)"|' "$FILE"
 
         echo "Updated storageUri:"
         grep storageUri "$FILE"

@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: llamastack-postgres
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag
@@ -14,12 +14,12 @@ metadata:
 #   1. LlamaStack metadata store (agent state, file references, config)
 #   2. pgvector vector store (RAG embeddings, similarity search)
 # Image: pgvector/pgvector:pg16 — official PostgreSQL 16 with pgvector extension
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/llama-stack-adv-examples_rag#deploying-a-postgresql-instance-with-pgvector_rag
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: llamastack-postgres-pvc
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag
@@ -37,7 +37,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: llamastack-postgres
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag
@@ -123,7 +123,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: llamastack-postgres
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag

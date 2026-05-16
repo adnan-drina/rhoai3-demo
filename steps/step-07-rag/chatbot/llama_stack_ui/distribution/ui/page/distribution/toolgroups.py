@@ -4,37 +4,39 @@ from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 
 
 def toolgroups():
-    """Inspect registered tool groups and their individual tools."""
-    st.header("Tool Groups")
+    """Inspect registered tools and MCP connectors."""
+    st.header("Tools and Connectors")
 
-    tg_list = llama_stack_api.client.toolgroups.list()
-    if not tg_list:
-        st.info("No tool groups registered.")
-        return
+    tools = llama_stack_api.list_tools()
+    connectors = llama_stack_api.list_connectors()
 
-    for tg in tg_list:
-        identifier = tg.identifier
-        provider = tg.provider_id
-        mcp_uri = tg.mcp_endpoint.uri if tg.mcp_endpoint else None
+    if tools:
+        st.subheader("Built-in Tools")
+        grouped = {}
+        for tool in tools:
+            if not isinstance(tool, dict):
+                continue
+            grouped.setdefault(tool.get("toolgroup_id", "unknown"), []).append(tool)
 
-        if mcp_uri:
-            label = f"🔌 {identifier}"
-            caption = f"MCP · `{mcp_uri}`"
-        else:
-            label = f"⚙️ {identifier}"
-            caption = f"Provider: `{provider}`"
+        for group_id, group_tools in grouped.items():
+            with st.expander(f"⚙️ {group_id}", expanded=False):
+                for tool in group_tools:
+                    name = tool.get("name", "unknown")
+                    desc = tool.get("description") or ""
+                    st.markdown(f"**`{name}`** — {desc}")
+    else:
+        st.info("No built-in tools registered.")
 
-        with st.expander(label, expanded=False):
-            st.caption(caption)
-
-            try:
-                tools = llama_stack_api.client.tools.list(toolgroup_id=identifier)
-                if tools:
-                    for tool in tools:
-                        name = tool.name.split(":")[-1]
-                        desc = tool.description or ""
-                        st.markdown(f"**`{name}`** — {desc}")
-                else:
-                    st.write("No tools discovered.")
-            except Exception:
-                st.write("Could not list tools.")
+    if connectors:
+        st.subheader("MCP Connectors")
+        for connector in connectors:
+            if not isinstance(connector, dict):
+                continue
+            connector_id = connector.get("connector_id", "unknown")
+            endpoint = connector.get("url", "endpoint unavailable")
+            label = connector.get("server_label") or connector_id
+            with st.expander(f"🔌 {connector_id}", expanded=False):
+                st.caption(f"MCP · `{endpoint}`")
+                st.markdown(f"Server label: `{label}`")
+    else:
+        st.info("No MCP connectors registered.")

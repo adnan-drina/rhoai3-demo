@@ -20,22 +20,41 @@ log_step "Required CRDs"
 check_crd_exists "nodefeaturediscoveries.nfd.openshift.io"
 check_crd_exists "clusterpolicies.nvidia.com"
 check_crd_exists "knativeservings.operator.knative.dev"
-check_crd_exists "leaderworkersetoperators.operator.openshift.io"
+check_crd_exists "kueues.kueue.openshift.io"
+check_crd_exists "authconfigs.authorino.kuadrant.io"
+check_crd_exists "authorinos.operator.authorino.kuadrant.io"
+check_crd_exists "kuadrants.kuadrant.io"
 check_crd_exists "authpolicies.kuadrant.io"
+check_crd_exists "tokenratelimitpolicies.kuadrant.io"
 
 # --- Operator CSVs ---
 log_step "Operator CSVs"
 check_csv_succeeded "openshift-nfd" "nfd"
 check_csv_succeeded "nvidia-gpu-operator" "gpu"
 check_csv_succeeded "openshift-serverless" "serverless"
-check_csv_succeeded "openshift-lws-operator" "leader"
-check_csv_succeeded "rhcl-operator" "rhcl"
+check_csv_succeeded "openshift-kueue-operator" "kueue"
+check_csv_succeeded "openshift-authorino" "authorino"
+check_csv_succeeded "openshift-limitador-operator" "limitador"
+check_csv_succeeded "openshift-dns-operator" "dns"
+check_csv_succeeded "openshift-operators" "rhcl"
 
 # --- KnativeServing ---
 log_step "KnativeServing"
 check "KnativeServing ready" \
     "oc get knativeserving knative-serving -n knative-serving -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
     "True"
+
+# --- Kuadrant / RHCL ---
+log_step "Red Hat Connectivity Link"
+check "Kuadrant ready" \
+    "oc get kuadrant kuadrant -n kuadrant-system -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
+    "True"
+check "Authorino serving certificate annotation" \
+    "oc get service authorino-authorino-authorization -n kuadrant-system -o jsonpath='{.metadata.annotations.service\\.beta\\.openshift\\.io/serving-cert-secret-name}'" \
+    "authorino-server-cert"
+check "Authorino TLS enabled" \
+    "oc get authorino authorino -n kuadrant-system -o jsonpath='{.spec.listener.tls.enabled}'" \
+    "true"
 
 # --- GPU MachineSets ---
 log_step "GPU MachineSets"

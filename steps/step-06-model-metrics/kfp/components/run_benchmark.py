@@ -36,7 +36,7 @@ def run_benchmark(
     os.environ.setdefault("HOME", "/tmp")
     os.environ.setdefault("HF_HOME", "/tmp/.cache/huggingface")
 
-    target = f"http://{model_name}-predictor.private-ai.svc.cluster.local:8080/v1"
+    target = f"http://{model_name}-predictor.maas.svc.cluster.local:8080/v1"
     results_dir = "/shared-data"
     os.makedirs(results_dir, exist_ok=True)
     results_path = f"{results_dir}/results.json"

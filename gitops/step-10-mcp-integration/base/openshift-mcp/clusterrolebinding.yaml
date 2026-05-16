@@ -10,7 +10,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: openshift-mcp
-    namespace: private-ai
+    namespace: enterprise-rag
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

@@ -7,7 +7,7 @@
 #
 # Components (all in rhoai-model-registries namespace):
 # - MariaDB database for metadata storage
-# - ModelRegistry instance (private-ai-registry)
+# - ModelRegistry instance (enterprise-ai-registry)
 # - Internal service for API access (port 8080)
 # - Network policy for internal access
 # - RBAC for ai-admin and ai-developer
@@ -40,10 +40,10 @@ echo ""
 # =============================================================================
 log_step "Checking prerequisites..."
 
-# Check step-03-private-ai was deployed
-if ! oc get applications.argoproj.io -n openshift-gitops step-03-private-ai &>/dev/null; then
-    log_error "step-03-private-ai Argo CD Application not found!"
-    log_info "Please run: ./steps/step-03-private-ai/deploy.sh first"
+# Check step-03-enterprise-projects was deployed
+if ! oc get applications.argoproj.io -n openshift-gitops step-03-enterprise-projects &>/dev/null; then
+    log_error "step-03-enterprise-projects Argo CD Application not found!"
+    log_info "Please run: ./steps/step-03-enterprise-projects/deploy.sh first"
     exit 1
 fi
 
@@ -98,7 +98,7 @@ log_step "Waiting for Model Registry..."
 # Wait for ModelRegistry CR
 TIMEOUT=180
 ELAPSED=0
-until oc get modelregistry.modelregistry.opendatahub.io private-ai-registry -n ${REGISTRY_NS} &>/dev/null; do
+until oc get modelregistry.modelregistry.opendatahub.io enterprise-ai-registry -n ${REGISTRY_NS} &>/dev/null; do
     if [[ $ELAPSED -ge $TIMEOUT ]]; then
         log_warn "ModelRegistry CR not found yet"
         break
@@ -113,7 +113,7 @@ log_info "Waiting for Model Registry pods..."
 TIMEOUT=180
 ELAPSED=0
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    READY=$(oc get pods -n ${REGISTRY_NS} -l app=private-ai-registry --no-headers 2>/dev/null | grep -c Running || true)
+    READY=$(oc get pods -n ${REGISTRY_NS} -l app=enterprise-ai-registry --no-headers 2>/dev/null | grep -c Running || true)
     READY=${READY:-0}
     if [[ "$READY" -ge 1 ]]; then
         log_success "Model Registry pods ready"
@@ -134,7 +134,7 @@ log_step "Waiting for internal service..."
 
 TIMEOUT=60
 ELAPSED=0
-until oc get svc private-ai-registry-internal -n ${REGISTRY_NS} &>/dev/null; do
+until oc get svc enterprise-ai-registry-internal -n ${REGISTRY_NS} &>/dev/null; do
     if [[ $ELAPSED -ge $TIMEOUT ]]; then
         log_warn "Internal service not found - seed job may fail"
         break
@@ -191,9 +191,9 @@ echo "Namespace: ${REGISTRY_NS}"
 echo ""
 echo "Components:"
 echo "  • MariaDB:          model-registry-db"
-echo "  • ModelRegistry:    private-ai-registry"
-echo "  • Internal Service: private-ai-registry-internal:8080"
-echo "  • OAuth Service:    private-ai-registry:8443"
+echo "  • ModelRegistry:    enterprise-ai-registry"
+echo "  • Internal Service: enterprise-ai-registry-internal:8080"
+echo "  • OAuth Service:    enterprise-ai-registry:8443"
 echo ""
 echo "Registered Model:"
 echo "  • Model:     Granite-3.1-8b-Instruct-FP8"
@@ -214,14 +214,14 @@ echo "  # Check Model Registry"
 echo "  oc get modelregistry.modelregistry.opendatahub.io -n ${REGISTRY_NS}"
 echo ""
 echo "  # Check registry pods"
-echo "  oc get pods -n ${REGISTRY_NS} -l app=private-ai-registry"
+echo "  oc get pods -n ${REGISTRY_NS} -l app=enterprise-ai-registry"
 echo ""
 echo "  # View seed job logs"
 echo "  oc logs job/model-registry-seed -n ${REGISTRY_NS}"
 echo ""
 echo "  # Query registered models via internal API"
 echo "  oc run test-api --rm -i --restart=Never --image=curlimages/curl -n ${REGISTRY_NS} -- \\"
-echo "    curl -sf http://private-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models"
+echo "    curl -sf http://enterprise-ai-registry-internal:8080/api/model_registry/v1alpha3/registered_models"
 echo ""
 log_info "Access Points:"
 echo ""
@@ -234,7 +234,7 @@ echo ""
 log_info "As ai-admin (Registry View):"
 echo "   1. Login to RHOAI Dashboard"
 echo "   2. Go to Settings → Model registries"
-echo "   3. Click 'private-ai-registry'"
+echo "   3. Click 'enterprise-ai-registry'"
 echo "   4. View Granite-3.1-8b-Instruct-FP8 metadata"
 echo ""
 log_info "As ai-developer (Catalog View):"

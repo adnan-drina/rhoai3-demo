@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: llamastack-postgres-anyuid
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: llamastack-postgres
     app.kubernetes.io/part-of: rag
@@ -15,4 +15,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: llamastack-postgres
-    namespace: private-ai
+    namespace: enterprise-rag

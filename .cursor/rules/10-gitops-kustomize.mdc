@@ -156,7 +156,7 @@ PVC spec is immutable after creation; the cluster adds `storageClassName` and `v
 
 ## References
 
-- [RHOAI 3.3 — Working with AI Pipelines (DSPA)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_ai_pipelines/)
+- [RHOAI 3.4 — Working with AI Pipelines (DSPA)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/)
 - [OCP 4.20 — OpenShift GitOps (ArgoCD)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cicd/gitops)
 - [ArgoCD — Sync Options](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/)
 

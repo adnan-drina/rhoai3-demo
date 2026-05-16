@@ -6,12 +6,12 @@ Defines two pipelines:
   2. batch_docling_rag_pipeline — Batch ingestion with ParallelFor
 
 Components are in kfp/components/ following KFP modular best practices.
-Reuses the existing DSPA (dspa-rag) in private-ai namespace.
+Reuses the existing DSPA (dspa-rag) in enterprise-rag namespace.
 
 Pipeline flow:
   download → register_db → ParallelFor(docling → insert) → summary
 
-Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 """
 
 import kfp
@@ -70,8 +70,8 @@ def _mount_pvc(task: PipelineTask) -> None:
 def docling_rag_pipeline(
     input_uri: str = "s3://rag-documents/acme/sample.pdf",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
-    llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
-    docling_service: str = "http://docling-service.private-ai.svc:5001",
+    llamastack_url: str = "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321",
+    docling_service: str = "http://docling-service.enterprise-rag.svc:5001",
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
@@ -146,8 +146,8 @@ def docling_rag_pipeline(
 def batch_docling_rag_pipeline(
     s3_prefix: str = "s3://rag-documents/acme/",
     minio_endpoint: str = "http://minio.minio-storage.svc.cluster.local:9000",
-    llamastack_url: str = "http://lsd-rag-service.private-ai.svc.cluster.local:8321",
-    docling_service: str = "http://docling-service.private-ai.svc:5001",
+    llamastack_url: str = "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321",
+    docling_service: str = "http://docling-service.enterprise-rag.svc:5001",
     embedding_model: str = "sentence-transformers/ibm-granite/granite-embedding-125m-english",
     embedding_dimension: int = 768,
     chunk_size_tokens: int = 512,
@@ -177,10 +177,10 @@ def batch_docling_rag_pipeline(
     reg_db.set_caching_options(False)
     reg_db.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 3: Process & insert each document in parallel ---
+    # --- Step 3: Process & insert each document serially on the shared RWO PVC ---
     with dsl.ParallelFor(
         items=download.outputs["downloaded_files"],
-        parallelism=2,
+        parallelism=1,
         name="process-pdf",
     ) as doc_path:
         docling = process_with_docling_component(

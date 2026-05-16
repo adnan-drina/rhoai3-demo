@@ -1,27 +1,90 @@
 """
-Guardrails module — calls the FMS Guardrails Orchestrator API
-for input/output safety checks (HAP, prompt injection, PII regex).
+Guardrails module — calls the NeMo Guardrails OpenAI-compatible API.
 
-The orchestrator is deployed by step-09 and accessed directly via HTTP,
-bypassing LlamaStack's safety API (which requires rh-dev auto-wiring
-the chatbot uses the orchestrator API for fine-grained detector control).
+Step 09 deploys NeMo Guardrails through the TrustyAI operator. The chatbot keeps
+its shield toggle by using NeMo as a policy decision point before input reaches
+the agent and after output is generated.
 """
 
 import os
 import logging
 import requests
+import urllib3
+import time
 
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = os.getenv(
-    "GUARDRAILS_ORCHESTRATOR_URL",
-    "https://guardrails-orchestrator-service.private-ai.svc:8032"
+NEMO_GUARDRAILS_URL = os.getenv(
+    "NEMO_GUARDRAILS_URL",
+    "http://nemo-guardrails.enterprise-rag.svc.cluster.local:8000"
 )
+NEMO_MODEL = os.getenv("NEMO_GUARDRAILS_MODEL", "granite-8b-agent")
+NEMO_TOKEN = os.getenv("NEMO_GUARDRAILS_TOKEN")
+NEMO_TOKEN_FILE = os.getenv(
+    "NEMO_GUARDRAILS_TOKEN_FILE",
+    "/var/run/secrets/kubernetes.io/serviceaccount/token",
+)
+REQUEST_TIMEOUT = int(os.getenv("NEMO_GUARDRAILS_TIMEOUT_SECONDS", "20"))
+AVAILABILITY_TTL_SECONDS = int(os.getenv("NEMO_GUARDRAILS_AVAILABILITY_TTL_SECONDS", "30"))
 VERIFY_SSL = False
-HEALTH_URL = os.getenv(
-    "GUARDRAILS_HEALTH_URL",
-    "http://guardrails-orchestrator-service.private-ai.svc:8034"
+if not VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+BLOCK_PHRASES = (
+    "i can't help with that type of request",
+    "i don't know the answer to that",
+    "please keep your message under 100 words",
 )
+
+_availability_cache: tuple[bool, float] | None = None
+
+
+def _auth_token() -> str | None:
+    if NEMO_TOKEN:
+        return NEMO_TOKEN
+    try:
+        with open(NEMO_TOKEN_FILE, "r", encoding="utf-8") as token_file:
+            token = token_file.read().strip()
+            return token or None
+    except OSError:
+        return None
+
+
+def _headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    token = _auth_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _nemo_chat(text: str) -> str:
+    resp = requests.post(
+        f"{NEMO_GUARDRAILS_URL.rstrip('/')}/v1/chat/completions",
+        headers=_headers(),
+        json={
+            "model": NEMO_MODEL,
+            "messages": [{"role": "user", "content": text}],
+            "max_tokens": 128,
+            "stream": False,
+        },
+        timeout=REQUEST_TIMEOUT,
+        verify=VERIFY_SSL,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    choices = data.get("choices", [])
+    if choices:
+        return choices[0].get("message", {}).get("content", "")
+    messages = data.get("messages", [])
+    if messages:
+        return messages[0].get("content", "")
+    return str(data)
+
+
+def _blocked(reply: str) -> bool:
+    lowered = reply.lower()
+    return any(phrase in lowered for phrase in BLOCK_PHRASES)
 
 
 def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
@@ -29,94 +92,74 @@ def check_input(text: str, detectors: list[str] | None = None) -> dict | None:
     Check user input for safety violations.
     Returns violation dict if detected, None if safe.
     """
-    if not detectors:
-        detectors = ["hap", "prompt_injection"]
-
-    detector_config = {}
-    for d in detectors:
-        if d == "regex":
-            detector_config[d] = {"regex": ["email", "us-phone-number", "credit-card"]}
-        else:
-            detector_config[d] = {}
-
-    logger.info("Guardrails input check: detectors=%s text='%s...'", list(detector_config.keys()), text[:50])
+    logger.debug("NeMo Guardrails input check")
     try:
-        resp = requests.post(
-            f"{ORCHESTRATOR_URL}/api/v2/text/detection/content",
-            json={"content": text, "detectors": detector_config},
-            timeout=10,
-            verify=VERIFY_SSL,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        logger.info("Guardrails input response: %s", str(data)[:200])
-
-        detections = data.get("detections", [])
-        if detections:
-            top = detections[0]
-            logger.info("VIOLATION detected: %s score=%s", top.get("detector_id"), top.get("score"))
+        reply = _nemo_chat(text)
+        logger.debug("NeMo Guardrails input response: %s", reply[:200])
+        if _blocked(reply):
+            logger.info("NeMo Guardrails input violation")
             return {
-                "detector": top.get("detector_id", "unknown"),
-                "score": top.get("score", 0),
-                "text": top.get("text", ""),
-                "type": top.get("detection_type", ""),
+                "detector": "nemo-guardrails",
+                "message": reply,
+                "score": 1.0,
+                "text": text,
+                "type": "policy",
             }
-        logger.info("Guardrails input: SAFE")
+        logger.debug("NeMo Guardrails input: SAFE")
     except Exception as e:
-        logger.warning("Guardrails input check failed: %s", e)
+        logger.warning("NeMo Guardrails input check failed: %s", e)
 
     return None
 
 
 def check_output(text: str, detectors: list[str] | None = None) -> list[dict]:
     """
-    Check model output for safety violations (HAP, PII leakage).
+    Check model output for safety violations.
     Returns list of violation dicts (empty if safe).
     """
-    if not detectors:
-        detectors = ["hap", "regex"]
-
-    detector_config = {}
-    for d in detectors:
-        if d == "regex":
-            detector_config[d] = {"regex": [
-                "email", "us-phone-number", "credit-card",
-                r"(?i)\+31[\s-]*\d[\s-]*\d{3,}",
-                r"(?i)linkedin\.com/in/\w+",
-                r"(?i)github\.com/\w+",
-            ]}
-        else:
-            detector_config[d] = {}
-
     try:
-        resp = requests.post(
-            f"{ORCHESTRATOR_URL}/api/v2/text/detection/content",
-            json={"content": text, "detectors": detector_config},
-            timeout=10,
-            verify=VERIFY_SSL,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-        return [
-            {
-                "detector": d.get("detector_id", "unknown"),
-                "score": d.get("score", 0),
-                "text": d.get("text", ""),
-                "type": d.get("detection_type", ""),
-            }
-            for d in data.get("detections", [])
-        ]
+        reply = _nemo_chat(text)
+        if _blocked(reply):
+            return [{
+                "detector": "nemo-guardrails",
+                "message": reply,
+                "score": 1.0,
+                "text": "",
+                "type": "policy",
+            }]
     except Exception as e:
-        logger.warning("Guardrails output check failed: %s", e)
+        logger.warning("NeMo Guardrails output check failed: %s", e)
 
     return []
 
 
 def is_available() -> bool:
-    """Check if the guardrails orchestrator is reachable."""
+    """Check if NeMo Guardrails is reachable."""
+    global _availability_cache  # pylint: disable=global-statement
+
+    now = time.time()
+    if _availability_cache and now < _availability_cache[1]:
+        return _availability_cache[0]
+
+    available = False
     try:
-        resp = requests.get(f"{HEALTH_URL}/health", timeout=3)
-        return resp.status_code == 200
+        resp = requests.get(
+            f"{NEMO_GUARDRAILS_URL.rstrip('/')}/v1/models",
+            headers=_headers(),
+            timeout=3,
+            verify=VERIFY_SSL,
+        )
+        available = resp.status_code == 200
+        if not available:
+            resp = requests.get(
+                f"{NEMO_GUARDRAILS_URL.rstrip('/')}/docs",
+                headers=_headers(),
+                timeout=3,
+                verify=VERIFY_SSL,
+            )
+            available = resp.status_code == 200
     except Exception:
-        return False
+        available = False
+
+    _availability_cache = (available, now + AVAILABILITY_TTL_SECONDS)
+    return available

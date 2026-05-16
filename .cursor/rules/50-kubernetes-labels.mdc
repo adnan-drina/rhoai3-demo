@@ -40,7 +40,7 @@ Use **short, functional group names** (not step numbers):
 |-------|-------|-----------|
 | **LLM Serving** | `llm-serving` | InferenceService, ServingRuntime, vLLM pods |
 | **RAG** | `rag` | LlamaStack, PostgreSQL (pgvector), Docling, chatbot, ingestion |
-| **Guardrails** | `guardrails` | GuardrailsOrchestrator, HAP detector, prompt injection detector |
+| **Guardrails** | `guardrails` | NemoGuardrails, NeMo ConfigMap, guardrails service account |
 | **MCP Integration** | `mcp-integration` | database-mcp, openshift-mcp, slack-mcp, MCP PostgreSQL |
 | **Observability** | `observability` | Grafana, ServiceMonitors, Dashboards |
 | **Benchmarking** | `benchmarking` | GuideLLM CronJob, Jobs, Pipelines, Workbench |
@@ -61,8 +61,8 @@ Standard values from the [Red Hat app-labels guide](https://github.com/redhat-de
 | `database` | Data persistence | PostgreSQL, MariaDB, MinIO |
 | `frontend` | User-facing UI | Grafana dashboards, rag-chatbot |
 | `monitoring` | Observability components | Grafana operator, ServiceMonitors, DCGM dashboards |
-| `orchestrator` | Workflow coordination | GuardrailsOrchestrator, DSPA |
-| `detector` | Safety / classification models | HAP detector, prompt injection detector |
+| `orchestrator` | Workflow coordination | DSPA |
+| `safety` | Safety / guardrails services | NemoGuardrails |
 | `integration` | API gateways, middleware | Ingestion service, MCP server proxies |
 | `cache` | Caching layer | (not used in this demo) |
 | `queue` | Message queuing | (not used in this demo) |
@@ -124,7 +124,7 @@ These annotations add interactivity to the Topology view. Apply to the primary r
 | rag-chatbot Deployment | `'["lsd-rag"]'` |
 | lsd-rag LlamaStackDistribution | `'["llamastack-postgres","granite-8b-agent"]'` |
 | database-mcp Deployment | `'["mcp-postgresql"]'` |
-| guardrails-orchestrator | `'["hap-detector","prompt-injection-detector","granite-8b-agent"]'` |
+| nemo-guardrails | `'["granite-8b-agent"]'` |
 | model-registry | `'["model-registry-db"]'` |
 | ingestion-service Job | `'["docling","llamastack-postgres"]'` |
 
@@ -208,4 +208,4 @@ When updating existing resources:
 - [Kubernetes Recommended Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)
 - [Guidelines for Labels and Annotations for OpenShift Applications](https://github.com/redhat-developer/app-labels/blob/master/labels-annotation-for-openshift.adoc)
 - [OpenShift 4.20 Topology View — Labels and Annotations](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/building_applications/index#odc-viewing-application-composition-using-topology-view)
-- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/)
+- [RHOAI Dashboard Labels](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)

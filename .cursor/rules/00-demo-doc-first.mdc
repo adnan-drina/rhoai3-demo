@@ -1,14 +1,14 @@
 ---
-description: Global demo rules for this repo (RHOAI 3.3 on RHOCP 4.20). Enforce doc-first behavior and reproducible GitOps steps.
+description: Global demo rules for this repo (RHOAI 3.4 on RHOCP 4.20). Enforce doc-first behavior and reproducible GitOps steps.
 globs:
 alwaysApply: true
 ---
 
 # Project Purpose (always in effect)
-This repository is a demo of adopting open-source LLMs on private infrastructure using **Red Hat OpenShift AI (RHOAI) 3.3** on **Red Hat OpenShift Container Platform (RHOCP) 4.20**.
+This repository is a demo of adopting open-source LLMs on private infrastructure using **Red Hat OpenShift AI (RHOAI) 3.4** on **Red Hat OpenShift Container Platform (RHOCP) 4.20**.
 
 ## Absolute priority: official documentation alignment
-- Treat official **RHOAI 3.3** and **RHOCP 4.20** documentation as the source of truth.
+- Treat official **RHOAI 3.4** and **RHOCP 4.20** documentation as the source of truth.
 - The repo has official docs indexed in Cursor (via @docs). When implementing or validating anything, consult those indexed docs.
 - Do **not** invent CR fields, API versions, annotations, or operator configurations. If unsure, say what you need to verify and propose the verification command.
 
@@ -33,3 +33,4 @@ See `30-secrets-and-certs.mdc` for details. Use `--insecure-skip-tls-verify=true
 ## Agent Behavior
 - Before running `oc` commands that modify cluster state, verify the cluster context: `oc whoami` and `oc project`
 - Before modifying a step, read its README in `steps/step-XX-name/README.md` first
+- Before merging GitOps component changes, run `./scripts/audit-doc-alignment.sh --base origin/main` and refresh `docs/alignment-evidence-ledger.md`

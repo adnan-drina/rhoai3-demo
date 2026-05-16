@@ -1,0 +1,27 @@
+# Provides Kubeflow Pipelines v2 infrastructure for the Enterprise MLOps project.
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa-mlops
+  namespace: enterprise-mlops
+  labels:
+    app.kubernetes.io/name: dspa-mlops
+    app.kubernetes.io/part-of: mlops
+    app.kubernetes.io/component: pipeline-server
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    openshift.io/display-name: "Enterprise MLOps Pipelines"
+spec:
+  objectStorage:
+    externalStorage:
+      bucket: pipelines
+      host: minio.minio-storage.svc.cluster.local
+      port: "9000"
+      scheme: http
+      secure: false
+      s3CredentialsSecret:
+        secretName: dspa-minio-credentials
+        accessKey: accesskey
+        secretKey: secretkey

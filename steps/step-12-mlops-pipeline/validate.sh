@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 12: MLOps Training Pipeline — Validation                  ║"
@@ -24,12 +24,37 @@ check "face-pipeline-workspace PVC exists" \
     "face-pipeline-workspace"
 
 check "DSPA pipeline server" \
-    "oc get dspa dspa-rag -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
+    "oc get dspa dspa-mlops -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
     "True"
 
 check "Pipeline RBAC (Role)" \
     "oc get role face-pipeline-controller -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "face-pipeline-controller"
+
+# --- MLflow ---
+log_step "MLflow"
+check "RHOAI MLflow operator component managed" \
+    "oc get dsc default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}'" \
+    "Managed"
+
+check_crd_exists "mlflows.mlflow.opendatahub.io"
+check_crd_exists "mlflowconfigs.mlflow.kubeflow.org"
+
+check "MLflow server exists" \
+    "oc get mlflow mlflow -o jsonpath='{.metadata.name}'" \
+    "mlflow"
+
+check "MLflow server available" \
+    "oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type==\"Available\")].status}'" \
+    "True"
+
+check "enterprise-mlops MLflowConfig exists" \
+    "oc get mlflowconfig mlflow -n $NAMESPACE -o jsonpath='{.spec.artifactRootSecret}'" \
+    "mlflow-artifact-connection"
+
+check "MLflow artifact connection secret exists" \
+    "oc get secret mlflow-artifact-connection -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "mlflow-artifact-connection"
 
 # --- Pipeline Execution ---
 log_step "Pipeline Execution"
@@ -38,13 +63,12 @@ if [ "$COMPLETED_RUNS" -ge 1 ]; then
     echo -e "${GREEN}[PASS]${NC} Pipeline has completed runs ($COMPLETED_RUNS pods)"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${YELLOW}[WARN]${NC} No completed pipeline pods found — checking KFP run history"
-    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    log_info "No completed pipeline pods found — checking KFP run history"
 fi
 
 TRAIN_RUN_INFO=""
 if [[ -x "$REPO_ROOT/.venv-kfp/bin/python3" ]]; then
-    DSPA_ROUTE=$(oc get route ds-pipeline-dspa-rag -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+    DSPA_ROUTE=$(oc get route ds-pipeline-dspa-mlops -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
     OC_TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     if [[ -n "$DSPA_ROUTE" && -n "$OC_TOKEN" ]]; then
         set +e
@@ -54,7 +78,7 @@ from kfp import client
 
 c = client.Client(
     host="https://" + os.environ["DSPA_ROUTE"],
-    namespace="private-ai",
+    namespace="enterprise-mlops",
     existing_token=os.environ["OC_TOKEN"],
 )
 runs = c.list_runs(page_size=50, sort_by="created_at desc").runs or []
@@ -94,7 +118,7 @@ fi
 
 # --- Model Registry ---
 log_step "Model Registry Integration"
-REGISTRY_ROUTE=$(oc get route private-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+REGISTRY_ROUTE=$(oc get route enterprise-ai-registry-https -n rhoai-model-registries -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 if [[ -n "$REGISTRY_ROUTE" ]]; then
     TOKEN=$(oc whoami -t 2>/dev/null || echo "")
     FACE_MODEL=$(curl -sk -H "Authorization: Bearer $TOKEN" \

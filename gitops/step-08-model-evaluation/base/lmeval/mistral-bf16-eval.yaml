@@ -1,12 +1,12 @@
 # LMEvalJob template for mistral-3-bf16
 # Evaluates reasoning, logic, and general knowledge via standard benchmarks.
-# Apply on demand: oc apply -f mistral-bf16-eval.yaml -n private-ai
+# Apply on demand: oc apply -f mistral-bf16-eval.yaml -n enterprise-rag
 # Results visible in Dashboard: Develop & train > Evaluations
 apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: LMEvalJob
 metadata:
   name: mistral-3-bf16-eval
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: mistral-bf16-eval
     app.kubernetes.io/component: model-evaluation
@@ -17,7 +17,7 @@ spec:
     - name: model
       value: mistral-3-bf16
     - name: base_url
-      value: http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/completions
+      value: http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/completions
     - name: num_concurrent
       value: "1"
     - name: max_retries

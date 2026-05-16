@@ -1,5 +1,4 @@
-# Ref: https://rhpds.github.io/redhat-openshift-ai-3-showroom/modules/03-01-odh-dashboard.html
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html-single/managing_resources/index#dashboard-configuration-options_dashboard-config
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_resources/customizing-the-dashboard
 apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
@@ -16,9 +15,11 @@ spec:
     disableKServeMetrics: false
     genAiStudio: true
     modelAsService: true
+    vLLMDeploymentOnMaaS: true
+    maasAuthPolicies: true
     disableLMEval: false
-    disableDistributedWorkloads: true
-    disableKueue: true
+    disableDistributedWorkloads: false
+    disableKueue: false
   hardwareProfileOrder:
     - cpu-small
     - default-profile

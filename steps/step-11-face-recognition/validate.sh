@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-mlops"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 11: Face Recognition — Validation                        ║"
@@ -39,7 +39,7 @@ else
 fi
 
 MODEL_INFO=$(oc exec deploy/minio -n minio-storage -- \
-    mc stat --json demo/models/face-recognition/1/model.onnx 2>/dev/null | \
+    sh -c 'mc alias set demo http://localhost:9000 rhoai-access-key rhoai-secret-key-12345 >/dev/null && mc stat --json demo/models/face-recognition/1/model.onnx' 2>/dev/null | \
     python3 -c "
 import json, sys
 for line in sys.stdin:

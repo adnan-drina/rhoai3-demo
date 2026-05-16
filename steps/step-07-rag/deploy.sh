@@ -6,7 +6,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 STEP_NAME="step-07-rag"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -27,7 +28,7 @@ fi
 log_success "Namespace $NAMESPACE exists"
 
 if ! oc get crd llamastackdistributions.llamastack.io &>/dev/null; then
-    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.3 installed (step-02)?"
+    log_error "LlamaStackDistribution CRD not found. Is RHOAI 3.4 installed (step-02)?"
     exit 1
 fi
 log_success "LlamaStackDistribution CRD available"
@@ -38,11 +39,11 @@ if ! oc get crd datasciencepipelinesapplications.datasciencepipelinesapplication
 fi
 log_success "DSPA CRD available"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
     exit 1
 fi
-log_success "granite-8b-agent InferenceService present"
+log_success "granite-8b-agent InferenceService present in $MODEL_NAMESPACE"
 
 if ! oc get secret minio-connection -n "$NAMESPACE" &>/dev/null; then
     log_error "minio-connection secret not found in $NAMESPACE. Deploy step-03 first."
@@ -57,30 +58,6 @@ if [ "$PIPELINES_STATE" != "Managed" ]; then
     exit 1
 fi
 log_success "aipipelines: Managed"
-echo ""
-
-log_step "Creating DSPA MinIO credentials secret..."
-
-ACCESS_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
-SECRET_KEY=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
-
-oc create secret generic dspa-minio-credentials \
-    -n "$NAMESPACE" \
-    --from-literal=accesskey="$ACCESS_KEY" \
-    --from-literal=secretkey="$SECRET_KEY" \
-    --dry-run=client -o yaml | oc apply -f -
-
-log_success "dspa-minio-credentials secret ready"
-echo ""
-
-# Step 1b: Ensure anyuid SCC for llamastack-postgres SA
-# The RoleBinding is GitOps-managed (scc-rolebinding.yaml) but we ensure
-# the SA exists before ArgoCD sync to avoid race conditions.
-log_step "Ensuring llamastack-postgres SA has anyuid SCC..."
-
-oc create serviceaccount llamastack-postgres -n "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
-oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n "$NAMESPACE" 2>/dev/null || true
-log_success "llamastack-postgres SA with anyuid SCC ready"
 echo ""
 
 log_step "Deploying Step 07 via ArgoCD..."

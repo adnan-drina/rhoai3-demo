@@ -7,7 +7,7 @@ Step 13 simulated edge placement on-cluster; Step 13b proves it on **real edge h
 
 This optional step demonstrates RHOAI's **Disconnected environments and edge** capability on real hardware: the same model trained in the datacenter deploys to MicroShift at the edge — different infrastructure, same operational model, with embedded GitOps for autonomous updates.
 
-> **Note (RHOAI 3.3 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
+> **Note (RHOAI 3.4 / MicroShift 4.20):** AI model serving on MicroShift is a Technology Preview feature.
 
 ## Architecture
 
@@ -110,7 +110,7 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 <summary>Design Decisions</summary>
 
-> **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.3. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
+> **NVIDIA Triton Inference Server** as a custom ServingRuntime instead of OpenVINO (OVMS). OVMS only supports Intel CPUs/GPUs — it cannot use NVIDIA CUDA. Triton supports ONNX models on NVIDIA GPUs via the CUDA execution provider. This is the documented approach for custom runtimes in RHOAI 3.4. Ref: [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
 
 > **gRPC for inference** instead of REST. Both OVMS (step-13) and Triton (step-13b) implement the KServe v2 gRPC protocol on port 8001. Using `tritonclient[grpc]` provides ~30x lower latency compared to REST JSON, with the same client code working against both servers. Ref: [YOLOv5 gRPC vs REST benchmark](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 
@@ -126,14 +126,30 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 > **Restart recovery verified.** All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
 
-> **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `private-ai` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
+> **Central OCP ArgoCD Applications** split the bootstrap sequence: `step-13b-edge-ai-microshift-operator` installs the OpenShift Pipelines operator from [`gitops/step-13b-edge-ai-microshift/operator/`](../../gitops/step-13b-edge-ai-microshift/operator/), then `step-13b-edge-ai-microshift` manages the Tekton `modelcar-release` pipeline in `enterprise-mlops` via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Release execution credentials (`quay-push-credentials`, `github-push-credentials`) are external prerequisites and are not stored in Git. Ref: [Red Hat OpenShift Pipelines 1.22 installation](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.22/html/installing_and_configuring/).
+
+> **Pinned operator channel.** The subscription uses the `pipelines-1.22` channel exposed by the OCP 4.20 cluster package manifest. Because pinned operator installs can generate a manual InstallPlan, `deploy.sh` approves the generated OpenShift Pipelines InstallPlan before waiting for Tekton CRDs.
 
 </details>
 
 <details>
 <summary>Deploy</summary>
 
-**Prerequisites:**
+**Central OCP prerequisites:**
+
+- Logged in to the OCP 4.20 cluster with `cluster-admin`
+- Steps 1-12 deployed, including `enterprise-mlops` and `dspa-minio-credentials`
+
+Deploy and validate the central ModelCar release foundation:
+
+```bash
+./steps/step-13b-edge-ai-microshift/deploy.sh
+./steps/step-13b-edge-ai-microshift/validate.sh
+```
+
+When `EDGE_HOST` or `EDGE_PASS` is not set, the scripts install and validate only the central OpenShift Pipelines foundation. The MicroShift host rollout is skipped.
+
+**Additional MicroShift host prerequisites:**
 
 - **RHEL 9.5+ host** with SSH access and sudo
 - **NVIDIA GPU** with driver installed (tested with L4, driver 595.58)
@@ -141,6 +157,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 - **Pull secret** at `/etc/crio/openshift-pull-secret` on the host
 - `sshpass` installed on your local machine
 - Step 13's `edge-camera` container image pushed to quay.io (public)
+
+Deploy the full MicroShift edge host path:
 
 ```bash
 EDGE_HOST=rhaiis.example.com \
@@ -402,7 +420,7 @@ oc get applications.argoproj.io edge-ai -n argocd -o yaml | grep -A 5 status
 - [MicroShift 4.20 — Installing from RPM package](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html/installing_with_an_rpm_package/microshift-install-rpm)
 - [NVIDIA GPU with Red Hat Device Edge](https://docs.nvidia.com/datacenter/cloud-native/edge/latest/nvidia-gpu-with-device-edge.html)
 - [Custom Triton Runtime on AI on OpenShift](https://ai-on-openshift.io/odh-rhoai/custom-runtime-triton/)
-- [RHOAI 3.3 — Custom ServingRuntimes (Triton examples)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/configuring_your_model-serving_platform/configuring_model_servers)
+- [RHOAI 3.4 — Custom ServingRuntimes (Triton examples)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/configuring_your_model-serving_platform/configuring_model_servers)
 - [YOLOv5 Training and Serving (gRPC vs REST)](https://ai-on-openshift.io/demos/yolov5-training-serving/yolov5-training-serving/)
 - [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
@@ -413,4 +431,4 @@ oc get applications.argoproj.io edge-ai -n argocd -o yaml | grep -A 5 status
 
 ## Next Steps
 
-- This is the final step in the RHOAI 3.3 demo sequence. Return to the [project README](../../README.md) for the full demo overview.
+- This is the final step in the RHOAI 3.4 demo sequence. Return to the [project README](../../README.md) for the full demo overview.

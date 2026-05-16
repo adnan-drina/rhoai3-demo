@@ -6,12 +6,12 @@
 apiVersion: modelregistry.opendatahub.io/v1beta1
 kind: ModelRegistry
 metadata:
-  name: private-ai-registry
+  name: enterprise-ai-registry
   namespace: rhoai-model-registries
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    openshift.io/display-name: "Private AI Registry"
-    openshift.io/description: "Enterprise model governance for the Private AI project. Only Red Hat Validated models are registered here."
+    openshift.io/display-name: "Enterprise AI Registry"
+    openshift.io/description: "Enterprise model governance for the enterprise AI project. Only Red Hat Validated models are registered here."
 spec:
   grpc:
     port: 9090

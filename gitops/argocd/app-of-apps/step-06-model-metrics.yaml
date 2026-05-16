@@ -19,7 +19,7 @@ spec:
     path: gitops/step-06-model-metrics/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: private-ai
+    namespace: maas
   syncPolicy:
     automated:
       prune: true

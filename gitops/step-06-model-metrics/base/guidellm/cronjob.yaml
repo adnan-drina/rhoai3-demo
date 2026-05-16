@@ -1,16 +1,17 @@
 # Metrics flow through vLLM → ServiceMonitor → Prometheus → Grafana (no PVC).
 # Traffic Profiles: 512→256 (Chatbot/Q&A), 1024→1024 (Content generation)
 # SLO Targets: Conversational TTFT ≤150ms; Interactive TTFT ≤500ms
-# Manual trigger: oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n private-ai
+# Manual trigger: oc create job --from=cronjob/guidellm-daily bench-$(date +%H%M) -n maas
 # Ref: https://github.com/redhat-et/neuralnav (traffic profiles + SLOs)
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: guidellm-daily
-  namespace: private-ai
+  namespace: maas
   labels:
     app: guidellm
     app.kubernetes.io/part-of: benchmarking
+    kueue.x-k8s.io/queue-name: maas-default
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
@@ -23,6 +24,7 @@ spec:
       labels:
         app: guidellm
         app.kubernetes.io/part-of: benchmarking
+        kueue.x-k8s.io/queue-name: maas-default
     spec:
       backoffLimit: 1
       activeDeadlineSeconds: 300
@@ -32,6 +34,7 @@ spec:
             app: guidellm
             app.kubernetes.io/part-of: benchmarking
             job-type: dispatcher
+            kueue.x-k8s.io/queue-name: maas-default
         spec:
           serviceAccountName: guidellm-dispatcher
           restartPolicy: Never
@@ -40,7 +43,7 @@ spec:
               image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
               env:
                 - name: NAMESPACE
-                  value: private-ai
+                  value: maas
                 - name: GUIDELLM_IMAGE
                   value: ghcr.io/vllm-project/guidellm:stable
               command:
@@ -53,7 +56,7 @@ spec:
 
                   # Benchmark active models only (minReplicas > 0)
                   for MODEL in granite-8b-agent mistral-3-bf16; do
-                    TARGET="http://${MODEL}-predictor.private-ai.svc.cluster.local:8080/v1"
+                    TARGET="http://${MODEL}-predictor.maas.svc.cluster.local:8080/v1"
                     JOB_NAME="guidellm-${MODEL}-${TIMESTAMP}"
 
                     if ! curl -s --connect-timeout 10 "${TARGET}/models" >/dev/null 2>&1; then
@@ -72,6 +75,7 @@ spec:
                       app.kubernetes.io/part-of: benchmarking
                       model: ${MODEL}
                       benchmark-run: "${TIMESTAMP}"
+                      kueue.x-k8s.io/queue-name: maas-default
                   spec:
                     backoffLimit: 0
                     activeDeadlineSeconds: 900
@@ -82,6 +86,7 @@ spec:
                           app: guidellm
                           app.kubernetes.io/part-of: benchmarking
                           model: ${MODEL}
+                          kueue.x-k8s.io/queue-name: maas-default
 
                       spec:
                         restartPolicy: Never

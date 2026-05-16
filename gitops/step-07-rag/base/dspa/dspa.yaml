@@ -1,13 +1,13 @@
 # Provides Kubeflow Pipelines v2 infrastructure backed by MinIO (step-03).
 # Verification:
-#   oc get dspa dspa-rag -n private-ai
-#   oc get pods -n private-ai -l app=ds-pipeline-dspa-rag
-# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.3/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
+#   oc get dspa dspa-rag -n enterprise-rag
+#   oc get pods -n enterprise-rag -l app=ds-pipeline-dspa-rag
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/deploying-a-rag-stack-in-a-project_rag
 apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:
   name: dspa-rag
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: dspa-rag
     app.kubernetes.io/part-of: rag
@@ -18,14 +18,13 @@ metadata:
     openshift.io/display-name: "RAG Ingestion Pipelines"
 spec:
   objectStorage:
-    # Use the external MinIO API route so Dashboard artifact preview
-    # generates browser-accessible signed URLs. secure: false skips
-    # TLS verification for the self-signed OpenShift router cert.
+    # Use the stable in-cluster MinIO service name. Generated route hosts are
+    # cluster-specific and must not be committed into GitOps.
     externalStorage:
       bucket: pipelines
-      host: minio-api-minio-storage.apps.cluster-v2zvn.v2zvn.sandbox2890.opentlc.com
-      port: ""
-      scheme: https
+      host: minio.minio-storage.svc.cluster.local
+      port: "9000"
+      scheme: http
       secure: false
       s3CredentialsSecret:
         secretName: dspa-minio-credentials

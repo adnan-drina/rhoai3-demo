@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: build-modelcar
-  namespace: private-ai
+  namespace: enterprise-mlops
 spec:
   description: >
     Download an ONNX model from MinIO, build a ModelCar OCI image

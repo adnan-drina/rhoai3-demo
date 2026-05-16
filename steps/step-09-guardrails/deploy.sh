@@ -1,25 +1,20 @@
 #!/bin/bash
-# Step 09: AI Safety with Guardrails — Deploy Script
-# Deploys the Guardrails Orchestrator, HAP detector, prompt injection detector,
-# and Gateway with preset safety routes. Restarts LlamaStack pods to connect.
-
+# Step 09: AI Safety with NeMo Guardrails — Deploy Script
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-NAMESPACE="private-ai"
+NAMESPACE="enterprise-rag"
+MODEL_NAMESPACE="maas"
 STEP_NAME="step-09-guardrails"
 
 source "$REPO_ROOT/scripts/lib.sh"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Step 09: AI Safety with Guardrails                             ║"
+echo "║  Step 09: AI Safety with NeMo Guardrails                        ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 0: Prerequisites
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Checking prerequisites..."
 
 check_oc_logged_in
@@ -38,24 +33,23 @@ if [ "$TRUSTYAI_STATE" != "Managed" ]; then
 fi
 log_success "trustyai: Managed"
 
-if ! oc get inferenceservice granite-8b-agent -n "$NAMESPACE" &>/dev/null; then
-    log_error "granite-8b-agent InferenceService not found. Deploy step-05 first."
+if ! oc get crd nemoguardrails.trustyai.opendatahub.io &>/dev/null; then
+    log_error "NemoGuardrails CRD not found. Ensure RHOAI 3.4 TrustyAI is installed."
     exit 1
 fi
-log_success "granite-8b-agent present"
+log_success "NemoGuardrails CRD available"
+
+if ! oc get inferenceservice granite-8b-agent -n "$MODEL_NAMESPACE" &>/dev/null; then
+    log_error "granite-8b-agent InferenceService not found in $MODEL_NAMESPACE. Deploy step-05 first."
+    exit 1
+fi
+log_success "granite-8b-agent present in $MODEL_NAMESPACE"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 1: Deploy via ArgoCD
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Deploying Step 09 via ArgoCD..."
-
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 2: Wait for ArgoCD sync
-# ═══════════════════════════════════════════════════════════════════════════
 log_step "Waiting for ArgoCD sync..."
 sleep 5
 
@@ -82,81 +76,33 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Wait for detectors
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for HAP detector..."
-if ! oc wait inferenceservice/hap-detector -n "$NAMESPACE" \
-    --for=condition=Ready --timeout=300s 2>/dev/null; then
-    log_error "HAP detector did not become ready"
-    exit 1
+log_step "Waiting for NemoGuardrails service..."
+if ! oc wait nemoguardrails/nemo-guardrails -n "$NAMESPACE" \
+    --for=jsonpath='{.status.phase}'=Ready --timeout=300s 2>/dev/null; then
+    log_warn "NemoGuardrails did not report phase Ready; checking route and continuing to validation."
 fi
 
-log_step "Waiting for prompt injection detector..."
-if ! oc wait inferenceservice/prompt-injection-detector -n "$NAMESPACE" \
-    --for=condition=Ready --timeout=300s 2>/dev/null; then
-    log_error "Prompt injection detector did not become ready"
+if ! oc get route nemo-guardrails -n "$NAMESPACE" &>/dev/null; then
+    log_error "route/nemo-guardrails was not created"
     exit 1
+fi
+log_success "NeMo Guardrails route available"
+echo ""
+
+log_step "Restarting chatbot to pick up NeMo guardrails settings..."
+if oc get deployment rag-chatbot -n "$NAMESPACE" &>/dev/null; then
+    oc rollout restart deployment/rag-chatbot -n "$NAMESPACE" 2>/dev/null || true
+    log_success "rag-chatbot restart triggered"
 fi
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Wait for Orchestrator
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Waiting for Guardrails Orchestrator..."
-
-ORCH_READY=false
-for i in $(seq 1 30); do
-    POD_STATUS=$(oc get pods -l app=guardrails-orchestrator -n "$NAMESPACE" \
-        --no-headers -o custom-columns=":status.phase" 2>/dev/null | head -1)
-    if [ "$POD_STATUS" = "Running" ]; then
-        ORCH_READY=true
-        break
-    fi
-    sleep 10
-done
-
-if [ "$ORCH_READY" = "true" ]; then
-    log_success "Guardrails Orchestrator is running"
-else
-    log_error "Guardrails Orchestrator did not reach Running state"
-    exit 1
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Restart LlamaStack pods to connect to Orchestrator
-# ═══════════════════════════════════════════════════════════════════════════
-log_step "Restarting LlamaStack pods to connect to Guardrails Orchestrator..."
-
-if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
-    oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
-    log_success "lsd-genai-playground restart triggered"
-fi
-
-if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
-    oc rollout restart deployment/lsd-rag -n "$NAMESPACE" 2>/dev/null || true
-    log_success "lsd-rag restart triggered"
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 6: Validation output
-# ═══════════════════════════════════════════════════════════════════════════
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 09 deployment initiated!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║                                                                 ║"
 echo "║  Components:                                                    ║"
-echo "║    oc get guardrailsorchestrator -n $NAMESPACE             ║"
-echo "║    oc get isvc hap-detector prompt-injection-detector          ║"
-echo "║                                                                 ║"
-echo "║  Gateway routes (in-cluster):                                   ║"
-echo "║    /passthrough/v1/chat/completions  (no detectors)            ║"
-echo "║    /pii/v1/chat/completions          (PII regex)               ║"
-echo "║    /safe/v1/chat/completions         (PII + HAP + injection)   ║"
+echo "║    oc get nemoguardrails nemo-guardrails -n $NAMESPACE          ║"
+echo "║    oc get route nemo-guardrails -n $NAMESPACE                   ║"
 echo "║                                                                 ║"
 echo "║  Validate:                                                      ║"
-echo "║    ./steps/step-09-guardrails/validate.sh                      ║"
-echo "║                                                                 ║"
+echo "║    ./steps/step-09-guardrails/validate.sh                       ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"

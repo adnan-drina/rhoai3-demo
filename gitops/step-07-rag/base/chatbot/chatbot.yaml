@@ -3,7 +3,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: rag-chatbot
-  namespace: private-ai
+  namespace: enterprise-rag
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 ---
@@ -11,10 +11,9 @@ apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: rag-chatbot
-  namespace: private-ai
+  namespace: enterprise-rag
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    argocd.argoproj.io/hook: Skip
 spec:
   source:
     type: Git
@@ -30,13 +29,14 @@ spec:
     to:
       kind: ImageStreamTag
       name: rag-chatbot:latest
-  triggers: []
+  triggers:
+    - type: ConfigChange
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rag-chatbot
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: rag-chatbot
     app.kubernetes.io/part-of: rag
@@ -56,17 +56,73 @@ spec:
     spec:
       containers:
         - name: chatbot
-          image: image-registry.openshift-image-registry.svc:5000/private-ai/rag-chatbot:latest
+          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest
           ports:
             - containerPort: 8501
               name: http
           env:
             - name: LLAMA_STACK_URL
-              value: "http://lsd-rag-service.private-ai.svc.cluster.local:8321"
+              value: "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321"
             - name: INFERENCE_MODEL
               value: "vllm-inference/granite-8b-agent"
+            - name: NEMO_GUARDRAILS_URL
+              value: "http://nemo-guardrails.enterprise-rag.svc.cluster.local:8000"
+            - name: NEMO_GUARDRAILS_MODEL
+              value: "granite-8b-agent"
             - name: RAG_QUESTION_SUGGESTIONS
-              value: '{"whoami": ["Who is Adnan Drina and what is his current role?", "What are Adnan Drina key areas of expertise?", "What events has Adnan Drina spoken at?"], "acme_corporate": ["What is ACME Corp?", "Who is the Managing Director of ACME Corp, and how can I contact them?", "List all pods in the acme-corp namespace", "Fetch the equipment name for pod acme-equipment-0007", "Search for known issues related to the L-900 EUV scanner", "Send a brief summary of the L-900-08 issue to Slack channel C09JL81TUQJ"]}'
+              value: >-
+                {
+                  "whoami": [
+                    {
+                      "use_case": "Identity grounding",
+                      "mode": "Direct",
+                      "question": "Who is Adnan Drina and what is his current role?",
+                      "expected": "Principal Solution Architect|Red Hat"
+                    },
+                    {
+                      "use_case": "Expertise discovery",
+                      "mode": "Direct",
+                      "question": "What are Adnan Drina key areas of expertise?",
+                      "expected": "OpenShift|Kubernetes|AI|platform|developer|architecture"
+                    },
+                    {
+                      "use_case": "Event discovery",
+                      "mode": "Direct",
+                      "question": "What events has Adnan Drina spoken at?",
+                      "expected": "HOPE Amsterdam 2025|Red Hat Summit: Connect Utrecht"
+                    }
+                  ],
+                  "acme_corporate": [
+                    {
+                      "use_case": "Corporate profile",
+                      "mode": "Direct",
+                      "question": "What is ACME Corp?",
+                      "expected": "ACME Corp|semiconductor|Amsterdam|lithography"
+                    },
+                    {
+                      "use_case": "Equipment troubleshooting",
+                      "mode": "Direct",
+                      "question": "Search for known issues related to the L-900 EUV scanner",
+                      "expected": "L-900|EUV|Dose Drift|Overlay Residual|Focus Map|calibration"
+                    },
+                    {
+                      "use_case": "OpenShift operations",
+                      "mode": "Agent-based",
+                      "tool": "openshift-mcp",
+                      "select_collection": false,
+                      "question": "List all pods in the acme-corp namespace",
+                      "expected": "MCP Tool Output|pods_list_in_namespace|acme-equipment|acme-corp|pod"
+                    },
+                    {
+                      "use_case": "Asset database lookup",
+                      "mode": "Agent-based",
+                      "tool": "database-mcp",
+                      "select_collection": false,
+                      "question": "Fetch the equipment name for pod acme-equipment-0007",
+                      "expected": "MCP Tool Output|execute_sql|L-900|EUV|Calibration"
+                    }
+                  ]
+                }
           resources:
             requests:
               cpu: 100m
@@ -91,7 +147,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rag-chatbot
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: rag-chatbot
   annotations:
@@ -108,7 +164,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: rag-chatbot
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: rag-chatbot
   annotations:

@@ -19,7 +19,7 @@ spec:
     path: gitops/step-09-guardrails/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: private-ai
+    namespace: enterprise-rag
   syncPolicy:
     automated:
       prune: true
@@ -37,11 +37,7 @@ spec:
         maxDuration: 3m
   ignoreDifferences:
     - group: trustyai.opendatahub.io
-      kind: GuardrailsOrchestrator
-      jsonPointers:
-        - /status
-    - group: serving.kserve.io
-      kind: InferenceService
+      kind: NemoGuardrails
       jsonPointers:
         - /status
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName

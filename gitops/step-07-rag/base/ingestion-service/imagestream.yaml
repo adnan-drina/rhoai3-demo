@@ -2,7 +2,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: rag-ingestion-service
-  namespace: private-ai
+  namespace: enterprise-rag
   labels:
     app: rag-ingestion-service
     app.kubernetes.io/name: rag-ingestion-service
