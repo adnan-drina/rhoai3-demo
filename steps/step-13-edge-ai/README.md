@@ -314,7 +314,8 @@ podman push quay.io/adrina/edge-camera:latest
 oc logs -n edge-ai-demo deploy/face-recognition-edge-predictor
 
 # Verify model exists in MinIO
-oc exec -n minio-storage deploy/minio -- mc ls local/models/face-recognition/1/
+oc exec -n minio-storage deploy/minio -- sh -c \
+  'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 || true; mc ls local/rhoai-storage/models/face-recognition/1/'
 # Expected: model.onnx
 
 # Verify storage-config secret
@@ -347,7 +348,7 @@ oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.tls.termination}'
 
 ## References
 
-- [RHOAI 3.4 — Deploying models (KServe RawDeployment)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/)
+- [RHOAI 3.4 — Deploy large models using the single-model serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/)
 - [Red Hat Edge + On-Premise AI/ML Architecture](https://www.redhat.com/en/topics/ai/ai-at-the-edge)
 - [KServe Binary Tensor Data Extension](https://kserve.github.io/website/docs/concepts/architecture/data-plane/v2-protocol/binary-tensor-data-extension)
 - [MicroShift documentation](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/)

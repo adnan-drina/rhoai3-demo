@@ -63,6 +63,12 @@ check "storage-config secret exists" \
 check "ArgoCD Application exists" \
     "oc get applications.argoproj.io step-13-edge-ai -n openshift-gitops"
 
+check "ArgoCD Application is Synced" \
+    "test \$(oc get applications.argoproj.io step-13-edge-ai -n openshift-gitops -o jsonpath='{.status.sync.status}') = 'Synced'"
+
+check "ArgoCD Application is Healthy" \
+    "test \$(oc get applications.argoproj.io step-13-edge-ai -n openshift-gitops -o jsonpath='{.status.health.status}') = 'Healthy'"
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Results: $PASS passed, $FAIL failed (of $((PASS + FAIL)) checks)"

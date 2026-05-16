@@ -43,7 +43,7 @@ fi
 log_success "MinIO storage available"
 
 MODEL_EXISTS=$(oc exec -n minio-storage deploy/minio -- \
-    mc ls local/models/face-recognition/1/model.onnx 2>/dev/null || echo "")
+    sh -c 'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 || true; mc ls local/rhoai-storage/models/face-recognition/1/model.onnx' 2>/dev/null || echo "")
 if [[ -z "$MODEL_EXISTS" ]]; then
     log_warn "Face recognition model not found in MinIO."
     log_warn "Run Step-11 deploy.sh first to upload the model."

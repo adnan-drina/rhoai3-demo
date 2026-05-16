@@ -16,7 +16,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     openshift.io/display-name: "Face Recognition — Edge (YOLO11 ONNX)"
-    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/deploymentMode: Standard
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
