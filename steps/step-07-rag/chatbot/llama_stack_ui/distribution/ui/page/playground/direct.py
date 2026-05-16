@@ -89,12 +89,11 @@ def search_vector_store_direct(prompt, vector_db_id, vector_db_name, top_k, stat
             if text_content:
                 attrs = getattr(result, 'attributes', {})
                 source = attrs.get('source') or getattr(result, 'filename', 'unknown')
-                context_parts.append(f"[Source: {source}]: {text_content}")
-                display_results.append({"source": source, "text": text_content})
+                context_parts.append(f"[Source: {source}]: {text_content[:4000]}")
+                display_results.append({"source": source, "text": text_content[:1000]})
 
         with state.containers.tool_results:
-            with st.expander(f"📄 Search Results from '{vector_db_name}'", expanded=False):
-                st.json(display_results)
+            st.caption(f"📄 Found {len(display_results)} result(s) in '{vector_db_name}'")
 
         logger.debug("Built context with %s documents", len(context_parts))
     else:
