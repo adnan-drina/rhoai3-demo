@@ -32,7 +32,7 @@ RHOAI 3.4 Platform
 | LlamaStack Operator | Managed | GenAI Playground, agentic workflows |
 | GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
 | KServe | Managed | Model serving (RawDeployment mode) |
-| MaaS Gateway | Managed | `maas-default-gateway` for the Technology Preview MaaS component, annotated for RHCL/Authorino TLS |
+| MaaS Gateway | Managed | `maas-default-gateway` for the RHOAI 3.4 MaaS component, annotated for RHCL/Authorino TLS |
 | MaaS PostgreSQL | Managed | Demo PostgreSQL 16 database and required `maas-db-config` Secret |
 | Model Registry | Managed | Model versioning and catalog |
 | MLflow Operator | Managed | Experiment tracking foundation for `enterprise-mlops` |
@@ -74,7 +74,7 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
 
-> **MaaS gateway prerequisite:** RHOAI 3.4 Models-as-a-Service is Technology Preview and requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
+> **MaaS gateway prerequisite:** RHOAI 3.4 release notes classify Models-as-a-Service as Generally Available and document the subscription/API key governance model. The service still requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
 > **MaaS feature flags and RHCL prerequisite:** Step 01 installs RHCL 1.2+, creates `Kuadrant` in `kuadrant-system`, and configures Authorino TLS. This step then enables `modelAsService`, `vLLMDeploymentOnMaaS`, and `maasAuthPolicies` in `OdhDashboardConfig`. vLLM on MaaS remains Technology Preview in RHOAI 3.4.
 

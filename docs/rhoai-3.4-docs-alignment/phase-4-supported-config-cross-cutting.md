@@ -35,7 +35,7 @@ This phase checks that the demo's claims, support posture, and Red Hat narrative
 | GPU-as-a-Service | `GPU-as-a-Service for AI at scale Practical strategies with Red Hat OpenShift AI` | Strong: GPU operators, hardware profiles, Kueue, MaaS model roles. |
 | RAG and agentic AI | `Deploy an enterprise RAG chatbot with Red Hat OpenShift AI`, `From RAG to agentic AI When models stop answering and start acting` | Strong: Step 07 RAG and Step 10 MCP. |
 | MCP security | `MCP security Containerization and Red Hat OpenShift integration`, `MCP security Implementing robust authentication and authorization` | Medium: MCP servers are containerized and scoped, but explicit security narrative can improve. |
-| Guardrails | `Build resilient guardrails for OpenClaw AI agents on Kubernetes` | Strong after NeMo migration; keep Technology Preview note. |
+| Guardrails | `Build resilient guardrails for OpenClaw AI agents on Kubernetes` | Strong after NeMo migration; keep the release-note/product-book support-status nuance visible. |
 | Evaluation and observability | `Eval-driven development Build and evaluate reliable AI agents`, `GuideLLM Evaluate LLM deployments for real-world inference` | Strong for LM-Eval and GuideLLM; add TrustyAI monitoring comparison. |
 | Edge AI | `What is edge AI?` | Strong split between central simulation and MicroShift edge path. |
 

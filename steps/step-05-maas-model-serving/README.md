@@ -10,7 +10,7 @@ This step moves LLM serving out of the old shared project model and into `maas`,
 - `maas` is the only Kueue-managed workload namespace in this slice.
 - InferenceServices carry `kueue.x-k8s.io/queue-name: maas-default`.
 
-MaaS publishing/subscription resources are treated as preview and verified-GitOps only. If the installed cluster does not expose documented MaaS publish/subscription CRDs through `oc explain`, the demo uses the supported dashboard/API workflow and records the GitOps gap in the alignment ledger instead of inventing manifests.
+MaaS governance resources are treated as verified-GitOps only. The live cluster exposes MaaS CRDs such as `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`; this first remediation batch does not commit them until the supported binding from the active KServe `InferenceService` endpoints to MaaS model references is documented and schema-verified. The demo uses the supported dashboard/API workflow and records the GitOps gap instead of inventing manifests.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/OpenShift AI vLLM and llm-d Inference Baseline.md` and `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/A guide to Models-as-a-Service.md`. API correctness stays pinned to official RHOAI 3.4 and OCP 4.20 docs.
 
@@ -41,7 +41,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **MaaS namespace boundary:** LLM runtime ownership is separated from RAG and MLOps workloads. RAG consumers call `*.maas.svc.cluster.local` endpoints, but do not own serving runtime resources.
 
-> **Verified GitOps for preview MaaS:** RHOAI 3.4 includes MaaS and AI Available Assets integration as preview-level functionality. This repo only commits MaaS resources that are documented and schema-verified. Subscription-plan and publish-endpoint resources remain documented/deferred until the cluster exposes supported CRDs.
+> **Verified GitOps for MaaS governance:** RHOAI 3.4 release notes classify MaaS as Generally Available, while some MaaS subfeatures remain Technology Preview or Developer Preview. This repo only commits MaaS governance resources that are documented and schema-verified against the installed CRDs. Subscription-plan and publish-endpoint resources remain documented/deferred until the KServe-to-MaaS binding is explicit enough for repeatable GitOps.
 
 > **Kueue on MaaS only:** Queue enforcement applies only to `maas`; every GitOps-managed model-serving workload in this namespace is labeled for `maas-default`.
 

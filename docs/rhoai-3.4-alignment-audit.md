@@ -57,7 +57,7 @@ Validated baseline:
 | 06 Model metrics | Aligned with notes | GuideLLM and metrics story aligns with Red Hat inference evaluation guidance. |
 | 07 RAG | Aligned with notes | Notebook strict validation passes; workbench connectivity is handled by NetworkPolicy. |
 | 08 Model evaluation | Aligned with notes | `LMEvalJob` resources use the documented TrustyAI API. |
-| 09 Guardrails | Aligned with notes | Uses `NemoGuardrails`; README explicitly notes Red Hat Technology Preview support scope. |
+| 09 Guardrails | Aligned with notes | Uses `NemoGuardrails`; README explicitly notes the release-note/product-book support-status discrepancy. |
 | 10 MCP integration | Aligned with intentional degraded sample | MCP/platform resources must be healthy; `acme-equipment-0007` is expected `CrashLoopBackOff` incident data. |
 | 11 Face recognition | Aligned with notes | CPU OpenVINO/KServe story remains valid. |
 | 12 MLOps pipeline | Aligned with notes | DSPA, MLflow, Model Registry, and `TrustyAIService` remain the strongest predictive AI platform story. |

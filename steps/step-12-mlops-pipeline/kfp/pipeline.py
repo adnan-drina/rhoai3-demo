@@ -2,7 +2,8 @@
 KFP v2 Face Recognition Training Pipeline
 
 Automates the full MLOps lifecycle: dataset preparation, training,
-evaluation with quality gate, Model Registry registration, and deployment.
+evaluation with quality gate, MLflow tracking, Model Registry registration,
+and deployment.
 
 Components are in kfp/components/ following KFP modular best practices.
 Reuses the existing DSPA (dspa-mlops) in enterprise-mlops namespace.
@@ -18,6 +19,7 @@ from datetime import datetime
 from components.prepare_dataset import prepare_dataset
 from components.train_model import train_model
 from components.evaluate_model import evaluate_model
+from components.log_mlflow import log_mlflow_run
 from components.register_model import register_model
 from components.deploy_model import deploy_model
 from components.setup_monitoring import setup_monitoring
@@ -54,7 +56,7 @@ def _mount_pvc(task: PipelineTask) -> None:
 
 @dsl.pipeline(
     name="face-recognition-training",
-    description="Train YOLO11 face recognition, evaluate, register, deploy, and configure monitoring",
+    description="Train YOLO11 face recognition, evaluate, track in MLflow, register, deploy, and configure monitoring",
     pipeline_root="s3://pipelines/",
 )
 def face_recognition_training_pipeline(
@@ -112,7 +114,21 @@ def face_recognition_training_pipeline(
     _set_resources(eval_task, cpu_req="1", cpu_lim="2", mem_req="2Gi", mem_lim="4Gi")
     eval_task.set_caching_options(False)
 
-    # --- Step 4: Register Model ---
+    # --- Step 4: Log MLflow Run ---
+    mlflow_task = log_mlflow_run(
+        onnx_path=train_task.outputs["Output"],
+        mAP50=eval_task.outputs["Output"],
+        model_name=model_name,
+        version=version,
+        minio_endpoint=minio_endpoint,
+    )
+    _inject_minio(mlflow_task)
+    _mount_pvc(mlflow_task)
+    _set_resources(mlflow_task, cpu_req="250m", cpu_lim="1", mem_req="512Mi", mem_lim="1Gi")
+    mlflow_task.after(eval_task)
+    mlflow_task.set_caching_options(False)
+
+    # --- Step 5: Register Model ---
     reg_task = register_model(
         onnx_path=train_task.outputs["Output"],
         model_name=model_name,
@@ -123,11 +139,11 @@ def face_recognition_training_pipeline(
     _inject_minio(reg_task)
     _mount_pvc(reg_task)
     _set_resources(reg_task)
-    reg_task.after(eval_task)
+    reg_task.after(mlflow_task)
     reg_task.set_caching_options(False)
     reg_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 5: Deploy Model + Link to Registry ---
+    # --- Step 6: Deploy Model + Link to Registry ---
     dep_task = deploy_model(
         isvc_name=model_name,
         namespace=isvc_namespace,
@@ -138,7 +154,7 @@ def face_recognition_training_pipeline(
     dep_task.set_caching_options(False)
     dep_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 6: Setup Monitoring ---
+    # --- Step 7: Setup Monitoring ---
     mon_task = setup_monitoring(
         model_name=model_name,
         namespace=isvc_namespace,
@@ -149,7 +165,7 @@ def face_recognition_training_pipeline(
     mon_task.set_caching_options(False)
     mon_task.set_retry(num_retries=2, backoff_duration="10s", backoff_factor=2.0)
 
-    # --- Step 7: Package ModelCar & Release to Edge (optional) ---
+    # --- Step 8: Package ModelCar & Release to Edge (optional) ---
     with dsl.If(release_to_edge == True):
         mc_version = modelcar_version if modelcar_version else version
         mc_task = package_modelcar(

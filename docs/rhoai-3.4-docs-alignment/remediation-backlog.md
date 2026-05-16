@@ -6,9 +6,9 @@ This backlog is derived from the chapter-by-chapter documentation review. It doe
 
 | Item | Area | Action | Acceptance |
 |---|---|---|---|
-| Second-pass support-status matrix | Cross-cutting | Reconcile RHOAI 3.4 release-note status and product-book status for MaaS, NeMo Guardrails, MLflow, Llama Stack APIs, MCP, EvalHub, AutoRAG, AutoML, Feature Store, llm-d, Spark, Trainer v2, TrustyAI, and Model Registry. | Step READMEs no longer contain stale or conflicting support-status wording. |
-| Step 09 live NeMo adoption | Guardrails | Hard refresh/resync Step 09 and prune legacy FMS resources after confirming Argo source revision and cache state. | Live app resources show `NemoGuardrails/nemo-guardrails`; no `GuardrailsOrchestrator` or detector `InferenceService`s remain. |
-| MLflow functional story | MLOps | Move Step 12 from "MLflow server exists" to "MLflow tracks this training/evaluation run" by logging experiment, run metrics, and artifacts from KFP. | Step 12 validation proves a fresh MLflow run exists for the latest pipeline execution. |
+| Second-pass support-status matrix | Cross-cutting | Done. Keep `support-status-matrix.md` as the source for release-note/product-book discrepancies and update READMEs from that matrix. | Step READMEs no longer contain stale or conflicting support-status wording. |
+| Step 09 live NeMo adoption | Guardrails | Done for live resources. Finish by returning the live Argo target revision to `main` after the remediation commit lands. | Live app resources show `NemoGuardrails/nemo-guardrails`; no `GuardrailsOrchestrator` or detector `InferenceService`s remain; target revision is `main`. |
+| MLflow functional story | MLOps | Implemented in Step 12 KFP through `log_mlflow_run` with the MLflow SDK, namespace authentication, metrics/params/tags, and compact artifact logging. | Step 12 validation proves a fresh MLflow run exists for the latest pipeline execution after the updated pipeline is run. |
 | MaaS consumption story | MaaS | Demonstrate subscriptions/tiers, self-service API keys, rate/quota policy, and a governed OpenAI-compatible model call. | A non-admin user can generate/use a scoped MaaS key and the demo can show the applied governance boundary. |
 
 ## P1
@@ -46,6 +46,6 @@ This backlog is derived from the chapter-by-chapter documentation review. It doe
 | Ray/CodeFlare distributed workloads | Training/data | Add a minimal workload if GPU scale-out training becomes a demo requirement. |
 | Model customization/fine-tuning | Gen AI | Add only after RAG/eval story is stable and GPUs are available. |
 | llm-d | Distributed inference | Add optional path for scale-out LLM serving; current demo uses vLLM/KServe/MaaS. |
-| Connections API annotation cleanup | GitOps hygiene | Add `opendatahub.io/connection-type-protocol: "s3"` to new or touched S3 connection secrets while preserving dashboard compatibility. |
+| Connections API annotation cleanup | GitOps hygiene | In progress. Step 03 shared MinIO connections and Step 12 MLflow artifact connection now include `opendatahub.io/connection-type-protocol: "s3"` while preserving the existing connection-type annotation. |
 | Centralized observability | Monitoring | Evaluate RHOAI centralized observability, MaaS usage dashboard, NeMo OpenTelemetry, and llm-d metrics. |
 | Deploy-script lint | GitOps hygiene | Add deterministic lint for direct applies of Argo-managed resources, except documented Step 13b remote bootstrap. |

@@ -12,6 +12,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
     opendatahub.io/connection-type: s3
+    opendatahub.io/connection-type-protocol: s3
     openshift.io/display-name: "MinIO Storage"
     openshift.io/description: "S3-compatible storage for models and data"
 type: Opaque
@@ -33,6 +34,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
     opendatahub.io/connection-type: s3
+    opendatahub.io/connection-type-protocol: s3
     openshift.io/display-name: "MinIO Storage"
     openshift.io/description: "S3-compatible storage for RAG data, pipeline artifacts, and evaluation outputs"
 type: Opaque
@@ -54,6 +56,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
     opendatahub.io/connection-type: s3
+    opendatahub.io/connection-type-protocol: s3
     openshift.io/display-name: "MinIO Storage"
     openshift.io/description: "S3-compatible storage for predictive models, pipelines, and MLflow artifacts"
 type: Opaque

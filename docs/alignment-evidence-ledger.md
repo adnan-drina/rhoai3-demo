@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T09:05:08Z
+**Generated:** 2026-05-16T11:48:47Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -216,52 +216,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - `rh-brain: raw/Combining KServe and llm-d for optimized generative AI inference.md`
 - `rh-brain: raw/Models-as-a-Service - ODH Models-as-a-Service Documentation.md`
 
-### step-06-model-metrics
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned-with-notes` |
-| GitOps path | `gitops/step-06-model-metrics/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-06-model-metrics.yaml` |
-| README | `steps/step-06-model-metrics/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-06-model-metrics/base` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [WARN] Unmanaged external `:latest` image references found:
-  - gitops/step-06-model-metrics/base/model-benchmarking-wb/workbench.yaml:87:          image: alpine/git:latest (unmanaged external dependency)
-- [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-06-model-metrics/base/guidellm/cronjob.yaml:43:              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest (OpenShift platform ImageStream)
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain CronJob --api-version=batch/v1`
-- [PASS] `oc explain Grafana --api-version=grafana.integreatly.org/v1beta1`
-- [PASS] `oc explain GrafanaDashboard --api-version=grafana.integreatly.org/v1beta1`
-- [PASS] `oc explain GrafanaDatasource --api-version=grafana.integreatly.org/v1beta1`
-- [PASS] `oc explain Notebook --api-version=kubeflow.org/v1`
-- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
-- [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
-- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain ConfigMap --api-version=v1`
-- [PASS] `oc explain Namespace --api-version=v1`
-- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
-- [PASS] `oc explain Secret --api-version=v1`
-- [PASS] `oc explain ServiceAccount --api-version=v1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/A guide to Models-as-a-Service.md`
-- `rh-brain: raw/Building on the outstanding performance of vLLM with llm-d.md`
-- `rh-brain: raw/Combining KServe and llm-d for optimized generative AI inference.md`
-- `rh-brain: raw/Models-as-a-Service - ODH Models-as-a-Service Documentation.md`
-
 ### step-07-rag
 
 | Field | Evidence |
@@ -318,37 +272,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - `rh-brain: raw/Evaluation Quickstart  MLflow AI Platform.md`
 - `rh-brain: raw/Synthetic data for RAG evaluation Why your RAG system needs better testing.md`
 
-### step-08-model-evaluation
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned` |
-| GitOps path | `gitops/step-08-model-evaluation/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-08-model-evaluation.yaml` |
-| README | `steps/step-08-model-evaluation/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-08-model-evaluation/base` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-08-model-evaluation/base/eval-configs/job-copy-configs.yaml:25:          image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain Job --api-version=batch/v1`
-- [PASS] `oc explain ConfigMap --api-version=v1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/Breaking the RAG bottleneck Scalable document processing with Ray Data and Docling 1.md`
-- `rh-brain: raw/Breaking the RAG bottleneck Scalable document processing with Ray Data and Docling.md`
-- `rh-brain: raw/Evaluation Quickstart  MLflow AI Platform.md`
-- `rh-brain: raw/Synthetic data for RAG evaluation Why your RAG system needs better testing.md`
-
 ### step-09-guardrails
 
 | Field | Evidence |
@@ -379,50 +302,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 - `rh-brain: raw/Build resilient guardrails for OpenClaw AI agents on Kubernetes 1.md`
 - `rh-brain: raw/Build resilient guardrails for OpenClaw AI agents on Kubernetes.md`
-
-### step-10-mcp-integration
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned` |
-| GitOps path | `gitops/step-10-mcp-integration/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-10-mcp-integration.yaml` |
-| README | `steps/step-10-mcp-integration/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-10-mcp-integration/base` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-10-mcp-integration/base/postgresql/deployment.yaml:27:          image: registry.redhat.io/rhel9/postgresql-15:latest (Red Hat managed version stream)
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:24:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:66:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
-  - gitops/step-10-mcp-integration/base/acme-corp/demo-pods.yaml:110:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain Deployment --api-version=apps/v1`
-- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
-- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
-- [PASS] `oc explain ConfigMap --api-version=v1`
-- [PASS] `oc explain Namespace --api-version=v1`
-- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
-- [PASS] `oc explain Pod --api-version=v1`
-- [PASS] `oc explain Secret --api-version=v1`
-- [PASS] `oc explain Service --api-version=v1`
-- [PASS] `oc explain ServiceAccount --api-version=v1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/Advanced authentication and authorization for MCP Gateway.md`
-- `rh-brain: raw/Agentic AI vs. generative AI.md`
-- `rh-brain: raw/Agentic AI with Red Hat AI.md`
-- `rh-brain: raw/Building effective AI agents with Model Context Protocol (MCP).md`
 
 ### step-11-face-recognition
 
@@ -502,100 +381,11 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - `rh-brain: raw/Evaluating (Production) Traces  MLflow AI Platform.md`
 - `rh-brain: raw/From experiment to production A reliable architecture for version-controlled MLOps.md`
 
-### step-13-edge-ai
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned` |
-| GitOps path | `gitops/step-13-edge-ai/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-13-edge-ai.yaml` |
-| README | `steps/step-13-edge-ai/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-13-edge-ai/base` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-13-edge-ai/base/edge-camera/deployment.yaml:31:          image: quay.io/adrina/edge-camera:latest (internal demo build output)
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain Deployment --api-version=apps/v1`
-- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
-- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
-- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
-- [PASS] `oc explain Namespace --api-version=v1`
-- [PASS] `oc explain Secret --api-version=v1`
-- [PASS] `oc explain Service --api-version=v1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/What is edge AI?.md`
-
-### step-13b-edge-ai-microshift
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned` |
-| GitOps path | `gitops/step-13b-edge-ai-microshift/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
-| README | `steps/step-13b-edge-ai-microshift/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:30:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest (Red Hat managed version stream)
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:32:      image: registry.access.redhat.com/ubi9/python-311:latest (Red Hat managed version stream)
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:71:      image: registry.access.redhat.com/ubi9/buildah:latest (Red Hat managed version stream)
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain Pipeline --api-version=tekton.dev/v1`
-- [PASS] `oc explain Task --api-version=tekton.dev/v1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/What is edge AI?.md`
-
-### step-13b-edge-ai-microshift-operator
-
-| Field | Evidence |
-|-------|----------|
-| Status | `aligned` |
-| GitOps path | `gitops/step-13b-edge-ai-microshift/operator` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift-operator.yaml` |
-| README | `steps/step-13b-edge-ai-microshift/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
-
-**Findings**
-
-- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/operator` rendered successfully.
-- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
-- [PASS] README contains pinned official product documentation references.
-- [PASS] No unpinned `:latest` image references found in GitOps path.
-
-**Schema Verification**
-
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
-- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
-
-**rh-brain Research Sources**
-
-- `rh-brain: raw/What is edge AI?.md`
-
 ## Summary
 
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 7 |
+| Notes / deferred checks | 6 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.

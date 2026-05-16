@@ -1,11 +1,11 @@
 # Step 12: MLOps Training Pipeline
-**"From Notebook to Production"** — Automate the face recognition training workflow as a Kubeflow Pipeline with evaluation gates, Model Registry integration, and conditional deployment.
+**"From Notebook to Production"** — Automate the face recognition training workflow as a Kubeflow Pipeline with MLflow tracking, evaluation gates, Model Registry integration, and conditional deployment.
 
 ## Overview
 
-Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, registry-backed promotion, TrustyAI monitoring, and MLflow readiness inside `enterprise-mlops`. **Red Hat OpenShift AI 3.4** provides **Kubeflow Pipelines (KFP v2)**, **Model Registry**, **TrustyAI**, and **MLflow** so the workflow runs unattended with governance. Pipelines are versioned, tracked, and managed — reducing user error from experimentation through production. Drift monitoring tracks model behavior over time, catching degradation before users do.
+Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, MLflow experiment tracking, registry-backed promotion, and TrustyAI monitoring inside `enterprise-mlops`. **Red Hat OpenShift AI 3.4** provides **Kubeflow Pipelines (KFP v2)**, **Model Registry**, **TrustyAI**, and **MLflow** so the workflow runs unattended with governance. Pipelines are versioned, tracked, and managed — reducing user error from experimentation through production. Drift monitoring tracks model behavior over time, catching degradation before users do.
 
-MLflow is treated as a RHOAI 3.4 Developer Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. The server exposes only the `enterprise-mlops` namespace by selecting its stable Kubernetes namespace-name label.
+MLflow is treated as a RHOAI 3.4 Technology Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. The training pipeline logs a run after the quality gate passes, including metrics, parameters, tags, and compact artifacts through the MLflow SDK with Kubernetes namespace authentication. The server exposes only the `enterprise-mlops` namespace by selecting its stable Kubernetes namespace-name label.
 
 This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with TrustyAI drift and bias monitoring in production.
 
@@ -16,18 +16,19 @@ This step demonstrates RHOAI's **AI pipelines** and **Model observability and go
 ### What Gets Deployed
 
 ```text
-MLOps Training Pipeline (KFP v2, 7 Steps)
+MLOps Training Pipeline (KFP v2, 8 Steps)
 ├── 1. prepare_dataset     → Download photos + unknowns from MinIO, auto-annotate, split train/val
 ├── 2. train_model         → YOLO11 training with GPU auto-detect and CPU fallback, ONNX export
 ├── 3. evaluate_model      → mAP50 quality gate (compare with previous version)
-├── 4. register_model      → Upload ONNX to MinIO, register in Model Registry
-├── 5. deploy_model        → Restart KServe predictor pod
-├── 6. setup_monitoring    → Upload baseline to TrustyAI, configure drift metrics
-├── 7. package_modelcar *  → Trigger Tekton pipeline: build ModelCar OCI, push, update Git
+├── 4. log_mlflow_run      → Log experiment run, metrics, params, tags, compact artifacts
+├── 5. register_model      → Upload ONNX to MinIO, register in Model Registry
+├── 6. deploy_model        → Restart KServe predictor pod
+├── 7. setup_monitoring    → Upload baseline to TrustyAI, configure drift metrics
+├── 8. package_modelcar *  → Trigger Tekton pipeline: build ModelCar OCI, push, update Git
 │      (* optional, release_to_edge=True)
 └── Infrastructure
     ├── face-pipeline-workspace PVC → Shared storage between pipeline steps
-    ├── MLflow                      → Developer Preview tracking server and MLOps workspace config
+    ├── MLflow                      → Technology Preview tracking server and MLOps workspace config
     ├── TrustyAIService             → Fairness and drift monitoring
     └── modelcar-release Pipeline   → Tekton pipeline for edge model promotion
 ```
@@ -37,11 +38,12 @@ MLOps Training Pipeline (KFP v2, 7 Steps)
 | `prepare_dataset` | Download bounded adnan + unknown photo samples from MinIO, optionally add HuggingFace portraits, auto-annotate, split train/val | `enterprise-mlops` |
 | `train_model` | YOLO11 training with GPU auto-detect and CPU fallback, ONNX export | `enterprise-mlops` |
 | `evaluate_model` | mAP50 computation, compare with previous version, quality gate | `enterprise-mlops` |
+| `log_mlflow_run` | Create a `face-recognition` MLflow experiment run and log metrics, params, tags, and compact artifacts | `enterprise-mlops` |
 | `register_model` | Upload ONNX to MinIO, register in Model Registry with metrics | `enterprise-mlops` |
 | `deploy_model` | Restart KServe predictor pod, link ISVC to Registry | `enterprise-mlops` |
 | `setup_monitoring` | Upload baseline to TrustyAI, configure SPD + drift metrics | `enterprise-mlops` |
 | **TrustyAIService** | Fairness and drift monitoring, visible in RHOAI Dashboard | `enterprise-mlops` |
-| **MLflow** | Developer Preview tracking server plus `enterprise-mlops` workspace artifact configuration | cluster-scoped server, `enterprise-mlops` config |
+| **MLflow** | Technology Preview tracking server plus `enterprise-mlops` workspace artifact configuration | cluster-scoped server, `enterprise-mlops` config |
 | **face-pipeline-workspace** PVC | Shared storage between pipeline steps | `enterprise-mlops` |
 
 Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
@@ -56,7 +58,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 | RHOAI | AI pipelines (KFP v2 training pipeline) | Used |
 | RHOAI | Catalog and registry (Model Registry) | Used |
 | RHOAI | Model observability and governance (TrustyAI drift/bias) | Used |
-| RHOAI | MLflow tracking server | Developer Preview; managed by GitOps after CRD/schema verification |
+| RHOAI | MLflow tracking server | Technology Preview; managed by GitOps after CRD/schema verification |
 | OCP | OpenShift Pipelines (Tekton — ModelCar build) | Introduced |
 
 <details>
@@ -97,8 +99,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 ./steps/step-12-mlops-pipeline/validate.sh   # Infrastructure checks + latest training run freshness
 ```
 
-This creates the project-local DSPA, pipeline PVC, RBAC, TrustyAI resources, and MLflow Developer Preview resources via ArgoCD.
-The MLflow server uses a local SQLite metadata store and file-based artifact serving on a 10 GiB PVC for the demo. The `enterprise-mlops` workspace also has an `MLflowConfig` that points at the project S3 artifact connection for dashboard/workspace integration.
+This creates the project-local DSPA, pipeline PVC, RBAC, TrustyAI resources, and MLflow Technology Preview resources via ArgoCD.
+The MLflow server uses a local SQLite metadata store and a 10 GiB PVC for the demo service. The `enterprise-mlops` workspace has an `MLflowConfig` that points at the project S3 artifact connection, so new runs from that namespace use the project artifact root while the SDK writes compact evidence artifacts directly to MinIO.
 By default, `deploy.sh` also submits a short smoke training run: 1 epoch, quality threshold `0.0`, 40 user photos, 40 unknown photos, and no HuggingFace portrait download. Override `PIPELINE_EPOCHS`, `PIPELINE_MAP_THRESHOLD`, `PIPELINE_MAX_USER_PHOTOS`, `PIPELINE_MAX_UNKNOWN_PHOTOS`, and `PIPELINE_NUM_HF_PORTRAITS` when you want a longer validation run.
 
 #### Run the Pipeline
@@ -141,7 +143,7 @@ oc get dspa dspa-mlops -n enterprise-mlops
 ./steps/step-12-mlops-pipeline/validate.sh
 ```
 
-`validate.sh` checks the DSPA run history for the latest `train-*` KFP run and warns when it is older than `DEMO_FRESHNESS_HOURS` (default 24h).
+`validate.sh` checks the MLflow tracking API for the latest Step 12 `face-recognition` run, then checks the DSPA run history for the latest `train-*` KFP run. Both freshness checks warn when older than `DEMO_FRESHNESS_HOURS` (default 24h).
 
 </details>
 
@@ -157,9 +159,21 @@ oc get dspa dspa-mlops -n enterprise-mlops
 2. Run `./run-training-pipeline.sh`
 3. Show the DAG visualization as steps execute
 
-**Expect:** 6 green steps completing in sequence. The default deploy smoke run is intentionally small; a fuller GPU-backed run can increase epochs and sample counts. With `release_to_edge=True`, a 7th step triggers the Tekton ModelCar pipeline.
+**Expect:** 7 green steps completing in sequence, including `log_mlflow_run` after evaluation. The default deploy smoke run is intentionally small; a fuller GPU-backed run can increase epochs and sample counts. With `release_to_edge=True`, an 8th step triggers the Tekton ModelCar pipeline.
 
-> This is the same training workflow from Step 11, but fully automated as a Kubeflow Pipeline on Red Hat OpenShift AI. Each step runs in its own container with explicit resource limits. Data flows between steps via a shared PVC — versioned, tracked, and managed.
+> This is the same training workflow from Step 11, but fully automated as a Kubeflow Pipeline on Red Hat OpenShift AI. Each step runs in its own container with explicit resource limits. Data flows between steps via a shared PVC, while MLflow records the model version, evaluation metrics, and compact evidence artifacts for review.
+
+### MLflow Tracking Evidence
+
+> A production MLOps workflow needs a durable record of what happened, not just a completed DAG. RHOAI 3.4 adds MLflow as the experiment tracking layer, so training and evaluation evidence can be inspected outside the transient pipeline pod.
+
+1. After the pipeline completes, open the RHOAI Dashboard
+2. Open **MLflow** and select the `enterprise-mlops` workspace
+3. Open the `face-recognition` experiment and inspect the latest run
+
+**Expect:** A finished run named `face-recognition-<version>` with `mAP50`, `mAP50_95`, `adnan_mAP50`, model parameters, demo tags, and compact artifacts such as `results.json` and `run-context.json`.
+
+> The pipeline now leaves a product-native experiment trail. MLflow becomes the searchable memory for training quality, while Model Registry remains the promotion and deployment record.
 
 ### Model Registry Integration
 
@@ -184,7 +198,7 @@ oc get dspa dspa-mlops -n enterprise-mlops
 
 2. Watch the pipeline progress in the Dashboard
 
-**Expect:** Step 3 (evaluate) turns red. Steps 4-6 never execute. The old model stays in production.
+**Expect:** Step 3 (evaluate) turns red. Steps 4-7 never execute. The old model stays in production and no successful MLflow run is logged for the failed candidate.
 
 > The quality gate caught a model that doesn't meet the bar. The old model stays in production, untouched. This is governance built into the pipeline — Red Hat OpenShift AI won't deploy a model that's worse than what you already have.
 
@@ -245,10 +259,11 @@ KFP Training Pipeline                Tekton modelcar-release Pipeline
 │ 1. Prepare Dataset       │         │ 1. build-modelcar                │
 │ 2. Train (GPU or CPU)    │         │    Download ONNX from MinIO      │
 │ 3. Evaluate (quality gate│         │    buildah ModelCar OCI image    │
-│ 4. Register (MinIO + MR) │──────>  │    Push to quay.io               │
-│ 5. Deploy (central OCP)  │ trigger │ 2. update-gitops                 │
-│ 6. Monitoring            │         │    Update storageUri tag in Git   │
-│ 7. Package ModelCar *    │         │    ArgoCD on MicroShift syncs     │
+│ 4. Log MLflow run        │         │    Push to quay.io               │
+│ 5. Register (MinIO + MR) │──────>  │ 2. update-gitops                 │
+│ 6. Deploy (central OCP)  │ trigger │    Update storageUri tag in Git   │
+│ 7. Monitoring            │         │    ArgoCD on MicroShift syncs     │
+│ 8. Package ModelCar *    │         │                                  │
 └──────────────────────────┘         └──────────────────────────────────┘
   * optional (release_to_edge=True)
 ```
@@ -370,6 +385,7 @@ oc apply -f gitops/step-12-mlops-pipeline/base/pipeline-rbac.yaml
 ## References
 
 - [RHOAI 3.4 — Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/)
+- [RHOAI 3.4 — Working with MLflow](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/)
 - [RHOAI 3.4 — Managing Model Registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_model_registries/)
 - [RHOAI 3.4 — Monitoring your AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/monitoring_your_ai_systems/)
 - [Fine-tune AI pipelines in RHOAI 3.4](https://developers.redhat.com/articles/2026/02/26/fine-tune-ai-pipelines-red-hat-openshift-ai)

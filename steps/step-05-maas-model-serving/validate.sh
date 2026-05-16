@@ -30,6 +30,12 @@ check_warn "MaaS LocalQueue exists" \
     "oc get localqueue maas-default -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "maas-default"
 
+# --- MaaS Governance API ---
+log_step "MaaS Governance API"
+check_crd_exists "maasmodelrefs.maas.opendatahub.io"
+check_crd_exists "maassubscriptions.maas.opendatahub.io"
+check_crd_exists "maasauthpolicies.maas.opendatahub.io"
+
 # --- InferenceServices ---
 log_step "InferenceServices"
 for isvc in granite-8b-agent mistral-3-bf16; do

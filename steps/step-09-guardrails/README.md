@@ -5,7 +5,7 @@
 
 RAG made the assistant useful; evaluation proved it. The next step before broader use is making it **governable**: prompts and responses must be checked against policy before they become part of a production workflow. **Red Hat OpenShift AI 3.4** provides this path through the TrustyAI Operator integration with **NVIDIA NeMo Guardrails**, which places a guardrails service between the AI application and the LLM and exposes an OpenAI-compatible `/v1/chat/completions` API.
 
-NeMo Guardrails is documented by Red Hat as a **Technology Preview** feature in RHOAI 3.4. This demo uses it to show the current product direction for programmable rails while keeping production guidance explicit: validate support status before using it for SLA-bound workloads.
+The RHOAI 3.4 release notes classify NeMo Guardrails as fully supported, while the current guardrails chapter page still includes Technology Preview wording. This demo follows the release notes as the source of truth and keeps the documentation-status discrepancy visible for customer-facing delivery.
 
 This step demonstrates RHOAI's **AI safety and security** capability and lays the safety foundation for the Step 10 MCP workflow.
 
@@ -53,7 +53,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 > **OpenAI-compatible integration:** NeMo calls the existing `granite-8b-agent` vLLM endpoint at `http://granite-8b-agent-predictor.maas.svc.cluster.local:8080/v1`, matching the model endpoint deployed in Step 05.
 
-> **Technology Preview clarity:** The README and validation present NeMo as the RHOAI 3.4 aligned implementation for this demo, while explicitly noting Red Hat's Technology Preview support scope.
+> **Support-status clarity:** The support-status matrix records the current documentation discrepancy: RHOAI 3.4 release notes mark NeMo Guardrails fully supported, while the guardrails chapter page still contains Technology Preview text. Demo presenters should cite the release notes and confirm the current support scope before SLA-bound delivery.
 
 </details>
 
@@ -123,7 +123,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 - Add policy boundaries before GenAI reaches broader use
 - Keep safety controls visible and governed in the platform
-- Adopt current RHOAI guardrails patterns while tracking Technology Preview scope
+- Adopt the current RHOAI 3.4 guardrails pattern while tracking the documented support-status nuance
 
 **For technical teams:**
 

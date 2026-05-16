@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-16
 **Scope:** second-pass review focused on what Red Hat OpenShift AI 3.4 enables, not only what the current demo already implements.
-**Baseline checked:** local repo on `codex/rhoai34-foundation-refactor`; live cluster `default-dsc` reports `Ready`.
+**Baseline checked:** local repo on `main`; live cluster `default-dsc` reports `Ready`.
 
 ## Sources
 
@@ -21,9 +21,9 @@ The first alignment review was too implementation-centered. This second pass tre
 
 | ID | Finding | Current demo state | Recommended action |
 |---|---|---|---|
-| F-01 | Support-status language is stale or inconsistent across docs and step READMEs. | Step 02/05 still describe MaaS broadly as Technology Preview; Step 09 describes NeMo Guardrails as Technology Preview; Step 12 describes MLflow as Developer Preview. Current release notes say MaaS is GA, NeMo Guardrails is fully supported, and MLflow is Technology Preview. Some product books still carry older Technology Preview language for MaaS/NeMo, so this needs an explicit source-of-truth note. | Add a central support-status matrix with release-note source, product-book source, and chosen demo wording. Then update affected READMEs atomically. |
-| F-02 | Live Step 09 is not actually running the NeMo implementation that exists locally. | Live Argo CD app `step-09-guardrails` is `Synced/Healthy`, but its tracked resources are legacy `GuardrailsOrchestrator`, detector `InferenceService`s, and `guardrails-orchestrator-config`. No live `NemoGuardrails` resource was found. | Treat as a P0 live adoption gap. Refresh/resync/prune Step 09 after verifying Argo source revision and cache. The demo story should not present NeMo until the cluster shows `NemoGuardrails/nemo-guardrails`. |
-| F-03 | MLflow is installed, but not yet demonstrated as a 3.4 MLOps capability. | Step 02 enables `mlflowoperator`; Step 12 deploys `MLflow` and `MLflowConfig`; validation checks infrastructure. The pipeline does not yet prove experiment creation, run logging, artifact logging, prompt/model metadata, or MLflow UI workflow. | Add MLflow run logging to Step 12 KFP components, validate at least one experiment/run/artifact, and show MLflow as the lifecycle record for training and evaluation. |
+| F-01 | Support-status language needed a release-note source of truth. | `support-status-matrix.md` now records release-note status, product-book caveats, and chosen demo wording. Step 02, Step 09, and Step 12 were updated; Step 05 still keeps a conservative MaaS CRD caveat for schema-backed GitOps resources. | Keep the matrix as the canonical status reference and update it when Red Hat docs resolve MaaS/NeMo wording discrepancies. |
+| F-02 | Step 09 needed live NeMo adoption, not only local manifests. | Live Argo CD now shows `step-09-guardrails` `Synced/Healthy` with `NemoGuardrails/nemo-guardrails`, the NeMo ConfigMap, token Secret, ServiceAccount, and RoleBinding. Legacy FMS resources are no longer tracked by the app. | Finish by resetting the live app target revision back to `main` after this batch lands, then rerun Step 09 validation. |
+| F-03 | MLflow was installed but not used as a 3.4 MLOps record. | Step 12 now adds a `log_mlflow_run` KFP component that uses the MLflow SDK with Kubernetes namespace authentication to create the `face-recognition` experiment, log metrics/params/tags, and upload compact evidence artifacts through the namespace `MLflowConfig`. Validation now checks for the latest Step 12 run. | Run the refreshed Step 12 pipeline once after deployment so the validation can prove a fresh MLflow run and artifacts in the live environment. |
 | F-04 | MaaS is enabled, but the GA governance story is not fully exercised. | Step 02 enables MaaS and Step 05 serves vLLM/KServe models in `maas`. The demo does not yet walk through subscriptions/tiers, self-service API keys, rate limits, token quotas, subscription selection, or usage/showback. | Add a MaaS consumption scene: publish endpoint, create subscription/tier, issue API key as `ai-developer`, call OpenAI-compatible endpoint, show quota/rate behavior and usage metrics where available. |
 | F-05 | Product-native Gen AI Studio/Playground is underused. | The custom chatbot is strong, but the RHOAI dashboard Playground, AI Available Assets page, multi-pane comparison, guardrails toggles, MCP server selection, and knowledge-source selection are not first-class demo scenes. | Add a Step 10 or Step 07/09/10 cross-step scene that uses the product UI alongside the custom chatbot. |
 | F-06 | Model Catalog 3.4 enhancements are not exploited. | Step 04/05 use catalog/registry narrative and ModelCar serving. The demo does not use embedding model catalog entries, tool-calling metadata, recommended vLLM runtime configs, or ModelCar transfer jobs from the dashboard. | Add a catalog-driven scene: choose a validated tool-calling model or embedding model, explain catalog metadata, and compare with the hand-authored vLLM args in GitOps. |
@@ -41,9 +41,9 @@ The first alignment review was too implementation-centered. This second pass tre
 
 | RHOAI 3.4 signal | Support posture from docs | Demo coverage | Gap type | Recommended demo enhancement |
 |---|---|---|---|---|
-| MLflow Operator managed in `DataScienceCluster`; MLflow SDK pre-installed in workbench/runtime images | Release notes describe MLflow integration as Technology Preview and the operator as a managed component. | Operator and CRs deployed; no functional run logging. | Under-demonstrated implementation | Add Step 12 MLflow experiment/run/artifact logging and validator checks. |
+| MLflow Operator managed in `DataScienceCluster`; MLflow SDK pre-installed in workbench/runtime images | Release notes describe MLflow integration as Technology Preview and the operator as a managed component. | Operator and CRs deployed; Step 12 pipeline now logs experiment runs and compact artifacts through the MLflow SDK. | Implemented, needs fresh-run proof | Run the refreshed Step 12 pipeline after sync and record the MLflow UI/API evidence. |
 | MaaS GA with subscriptions, quotas, self-service API keys, usage tracking | Release notes say MaaS is GA; MaaS product book still carries Technology Preview language in current indexed page. vLLM MaaS, OIDC, external providers, and observability are Technology Preview. | MaaS enabled and vLLM serving present; no subscription/key/quota story. | Product value gap and docs-status discrepancy | Add source-of-truth note, then build a user-facing MaaS consumption flow. |
-| NeMo Guardrails fully supported in release notes, with `/v1/guardrails/checks`, OpenAI compatibility, regex rails, replicas, OTel, config reload | Release notes say fully supported; guardrails product book still carries Technology Preview language for NeMo. | Local repo migrated; live cluster still shows legacy FMS resources. | Live drift plus docs-status discrepancy | Reconcile live Step 09, then enhance validation for `/v1/guardrails/checks`, replicas, and config reload. |
+| NeMo Guardrails fully supported in release notes, with `/v1/guardrails/checks`, OpenAI compatibility, regex rails, replicas, OTel, config reload | Release notes say fully supported; guardrails product book still carries Technology Preview language for NeMo. | Local repo and live cluster use `NemoGuardrails`; README records the support-status discrepancy. | Mostly covered | Enhance validation for `/v1/guardrails/checks`, replicas, and config reload. |
 | Gen AI Playground redesign, multi-instance comparison, guardrails, MCP servers, knowledge sources | Technology Preview/Developer Preview features vary by subfeature. | Custom chatbot is primary. Dashboard config enables GenAI Studio. | Missing product-native scene | Add product UI scene with two panes: base model vs RAG/guardrails/MCP. |
 | AI Available Assets page | Technology Preview in release notes. | Not explicitly demonstrated. | Missing UI adoption | Show deployed models and MCP servers as reusable project assets. |
 | Model Catalog embedding models | Technology Preview in release notes. | RAG uses sentence-transformers inline embedding, not catalog embedding endpoint. | Architecture opportunity | Add optional catalog-deployed embedding model and compare retrieval/latency. |
@@ -90,8 +90,8 @@ Observed:
 | EvalHub | No `EvalHub` resources found. | CRD available, feature not adopted. |
 | Feature Store | No `FeatureStore` resources found. | Operator/CRD available, feature not adopted. |
 | llm-d | No `LLMInferenceService` resources found. | CRD available, distributed inference not adopted. |
-| MLflow | `MLflow/mlflow` exists. | Infrastructure present; functional lifecycle usage still needs proof. |
-| Step 09 | Argo reports `Synced/Healthy`, but resources are legacy FMS `GuardrailsOrchestrator` and detector `InferenceService`s. | Local NeMo migration is not represented in the live app graph. |
+| MLflow | `MLflow/mlflow` exists; a smoke experiment can be created through the workspace-authenticated API and resolves to `s3://rhoai-storage/enterprise-mlops/...`. | Infrastructure and artifact-root wiring are present; Step 12 now needs a post-change training run to prove the full lifecycle. |
+| Step 09 | Argo reports `Synced/Healthy` and resource tracking shows `NemoGuardrails/nemo-guardrails` plus NeMo config/RBAC resources. | Live guardrails implementation now matches the NeMo demo story; target revision should be returned to `main` after this batch. |
 | Step 10 | Argo reports `Degraded`. | Expected because `acme-equipment-0007` is intentionally broken for the demo story. |
 
 ## Prioritized Remediation
@@ -100,15 +100,15 @@ Observed:
 
 | Item | Action | Acceptance |
 |---|---|---|
-| Support-status matrix | Create a central table for MaaS, vLLM-on-MaaS, NeMo, MLflow, Llama Stack, Responses API, MCP, EvalHub, AutoRAG, AutoML, Feature Store, llm-d, MLServer, Trainer v2, Spark, TrustyAI, and Model Registry APIs. Include release-note status and product-book status where they conflict. | Every README claim points to the matrix or an exact official doc link. |
-| Step 09 live mismatch | Force a hard Argo refresh/resync after confirming the source branch and commit. Prune legacy FMS resources and verify `NemoGuardrails/nemo-guardrails`. | `oc get nemoguardrails -A` shows `nemo-guardrails`; Argo resource list no longer shows `GuardrailsOrchestrator`. |
-| README stale status | After the matrix is agreed, update Step 02/05/09/12 wording: MaaS no longer blanket-TP if release notes are source of truth, NeMo status needs current wording, MLflow should be Technology Preview rather than Developer Preview. | Step docs stop underselling or misclassifying 3.4 features. |
+| Support-status matrix | Keep `support-status-matrix.md` current for MaaS, vLLM-on-MaaS, NeMo, MLflow, Llama Stack, Responses API, MCP, EvalHub, AutoRAG, AutoML, Feature Store, llm-d, MLServer, Trainer v2, Spark, TrustyAI, and Model Registry APIs. Include release-note status and product-book status where they conflict. | Every README claim points to the matrix or an exact official doc link. |
+| Step 09 target revision cleanup | After this batch lands on `main`, reapply or refresh the Step 09 Argo CD Application so live tracking returns from the remediation branch to trunk. | `oc get app step-09-guardrails -n openshift-gitops -o jsonpath='{.spec.source.targetRevision}'` returns `main`; app remains `Synced/Healthy`. |
+| README stale status | Keep Step 02/05/09/12 wording tied to release notes and the support matrix: MaaS is not blanket-TP, NeMo uses the release-note support posture, and MLflow is Technology Preview. | Step docs stop underselling or misclassifying 3.4 features. |
 
 ### P1: Turn Installed Components Into Demo Value
 
 | Item | Action | Acceptance |
 |---|---|---|
-| MLflow lifecycle story | Add MLflow experiment/run/artifact logging to Step 12 KFP, plus validator checks for an experiment and fresh run. | Step 12 shows MLflow UI/API evidence for the latest training run. |
+| MLflow lifecycle story | Run the updated Step 12 KFP after sync and record MLflow run/artifact evidence. | Step 12 shows MLflow UI/API evidence for the latest training run. |
 | MaaS governed consumption | Implement a dashboard/API scene for subscriptions/tiers, API key generation, rate/quota policy, and endpoint call. | A non-admin user can generate/use a scoped key and hit a governed endpoint. |
 | Product-native Playground | Add a scene comparing base model, RAG, MCP tools, and guardrails in the RHOAI Playground. | Demo can show both custom chatbot and Red Hat product UI. |
 | EvalHub/Evaluation Stack | Deploy EvalHub or explicitly mark it as next-wave. Prefer RAGAS/Garak/GuideLLM with MLflow result tracking. | Step 08 gains a product-native evaluation path beyond LMEvalJob. |

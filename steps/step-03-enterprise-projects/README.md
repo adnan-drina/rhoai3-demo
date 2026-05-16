@@ -12,7 +12,7 @@ RHOAI 3.4 is the point where the demo stops treating every workload as one `priv
 The storage and identity story remains common across all three. MinIO provides the S3-compatible storage layer, RHOAI data connection secrets make that storage visible in the dashboard, and OpenShift RBAC maps `ai-admin` and `ai-developer` to the right project roles.
 
 `maas` is the only Kueue-managed project in this slice. RHOAI 3.4 documents namespace-level Kueue enforcement, so this step deliberately avoids applying `kueue.openshift.io/managed=true` to `enterprise-rag` or `enterprise-mlops` until those workloads are made queue-aware.
-`enterprise-mlops` is the only MLflow workspace namespace in this slice. Step 12 deploys the Developer Preview MLflow server and selects this project through the stable `kubernetes.io/metadata.name=enterprise-mlops` namespace label.
+`enterprise-mlops` is the only MLflow workspace namespace in this slice. Step 12 deploys the Technology Preview MLflow server and selects this project through the stable `kubernetes.io/metadata.name=enterprise-mlops` namespace label.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/products/Red Hat OpenShift AI.md` for the enterprise platform framing. Configuration correctness is pinned to official RHOAI 3.4 and OCP 4.20 documentation.
 
