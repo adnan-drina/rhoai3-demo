@@ -100,6 +100,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Workbench network access is handled by NetworkPolicy, not invalid Notebook fields.** The `Notebook` CR follows the live `kubeflow.org/v1` schema and does not set unsupported `spec.template.metadata`. The `lsd-rag-allow-namespace` NetworkPolicy allows same-namespace access to Llama Stack for workbenches, pipeline pods, and the chatbot.
 
+> **NeMo service auth uses Kubernetes identity.** Step 09 enables OpenShift authentication on the NeMo Guardrails service. The chatbot therefore runs as the `rag-chatbot` service account with namespace `view` permissions so its service-account token is accepted by the guardrails endpoint.
+
 #### LlamaStack Configuration (RHOAI 3.4 Example D — pgvector with `rh-dev`)
 
 | Env Var | Value / Source | Purpose | RHOAI 3.4 Ref |

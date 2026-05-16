@@ -54,6 +54,7 @@ spec:
         app: rag-chatbot
         app.kubernetes.io/part-of: llama-stack
     spec:
+      serviceAccountName: rag-chatbot
       containers:
         - name: chatbot
           image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest

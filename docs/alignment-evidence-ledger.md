@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T12:18:35Z
+**Generated:** 2026-05-16T12:54:17Z
 **Command:** `./scripts/audit-doc-alignment.sh --base 1899185`
 **Base ref:** `1899185`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -236,7 +236,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
   - gitops/step-07-rag/base/rag-wb/workbench.yaml:65:          image: alpine/git:latest (unmanaged external dependency)
   - gitops/step-07-rag/base/minio-rag-bucket/init-job.yaml:28:          image: quay.io/minio/mc:latest (unmanaged external dependency)
 - [PASS] Managed or internal `:latest` image references are classified and accepted:
-  - gitops/step-07-rag/base/chatbot/chatbot.yaml:59:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest (internal demo build output)
+  - gitops/step-07-rag/base/chatbot/chatbot.yaml:60:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-chatbot:latest (internal demo build output)
   - gitops/step-07-rag/base/ingestion-service/job.yaml:22:          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/rag-ingestion-service:latest (internal demo build output)
 - [PASS] Chatbot example prompts are GitOps-managed in `RAG_QUESTION_SUGGESTIONS` and grouped by RAG/MCP use case.
 - [PASS] Browser validation reads the deployed example prompt configuration and exercises each non-side-effect example prompt.
@@ -344,7 +344,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned` |
+| Status | `aligned-with-notes` |
 | GitOps path | `gitops/step-12-mlops-pipeline/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-12-mlops-pipeline.yaml` |
 | README | `steps/step-12-mlops-pipeline/README.md` |
@@ -360,7 +360,20 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [WARN] Server dry-run reported existing PVC immutable spec drift, but the matching Argo CD app intentionally ignores PVC `/spec`.
+  Exact warning:
+  The PersistentVolumeClaim "face-pipeline-workspace" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
+    core.PersistentVolumeClaimSpec{
+        AccessModes:      {"ReadWriteOnce"},
+        Selector:         nil,
+        Resources:        {Requests: {s"storage": {i: {...}, s: "10Gi", Format: "BinarySI"}}},
+  -     VolumeName:       "pvc-f1257313-8b0c-438b-878f-8d7217f4d929",
+  +     VolumeName:       "",
+        StorageClassName: &"gp3-csi",
+        VolumeMode:       &"Filesystem",
+        ... // 3 identical fields
+    }
+
 - [PASS] `oc explain Deployment --api-version=apps/v1`
 - [PASS] `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`
 - [PASS] `oc explain MLflowConfig --api-version=mlflow.kubeflow.org/v1`
@@ -386,6 +399,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 6 |
+| Notes / deferred checks | 7 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.
