@@ -2,7 +2,7 @@
 # =============================================================================
 # Step 11: Face Recognition with YOLO11 + OpenVINO
 # =============================================================================
-# Deploys a YOLO11 face recognition model (ONNX) on KServe RawDeployment
+# Deploys a YOLO11 face recognition model (ONNX) on KServe Standard mode
 # using the OpenVINO Model Server runtime. CPU-only — no GPU required.
 #
 # Components:

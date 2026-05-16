@@ -39,7 +39,7 @@ else
 fi
 
 MODEL_INFO=$(oc exec deploy/minio -n minio-storage -- \
-    mc stat --json demo/models/face-recognition/1/model.onnx 2>/dev/null | \
+    sh -c 'mc alias set demo http://localhost:9000 rhoai-access-key rhoai-secret-key-12345 >/dev/null && mc stat --json demo/models/face-recognition/1/model.onnx' 2>/dev/null | \
     python3 -c "
 import json, sys
 for line in sys.stdin:
