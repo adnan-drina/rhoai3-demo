@@ -48,6 +48,10 @@ check "MLflow server available" \
     "oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type==\"Available\")].status}'" \
     "True"
 
+check "MLflow server selects demo MLflow workspaces" \
+    "oc get mlflow mlflow -o json | python3 -c \"import json,sys; print(json.load(sys.stdin).get('spec', {}).get('workspaceLabelSelector', {}).get('matchLabels', {}).get('rhoai-demo/mlflow-workspace', ''))\"" \
+    "true"
+
 check "enterprise-mlops MLflowConfig exists" \
     "oc get mlflowconfig mlflow -n $NAMESPACE -o jsonpath='{.spec.artifactRootSecret}'" \
     "mlflow-artifact-connection"
@@ -55,6 +59,10 @@ check "enterprise-mlops MLflowConfig exists" \
 check "MLflow artifact connection secret exists" \
     "oc get secret mlflow-artifact-connection -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "mlflow-artifact-connection"
+
+check "Pipeline ServiceAccount uses MLflow integration RoleBinding" \
+    "oc get rolebinding face-pipeline-mlflow-integration-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "mlflow-operator-mlflow-integration"
 
 # --- MLflow Run Evidence ---
 log_step "MLflow Run Evidence"

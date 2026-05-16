@@ -100,7 +100,7 @@ if [ ! -d "$VENV_PATH" ]; then
     python3 -m venv "$VENV_PATH"
 fi
 "$VENV_PATH/bin/pip" install -q --upgrade pip
-"$VENV_PATH/bin/pip" install -q kfp
+"$VENV_PATH/bin/pip" install -q kfp kfp-kubernetes
 
 mkdir -p "$REPO_ROOT/artifacts"
 (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" eval_pipeline.py)

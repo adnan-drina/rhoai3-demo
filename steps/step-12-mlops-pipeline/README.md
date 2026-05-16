@@ -5,7 +5,7 @@
 
 Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, MLflow experiment tracking, registry-backed promotion, and TrustyAI monitoring inside `enterprise-mlops`. **Red Hat OpenShift AI 3.4** provides **Kubeflow Pipelines (KFP v2)**, **Model Registry**, **TrustyAI**, and **MLflow** so the workflow runs unattended with governance. Pipelines are versioned, tracked, and managed — reducing user error from experimentation through production. Drift monitoring tracks model behavior over time, catching degradation before users do.
 
-MLflow is treated as a RHOAI 3.4 Technology Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. The training pipeline logs a run after the quality gate passes, including metrics, parameters, tags, and compact artifacts through the MLflow SDK with Kubernetes namespace authentication. The server exposes only the `enterprise-mlops` namespace by selecting its stable Kubernetes namespace-name label.
+MLflow is treated as a RHOAI 3.4 Technology Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified cluster-scoped `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. Step 08 separately configures the `enterprise-rag` MLflow workspace for RAG evaluation evidence. The training pipeline logs a run after the quality gate passes, including metrics, parameters, tags, and compact artifacts through the MLflow SDK with Kubernetes namespace authentication. The server exposes projects labeled `rhoai-demo/mlflow-workspace=true`.
 
 This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with TrustyAI drift and bias monitoring in production.
 
@@ -28,7 +28,7 @@ MLOps Training Pipeline (KFP v2, 8 Steps)
 │      (* optional, release_to_edge=True)
 └── Infrastructure
     ├── face-pipeline-workspace PVC → Shared storage between pipeline steps
-    ├── MLflow                      → Technology Preview tracking server and MLOps workspace config
+    ├── MLflow                      → Technology Preview tracking server and selected workspace configs
     ├── TrustyAIService             → Fairness and drift monitoring
     └── modelcar-release Pipeline   → Tekton pipeline for edge model promotion
 ```
@@ -43,7 +43,7 @@ MLOps Training Pipeline (KFP v2, 8 Steps)
 | `deploy_model` | Restart KServe predictor pod, link ISVC to Registry | `enterprise-mlops` |
 | `setup_monitoring` | Upload baseline to TrustyAI, configure SPD + drift metrics | `enterprise-mlops` |
 | **TrustyAIService** | Fairness and drift monitoring, visible in RHOAI Dashboard | `enterprise-mlops` |
-| **MLflow** | Technology Preview tracking server plus `enterprise-mlops` workspace artifact configuration | cluster-scoped server, `enterprise-mlops` config |
+| **MLflow** | Technology Preview tracking server plus selected workspace artifact configurations | cluster-scoped server, `enterprise-mlops` config; `enterprise-rag` selected for Step 08 |
 | **face-pipeline-workspace** PVC | Shared storage between pipeline steps | `enterprise-mlops` |
 
 Pipeline code: [`steps/step-12-mlops-pipeline/kfp/`](kfp/)
@@ -78,7 +78,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 > **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
-> **MLflow client identity and preflight.** The `log_mlflow_run` component uses the MLflow SDK with `MLFLOW_TRACKING_AUTH=kubernetes-namespaced` against the in-cluster MLflow service root. The pipeline runner ServiceAccount has namespace `edit` through `face-pipeline-mlflow-client`, which lets MLflow authorize run creation and artifact logging for the `enterprise-mlops` workspace. `run-training-pipeline.sh` pre-creates the `face-recognition` experiment through the authenticated MLflow route so first-run setup is explicit.
+> **MLflow client identity and preflight.** The `log_mlflow_run` component uses the MLflow SDK with `MLFLOW_TRACKING_AUTH=kubernetes-namespaced` against the in-cluster MLflow service root. The pipeline runner ServiceAccount has the operator-provided `mlflow-operator-mlflow-integration` role through `face-pipeline-mlflow-integration-client`, which lets MLflow authorize run creation and artifact logging for the `enterprise-mlops` workspace without broad namespace edit permissions. `run-training-pipeline.sh` pre-creates the `face-recognition` experiment through the authenticated MLflow route so first-run setup is explicit. Step 08 uses the same server with a separate `enterprise-rag` workspace for RAG evaluation runs.
 
 > **Tekton for ModelCar builds, not KFP.** Building OCI images requires `buildah` with elevated security context — inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
 
@@ -102,7 +102,7 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 ```
 
 This creates the project-local DSPA, pipeline PVC, RBAC, TrustyAI resources, and MLflow Technology Preview resources via ArgoCD.
-The MLflow server uses a local SQLite metadata store and a 10 GiB PVC for the demo service. The `enterprise-mlops` workspace has an `MLflowConfig` that points at the project S3 artifact connection, so new runs from that namespace use the project artifact root while the SDK writes compact evidence artifacts directly to MinIO.
+The MLflow server uses a local SQLite metadata store and a 10 GiB PVC for the demo service. It exposes namespaces labeled `rhoai-demo/mlflow-workspace=true`, currently `enterprise-mlops` and `enterprise-rag`. The `enterprise-mlops` workspace has an `MLflowConfig` that points at the project S3 artifact connection, so new runs from that namespace use the project artifact root while the SDK writes compact evidence artifacts directly to MinIO.
 By default, `deploy.sh` also submits a short smoke training run: 1 epoch, quality threshold `0.0`, 40 user photos, 40 unknown photos, and no HuggingFace portrait download. Override `PIPELINE_EPOCHS`, `PIPELINE_MAP_THRESHOLD`, `PIPELINE_MAX_USER_PHOTOS`, `PIPELINE_MAX_UNKNOWN_PHOTOS`, and `PIPELINE_NUM_HF_PORTRAITS` when you want a longer validation run.
 
 #### Run the Pipeline

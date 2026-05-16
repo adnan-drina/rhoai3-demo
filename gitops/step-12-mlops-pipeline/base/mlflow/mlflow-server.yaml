@@ -21,7 +21,7 @@ spec:
         storage: 10Gi
   workspaceLabelSelector:
     matchLabels:
-      kubernetes.io/metadata.name: enterprise-mlops
+      rhoai-demo/mlflow-workspace: "true"
   resources:
     requests:
       cpu: 250m

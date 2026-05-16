@@ -107,10 +107,12 @@ check "minio-storage namespace exists" \
     "minio-storage"
 
 # --- MLflow Workspace ---
-log_step "MLflow Workspace"
-check "enterprise-mlops namespace is selectable by MLflow workspace selector" \
-    "oc get namespace enterprise-mlops -o jsonpath='{.metadata.labels.kubernetes\\.io/metadata\\.name}'" \
-    "enterprise-mlops"
+log_step "MLflow Workspaces"
+for ns in enterprise-rag enterprise-mlops; do
+    check "$ns namespace is selectable by MLflow workspace selector" \
+        "oc get namespace $ns -o json | python3 -c \"import json,sys; print(json.load(sys.stdin)['metadata'].get('labels', {}).get('rhoai-demo/mlflow-workspace', ''))\"" \
+        "true"
+done
 
 # --- Kueue ---
 log_step "Kueue"

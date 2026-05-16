@@ -64,6 +64,33 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
+# --- MLflow Workspace ---
+log_step "MLflow Workspace (RAG evaluation evidence)"
+check_crd_exists "mlflows.mlflow.opendatahub.io"
+check_crd_exists "mlflowconfigs.mlflow.kubeflow.org"
+
+check "enterprise-rag MLflowConfig points at artifact connection" \
+    "oc get mlflowconfig mlflow -n $NAMESPACE -o jsonpath='{.spec.artifactRootSecret}'" \
+    "mlflow-artifact-connection"
+
+check "enterprise-rag MLflow artifact connection exists" \
+    "oc get secret mlflow-artifact-connection -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "mlflow-artifact-connection"
+
+check "RAG pipeline ServiceAccount has MLflow integration RoleBinding" \
+    "oc get rolebinding rag-eval-pipeline-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "mlflow-operator-mlflow-integration"
+
+MLFLOW_SELECTOR=$(oc get mlflow mlflow -o json 2>/dev/null | \
+    python3 -c "import json,sys; print(json.load(sys.stdin).get('spec', {}).get('workspaceLabelSelector', {}).get('matchLabels', {}).get('rhoai-demo/mlflow-workspace', ''))" 2>/dev/null || true)
+if [[ "$MLFLOW_SELECTOR" == "true" ]]; then
+    echo -e "${GREEN}[PASS]${NC} MLflow server selects rhoai-demo/mlflow-workspace namespaces"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} MLflow server does not yet select enterprise-rag workspaces"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
 # --- LlamaStack Eval API ---
 log_step "LlamaStack Eval API"
 LSD_POD=$(oc get pods -n "$NAMESPACE" -l app.kubernetes.io/instance=lsd-rag \
@@ -241,6 +268,66 @@ except Exception:
     check_recent_timestamp "Latest RAG eval report" "$REPORT_LATEST" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
 else
     echo -e "${YELLOW}[WARN]${NC} Cannot check MinIO reports (lsd-rag pod not available)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+# --- MLflow Run Evidence ---
+log_step "MLflow Run Evidence"
+MLFLOW_URL=$(oc get mlflow mlflow -o jsonpath='{.status.url}' 2>/dev/null || true)
+OC_TOKEN=$(oc whoami -t 2>/dev/null || true)
+MLFLOW_RUN_INFO=""
+if [[ -n "$MLFLOW_URL" && -n "$OC_TOKEN" ]]; then
+    EXPERIMENT_JSON=$(curl -sk --max-time 20 -X POST "$MLFLOW_URL/api/2.0/mlflow/experiments/search" \
+        -H "Authorization: Bearer $OC_TOKEN" \
+        -H "x-mlflow-workspace: $NAMESPACE" \
+        -H "Content-Type: application/json" \
+        -d '{"filter":"name = '\''enterprise-rag'\''","max_results":1}' 2>/dev/null || true)
+    EXPERIMENT_ID=$(echo "$EXPERIMENT_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); ex=d.get('experiments') or []; print(ex[0].get('experiment_id','') if ex else '')" 2>/dev/null || true)
+
+    if [[ -n "$EXPERIMENT_ID" ]]; then
+        RUN_JSON=$(curl -sk --max-time 20 -X POST "$MLFLOW_URL/api/2.0/mlflow/runs/search" \
+            -H "Authorization: Bearer $OC_TOKEN" \
+            -H "x-mlflow-workspace: $NAMESPACE" \
+            -H "Content-Type: application/json" \
+            -d "{\"experiment_ids\":[\"$EXPERIMENT_ID\"],\"max_results\":5,\"order_by\":[\"attributes.start_time DESC\"]}" 2>/dev/null || true)
+        MLFLOW_RUN_INFO=$(echo "$RUN_JSON" | python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+for run in data.get("runs", []):
+    info = run.get("info", {})
+    tags = {tag.get("key"): tag.get("value") for tag in run.get("data", {}).get("tags", [])}
+    if tags.get("rhoai.demo.step") == "08" or (info.get("run_name") or "").startswith("rag-eval-"):
+        start = str(int(info.get("start_time", 0)) // 1000)
+        print("|".join([
+            info.get("status", ""),
+            start,
+            info.get("run_id", ""),
+            info.get("run_name", ""),
+        ]))
+        break
+' 2>/dev/null || true)
+    fi
+fi
+
+if [[ -n "$MLFLOW_RUN_INFO" ]]; then
+    MLFLOW_STATE="${MLFLOW_RUN_INFO%%|*}"
+    REST="${MLFLOW_RUN_INFO#*|}"
+    MLFLOW_START="${REST%%|*}"
+    REST="${REST#*|}"
+    MLFLOW_RUN_ID="${REST%%|*}"
+    MLFLOW_RUN_NAME="${REST#*|}"
+    if [[ "$MLFLOW_STATE" == "FINISHED" ]]; then
+        echo -e "${GREEN}[PASS]${NC} Latest Step 08 MLflow run finished: $MLFLOW_RUN_NAME ($MLFLOW_RUN_ID)"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} Latest Step 08 MLflow run $MLFLOW_RUN_NAME state: $MLFLOW_STATE"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+    check_recent_timestamp "Latest Step 08 MLflow run" "$MLFLOW_START" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+else
+    echo -e "${YELLOW}[WARN]${NC} No Step 08 MLflow run found — run: ./steps/step-08-model-evaluation/run-rag-eval.sh"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 

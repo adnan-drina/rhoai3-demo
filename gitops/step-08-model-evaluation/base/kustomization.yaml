@@ -4,7 +4,9 @@ kind: Kustomization
 # Step 08: RAG Evaluation
 # Deploys evaluation configuration and sync job.
 # Reuses step-07 infrastructure (lsd-rag, dspa-rag, pgvector, PVC).
-# No new operators or services are deployed.
+# Configures the enterprise-rag MLflow workspace when the cluster-scoped
+# RHOAI MLflow server is present.
 
 resources:
   - eval-configs/
+  - mlflow/

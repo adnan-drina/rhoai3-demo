@@ -22,6 +22,7 @@ from pathlib import Path
 from components.scan_tests import scan_tests_component
 from components.run_and_score_tests import run_and_score_tests_component
 from components.eval_summary import eval_summary_component
+from components.log_rag_mlflow import log_rag_mlflow_component
 
 S3_SECRET = "minio-connection"
 PIPELINE_PVC = "rag-pipeline-workspace"
@@ -65,6 +66,8 @@ def rag_eval_pipeline(
     llamastack_url: str = "http://lsd-rag-service.enterprise-rag.svc.cluster.local:8321",
     run_id: str = "eval",
     minio_console_url: str = "",
+    mlflow_tracking_uri: str = "https://mlflow.redhat-ods-applications.svc:8443",
+    enable_mlflow_tracking: bool = True,
 ):
     # --- Step 1: Discover Tests ---
     scan = scan_tests_component(eval_configs_dir="/shared-data/eval-configs")
@@ -90,6 +93,20 @@ def rag_eval_pipeline(
         minio_console_url=minio_console_url,
     )
     report.set_caching_options(False)
+
+    # --- Step 4: MLflow Evidence ---
+    mlflow = log_rag_mlflow_component(
+        summary=run_score.outputs["summary"],
+        run_id=run_id,
+        llamastack_url=llamastack_url,
+        minio_console_url=minio_console_url,
+        mlflow_tracking_uri=mlflow_tracking_uri,
+        enable_mlflow_tracking=enable_mlflow_tracking,
+    )
+    mlflow.after(report)
+    _inject_minio(mlflow)
+    _set_resources(mlflow)
+    mlflow.set_caching_options(False)
 
 
 if __name__ == "__main__":

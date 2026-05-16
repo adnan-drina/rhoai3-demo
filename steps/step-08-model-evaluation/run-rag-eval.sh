@@ -13,14 +13,12 @@ source "$REPO_ROOT/scripts/lib.sh"
 
 PIPELINE_YAML="$REPO_ROOT/artifacts/rag-eval.yaml"
 VENV_PATH="$REPO_ROOT/.venv-kfp"
-if [ ! -f "$PIPELINE_YAML" ]; then
-    log_info "Compiling pipeline..."
-    if [ ! -d "$VENV_PATH" ]; then
-        python3 -m venv "$VENV_PATH"
-        "$VENV_PATH/bin/pip" install -q --upgrade pip kfp
-    fi
-    (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" eval_pipeline.py)
+log_info "Compiling pipeline..."
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
 fi
+"$VENV_PATH/bin/pip" install -q --upgrade pip kfp kfp-kubernetes
+(cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" eval_pipeline.py)
 
 log_info "Launching eval pipeline (run_id=$RUN_ID)..."
 
@@ -34,7 +32,19 @@ MINIO_CONSOLE_URL=""
 if [ -n "$MINIO_CONSOLE_ROUTE" ]; then
     MINIO_CONSOLE_URL="https://$MINIO_CONSOLE_ROUTE"
 fi
-export NAMESPACE RUN_ID PIPELINE_YAML MINIO_CONSOLE_URL
+
+MLFLOW_TRACKING_URI=$(oc get mlflow mlflow -o jsonpath='{.status.address.url}' 2>/dev/null || true)
+if [[ -z "$MLFLOW_TRACKING_URI" ]]; then
+    MLFLOW_TRACKING_URI=$(oc get mlflow mlflow -o jsonpath='{.status.url}' 2>/dev/null || true)
+fi
+if [[ -n "$MLFLOW_TRACKING_URI" ]]; then
+    log_info "MLflow tracking URI: $MLFLOW_TRACKING_URI"
+else
+    MLFLOW_TRACKING_URI="https://mlflow.redhat-ods-applications.svc:8443"
+    log_warn "MLflow server not found; pipeline will skip MLflow logging if the server is unavailable"
+fi
+
+export NAMESPACE RUN_ID PIPELINE_YAML MINIO_CONSOLE_URL MLFLOW_TRACKING_URI
 
 "$VENV_PATH/bin/python3" << 'PYTHON_SCRIPT'
 import os, sys, time
@@ -117,7 +127,13 @@ except Exception:
         sys.exit(1)
 
 MINIO_CONSOLE_URL = os.environ.get("MINIO_CONSOLE_URL", "")
-params = {"run_id": RUN_ID, "minio_console_url": MINIO_CONSOLE_URL}
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "https://mlflow.redhat-ods-applications.svc:8443")
+params = {
+    "run_id": RUN_ID,
+    "minio_console_url": MINIO_CONSOLE_URL,
+    "mlflow_tracking_uri": MLFLOW_TRACKING_URI,
+    "enable_mlflow_tracking": True,
+}
 
 run = kfp_client.run_pipeline(
     experiment_id=experiment_id,

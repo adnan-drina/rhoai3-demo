@@ -229,7 +229,8 @@ rh_brain_terms_for() {
     local component="$1"
     case "$component" in
         step-05-*|step-06-*) echo "Models-as-a-Service"; echo "llm-d"; echo "vLLM" ;;
-        step-07-*|step-08-*) echo "RAG"; echo "AutoRAG"; echo "evaluation" ;;
+        step-07-*) echo "RAG"; echo "AutoRAG"; echo "evaluation" ;;
+        step-08-*) echo "RAG"; echo "AutoRAG"; echo "evaluation"; echo "MLflow" ;;
         step-09-*) echo "guardrails"; echo "AI safety" ;;
         step-10-*) echo "MCP"; echo "agentic" ;;
         step-11-*|step-12-*) echo "MLflow"; echo "MLOps"; echo "predictive AI" ;;
