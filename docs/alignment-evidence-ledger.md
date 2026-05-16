@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-16T08:31:25Z
+**Generated:** 2026-05-16T09:05:08Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
