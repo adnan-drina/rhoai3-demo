@@ -132,40 +132,32 @@ else
 fi
 echo ""
 
-log_step "Restarting Playground LSD to discover MCP tool_groups..."
+log_step "Restarting Llama Stack services to discover MCP connectors..."
 
 if oc get llamastackdistribution lsd-genai-playground -n "$NAMESPACE" &>/dev/null; then
     oc rollout restart deployment/lsd-genai-playground -n "$NAMESPACE" 2>/dev/null || true
     log_success "lsd-genai-playground restart triggered"
 fi
 
-# Register MCP tool_groups in lsd-rag using route URLs (persists in PostgreSQL)
 if oc get llamastackdistribution lsd-rag -n "$NAMESPACE" &>/dev/null; then
+    oc rollout restart deployment/lsd-rag -n "$NAMESPACE" 2>/dev/null || true
+    oc wait deployment/lsd-rag -n "$NAMESPACE" --for=condition=Available --timeout=180s 2>/dev/null || \
+        log_warn "lsd-rag did not report Available after restart"
+
     LSD_POD=$(oc get pods -l app.kubernetes.io/instance=lsd-rag -n "$NAMESPACE" \
         --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1 || true)
     if [[ -n "$LSD_POD" ]]; then
-        log_step "Registering MCP tool_groups in lsd-rag (via routes)..."
-        for tg in openshift database slack; do
-            MCP_URL="https://$(oc get route ${tg}-mcp -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null)/sse"
-            if [[ "$MCP_URL" == "https:///sse" ]]; then
-                log_warn "  mcp::${tg} — route not found, skipping"
-                continue
-            fi
-            EXISTING=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-                curl -sf "http://localhost:8321/v1/toolgroups/mcp::${tg}" 2>/dev/null || true)
-            if [[ -n "$EXISTING" ]] && echo "$EXISTING" | grep -q "identifier"; then
-                log_success "  mcp::${tg} already registered"
+        CONNECTORS=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+            curl -sf "http://localhost:8321/v1beta/connectors" 2>/dev/null || true)
+        for connector in openshift-mcp database-mcp slack-mcp; do
+            if echo "$CONNECTORS" | grep -q "\"connector_id\":\"${connector}\""; then
+                log_success "  connector ${connector} registered in lsd-rag"
             else
-                oc exec "$LSD_POD" -n "$NAMESPACE" -- \
-                    curl -sf -X POST "http://localhost:8321/v1/toolgroups" \
-                    -H "Content-Type: application/json" \
-                    -d "{\"toolgroup_id\":\"mcp::${tg}\",\"provider_id\":\"model-context-protocol\",\"mcp_endpoint\":{\"uri\":\"${MCP_URL}\"}}" \
-                    2>/dev/null && log_success "  mcp::${tg} registered ($MCP_URL)" \
-                    || log_warn "  mcp::${tg} registration failed"
+                log_warn "  connector ${connector} not visible in lsd-rag; confirm step-07 Llama Stack config is synced"
             fi
         done
     else
-        log_warn "lsd-rag pod not found — register tool_groups manually"
+        log_warn "lsd-rag pod not found — skipping connector check"
     fi
 fi
 echo ""

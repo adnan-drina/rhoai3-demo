@@ -98,9 +98,9 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > **Generic SQL access:** The Database MCP uses EDB Postgres MCP rather than custom endpoints. The LLM discovers the schema autonomously and writes targeted SQL — no application-specific API required.
 
-> **MCP transport configuration (RHOAI 3.4):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its URL uses `/mcp` instead of `/sse`. LlamaStack tool_group registrations still use `/sse` URLs since LlamaStack's MCP client handles SSE natively.
+> **MCP transport configuration (RHOAI 3.4):** The gen-ai backend defaults to `streamable-http` transport (POST directly to URL). MCP servers that only support SSE transport (GET `/sse` + POST `/messages`) **must** include `"transport": "sse"` in the ConfigMap JSON, or the Dashboard shows "Error" status. OpenShift-MCP (kubernetes-mcp-server v0.0.54+) supports streamable-http on `/mcp`, so its Dashboard URL uses `/mcp` instead of `/sse`. The `lsd-rag` runtime registers the same servers as Llama Stack connectors using in-cluster `/sse` service URLs.
 
-> **No lsd-rag restart:** MCP tool_groups are registered via the LlamaStack API and persist in PostgreSQL. Only the Dashboard Playground LSD is restarted. Vector store data is unaffected.
+> **Connector-based lsd-rag integration:** RHOAI 3.4 packages Llama Stack 0.7, where the old `/v1/toolgroups` and `/v1/tool-runtime/invoke` endpoints are no longer part of the served API. The `lsd-rag` ConfigMap enables `connectors`, stores connector metadata in PostgreSQL, and registers `openshift-mcp`, `database-mcp`, and `slack-mcp` at startup.
 
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.4 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
 
@@ -114,8 +114,8 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 <summary>Deploy</summary>
 
 ```bash
-./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP tool_group registration
-./steps/step-10-mcp-integration/validate.sh   # 19 checks: infrastructure + functional MCP tests
+./steps/step-10-mcp-integration/deploy.sh     # ArgoCD app + Slack secret + MCP connector refresh
+./steps/step-10-mcp-integration/validate.sh   # infrastructure + MCP connector/tool discovery checks
 ```
 
 </details>
@@ -123,7 +123,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 <details>
 <summary>What to Verify After Deployment</summary>
 
-`validate.sh` runs 19 checks: 12 infrastructure + 7 functional MCP tests.
+`validate.sh` checks infrastructure, Dashboard MCP configuration, Llama Stack connector registration, and MCP tool discovery.
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
@@ -133,11 +133,8 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | ConfigMap | `gen-ai-aa-mcp-servers` in `redhat-ods-applications` | Exists |
 | ACME environment | acme-corp namespace, 3 equipment pods | Namespace + 3 pods |
 | MCP connectivity | Pod found for each server | 3 pods |
-| **Tool_group registration** | mcp::openshift, mcp::database, mcp::slack | All registered in lsd-rag |
-| **OpenShift MCP** | `pods_list_in_namespace(acme-corp)` | Returns acme-equipment pods |
-| **Database MCP** | `list_schemas` | Returns public schema |
-| **Database MCP** | `execute_sql` for acme-equipment-0007 | Returns L-900-08 |
-| **Slack MCP** | `channels_list(channel_types="public_channel")` | Returns demo channel |
+| **Connector registration** | openshift-mcp, database-mcp, slack-mcp | All registered in lsd-rag |
+| **MCP tool discovery** | `/v1beta/connectors/<connector>/tools` | Each connector returns tool definitions |
 
 </details>
 

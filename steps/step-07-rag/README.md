@@ -56,7 +56,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **RHOAI 3.4 Llama Stack config.** The `lsd-rag-config` user config follows the Llama Stack 0.4 `responses` API shape and uses the built-in `file-search` tool runtime for RAG. It also overrides the annotation instruction template to prevent `<|file-xxx|>` citation markers in model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs).
 
-> **MCP tool_groups are registered via the LlamaStack API at deploy time** (not in config files). They persist in PostgreSQL across restarts.
+> **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
 

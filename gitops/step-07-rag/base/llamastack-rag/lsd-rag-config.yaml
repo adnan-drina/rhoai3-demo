@@ -24,6 +24,7 @@ data:
     - safety
     - scoring
     - tool_runtime
+    - connectors
     - vector_io
     - files
     - file_processors
@@ -276,6 +277,9 @@ data:
         prompts:
           namespace: prompts
           backend: kv_default
+        connectors:
+          namespace: connectors
+          backend: kv_default
     registered_resources:
       models:
       - metadata: {}
@@ -293,11 +297,19 @@ data:
       datasets: []
       scoring_fns: []
       benchmarks: []
-      tool_groups:
-      - toolgroup_id: builtin::websearch
-        provider_id: tavily-search
-      - toolgroup_id: builtin::rag
-        provider_id: file-search
+    connectors:
+    - connector_id: openshift-mcp
+      connector_type: mcp
+      url: http://openshift-mcp.enterprise-rag.svc:8000/sse
+      server_label: openshift
+    - connector_id: database-mcp
+      connector_type: mcp
+      url: http://database-mcp.enterprise-rag.svc:8080/sse
+      server_label: database
+    - connector_id: slack-mcp
+      connector_type: mcp
+      url: http://slack-mcp.enterprise-rag.svc:8080/sse
+      server_label: slack
     vector_stores:
       default_provider_id: pgvector
       default_embedding_model:
