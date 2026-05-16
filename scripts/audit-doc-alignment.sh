@@ -129,13 +129,16 @@ dependencies_for() {
         step-11-*) echo "step-01-gpu-and-prereq"; echo "step-02-rhoai"; echo "step-03-enterprise-projects" ;;
         step-12-*) echo "step-03-enterprise-projects"; echo "step-04-model-registry"; echo "step-07-rag"; echo "step-11-face-recognition" ;;
         step-13-*) echo "step-11-face-recognition"; echo "step-12-mlops-pipeline" ;;
+        step-13b-*) echo "step-11-face-recognition"; echo "step-12-mlops-pipeline" ;;
         edge-ai-microshift) echo "step-13b-edge-ai-microshift" ;;
     esac
 }
 
 gitops_path_for() {
     local component="$1"
-    if [[ -d "gitops/$component/base" ]]; then
+    if [[ "$component" == "step-13b-edge-ai-microshift-operator" ]]; then
+        printf 'gitops/step-13b-edge-ai-microshift/operator\n'
+    elif [[ -d "gitops/$component/base" ]]; then
         printf 'gitops/%s/base\n' "$component"
     elif [[ -d "gitops/$component" ]]; then
         printf 'gitops/%s\n' "$component"
@@ -146,7 +149,9 @@ gitops_path_for() {
 
 readme_path_for() {
     local component="$1"
-    if [[ -f "steps/$component/README.md" ]]; then
+    if [[ "$component" == "step-13b-edge-ai-microshift-operator" ]]; then
+        printf 'steps/step-13b-edge-ai-microshift/README.md\n'
+    elif [[ -f "steps/$component/README.md" ]]; then
         printf 'steps/%s/README.md\n' "$component"
     else
         printf '\n'
@@ -196,7 +201,7 @@ rh_brain_terms_for() {
         step-09-*) echo "guardrails"; echo "AI safety" ;;
         step-10-*) echo "MCP"; echo "agentic" ;;
         step-11-*|step-12-*) echo "MLflow"; echo "MLOps"; echo "predictive AI" ;;
-        step-13-*|edge-ai-microshift) echo "edge AI"; echo "MicroShift" ;;
+        step-13-*|step-13b-*|edge-ai-microshift) echo "edge AI"; echo "MicroShift" ;;
         *) echo "OpenShift AI" ;;
     esac
 }

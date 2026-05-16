@@ -1,6 +1,6 @@
 # Documentation Alignment Evidence Ledger
 
-**Generated:** 2026-05-15T23:14:20Z
+**Generated:** 2026-05-16T03:35:33Z
 **Command:** `./scripts/audit-doc-alignment.sh --base origin/main`
 **Base ref:** `origin/main`
 **Docs baseline:** RHOAI 3.4 / OCP 4.20
@@ -20,7 +20,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-01-gpu-and-prereq/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-01-gpu-and-prereq.yaml` |
 | README | `steps/step-01-gpu-and-prereq/README.md` |
@@ -35,16 +35,16 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-01-gpu-and-prereq/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Kuadrant --api-version=kuadrant.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain NodeFeatureDiscovery --api-version=nfd.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain ClusterPolicy --api-version=nvidia.com/v1`.
-- [DEFERRED] Verify with `oc explain KnativeServing --api-version=operator.knative.dev/v1beta1`.
-- [DEFERRED] Verify with `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`.
-- [DEFERRED] Verify with `oc explain OperatorGroup --api-version=operators.coreos.com/v1`.
-- [DEFERRED] Verify with `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Kuadrant --api-version=kuadrant.io/v1beta1`
+- [PASS] `oc explain NodeFeatureDiscovery --api-version=nfd.openshift.io/v1`
+- [PASS] `oc explain ClusterPolicy --api-version=nvidia.com/v1`
+- [PASS] `oc explain KnativeServing --api-version=operator.knative.dev/v1beta1`
+- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
+- [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
+- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain Namespace --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -71,20 +71,20 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`.
-- [DEFERRED] Verify with `oc explain DSCInitialization --api-version=dscinitialization.opendatahub.io/v1`.
-- [DEFERRED] Verify with `oc explain Gateway --api-version=gateway.networking.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain HardwareProfile --api-version=infrastructure.opendatahub.io/v1`.
-- [DEFERRED] Verify with `oc explain OdhDashboardConfig --api-version=opendatahub.io/v1alpha`.
-- [DEFERRED] Verify with `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`.
-- [DEFERRED] Verify with `oc explain OperatorGroup --api-version=operators.coreos.com/v1`.
-- [DEFERRED] Verify with `oc explain Auth --api-version=services.platform.opendatahub.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
+- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with `kustomize build gitops/step-02-rhoai/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain DataScienceCluster --api-version=datasciencecluster.opendatahub.io/v2`
+- [PASS] `oc explain DSCInitialization --api-version=dscinitialization.opendatahub.io/v1`
+- [PASS] `oc explain Gateway --api-version=gateway.networking.k8s.io/v1`
+- [PASS] `oc explain HardwareProfile --api-version=infrastructure.opendatahub.io/v1`
+- [PASS] `oc explain OdhDashboardConfig --api-version=opendatahub.io/v1alpha`
+- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
+- [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
+- [PASS] `oc explain Auth --api-version=services.platform.opendatahub.io/v1alpha1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -104,29 +104,27 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Findings**
 
 - [PASS] `kustomize build gitops/step-03-enterprise-projects/base` rendered successfully.
-- [PASS] `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -` completed on the OCP 4.20/RHOAI 3.4 cluster.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [PASS] Step 12 scopes MLflow to `enterprise-mlops` with the stable namespace label `kubernetes.io/metadata.name=enterprise-mlops`.
 - [WARN] Unpinned `:latest` image references found:
   - gitops/step-03-enterprise-projects/base/minio/init-job.yaml:31:          image: quay.io/minio/mc:latest
   - gitops/step-03-enterprise-projects/base/minio/deployment.yaml:26:          image: quay.io/minio/minio:latest
 
 **Schema Verification**
 
-- [PASS] Rendered schema and CR fields verified with `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain OAuth --api-version=config.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain Kueue --api-version=kueue.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain ClusterQueue --api-version=kueue.x-k8s.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain LocalQueue --api-version=kueue.x-k8s.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain ResourceFlavor --api-version=kueue.x-k8s.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain OAuth --api-version=config.openshift.io/v1`
+- [PASS] `oc explain Kueue --api-version=kueue.openshift.io/v1`
+- [PASS] `oc explain ClusterQueue --api-version=kueue.x-k8s.io/v1beta1`
+- [PASS] `oc explain LocalQueue --api-version=kueue.x-k8s.io/v1beta1`
+- [PASS] `oc explain ResourceFlavor --api-version=kueue.x-k8s.io/v1beta1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -154,15 +152,15 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-04-model-registry/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain ModelRegistry --api-version=modelregistry.opendatahub.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain NetworkPolicy --api-version=networking.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain ModelRegistry --api-version=modelregistry.opendatahub.io/v1beta1`
+- [PASS] `oc explain NetworkPolicy --api-version=networking.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -189,11 +187,10 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-05-maas-model-serving/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
+- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
 
 **rh-brain Research Sources**
 
@@ -223,22 +220,22 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-06-model-metrics/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain CronJob --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain Grafana --api-version=grafana.integreatly.org/v1beta1`.
-- [DEFERRED] Verify with `oc explain GrafanaDashboard --api-version=grafana.integreatly.org/v1beta1`.
-- [DEFERRED] Verify with `oc explain GrafanaDatasource --api-version=grafana.integreatly.org/v1beta1`.
-- [DEFERRED] Verify with `oc explain Notebook --api-version=kubeflow.org/v1`.
-- [DEFERRED] Verify with `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`.
-- [DEFERRED] Verify with `oc explain OperatorGroup --api-version=operators.coreos.com/v1`.
-- [DEFERRED] Verify with `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Role --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain ServiceAccount --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain CronJob --api-version=batch/v1`
+- [PASS] `oc explain Grafana --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain GrafanaDashboard --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain GrafanaDatasource --api-version=grafana.integreatly.org/v1beta1`
+- [PASS] `oc explain Notebook --api-version=kubeflow.org/v1`
+- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
+- [PASS] `oc explain OperatorGroup --api-version=operators.coreos.com/v1`
+- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -271,23 +268,23 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-07-rag/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain BuildConfig --api-version=build.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`.
-- [DEFERRED] Verify with `oc explain ImageStream --api-version=image.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain Notebook --api-version=kubeflow.org/v1`.
-- [DEFERRED] Verify with `oc explain LlamaStackDistribution --api-version=llamastack.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain NetworkPolicy --api-version=networking.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Role --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Route --api-version=route.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
-- [DEFERRED] Verify with `oc explain ServiceAccount --api-version=v1`.
+- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with `kustomize build gitops/step-07-rag/base | oc apply --dry-run=server --validate=strict -f -`.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain BuildConfig --api-version=build.openshift.io/v1`
+- [PASS] `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`
+- [PASS] `oc explain ImageStream --api-version=image.openshift.io/v1`
+- [PASS] `oc explain Notebook --api-version=kubeflow.org/v1`
+- [PASS] `oc explain LlamaStackDistribution --api-version=llamastack.io/v1alpha1`
+- [PASS] `oc explain NetworkPolicy --api-version=networking.k8s.io/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -316,9 +313,9 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-08-model-evaluation/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -331,7 +328,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 | Field | Evidence |
 |-------|----------|
-| Status | `aligned-with-notes` |
+| Status | `aligned` |
 | GitOps path | `gitops/step-09-guardrails/base` |
 | Argo CD app | `gitops/argocd/app-of-apps/step-09-guardrails.yaml` |
 | README | `steps/step-09-guardrails/README.md` |
@@ -346,11 +343,11 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-09-guardrails/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain GuardrailsOrchestrator --api-version=trustyai.opendatahub.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
+- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
+- [PASS] `oc explain GuardrailsOrchestrator --api-version=trustyai.opendatahub.io/v1alpha1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -380,19 +377,19 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-10-mcp-integration/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Role --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Route --api-version=route.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Pod --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
-- [DEFERRED] Verify with `oc explain ServiceAccount --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Pod --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -421,15 +418,15 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-11-face-recognition/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Job --api-version=batch/v1`.
-- [DEFERRED] Verify with `oc explain Notebook --api-version=kubeflow.org/v1`.
-- [DEFERRED] Verify with `oc explain Role --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain ServiceAccount --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Job --api-version=batch/v1`
+- [PASS] `oc explain Notebook --api-version=kubeflow.org/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
+- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain ServiceAccount --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -451,8 +448,6 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 **Findings**
 
 - [PASS] `kustomize build gitops/step-12-mlops-pipeline/base` rendered successfully.
-- [PASS] `kustomize build gitops/step-12-mlops-pipeline/base | oc apply --dry-run=server --validate=strict -f -` completed on the OCP 4.20/RHOAI 3.4 cluster.
-- [PASS] MLflow Developer Preview resources are schema-backed: `oc explain mlflow.spec`, `oc explain mlflowconfig.spec`, `oc explain mlflow.status.conditions`.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
 - [WARN] Unpinned `:latest` image references found:
@@ -460,19 +455,19 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [PASS] Rendered schema and CR fields verified with `kustomize build gitops/step-12-mlops-pipeline/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`.
-- [DEFERRED] Verify with `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain Role --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`.
-- [DEFERRED] Verify with `oc explain TrustyAIService --api-version=trustyai.opendatahub.io/v1`.
-- [DEFERRED] Verify with `oc explain ConfigMap --api-version=v1`.
-- [DEFERRED] Verify with `oc explain PersistentVolumeClaim --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
-- [PASS] Verified with `oc explain MLflow --api-version=mlflow.opendatahub.io/v1`.
-- [PASS] Verified with `oc explain MLflowConfig --api-version=mlflow.kubeflow.org/v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain DataSciencePipelinesApplication --api-version=datasciencepipelinesapplications.opendatahub.io/v1`
+- [PASS] `oc explain MLflowConfig --api-version=mlflow.kubeflow.org/v1`
+- [PASS] `oc explain MLflow --api-version=mlflow.opendatahub.io/v1`
+- [PASS] `oc explain ClusterRoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain Role --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain RoleBinding --api-version=rbac.authorization.k8s.io/v1`
+- [PASS] `oc explain TrustyAIService --api-version=trustyai.opendatahub.io/v1`
+- [PASS] `oc explain ConfigMap --api-version=v1`
+- [PASS] `oc explain PersistentVolumeClaim --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -501,14 +496,14 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 
 **Schema Verification**
 
-- [DEFERRED] Verify rendered schema and CR fields with `kustomize build gitops/step-13-edge-ai/base | oc apply --dry-run=server --validate=strict -f -`.
-- [DEFERRED] Verify with `oc explain Deployment --api-version=apps/v1`.
-- [DEFERRED] Verify with `oc explain Route --api-version=route.openshift.io/v1`.
-- [DEFERRED] Verify with `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`.
-- [DEFERRED] Verify with `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`.
-- [DEFERRED] Verify with `oc explain Namespace --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Secret --api-version=v1`.
-- [DEFERRED] Verify with `oc explain Service --api-version=v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Deployment --api-version=apps/v1`
+- [PASS] `oc explain Route --api-version=route.openshift.io/v1`
+- [PASS] `oc explain ServingRuntime --api-version=serving.kserve.io/v1alpha1`
+- [PASS] `oc explain InferenceService --api-version=serving.kserve.io/v1beta1`
+- [PASS] `oc explain Namespace --api-version=v1`
+- [PASS] `oc explain Secret --api-version=v1`
+- [PASS] `oc explain Service --api-version=v1`
 
 **rh-brain Research Sources**
 
@@ -519,44 +514,62 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 | Field | Evidence |
 |-------|----------|
 | Status | `aligned-with-notes` |
-| GitOps path | `gitops/step-13b-edge-ai-microshift/operator`, `gitops/step-13b-edge-ai-microshift/base` |
-| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift-operator.yaml`, `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
+| GitOps path | `gitops/step-13b-edge-ai-microshift/base` |
+| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift.yaml` |
 | README | `steps/step-13b-edge-ai-microshift/README.md` |
-| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/), [Red Hat OpenShift Pipelines 1.22](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.22/html/installing_and_configuring/) |
+| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
+
+**Findings**
+
+- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base` rendered successfully.
+- [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
+- [PASS] README contains pinned official product documentation references.
+- [WARN] Unpinned `:latest` image references found:
+  - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:30:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:32:      image: registry.access.redhat.com/ubi9/python-311:latest
+  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:71:      image: registry.access.redhat.com/ubi9/buildah:latest
+
+**Schema Verification**
+
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Pipeline --api-version=tekton.dev/v1`
+- [PASS] `oc explain Task --api-version=tekton.dev/v1`
+
+**rh-brain Research Sources**
+
+- `rh-brain: raw/What is edge AI?.md`
+
+### step-13b-edge-ai-microshift-operator
+
+| Field | Evidence |
+|-------|----------|
+| Status | `aligned` |
+| GitOps path | `gitops/step-13b-edge-ai-microshift/operator` |
+| Argo CD app | `gitops/argocd/app-of-apps/step-13b-edge-ai-microshift-operator.yaml` |
+| README | `steps/step-13b-edge-ai-microshift/README.md` |
+| Official docs | [RHOAI 3.4](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/), [OCP 4.20](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/) |
 
 **Findings**
 
 - [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/operator` rendered successfully.
-- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base` rendered successfully.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [PASS] Central deployment completed with OpenShift Pipelines CSV `openshift-pipelines-operator-rh.v1.22.0` in `Succeeded` phase.
-- [PASS] `./steps/step-13b-edge-ai-microshift/validate.sh` passed central checks: 11 passed, 0 failed.
-- [NOTE] MicroShift host deployment remains environment-gated by `EDGE_HOST` and `EDGE_PASS`; central OCP ModelCar release GitOps is validated on the provided cluster.
-- [NOTE] A custom ArgoCD `Subscription` health check was added because OLM can keep stale `InstallPlanFailed` conditions after the subscription reaches `AtLatestKnown` and the CSV succeeds.
-- [WARN] Unpinned `:latest` image references found:
-  - gitops/step-13b-edge-ai-microshift/base/update-gitops.yaml:28:      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:30:      image: registry.access.redhat.com/ubi9/python-311:latest
-  - gitops/step-13b-edge-ai-microshift/base/build-modelcar.yaml:69:      image: registry.access.redhat.com/ubi9/buildah:latest
+- [PASS] No unpinned `:latest` image references found in GitOps path.
 
 **Schema Verification**
 
-- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/operator | oc apply --dry-run=server --validate=strict -f -`.
-- [PASS] `kustomize build gitops/step-13b-edge-ai-microshift/base | oc apply --dry-run=server --validate=strict -f -`.
-- [PASS] `oc explain subscription.spec.installPlanApproval --api-version=operators.coreos.com/v1alpha1` confirmed `Automatic` and `Manual` values.
-- [PASS] `oc explain Pipeline --api-version=tekton.dev/v1`.
-- [PASS] `oc explain Task --api-version=tekton.dev/v1`.
+- [PASS] `oc apply --dry-run=server --validate=strict -f rendered.yaml` accepted rendered resources.
+- [PASS] `oc explain Subscription --api-version=operators.coreos.com/v1alpha1`
 
 **rh-brain Research Sources**
 
-- `rh-brain: raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md`
-- `rh-brain: raw/Customize Models for Gen AI and Agentic AI Applications  Red Hat OpenShift AI Self-Managed  3.4.md`
+- `rh-brain: raw/What is edge AI?.md`
 
 ## Summary
 
 | Result | Count |
 |--------|-------|
 | Blocking findings | 0 |
-| Notes / deferred checks | 26 |
+| Notes / deferred checks | 14 |
 
 **Decision:** aligned. Notes and deferred checks may be handled as follow-up work.
