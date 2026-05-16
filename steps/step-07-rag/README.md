@@ -54,7 +54,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
 
-> **Minimal `userConfig` for annotation override.** The `rh-dev` template auto-wires all providers from env vars. A `userConfig` ConfigMap (`lsd-rag-config`) is used solely to override the `annotation_instruction_template` — preventing LlamaStack from injecting `<|file-xxx|>` citation markers into model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs). The full auto-generated config is preserved; only the annotation template is changed.
+> **RHOAI 3.4 Llama Stack config.** The `lsd-rag-config` user config follows the Llama Stack 0.4 `responses` API shape and uses the built-in `file-search` tool runtime for RAG. It also overrides the annotation instruction template to prevent `<|file-xxx|>` citation markers in model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs).
 
 > **MCP tool_groups are registered via the LlamaStack API at deploy time** (not in config files). They persist in PostgreSQL across restarts.
 

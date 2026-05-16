@@ -16,16 +16,17 @@ data:
     version: 2
     image_name: rh
     apis:
-    - agents
     - batches
     - datasetio
     - eval
     - inference
+    - responses
     - safety
     - scoring
     - tool_runtime
     - vector_io
     - files
+    - file_processors
     providers:
       inference:
       - provider_id: ${env.VLLM_URL:+vllm-inference}
@@ -135,17 +136,17 @@ data:
             orchestrator_url: ${env.FMS_ORCHESTRATOR_URL:=}
             ssl_cert_path: ${env.FMS_SSL_CERT_PATH:=}
             shields: {}
-      agents:
-      - provider_id: meta-reference
-        provider_type: inline::meta-reference
+      responses:
+      - provider_id: builtin
+        provider_type: inline::builtin
         config:
           persistence:
             agent_state:
               backend: kv_default
-              namespace: agents::meta_reference
+              namespace: agents
             responses:
               backend: sql_default
-              table_name: agents_responses
+              table_name: responses
               max_write_queue_size: 10000
               num_writers: 4
       eval:
@@ -208,9 +209,8 @@ data:
         config:
           api_key: ${env.TAVILY_SEARCH_API_KEY:=}
           max_results: 3
-      - provider_id: rag-runtime
-        provider_type: inline::rag-runtime
-        config: {}
+      - provider_id: file-search
+        provider_type: inline::file-search
       - provider_id: model-context-protocol
         provider_type: remote::model-context-protocol
         config: {}
@@ -234,6 +234,9 @@ data:
           metadata_store:
             backend: sql_default
             table_name: files_metadata
+      file_processors:
+      - provider_id: pypdf
+        provider_type: inline::pypdf
       batches:
       - provider_id: reference
         provider_type: inline::reference
@@ -294,8 +297,12 @@ data:
       - toolgroup_id: builtin::websearch
         provider_id: tavily-search
       - toolgroup_id: builtin::rag
-        provider_id: rag-runtime
+        provider_id: file-search
     vector_stores:
+      default_provider_id: pgvector
+      default_embedding_model:
+        provider_id: sentence-transformers
+        model_id: ${env.EMBEDDING_MODEL:=granite-embedding-125m-english}
       annotation_prompt_params:
         enable_annotations: true
         annotation_instruction_template: >
