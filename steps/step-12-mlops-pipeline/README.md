@@ -78,6 +78,8 @@ Manifests: [`gitops/step-12-mlops-pipeline/base/`](../../gitops/step-12-mlops-pi
 
 > **External Model Registry route** with auth token. The internal service has a NetworkPolicy blocking cross-namespace access. Pipeline components use the HTTPS route.
 
+> **MLflow client identity and preflight.** The `log_mlflow_run` component uses the MLflow SDK with `MLFLOW_TRACKING_AUTH=kubernetes-namespaced` against the in-cluster MLflow service root. The pipeline runner ServiceAccount has namespace `edit` through `face-pipeline-mlflow-client`, which lets MLflow authorize run creation and artifact logging for the `enterprise-mlops` workspace. `run-training-pipeline.sh` pre-creates the `face-recognition` experiment through the authenticated MLflow route so first-run setup is explicit.
+
 > **Tekton for ModelCar builds, not KFP.** Building OCI images requires `buildah` with elevated security context — inappropriate for the DSPA pipeline environment. Tekton tasks run in dedicated pods with the required capabilities. The KFP `package_modelcar` component bridges the two by creating a Tekton PipelineRun via the Kubernetes API and polling for completion.
 
 > **`pip_index_urls=["https://pypi.org/simple"]`** on all components that require packages outside the Red Hat index. The RHOAI base image (`rhai/base-image-cpu-rhel9:3.4.0`) configures pip to use Red Hat's Python index, which lacks `ultralytics`, `onnxruntime`, `onnxslim`, and other ML packages. Adding `pip_index_urls` in the `@component` decorator tells KFP to use PyPI instead. This also resolves the KFP SDK version mismatch (base image has 2.15.2, compiled pipeline requests 2.16.0).
