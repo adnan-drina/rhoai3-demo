@@ -35,15 +35,81 @@ log_warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step()    { echo -e "\n${BLUE}▶ $*${NC}"; }
 
-EDGE_HOST="${EDGE_HOST:?Set EDGE_HOST to the RHEL host FQDN}"
-EDGE_USER="${EDGE_USER:-dev}"
-EDGE_PASS="${EDGE_PASS:?Set EDGE_PASS to the SSH password}"
-MODELCAR_TAG="${MODELCAR_TAG:-v1}"
+APP_NAME="step-13b-edge-ai-microshift"
+ARGO_NAMESPACE="${ARGO_NAMESPACE:-openshift-gitops}"
+MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
 
-SSH_CMD="sshpass -p '$EDGE_PASS' ssh -o StrictHostKeyChecking=no ${EDGE_USER}@${EDGE_HOST}"
+wait_for_tekton_crds() {
+    log_info "Waiting for OpenShift Pipelines CRDs..."
+    for i in $(seq 1 90); do
+        if oc get crd tasks.tekton.dev pipelines.tekton.dev &>/dev/null; then
+            log_success "OpenShift Pipelines CRDs are available"
+            return 0
+        fi
+        if (( i % 12 == 0 )); then
+            log_info "  Still waiting for Tekton CRDs... ($(( i * 10 ))s)"
+        fi
+        sleep 10
+    done
 
-run_remote() {
-    sshpass -p "$EDGE_PASS" ssh -o StrictHostKeyChecking=no "${EDGE_USER}@${EDGE_HOST}" "$1"
+    log_error "OpenShift Pipelines CRDs did not become available"
+    return 1
+}
+
+wait_for_argocd_app() {
+    log_info "Waiting for ArgoCD application ${APP_NAME} to become Synced/Healthy..."
+    for i in $(seq 1 90); do
+        local sync_status
+        local health_status
+        sync_status=$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+        health_status=$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+
+        if [[ "$sync_status" == "Synced" && "$health_status" == "Healthy" ]]; then
+            log_success "ArgoCD application is Synced and Healthy"
+            return 0
+        fi
+
+        if (( i % 6 == 0 )); then
+            log_info "  Current state: sync=${sync_status:-unknown}, health=${health_status:-unknown}"
+        fi
+        sleep 10
+    done
+
+    log_error "ArgoCD application did not become Synced/Healthy"
+    oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o wide || true
+    return 1
+}
+
+wait_for_central_resources() {
+    log_info "Waiting for central ModelCar release resources..."
+    for i in $(seq 1 60); do
+        if oc get task.tekton.dev build-modelcar -n "$MLOPS_NAMESPACE" &>/dev/null \
+            && oc get task.tekton.dev update-gitops -n "$MLOPS_NAMESPACE" &>/dev/null \
+            && oc get pipeline.tekton.dev modelcar-release -n "$MLOPS_NAMESPACE" &>/dev/null; then
+            log_success "Central ModelCar release pipeline is installed"
+            return 0
+        fi
+        if (( i % 6 == 0 )); then
+            log_info "  Still waiting for Tekton tasks and pipeline... ($(( i * 10 ))s)"
+        fi
+        sleep 10
+    done
+
+    log_error "Central ModelCar release resources were not created"
+    return 1
+}
+
+deploy_central_gitops() {
+    log_step "Deploying central ModelCar release pipeline"
+
+    oc whoami >/dev/null
+    oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${APP_NAME}.yaml"
+    oc annotate application "$APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
+
+    wait_for_tekton_crds
+    oc annotate application "$APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
+    wait_for_argocd_app
+    wait_for_central_resources
 }
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
@@ -51,6 +117,25 @@ echo "║  Step 13b: Edge AI on MicroShift                                    �
 echo "║  Face Recognition on RHEL 9.5 + MicroShift 4.20                    ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
+
+deploy_central_gitops
+
+if [[ -z "${EDGE_HOST:-}" || -z "${EDGE_PASS:-}" ]]; then
+    log_warn "MicroShift host deployment skipped because EDGE_HOST or EDGE_PASS is not set."
+    log_info "Central OpenShift resources are ready. Set EDGE_HOST, EDGE_USER, and EDGE_PASS to deploy the edge host."
+    exit 0
+fi
+
+EDGE_HOST="${EDGE_HOST}"
+EDGE_USER="${EDGE_USER:-dev}"
+EDGE_PASS="${EDGE_PASS}"
+MODELCAR_TAG="${MODELCAR_TAG:-v1}"
+
+SSH_CMD="sshpass -p '$EDGE_PASS' ssh -o StrictHostKeyChecking=no ${EDGE_USER}@${EDGE_HOST}"
+
+run_remote() {
+    sshpass -p "$EDGE_PASS" ssh -o StrictHostKeyChecking=no "${EDGE_USER}@${EDGE_HOST}" "$1"
+}
 
 # =============================================================================
 # Phase 1: Audit

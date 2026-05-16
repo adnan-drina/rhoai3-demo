@@ -126,14 +126,28 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 > **Restart recovery verified.** All workloads survive full server reboots — MicroShift auto-starts, etcd-stored resources are reconciled, NVIDIA device plugin re-registers via auto-manifests, Triton reloads the model on the GPU.
 
-> **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the Tekton `modelcar-release` pipeline in the `enterprise-mlops` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Secrets (`quay-push-credentials`, `github-push-credentials`) are created by `deploy.sh` and not stored in Git.
+> **Central OCP ArgoCD Application** (`step-13b-edge-ai-microshift`) manages the OpenShift Pipelines operator subscription and Tekton `modelcar-release` pipeline in the `enterprise-mlops` namespace via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Release execution credentials (`quay-push-credentials`, `github-push-credentials`) are external prerequisites and are not stored in Git. Ref: [Red Hat OpenShift Pipelines 1.22 installation](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.22/html/installing_and_configuring/).
 
 </details>
 
 <details>
 <summary>Deploy</summary>
 
-**Prerequisites:**
+**Central OCP prerequisites:**
+
+- Logged in to the OCP 4.20 cluster with `cluster-admin`
+- Steps 1-12 deployed, including `enterprise-mlops` and `dspa-minio-credentials`
+
+Deploy and validate the central ModelCar release foundation:
+
+```bash
+./steps/step-13b-edge-ai-microshift/deploy.sh
+./steps/step-13b-edge-ai-microshift/validate.sh
+```
+
+When `EDGE_HOST` or `EDGE_PASS` is not set, the scripts install and validate only the central OpenShift Pipelines foundation. The MicroShift host rollout is skipped.
+
+**Additional MicroShift host prerequisites:**
 
 - **RHEL 9.5+ host** with SSH access and sudo
 - **NVIDIA GPU** with driver installed (tested with L4, driver 595.58)
@@ -141,6 +155,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 - **Pull secret** at `/etc/crio/openshift-pull-secret` on the host
 - `sshpass` installed on your local machine
 - Step 13's `edge-camera` container image pushed to quay.io (public)
+
+Deploy the full MicroShift edge host path:
 
 ```bash
 EDGE_HOST=rhaiis.example.com \

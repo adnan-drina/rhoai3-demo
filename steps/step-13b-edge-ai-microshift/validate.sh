@@ -10,20 +10,19 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
-EDGE_HOST="${EDGE_HOST:?Set EDGE_HOST}"
-EDGE_USER="${EDGE_USER:-dev}"
-EDGE_PASS="${EDGE_PASS:?Set EDGE_PASS}"
+APP_NAME="step-13b-edge-ai-microshift"
+ARGO_NAMESPACE="${ARGO_NAMESPACE:-openshift-gitops}"
+MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
 
 PASS=0
 FAIL=0
-
-run_remote() {
-    sshpass -p "$EDGE_PASS" ssh -o StrictHostKeyChecking=no "${EDGE_USER}@${EDGE_HOST}" "$1" 2>/dev/null
-}
 
 check() {
     local desc="$1"
@@ -36,6 +35,97 @@ check() {
         FAIL=$((FAIL + 1))
     fi
 }
+
+pipelines_subscription_succeeded() {
+    local csv
+    csv=$(oc get subscription openshift-pipelines-operator-rh -n openshift-operators -o jsonpath='{.status.installedCSV}' 2>/dev/null)
+    [[ -n "$csv" ]] || return 1
+    [[ "$(oc get csv "$csv" -n openshift-operators -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]
+}
+
+argocd_app_synced() {
+    [[ "$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null)" == "Synced" ]]
+}
+
+argocd_app_healthy() {
+    [[ "$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null)" == "Healthy" ]]
+}
+
+tekton_crds_available() {
+    oc get crd tasks.tekton.dev pipelines.tekton.dev &>/dev/null
+}
+
+central_release_resources_exist() {
+    oc get task.tekton.dev build-modelcar -n "$MLOPS_NAMESPACE" &>/dev/null \
+        && oc get task.tekton.dev update-gitops -n "$MLOPS_NAMESPACE" &>/dev/null \
+        && oc get pipeline.tekton.dev modelcar-release -n "$MLOPS_NAMESPACE" &>/dev/null
+}
+
+release_prerequisites_documented() {
+    grep -q "quay-push-credentials" "$SCRIPT_DIR/README.md" \
+        && grep -q "github-push-credentials" "$SCRIPT_DIR/README.md"
+}
+
+run_central_validation() {
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║  Step 13b Validation: Central ModelCar Release Pipeline             ║"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    check "OpenShift API access" \
+        "oc whoami"
+
+    check "ArgoCD Application exists" \
+        "oc get application '$APP_NAME' -n '$ARGO_NAMESPACE'"
+
+    check "ArgoCD Application is Synced" \
+        "argocd_app_synced"
+
+    check "ArgoCD Application is Healthy" \
+        "argocd_app_healthy"
+
+    check "OpenShift Pipelines subscription is installed" \
+        "pipelines_subscription_succeeded"
+
+    check "Tekton CRDs are available" \
+        "tekton_crds_available"
+
+    check "ModelCar release Task/Pipeline resources exist" \
+        "central_release_resources_exist"
+
+    check "MinIO training artifact secret exists" \
+        "oc get secret dspa-minio-credentials -n '$MLOPS_NAMESPACE'"
+
+    check "Release credential secrets are external run prerequisites" \
+        "release_prerequisites_documented"
+}
+
+print_results() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Results: $PASS passed, $FAIL failed (of $((PASS + FAIL)) checks)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+if [[ -z "${EDGE_HOST:-}" || -z "${EDGE_PASS:-}" ]]; then
+    run_central_validation
+    echo ""
+    echo -e "${YELLOW}[WARN]${NC} MicroShift host checks skipped because EDGE_HOST or EDGE_PASS is not set."
+    print_results
+    if [[ $FAIL -gt 0 ]]; then
+        exit 1
+    fi
+    exit 0
+fi
+
+EDGE_USER="${EDGE_USER:-dev}"
+
+run_remote() {
+    sshpass -p "$EDGE_PASS" ssh -o StrictHostKeyChecking=no "${EDGE_USER}@${EDGE_HOST}" "$1" 2>/dev/null
+}
+
+run_central_validation
+echo ""
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 13b Validation: Edge AI on MicroShift                         ║"
@@ -87,9 +177,7 @@ check "Model metadata accessible" \
     "run_remote 'oc exec -n edge-ai deploy/face-recognition-edge-predictor -c kserve-container -- curl -s localhost:8888/v2/models/face-recognition-edge | grep -q onnx'"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Results: $PASS passed, $FAIL failed (of $((PASS + FAIL)) checks)"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+print_results
 
 if [[ -n "$ROUTE_HOST" ]]; then
     echo ""

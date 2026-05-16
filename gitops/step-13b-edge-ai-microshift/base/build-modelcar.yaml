@@ -3,6 +3,8 @@ kind: Task
 metadata:
   name: build-modelcar
   namespace: enterprise-mlops
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   description: >
     Download an ONNX model from MinIO, build a ModelCar OCI image
