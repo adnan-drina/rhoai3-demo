@@ -303,14 +303,14 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list)
             shields_enabled = st.toggle(
                 "Enable Guardrails",
                 value=True,
-                help="Input: HAP + Prompt Injection · Output: HAP + PII Regex",
+                help="Use the Step 09 NeMo Guardrails policy service before and after agent responses.",
             )
             if shields_enabled:
-                st.caption("Input: HAP + Prompt Injection · Output: HAP + PII Regex")
+                st.caption("NeMo Guardrails: input policy rails · output sensitive-data rails")
             else:
                 st.caption("⚠️ Shields disabled — no input/output safety checks")
         else:
-            st.caption("⚠️ Guardrails Orchestrator not available. Deploy step-09 to enable.")
+            st.caption("⚠️ NeMo Guardrails not available. Deploy step-09 to enable.")
 
     # Sampling Parameters
     st.subheader("Sampling Parameters")

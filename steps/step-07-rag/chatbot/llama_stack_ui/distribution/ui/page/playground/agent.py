@@ -357,7 +357,7 @@ def save_agent_response_to_session(state):
 
 
 def agent_process_prompt(prompt, state, config):
-    """Agent-based mode: Use Responses API with automatic tool calling + guardrails."""
+    """Agent-based mode: Use Responses API with automatic tool calling and NeMo guardrails."""
     from llama_stack_ui.distribution.ui.modules import guardrails
 
     shields_on = config.shields_enabled
@@ -368,14 +368,15 @@ def agent_process_prompt(prompt, state, config):
                 shield_status.update(label="🛡️ Input blocked", state="error")
                 detector = violation['detector']
                 score = violation['score']
+                message = violation.get('message') or "Please rephrase your message."
                 st.error(
                     f"🛡️ **Safety Shield Activated** — Your message was blocked by the "
                     f"**{detector}** detector (confidence: {score:.2f}).\n\n"
-                    f"Please rephrase your message."
+                    f"{message}"
                 )
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). Please rephrase.",
+                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). {message}",
                 })
                 return
             shield_status.update(label="🛡️ Input safe", state="complete")
@@ -415,17 +416,21 @@ def agent_process_prompt(prompt, state, config):
     # Stream response and update UI
     stream_agent_response(response, state, config.selected_vector_dbs)
 
-    # --- Output guardrails (HAP + PII regex) ---
+    # --- Output guardrails (NeMo output rails) ---
     if shields_on and state.full_response:
         violations = guardrails.check_output(state.full_response)
         if violations:
             redacted = state.full_response
             details = []
+            replacement = next((v.get('message') for v in violations if v.get('message')), None)
             for v in violations:
                 matched = v.get('text', '')
                 if matched and matched in redacted:
                     redacted = redacted.replace(matched, '█' * min(len(matched), 12))
-                details.append(f"  • {v['detector']}: \"{matched}\" (score: {v['score']:.2f})")
+                details.append(f"  • {v['detector']}: policy response (score: {v['score']:.2f})")
+
+            if replacement:
+                redacted = replacement
 
             state.full_response = redacted
             state.containers.message.markdown(redacted)

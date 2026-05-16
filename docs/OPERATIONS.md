@@ -114,7 +114,7 @@ The Streamlit chatbot also has a browser-level validator:
 ./scripts/validate-chatbot-ui.sh
 ```
 
-It checks route health, Chat page load, Direct RAG, Agent-based file search, database MCP tool use, prompt-injection guardrails, and the Inspect page. Use `--skip-mcp` or `--skip-guardrails` only when those dependencies are intentionally not deployed.
+It checks route health, Chat page load, every configured example prompt, MCP tool use, prompt-injection guardrails, and the Inspect page. Use `--skip-mcp` or `--skip-guardrails` only when those dependencies are intentionally not deployed.
 
 ## RHOAI 3.4 Chatbot Alignment Notes
 
@@ -126,7 +126,7 @@ The Step 07 chatbot is aligned for an RHOAI 3.4 demo with explicit preview/devel
 | RAG vector stores | Uses the RHOAI 3.4 Llama Stack vector store and file search path with pgvector-backed storage and source metadata. |
 | Responses API | Agent-based mode uses Responses API `file_search` and constrained output tokens to avoid vLLM context overflow. |
 | MCP connectors | Release notes describe Llama Stack connector and MCP HTTP streaming compatibility. Product docs are still lighter than the live `/v1beta/connectors` API, so keep this path clearly labeled as demo/preview. |
-| Guardrails | The chatbot calls the Guardrails Orchestrator for input and output checks. Prompt-injection blocking is validated in the UI test. |
+| Guardrails | The chatbot calls the Step 09 NeMo Guardrails service for input and output policy checks. Prompt-injection blocking is validated in the UI test. |
 
 Product-aligned next improvements:
 
