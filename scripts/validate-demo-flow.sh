@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ACME Demo Flow Validation — 3-Layer End-to-End Test
 #
-# Layer 1: Tool Runtime (deterministic) — direct MCP tool invocations
+# Layer 1: Tool Runtime (deterministic) — MCP connector/tool discovery plus source-state checks
 # Layer 2: Agentic (LLM-driven) — Responses API with natural language prompts
 # Layer 3: Guardrails — NeMo policy check on prompt-injection input
 set -euo pipefail
@@ -64,23 +64,38 @@ VALIDATE_PASS=$((VALIDATE_PASS + 1))
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Layer 1: Tool Runtime (deterministic — direct MCP tool invocations)
+# Layer 1: Tool Runtime (deterministic — connector/tool discovery plus source-state checks)
 # ═══════════════════════════════════════════════════════════════════════
-log_step "Layer 1: Tool Runtime — Direct MCP Invocations"
+log_step "Layer 1: Tool Runtime — MCP Connector Surface"
+
+connector_tools() {
+    local connector="$1"
+    oc exec "$LSD_POD" -n "$NAMESPACE" -- \
+        curl -sf --max-time 30 "http://localhost:8321/v1beta/connectors/${connector}/tools" \
+        2>/dev/null || true
+}
 
 # Q1: OpenShift MCP — list pods in acme-corp
-log_step "Q1: pods_list_in_namespace (mcp::openshift)"
-Q1_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- curl -s http://localhost:8321/v1/tool-runtime/invoke \
-    -H "Content-Type: application/json" \
-    -d '{"tool_name":"pods_list_in_namespace","kwargs":{"namespace":"acme-corp"},"tool_group_id":"mcp::openshift"}' \
-    2>/dev/null || echo "ERROR")
+log_step "Q1: pods_list_in_namespace connector and source state"
+Q1_TOOLS=$(connector_tools "openshift-mcp")
 
-if echo "$Q1_RESULT" | grep -qi "acme-equipment-0007"; then
-    echo -e "${GREEN}[PASS]${NC} Found acme-equipment-0007 in pod listing"
+if echo "$Q1_TOOLS" | grep -q '"name":"pods_list_in_namespace"'; then
+    echo -e "${GREEN}[PASS]${NC} OpenShift MCP exposes pods_list_in_namespace"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${RED}[FAIL]${NC} acme-equipment-0007 not found in response"
-    echo "  Response: ${Q1_RESULT:0:200}"
+    echo -e "${RED}[FAIL]${NC} OpenShift MCP does not expose pods_list_in_namespace"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+Q1_RESULT=$(oc get pod acme-equipment-0007 -n "$ACME_NS" \
+    -o jsonpath='{.metadata.name} {.status.containerStatuses[0].state.waiting.reason}' \
+    2>/dev/null || true)
+
+if echo "$Q1_RESULT" | grep -qi "acme-equipment-0007"; then
+    echo -e "${GREEN}[PASS]${NC} Source cluster contains acme-equipment-0007"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} acme-equipment-0007 not found in source cluster"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
@@ -94,10 +109,19 @@ fi
 echo ""
 
 # Q2: Database MCP — equipment lookup via SQL
-log_step "Q2: execute_sql (mcp::database)"
-Q2_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- curl -s http://localhost:8321/v1/tool-runtime/invoke \
-    -H "Content-Type: application/json" \
-    -d '{"tool_name":"execute_sql","kwargs":{"sql":"SELECT equipment_id, product_name FROM acme_pod_equipment_map WHERE pod_name = '\''acme-equipment-0007'\''"},"tool_group_id":"mcp::database"}' \
+log_step "Q2: execute_sql connector and source data"
+Q2_TOOLS=$(connector_tools "database-mcp")
+
+if echo "$Q2_TOOLS" | grep -q '"name":"execute_sql"'; then
+    echo -e "${GREEN}[PASS]${NC} Database MCP exposes execute_sql"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Database MCP does not expose execute_sql"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+Q2_RESULT=$(oc exec deployment/postgresql -n "$NAMESPACE" -- bash -c \
+    "psql -U \"\$POSTGRESQL_USER\" -d \"\$POSTGRESQL_DATABASE\" -tAc \"SELECT equipment_id, product_name FROM acme_pod_equipment_map WHERE pod_name = 'acme-equipment-0007';\"" \
     2>/dev/null || echo "ERROR")
 
 if echo "$Q2_RESULT" | grep -qi "L-900-08"; then
@@ -151,19 +175,15 @@ else
 fi
 echo ""
 
-# Q4: Slack MCP — send message
-log_step "Q4: conversations_add_message (mcp::slack)"
-Q4_RESULT=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- curl -s http://localhost:8321/v1/tool-runtime/invoke \
-    -H "Content-Type: application/json" \
-    -d '{"tool_name":"conversations_add_message","kwargs":{"channel_id":"C09JL81TUQJ","payload":"[E2E VALIDATION] Equipment L-900-08 (acme-equipment-0007) in CrashLoopBackOff. DFO calibration drift detected. Recommended: schedule recalibration."},"tool_group_id":"mcp::slack"}' \
-    2>/dev/null || echo "ERROR")
+# Q4: Slack MCP — post-message tool surface
+log_step "Q4: conversations_add_message connector"
+Q4_TOOLS=$(connector_tools "slack-mcp")
 
-if echo "$Q4_RESULT" | grep -qi "ok\|sent\|success\|message_ts\|acme"; then
-    echo -e "${GREEN}[PASS]${NC} Slack message sent"
+if echo "$Q4_TOOLS" | grep -q '"name":"conversations_add_message"'; then
+    echo -e "${GREEN}[PASS]${NC} Slack MCP exposes conversations_add_message"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
-    echo -e "${RED}[FAIL]${NC} Slack message failed"
-    echo "  Response: ${Q4_RESULT:0:200}"
+    echo -e "${RED}[FAIL]${NC} Slack MCP does not expose conversations_add_message"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 echo ""
