@@ -78,6 +78,9 @@ def search_vector_store_direct(prompt, vector_db_id, vector_db_name, top_k, stat
     elif hasattr(search_response, 'results') and search_response.results:
         search_results = search_response.results
 
+    # Some providers can over-return despite max_num_results; keep context bounded.
+    search_results = search_results[:top_k]
+
     # Display and process search results
     if search_results:
         # Build context and display data from search results
