@@ -90,6 +90,8 @@ fi
 Q1_RESULT=$(oc get pod acme-equipment-0007 -n "$ACME_NS" \
     -o jsonpath='{.metadata.name} {.status.containerStatuses[0].state.waiting.reason}' \
     2>/dev/null || true)
+Q1_STATUS=$(oc get pod acme-equipment-0007 -n "$ACME_NS" --no-headers 2>/dev/null || true)
+Q1_RESULT="$Q1_RESULT $Q1_STATUS"
 
 if echo "$Q1_RESULT" | grep -qi "acme-equipment-0007"; then
     echo -e "${GREEN}[PASS]${NC} Source cluster contains acme-equipment-0007"
