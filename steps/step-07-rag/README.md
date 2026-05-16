@@ -58,6 +58,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Preview posture is explicit.** RHOAI 3.4 documents Llama Stack as Technology Preview and selected OpenAI-compatible APIs such as Responses and Vector Store Files as Developer Preview. This demo is appropriate for a workshop and validation environment, not a production support claim.
 
+> **Product-native Playground RAG is shown as experimentation, not the durable knowledge base.** The RHOAI Dashboard Playground can upload files into a playground-scoped vector database and tune chunk length, overlap, and delimiter settings. The durable ACME implementation remains this step's GitOps/KFP/Llama Stack ingestion pipeline because it is repeatable, auditable, and backed by pgvector.
+
 > **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
 > **PDF upload via port-forward + boto3.** The MinIO `mc` image is distroless (no shell). `upload-to-minio.sh` uses `oc port-forward` + Python boto3 to upload PDFs from the local machine to MinIO S3.
@@ -225,6 +227,21 @@ oc exec deploy/lsd-rag -n enterprise-rag -- \
 **Expect:** The agent searches the `acme_corporate` vector store and returns the name and role from the corporate profile document.
 
 > The agent autonomously decided to search the corporate docs to find the answer. In Step 09 we'll add guardrails so the response doesn't leak personal contact details like phone numbers and emails.
+
+### Product Playground — Inline Knowledge Upload
+
+> The product-native Playground is the fastest way to try a knowledge source before operationalizing it. We use it for experimentation, then keep the reusable ACME knowledge base in the GitOps-managed pipeline.
+
+1. Open **GenAI Studio** → **Playground**
+2. Create a playground in the `enterprise-rag` project
+3. Add a model endpoint, using either the published MaaS asset or an internal custom endpoint to the MaaS gateway
+4. Open the **Knowledge** tab and upload `steps/step-07-rag/scenario-docs/acme/ACME_07_Corporate_Profile_&_Contact_Summary.pdf`
+5. Use conservative chunk settings for the demo: chunk length `1024`, overlap `128`, delimiter `\n\n`
+6. Ask: *"Who is the Managing Director of ACME Corp?"*
+
+**Expect:** The Playground answers from the uploaded corporate profile document. This validates the Dashboard's knowledge-source workflow independently from the custom Streamlit chatbot.
+
+> This is the experimentation path: a data scientist can test a file, a model, and a prompt in minutes. The durable path remains the KFP ingestion pipeline, where the same content is versioned, repeatable, and validated.
 
 ### Run the Ingestion Pipeline
 

@@ -41,6 +41,16 @@ log_step "InferenceServices"
 for isvc in granite-8b-agent mistral-3-bf16; do
     EXISTS=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.name}' 2>/dev/null || echo "")
     if [[ "$EXISTS" == "$isvc" ]]; then
+        DASHBOARD_LABEL=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' 2>/dev/null || echo "")
+        GENAI_LABEL=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.labels.opendatahub\.io/genai-asset}' 2>/dev/null || echo "")
+        if [[ "$DASHBOARD_LABEL" == "true" && "$GENAI_LABEL" == "true" ]]; then
+            echo -e "${GREEN}[PASS]${NC} InferenceService $isvc is visible as a GenAI asset"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} InferenceService $isvc missing Dashboard/GenAI asset labels"
+            VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        fi
+
         READY=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" \
             -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
         if [[ "$READY" == "True" ]]; then

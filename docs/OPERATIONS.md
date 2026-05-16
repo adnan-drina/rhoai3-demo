@@ -103,10 +103,11 @@ Validation checks are deterministic cluster checks, not narrative demos. They no
 The full ACME flow has a separate validator:
 
 ```bash
+./scripts/validate-genai-playground-readiness.sh
 ./scripts/validate-demo-flow.sh
 ```
 
-It checks tool runtime, agentic behavior, and guardrail behavior across the RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
+`validate-genai-playground-readiness.sh` checks the product-native Playground prerequisites: GenAI Studio flags, internal custom endpoint posture, model AI asset labels, MCP ConfigMap JSON, RAG project storage, vector-store availability, and MLflow workspace readiness. `validate-demo-flow.sh` checks tool runtime, agentic behavior, and guardrail behavior across the custom RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
 
 The Streamlit chatbot also has a browser-level validator:
 
@@ -127,6 +128,7 @@ The Step 07 chatbot is aligned for an RHOAI 3.4 demo with explicit preview/devel
 | Responses API | Agent-based mode uses Responses API `file_search` and constrained output tokens to avoid vLLM context overflow. |
 | MCP connectors | Release notes describe Llama Stack connector and MCP HTTP streaming compatibility. Product docs are still lighter than the live `/v1beta/connectors` API, so keep this path clearly labeled as demo/preview. |
 | Guardrails | The chatbot calls the Step 09 NeMo Guardrails service for input and output policy checks. Prompt-injection blocking is validated in the UI test. |
+| RHOAI Gen AI Playground | Steps 05, 07, and 10 now include product-native scenes for model comparison, inline knowledge upload, MCP server selection, prompt saving, and code export. These scenes complement the custom chatbot rather than replacing it. |
 
 Product-aligned next improvements:
 
@@ -135,7 +137,7 @@ Product-aligned next improvements:
 | Guardrails AutoConfig | Reduces hand-maintained detector/generator wiring once detector labels and model names are stable. |
 | Guardrails OpenTelemetry | Adds traces and metrics for safety decisions, detector latency, and blocked prompts. |
 | Guardrails Gateway | Provides a governed guarded endpoint demo in addition to the chatbot's direct detector-control path. |
-| RHOAI Gen AI Playground comparison | RHOAI 3.4 adds product-native comparison flows across models, MCP servers, guardrails, and knowledge sources. Use it as a product comparison path, not as a replacement for the custom workflow app. |
+| Product-native guardrail asset registration | The custom chatbot validates NeMo guardrails today. Add a Dashboard-native guardrail asset scene once the supported registration path is schema-verified on the target RHOAI 3.4 cluster. |
 | MLflow/EvalHub integration | Persists RAG evaluation evidence beyond generated HTML reports and aligns with the RHOAI 3.4 MLflow/EvalHub direction. |
 
 ## Day-2 Operational Notes

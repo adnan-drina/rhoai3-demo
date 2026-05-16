@@ -88,10 +88,11 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | RHOAI | Agentic AI and gen AI UIs (MCP, Llama Stack API) | Used |
 | RHOAI | Model development and customization (RAG) | Used |
 | RHOAI | AI safety and security (guardrails) | Used |
+| RHOAI | Gen AI Studio reusable system instructions | Technology Preview; used for the MCP troubleshooting prompt |
 
-<details>
 </details>
 
+<details>
 <summary>Design Decisions</summary>
 
 > **Red Hat Ecosystem Catalog images:** All 3 MCP servers use prebuilt images from `quay.io/mcp-servers/`. Zero on-cluster builds, faster deployment, trusted supply chain.
@@ -103,6 +104,10 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 > **Connector-based lsd-rag integration:** RHOAI 3.4 packages Llama Stack 0.7, where the old `/v1/toolgroups` and `/v1/tool-runtime/invoke` endpoints are no longer part of the served API. The `lsd-rag` ConfigMap enables `connectors`, stores connector metadata on the Llama Stack PVC, and registers `openshift-mcp`, `database-mcp`, and `slack-mcp` at startup.
 
 > **GitOps-managed ConfigMap:** The `gen-ai-aa-mcp-servers` ConfigMap is managed by ArgoCD, following the [RHOAI 3.4 documentation pattern](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user).
+
+> **Product Playground plus application chatbot:** The RHOAI Playground is now a demo scene for asset discovery, model comparison, knowledge-source experimentation, MCP selection, prompt saving, and code export. The Step 07 chatbot remains the application view for the full ACME workflow, including deterministic browser validation and Step 09 guardrail checks.
+
+> **Prompt-guided tool order:** The `acme-rag-troubleshooting` prompt captures the recommended investigation sequence: inspect OpenShift, map pod to equipment in PostgreSQL, search ACME procedures through RAG, then notify Slack only when requested. The prompt is versioned for collaboration and evaluation; MCP server RBAC and tool implementations enforce what the agent can actually do.
 
 > **Database MCP starts after PostgreSQL is queryable:** `deploy.sh` verifies the seeded ACME schema before refreshing `database-mcp`. This prevents the MCP server from keeping a closed connection pool if it starts while the PostgreSQL container is still replaying startup scripts.
 
@@ -135,6 +140,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 | MCP connectivity | Pod found for each server | 3 pods |
 | **Connector registration** | openshift-mcp, database-mcp, slack-mcp | All registered in lsd-rag |
 | **MCP tool discovery** | `/v1beta/connectors/<connector>/tools` | Each connector returns tool definitions |
+| Product Playground readiness | Dashboard feature flags, AI asset labels, MCP ConfigMap JSON, RAG storage, vector store, MLflow workspace | `./scripts/validate-genai-playground-readiness.sh` passes or warns only on optional runtime readiness |
 
 </details>
 
@@ -142,7 +148,117 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 > In this demo, the AI agent autonomously resolves an equipment alert using four integrated enterprise systems. Starting from a failing pod on OpenShift, it identifies the equipment in a database, finds the resolution procedure in internal documents, and notifies the platform team on Slack — all in a single conversation, with no scripted logic.
 
-In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, and toggle on all MCP servers (database, openshift, slack).
+### Product Playground — Assemble the Assets
+
+> We start in the Red Hat product UI. The same model endpoints, MCP servers, knowledge sources, prompts, and exported code path should be visible before we move to the custom ACME chatbot.
+
+1. Run the cluster-side readiness check:
+
+```bash
+./scripts/validate-genai-playground-readiness.sh
+```
+
+2. Open **GenAI Studio** → **AI asset endpoints**
+3. Confirm `granite-8b-agent` and `mistral-3-bf16` are visible as model endpoints
+4. Open the MCP servers tab and confirm `Database-MCP`, `OpenShift-MCP`, and `Slack-MCP` are listed without error
+5. Confirm custom endpoints are available for internal endpoints and external providers are not enabled by default
+
+**Expect:** The Dashboard shows the AI assets that the rest of the demo uses: two governed model endpoints, three MCP servers, and internal custom endpoint controls.
+
+> This is the product-native control point. Platform teams can show what is approved for experimentation without asking users to inspect YAML, service names, or application code.
+
+### Product Playground — Create an Internal Custom Endpoint
+
+> The AI assets page is project-scoped. When the ACME playground runs in `enterprise-rag`, users can add the shared MaaS gateway as an internal custom endpoint without enabling external provider egress.
+
+1. Retrieve the demo MaaS API key created for the RAG project:
+
+```bash
+oc get secret rag-maas-api-key -n enterprise-rag \
+  -o jsonpath='{.data.MAAS_API_KEY}' | base64 -d
+```
+
+2. In **GenAI Studio** → **AI asset endpoints**, select the `enterprise-rag` project
+3. Click **Create endpoint**
+4. Use these values:
+
+| Field | Value |
+|-------|-------|
+| Model type | Inferencing |
+| Model ID | `granite-8b-agent` |
+| Display name | `Granite 8B Agent via MaaS` |
+| URL | `https://maas-default-gateway-data-science-gateway-class.openshift-ingress.svc/v1` |
+| Token | Paste the `MAAS_API_KEY` value |
+| Use case | `RAG, MCP, guardrails, ACME troubleshooting` |
+
+5. Click **Verify model**
+6. Click **Create**, then **Add to Playground**
+
+**Expect:** The custom endpoint appears in the `enterprise-rag` AI assets page and is selectable in the Playground. No external provider option is needed or enabled.
+
+> This demonstrates the intended Private AI pattern for cross-project experimentation: the model remains governed by MaaS, while the RAG team gets a project-local asset entry for the Playground.
+
+### Product Playground — Compare Base vs Grounded Agent
+
+> A side-by-side Playground comparison makes the value of RAG and tools visible. One chat instance is the base model; the second has knowledge and MCP tools selected.
+
+1. Open **GenAI Studio** → **Playground**
+2. Create a playground in the `enterprise-rag` project
+3. Add one chat instance with `granite-8b-agent` and no tools
+4. Add a second chat instance with `granite-8b-agent` and the uploaded ACME knowledge source from Step 07
+5. Open the **MCP** tab, select the OpenShift and Database MCP servers, authorize if prompted, and use **View tools** to confirm tool names are visible
+6. Ask both panes:
+
+```text
+An equipment monitoring pod is failing in the acme-corp namespace. Identify the failed pod, map it to the equipment, and suggest the documented remediation.
+```
+
+**Expect:** The base pane can only speculate. The grounded pane can use MCP to inspect the cluster and database, then use the ACME knowledge source to identify the DFO calibration remediation.
+
+> This shows the product-level experiment before the application-level workflow. The same model becomes more useful when the platform gives it approved knowledge and tools.
+
+### Product Playground — Save the Prompt and Export Code
+
+> Once the experiment works, the practitioner needs a handoff path. RHOAI 3.4 provides prompt saving through the Playground and a code export path for moving from prototype to application.
+
+Prompt saving requires the MLflow service to be available in the project. If Step 12 has not been deployed yet, present the code export path now and return to saved prompt versioning after the MLflow server is available.
+
+1. In the grounded chat instance, set the system prompt from [`../step-07-rag/prompts/acme-rag-troubleshooting.md`](../step-07-rag/prompts/acme-rag-troubleshooting.md):
+
+```text
+You are an ACME Semiconductor equipment troubleshooting assistant.
+
+When investigating an equipment alert, follow this order:
+
+1. Inspect OpenShift pod state for the affected namespace.
+2. Map the failing pod to equipment records using the equipment database.
+3. Search ACME documents for known issues and procedures for that product.
+4. Summarize the pod, equipment ID, product, likely issue, and next action.
+5. If requested, send a concise Slack notification to the platform team.
+```
+
+2. Save the prompt as `acme-rag-troubleshooting` with commit message `Initial MCP troubleshooting prompt`
+3. Open the saved prompt from the prompt list and apply the saved version to the chat instance
+4. Use **View code** or the Playground export action to generate the Python client example
+
+**Expect:** The prompt can be reused in a later Playground session, and the exported code contains the model endpoint, prompt, and selected tool/knowledge configuration needed to start an application implementation.
+
+> This closes the prototype-to-application loop. The custom chatbot in Step 07 is the implemented application; the Playground export shows how a team would move from product experimentation toward code.
+
+### Product Playground — Update and Delete Lifecycle
+
+> The Playground is a shared project asset. We also show lifecycle controls so users understand what happens when a playground is changed or removed.
+
+1. From the Playground action menu, choose **Update configuration**
+2. Review the warning that updating the playground deletes the inline vector database for all users in the project
+3. Add or remove a model from the playground configuration, then cancel unless you intentionally want to reset the inline knowledge upload
+4. From the same action menu, open **Delete playground** and review the confirmation dialog
+
+**Expect:** The Dashboard makes lifecycle impact explicit. Updating is safe for model selection but destructive to inline RAG uploads; deleting removes the playground for every user with access to the project.
+
+> This reinforces why the demo uses the product Playground for experimentation and the Step 07 GitOps/KFP ingestion path for durable knowledge. Operational knowledge should not depend on an inline vector database that is cleared during Playground reconfiguration.
+
+In the chatbot, select `granite-8b-agent`, switch to **Agent-based** mode, use the `acme-rag-troubleshooting` system prompt, and toggle on all MCP servers (database, openshift, slack). Step 08 can later record this prompt version with the demo `production` promotion label when comparing MCP troubleshooting behavior.
 
 ### Inspect the Cluster
 
@@ -242,12 +358,15 @@ curl -sk -H "Authorization: Bearer $TOKEN" \
 ## References
 
 - [RHOAI 3.4 — Configuring MCP Servers](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user#configuring-model-context-protocol-servers_rhoai-user)
+- [RHOAI 3.4 — Experimenting with models in the Gen AI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
+- [RHOAI 3.4 — Reusable system instructions in Gen AI Studio](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/reusable-system-instructions_rhoai-user)
 - [Red Hat Ecosystem Catalog — MCP Servers](https://catalog.redhat.com/en/categories/ai/mcpservers)
 - [Kubernetes MCP Server (Red Hat Developer)](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
 - [Red Hat OpenShift AI — Production AI datasheet](https://www.redhat.com/en/resources/production-ai-for-cloud-environments-datasheet)
 - [Get started with AI for enterprise organizations — Red Hat](https://www.redhat.com/en/resources/artificial-intelligence-for-enterprise-beginners-guide-ebook)
+- `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Prompt Registry for LLMs & Agents.md`
 
 ## Next Steps
 

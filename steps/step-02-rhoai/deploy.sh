@@ -155,8 +155,8 @@ until oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications 
     sleep 5
 done
 oc patch odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
-    --type merge -p '{"spec":{"dashboardConfig":{"genAiStudio":true,"modelAsService":true,"vLLMDeploymentOnMaaS":true,"maasAuthPolicies":true}}}' 2>/dev/null \
-    && log_success "GenAI Studio and MaaS dashboard flags enabled" \
+    --type merge -p '{"spec":{"dashboardConfig":{"genAiStudio":true,"aiAssetCustomEndpoints":true,"modelAsService":true,"vLLMDeploymentOnMaaS":true,"maasAuthPolicies":true},"genAiStudioConfig":{"aiAssetCustomEndpoints":{"externalProviders":false,"clusterDomains":[]}}}}' 2>/dev/null \
+    && log_success "GenAI Studio, internal custom endpoints, and MaaS dashboard flags enabled" \
     || log_warn "Dashboard feature-flag patch failed"
 
 log_step "Deployment Complete"

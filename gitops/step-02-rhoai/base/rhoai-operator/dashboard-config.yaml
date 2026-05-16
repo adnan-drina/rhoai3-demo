@@ -14,12 +14,19 @@ spec:
     disableModelCatalog: false
     disableKServeMetrics: false
     genAiStudio: true
+    aiAssetCustomEndpoints: true
     modelAsService: true
     vLLMDeploymentOnMaaS: true
     maasAuthPolicies: true
     disableLMEval: false
     disableDistributedWorkloads: false
     disableKueue: false
+  genAiStudioConfig:
+    aiAssetCustomEndpoints:
+      # Private AI default: allow same-cluster/internal endpoints without
+      # enabling third-party provider egress from the Playground.
+      externalProviders: false
+      clusterDomains: []
   hardwareProfileOrder:
     - cpu-small
     - default-profile

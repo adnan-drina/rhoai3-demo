@@ -16,7 +16,7 @@ This phase covers the practitioner path: organize projects, use workbenches and 
 | Model registry usage | Register, version, share, and promote models. | ModelRegistry, model versions/artifacts, RBAC groups. | Registry should support traceability and promotion. | `covered`: Step 04 seeds registry; Step 12 promotion uses registry. |
 | Model catalog usage | Discover, evaluate, register, and deploy validated models. | Model catalog, OCI model artifacts, registry, serving runtime. | 3.4 catalog is central to model discovery. | `partially-covered`: Step 04/05 use catalog narrative; qwen3 manifest is deferred and should be documented or removed. |
 | RAG stack | Deploy Llama Stack, vLLM, vector store, and ingestion. | LlamaStackDistribution, pgvector, vLLM, file/vector APIs, RAG pipelines. | RHOAI 3.4 Llama Stack APIs are preview and version-sensitive. | `covered`: Step 07 aligns strongly with pgvector, Llama Stack 0.7, Docling, and KFP ingestion. |
-| Gen AI Playground | Experiment with models, guardrails, knowledge sources, and MCP servers. | Dashboard playground, MCP server config map, model endpoints. | Product-native UI can compare components. | `partially-covered`: Step 10 configures MCP servers for the dashboard; demo centers on custom chatbot. Add a product-native playground scene. |
+| Gen AI Playground | Experiment with models, guardrails, knowledge sources, and MCP servers. | Dashboard playground, MCP server config map, model endpoints. | Product-native UI can compare components. | `mostly-covered`: Step 02 enables GenAI Studio and internal custom endpoints; Step 05 adds product-native model comparison; Step 07 adds inline knowledge upload; Step 10 adds MCP selection, prompt save, and code export scenes. Dashboard-native guardrail asset registration still needs schema verification. |
 | Distributed workloads | Run distributed data processing/training workloads. | Kueue, Ray, CodeFlare, Workload, cluster queues. | Supports GPU-aware scale-out workloads. | `partially-covered`: Step 01/03 install Kueue and queues, but no Ray/CodeFlare workload is demonstrated. |
 | Spark Operator | Create Spark data processing apps. | Kubeflow Spark Operator, SparkApplication, storage. | Useful for large-scale data prep. | `not-covered`: future data processing enhancement. |
 | AutoML | Run automated model selection/training. | AutoML components and dashboard/project integration. | Predictive AI accelerator. | `not-covered`: not part of current demo. |
@@ -31,7 +31,7 @@ This phase covers the practitioner path: organize projects, use workbenches and 
 | Priority | Recommendation | Demo area |
 |---|---|---|
 | P1 | Decide whether `qwen3-8b-agent.yaml` is future scope or remove it from the repo. | Step 05 |
-| P1 | Add a Gen AI Playground scene that uses product-native model/MCP/guardrails comparison without replacing the chatbot. | Step 10 |
+| P1 | Add browser/UI automation for the product-native Playground scenes, or add a Dashboard-native guardrail asset scene once the supported registration path is schema-verified. | Steps 09-10 |
 | P2 | Add an explicit distributed workload deferment or a minimal Ray/CodeFlare validation workload. | Step 01/03 or new step |
 | P2 | Add exact MLflow doc references and clarify MLflow tracking/artifact boundaries. | Step 12 |
 | P2 | Add AutoRAG and AutoML to the backlog as named RHOAI 3.4 gaps, not silent omissions. | Docs backlog |

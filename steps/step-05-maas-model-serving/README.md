@@ -74,6 +74,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Queue | `LocalQueue/maas-default` exists in `maas` |
 | Runtime | vLLM `ServingRuntime` exists in `maas` |
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
+| AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true` |
 | Registry linkage | deployed models have model registry labels after `deploy.sh` linking |
 | Playground | deployed model appears in GenAI Playground / AI assets |
 
@@ -81,6 +82,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 oc get localqueue maas-default -n maas
 oc get servingruntime -n maas
 oc get inferenceservice -n maas
+oc get inferenceservice -n maas -o custom-columns=NAME:.metadata.name,DASHBOARD:.metadata.labels.opendatahub\.io/dashboard,GENAI:.metadata.labels.opendatahub\.io/genai-asset
 oc get pods -n maas -l serving.kserve.io/inferenceservice -o wide
 ```
 
@@ -103,6 +105,31 @@ For API validation:
 ```bash
 oc exec deploy/granite-8b-agent-predictor -n maas -c kserve-container -- \
   curl -s http://localhost:8080/v1/models
+```
+
+### Product Playground Model Comparison
+
+> The Red Hat product UI should be part of the demo, not only the custom ACME chatbot. Here we prove that the same governed endpoints can be compared directly in GenAI Studio before developers package them into an application.
+
+1. Open **GenAI Studio** → **Playground**
+2. Create a new playground in the `maas` project
+3. Add `granite-8b-agent` in the first chat instance
+4. Add `mistral-3-bf16` in a second chat instance
+5. Set temperature to `0.1` and leave streaming enabled so the comparison is deterministic and visibly responsive
+6. Use the same prompt in both panes:
+
+```text
+Explain how a governed private AI platform should expose shared LLMs to application teams.
+```
+
+**Expect:** Both models answer from the RHOAI Dashboard. Granite is the lower-cost agentic model used later for RAG/MCP; Mistral is the larger model used for enterprise chat, benchmarking, and evaluation judging.
+
+> Product-native comparison lets platform teams discuss cost, latency, model quality, and governance before an application is built. The same assets are then reused by the Step 07 chatbot, Step 08 evaluation jobs, and Step 10 MCP workflow.
+
+For cluster-side readiness before presenting this scene:
+
+```bash
+./scripts/validate-genai-playground-readiness.sh
 ```
 
 ## References

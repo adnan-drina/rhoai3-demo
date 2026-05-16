@@ -67,6 +67,12 @@ log_step "GenAI Studio"
 check "GenAI Studio enabled" \
     "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.genAiStudio}'" \
     "true"
+check "GenAI internal custom endpoints enabled" \
+    "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.aiAssetCustomEndpoints}'" \
+    "true"
+check "External custom endpoint providers disabled" \
+    "oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.genAiStudioConfig.aiAssetCustomEndpoints.externalProviders}'" \
+    "false"
 
 # --- Models-as-a-Service ---
 log_step "Models-as-a-Service"

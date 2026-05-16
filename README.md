@@ -181,6 +181,7 @@ Deploy by theme or all steps in order:
 Validate the ACME demo flow:
 
 ```bash
+./scripts/validate-genai-playground-readiness.sh  # Product-native Playground prerequisites
 ./scripts/validate-demo-flow.sh   # 3-layer E2E test (Tool Runtime + Agentic + Guardrails)
 ```
 

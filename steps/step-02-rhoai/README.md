@@ -20,7 +20,7 @@ RHOAI 3.4 Platform
 ├── MaaS Gateway           → Gateway API endpoint with RHCL/Authorino bootstrap
 ├── MaaS PostgreSQL        → Demo database and `maas-db-config` connection Secret
 ├── DataScienceCluster     → Full component stack (see table)
-├── GenAI Studio           → Agent Playground + Model Catalog UI
+├── GenAI Studio           → Playground, AI asset endpoints, Model Catalog UI
 └── Hardware Profiles      → GPU/CPU profiles with GPU node scheduling
 ```
 
@@ -30,7 +30,7 @@ RHOAI 3.4 Platform
 | Workbenches | Managed | Jupyter notebooks, VS Code, RStudio |
 | AI Pipelines | Managed | ML Pipelines (formerly `datasciencepipelines`) |
 | LlamaStack Operator | Managed | GenAI Playground, agentic workflows |
-| GenAI Studio | Enabled | Agent Playground + Model Catalog UI |
+| GenAI Studio | Enabled | Playground, AI asset endpoints, custom internal endpoints, Model Catalog UI |
 | KServe | Managed | Model serving (RawDeployment mode) |
 | MaaS Gateway | Managed | `maas-default-gateway` for the RHOAI 3.4 MaaS component, annotated for RHCL/Authorino TLS |
 | MaaS PostgreSQL | Managed | Demo PostgreSQL 16 database and required `maas-db-config` Secret |
@@ -70,6 +70,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **GenAI Studio enabled by default:** `genAiStudio: true` in `OdhDashboardConfig` plus `llamastackoperator: Managed` in the DSC activate the Agent Playground and Model Catalog for all users. The RHOAI operator may reset this field during reconciliation, so `deploy.sh` patches it explicitly after DSC is Ready.
 
+> **Internal custom endpoints enabled, external providers disabled:** `aiAssetCustomEndpoints: true` enables the documented RHOAI 3.4 custom endpoint flow for same-cluster/private endpoints. `externalProviders: false` keeps third-party provider egress disabled by default, preserving the Private AI posture. If a customer wants external providers, treat that as a separate security decision and verify the live `OdhDashboardConfig` schema with `oc explain`.
+
 > **DSCI CA bundle (runtime patch):** `deploy.sh` patches `DSCInitialization` with the cluster CA certificate (`kube-root-ca.crt`) so LlamaStack distributions can reach internal services over TLS. This is a runtime patch because the CA cert is cluster-specific and should not be committed to git. Ref: [Working with certificates](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/working-with-certificates_certs).
 
 > **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
@@ -98,7 +100,8 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
 | Dashboard URL | RHOAI console accessible | `https://data-science-gateway.apps.<cluster>` responds |
-| GenAI Studio visible | Agent Playground and Model Catalog in left nav | Both menu items present |
+| GenAI Studio visible | Playground, AI asset endpoints, and Model Catalog in left nav | All menu items present |
+| Internal custom endpoints | `aiAssetCustomEndpoints=true`, `externalProviders=false` | Internal endpoints enabled, third-party providers disabled |
 | MaaS enabled | `modelsAsService`, MaaS dashboard flags, database Secret, and Gateway annotations | Managed/true, Secret present, Gateway `Programmed=True` |
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
@@ -117,9 +120,21 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 1. Open `https://data-science-gateway.apps.<cluster>` and log in as `ai-admin` / `redhat123`
 2. Explore the left navigation — GenAI Studio, Data Science Projects, Model Serving
 
-**Expect:** The RHOAI Dashboard with GenAI Studio in the left navigation — Agent Playground, Model Catalog, AI Available Assets.
+**Expect:** The RHOAI Dashboard with GenAI Studio in the left navigation — Playground, Model Catalog, and AI asset endpoints.
 
 > This is the self-service AI platform. Data scientists get a curated environment — models, pipelines, notebooks, and monitoring — without managing infrastructure. Red Hat OpenShift AI provides this out of the box on any OpenShift cluster.
+
+### GenAI Studio Asset Endpoints
+
+> Before we build the ACME workflow, we show that the product-native Playground has a governed asset surface. Models, MCP servers, knowledge sources, and internal custom endpoints are visible through the same Dashboard instead of being hidden in application code.
+
+1. Navigate to **GenAI Studio** → **AI asset endpoints**
+2. Open the custom endpoint controls
+3. Confirm external providers are not offered by default
+
+**Expect:** The Dashboard allows same-cluster/custom endpoint registration while third-party provider registration remains disabled.
+
+> This keeps the demo aligned with Private AI. Teams can add internal model endpoints for experimentation without silently routing prompts to an external SaaS provider.
 
 ### Hardware Profiles
 
@@ -205,6 +220,7 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 - [RHOAI 3.4 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/index)
 - [RHOAI 3.4 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service)
+- [RHOAI 3.4 — Experimenting with models in the Gen AI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
 - [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index#working-with-hardware-profiles)
 - [Red Hat OpenShift AI — Product Page](https://www.redhat.com/en/products/ai/openshift-ai)
