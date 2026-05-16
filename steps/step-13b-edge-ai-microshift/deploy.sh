@@ -57,6 +57,34 @@ wait_for_tekton_crds() {
     return 1
 }
 
+approve_pipelines_install_plan() {
+    log_info "Checking OpenShift Pipelines InstallPlan approval..."
+    for i in $(seq 1 60); do
+        local install_plan
+        local approved
+        install_plan=$(oc get subscription openshift-pipelines-operator-rh -n openshift-operators -o jsonpath='{.status.installPlanRef.name}' 2>/dev/null || true)
+
+        if [[ -n "$install_plan" ]]; then
+            approved=$(oc get installplan "$install_plan" -n openshift-operators -o jsonpath='{.spec.approved}' 2>/dev/null || true)
+            if [[ "$approved" != "true" ]]; then
+                oc patch installplan "$install_plan" -n openshift-operators --type merge -p '{"spec":{"approved":true}}' >/dev/null
+                log_success "Approved InstallPlan ${install_plan}"
+            else
+                log_success "InstallPlan ${install_plan} already approved"
+            fi
+            return 0
+        fi
+
+        if (( i % 6 == 0 )); then
+            log_info "  Still waiting for generated InstallPlan... ($(( i * 10 ))s)"
+        fi
+        sleep 10
+    done
+
+    log_error "OpenShift Pipelines InstallPlan was not generated"
+    return 1
+}
+
 wait_for_argocd_app() {
     local app_name="$1"
 
@@ -109,6 +137,7 @@ deploy_central_gitops() {
     oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${OPERATOR_APP_NAME}.yaml"
     oc annotate applications.argoproj.io "$OPERATOR_APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
 
+    approve_pipelines_install_plan
     wait_for_tekton_crds
 
     wait_for_argocd_app "$OPERATOR_APP_NAME"

@@ -128,6 +128,8 @@ The only difference is the infrastructure manifests and the env vars in the Depl
 
 > **Central OCP ArgoCD Applications** split the bootstrap sequence: `step-13b-edge-ai-microshift-operator` installs the OpenShift Pipelines operator from [`gitops/step-13b-edge-ai-microshift/operator/`](../../gitops/step-13b-edge-ai-microshift/operator/), then `step-13b-edge-ai-microshift` manages the Tekton `modelcar-release` pipeline in `enterprise-mlops` via [`gitops/step-13b-edge-ai-microshift/base/`](../../gitops/step-13b-edge-ai-microshift/base/). The Tekton pipeline builds ModelCar OCI images and updates the edge GitOps manifest. Release execution credentials (`quay-push-credentials`, `github-push-credentials`) are external prerequisites and are not stored in Git. Ref: [Red Hat OpenShift Pipelines 1.22 installation](https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines/1.22/html/installing_and_configuring/).
 
+> **Pinned operator channel.** The subscription uses the `pipelines-1.22` channel exposed by the OCP 4.20 cluster package manifest. Because pinned operator installs can generate a manual InstallPlan, `deploy.sh` approves the generated OpenShift Pipelines InstallPlan before waiting for Tekton CRDs.
+
 </details>
 
 <details>

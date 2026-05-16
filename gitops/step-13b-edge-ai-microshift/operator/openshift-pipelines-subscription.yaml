@@ -10,7 +10,7 @@ metadata:
     demo.rhoai.io/step: "13b"
 spec:
   channel: pipelines-1.22
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: openshift-pipelines-operator-rh
   source: redhat-operators
   sourceNamespace: openshift-marketplace
