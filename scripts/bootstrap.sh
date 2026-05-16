@@ -74,6 +74,11 @@ oc patch argocd openshift-gitops -n openshift-gitops --type merge \
     && log_success "Resource tracking set to annotation (GitOps 1.19 default)" \
     || log_warn "Could not patch ArgoCD tracking method (may not be ready yet)"
 
+oc patch argocd openshift-gitops -n openshift-gitops --type merge \
+    -p '{"spec":{"controller":{"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"500m","memory":"2Gi"}}}}}' 2>/dev/null \
+    && log_success "Application controller resources sized for full demo resync" \
+    || log_warn "Could not patch ArgoCD controller resources"
+
 log_step "Configuring custom resource health checks"
 
 # PVC: WaitForFirstConsumer PVCs stay Pending until a pod mounts them.
