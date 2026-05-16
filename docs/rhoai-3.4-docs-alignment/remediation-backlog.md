@@ -7,8 +7,8 @@ This backlog is derived from the chapter-by-chapter documentation review. It doe
 | Item | Area | Action | Acceptance |
 |---|---|---|---|
 | Second-pass support-status matrix | Cross-cutting | Done. Keep `support-status-matrix.md` as the source for release-note/product-book discrepancies and update READMEs from that matrix. | Step READMEs no longer contain stale or conflicting support-status wording. |
-| Step 09 live NeMo adoption | Guardrails | Done for live resources. Finish by returning the live Argo target revision to `main` after the remediation commit lands. | Live app resources show `NemoGuardrails/nemo-guardrails`; no `GuardrailsOrchestrator` or detector `InferenceService`s remain; target revision is `main`. |
-| MLflow functional story | MLOps | Implemented in Step 12 KFP through `log_mlflow_run` with the MLflow SDK, namespace authentication, metrics/params/tags, and compact artifact logging. | Step 12 validation proves a fresh MLflow run exists for the latest pipeline execution after the updated pipeline is run. |
+| Step 09 live NeMo adoption | Guardrails | Done. Live app resources show `NemoGuardrails/nemo-guardrails`, no `GuardrailsOrchestrator` or detector `InferenceService`s remain, and the target revision is `main`. | `steps/step-09-guardrails/validate.sh` passes with 9 passed, 0 warnings, 0 failed. |
+| MLflow functional story | MLOps | Done for the training lifecycle. Step 12 KFP logs through `log_mlflow_run` with the MLflow SDK, namespace authentication, metrics/params/tags, compact artifact logging, and a pre-created `face-recognition` experiment. | `steps/step-12-mlops-pipeline/validate.sh` proves a fresh finished MLflow run for `train-20260516-142254`. |
 | MaaS consumption story | MaaS | Demonstrate subscriptions/tiers, self-service API keys, rate/quota policy, and a governed OpenAI-compatible model call. | A non-admin user can generate/use a scoped MaaS key and the demo can show the applied governance boundary. |
 
 ## P1
