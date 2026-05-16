@@ -107,7 +107,7 @@ This ledger is produced by `scripts/audit-doc-alignment.sh`. Official product do
 - [PASS] `kustomize build gitops/step-03-enterprise-projects/base | oc apply --dry-run=server --validate=strict -f -` completed on the OCP 4.20/RHOAI 3.4 cluster.
 - [PASS] No stale RHOAI 3.3 references found in component GitOps/README scope.
 - [PASS] README contains pinned official product documentation references.
-- [PASS] `enterprise-mlops` is labeled `rhoai.redhat.com/mlflow-workspace=true` for the Step 12 MLflow workspace selector.
+- [PASS] Step 12 scopes MLflow to `enterprise-mlops` with the stable namespace label `kubernetes.io/metadata.name=enterprise-mlops`.
 - [WARN] Unpinned `:latest` image references found:
   - gitops/step-03-enterprise-projects/base/minio/init-job.yaml:31:          image: quay.io/minio/mc:latest
   - gitops/step-03-enterprise-projects/base/minio/deployment.yaml:26:          image: quay.io/minio/minio:latest

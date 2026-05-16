@@ -5,7 +5,7 @@
 
 Step 11 was the notebook inner loop; this step is the **outer loop** — automation, quality gates, registry-backed promotion, TrustyAI monitoring, and MLflow readiness inside `enterprise-mlops`. **Red Hat OpenShift AI 3.4** provides **Kubeflow Pipelines (KFP v2)**, **Model Registry**, **TrustyAI**, and **MLflow** so the workflow runs unattended with governance. Pipelines are versioned, tracked, and managed — reducing user error from experimentation through production. Drift monitoring tracks model behavior over time, catching degradation before users do.
 
-MLflow is treated as a RHOAI 3.4 Developer Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. The server exposes only namespaces labeled as MLflow workspaces; in this slice that label is applied to `enterprise-mlops`.
+MLflow is treated as a RHOAI 3.4 Developer Preview capability in this foundation slice. Step 02 enables the `mlflowoperator` component, and this step manages the schema-verified `MLflow` server plus the `enterprise-mlops` `MLflowConfig` through GitOps. The server exposes only the `enterprise-mlops` namespace by selecting its stable Kubernetes namespace-name label.
 
 This step demonstrates RHOAI's **AI pipelines** and **Model observability and governance** capabilities: automating the full ML lifecycle — from training through evaluation to production deployment — with TrustyAI drift and bias monitoring in production.
 
