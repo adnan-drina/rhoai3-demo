@@ -79,14 +79,12 @@ fi
 "$VENV_PATH/bin/pip" install -q --upgrade pip kfp "kfp-server-api>=2.0,<3.0" 2>/dev/null
 
 PIPELINE_YAML="$REPO_ROOT/artifacts/rag-ingestion-batch.yaml"
+log_step "Compiling pipeline..."
+mkdir -p "$REPO_ROOT/artifacts"
+(cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
 if [ ! -f "$PIPELINE_YAML" ]; then
-    log_step "Compiling pipeline..."
-    mkdir -p "$REPO_ROOT/artifacts"
-    (cd "$SCRIPT_DIR/kfp" && "$VENV_PATH/bin/python3" pipeline.py)
-    if [ ! -f "$PIPELINE_YAML" ]; then
-        log_error "Pipeline compilation failed — $PIPELINE_YAML not found"
-        exit 1
-    fi
+    log_error "Pipeline compilation failed — $PIPELINE_YAML not found"
+    exit 1
 fi
 
 log_info "Launching pipeline run via KFP client..."
@@ -123,6 +121,7 @@ PIPELINE_YAML = os.path.join(
     os.environ.get("REPO_ROOT", os.path.dirname(os.path.abspath(__file__)) + "/../.."),
     "artifacts/rag-ingestion-batch.yaml",
 )
+version_id = None
 
 try:
     kfp_client = client.Client(
@@ -143,12 +142,20 @@ try:
     print(f"Pipeline details: {DSPA_URL}/#/pipelines/details/{pipeline_id}")
     print(f"Pipeline uploaded: {pipeline_id}")
 except Exception as e:
-    if "already exists" in str(e):
+    error_text = str(e)
+    if "already exists" in error_text or "409" in error_text or "Conflict" in error_text:
         pipelines = kfp_client.list_pipelines(page_size=100).pipelines or []
         pipeline = next((p for p in pipelines if p.name == PIPELINE_NAME), None)
         if pipeline:
             pipeline_id = pipeline.pipeline_id
             print(f"Pipeline exists: {pipeline_id}")
+            version = kfp_client.upload_pipeline_version(
+                pipeline_package_path=PIPELINE_YAML,
+                pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
+                pipeline_id=pipeline_id,
+            )
+            version_id = version.pipeline_version_id
+            print(f"Pipeline version uploaded: {version_id}")
         else:
             print(f"Pipeline not found: {e}")
             sys.exit(1)
@@ -157,19 +164,20 @@ except Exception as e:
         sys.exit(1)
 
 # Get the latest pipeline version (required by KFP v2)
-versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=10)
-if versions.pipeline_versions:
-    version_id = versions.pipeline_versions[0].pipeline_version_id
-    print(f"Pipeline version: {version_id}")
-else:
-    # Upload creates the first version — try uploading a version explicitly
-    version = kfp_client.upload_pipeline_version(
-        pipeline_package_path=PIPELINE_YAML,
-        pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
-        pipeline_id=pipeline_id,
-    )
-    version_id = version.pipeline_version_id
-    print(f"Pipeline version created: {version_id}")
+if version_id is None:
+    versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=10)
+    if versions.pipeline_versions:
+        version_id = versions.pipeline_versions[0].pipeline_version_id
+        print(f"Pipeline version: {version_id}")
+    else:
+        # Upload creates the first version — try uploading a version explicitly
+        version = kfp_client.upload_pipeline_version(
+            pipeline_package_path=PIPELINE_YAML,
+            pipeline_version_name=f"{PIPELINE_NAME}-{int(time.time())}",
+            pipeline_id=pipeline_id,
+        )
+        version_id = version.pipeline_version_id
+        print(f"Pipeline version created: {version_id}")
 
 experiment_name = f"rag-ingestion-{SCENARIO}"
 try:
