@@ -5,11 +5,10 @@ kind: Kustomization
 # models to the edge fleet via GitOps. Runs in enterprise-mlops namespace
 # alongside the KFP training pipeline.
 #
-# Secrets (quay-push-credentials, github-push-credentials) are
-# created by deploy.sh — not stored in Git.
+# Release secrets (quay-push-credentials, github-push-credentials) are
+# external run prerequisites and are not stored in Git.
 
 resources:
-  - operator/openshift-pipelines-subscription.yaml
   - build-modelcar.yaml
   - update-gitops.yaml
   - pipeline.yaml

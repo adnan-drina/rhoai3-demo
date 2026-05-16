@@ -17,7 +17,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-APP_NAME="step-13b-edge-ai-microshift"
+OPERATOR_APP_NAME="step-13b-edge-ai-microshift-operator"
+PIPELINE_APP_NAME="step-13b-edge-ai-microshift"
 ARGO_NAMESPACE="${ARGO_NAMESPACE:-openshift-gitops}"
 MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
 
@@ -44,11 +45,13 @@ pipelines_subscription_succeeded() {
 }
 
 argocd_app_synced() {
-    [[ "$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null)" == "Synced" ]]
+    local app_name="$1"
+    [[ "$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null)" == "Synced" ]]
 }
 
 argocd_app_healthy() {
-    [[ "$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null)" == "Healthy" ]]
+    local app_name="$1"
+    [[ "$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null)" == "Healthy" ]]
 }
 
 tekton_crds_available() {
@@ -75,14 +78,23 @@ run_central_validation() {
     check "OpenShift API access" \
         "oc whoami"
 
-    check "ArgoCD Application exists" \
-        "oc get application '$APP_NAME' -n '$ARGO_NAMESPACE'"
+    check "OpenShift Pipelines ArgoCD Application exists" \
+        "oc get applications.argoproj.io '$OPERATOR_APP_NAME' -n '$ARGO_NAMESPACE'"
 
-    check "ArgoCD Application is Synced" \
-        "argocd_app_synced"
+    check "OpenShift Pipelines ArgoCD Application is Synced" \
+        "argocd_app_synced '$OPERATOR_APP_NAME'"
 
-    check "ArgoCD Application is Healthy" \
-        "argocd_app_healthy"
+    check "OpenShift Pipelines ArgoCD Application is Healthy" \
+        "argocd_app_healthy '$OPERATOR_APP_NAME'"
+
+    check "ModelCar release ArgoCD Application exists" \
+        "oc get applications.argoproj.io '$PIPELINE_APP_NAME' -n '$ARGO_NAMESPACE'"
+
+    check "ModelCar release ArgoCD Application is Synced" \
+        "argocd_app_synced '$PIPELINE_APP_NAME'"
+
+    check "ModelCar release ArgoCD Application is Healthy" \
+        "argocd_app_healthy '$PIPELINE_APP_NAME'"
 
     check "OpenShift Pipelines subscription is installed" \
         "pipelines_subscription_succeeded"

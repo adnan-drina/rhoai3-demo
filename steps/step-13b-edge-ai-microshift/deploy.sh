@@ -35,7 +35,8 @@ log_warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step()    { echo -e "\n${BLUE}▶ $*${NC}"; }
 
-APP_NAME="step-13b-edge-ai-microshift"
+OPERATOR_APP_NAME="step-13b-edge-ai-microshift-operator"
+PIPELINE_APP_NAME="step-13b-edge-ai-microshift"
 ARGO_NAMESPACE="${ARGO_NAMESPACE:-openshift-gitops}"
 MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
 
@@ -57,12 +58,14 @@ wait_for_tekton_crds() {
 }
 
 wait_for_argocd_app() {
-    log_info "Waiting for ArgoCD application ${APP_NAME} to become Synced/Healthy..."
+    local app_name="$1"
+
+    log_info "Waiting for ArgoCD application ${app_name} to become Synced/Healthy..."
     for i in $(seq 1 90); do
         local sync_status
         local health_status
-        sync_status=$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
-        health_status=$(oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+        sync_status=$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+        health_status=$(oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
 
         if [[ "$sync_status" == "Synced" && "$health_status" == "Healthy" ]]; then
             log_success "ArgoCD application is Synced and Healthy"
@@ -75,8 +78,8 @@ wait_for_argocd_app() {
         sleep 10
     done
 
-    log_error "ArgoCD application did not become Synced/Healthy"
-    oc get application "$APP_NAME" -n "$ARGO_NAMESPACE" -o wide || true
+    log_error "ArgoCD application ${app_name} did not become Synced/Healthy"
+    oc get applications.argoproj.io "$app_name" -n "$ARGO_NAMESPACE" -o wide || true
     return 1
 }
 
@@ -103,12 +106,16 @@ deploy_central_gitops() {
     log_step "Deploying central ModelCar release pipeline"
 
     oc whoami >/dev/null
-    oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${APP_NAME}.yaml"
-    oc annotate application "$APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
+    oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${OPERATOR_APP_NAME}.yaml"
+    oc annotate applications.argoproj.io "$OPERATOR_APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
 
     wait_for_tekton_crds
-    oc annotate application "$APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
-    wait_for_argocd_app
+
+    wait_for_argocd_app "$OPERATOR_APP_NAME"
+
+    oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/${PIPELINE_APP_NAME}.yaml"
+    oc annotate applications.argoproj.io "$PIPELINE_APP_NAME" -n "$ARGO_NAMESPACE" argocd.argoproj.io/refresh=hard --overwrite &>/dev/null || true
+    wait_for_argocd_app "$PIPELINE_APP_NAME"
     wait_for_central_resources
 }
 
