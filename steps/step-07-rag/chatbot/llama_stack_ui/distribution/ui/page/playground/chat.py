@@ -73,27 +73,85 @@ def render_history():
 
 
 def fetch_models_and_tools():
-    """Fetch and categorize models and toolgroups from LlamaStack."""
+    """Fetch and categorize models and tools from Llama Stack."""
     client = llama_stack_api.client
 
     # Fetch models
     models = client.models.list()
     model_list = [model.id for model in models if model.custom_metadata.get("model_type") == "llm"]
-    
 
-    # Fetch and categorize toolgroups
-    tool_groups = client.toolgroups.list()
-    logger.debug("Raw tool groups from LlamaStack: %s", tool_groups)
-    tool_groups_list = [tool_group.identifier for tool_group in tool_groups]
-    logger.debug("Tool group identifiers: %s", tool_groups_list)
+    # RHOAI 3.4 Llama Stack exposes tools and connectors through REST endpoints.
+    tools = llama_stack_api.list_tools()
+    logger.debug("Raw tools from Llama Stack: %s", tools)
 
-    mcp_tools_list = [tool for tool in tool_groups_list if tool.startswith("mcp::")]
-    logger.debug("MCP tools: %s", mcp_tools_list)
+    builtin_tools_list = []
+    toolgroup_ids = {
+        tool.get("toolgroup_id")
+        for tool in tools
+        if isinstance(tool, dict) and tool.get("toolgroup_id")
+    }
+    if "builtin::file_search" in toolgroup_ids:
+        builtin_tools_list.append("builtin::rag")
+    if "builtin::websearch" in toolgroup_ids:
+        builtin_tools_list.append("builtin::websearch")
 
-    builtin_tools_list = [tool for tool in tool_groups_list if not tool.startswith("mcp::")]
+    vector_dbs = list(client.vector_stores.list() or [])
+    if vector_dbs and "builtin::rag" not in builtin_tools_list:
+        builtin_tools_list.insert(0, "builtin::rag")
+
+    connectors = llama_stack_api.list_connectors()
+    logger.debug("Raw connectors from Llama Stack: %s", connectors)
+    mcp_tools_list = [
+        f"mcp::{connector.get('connector_id')}"
+        for connector in connectors
+        if isinstance(connector, dict)
+        and connector.get("connector_type") == "mcp"
+        and connector.get("connector_id")
+    ]
+
+    logger.debug("MCP connectors: %s", mcp_tools_list)
     logger.debug("Built-in tools: %s", builtin_tools_list)
 
     return model_list, builtin_tools_list, mcp_tools_list
+
+
+def _selected_tool_summary(toolgroup_selection):
+    """Build a display summary for selected tools without legacy toolgroups APIs."""
+    tools = llama_stack_api.list_tools()
+    connectors = llama_stack_api.list_connectors()
+    grouped_tools = {}
+
+    for toolgroup_id in toolgroup_selection:
+        if toolgroup_id == "builtin::rag":
+            selected = [
+                tool.get("name", "file_search")
+                for tool in tools
+                if isinstance(tool, dict)
+                and tool.get("toolgroup_id") == "builtin::file_search"
+            ]
+            grouped_tools[toolgroup_id] = selected or ["file_search"]
+        elif toolgroup_id == "builtin::websearch":
+            selected = [
+                tool.get("name", "web_search")
+                for tool in tools
+                if isinstance(tool, dict)
+                and tool.get("toolgroup_id") == "builtin::websearch"
+            ]
+            grouped_tools[toolgroup_id] = selected or ["web_search"]
+        elif toolgroup_id.startswith("mcp::"):
+            connector_id = toolgroup_id.removeprefix("mcp::")
+            connector = next(
+                (
+                    candidate for candidate in connectors
+                    if isinstance(candidate, dict)
+                    and candidate.get("connector_id") == connector_id
+                ),
+                {},
+            )
+            endpoint = connector.get("url", "endpoint unavailable")
+            grouped_tools[toolgroup_id] = [f"MCP connector: {endpoint}"]
+
+    return grouped_tools
 
 
 def render_toolgroup_selection(builtin_tools_list, mcp_tools_list, selected_vector_dbs,
@@ -133,15 +191,8 @@ def render_toolgroup_selection(builtin_tools_list, mcp_tools_list, selected_vect
         toolgroup_selection = list(toolgroup_selection) + list(mcp_selection)
 
     # Display active tools summary
-    client = llama_stack_api.client
-    grouped_tools = {}
-    total_tools = 0
-
-    for toolgroup_id in toolgroup_selection:
-        tools = client.tools.list(toolgroup_id=toolgroup_id)
-        logger.debug("Raw tools from toolgroup '%s': %s", toolgroup_id, tools)
-        grouped_tools[toolgroup_id] = [tool.name for tool in tools]
-        total_tools += len(tools)
+    grouped_tools = _selected_tool_summary(toolgroup_selection)
+    total_tools = sum(len(tools) for tools in grouped_tools.values())
 
     logger.debug("Grouped tools summary: %s", grouped_tools)
 

@@ -54,7 +54,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Server-side chunking and embedding** via `vector_stores.files.create()`. LlamaStack handles both using `granite-embedding-125m` (768d).
 
-> **RHOAI 3.4 Llama Stack config.** The `lsd-rag-config` user config follows the Llama Stack 0.4 `responses` API shape and uses the built-in `file-search` tool runtime for RAG. It also overrides the annotation instruction template to prevent `<|file-xxx|>` citation markers in model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs).
+> **RHOAI 3.4 Llama Stack config.** The `lsd-rag-config` user config follows the Llama Stack 0.7 `responses` API shape exposed by the RHOAI 3.4 runtime and uses the built-in `file_search` tool for RAG. It also overrides the annotation instruction template to prevent `<|file-xxx|>` citation markers in model responses. Based on the [Lightspeed team's approach](https://github.com/redhat-ai-dev/lightspeed-configs).
 
 > **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
@@ -70,7 +70,9 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **KFP Llama Stack components use the 0.7 client line.** The RHOAI 3.4 Llama Stack server in this demo reports `0.7.1+rhaiv.1`; older `llama_stack_client` 0.4.x calls are rejected with HTTP 426. The KFP components install `llama-stack-client>=0.7,<0.8` and fail the run on vector-store API errors.
 
-> **Chatbot Llama Stack client uses the same 0.7 client line.** The Streamlit chatbot image also installs `llama-stack-client>=0.7,<0.8`; otherwise the Chat page fails while listing models and tools because the RHOAI 3.4 Llama Stack server rejects 0.4 clients with HTTP 426.
+> **Chatbot Llama Stack client uses the same 0.7 client line.** The Streamlit chatbot image also installs `llama-stack-client>=0.7,<0.8`; otherwise the Chat page fails while listing models and tools because the RHOAI 3.4 Llama Stack server rejects 0.4 clients with HTTP 426. The chatbot lists built-in tools from `/v1/tools` and MCP connectors from `/v1beta/connectors` because those APIs replace the older `toolgroups` client surface.
+
+> **Chatbot Inspect page dependencies are packaged in the image.** The image installs `streamlit-option-menu` because the Inspect tab imports `streamlit_option_menu` for its resource selector.
 
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 

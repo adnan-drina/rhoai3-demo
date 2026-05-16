@@ -53,37 +53,27 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
             # Convert search tools to web_search format
             agent_tools.append({"type": "web_search"})
         elif toolgroup_name.startswith("mcp::"):
-            try:
-                toolgroups = client.toolgroups.list()
-                for toolgroup in toolgroups:
-                    if str(toolgroup.identifier) == toolgroup_name:
-                        args = toolgroup.args or {}
-                        label = args.get("name", str(toolgroup.identifier)) if isinstance(args, dict) else str(toolgroup.identifier)
-                        agent_tools.append({
-                            "type": "mcp",
-                            "server_label": label,
-                            "server_url": toolgroup.mcp_endpoint.uri,
-                            "require_approval": "never",
-                        })
-                        break
-            except Exception:
-                pass
+            connector_id = toolgroup_name.removeprefix("mcp::")
+            connectors = llama_stack_api.list_connectors()
+            connector = next(
+                (
+                    candidate for candidate in connectors
+                    if isinstance(candidate, dict)
+                    and candidate.get("connector_id") == connector_id
+                ),
+                None,
+            )
+            if connector and connector.get("url"):
+                agent_tools.append({
+                    "type": "mcp",
+                    "server_label": connector.get("server_label") or connector_id,
+                    "server_url": connector["url"],
+                    "require_approval": "never",
+                })
+            else:
+                logger.debug("Selected MCP connector %s is not registered", connector_id)
         else:
-            # For other toolgroups, get individual tools and convert to function format
-            try:
-                tools_in_group = client.tools.list(toolgroup_id=toolgroup_name)
-                for tool in tools_in_group:
-                    # Convert to function tool dict
-                    agent_tools.append({
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description or "",
-                            "parameters": tool.parameters or {}
-                        }
-                    })
-            except Exception as e:
-                logger.logger.debug("Failed to get tools for %s: %s", toolgroup_name, e)
+            logger.debug("Skipping unsupported tool selection %s", toolgroup_name)
 
     return agent_tools
 
