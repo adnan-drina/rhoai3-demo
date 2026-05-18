@@ -99,7 +99,7 @@ if [[ -n "$MAAS_ROUTE" ]]; then
             -H "Authorization: Bearer $API_KEY" \
             -H "Content-Type: application/json" \
             -d '{"model":"granite-8b-agent","messages":[{"role":"user","content":"Reply with ready"}],"max_tokens":8}' \
-            "${MAAS_HOST}/llm/granite-8b-agent/v1/chat/completions" 2>/dev/null || echo "000")
+            "${MAAS_HOST}/v1/chat/completions" 2>/dev/null || echo "000")
         if [[ "$HTTP_CODE" == "200" ]]; then
             echo -e "${GREEN}[PASS]${NC} MaaS API key can call granite-8b-agent through gateway"
             VALIDATE_PASS=$((VALIDATE_PASS + 1))
