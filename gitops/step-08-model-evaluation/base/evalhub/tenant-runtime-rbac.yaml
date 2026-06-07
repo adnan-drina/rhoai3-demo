@@ -1,0 +1,39 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: evalhub-job-config-client
+  namespace: enterprise-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/name: evalhub-runtime
+    app.kubernetes.io/part-of: rag-evaluation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trustyai-service-operator-evalhub-job-config
+subjects:
+  - kind: ServiceAccount
+    name: evalhub-service
+    namespace: evalhub-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: evalhub-jobs-writer-client
+  namespace: enterprise-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/name: evalhub-runtime
+    app.kubernetes.io/part-of: rag-evaluation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trustyai-service-operator-evalhub-jobs-writer
+subjects:
+  - kind: ServiceAccount
+    name: evalhub-service
+    namespace: evalhub-system

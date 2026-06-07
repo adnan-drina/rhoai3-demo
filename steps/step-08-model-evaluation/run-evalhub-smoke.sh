@@ -63,8 +63,8 @@ except Exception:
 candidates = [
     data.get("id"),
     data.get("job_id"),
-    data.get("name"),
     data.get("resource", {}).get("id"),
+    data.get("name"),
     data.get("metadata", {}).get("name"),
 ]
 print(next((str(value) for value in candidates if value), ""))

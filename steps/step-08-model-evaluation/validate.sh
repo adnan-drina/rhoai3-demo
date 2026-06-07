@@ -341,11 +341,32 @@ check "evalhub-evaluator RoleBinding exists" \
     "oc get rolebinding evalhub-evaluator-access -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "evalhub-evaluator"
 
+check "EvalHub service account has tenant job ConfigMap RoleBinding" \
+    "oc get rolebinding evalhub-job-config-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "trustyai-service-operator-evalhub-job-config"
+
+check "EvalHub service account has tenant job writer RoleBinding" \
+    "oc get rolebinding evalhub-jobs-writer-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "trustyai-service-operator-evalhub-jobs-writer"
+
 TENANT_OPERATOR_OBJECTS="$(oc get serviceaccount,rolebinding,configmap -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c evalhub || true)"
 if [[ "$TENANT_OPERATOR_OBJECTS" -gt 0 ]]; then
     record_pass "TrustyAI operator created EvalHub tenant resources ($TENANT_OPERATOR_OBJECTS objects)"
 else
     record_fail "TrustyAI operator-created EvalHub tenant resources not found"
+fi
+
+EVALHUB_SA="system:serviceaccount:${EVALHUB_NAMESPACE}:evalhub-service"
+if [[ "$(oc auth can-i create configmaps -n "$NAMESPACE" --as="$EVALHUB_SA" 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "EvalHub service account can create tenant ConfigMaps"
+else
+    record_fail "EvalHub service account cannot create tenant ConfigMaps"
+fi
+
+if [[ "$(oc auth can-i create jobs.batch -n "$NAMESPACE" --as="$EVALHUB_SA" 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "EvalHub service account can create tenant benchmark Jobs"
+else
+    record_fail "EvalHub service account cannot create tenant benchmark Jobs"
 fi
 
 for user in kube:admin ai-admin ai-developer; do

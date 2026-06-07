@@ -11,3 +11,4 @@ resources:
   - route.yaml
   - tenant-role.yaml
   - tenant-rolebinding.yaml
+  - tenant-runtime-rbac.yaml

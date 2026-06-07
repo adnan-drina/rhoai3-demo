@@ -178,6 +178,7 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | EvalHub server | CR, PostgreSQL, service, route, health | Ready + HTTP 200 |
 | EvalHub tenant | Namespace label and operator-created tenant resources | Present |
 | EvalHub RBAC | Users/groups can create virtual `evaluations` | SubjectAccessReview returns allowed |
+| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs | Product TrustyAI ClusterRoles are bound in `enterprise-rag` |
 | EvalHub MLflow RBAC | EvalHub service account can reach the tenant MLflow workspace | Internal MLflow search returns HTTP 200 |
 | EvalHub providers | REST provider registry | Includes `lm_evaluation_harness` |
 | EvalHub smoke | Latest smoke job | `completed` plus MLflow experiment URL |
@@ -480,6 +481,19 @@ The tenant label value should be empty: `evalhub.trustyai.opendatahub.io/tenant=
 oc get evalhub evalhub -n evalhub-system -o jsonpath='{.spec.env}'
 oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
 oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
+```
+
+### EvalHub smoke job cannot create tenant resources
+
+**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace.
+
+**Solution:**
+
+```bash
+oc get rolebinding evalhub-job-config-client -n enterprise-rag -o yaml
+oc get rolebinding evalhub-jobs-writer-client -n enterprise-rag -o yaml
+oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
+oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
 ```
 
 ### Evaluations page not visible in Dashboard
