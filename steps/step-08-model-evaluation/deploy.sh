@@ -1,9 +1,10 @@
 #!/bin/bash
 # Step 08: Model Evaluation — Deploy Script
 # 1. Applies ArgoCD Application (deploys ConfigMaps + PostSync Job for eval configs)
-# 2. Waits for EvalHub and runs the product-native smoke evaluation
-# 3. Compiles the RAG eval pipeline
-# 4. Launches an evaluation run against all scenarios (pre + post RAG)
+# 2. Builds the custom EvalHub RAG scenario adapter image
+# 3. Waits for EvalHub and runs the product-native smoke evaluation
+# 4. Launches the EvalHub ACME/whoami pre/post RAG evaluation suite
+# 5. Compiles the legacy KFP RAG eval pipeline for optional compatibility runs
 
 set -euo pipefail
 
@@ -132,9 +133,30 @@ wait_for_evalhub_ready() {
     exit 1
 }
 
+build_evalhub_rag_adapter() {
+    local adapter_dir="$SCRIPT_DIR/evalhub-rag-scenario-adapter"
+
+    log_step "Building EvalHub RAG scenario adapter image..."
+    if [[ ! -d "$adapter_dir" ]]; then
+        log_error "Adapter source directory not found: $adapter_dir"
+        exit 1
+    fi
+
+    if ! oc get buildconfig evalhub-rag-scenario-adapter -n "$NAMESPACE" &>/dev/null; then
+        log_error "BuildConfig evalhub-rag-scenario-adapter not found in $NAMESPACE"
+        exit 1
+    fi
+
+    oc start-build evalhub-rag-scenario-adapter -n "$NAMESPACE" \
+        --from-dir="$adapter_dir" \
+        --wait \
+        --follow
+    log_success "EvalHub RAG scenario adapter image built"
+}
+
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 08: Model Evaluation                                     ║"
-echo "║  EvalHub + RAG Evaluation (KFP) + Standard Benchmarks          ║"
+echo "║  EvalHub + RAG Scenario Evaluation + Standard Benchmarks       ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -210,7 +232,13 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 3: Configure EvalHub tenant and run product-native smoke evaluation
+# Step 3: Build custom EvalHub RAG scenario adapter image
+# ═══════════════════════════════════════════════════════════════════════════
+build_evalhub_rag_adapter
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 4: Configure EvalHub tenant and run product-native smoke evaluation
 # ═══════════════════════════════════════════════════════════════════════════
 log_step "Registering $NAMESPACE as an EvalHub tenant..."
 oc label namespace "$NAMESPACE" "evalhub.trustyai.opendatahub.io/tenant=" --overwrite >/dev/null
@@ -228,9 +256,21 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 4: Compile RAG eval pipeline
+# Step 5: Run EvalHub ACME/whoami pre/post RAG scenario suite
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Compiling RAG eval pipeline..."
+if [ -f "$SCRIPT_DIR/run-evalhub-rag-scenarios.sh" ]; then
+    chmod +x "$SCRIPT_DIR/run-evalhub-rag-scenarios.sh"
+    "$SCRIPT_DIR/run-evalhub-rag-scenarios.sh" "$RUN_ID"
+else
+    log_error "run-evalhub-rag-scenarios.sh not found"
+    exit 1
+fi
+echo ""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Step 6: Compile KFP RAG eval pipeline for optional compatibility runs
+# ═══════════════════════════════════════════════════════════════════════════
+log_step "Compiling optional KFP RAG eval pipeline..."
 
 VENV_PATH="$REPO_ROOT/.venv-kfp"
 if [ ! -d "$VENV_PATH" ]; then
@@ -251,15 +291,17 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Upload and run RAG eval pipeline
+# Step 7: Optional KFP RAG eval pipeline run
 # ═══════════════════════════════════════════════════════════════════════════
-log_step "Launching RAG eval pipeline (run_id=$RUN_ID)..."
+log_step "Checking optional KFP RAG eval run setting..."
 
-if [ -f "$SCRIPT_DIR/run-rag-eval.sh" ]; then
+if [[ "${RUN_KFP_RAG_EVAL:-false}" == "true" && -f "$SCRIPT_DIR/run-rag-eval.sh" ]]; then
     chmod +x "$SCRIPT_DIR/run-rag-eval.sh"
     "$SCRIPT_DIR/run-rag-eval.sh" "$RUN_ID" || log_error "Pipeline launch failed — try manually via RHOAI Dashboard"
-else
+elif [[ "${RUN_KFP_RAG_EVAL:-false}" == "true" ]]; then
     log_info "run-rag-eval.sh not found — upload pipeline manually via RHOAI Dashboard"
+else
+    log_info "Skipping KFP RAG eval run. Set RUN_KFP_RAG_EVAL=true to run the legacy pipeline path."
 fi
 echo ""
 
@@ -275,9 +317,12 @@ echo "║    Tenant:  $NAMESPACE                                  ║"
 echo "║    Model:   granite-8b-agent                                  ║"
 echo "║    Rerun:   ./steps/step-08-model-evaluation/run-evalhub-smoke.sh ║"
 echo "║                                                                ║"
-echo "║  RAG Evaluation (automated):                                   ║"
-echo "║    Reports: s3://rhoai-storage/eval-results/$RUN_ID/      ║"
-echo "║    Monitor: oc get pods -n $NAMESPACE -l pipeline/runid   ║"
+echo "║  EvalHub RAG scenarios (automated):                            ║"
+echo "║    Suite:   rhoai-rag-pre-post-v1                              ║"
+echo "║    Rerun:   ./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh ║"
+echo "║                                                                ║"
+echo "║  KFP RAG Evaluation (optional compatibility):                  ║"
+echo "║    Enable:  RUN_KFP_RAG_EVAL=true ./steps/step-08-model-evaluation/deploy.sh ║"
 echo "║    Rerun:   ./steps/step-08-model-evaluation/run-rag-eval.sh   ║"
 echo "║    Quick:   ./steps/step-08-model-evaluation/run-eval-report.sh║"
 echo "║                                                                ║"

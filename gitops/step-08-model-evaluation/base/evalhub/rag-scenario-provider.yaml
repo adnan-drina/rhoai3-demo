@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: evalhub-provider-rhoai-rag-scenarios
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: evalhub-provider-rhoai-rag-scenarios
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+    trustyai.opendatahub.io/evalhub-provider-name: rhoai-rag-scenarios
+    trustyai.opendatahub.io/evalhub-provider-type: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  rhoai_rag_scenarios.yaml: |
+    id: rhoai_rag_scenarios
+    name: RHOAI RAG Scenarios
+    title: RHOAI RAG Scenarios
+    description: ACME Corp and whoami pre/post RAG scenario evaluations backed by demo test ConfigMaps.
+    tags:
+      - rag
+      - acme
+      - whoami
+      - llm-as-judge
+    runtime:
+      k8s:
+        image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/evalhub-rag-scenario-adapter:latest
+        entrypoint:
+          - /opt/app-root/bin/python
+          - /app/entrypoint.py
+        cpu_request: 250m
+        memory_request: 512Mi
+        cpu_limit: "2"
+        memory_limit: 2Gi
+        env:
+          - name: EVALHUB_MODE
+            value: k8s
+          - name: RAG_EVAL_CONFIG_NAMESPACE
+            value: enterprise-rag
+      local:
+        command: "python /app/entrypoint.py"
+    benchmarks:
+      - id: acme_corporate_pre_rag
+        name: ACME Corporate Pre-RAG Baseline
+        description: Measures baseline ACME answers before document grounding.
+        category: rag
+        metrics:
+          - pass_rate
+          - mean_judge_score
+          - tool_pass_rate
+        dataset_size: 6
+        tags:
+          - acme
+          - pre-rag
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.34
+      - id: acme_corporate_post_rag
+        name: ACME Corporate Post-RAG Evaluation
+        description: Measures ACME answers after retrieval from the acme_corporate vector store.
+        category: rag
+        metrics:
+          - pass_rate
+          - mean_judge_score
+          - tool_pass_rate
+        dataset_size: 6
+        tags:
+          - acme
+          - post-rag
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.8
+      - id: whoami_pre_rag
+        name: Whoami Pre-RAG Baseline
+        description: Measures baseline identity answers before document grounding.
+        category: rag
+        metrics:
+          - pass_rate
+          - mean_judge_score
+          - tool_pass_rate
+        dataset_size: 4
+        tags:
+          - whoami
+          - pre-rag
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.5
+      - id: whoami_post_rag
+        name: Whoami Post-RAG Evaluation
+        description: Measures identity answers after retrieval from the whoami vector store.
+        category: rag
+        metrics:
+          - pass_rate
+          - mean_judge_score
+          - tool_pass_rate
+        dataset_size: 4
+        tags:
+          - whoami
+          - post-rag
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.8

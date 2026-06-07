@@ -8,6 +8,7 @@ kind: Kustomization
 # RHOAI MLflow server is present.
 
 resources:
+  - evalhub-rag-scenario-adapter/
   - evalhub/
   - eval-configs/
   - mlflow/

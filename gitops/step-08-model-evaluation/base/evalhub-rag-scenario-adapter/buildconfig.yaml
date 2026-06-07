@@ -1,0 +1,37 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: evalhub-rag-scenario-adapter
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: evalhub-rag-scenario-adapter
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: evalhub-rag-scenario-adapter
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: evalhub-rag-scenario-adapter
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: evalhub-rag-scenario-adapter:latest
+  triggers: []

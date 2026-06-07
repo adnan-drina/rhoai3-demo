@@ -23,8 +23,10 @@ spec:
     - garak
     - guidellm
     - lighteval
+    - rhoai-rag-scenarios
   collections:
     - safety-and-fairness-v1
+    - rhoai-rag-pre-post-v1
   env:
     - name: MLFLOW_TRACKING_URI
       value: https://mlflow.redhat-ods-applications.svc:8443

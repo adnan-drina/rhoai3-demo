@@ -11,6 +11,11 @@ EVALHUB_NAMESPACE="evalhub-system"
 MODEL_NAMESPACE="maas"
 EVALHUB_SMOKE_NAME_PREFIX="evalhub-granite-smoke"
 EVALHUB_EXPERIMENT_NAME="evalhub-granite-smoke"
+EVALHUB_RAG_NAME_PREFIX="evalhub-rag-pre-post"
+EVALHUB_RAG_EXPERIMENT_NAME="evalhub-rag-pre-post"
+EVALHUB_RAG_PROVIDER_ID="rhoai_rag_scenarios"
+EVALHUB_RAG_PROVIDER_CONFIGMAP="rhoai-rag-scenarios"
+EVALHUB_RAG_COLLECTION_ID="rhoai-rag-pre-post-v1"
 
 record_pass() {
     echo -e "${GREEN}[PASS]${NC} $*"
@@ -79,6 +84,135 @@ spec:
     resource: "$resource"
 EOF
     fi
+}
+
+latest_evalhub_job_id_from_file() {
+    local file="$1"
+    local name_prefix="$2"
+    local experiment_name="$3"
+
+    python3 - "$file" "$name_prefix" "$experiment_name" <<'PY' 2>/dev/null || true
+import json
+import sys
+
+path, prefix, experiment_name = sys.argv[1:4]
+
+try:
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+except Exception:
+    data = {}
+
+def as_items(value):
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict):
+        return []
+    for key in ("items", "jobs", "data"):
+        nested = value.get(key)
+        if isinstance(nested, list):
+            return nested
+        if isinstance(nested, dict):
+            return list(nested.values())
+    return []
+
+matches = []
+for item in as_items(data):
+    if not isinstance(item, dict):
+        continue
+    resource = item.get("resource") or {}
+    metadata = item.get("metadata") or {}
+    name = item.get("name") or metadata.get("name") or resource.get("name") or ""
+    experiment = item.get("experiment") or {}
+    experiment_value = experiment.get("name") if isinstance(experiment, dict) else str(experiment or "")
+    if name.startswith(prefix) or experiment_value == experiment_name:
+        created = resource.get("created_at") or item.get("created_at") or metadata.get("creationTimestamp") or ""
+        identifier = resource.get("id") or item.get("id") or item.get("job_id") or metadata.get("name") or name
+        matches.append((created, str(identifier)))
+
+if matches:
+    matches.sort(key=lambda pair: pair[0], reverse=True)
+    print(matches[0][1])
+PY
+}
+
+evalhub_job_info_from_file() {
+    local file="$1"
+    local name_prefix="$2"
+    local experiment_name="$3"
+    shift 3
+
+    python3 - "$file" "$name_prefix" "$experiment_name" "$@" <<'PY' 2>/dev/null || true
+import json
+import sys
+
+path = sys.argv[1]
+prefix = sys.argv[2]
+experiment_name = sys.argv[3]
+benchmark_ids = set(sys.argv[4:])
+
+try:
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+except Exception:
+    data = {}
+
+def as_items(value):
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict):
+        return []
+    for key in ("items", "jobs", "data"):
+        nested = value.get(key)
+        if isinstance(nested, list):
+            return nested
+        if isinstance(nested, dict):
+            return list(nested.values())
+    return [value]
+
+def status_state(item):
+    status = item.get("status")
+    if isinstance(status, dict):
+        return status.get("state") or item.get("state") or ""
+    return str(status or item.get("state") or "")
+
+def benchmark_count(item):
+    if not benchmark_ids:
+        return 0
+    raw = json.dumps(item, sort_keys=True)
+    return sum(1 for benchmark_id in benchmark_ids if benchmark_id in raw)
+
+matches = []
+for item in as_items(data):
+    if not isinstance(item, dict):
+        continue
+    resource = item.get("resource") or {}
+    metadata = item.get("metadata") or {}
+    name = item.get("name") or metadata.get("name") or resource.get("name") or ""
+    experiment = item.get("experiment") or {}
+    experiment_value = experiment.get("name") if isinstance(experiment, dict) else str(experiment or "")
+    if len(as_items(data)) == 1 or name.startswith(prefix) or experiment_value == experiment_name:
+        created = resource.get("created_at") or item.get("created_at") or metadata.get("creationTimestamp") or ""
+        results = item.get("results") or {}
+        if not isinstance(results, dict):
+            results = {}
+        matches.append((created, item, name, resource, results))
+
+if not matches:
+    sys.exit(0)
+
+matches.sort(key=lambda pair: pair[0], reverse=True)
+created, item, name, resource, results = matches[0]
+identifier = resource.get("id") or item.get("id") or item.get("job_id") or item.get("metadata", {}).get("name") or name
+print("|".join([
+    str(identifier or ""),
+    str(name or ""),
+    status_state(item),
+    str(results.get("mlflow_experiment_url") or item.get("mlflow_experiment_url") or ""),
+    str(created or resource.get("created_at") or item.get("created_at") or ""),
+    str(benchmark_count(item)),
+]))
+PY
 }
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
@@ -171,6 +305,15 @@ for provider in lm-evaluation-harness garak guidellm lighteval; do
     fi
 done
 
+RAG_PROVIDER_CONFIGMAP_COUNT="$(oc get configmap -n redhat-ods-applications \
+    -l "trustyai.opendatahub.io/evalhub-provider-name=${EVALHUB_RAG_PROVIDER_CONFIGMAP}" \
+    --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$RAG_PROVIDER_CONFIGMAP_COUNT" -gt 0 ]]; then
+    record_pass "EvalHub RAG scenario provider ConfigMap present: $EVALHUB_RAG_PROVIDER_CONFIGMAP"
+else
+    record_fail "EvalHub RAG scenario provider ConfigMap missing: $EVALHUB_RAG_PROVIDER_CONFIGMAP"
+fi
+
 COLLECTION_CONFIGMAP_COUNT="$(oc get configmap -n redhat-ods-applications \
     -l "trustyai.opendatahub.io/evalhub-collection-name=safety-and-fairness-v1" \
     --no-headers 2>/dev/null | wc -l | tr -d ' ')"
@@ -178,6 +321,15 @@ if [[ "$COLLECTION_CONFIGMAP_COUNT" -gt 0 ]]; then
     record_pass "EvalHub collection ConfigMap present: safety-and-fairness-v1"
 else
     record_fail "EvalHub collection ConfigMap missing: safety-and-fairness-v1"
+fi
+
+RAG_COLLECTION_CONFIGMAP_COUNT="$(oc get configmap -n redhat-ods-applications \
+    -l "trustyai.opendatahub.io/evalhub-collection-name=${EVALHUB_RAG_COLLECTION_ID}" \
+    --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$RAG_COLLECTION_CONFIGMAP_COUNT" -gt 0 ]]; then
+    record_pass "EvalHub RAG scenario collection ConfigMap present: $EVALHUB_RAG_COLLECTION_ID"
+else
+    record_fail "EvalHub RAG scenario collection ConfigMap missing: $EVALHUB_RAG_COLLECTION_ID"
 fi
 
 # --- Eval ConfigMaps ---
@@ -199,6 +351,21 @@ else
     echo -e "${RED}[FAIL]${NC} eval-test-cases has $TEST_KEYS configs (expected 4)"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
+
+# --- EvalHub RAG Scenario Adapter Image ---
+log_step "EvalHub RAG Scenario Adapter"
+check "Adapter BuildConfig exists" \
+    "oc get buildconfig evalhub-rag-scenario-adapter -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-rag-scenario-adapter"
+
+ADAPTER_IMAGE_CREATED="$(oc get imagestreamtag evalhub-rag-scenario-adapter:latest -n "$NAMESPACE" \
+    -o jsonpath='{.image.metadata.creationTimestamp}' 2>/dev/null || true)"
+if [[ -n "$ADAPTER_IMAGE_CREATED" ]]; then
+    record_pass "Adapter ImageStreamTag evalhub-rag-scenario-adapter:latest exists"
+else
+    record_fail "Adapter image missing — run deploy.sh or: oc start-build evalhub-rag-scenario-adapter -n $NAMESPACE --from-dir=steps/step-08-model-evaluation/evalhub-rag-scenario-adapter --wait"
+fi
+check_recent_timestamp "Adapter image evalhub-rag-scenario-adapter:latest" "$ADAPTER_IMAGE_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
 
 # --- MLflow Workspace ---
 log_step "MLflow Workspace (RAG evaluation evidence)"
@@ -369,6 +536,14 @@ check "EvalHub benchmark Job has status callback RoleBinding" \
     "oc get rolebinding evalhub-job-status-callback -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "evalhub-job-status-events"
 
+check "EvalHub RAG scenario config-reader Role exists" \
+    "oc get role evalhub-rag-scenario-config-reader -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-rag-scenario-config-reader"
+
+check "EvalHub benchmark Job can read RAG scenario config RoleBinding" \
+    "oc get rolebinding evalhub-rag-scenario-config-reader -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "evalhub-rag-scenario-config-reader"
+
 TENANT_OPERATOR_OBJECTS="$(oc get serviceaccount,rolebinding,configmap -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c evalhub || true)"
 if [[ "$TENANT_OPERATOR_OBJECTS" -gt 0 ]]; then
     record_pass "TrustyAI operator created EvalHub tenant resources ($TENANT_OPERATOR_OBJECTS objects)"
@@ -396,6 +571,18 @@ else
     record_fail "EvalHub benchmark Job service account cannot create tenant status events"
 fi
 
+if [[ "$(oc auth can-i get configmap/eval-test-cases -n "$NAMESPACE" --as="$EVALHUB_JOB_SA" 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "EvalHub benchmark Job service account can read RAG test cases"
+else
+    record_fail "EvalHub benchmark Job service account cannot read RAG test cases"
+fi
+
+if [[ "$(oc auth can-i get configmap/eval-configs -n "$NAMESPACE" --as="$EVALHUB_JOB_SA" 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "EvalHub benchmark Job service account can read RAG judge prompt config"
+else
+    record_fail "EvalHub benchmark Job service account cannot read RAG judge prompt config"
+fi
+
 for user in kube:admin ai-admin ai-developer; do
     if [[ "$(sar_allowed "$user" create trustyai.opendatahub.io evaluations "$NAMESPACE")" == "yes" ]]; then
         record_pass "$user can create EvalHub evaluations in $NAMESPACE"
@@ -410,7 +597,7 @@ else
     record_fail "rhoai-users group cannot create EvalHub evaluations in $NAMESPACE"
 fi
 
-log_step "EvalHub API and Smoke Job"
+log_step "EvalHub API and Jobs"
 if [[ -n "${EVALHUB_BASE_URL:-}" ]]; then
     TOKEN="$(oc whoami -t 2>/dev/null || true)"
     PROVIDERS_JSON="$(curl -sk --max-time 30 \
@@ -423,61 +610,51 @@ if [[ -n "${EVALHUB_BASE_URL:-}" ]]; then
         record_fail "EvalHub providers API does not include lm_evaluation_harness"
     fi
 
+    RAG_PROVIDER_JSON="$(curl -sk --max-time 30 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "X-Tenant: $NAMESPACE" \
+        "$EVALHUB_BASE_URL/api/v1/evaluations/providers/$EVALHUB_RAG_PROVIDER_ID" 2>/dev/null || true)"
+    if echo "$RAG_PROVIDER_JSON" | grep -q "acme_corporate_post_rag" && \
+        echo "$RAG_PROVIDER_JSON" | grep -q "whoami_post_rag"; then
+        record_pass "EvalHub providers API exposes $EVALHUB_RAG_PROVIDER_ID benchmarks"
+    else
+        record_fail "EvalHub providers API does not expose $EVALHUB_RAG_PROVIDER_ID benchmarks"
+    fi
+
+    RAG_COLLECTION_JSON="$(curl -sk --max-time 30 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "X-Tenant: $NAMESPACE" \
+        "$EVALHUB_BASE_URL/api/v1/evaluations/collections/$EVALHUB_RAG_COLLECTION_ID" 2>/dev/null || true)"
+    if echo "$RAG_COLLECTION_JSON" | grep -q "$EVALHUB_RAG_PROVIDER_ID" && \
+        echo "$RAG_COLLECTION_JSON" | grep -q "acme_corporate_pre_rag"; then
+        record_pass "EvalHub collections API exposes $EVALHUB_RAG_COLLECTION_ID"
+    else
+        record_fail "EvalHub collections API does not expose $EVALHUB_RAG_COLLECTION_ID"
+    fi
+
     JOBS_JSON="$(curl -sk --max-time 30 \
         -H "Authorization: Bearer $TOKEN" \
         -H "X-Tenant: $NAMESPACE" \
-        "$EVALHUB_BASE_URL/api/v1/evaluations/jobs?limit=20" 2>/dev/null || true)"
+        "$EVALHUB_BASE_URL/api/v1/evaluations/jobs?limit=50" 2>/dev/null || true)"
     JOBS_FILE="$(mktemp)"
     printf '%s' "$JOBS_JSON" > "$JOBS_FILE"
-    SMOKE_INFO="$(python3 - "$JOBS_FILE" "$EVALHUB_SMOKE_NAME_PREFIX" "$EVALHUB_EXPERIMENT_NAME" <<'PY' 2>/dev/null || true
-import json
-import sys
-
-path = sys.argv[1]
-prefix = sys.argv[2]
-experiment_name = sys.argv[3]
-try:
-    with open(path, encoding="utf-8") as handle:
-        data = json.load(handle)
-except Exception:
-    data = {}
-
-items = data.get("items") or data.get("jobs") or []
-if isinstance(items, dict):
-    items = list(items.values())
-
-matches = []
-for item in items:
-    name = item.get("name") or item.get("metadata", {}).get("name") or ""
-    experiment = item.get("experiment") or {}
-    experiment_matches = experiment.get("name") == experiment_name
-    if name.startswith(prefix) or experiment_matches:
-        resource = item.get("resource") or {}
-        created = resource.get("created_at") or item.get("created_at") or ""
-        matches.append((created, item))
-
-if not matches:
-    sys.exit(0)
-
-matches.sort(key=lambda pair: pair[0], reverse=True)
-item = matches[0][1]
-resource = item.get("resource") or {}
-status = item.get("status") or {}
-if isinstance(status, dict):
-    state = status.get("state") or item.get("state") or ""
-else:
-    state = str(status or item.get("state") or "")
-results = item.get("results") or {}
-print("|".join([
-    resource.get("id") or item.get("id") or "",
-    item.get("name") or "",
-    state,
-    results.get("mlflow_experiment_url") or "",
-    resource.get("created_at") or item.get("created_at") or "",
-]))
-PY
-)"
-    rm -f "$JOBS_FILE"
+    SMOKE_JOB_ID="$(latest_evalhub_job_id_from_file "$JOBS_FILE" "$EVALHUB_SMOKE_NAME_PREFIX" "$EVALHUB_EXPERIMENT_NAME")"
+    SMOKE_DETAIL_FILE="$(mktemp)"
+    if [[ -n "$SMOKE_JOB_ID" ]]; then
+        SMOKE_DETAIL_CODE="$(curl -sk --max-time 30 \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "X-Tenant: $NAMESPACE" \
+            "$EVALHUB_BASE_URL/api/v1/evaluations/jobs/$SMOKE_JOB_ID" \
+            -o "$SMOKE_DETAIL_FILE" \
+            -w "%{http_code}" 2>/dev/null || echo "000")"
+        if [[ "$SMOKE_DETAIL_CODE" == "200" ]]; then
+            SMOKE_INFO="$(evalhub_job_info_from_file "$SMOKE_DETAIL_FILE" "$EVALHUB_SMOKE_NAME_PREFIX" "$EVALHUB_EXPERIMENT_NAME" "arc_easy")"
+        else
+            SMOKE_INFO="$(evalhub_job_info_from_file "$JOBS_FILE" "$EVALHUB_SMOKE_NAME_PREFIX" "$EVALHUB_EXPERIMENT_NAME" "arc_easy")"
+        fi
+    else
+        SMOKE_INFO=""
+    fi
     if [[ -n "$SMOKE_INFO" ]]; then
         SMOKE_JOB_ID="${SMOKE_INFO%%|*}"
         REST="${SMOKE_INFO#*|}"
@@ -486,7 +663,8 @@ PY
         SMOKE_STATE="${REST%%|*}"
         REST="${REST#*|}"
         SMOKE_MLFLOW_URL="${REST%%|*}"
-        SMOKE_CREATED="${REST#*|}"
+        REST="${REST#*|}"
+        SMOKE_CREATED="${REST%%|*}"
 
         if [[ "$SMOKE_STATE" == "completed" ]]; then
             record_pass "Latest EvalHub smoke job completed: ${SMOKE_JOB_NAME:-$SMOKE_JOB_ID}"
@@ -502,6 +680,59 @@ PY
         fi
     else
         record_fail "No EvalHub smoke job found — run: ./steps/step-08-model-evaluation/run-evalhub-smoke.sh"
+    fi
+
+    RAG_JOB_ID="$(latest_evalhub_job_id_from_file "$JOBS_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME")"
+    RAG_DETAIL_FILE="$(mktemp)"
+    if [[ -n "$RAG_JOB_ID" ]]; then
+        RAG_DETAIL_CODE="$(curl -sk --max-time 30 \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "X-Tenant: $NAMESPACE" \
+            "$EVALHUB_BASE_URL/api/v1/evaluations/jobs/$RAG_JOB_ID" \
+            -o "$RAG_DETAIL_FILE" \
+            -w "%{http_code}" 2>/dev/null || echo "000")"
+        if [[ "$RAG_DETAIL_CODE" == "200" ]]; then
+            RAG_INFO="$(evalhub_job_info_from_file "$RAG_DETAIL_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME" acme_corporate_pre_rag acme_corporate_post_rag whoami_pre_rag whoami_post_rag)"
+        else
+            RAG_INFO="$(evalhub_job_info_from_file "$JOBS_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME" acme_corporate_pre_rag acme_corporate_post_rag whoami_pre_rag whoami_post_rag)"
+        fi
+    else
+        RAG_INFO=""
+    fi
+    rm -f "$JOBS_FILE" "$SMOKE_DETAIL_FILE" "$RAG_DETAIL_FILE"
+
+    if [[ -n "$RAG_INFO" ]]; then
+        RAG_JOB_ID="${RAG_INFO%%|*}"
+        REST="${RAG_INFO#*|}"
+        RAG_JOB_NAME="${REST%%|*}"
+        REST="${REST#*|}"
+        RAG_STATE="${REST%%|*}"
+        REST="${REST#*|}"
+        RAG_MLFLOW_URL="${REST%%|*}"
+        REST="${REST#*|}"
+        RAG_CREATED="${REST%%|*}"
+        RAG_BENCHMARK_COUNT="${REST#*|}"
+
+        if [[ "$RAG_STATE" == "completed" ]]; then
+            record_pass "Latest EvalHub RAG pre/post job completed: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+        else
+            record_fail "Latest EvalHub RAG pre/post job state is ${RAG_STATE:-unknown}: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+        fi
+        check_recent_timestamp "Latest EvalHub RAG pre/post job" "$RAG_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+
+        if [[ "$RAG_BENCHMARK_COUNT" =~ ^[0-9]+$ && "$RAG_BENCHMARK_COUNT" -ge 4 ]]; then
+            record_pass "EvalHub RAG pre/post job includes all 4 scenario benchmarks"
+        else
+            record_fail "EvalHub RAG pre/post job does not show all 4 scenario benchmarks (found ${RAG_BENCHMARK_COUNT:-0})"
+        fi
+
+        if [[ -n "$RAG_MLFLOW_URL" ]]; then
+            record_pass "EvalHub RAG pre/post job has MLflow experiment URL: $RAG_MLFLOW_URL"
+        else
+            record_fail "EvalHub RAG pre/post job results missing mlflow_experiment_url"
+        fi
+    else
+        record_fail "No EvalHub RAG pre/post job found — run: ./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh"
     fi
 else
     record_fail "Skipping EvalHub API checks because route URL is missing"
@@ -646,8 +877,8 @@ else
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
-# --- Eval Reports in MinIO ---
-log_step "Eval Reports (MinIO)"
+# --- Optional KFP Eval Reports in MinIO ---
+log_step "Optional KFP Eval Reports (MinIO)"
 if [[ -n "$LSD_POD" ]]; then
     MINIO_ACCESS=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null | base64 -d)
     MINIO_SECRET=$(oc get secret minio-connection -n "$NAMESPACE" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' 2>/dev/null | base64 -d)
@@ -678,7 +909,7 @@ except Exception:
         echo -e "${YELLOW}[WARN]${NC} Only $REPORT_COUNT reports in MinIO (expected 4 per run)"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     else
-        echo -e "${YELLOW}[WARN]${NC} No eval reports in MinIO — run evaluation first"
+        echo -e "${YELLOW}[WARN]${NC} No optional KFP eval reports in MinIO — run: RUN_KFP_RAG_EVAL=true ./steps/step-08-model-evaluation/deploy.sh"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
     check_recent_timestamp "Latest RAG eval report" "$REPORT_LATEST" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
@@ -687,8 +918,8 @@ else
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
-# --- MLflow Run Evidence ---
-log_step "MLflow Run Evidence"
+# --- Optional KFP MLflow Run Evidence ---
+log_step "Optional KFP MLflow Run Evidence"
 MLFLOW_URL=$(oc get mlflow mlflow -o jsonpath='{.status.url}' 2>/dev/null || true)
 OC_TOKEN=$(oc whoami -t 2>/dev/null || true)
 MLFLOW_RUN_INFO=""
@@ -743,7 +974,7 @@ if [[ -n "$MLFLOW_RUN_INFO" ]]; then
     fi
     check_recent_timestamp "Latest Step 08 MLflow run" "$MLFLOW_START" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
 else
-    echo -e "${YELLOW}[WARN]${NC} No Step 08 MLflow run found — run: ./steps/step-08-model-evaluation/run-rag-eval.sh"
+    echo -e "${YELLOW}[WARN]${NC} No optional KFP Step 08 MLflow run found — run: ./steps/step-08-model-evaluation/run-rag-eval.sh"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
 
