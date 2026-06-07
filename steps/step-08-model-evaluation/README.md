@@ -178,7 +178,7 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | EvalHub server | CR, PostgreSQL, service, route, health | Ready + HTTP 200 |
 | EvalHub tenant | Namespace label and operator-created tenant resources | Present |
 | EvalHub RBAC | Users/groups can create virtual `evaluations` | SubjectAccessReview returns allowed |
-| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs | Product TrustyAI ClusterRoles are bound in `enterprise-rag` |
+| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs; benchmark Jobs have tenant service account, CA bundle, MLflow, and callback access | Product TrustyAI roles are bound in `enterprise-rag` and `evalhub-system` |
 | EvalHub MLflow RBAC | EvalHub service account can reach the tenant MLflow workspace | Internal MLflow search returns HTTP 200 |
 | EvalHub providers | REST provider registry | Includes `lm_evaluation_harness` |
 | EvalHub smoke | Latest smoke job | `completed` plus MLflow experiment URL |
@@ -485,13 +485,17 @@ oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
 
 ### EvalHub smoke job cannot create tenant resources
 
-**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace.
+**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-evalhub-system-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a status callback RoleBinding to the EvalHub namespace.
 
 **Solution:**
 
 ```bash
 oc get rolebinding evalhub-job-config-client -n enterprise-rag -o yaml
 oc get rolebinding evalhub-jobs-writer-client -n enterprise-rag -o yaml
+oc get serviceaccount evalhub-evalhub-system-job -n enterprise-rag -o yaml
+oc get configmap evalhub-service-ca -n enterprise-rag -o yaml
+oc get rolebinding evalhub-job-mlflow-client -n enterprise-rag -o yaml
+oc get rolebinding evalhub-job-status-callback -n evalhub-system -o yaml
 oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
 oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
 ```

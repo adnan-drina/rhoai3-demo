@@ -349,6 +349,22 @@ check "EvalHub service account has tenant job writer RoleBinding" \
     "oc get rolebinding evalhub-jobs-writer-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "trustyai-service-operator-evalhub-jobs-writer"
 
+check "EvalHub benchmark Job ServiceAccount exists in tenant namespace" \
+    "oc get serviceaccount evalhub-evalhub-system-job -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-evalhub-system-job"
+
+check "EvalHub benchmark Job service CA ConfigMap exists in tenant namespace" \
+    "oc get configmap evalhub-service-ca -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-service-ca"
+
+check "EvalHub benchmark Job has tenant MLflow RoleBinding" \
+    "oc get rolebinding evalhub-job-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "trustyai-service-operator-evalhub-mlflow-jobs-access"
+
+check "EvalHub benchmark Job has status callback RoleBinding" \
+    "oc get rolebinding evalhub-job-status-callback -n $EVALHUB_NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "evalhub-evalhub-system-job-access-role"
+
 TENANT_OPERATOR_OBJECTS="$(oc get serviceaccount,rolebinding,configmap -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c evalhub || true)"
 if [[ "$TENANT_OPERATOR_OBJECTS" -gt 0 ]]; then
     record_pass "TrustyAI operator created EvalHub tenant resources ($TENANT_OPERATOR_OBJECTS objects)"
