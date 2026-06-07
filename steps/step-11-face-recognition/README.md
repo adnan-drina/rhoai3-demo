@@ -167,7 +167,7 @@ oc get pod face-recognition-wb-0 -n enterprise-mlops
 
 1. Run `04-query-model-server.ipynb`
 
-**Expect:** The notebook prints the endpoint, readiness, model input/output metadata, and Model Registry IDs when available. Image and video cells return annotated outputs from the served model without retraining or replacing artifacts.
+**Expect:** The notebook prints the endpoint, readiness, served artifact metadata, model input/output metadata, and Model Registry IDs when available. Image and video cells return annotated outputs from the served model without retraining or replacing artifacts.
 
 > Same model, same accuracy — now served on OpenVINO Model Server via KServe Standard mode. No GPU needed for inference. This is how Red Hat OpenShift AI serves predictive AI models in production: a REST API that any service can call, deployed and managed via GitOps like every other platform component.
 
@@ -180,7 +180,7 @@ oc get pod face-recognition-wb-0 -n enterprise-mlops
 3. Run `03-test-retrained-model.ipynb`
 4. Leave `PROMOTE_TO_MODEL_SERVER = False` unless you intentionally want to replace the served model artifact
 
-**Expect:** Notebook 02 auto-annotates your photos, trains YOLO11m, and exports ONNX. Notebook 03 tests the local ONNX output and skips MinIO upload/restart unless promotion is explicitly enabled.
+**Expect:** Notebook 02 auto-annotates your photos, trains YOLO11m, and exports ONNX. Notebook 03 tests the newest local `runs/face-recognition/*/weights/best.onnx` output and skips MinIO upload/restart unless promotion is explicitly enabled. If no local training output exists, notebook 03 loads the currently served validated model from MinIO instead of falling back to a generic face detector.
 
 > The same RHOAI platform that serves LLMs also provides the GPU compute, notebook environment, pipelines, Model Registry, and serving path for computer vision models.
 
