@@ -191,6 +191,8 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | MLflow run evidence | Latest `enterprise-rag` KFP run tagged `rhoai.demo.step=08` | Fresh finished run |
 | LM-Eval runs | LMEvalJob CRs | Recent completed job per model |
 
+> **Pre-merge branch validation:** While this branch is under test, the Step 08 ArgoCD `Application` is pinned to `targetRevision: feat/step-08-evalhub` so live validation uses the branch contents. Restore the Application manifest to `targetRevision: main` before merging to trunk.
+
 ```bash
 oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
   -o jsonpath='{.status.sync.status} / {.status.health.status}'
@@ -258,9 +260,9 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 ./steps/step-08-model-evaluation/run-evalhub-smoke.sh
 ```
 
-**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits one `tinyTruthfulQA` benchmark by benchmark `id` against `granite-8b-agent`, passes tokenizer `ibm-granite/granite-3.1-8b-instruct`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
+**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits the `arc_easy` benchmark by benchmark `id` against `granite-8b-agent`, passes tokenizer `ibm-granite/granite-3.1-8b-instruct`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
 
-> This is intentionally small. It proves the EvalHub control plane and tenant path without replacing the richer KFP RAG quality harness or the longer `LMEvalJob` benchmarks. The demo message is that standardized provider benchmarks, custom application evaluations, and MLflow evidence can coexist under one RHOAI evaluation story.
+> This is intentionally scoped to one provider benchmark. It proves the EvalHub control plane and tenant path without replacing the richer KFP RAG quality harness or the longer `LMEvalJob` benchmarks. The demo message is that standardized provider benchmarks, custom application evaluations, and MLflow evidence can coexist under one RHOAI evaluation story.
 
 ### Run RAG Evaluation
 
@@ -509,6 +511,17 @@ oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:eva
 
 ```bash
 EVALHUB_TOKENIZER=ibm-granite/granite-3.1-8b-instruct \
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh
+```
+
+### EvalHub tinyTruthfulQA smoke job fails with missing tinyBenchmarks
+
+**Root Cause:** The RHOAI 3.4 LM-Eval adapter image in this demo cluster lists `tinyTruthfulQA`, but that task requires the optional `tinyBenchmarks` Python package at runtime. The packaged adapter image does not include that dependency.
+
+**Solution:** Use the validated default `arc_easy` smoke benchmark, or pass an explicit known-good benchmark:
+
+```bash
+EVALHUB_BENCHMARK_ID=arc_easy \
 ./steps/step-08-model-evaluation/run-evalhub-smoke.sh
 ```
 
