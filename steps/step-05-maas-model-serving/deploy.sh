@@ -19,9 +19,20 @@ NAMESPACE="maas"
 load_env
 check_oc_logged_in
 
+load_openai_provider_key() {
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        return 0
+    fi
+
+    local openai_env_file="${RHOAI_OPENAI_ENV_FILE:-$REPO_ROOT/../rhoai3-coding-demo/.env}"
+    if [[ -f "$openai_env_file" ]]; then
+        set -a; source "$openai_env_file"; set +a
+    fi
+}
+
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 05: MaaS Model Serving on vLLM                                 ║"
-echo "║  2 Active Models in the maas Namespace                               ║"
+echo "║  2 Local Models + OpenAI GPT-5 through MaaS                          ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -60,6 +71,7 @@ log_step "Model Portfolio (5 GPUs Total)"
 echo ""
 echo "  granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
 echo "  mistral-3-bf16     4-GPU  S3   BF16  Playground chat/Eval judge"
+echo "  gpt-5              0-GPU  SaaS OpenAI external model via MaaS"
 echo ""
 
 # Create HF token secret (upload jobs need this before ArgoCD sync)
@@ -73,6 +85,21 @@ if [[ -n "${HF_TOKEN:-}" ]]; then
 else
     log_warn "HF_TOKEN not set in .env — uploads will use unauthenticated HF access (slower)"
 fi
+
+# Create OpenAI provider secret for external MaaS models.
+log_step "Ensuring OpenAI provider credential secret exists..."
+
+load_openai_provider_key
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    oc create secret generic openai-provider-api-key -n "$NAMESPACE" \
+        --from-literal=api-key="$OPENAI_API_KEY" \
+        --dry-run=client -o yaml | oc apply -f - 2>/dev/null
+    log_success "openai-provider-api-key secret ready in $NAMESPACE"
+else
+    log_warn "OPENAI_API_KEY not set — gpt-5 ExternalModel will wait for maas/openai-provider-api-key"
+    log_warn "Set OPENAI_API_KEY in .env or set RHOAI_OPENAI_ENV_FILE to a file containing it"
+fi
+echo ""
 
 # Upload mistral-3-bf16 model to MinIO (must complete before ISVC creation)
 log_step "Ensuring mistral-3-bf16 model is in MinIO..."

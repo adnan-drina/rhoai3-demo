@@ -20,6 +20,11 @@ spec:
       - name: rhoai-users
   priority: 100
   modelRefs:
+    - name: gpt-5
+      namespace: maas
+      tokenRateLimits:
+        - limit: 1000000
+          window: 1h
     - name: granite-8b-agent
       namespace: maas
       tokenRateLimits:
@@ -58,6 +63,8 @@ spec:
       - name: rhoai-admins
       - name: rhoai-users
   modelRefs:
+    - name: gpt-5
+      namespace: maas
     - name: granite-8b-agent
       namespace: maas
     - name: mistral-3-bf16

@@ -11,7 +11,7 @@ This guide keeps runbook content out of the step READMEs. Use it when you are de
 | AWS GPU capacity | Step 01 creates `g6.4xlarge` and `g6.12xlarge` MachineSets for NVIDIA L4 GPUs. Confirm regional quota before deployment. |
 | `oc` CLI | Required by every script. Login before running bootstrap or step scripts. |
 | Git remote | `scripts/bootstrap.sh` detects `origin` and rewrites Argo CD Application repo URLs for forks. |
-| Optional credentials | `HF_TOKEN` speeds or authorizes Hugging Face downloads; `SLACK_BOT_TOKEN` enables Slack MCP; Step 13b needs `EDGE_HOST`, `EDGE_USER`, and `EDGE_PASS`. |
+| Optional credentials | `HF_TOKEN` speeds or authorizes Hugging Face downloads; `OPENAI_API_KEY` enables Step 05 external MaaS models; `SLACK_BOT_TOKEN` enables Slack MCP; Step 13b needs `EDGE_HOST`, `EDGE_USER`, and `EDGE_PASS`. |
 | Pull access | Red Hat registry, Quay, and other image sources must be reachable unless you adapt the demo for disconnected mirroring. |
 
 Self-signed or demo certificates are expected. The scripts and examples use `--insecure-skip-tls-verify=true` and `curl -k` where needed.
@@ -63,7 +63,7 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 | 01 | Detects cluster ID, AMI, region, and availability zone; installs the RHOAI observability prerequisite operators; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
 | 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; configures `DSCI.spec.monitoring` metrics/traces; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
-| 05 | Creates Hugging Face token secret if available; uploads large Mistral model to MinIO; registers models. |
+| 05 | Creates Hugging Face token secret if available; creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` if available; uploads large Mistral model to MinIO; registers local and external MaaS models. |
 | 07 | Builds or deploys ingestion/chatbot resources and initializes RAG data. |
 | 08 | Copies evaluation configs and can launch evaluation jobs. |
 | 10 | Creates Slack secret from `.env`, patches route-specific MCP config, registers MCP tool groups in Llama Stack. |
@@ -237,6 +237,7 @@ Product-aligned next improvements:
 | Verify RHOAI health | `oc get datasciencecluster default-dsc -o yaml` |
 | Verify KServe models | `oc get inferenceservice -A` |
 | Verify MaaS API keys | `oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n maas` and `oc get secret rag-maas-api-key -n enterprise-rag` |
+| Verify external MaaS models | `oc get externalmodel gpt-5 -n maas -o yaml`, `oc get maasmodelref gpt-5 -n maas`, and confirm `maas/openai-provider-api-key` has an `api-key` data key. |
 | Verify MaaS usage metrics | Query `up{job="kuadrant-system/kuadrant-limitador-monitor"}`, confirm `oc get cronjob maas-usage-heartbeat -n maas`, then generate or wait for model-route traffic with `X-Gateway-Model-Name: granite-8b-agent` and query `authorized_calls{user!="",subscription!=""}` plus `authorized_hits{user!="",model!=""}`. The RHOAI Usage dashboard uses these Limitador metrics. |
 | Verify RHOAI observability dashboard | Check `oc get monitoring default-monitoring` and confirm **Observe & monitor** → **Dashboard** shows Cluster, Models, and Usage tabs. |
 | Verify model registry | `oc get modelregistry -n rhoai-model-registries` |

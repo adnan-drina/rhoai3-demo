@@ -7,6 +7,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
 NAMESPACE="maas"
+LOCAL_MAAS_MODELS=(granite-8b-agent mistral-3-bf16)
+EXTERNAL_MAAS_MODELS=(gpt-5)
+PUBLISHED_MAAS_MODELS=(gpt-5 granite-8b-agent mistral-3-bf16)
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 05: MaaS Model Serving — Validation                     ║"
@@ -44,10 +47,30 @@ check_warn "MaaS Usage heartbeat CronJob exists" \
 # --- MaaS Governance API ---
 log_step "MaaS Governance API"
 check_crd_exists "maasmodelrefs.maas.opendatahub.io"
+check_crd_exists "externalmodels.maas.opendatahub.io"
 check_crd_exists "maassubscriptions.maas.opendatahub.io"
 check_crd_exists "maasauthpolicies.maas.opendatahub.io"
 
-for model in granite-8b-agent mistral-3-bf16; do
+OPENAI_SECRET_KEY=$(oc get secret openai-provider-api-key -n "$NAMESPACE" -o jsonpath='{.data.api-key}' 2>/dev/null || true)
+if [[ -n "$OPENAI_SECRET_KEY" ]]; then
+    echo -e "${GREEN}[PASS]${NC} OpenAI provider credential secret exists with api-key data"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} OpenAI provider credential secret maas/openai-provider-api-key is missing api-key data"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+GPT5_EXTERNAL_SPEC=$(oc get externalmodel gpt-5 -n "$NAMESPACE" \
+    -o jsonpath='{.spec.provider}|{.spec.endpoint}|{.spec.targetModel}|{.spec.credentialRef.name}' 2>/dev/null || true)
+if [[ "$GPT5_EXTERNAL_SPEC" == "openai|api.openai.com|gpt-5|openai-provider-api-key" ]]; then
+    echo -e "${GREEN}[PASS]${NC} ExternalModel gpt-5 points to OpenAI gpt-5 with the provider credential"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} ExternalModel gpt-5 spec drift: ${GPT5_EXTERNAL_SPEC:-missing}"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+for model in "${LOCAL_MAAS_MODELS[@]}"; do
     ROUTE_HOST=$(oc get route "$model" -n "$NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)
     if [[ -n "$ROUTE_HOST" ]]; then
         oc patch externalmodel "$model" -n "$NAMESPACE" --type merge \
@@ -55,7 +78,9 @@ for model in granite-8b-agent mistral-3-bf16; do
         oc patch maasmodelref "$model" -n "$NAMESPACE" --type merge \
             -p "{\"spec\":{\"endpointOverride\":\"https://${ROUTE_HOST}\"}}" >/dev/null 2>&1 || true
     fi
+done
 
+for model in "${PUBLISHED_MAAS_MODELS[@]}"; do
     PHASE=$(oc get maasmodelref "$model" -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
     if [[ "$PHASE" == "Ready" ]]; then
         echo -e "${GREEN}[PASS]${NC} MaaSModelRef $model: Ready"
@@ -133,13 +158,22 @@ validate_demo_user_api_key() {
     models_http_code=$(curl -sk --max-time 20 -o "$models_file" -w "%{http_code}" \
         -H "Authorization: Bearer $api_key" \
         "${MAAS_HOST}/v1/models" 2>/dev/null || echo "000")
-    if [[ "$models_http_code" == "200" ]] \
-        && grep -q "granite-8b-agent" "$models_file" \
-        && grep -q "mistral-3-bf16" "$models_file"; then
-        echo -e "${GREEN}[PASS]${NC} $username MaaS API key lists both published demo models"
+    local missing_models=()
+    if [[ "$models_http_code" == "200" ]]; then
+        for expected_model in "${PUBLISHED_MAAS_MODELS[@]}"; do
+            if ! grep -q "$expected_model" "$models_file"; then
+                missing_models+=("$expected_model")
+            fi
+        done
+    else
+        missing_models=("${PUBLISHED_MAAS_MODELS[@]}")
+    fi
+
+    if [[ "$models_http_code" == "200" && "${#missing_models[@]}" -eq 0 ]]; then
+        echo -e "${GREEN}[PASS]${NC} $username MaaS API key lists all published demo models"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
-        echo -e "${RED}[FAIL]${NC} $username MaaS API key did not list both demo models (HTTP $models_http_code)"
+        echo -e "${RED}[FAIL]${NC} $username MaaS API key model list missing: ${missing_models[*]:-unknown} (HTTP $models_http_code)"
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 
@@ -154,6 +188,25 @@ validate_demo_user_api_key() {
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
         echo -e "${RED}[FAIL]${NC} $username MaaS gateway chat returned HTTP $chat_http_code"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+}
+
+validate_openai_external_model_call() {
+    local api_key="$1"
+    local external_http_code
+
+    external_http_code=$(curl -sk --max-time 120 -o "/tmp/step-05-openai-gpt-5-chat.json" -w "%{http_code}" \
+        -H "Authorization: Bearer $api_key" \
+        -H "X-Gateway-Model-Name: gpt-5" \
+        -H "Content-Type: application/json" \
+        -d '{"model":"gpt-5","messages":[{"role":"user","content":"Reply with the single word ready."}],"max_completion_tokens":16}' \
+        "${MAAS_HOST}/v1/chat/completions" 2>/dev/null || echo "000")
+    if [[ "$external_http_code" == "200" ]]; then
+        echo -e "${GREEN}[PASS]${NC} MaaS can route a low-token chat request to external OpenAI gpt-5"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} MaaS external OpenAI gpt-5 chat returned HTTP $external_http_code"
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 }
@@ -231,6 +284,7 @@ if [[ -n "$MAAS_ROUTE" ]]; then
 
     ADMIN_API_KEY=$(oc get secret ai-admin-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' 2>/dev/null | base64 -d 2>/dev/null || true)
     if [[ -n "$ADMIN_API_KEY" ]]; then
+        validate_openai_external_model_call "$ADMIN_API_KEY"
         echo -e "${YELLOW}[INFO]${NC} Waiting for first MaaS Usage metrics scrape before generating dashboard increment..."
         sleep 35
         curl -sk --max-time 60 -o /tmp/step-05-maas-dashboard-increment.json \
@@ -248,11 +302,12 @@ if [[ -n "$MAAS_ROUTE" ]]; then
         -H "x-forwarded-access-token: $(oc whoami -t)" \
         "https://localhost:8143/api/v1/maas/models?namespace=${NAMESPACE}" 2>/dev/null || true)
     if printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "granite-8b-agent" \
-        && printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "mistral-3-bf16"; then
-        echo -e "${GREEN}[PASS]${NC} GenAI AI asset MaaS API lists both MaaS models"
+        && printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "mistral-3-bf16" \
+        && printf '%s' "$GENAI_MAAS_RESPONSE" | grep -q "gpt-5"; then
+        echo -e "${GREEN}[PASS]${NC} GenAI AI asset MaaS API lists local and external MaaS models"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
     else
-        echo -e "${RED}[FAIL]${NC} GenAI AI asset MaaS API did not list both MaaS models"
+        echo -e "${RED}[FAIL]${NC} GenAI AI asset MaaS API did not list local and external MaaS models"
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
     fi
 
@@ -307,7 +362,7 @@ fi
 
 # --- InferenceServices ---
 log_step "InferenceServices"
-for isvc in granite-8b-agent mistral-3-bf16; do
+for isvc in "${LOCAL_MAAS_MODELS[@]}"; do
     EXISTS=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.name}' 2>/dev/null || echo "")
     if [[ "$EXISTS" == "$isvc" ]]; then
         DASHBOARD_LABEL=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' 2>/dev/null || echo "")

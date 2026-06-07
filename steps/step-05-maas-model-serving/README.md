@@ -10,8 +10,9 @@ This step moves LLM serving out of the old shared project model and into `maas`,
 - `maas` is the only Kueue-managed workload namespace in this slice.
 - InferenceServices carry `kueue.x-k8s.io/queue-name: maas-default`.
 - `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy` publish the running models for governed MaaS consumption.
+- `ExternalModel/gpt-5` routes OpenAI GPT-5 through the same MaaS gateway and subscription model as the local endpoints.
 
-MaaS model publication uses the installed RHOAI 3.4 CRDs. The model servers still run as KServe `InferenceService` resources, so this step uses `ExternalModel` plus `MaaSModelRef` as a bridge and patches the cluster-generated route hosts during `deploy.sh`. The follow-on cleanup is to move the serving resources to `LLMInferenceService` once the S3-backed Mistral path is fully validated.
+MaaS model publication uses the installed RHOAI 3.4 CRDs. The local model servers still run as KServe `InferenceService` resources, so this step uses `ExternalModel` plus `MaaSModelRef` as a bridge and patches the cluster-generated route hosts during `deploy.sh`. OpenAI GPT-5 uses the product external-model path directly: `ExternalModel` points to `api.openai.com`, the provider key is stored in `maas/openai-provider-api-key`, and `MaaSSubscription` plus `MaaSAuthPolicy` grant the same demo users governed access. The follow-on cleanup is to move the local serving resources to `LLMInferenceService` once the S3-backed Mistral path is fully validated.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/OpenShift AI vLLM and llm-d Inference Baseline.md` and `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/A guide to Models-as-a-Service.md`. API correctness stays pinned to official RHOAI 3.4 and OCP 4.20 docs.
 
@@ -26,6 +27,7 @@ MaaS Model Serving
 ├── granite-8b-agent InferenceService      → 1 GPU, OCI ModelCar, FP8
 ├── mistral-3-bf16 InferenceService        → 4 GPUs, S3/MinIO, BF16
 ├── MaaSModelRefs + subscription           → governed API key access
+├── OpenAI GPT-5 ExternalModel             → external provider access through MaaS
 ├── maas-usage-heartbeat                   → recent Usage dashboard telemetry
 ├── deploy.sh upload helper                → one-shot Mistral sync into MinIO
 ├── maas-default LocalQueue                → Kueue admission for MaaS workloads
@@ -36,6 +38,7 @@ MaaS Model Serving
 |-------|------|--------|----------|-----------|
 | `granite-8b-agent` | 1 L4 | OCI ModelCar | RAG, MCP tools, guardrails, agentic workflows | `maas` |
 | `mistral-3-bf16` | 4 L4 | S3/MinIO | Enterprise chat, benchmarking, evaluation judge | `maas` |
+| `gpt-5` | 0 | OpenAI external provider | Frontier model comparison and fallback demos | `maas` |
 
 Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas-model-serving/base/)
 
@@ -47,6 +50,8 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 > **Product MaaS namespace is separate:** RHOAI creates the product-managed `models-as-a-service` namespace for MaaS `Tenant`, `MaaSSubscription`, and `MaaSAuthPolicy` resources. It may be visible to cluster admins, but it is not the runtime project that contains models. The demo runtime namespace is `maas`, displayed as `MaaS Runtime`, to avoid duplicate Models-as-a-Service project names.
 
 > **Verified GitOps for MaaS governance:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview. This repo commits only installed, schema-verified MaaS CRDs (`ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`) and validates them with `oc explain` and live API-key calls.
+
+> **External model credentials stay outside Git:** OpenAI GPT-5 is registered as `ExternalModel/gpt-5`, but the real provider API key is never committed. `deploy.sh` creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` in this repo's `.env` or, by default, from `../rhoai3-coding-demo/.env`. Override the lookup path with `RHOAI_OPENAI_ENV_FILE`.
 
 > **Kueue on MaaS only:** Queue enforcement applies only to `maas`; every GitOps-managed model-serving workload in this namespace is labeled for `maas-default`.
 
@@ -95,8 +100,9 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Queue | `LocalQueue/maas-default` exists in `maas` |
 | Runtime | vLLM `ServingRuntime` exists in `maas` |
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
-| AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true`; MaaS `/v1/models` and GenAI MaaS API list both models |
-| User API keys | `ai-admin-maas-api-key` and `ai-developer-maas-api-key` exist in `maas`, record `MAAS_EXPIRES_IN=60d`, list both models, and complete a granite chat call |
+| External model | `ExternalModel/gpt-5` points to `api.openai.com`, `MaaSModelRef/gpt-5` is Ready, and the OpenAI provider secret exists |
+| AI asset endpoints | Local models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true`; MaaS `/v1/models` and GenAI MaaS API list local and external models |
+| User API keys | `ai-admin-maas-api-key` and `ai-developer-maas-api-key` exist in `maas`, record `MAAS_EXPIRES_IN=60d`, list the local and external models, complete a granite chat call, and route one low-token GPT-5 request |
 | MaaS observability | Prometheus scrapes Limitador and sees user/subscription/model-labeled MaaS Usage metrics after validation traffic or the heartbeat CronJob |
 | vLLM workload scraping | Predictor Deployment and pods carry `monitoring.opendatahub.io/scrape=true` |
 | MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |
@@ -109,6 +115,7 @@ oc get servingruntime -n maas
 oc get inferenceservice -n maas
 oc get inferenceservice -n maas -o custom-columns=NAME:.metadata.name,DASHBOARD:.metadata.labels.opendatahub\\.io/dashboard,GENAI:.metadata.labels.opendatahub\\.io/genai-asset
 oc get maasmodelref -n maas
+oc get externalmodel gpt-5 -n maas
 oc get maassubscription,maasauthpolicy -n models-as-a-service
 oc get cronjob maas-usage-heartbeat -n maas
 oc get pods -n maas -l serving.kserve.io/inferenceservice -o wide
@@ -164,7 +171,9 @@ For cluster-side readiness before presenting this scene:
 
 - [RHOAI 3.4 — Deploy large models with KServe](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models/deploying-large-models_serving-large-models)
 - [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/govern_llm_access_with_models-as-a-service/deploy-and-manage-models-as-a-service_maas)
+- [RHOAI 3.4 — Configure external models for Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index#configure-external-models-for-models-as-a-service)
 - [RHOAI 3.4 — GenAI Playground prerequisites](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/playground-prerequisites_rhoai-user)
+- [Red Hat Developer — Centralized routing for external and self-hosted LLMs on OpenShift AI](https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service)
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/OpenShift AI vLLM and llm-d Inference Baseline.md`
 - `rh-brain`: `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/A guide to Models-as-a-Service.md`
 
