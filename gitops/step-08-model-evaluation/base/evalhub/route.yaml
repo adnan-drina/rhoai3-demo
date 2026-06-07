@@ -16,7 +16,7 @@ spec:
     kind: Service
     name: evalhub
   port:
-    targetPort: 8080
+    targetPort: https
   tls:
-    termination: edge
+    termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect
