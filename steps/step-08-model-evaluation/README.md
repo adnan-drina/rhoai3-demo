@@ -17,7 +17,7 @@ EvalHub is intentionally introduced as the control plane, not just another bench
 |--------------------|---------------------|
 | Unified REST API | `run-evalhub-smoke.sh` calls health, provider, benchmark, job submit, and job status APIs. |
 | SDK/CLI-ready workflow | README commands use REST today; CLI/SDK use is documented as the same tenant/job workflow. |
-| Framework-agnostic providers | The EvalHub CR enables `lm_evaluation_harness`, `garak`, `guidellm`, and `lighteval`. |
+| Framework-agnostic providers | The EvalHub CR mounts provider ConfigMaps labeled `lm-evaluation-harness`, `garak`, `guidellm`, and `lighteval`; the REST API exposes the LM-Eval provider as `lm_evaluation_harness`. |
 | Tenant isolation | Requests use `X-Tenant: enterprise-rag`; validation checks namespace label, tenant resources, and RBAC. |
 | Kubernetes-native execution | EvalHub runs benchmark work as tenant-scoped Kubernetes Jobs, separate from the server. |
 | MLflow evidence | Smoke jobs use experiment `evalhub-granite-smoke`; RAG KFP runs log deeper scenario evidence. |
@@ -34,7 +34,7 @@ Model Evaluation
 ├── EvalHub (TrustyAI-managed product-native evaluation)
 │   ├── EvalHub CR           → TrustyAI-managed API server and route
 │   ├── PostgreSQL           → Durable EvalHub job and registry state
-│   ├── Provider registry    → lm_evaluation_harness, garak, guidellm, lighteval
+│   ├── Provider registry    → lm-evaluation-harness, garak, guidellm, lighteval
 │   ├── Tenant RBAC          → enterprise-rag X-Tenant isolation and SAR checks
 │   └── run-evalhub-smoke.sh → Submit granite-8b-agent smoke job with MLflow experiment
 ├── RAG Evaluation (KFP Pipeline — 4 steps)

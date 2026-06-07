@@ -19,7 +19,7 @@ spec:
     maxOpenConns: 10
     maxIdleConns: 5
   providers:
-    - lm_evaluation_harness
+    - lm-evaluation-harness
     - garak
     - guidellm
     - lighteval
