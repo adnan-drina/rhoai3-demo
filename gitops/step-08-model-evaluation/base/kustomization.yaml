@@ -1,12 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Step 08: RAG Evaluation
-# Deploys evaluation configuration and sync job.
+# Step 08: Model Evaluation
+# Deploys evaluation configuration, EvalHub, and sync job.
 # Reuses step-07 infrastructure (lsd-rag, dspa-rag, pgvector, PVC).
 # Configures the enterprise-rag MLflow workspace when the cluster-scoped
 # RHOAI MLflow server is present.
 
 resources:
+  - evalhub/
   - eval-configs/
   - mlflow/

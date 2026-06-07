@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Pre-merge documentation and product-alignment audit for GitOps-managed demo components.
 #
-# The audit is intentionally local-first: it renders Kustomize bases, checks for
-# stale product-version references, records schema verification commands, and
-# writes a durable evidence ledger. Live-cluster schema checks are best-effort
-# unless AUDIT_STRICT_CLUSTER=true is set.
+# The audit requires live access to the target OpenShift cluster. It renders
+# Kustomize bases, checks for stale product-version references, verifies schemas
+# against the live API server, and writes a durable evidence ledger. It does not
+# produce offline fallback evidence.
 
 set -euo pipefail
 
@@ -16,7 +16,7 @@ COMPONENT=""
 ORIGINAL_ARGS="$*"
 LEDGER_PATH="$REPO_ROOT/docs/alignment-evidence-ledger.md"
 RH_BRAIN_DIR="${RH_BRAIN_DIR:-/Users/adrina/Sandbox/rh-brain/Red Hat Brain}"
-STRICT_CLUSTER="${AUDIT_STRICT_CLUSTER:-false}"
+STRICT_CLUSTER="${AUDIT_STRICT_CLUSTER:-true}"
 OC_REQUEST_TIMEOUT="${OC_REQUEST_TIMEOUT:-5s}"
 OC_SERVER_DRY_RUN_TIMEOUT_SECONDS="${OC_SERVER_DRY_RUN_TIMEOUT_SECONDS:-90}"
 
@@ -35,7 +35,7 @@ Examples:
 
 Environment:
   RH_BRAIN_DIR=/path/to/rh-brain/Red Hat Brain
-  AUDIT_STRICT_CLUSTER=true   # fail when live oc explain checks fail
+  AUDIT_STRICT_CLUSTER=true   # fail when live schema checks fail; default true
   OC_REQUEST_TIMEOUT=5s       # timeout for live oc whoami/explain checks
   OC_SERVER_DRY_RUN_TIMEOUT_SECONDS=90
 EOF
@@ -64,6 +64,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$REPO_ROOT"
+
+if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" && -f "$REPO_ROOT/.env" ]]; then
+    RHOAI_EXPECTED_API_SERVER="$(
+        awk -F= '$1 == "RHOAI_EXPECTED_API_SERVER" { print $2; exit }' "$REPO_ROOT/.env"
+    )"
+fi
+EXPECTED_API_SERVER="${RHOAI_EXPECTED_API_SERVER:-${RHOAI_EXPECTED_CLUSTER:-}}"
 
 canonical_component() {
     local component="$1"
@@ -182,7 +189,17 @@ run_kustomize() {
 }
 
 oc_cluster_available() {
-    command -v oc >/dev/null 2>&1 && oc --request-timeout="$OC_REQUEST_TIMEOUT" whoami >/dev/null 2>&1
+    local server
+    command -v oc >/dev/null 2>&1 || return 1
+    oc --request-timeout="$OC_REQUEST_TIMEOUT" whoami >/dev/null 2>&1 || return 1
+    server="$(oc --request-timeout="$OC_REQUEST_TIMEOUT" whoami --show-server 2>/dev/null || true)"
+    if [[ -n "$EXPECTED_API_SERVER" && "$server" != *"$EXPECTED_API_SERVER"* ]]; then
+        echo "ERROR: OpenShift API server guard failed" >&2
+        echo "  expected: $EXPECTED_API_SERVER" >&2
+        echo "  actual:   $server" >&2
+        return 42
+    fi
+    OC_CLUSTER_SERVER="$server"
 }
 
 oc_explain_kind() {
@@ -226,6 +243,42 @@ sys.exit(result.returncode)
 PY
 }
 
+dry_run_missing_declared_namespaces() {
+    local rendered_file="$1" err_file="$2"
+    python3 - "$rendered_file" "$err_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+rendered = Path(sys.argv[1]).read_text()
+err = Path(sys.argv[2]).read_text()
+
+declared_namespaces = set()
+for doc in re.split(r"\n---\s*\n", rendered):
+    if not re.search(r"(?m)^kind:\s*Namespace\s*$", doc):
+        continue
+    match = re.search(
+        r"(?m)^metadata:\s*\n(?:^[ \t].*\n)*?^[ \t]{2}name:\s*([^\s#]+)",
+        doc,
+    )
+    if match:
+        declared_namespaces.add(match.group(1).strip("\"'"))
+
+missing_namespaces = re.findall(r'namespaces "([^"]+)" not found', err)
+remaining = re.sub(
+    r'Error from server \(NotFound\): error when (?:creating|patching) "[^"]+": namespaces "[^"]+" not found\n?',
+    "",
+    err,
+).strip()
+
+if missing_namespaces and set(missing_namespaces) <= declared_namespaces and not remaining:
+    print(", ".join(sorted(set(missing_namespaces))))
+    sys.exit(0)
+
+sys.exit(1)
+PY
+}
+
 latest_image_classification() {
     local image="$1"
     case "$image" in
@@ -263,7 +316,7 @@ rh_brain_terms_for() {
     case "$component" in
         step-05-*|step-06-*) echo "Models-as-a-Service"; echo "llm-d"; echo "vLLM" ;;
         step-07-*) echo "RAG"; echo "AutoRAG"; echo "evaluation" ;;
-        step-08-*) echo "RAG"; echo "AutoRAG"; echo "evaluation"; echo "MLflow" ;;
+        step-08-*) echo "RAG"; echo "AutoRAG"; echo "evaluation"; echo "EvalHub"; echo "MLflow" ;;
         step-09-*) echo "guardrails"; echo "AI safety" ;;
         step-10-*) echo "MCP"; echo "agentic" ;;
         step-11-*|step-12-*) echo "MLflow"; echo "MLOps"; echo "predictive AI" ;;
@@ -377,9 +430,14 @@ ledger_tmp="$tmp_dir/alignment-evidence-ledger.md"
 blocked_total=0
 warning_total=0
 OC_CLUSTER_AVAILABLE=false
+OC_CLUSTER_SERVER=""
 
 if oc_cluster_available; then
     OC_CLUSTER_AVAILABLE=true
+else
+    status=$?
+    echo "ERROR: live OpenShift cluster access is required; no offline fallback is available." >&2
+    exit "$status"
 fi
 
 {
@@ -389,6 +447,7 @@ fi
     echo "**Command:** \`$0 $ORIGINAL_ARGS\`"
     echo "**Base ref:** \`$BASE_REF\`"
     echo "**Docs baseline:** RHOAI 3.4 / OCP 4.20"
+    echo "**Live cluster:** \`${OC_CLUSTER_SERVER:-unknown}\`"
     echo "**rh-brain source:** \`$RH_BRAIN_DIR\`"
     echo ""
     echo "This ledger is produced by \`scripts/audit-doc-alignment.sh\`. Official product documentation is the source of truth for supported configuration. \`rh-brain\` is read-only research input for narrative and Red Hat article alignment."
@@ -523,12 +582,16 @@ while IFS= read -r component; do
                     echo "  Exact warning:" >> "$schema"
                     awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
                     warnings=$((warnings + 1))
+                elif missing_namespaces="$(dry_run_missing_declared_namespaces "$rendered" "$dry_run_err" 2>/dev/null)"; then
+                    echo "- [WARN] Server dry-run reached the live API, but Kubernetes cannot dry-run namespaced resources before namespaces declared in the same render exist on the cluster: \`${missing_namespaces}\`." >> "$schema"
+                    echo "  Argo CD creates these namespaces during sync; live \`oc explain\` checks below verify the rendered schemas against the current cluster API." >> "$schema"
+                    warnings=$((warnings + 1))
                 elif [[ "$STRICT_CLUSTER" == "true" ]]; then
                     echo "- [BLOCKED] \`oc apply --dry-run=server --validate=strict -f rendered.yaml\` failed." >> "$schema"
                     awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
                     blocked=$((blocked + 1))
                 else
-                    echo "- [DEFERRED] Server dry-run failed or required CRDs are unavailable on this cluster. Recheck with \`kustomize build $gitops_path | oc apply --dry-run=server --validate=strict -f -\`." >> "$schema"
+                    echo "- [WARN] Server dry-run failed against the live cluster. Recheck with \`kustomize build $gitops_path | oc apply --dry-run=server --validate=strict -f -\`." >> "$schema"
                     awk '{ gsub(/\t/, "    "); sub(/[[:space:]]+$/, ""); print ($0 == "" ? "" : "  " $0) }' "$dry_run_err" >> "$schema"
                     warnings=$((warnings + 1))
                 fi
@@ -543,22 +606,22 @@ while IFS= read -r component; do
                         echo "- [BLOCKED] \`oc explain $kind --api-version=$api\` failed." >> "$schema"
                         blocked=$((blocked + 1))
                     else
-                        echo "- [DEFERRED] \`oc explain $kind --api-version=$api\` failed or CRD is unavailable on this cluster." >> "$schema"
+                        echo "- [WARN] \`oc explain $kind --api-version=$api\` failed on the live cluster." >> "$schema"
                         warnings=$((warnings + 1))
                     fi
                 fi
             done < "$tmp_dir/$component.kinds"
         else
-            echo "- [DEFERRED] Verify rendered schema and CR fields with \`kustomize build $gitops_path | oc apply --dry-run=server --validate=strict -f -\`." >> "$schema"
+            echo "- [BLOCKED] Live cluster schema verification did not run." >> "$schema"
             while IFS='|' read -r api kind; do
                 [[ -n "$api" && -n "$kind" ]] || continue
-                echo "- [DEFERRED] Verify with \`oc explain $kind --api-version=$api\`." >> "$schema"
+                echo "- [BLOCKED] Verify with \`oc explain $kind --api-version=$api\`." >> "$schema"
             done < "$tmp_dir/$component.kinds"
-            warnings=$((warnings + 1))
+            blocked=$((blocked + 1))
         fi
     else
-        echo "- [DEFERRED] Schema verification skipped because no rendered YAML was available." >> "$schema"
-        warnings=$((warnings + 1))
+        echo "- [BLOCKED] Schema verification skipped because no rendered YAML was available." >> "$schema"
+        blocked=$((blocked + 1))
     fi
 
     find_rh_brain_sources "$component" | sort -u > "$rh_sources"
@@ -609,12 +672,12 @@ done < "$audit_components"
     echo "| Result | Count |"
     echo "|--------|-------|"
     echo "| Blocking findings | $blocked_total |"
-    echo "| Notes / deferred checks | $warning_total |"
+    echo "| Notes | $warning_total |"
     echo ""
     if [[ $blocked_total -gt 0 ]]; then
         echo "**Decision:** blocked. Resolve high-risk findings before merge."
     else
-        echo "**Decision:** aligned. Notes and deferred checks may be handled as follow-up work."
+        echo "**Decision:** aligned. Notes may be handled as follow-up work."
     fi
 } >> "$ledger_tmp"
 
@@ -622,7 +685,7 @@ mv "$ledger_tmp" "$LEDGER_PATH"
 
 echo "Alignment evidence written to: $LEDGER_PATH"
 echo "Blocking findings: $blocked_total"
-echo "Notes / deferred checks: $warning_total"
+echo "Notes: $warning_total"
 
 if [[ $blocked_total -gt 0 ]]; then
     exit 1

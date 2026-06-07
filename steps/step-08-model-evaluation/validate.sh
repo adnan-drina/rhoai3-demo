@@ -7,7 +7,42 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
 NAMESPACE="enterprise-rag"
+EVALHUB_NAMESPACE="evalhub-system"
 MODEL_NAMESPACE="maas"
+EVALHUB_SMOKE_NAME_PREFIX="evalhub-granite-smoke"
+EVALHUB_EXPERIMENT_NAME="evalhub-granite-smoke"
+
+record_pass() {
+    echo -e "${GREEN}[PASS]${NC} $*"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+}
+
+record_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $*"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+}
+
+record_fail() {
+    echo -e "${RED}[FAIL]${NC} $*"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+}
+
+evalhub_url() {
+    local route_host cr_url
+    route_host="$(oc get route evalhub -n "$EVALHUB_NAMESPACE" -o jsonpath='{.spec.host}' 2>/dev/null || true)"
+    if [[ -n "$route_host" ]]; then
+        printf 'https://%s' "$route_host"
+        return 0
+    fi
+
+    cr_url="$(oc get evalhub evalhub -n "$EVALHUB_NAMESPACE" -o jsonpath='{.status.url}' 2>/dev/null || true)"
+    if [[ "$cr_url" == https://* || "$cr_url" == http://* ]]; then
+        printf '%s' "$cr_url"
+        return 0
+    fi
+
+    return 1
+}
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 08: Model Evaluation — Validation                        ║"
@@ -43,6 +78,70 @@ check "DSPA dspa-rag exists" \
 check "PVC rag-pipeline-workspace exists" \
     "oc get pvc rag-pipeline-workspace -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
     "rag-pipeline-workspace"
+
+# --- RHOAI 3.4 EvalHub Readiness Gates ---
+log_step "RHOAI 3.4 EvalHub Readiness Gates"
+EXPECTED_API_SERVER="${RHOAI_EXPECTED_API_SERVER:-${RHOAI_EXPECTED_CLUSTER:-}}"
+CURRENT_API_SERVER="$(oc whoami --show-server 2>/dev/null || true)"
+if [[ -n "$EXPECTED_API_SERVER" ]]; then
+    check "OpenShift API server matches configured guard" \
+        "oc whoami --show-server" \
+        "$EXPECTED_API_SERVER"
+else
+    record_pass "OpenShift API server reachable: ${CURRENT_API_SERVER:-unknown}"
+fi
+
+check "RHOAI operator CSV is 3.4.0" \
+    "oc get subscription rhods-operator -n redhat-ods-operator -o jsonpath='{.status.installedCSV}'" \
+    "rhods-operator.3.4.0"
+
+check "DataScienceCluster/default-dsc is Ready" \
+    "oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'" \
+    "Ready"
+
+check "TrustyAI component is Managed" \
+    "oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.trustyai.managementState}'" \
+    "Managed"
+
+KSERVE_RAW_MODE="$(oc get datasciencecluster default-dsc \
+    -o jsonpath='{.spec.components.kserve.rawDeploymentServiceConfig}' 2>/dev/null || true)"
+if [[ -n "$KSERVE_RAW_MODE" ]]; then
+    record_pass "KServe RawDeployment service config present: $KSERVE_RAW_MODE"
+else
+    record_fail "KServe RawDeployment service config missing"
+fi
+
+check_crd_exists "evalhubs.trustyai.opendatahub.io"
+EVALHUB_DATABASE_EXPLAIN="$(oc explain evalhub.spec.database --api-version=trustyai.opendatahub.io/v1alpha1 2>/dev/null || true)"
+if [[ "$EVALHUB_DATABASE_EXPLAIN" == *"db-url"* && "$EVALHUB_DATABASE_EXPLAIN" == *"postgresql"* ]]; then
+    record_pass "EvalHub database schema exposes PostgreSQL db-url secret support"
+else
+    record_fail "EvalHub database schema does not expose expected PostgreSQL db-url secret support"
+fi
+
+check "Step 12 MLflow server is Available" \
+    "oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type==\"Available\")].status}'" \
+    "True"
+
+for provider in lm-evaluation-harness garak guidellm lighteval; do
+    PROVIDER_CONFIGMAP_COUNT="$(oc get configmap -n redhat-ods-applications \
+        -l "trustyai.opendatahub.io/evalhub-provider-name=${provider}" \
+        --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+    if [[ "$PROVIDER_CONFIGMAP_COUNT" -gt 0 ]]; then
+        record_pass "EvalHub provider ConfigMap present: $provider"
+    else
+        record_fail "EvalHub provider ConfigMap missing: $provider"
+    fi
+done
+
+COLLECTION_CONFIGMAP_COUNT="$(oc get configmap -n redhat-ods-applications \
+    -l "trustyai.opendatahub.io/evalhub-collection-name=safety-and-fairness-v1" \
+    --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$COLLECTION_CONFIGMAP_COUNT" -gt 0 ]]; then
+    record_pass "EvalHub collection ConfigMap present: safety-and-fairness-v1"
+else
+    record_fail "EvalHub collection ConfigMap missing: safety-and-fairness-v1"
+fi
 
 # --- Eval ConfigMaps ---
 log_step "Eval ConfigMaps (ArgoCD-managed)"
@@ -98,6 +197,216 @@ if [[ "$MLFLOW_SELECTOR" == *"enterprise-rag"* && "$MLFLOW_SELECTOR" == *"enterp
 else
     echo -e "${YELLOW}[WARN]${NC} MLflow server does not yet select enterprise-rag workspaces"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+# --- EvalHub Server and Tenant ---
+log_step "EvalHub Server"
+check "EvalHub namespace exists" \
+    "oc get namespace $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "$EVALHUB_NAMESPACE"
+
+EVALHUB_DB_URL="$(oc get secret evalhub-db-credentials -n "$EVALHUB_NAMESPACE" \
+    -o jsonpath='{.data.db-url}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+if [[ "$EVALHUB_DB_URL" == postgres*evalhub-postgres* ]]; then
+    record_pass "EvalHub PostgreSQL db-url Secret exists"
+else
+    record_fail "EvalHub PostgreSQL db-url Secret missing or invalid"
+fi
+
+check "EvalHub PostgreSQL PVC exists" \
+    "oc get pvc evalhub-postgres-data -n $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-postgres-data"
+
+POSTGRES_AVAILABLE="$(oc get deployment evalhub-postgres -n "$EVALHUB_NAMESPACE" \
+    -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || true)"
+if [[ "$POSTGRES_AVAILABLE" == "True" ]]; then
+    record_pass "EvalHub PostgreSQL deployment is Available"
+else
+    record_fail "EvalHub PostgreSQL deployment is not Available (status: ${POSTGRES_AVAILABLE:-Missing})"
+fi
+
+check "EvalHub custom resource exists" \
+    "oc get evalhub evalhub -n $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub"
+
+EVALHUB_POD_COUNT="$(oc get pods -l app=eval-hub -n "$EVALHUB_NAMESPACE" \
+    --no-headers 2>/dev/null | grep -c "Running" || true)"
+if [[ "$EVALHUB_POD_COUNT" -gt 0 ]]; then
+    record_pass "EvalHub pod is Running"
+else
+    record_fail "No EvalHub pod with label app=eval-hub is Running"
+fi
+
+EVALHUB_PHASE="$(oc get evalhub evalhub -n "$EVALHUB_NAMESPACE" \
+    -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+if [[ "$EVALHUB_PHASE" == "Ready" ]]; then
+    record_pass "EvalHub CR phase is Ready"
+else
+    record_fail "EvalHub CR phase is ${EVALHUB_PHASE:-Missing}"
+fi
+
+check "EvalHub service exists" \
+    "oc get service evalhub -n $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub"
+
+EVALHUB_BASE_URL="$(evalhub_url || true)"
+if [[ -n "$EVALHUB_BASE_URL" ]]; then
+    record_pass "EvalHub route URL resolved: $EVALHUB_BASE_URL"
+    HEALTH_CODE="$(curl -sk --max-time 20 -o /tmp/evalhub-health.json -w '%{http_code}' \
+        "$EVALHUB_BASE_URL/api/v1/health" 2>/dev/null || echo "000")"
+    if [[ "$HEALTH_CODE" == "200" ]]; then
+        record_pass "EvalHub health endpoint returned HTTP 200"
+    else
+        record_fail "EvalHub health endpoint returned HTTP $HEALTH_CODE"
+    fi
+else
+    record_fail "EvalHub route URL could not be resolved"
+fi
+
+log_step "EvalHub Tenant and RBAC"
+TENANT_LABEL_PRESENT="$(oc get namespace "$NAMESPACE" -o json 2>/dev/null | python3 -c '
+import json
+import sys
+labels = json.load(sys.stdin).get("metadata", {}).get("labels", {})
+print("present" if "evalhub.trustyai.opendatahub.io/tenant" in labels else "missing")
+' 2>/dev/null || echo "missing")"
+if [[ "$TENANT_LABEL_PRESENT" == "present" ]]; then
+    record_pass "enterprise-rag has EvalHub tenant label"
+else
+    record_fail "enterprise-rag is missing EvalHub tenant label"
+fi
+
+check "evalhub-evaluator Role exists" \
+    "oc get role evalhub-evaluator -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-evaluator"
+
+check "evalhub-evaluator RoleBinding exists" \
+    "oc get rolebinding evalhub-evaluator-access -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "evalhub-evaluator"
+
+TENANT_OPERATOR_OBJECTS="$(oc get serviceaccount,rolebinding,configmap -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c evalhub || true)"
+if [[ "$TENANT_OPERATOR_OBJECTS" -gt 0 ]]; then
+    record_pass "TrustyAI operator created EvalHub tenant resources ($TENANT_OPERATOR_OBJECTS objects)"
+else
+    record_fail "TrustyAI operator-created EvalHub tenant resources not found"
+fi
+
+for user in kube:admin ai-admin ai-developer; do
+    if [[ "$(oc auth can-i create evaluations.trustyai.opendatahub.io -n "$NAMESPACE" --as="$user" 2>/dev/null || true)" == "yes" ]]; then
+        record_pass "$user can create EvalHub evaluations in $NAMESPACE"
+    else
+        record_fail "$user cannot create EvalHub evaluations in $NAMESPACE"
+    fi
+done
+
+if [[ "$(oc auth can-i create evaluations.trustyai.opendatahub.io -n "$NAMESPACE" \
+    --as=rhoai-group-check --as-group=rhoai-users 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "rhoai-users group can create EvalHub evaluations in $NAMESPACE"
+else
+    record_fail "rhoai-users group cannot create EvalHub evaluations in $NAMESPACE"
+fi
+
+if [[ "$(oc auth can-i get experiments.mlflow.kubeflow.org -n "$NAMESPACE" --as=ai-developer 2>/dev/null || true)" == "yes" ]]; then
+    record_pass "ai-developer can access MLflow experiments for EvalHub"
+else
+    record_fail "ai-developer cannot access MLflow experiments for EvalHub"
+fi
+
+log_step "EvalHub API and Smoke Job"
+if [[ -n "${EVALHUB_BASE_URL:-}" ]]; then
+    TOKEN="$(oc whoami -t 2>/dev/null || true)"
+    PROVIDERS_JSON="$(curl -sk --max-time 30 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "X-Tenant: $NAMESPACE" \
+        "$EVALHUB_BASE_URL/api/v1/evaluations/providers" 2>/dev/null || true)"
+    if echo "$PROVIDERS_JSON" | grep -q "lm_evaluation_harness"; then
+        record_pass "EvalHub providers API includes lm_evaluation_harness"
+    else
+        record_fail "EvalHub providers API does not include lm_evaluation_harness"
+    fi
+
+    JOBS_JSON="$(curl -sk --max-time 30 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "X-Tenant: $NAMESPACE" \
+        "$EVALHUB_BASE_URL/api/v1/evaluations/jobs?limit=20" 2>/dev/null || true)"
+    JOBS_FILE="$(mktemp)"
+    printf '%s' "$JOBS_JSON" > "$JOBS_FILE"
+    SMOKE_INFO="$(python3 - "$JOBS_FILE" "$EVALHUB_SMOKE_NAME_PREFIX" "$EVALHUB_EXPERIMENT_NAME" <<'PY' 2>/dev/null || true
+import json
+import sys
+
+path = sys.argv[1]
+prefix = sys.argv[2]
+experiment_name = sys.argv[3]
+try:
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+except Exception:
+    data = {}
+
+items = data.get("items") or data.get("jobs") or []
+if isinstance(items, dict):
+    items = list(items.values())
+
+matches = []
+for item in items:
+    name = item.get("name") or item.get("metadata", {}).get("name") or ""
+    experiment = item.get("experiment") or {}
+    experiment_matches = experiment.get("name") == experiment_name
+    if name.startswith(prefix) or experiment_matches:
+        resource = item.get("resource") or {}
+        created = resource.get("created_at") or item.get("created_at") or ""
+        matches.append((created, item))
+
+if not matches:
+    sys.exit(0)
+
+matches.sort(key=lambda pair: pair[0], reverse=True)
+item = matches[0][1]
+resource = item.get("resource") or {}
+status = item.get("status") or {}
+if isinstance(status, dict):
+    state = status.get("state") or item.get("state") or ""
+else:
+    state = str(status or item.get("state") or "")
+results = item.get("results") or {}
+print("|".join([
+    resource.get("id") or item.get("id") or "",
+    item.get("name") or "",
+    state,
+    results.get("mlflow_experiment_url") or "",
+    resource.get("created_at") or item.get("created_at") or "",
+]))
+PY
+)"
+    rm -f "$JOBS_FILE"
+    if [[ -n "$SMOKE_INFO" ]]; then
+        SMOKE_JOB_ID="${SMOKE_INFO%%|*}"
+        REST="${SMOKE_INFO#*|}"
+        SMOKE_JOB_NAME="${REST%%|*}"
+        REST="${REST#*|}"
+        SMOKE_STATE="${REST%%|*}"
+        REST="${REST#*|}"
+        SMOKE_MLFLOW_URL="${REST%%|*}"
+        SMOKE_CREATED="${REST#*|}"
+
+        if [[ "$SMOKE_STATE" == "completed" ]]; then
+            record_pass "Latest EvalHub smoke job completed: ${SMOKE_JOB_NAME:-$SMOKE_JOB_ID}"
+        else
+            record_fail "Latest EvalHub smoke job state is ${SMOKE_STATE:-unknown}: ${SMOKE_JOB_NAME:-$SMOKE_JOB_ID}"
+        fi
+        check_recent_timestamp "Latest EvalHub smoke job" "$SMOKE_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+
+        if [[ -n "$SMOKE_MLFLOW_URL" ]]; then
+            record_pass "EvalHub smoke job has MLflow experiment URL: $SMOKE_MLFLOW_URL"
+        else
+            record_fail "EvalHub smoke job results missing mlflow_experiment_url"
+        fi
+    else
+        record_fail "No EvalHub smoke job found — run: ./steps/step-08-model-evaluation/run-evalhub-smoke.sh"
+    fi
+else
+    record_fail "Skipping EvalHub API checks because route URL is missing"
 fi
 
 # --- LlamaStack Eval API ---

@@ -150,6 +150,21 @@ else
 fi
 echo ""
 
+log_step "Creating demo user MaaS API keys..."
+DEMO_PASSWORD="${RHOAI_DEMO_PASSWORD:-redhat123}"
+DEMO_KEY_TTL="${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
+
+ensure_maas_user_api_key "ai-admin" "$DEMO_PASSWORD" "$NAMESPACE" \
+    "ai-admin-maas-api-key" "ai-admin-persistent-demo-60d" \
+    "enterprise-demo-subscription" "$DEMO_KEY_TTL" || \
+    log_warn "ai-admin MaaS API key could not be created; check Step 03 demo identities and MaaS subscription access"
+
+ensure_maas_user_api_key "ai-developer" "$DEMO_PASSWORD" "$NAMESPACE" \
+    "ai-developer-maas-api-key" "ai-developer-persistent-demo-60d" \
+    "enterprise-demo-subscription" "$DEMO_KEY_TTL" || \
+    log_warn "ai-developer MaaS API key could not be created; check Step 03 demo identities and MaaS subscription access"
+echo ""
+
 log_step "Applying AI Asset labels for GenAI Playground..."
 
 MODELS="mistral-3-bf16 granite-8b-agent"
@@ -261,6 +276,9 @@ echo "  GenAI Playground:"
 echo "    1. RHOAI Dashboard → GenAI Studio → Playground"
 echo "    2. Select the 'Model-as-a-Service' project"
 echo "    3. Create playground with RUNNING models only"
+echo ""
+echo "  Demo MaaS API key secrets:"
+echo "    oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n $NAMESPACE"
 echo ""
 log_info "Validate: ./steps/step-05-maas-model-serving/validate.sh"
 echo ""

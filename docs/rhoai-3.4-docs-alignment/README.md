@@ -38,8 +38,8 @@ Official documentation remains the source of truth:
 
 ## Current Summary
 
-The demo strongly covers platform installation, project/RBAC/storage setup, GPU prerequisites, KServe RawDeployment, MaaS, model registry, RAG with Llama Stack and pgvector, LM-Eval, NeMo Guardrails, MCP-based agentic workflows, predictive model serving, MLOps pipelines, MLflow, TrustyAI, and edge deployment patterns.
+The demo strongly covers platform installation, project/RBAC/storage setup, GPU prerequisites, KServe RawDeployment, MaaS, model registry, RAG with Llama Stack and pgvector, EvalHub, LM-Eval, NeMo Guardrails, MCP-based agentic workflows, predictive model serving, MLOps pipelines, MLflow, TrustyAI, and edge deployment patterns.
 
 The largest remaining gaps are Feature Store, AutoML, AutoRAG, full distributed training/data processing, disconnected installation, production API support-tier governance, llm-d, production-grade external databases, and supported-configuration proof beyond the current AWS GPU demo baseline.
 
-The second-pass opportunity map adds a different lens: several 3.4 features are enabled or available on the cluster but not yet demonstrated as product value. The most important next opportunities are MLflow run tracking, MaaS subscriptions/API keys/quotas, product-native Gen AI Playground scenes, EvalHub/RAGAS/Garak evaluation, Model Catalog embedding/tool-calling metadata, optional llm-d distributed inference, and live NeMo Guardrails reconciliation.
+The second-pass opportunity map adds a different lens: several 3.4 features are enabled or available on the cluster but not yet demonstrated as product value. The most important next opportunities are MaaS subscriptions/API keys/quotas, product-native Gen AI Playground browser automation, richer EvalHub/Garak/RAGAS evaluation, Model Catalog embedding/tool-calling metadata, optional llm-d distributed inference, and deeper NeMo Guardrails telemetry.

@@ -5,3 +5,4 @@ resources:
   - model-credentials.yaml
   - model-refs.yaml
   - subscription.yaml
+  - usage-heartbeat.yaml

@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: maas-usage-heartbeat
+  namespace: maas
+  labels:
+    app.kubernetes.io/name: maas-usage-heartbeat
+    app.kubernetes.io/instance: maas-usage-heartbeat
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: llm-serving
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: maas-usage-heartbeat
+        app.kubernetes.io/instance: maas-usage-heartbeat
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: llm-serving
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: maas-usage-heartbeat
+            app.kubernetes.io/instance: maas-usage-heartbeat
+            app.kubernetes.io/component: monitoring
+            app.kubernetes.io/part-of: llm-serving
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: heartbeat
+              image: quay.io/curl/curl:8.20.0
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: MAAS_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ai-admin-maas-api-key
+                      key: MAAS_API_KEY
+                - name: MAAS_EXTERNAL_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: ai-admin-maas-api-key
+                      key: MAAS_EXTERNAL_URL
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  MAAS_BASE="${MAAS_EXTERNAL_URL%/}"
+                  case "$MAAS_BASE" in
+                    */v1) ;;
+                    *) MAAS_BASE="${MAAS_BASE}/v1" ;;
+                  esac
+
+                  curl -sk --fail --max-time 90 \
+                    -H "Authorization: Bearer ${MAAS_API_KEY}" \
+                    -H "X-Gateway-Model-Name: granite-8b-agent" \
+                    -H "Content-Type: application/json" \
+                    -d '{"model":"granite-8b-agent","messages":[{"role":"user","content":"Reply with the single word ready."}],"max_tokens":8,"temperature":0}' \
+                    "${MAAS_BASE}/chat/completions" >/tmp/maas-heartbeat.json
+
+                  test -s /tmp/maas-heartbeat.json
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 250m
+                  memory: 128Mi

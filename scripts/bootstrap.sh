@@ -89,9 +89,17 @@ log_step "Configuring custom resource health checks"
 #   Reports Available=True but ArgoCD shows Progressing without this check.
 # Subscription: OLM can keep stale InstallPlanFailed conditions after
 #   the CSV reaches the latest known version. Use state as the primary signal.
+# Pod: Step 10 intentionally keeps one sample equipment pod in CrashLoopBackOff
+#   for the MCP troubleshooting story. Annotated intentional failures should not
+#   degrade the owning Argo CD application.
 oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
   "spec": {
     "resourceHealthChecks": [
+      {
+        "group": "",
+        "kind": "Pod",
+        "check": "hs = {}\nannotations = {}\nif obj.metadata ~= nil and obj.metadata.annotations ~= nil then\n  annotations = obj.metadata.annotations\nend\nif annotations[\"demo.rhoai.redhat.com/intentional-failure\"] == \"true\" then\n  hs.status = \"Healthy\"\n  hs.message = annotations[\"demo.rhoai.redhat.com/health-message\"] or \"Intentional demo failure\"\n  return hs\nend\nif obj.status == nil then\n  hs.status = \"Progressing\"\n  hs.message = \"Waiting for Pod status\"\n  return hs\nend\nif obj.metadata ~= nil and obj.metadata.deletionTimestamp ~= nil then\n  hs.status = \"Progressing\"\n  hs.message = \"Terminating\"\n  return hs\nend\nif obj.status.phase == \"Succeeded\" then\n  hs.status = \"Healthy\"\n  hs.message = \"Succeeded\"\n  return hs\nend\nif obj.status.phase == \"Failed\" then\n  hs.status = \"Degraded\"\n  hs.message = obj.status.reason or \"Failed\"\n  return hs\nend\nlocal statuses = {}\nif obj.status.initContainerStatuses ~= nil then\n  for _, s in ipairs(obj.status.initContainerStatuses) do table.insert(statuses, s) end\nend\nif obj.status.containerStatuses ~= nil then\n  for _, s in ipairs(obj.status.containerStatuses) do table.insert(statuses, s) end\nend\nfor _, s in ipairs(statuses) do\n  if s.state ~= nil and s.state.waiting ~= nil then\n    local reason = s.state.waiting.reason or \"Waiting\"\n    if reason == \"CrashLoopBackOff\" or reason == \"ImagePullBackOff\" or reason == \"ErrImagePull\" or reason == \"CreateContainerConfigError\" or reason == \"CreateContainerError\" then\n      hs.status = \"Degraded\"\n      hs.message = reason\n      return hs\n    end\n    hs.status = \"Progressing\"\n    hs.message = reason\n    return hs\n  end\nend\nif obj.status.phase == \"Running\" then\n  hs.status = \"Healthy\"\n  hs.message = \"Running\"\nelseif obj.status.phase == \"Pending\" then\n  hs.status = \"Progressing\"\n  hs.message = obj.status.reason or \"Pending\"\nelse\n  hs.status = \"Progressing\"\n  hs.message = obj.status.phase or \"Unknown\"\nend\nreturn hs"
+      },
       {
         "group": "",
         "kind": "PersistentVolumeClaim",
@@ -115,7 +123,7 @@ oc patch argocd openshift-gitops -n openshift-gitops --type merge -p '{
     ]
   }
 }' 2>/dev/null \
-    && log_success "PVC + InferenceService + TrustyAIService + Subscription health checks configured" \
+    && log_success "Pod + PVC + InferenceService + TrustyAIService + Subscription health checks configured" \
     || log_warn "Could not configure health checks"
 
 log_step "Creating Argo CD project"

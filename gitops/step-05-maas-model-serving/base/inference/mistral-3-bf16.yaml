@@ -40,6 +40,8 @@ metadata:
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
+    labels:
+      monitoring.opendatahub.io/scrape: "true"
     minReplicas: 1
     maxReplicas: 1
     autoScaling:

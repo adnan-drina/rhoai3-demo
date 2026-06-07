@@ -1,11 +1,11 @@
 # Step 11: Face Recognition — Predictive AI on RHOAI
-**"Beyond LLMs"** — Train a YOLO11 face recognition model, export to ONNX, and serve it through KServe Standard mode with OpenVINO Model Server. CPU-only inference, no GPU required.
+**"Beyond LLMs"** — Query the validated YOLO11 face recognition model through KServe Standard mode with OpenVINO Model Server. Optional notebooks show how the model was trained and promoted. CPU-only inference, no GPU required.
 
 ## Overview
 
 **Predictive AI on the same platform as generative AI.** The serving, pipelines, observability, and governance established for LLMs carry forward for traditional ML — you do not adopt a separate toolchain. Computer vision enables object detection and image classification particularly valuable in manufacturing and quality control. The "WhoAmI — Visual Identity" scenario is the proof moment: face recognition runs on **Red Hat OpenShift AI 3.4** alongside the GenAI stack, not on an island — one infrastructure footprint, one operational model.
 
-This step demonstrates RHOAI's **Model development and customization** and **Model training and experimentation** capabilities for predictive AI — proving that the same platform that serves LLMs also handles computer vision training, ONNX export, and CPU-based inference.
+This step demonstrates RHOAI's **Model development and customization**, **Model training and experimentation**, and **optimized serving** capabilities for predictive AI. The standard demo uses the last validated model version already served by RHOAI; the training notebooks remain available as an optional model-development path.
 
 ## Architecture
 
@@ -17,16 +17,17 @@ This step demonstrates RHOAI's **Model development and customization** and **Mod
 Face Recognition
 ├── kserve-ovms ServingRuntime   → OpenVINO Model Server for ONNX models
 ├── face-recognition ISVC        → Serves YOLO11 ONNX model (CPU-only, ~11MB)
-├── face-recognition-wb Notebook → JupyterLab with git-synced notebooks (4 notebooks)
+├── face-recognition-wb Notebook → JupyterLab with synced demo notebooks (4 notebooks)
 ├── upload-face-model Job        → Downloads pre-trained ONNX from HuggingFace to MinIO
-└── Notebook workflow: Explore → Retrain → Test → Query via REST v2 API
+└── Notebook workflow: Explore → Query validated model via REST v2 API
+    Optional path: Retrain → Test → Explicitly promote a new model
 ```
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
 | **kserve-ovms** ServingRuntime | OpenVINO Model Server for ONNX models | `enterprise-mlops` |
 | **face-recognition** InferenceService | Serves the YOLO11 ONNX model (CPU-only) | `enterprise-mlops` |
-| **face-recognition-wb** Notebook | JupyterLab workbench with git-synced notebooks | `enterprise-mlops` |
+| **face-recognition-wb** Notebook | JupyterLab workbench with synced demo notebooks | `enterprise-mlops` |
 | **upload-face-model** Job | Downloads pre-trained ONNX from HuggingFace to MinIO | `minio-storage` |
 
 Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-recognition/base/)
@@ -53,11 +54,13 @@ Manifests: [`gitops/step-11-face-recognition/base/`](../../gitops/step-11-face-r
 
 > **Auto-annotation** using the pre-trained YOLO11-face detector eliminates manual bounding box labeling. Users only need to provide raw selfie photos.
 
-> **Identity uniqueness constraint** at inference. A known person can only appear once per frame — any duplicate "adnan" detection is guaranteed to be a false positive. The `enforce_identity_uniqueness()` function in `remote_infer.py` keeps only the highest-confidence detection for the identified class and reclassifies duplicates as unknown. This is a standard domain-constrained post-processing technique used in production identity-aware detection systems, combined with a confidence threshold of 0.6 (vs default 0.25) to filter low-confidence predictions.
+> **Identity uniqueness constraint** at inference. A known person can only appear once per frame — any duplicate "adnan" detection is guaranteed to be a false positive. The `enforce_identity_uniqueness()` function in `remote_infer.py` keeps only the highest-confidence detection for the identified class and reclassifies duplicates as unknown. This is a standard domain-constrained post-processing technique used in production identity-aware detection systems. The standard demo uses `FACE_RECOGNITION_CONFIDENCE_THRESHOLD=0.6` for the restored validated model version.
 
 > **Real colleague photos + HuggingFace portraits for unknown class.** Using surveillance-style datasets (e.g. WIDER Face) as negatives causes the model to classify any close-up face as "adnan" because the visual domain is too different. The `unknown_face/` directory contains ~600 photos of real colleagues from the same events and camera conditions. Combined with 200 high-quality portraits downloaded from [HuggingFace](https://huggingface.co/datasets/prithivMLmods/Realistic-Face-Portrait-1024px) at runtime, this produces mAP50 >0.93 vs ~0.76 with WIDER Face alone.
 
-> **Pre-trained model fallback.** A pre-trained ONNX model is uploaded to MinIO by the deploy script so the InferenceService works even without running the training notebooks.
+> **Validated served model path.** The standard demo does not retrain or upload a new artifact. It queries the model currently served by `face-recognition`, including Model Registry linkage when present. The pre-trained upload job remains as a fallback so the InferenceService can start even before the MLOps pipeline promotes a version.
+
+> **OVMS workload scrape opt-in:** The `kserve-ovms` ServingRuntime enables OpenVINO Model Server metrics on `/metrics` at port `8888`. The `face-recognition` InferenceService therefore sets `spec.predictor.labels.monitoring.opendatahub.io/scrape: "true"` so the generated predictor pods are collected by the RHOAI observability stack. `validate.sh` checks the InferenceService, generated predictor Deployment template, and generated pods.
 
 > **Dashboard template annotations on ServingRuntime.** The RHOAI Dashboard identifies runtimes by matching `opendatahub.io/template-name` and `opendatahub.io/template-display-name` annotations against platform templates in `redhat-ods-applications`. Without these, runtimes show as "Unknown Serving Runtime" in the Model Deployments view. The `kserve-ovms` ServingRuntime includes `template-name: kserve-ovms` and `template-display-name: OpenVINO Model Server` to match the platform template. Validation also compares the GitOps image digest with the live `kserve-ovms` platform template, so a RHOAI upgrade surfaces image drift immediately.
 
@@ -84,26 +87,35 @@ The script:
 2. Checks for the `kserve-ovms` platform template
 3. Uploads the pre-trained YOLO11n-face ONNX model to MinIO
 4. Applies the ArgoCD Application (creates ServingRuntime, InferenceService, Workbench)
-5. Uploads notebook assets to the workbench (images, videos, training photos)
+5. Syncs notebook files and uploads workbench assets (images, videos, optional training photos)
 
-The workbench (`face-recognition-wb`) is deployed via ArgoCD with a git-sync initContainer that clones notebooks, `remote_infer.py`, and `requirements.txt` from the repo. Binary assets (photos, test images, video) are uploaded separately via `upload-to-workbench.sh`.
+The workbench (`face-recognition-wb`) is deployed via ArgoCD with a git-sync initContainer that clones notebooks, `remote_infer.py`, and `requirements.txt` from the repo on first PVC initialization. The `upload-to-workbench.sh` helper can be rerun to refresh repo-managed notebooks/helpers on persisted PVCs and upload binary assets.
 
-#### Uploading notebook assets
+#### Syncing notebook files and assets
 
-The deploy script automatically uploads assets from the local `notebooks/` directory if they exist. To upload or re-upload manually:
+The deploy script syncs notebook files and uploads assets from the local `notebooks/` directory if they exist. To refresh a persisted workbench or re-upload assets manually:
 
 ```bash
 ./steps/step-11-face-recognition/upload-to-workbench.sh
 ```
 
-This copies folders to the workbench pod via `oc cp`:
+By default this syncs notebooks/helpers and copies the lightweight demo folders to the workbench pod via `oc cp`:
 
 | Folder | Contents | Purpose |
 |--------|----------|---------|
 | `notebooks/images/` | Test face and group photos (.jpg) | Used by notebooks 01, 03, 04 |
 | `notebooks/videos/` | Test video (.mov) | Used by notebooks 03, 04 for video inference |
-| `notebooks/my_photos/` | ~200+ selfie photos (.jpeg) | Training data — class 0 (adnan) |
-| `notebooks/unknown_face/` | ~200+ colleague photos (.jpg) | Training data — class 1 (unknown_face) |
+
+Optional training folders are intentionally skipped unless you request them because they can be large:
+
+```bash
+INCLUDE_TRAINING_ASSETS=true ./steps/step-11-face-recognition/upload-to-workbench.sh
+```
+
+| Folder | Contents | Purpose |
+|--------|----------|---------|
+| `notebooks/my_photos/` | ~200+ selfie photos (.jpeg) | Optional training data — class 0 (adnan) |
+| `notebooks/unknown_face/` | ~200+ colleague photos (.jpg) | Optional training data — class 1 (unknown_face) |
 
 These folders are gitignored (binary assets). The workbench PVC persists them across pod restarts.
 
@@ -117,8 +129,11 @@ These folders are gitignored (binary assets). The workbench PVC persists them ac
 | ServingRuntime | `kserve-ovms` exists in namespace | Listed |
 | Model upload | `upload-face-model` job or MinIO model artifact | fresh job or artifact exists |
 | InferenceService | `face-recognition` is Ready | READY = True |
+| Validated model linkage | `face-recognition` carries Model Registry labels when Step 12 has promoted a model | `registered-model-id` and `model-version-id` present |
+| Workload scraping | Predictor Deployment and pods carry `monitoring.opendatahub.io/scrape=true` | Label present |
 | Workbench | `face-recognition-wb-0` pod running | 2/2 Running |
-| Notebook assets | images, videos, my_photos directories populated | Files present |
+| Notebook sync | workbench contains repo-managed notebooks/helpers | Current notebook files present |
+| Notebook assets | images, videos, optional training folders populated | Files present when needed |
 
 ```bash
 oc get servingruntime kserve-ovms -n enterprise-mlops
@@ -133,7 +148,7 @@ oc get pod face-recognition-wb-0 -n enterprise-mlops
 
 ## The Demo
 
-> In this demo, we walk through the complete face recognition workflow on Red Hat OpenShift AI — from exploring a generic face detector, to retraining a personalized model, to serving it via KServe and OpenVINO. Four notebooks, one platform, the same RHOAI infrastructure used for LLMs in earlier steps.
+> In this demo, we walk through face recognition on Red Hat OpenShift AI — from exploring a generic face detector to querying a validated model through KServe and OpenVINO. The same RHOAI infrastructure used for LLMs also serves predictive AI models with governed versions and production REST inference.
 
 ### Explore Face Detection
 
@@ -144,39 +159,30 @@ oc get pod face-recognition-wb-0 -n enterprise-mlops
 
 **Expect:** YOLO11 detects faces in test images with bounding boxes, confidence scores, and pixel coordinates. All detections are labelled as the generic class `face`.
 
-> Every face is just "face" — no identity, no distinction. The model detects but doesn't recognize. Red Hat OpenShift AI provides the notebook environment and GPU access to retrain it on our own data.
+> Every face is just "face" — no identity, no distinction. The base model detects but does not recognize. The served demo model is the validated two-class version managed by the platform.
 
-### Retrain for Your Face
+### Query the Validated Served Model
 
-> With ~200 selfie photos and ~600 colleague photos, we retrain the YOLO11 model to distinguish a specific person from everyone else — all inside the RHOAI workbench with GPU access.
-
-1. Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`)
-2. Run `02-retrain-face-model.ipynb`
-
-**Expect:** The notebook auto-annotates your photos, combines real colleague photos (`unknown_face/`) with 200 HuggingFace portraits for the "unknown" class, trains YOLO11m on GPU for ~1 hour (100 epochs, `workers=0`), and exports to ONNX.
-
-> YOLO11m's 20M parameters and face-optimized augmentation deliver production-grade accuracy (mAP50 >0.93). The same RHOAI platform that serves LLMs also provides the GPU compute and notebook environment for training computer vision models.
-
-### The Wow Moment — Video Recognition
-
-> The retrained model should now identify a specific person by name, in real time, from video — distinguishing them from everyone else in the frame.
-
-1. Run `03-test-retrained-model.ipynb`
-2. Verify `videos/test_group_video.mov` exists
-
-**Expect:** An annotated video plays inline — green boxes on your face ("adnan 0.94"), red boxes on others ("unknown_face 0.87").
-
-> The model processes every frame and correctly identifies specific individuals versus unknown faces. This ran locally on the ONNX model — next we see it through the production serving platform that Red Hat OpenShift AI provides.
-
-### Production Inference via Model Server
-
-> The notebook proved the model works. Now we query it through the KServe REST v2 API — the same way a production application would consume this model, served on OpenVINO Model Server with CPU-only inference.
+> Now we query the last validated model through the KServe REST v2 API — the same way a production application would consume this model, served on OpenVINO Model Server with CPU-only inference.
 
 1. Run `04-query-model-server.ipynb`
 
-**Expect:** Same recognition results, but now coming from the KServe REST API endpoint served by OpenVINO.
+**Expect:** The notebook prints the endpoint, readiness, model input/output metadata, and Model Registry IDs when available. Image and video cells return annotated outputs from the served model without retraining or replacing artifacts.
 
 > Same model, same accuracy — now served on OpenVINO Model Server via KServe Standard mode. No GPU needed for inference. This is how Red Hat OpenShift AI serves predictive AI models in production: a REST API that any service can call, deployed and managed via GitOps like every other platform component.
+
+### Optional: Retrain for Your Face
+
+> This path is for model development, not the standard demo. Use it only when you intentionally want to train and promote a new model version.
+
+1. Verify `my_photos/` is populated (uploaded by `deploy.sh` or `upload-to-workbench.sh`)
+2. Run `02-retrain-face-model.ipynb`
+3. Run `03-test-retrained-model.ipynb`
+4. Leave `PROMOTE_TO_MODEL_SERVER = False` unless you intentionally want to replace the served model artifact
+
+**Expect:** Notebook 02 auto-annotates your photos, trains YOLO11m, and exports ONNX. Notebook 03 tests the local ONNX output and skips MinIO upload/restart unless promotion is explicitly enabled.
+
+> The same RHOAI platform that serves LLMs also provides the GPU compute, notebook environment, pipelines, Model Registry, and serving path for computer vision models.
 
 ## Key Takeaways
 

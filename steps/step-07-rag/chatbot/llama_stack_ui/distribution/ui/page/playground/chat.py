@@ -589,6 +589,9 @@ class ResponseState:
 # Suggested Questions UI
 # ============================================================================
 
+DEFAULT_VISIBLE_QUESTIONS = 6
+
+
 def render_question_button(suggestion, idx):
     """Render a single question button."""
     question = suggestion["question"]
@@ -628,7 +631,7 @@ def render_question_grid(suggestions, num_to_show):
 
 def render_show_more_button(suggestions):
     """Render show more/less button if needed."""
-    if len(suggestions) <= 4:
+    if len(suggestions) <= DEFAULT_VISIBLE_QUESTIONS:
         return
 
     _, col2, _ = st.columns([1, 1, 1])
@@ -638,7 +641,7 @@ def render_show_more_button(suggestions):
                 st.session_state.show_more_questions = False
                 st.rerun()
         else:
-            button_text = f"Show More ({len(suggestions) - 4} more)"
+            button_text = f"Show More ({len(suggestions) - DEFAULT_VISIBLE_QUESTIONS} more)"
             if st.button(button_text, use_container_width=True):
                 st.session_state.show_more_questions = True
                 st.rerun()
@@ -660,7 +663,7 @@ def display_suggested_questions(selected_vector_dbs):
     # Determine how many questions to show
     num_to_show = (
         len(suggestions) if st.session_state.show_more_questions
-        else min(4, len(suggestions))
+        else min(DEFAULT_VISIBLE_QUESTIONS, len(suggestions))
     )
 
     # Display questions and controls

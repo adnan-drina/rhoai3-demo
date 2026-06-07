@@ -48,6 +48,8 @@ metadata:
     security.opendatahub.io/enable-auth: "false"
 spec:
   predictor:
+    labels:
+      monitoring.opendatahub.io/scrape: "true"
     # Always running — workhorse for RAG, MCP, Guardrails (Steps 06-12)
     minReplicas: 1
     maxReplicas: 1

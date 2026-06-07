@@ -51,7 +51,7 @@ metadata:
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
     notebooks.opendatahub.io/last-size-selection: Small
     openshift.io/display-name: "Face Recognition (YOLO11)"
-    openshift.io/description: "Train YOLO11 face recognition, test on images/video, query OpenVINO model server"
+    openshift.io/description: "Query the validated YOLO11 face recognition model; optional notebooks cover retraining and promotion"
     notebooks.opendatahub.io/idle-culling-time: "15m"
     notebooks.opendatahub.io/idle-culling-enabled: "true"
 spec:
@@ -95,7 +95,7 @@ spec:
               echo "NOTE: Upload your test assets manually:"
               echo "  images/     - test face and group photos"
               echo "  videos/     - test video (you + another person)"
-              echo "  my_photos/  - ~50-100 selfies for training"
+              echo "  my_photos/  - ~50-100 selfies for optional retraining"
 
               ls -la "$WORKSPACE/"
           volumeMounts:
@@ -137,6 +137,9 @@ spec:
             # Face recognition model server endpoint
             - name: FACE_RECOGNITION_ENDPOINT
               value: "http://face-recognition-predictor.enterprise-mlops.svc.cluster.local:8888"
+            # Demo threshold for the restored validated model version.
+            - name: FACE_RECOGNITION_CONFIDENCE_THRESHOLD
+              value: "0.6"
             # HuggingFace token for authenticated model downloads (optional)
             - name: HF_TOKEN
               valueFrom:

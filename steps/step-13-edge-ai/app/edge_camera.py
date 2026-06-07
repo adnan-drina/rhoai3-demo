@@ -27,7 +27,7 @@ GRPC_ENDPOINT = os.environ.get(
     "face-recognition-edge-predictor:8001",
 )
 MODEL_NAME = os.environ.get("MODEL_NAME", "face-recognition-edge")
-CONFIDENCE = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.3"))
+CONFIDENCE = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.6"))
 
 st.set_page_config(
     page_title="Edge AI — Face Recognition",

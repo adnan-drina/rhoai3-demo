@@ -13,13 +13,57 @@ echo ""
 
 # --- Argo CD Application ---
 log_step "Argo CD Application"
-check_argocd_app "step-01-gpu-and-prereq"
+SYNC=$(oc get applications.argoproj.io step-01-gpu-and-prereq -n openshift-gitops -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NOT_FOUND")
+HEALTH=$(oc get applications.argoproj.io step-01-gpu-and-prereq -n openshift-gitops -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NOT_FOUND")
+if [[ "$SYNC" == "Synced" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-01-gpu-and-prereq' sync: Synced"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Argo CD app 'step-01-gpu-and-prereq' sync: $SYNC (self-heal is disabled for GPU and operator runtime changes)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+if [[ "$HEALTH" == "Healthy" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-01-gpu-and-prereq' health: Healthy"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Argo CD app 'step-01-gpu-and-prereq' health: $HEALTH"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+check_subscription_csv_succeeded() {
+    local namespace="$1"
+    local subscription="$2"
+    local label="$3"
+    local installed_csv phase
+
+    installed_csv=$(oc get subscription "$subscription" -n "$namespace" -o jsonpath='{.status.installedCSV}' 2>/dev/null || true)
+    if [[ -z "$installed_csv" ]]; then
+        echo -e "${RED}[FAIL]${NC} Subscription missing installed CSV: $label ($subscription in $namespace)"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        return
+    fi
+
+    phase=$(oc get csv "$installed_csv" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+    if [[ "$phase" == "Succeeded" ]]; then
+        echo -e "${GREEN}[PASS]${NC} CSV succeeded: $label (${installed_csv} in ${namespace})"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} CSV not succeeded: $label (${installed_csv} in ${namespace}, phase: ${phase:-missing})"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+}
 
 # --- CRDs ---
 log_step "Required CRDs"
 check_crd_exists "nodefeaturediscoveries.nfd.openshift.io"
 check_crd_exists "clusterpolicies.nvidia.com"
 check_crd_exists "knativeservings.operator.knative.dev"
+check_crd_exists "monitoringstacks.monitoring.rhobs"
+check_crd_exists "perses.perses.dev"
+check_crd_exists "persesdashboards.perses.dev"
+check_crd_exists "persesdatasources.perses.dev"
+check_crd_exists "tempomonolithics.tempo.grafana.com"
+check_crd_exists "opentelemetrycollectors.opentelemetry.io"
 check_crd_exists "kueues.kueue.openshift.io"
 check_crd_exists "authconfigs.authorino.kuadrant.io"
 check_crd_exists "authorinos.operator.authorino.kuadrant.io"
@@ -29,14 +73,30 @@ check_crd_exists "tokenratelimitpolicies.kuadrant.io"
 
 # --- Operator CSVs ---
 log_step "Operator CSVs"
-check_csv_succeeded "openshift-nfd" "nfd"
-check_csv_succeeded "nvidia-gpu-operator" "gpu"
-check_csv_succeeded "openshift-serverless" "serverless"
-check_csv_succeeded "openshift-kueue-operator" "kueue"
-check_csv_succeeded "openshift-authorino" "authorino"
-check_csv_succeeded "openshift-limitador-operator" "limitador"
-check_csv_succeeded "openshift-dns-operator" "dns"
-check_csv_succeeded "openshift-operators" "rhcl"
+check_subscription_csv_succeeded "openshift-nfd" "nfd" "Node Feature Discovery"
+check_subscription_csv_succeeded "nvidia-gpu-operator" "gpu-operator-certified" "NVIDIA GPU Operator"
+check_subscription_csv_succeeded "openshift-serverless" "serverless-operator" "OpenShift Serverless"
+check_subscription_csv_succeeded "openshift-cluster-observability-operator" "cluster-observability-operator" "Cluster Observability Operator"
+check_subscription_csv_succeeded "openshift-tempo-operator" "tempo-product" "Tempo Operator"
+check_subscription_csv_succeeded "openshift-opentelemetry-operator" "opentelemetry-product" "Red Hat build of OpenTelemetry"
+check_subscription_csv_succeeded "openshift-kueue-operator" "kueue-operator" "Red Hat build of Kueue"
+check_subscription_csv_succeeded "openshift-authorino" "authorino-operator" "Authorino Operator"
+check_subscription_csv_succeeded "openshift-limitador-operator" "limitador-operator" "Limitador Operator"
+check_subscription_csv_succeeded "openshift-dns-operator" "dns-operator" "DNS Operator"
+check_subscription_csv_succeeded "openshift-operators" "rhcl-operator" "Red Hat Connectivity Link"
+
+# --- Observability Operator Runtime Networking ---
+log_step "Observability Operator Runtime Networking"
+API_SERVICE_IP=$(oc get service kubernetes -n default -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
+check "Tempo Operator egress to Kubernetes service IP" \
+    "oc get networkpolicy tempo-operator-egress-to-kubernetes-service -n openshift-tempo-operator -o jsonpath='{.spec.egress[0].to[0].ipBlock.cidr}'" \
+    "${API_SERVICE_IP}/32"
+check "Tempo Operator deployment available" \
+    "oc get deployment tempo-operator-controller -n openshift-tempo-operator -o jsonpath='{.status.availableReplicas}'" \
+    "1"
+check "Tempo Operator webhook endpoint exists" \
+    "oc get endpoints tempo-operator-controller-service -n openshift-tempo-operator -o jsonpath='{.subsets[*].addresses[*].ip}'" \
+    "."
 
 # --- KnativeServing ---
 log_step "KnativeServing"
@@ -49,6 +109,15 @@ log_step "Red Hat Connectivity Link"
 check "Kuadrant ready" \
     "oc get kuadrant kuadrant -n kuadrant-system -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'" \
     "True"
+check "Kuadrant observability enabled" \
+    "oc get kuadrant kuadrant -n kuadrant-system -o jsonpath='{.spec.observability.enable}'" \
+    "true"
+check "Limitador detailed telemetry enabled" \
+    "oc get limitador limitador -n kuadrant-system -o jsonpath='{.spec.telemetry}'" \
+    "exhaustive"
+check "Limitador PodMonitor exists" \
+    "oc get podmonitor.monitoring.coreos.com kuadrant-limitador-monitor -n kuadrant-system -o jsonpath='{.metadata.name}'" \
+    "kuadrant-limitador-monitor"
 check "Authorino serving certificate annotation" \
     "oc get service authorino-authorino-authorization -n kuadrant-system -o jsonpath='{.metadata.annotations.service\\.beta\\.openshift\\.io/serving-cert-secret-name}'" \
     "authorino-server-cert"

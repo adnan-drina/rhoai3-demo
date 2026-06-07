@@ -107,6 +107,8 @@ Update the image reference in `gitops/step-13-edge-ai/base/edge-camera/deploymen
 
 > **CPU-only inference** (OpenVINO) on the simulated edge. The YOLO11n model is ~11MB and runs at ~100ms on CPU. Step 13b demonstrates GPU inference on real edge hardware with NVIDIA Triton.
 
+> **OVMS workload scrape opt-in:** The edge `kserve-ovms` ServingRuntime exposes `/metrics` on port `8888`, matching the central Step 11 pattern. The `face-recognition-edge` InferenceService sets `spec.predictor.labels.monitoring.opendatahub.io/scrape: "true"` so generated predictor pods can be scraped when the RHOAI observability stack is active.
+
 > **Shared application code** with step-13b. `inference.py`, `edge_camera.py`, `requirements.txt`, and the Containerfile are identical. Only the `GRPC_ENDPOINT` env var differs between the two deployments. Must be built with `--platform linux/amd64` on Apple Silicon.
 
 > **No AMQ Streams / Kafka** in this step. gRPC between the Streamlit app and the model server is sufficient for the demo. Kafka-based streaming is a documented future extension.
@@ -169,6 +171,10 @@ oc get servingruntime kserve-ovms -n edge-ai-demo
 oc get inferenceservice face-recognition-edge -n edge-ai-demo
 # Expected: READY = True
 
+# Predictor pods opt into RHOAI workload metrics scraping
+oc get pods -n edge-ai-demo -l serving.kserve.io/inferenceservice=face-recognition-edge \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.monitoring\.opendatahub\.io/scrape}{"\n"}{end}'
+
 # edge-camera pod is running
 oc get pods -n edge-ai-demo -l app.kubernetes.io/name=edge-camera
 # Expected: 1/1 Running
@@ -215,7 +221,7 @@ echo "https://$(oc get route edge-camera -n edge-ai-demo -o jsonpath='{.spec.hos
 2. Select **Photo** mode
 3. Take a selfie and show the annotated result with bounding boxes
 
-**Expect:** Green bounding box on your face ("adnan 0.91"), red on others ("unknown_face 0.60"). Latency metric shows ~100-150ms.
+**Expect:** A bounding box around visible faces, with known faces labeled `adnan` and others labeled `unknown_face`. The demo uses `CONFIDENCE_THRESHOLD=0.6` with the restored validated model version, which is selective enough to avoid labeling unknown faces as `adnan` while still detecting the known demo identity. Latency metric shows ~100-150ms.
 
 > Face recognized in 100 milliseconds — CPU-only, no GPU. The same model from Step 11, served by OpenVINO at the edge. This is how Red Hat OpenShift AI brings AI to where the data lives — a REST API running on edge hardware with minimal resources.
 

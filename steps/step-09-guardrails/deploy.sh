@@ -77,7 +77,8 @@ fi
 echo ""
 
 log_step "Configuring NeMo model access through MaaS..."
-ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" "enterprise-demo-subscription" "24h"
+ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" \
+    "enterprise-demo-subscription" "${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
 MAAS_API_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' | base64 -d)
 patch_secret_literal "$NAMESPACE" "nemo-guardrails-api-token" "token" "$MAAS_API_KEY"
 log_success "nemo-guardrails-api-token refreshed from MaaS API key"

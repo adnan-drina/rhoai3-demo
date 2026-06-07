@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: evalhub-evaluator-access
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: evalhub-evaluator
+    app.kubernetes.io/instance: enterprise-rag
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+subjects:
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: kube:admin
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: ai-admin
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: ai-developer
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: rhoai-users
+roleRef:
+  kind: Role
+  name: evalhub-evaluator
+  apiGroup: rbac.authorization.k8s.io

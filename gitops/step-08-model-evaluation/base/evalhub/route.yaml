@@ -1,0 +1,22 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: evalhub
+  namespace: evalhub-system
+  labels:
+    app.kubernetes.io/name: evalhub
+    app.kubernetes.io/instance: evalhub
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  to:
+    kind: Service
+    name: evalhub
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -128,16 +128,10 @@ log_success "ArgoCD Application '${STEP_NAME}' created"
 echo ""
 
 # =============================================================================
-# Upload notebook assets to workbench (if available locally)
+# Sync notebooks and upload workbench assets
 # =============================================================================
-NOTEBOOKS_DIR="$SCRIPT_DIR/notebooks"
-if [[ -d "$NOTEBOOKS_DIR/images" || -d "$NOTEBOOKS_DIR/my_photos" ]]; then
-    log_step "Uploading notebook assets to workbench..."
-    "$SCRIPT_DIR/upload-to-workbench.sh"
-else
-    log_info "No local notebook assets found — skip upload"
-    log_info "Upload images/, videos/, my_photos/ to the workbench manually"
-fi
+log_step "Syncing notebooks and workbench assets..."
+"$SCRIPT_DIR/upload-to-workbench.sh"
 echo ""
 
 # =============================================================================

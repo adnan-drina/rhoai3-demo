@@ -26,6 +26,7 @@ MaaS Model Serving
 ├── granite-8b-agent InferenceService      → 1 GPU, OCI ModelCar, FP8
 ├── mistral-3-bf16 InferenceService        → 4 GPUs, S3/MinIO, BF16
 ├── MaaSModelRefs + subscription           → governed API key access
+├── maas-usage-heartbeat                   → recent Usage dashboard telemetry
 ├── deploy.sh upload helper                → one-shot Mistral sync into MinIO
 ├── maas-default LocalQueue                → Kueue admission for MaaS workloads
 └── enterprise-ai-registry links           → model/version metadata
@@ -55,7 +56,15 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **Pinned helper image:** The model registration job uses a pinned `quay.io/curl/curl` tag so MaaS registration behavior does not change when upstream `latest` moves.
 
-> **AI asset endpoint shape:** RHOAI 3.4 documents MaaS under Gen AI studio → AI asset endpoints → Models as a service, with published models shown as Ready and exposed through OpenAI-compatible `/v1/models` and chat completion APIs. `validate.sh` checks both the public MaaS API and the GenAI BFF MaaS model-discovery API so the UI model list is not treated as healthy unless the backend discovery path works.
+> **AI asset endpoint shape:** RHOAI 3.4 surfaces MaaS-published models under Gen AI studio → AI asset endpoints → Models. Published models show as Ready and expose a Model as a Service badge plus MaaS endpoint/API-key controls in the endpoint dialog; persistent MaaS API keys are managed from Gen AI studio → API keys. The API Keys table is per user, so an empty table is expected until that user creates a persistent key. `validate.sh` checks both the public MaaS API and the GenAI BFF MaaS model-discovery API so the UI model list is not treated as healthy unless the backend discovery path works.
+
+> **Demo API key lifecycle:** `deploy.sh` creates user-owned MaaS API keys for `ai-admin` and `ai-developer` with a default `60d` expiry and stores copies in `maas/ai-admin-maas-api-key` and `maas/ai-developer-maas-api-key` for repeatable validation. Override the lifetime with `RHOAI_DEMO_MAAS_KEY_TTL`. `validate.sh` uses these durable keys for `/v1/models` and `/v1/chat/completions` instead of minting throwaway validation keys.
+
+> **MaaS Usage monitoring:** Once Step 01 Kuadrant observability, detailed Limitador telemetry, and Step 02 MaaS Tenant telemetry are enabled, this step's validation traffic should produce the product Usage dashboard metrics. `validate.sh` calls the gateway with `X-Gateway-Model-Name: granite-8b-agent` so traffic goes through the MaaS model route where token-rate policies are enforced, then checks the Limitador scrape target plus `authorized_calls` and `authorized_hits` with user, subscription, and model labels.
+
+> **vLLM workload scrape opt-in:** The vLLM `ServingRuntime` exposes `/metrics` on port `8080`, so each active KServe `InferenceService` opts generated predictor pods into the RHOAI observability stack with `spec.predictor.labels.monitoring.opendatahub.io/scrape: "true"`. The KServe CRD documents predictor `labels` as labels added to component pods; `validate.sh` checks the InferenceService, generated predictor Deployment template, and generated pods.
+
+> **Dashboard freshness heartbeat:** The RHOAI Usage dashboard is time-windowed. Step 06 GuideLLM benchmarks intentionally hit predictor services directly, which is useful for model performance but bypasses the MaaS gateway telemetry path. This step includes `maas-usage-heartbeat`, a low-rate CronJob that calls the published MaaS route every 10 minutes with the durable `ai-admin` demo API key so a fresh demo environment keeps recent MaaS Usage data visible.
 
 > **Recreate deployment strategy:** LLM InferenceServices use `deploymentStrategy.type: Recreate` to avoid double-allocating scarce L4 GPUs during updates.
 
@@ -85,6 +94,9 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Runtime | vLLM `ServingRuntime` exists in `maas` |
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
 | AI asset endpoints | Models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true`; MaaS `/v1/models` and GenAI MaaS API list both models |
+| User API keys | `ai-admin-maas-api-key` and `ai-developer-maas-api-key` exist in `maas`, record `MAAS_EXPIRES_IN=60d`, list both models, and complete a granite chat call |
+| MaaS observability | Prometheus scrapes Limitador and sees user/subscription/model-labeled MaaS Usage metrics after validation traffic or the heartbeat CronJob |
+| vLLM workload scraping | Predictor Deployment and pods carry `monitoring.opendatahub.io/scrape=true` |
 | MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |
 | Registry linkage | deployed models have model registry labels after `deploy.sh` linking |
 | Playground | deployed model appears in GenAI Playground / AI assets |
@@ -96,6 +108,7 @@ oc get inferenceservice -n maas
 oc get inferenceservice -n maas -o custom-columns=NAME:.metadata.name,DASHBOARD:.metadata.labels.opendatahub\\.io/dashboard,GENAI:.metadata.labels.opendatahub\\.io/genai-asset
 oc get maasmodelref -n maas
 oc get maassubscription,maasauthpolicy -n models-as-a-service
+oc get cronjob maas-usage-heartbeat -n maas
 oc get pods -n maas -l serving.kserve.io/inferenceservice -o wide
 ```
 

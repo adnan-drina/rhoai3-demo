@@ -1,9 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Infrastructure and operators required for RHOAI 3.4 GPU workloads, KServe, Kueue, MaaS, and future llm-d expansion.
+# Infrastructure and operators required for RHOAI 3.4 GPU workloads, KServe, Kueue, MaaS, observability, and future llm-d expansion.
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install
 # Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service
+# Ref: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai
 # Ref: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/red-hat-build-of-kueue
 # NOTE: Service Mesh 3 is installed automatically via DataScienceCluster CR
 
@@ -13,6 +14,15 @@ resources:
   - cert-manager/namespace.yaml
   - cert-manager/operatorgroup.yaml
   - cert-manager/subscription.yaml
+  - cluster-observability-operator/namespace.yaml
+  - cluster-observability-operator/operatorgroup.yaml
+  - cluster-observability-operator/subscription.yaml
+  - tempo-operator/namespace.yaml
+  - tempo-operator/operatorgroup.yaml
+  - tempo-operator/subscription.yaml
+  - opentelemetry-operator/namespace.yaml
+  - opentelemetry-operator/operatorgroup.yaml
+  - opentelemetry-operator/subscription.yaml
   - kueue-operator/namespace.yaml
   - kueue-operator/operatorgroup.yaml
   - kueue-operator/subscription.yaml

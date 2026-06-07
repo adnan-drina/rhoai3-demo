@@ -60,8 +60,8 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 
 | Step | Runtime Work |
 |------|--------------|
-| 01 | Detects cluster ID, AMI, region, and availability zone; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
-| 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; re-enables GenAI Studio if reconciled away. |
+| 01 | Detects cluster ID, AMI, region, and availability zone; installs the RHOAI observability prerequisite operators; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
+| 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; configures `DSCI.spec.monitoring` metrics/traces; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
 | 05 | Creates Hugging Face token secret if available; uploads large Mistral model to MinIO; registers models. |
 | 07 | Builds or deploys ingestion/chatbot resources and initializes RAG data. |
@@ -98,7 +98,7 @@ Most validation scripts source `scripts/validate-lib.sh`:
 | 1 | One or more critical checks failed. |
 | 2 | Warnings only; the step may still be usable while asynchronous resources settle. |
 
-Validation checks are deterministic cluster checks, not narrative demos. They normally verify Argo CD status, CRDs, CSVs, pods, Routes, key CR conditions, jobs, services, secrets, and selected API calls.
+Validation checks are deterministic cluster checks, not narrative demos. They normally verify Argo CD status, CRDs, CSVs, pods, Routes, key CR conditions, jobs, services, secrets, API-key metadata, and selected API calls.
 
 The full ACME flow has a separate validator:
 
@@ -107,7 +107,91 @@ The full ACME flow has a separate validator:
 ./scripts/validate-demo-flow.sh
 ```
 
-`validate-genai-playground-readiness.sh` checks the product-native Playground prerequisites: GenAI Studio flags, internal custom endpoint posture, model AI asset labels, MCP ConfigMap JSON, RAG project storage, vector-store availability, and MLflow workspace readiness. `validate-demo-flow.sh` checks tool runtime, agentic behavior, and guardrail behavior across the custom RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
+`validate-genai-playground-readiness.sh` checks the product-native Playground prerequisites: GenAI Studio flags, internal custom endpoint posture, model AI asset labels, MCP ConfigMap JSON, RAG project storage, vector-store availability, and MLflow workspace readiness. Step 08 `validate.sh` now checks the product-native EvalHub path: target cluster guard, RHOAI 3.4 readiness gates, EvalHub CR/route/health, tenant RBAC, provider discovery, latest smoke job, and MLflow experiment URL. `validate-demo-flow.sh` checks tool runtime, agentic behavior, and guardrail behavior across the custom RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
+
+MaaS API key handling is part of deployment, not a manual post-step. Step 05 creates user-owned `60d` keys for `ai-admin` and `ai-developer`; Step 07 creates the system key used by Llama Stack and the Streamlit chatbot; Step 09 syncs the same key into NeMo Guardrails. The default lifetime can be overridden with `RHOAI_DEMO_MAAS_KEY_TTL`, and the validation scripts fail if the stored key metadata or model-discovery calls drift.
+
+MaaS usage monitoring is enabled across the foundation steps. Step 01 installs Cluster Observability Operator, Tempo, and Red Hat build of OpenTelemetry, enables Kuadrant observability, and patches the generated `Limitador` CR to `telemetry: exhaustive`; Step 02 configures the RHOAI monitoring service for metrics and traces, enables the RHOAI observability dashboard, and enables MaaS Tenant telemetry with user capture for the demo; Step 05 generates model-route MaaS traffic with `X-Gateway-Model-Name` and verifies Prometheus can see dashboard-facing `authorized_calls` and `authorized_hits`.
+
+The product MaaS Usage dashboard is a recent-window view, so it can legitimately return to zero after idle periods. Step 05 includes the GitOps-managed `maas-usage-heartbeat` CronJob to keep a low-rate stream of MaaS-gateway traffic alive for the demo. GuideLLM jobs in Step 06 call predictor services directly for performance benchmarking and do not populate MaaS Usage data.
+
+`DSCInitialization.spec.monitoring.alerting` is intentionally not set for this demo baseline. On the target RHOAI 3.4 cluster, enabling the optional alerting branch caused the RHOAI operator to repeatedly log `failed to add prometheus rules for component mlflowoperator: prometheus rules file for component mlflowoperator not found`. Keep metrics/traces enabled for the dashboard and revisit alerting after a product fix or documented MLflow alerting posture is available.
+
+To retest built-in alerting after the MLflow prometheus-rules issue is resolved:
+
+```bash
+RHOAI_OBSERVABILITY_ENABLE_ALERTING=true ./steps/step-02-rhoai/deploy.sh
+oc get pods -n redhat-ods-monitoring | grep alertmanager
+oc get svc -n redhat-ods-monitoring | grep alertmanager
+oc port-forward svc/data-science-monitoringstack-alertmanager 9093:9093 -n redhat-ods-monitoring
+```
+
+The product-native **Observe & monitor** dashboard depends on `Monitoring/default-monitoring` being `Ready` and on the generated `redhat-ods-monitoring` stack. If the dashboard shows `Error loading components` or `Service Unavailable`, verify:
+
+```bash
+oc get csv -n openshift-cluster-observability-operator
+oc get csv -n openshift-tempo-operator
+oc get csv -n openshift-opentelemetry-operator
+oc get networkpolicy tempo-operator-egress-to-kubernetes-service -n openshift-tempo-operator
+oc get endpoints tempo-operator-controller-service -n openshift-tempo-operator
+oc get monitoring default-monitoring
+oc get pods,pvc,monitoringstack,perses,persesdashboard,tempomonolithic,opentelemetrycollector -n redhat-ods-monitoring
+oc get svc -n redhat-ods-monitoring | grep -E 'data-science-collector|tempo.*query|query.*tempo'
+oc rollout restart deployment/rhods-dashboard -n redhat-ods-applications
+```
+
+Workload metrics scraping is opt-in. Only workloads that expose `/metrics` should carry `monitoring.opendatahub.io/scrape=true` on generated pods. In this demo that currently means vLLM predictor pods in `maas` and OVMS predictor pods in `enterprise-mlops` and `edge-ai-demo`:
+
+```bash
+oc get pods -n maas -l serving.kserve.io/inferenceservice=granite-8b-agent \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.monitoring\.opendatahub\.io/scrape}{"\n"}{end}'
+oc get pods -n enterprise-mlops -l serving.kserve.io/inferenceservice=face-recognition \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.monitoring\.opendatahub\.io/scrape}{"\n"}{end}'
+```
+
+External observability exporters are optional. Do not configure placeholder endpoints; use a real OTLP or Prometheus remote-write receiver. Step 02 can patch the documented DSCI exporter lists from environment variables:
+
+```bash
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_ENDPOINT=https://otel.example.com:4318 \
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_NAME=enterprise-metrics \
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_TYPE=otlp \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_ENDPOINT=https://tempo.example.com:4318 \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_NAME=enterprise-traces \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_TYPE=otlp \
+./steps/step-02-rhoai/deploy.sh
+```
+
+Equivalent manual patch:
+
+```bash
+oc patch dscinitialization default-dsci --type merge -p '{
+  "spec": {
+    "monitoring": {
+      "metrics": {
+        "exporters": [
+          {"name": "enterprise-metrics", "type": "otlp", "endpoint": "https://otel.example.com:4318"}
+        ]
+      },
+      "traces": {
+        "exporters": [
+          {"name": "enterprise-traces", "type": "otlp", "endpoint": "https://tempo.example.com:4318"}
+        ]
+      }
+    }
+  }
+}'
+oc get pods -n redhat-ods-monitoring | grep data-science-collector
+```
+
+The Step 07 chatbot is wired to the in-cluster collector for minimal app traces:
+
+```bash
+oc get deploy rag-chatbot -n enterprise-rag \
+  -o jsonpath='{.spec.template.spec.containers[?(@.name=="chatbot")].env[?(@.name=="OTEL_EXPORTER_OTLP_ENDPOINT")].value}{"\n"}'
+oc port-forward svc/tempo-query-frontend 3200:3200 -n redhat-ods-monitoring
+```
+
+If the Tempo query service name differs, use `oc get svc -n redhat-ods-monitoring | grep -E 'tempo.*query|query.*tempo'` and port-forward that service instead.
 
 The Streamlit chatbot also has a browser-level validator:
 
@@ -138,7 +222,8 @@ Product-aligned next improvements:
 | Guardrails OpenTelemetry | Adds traces and metrics for safety decisions, detector latency, and blocked prompts. |
 | Guardrails Gateway | Provides a governed guarded endpoint demo in addition to the chatbot's direct detector-control path. |
 | Product-native guardrail asset registration | The custom chatbot validates NeMo guardrails today. Add a Dashboard-native guardrail asset scene once the supported registration path is schema-verified on the target RHOAI 3.4 cluster. |
-| MLflow/EvalHub integration | Persists RAG evaluation evidence beyond generated HTML reports and aligns with the RHOAI 3.4 MLflow/EvalHub direction. |
+| EvalHub MCP integration | Exposes product-native EvalHub operations to agentic clients once the supported MCP surface is documented for RHOAI 3.4. |
+| EvalHub observability | Adds OTEL/Prometheus dashboards for EvalHub server latency, job states, provider runtime failures, and MLflow logging outcomes. |
 
 ## Day-2 Operational Notes
 
@@ -149,6 +234,9 @@ Product-aligned next improvements:
 | Watch pods for a step | `oc get pods -n maas -w` or the step-specific namespace. |
 | Verify RHOAI health | `oc get datasciencecluster default-dsc -o yaml` |
 | Verify KServe models | `oc get inferenceservice -A` |
+| Verify MaaS API keys | `oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n maas` and `oc get secret rag-maas-api-key -n enterprise-rag` |
+| Verify MaaS usage metrics | Query `up{job="kuadrant-system/kuadrant-limitador-monitor"}`, confirm `oc get cronjob maas-usage-heartbeat -n maas`, then generate or wait for model-route traffic with `X-Gateway-Model-Name: granite-8b-agent` and query `authorized_calls{user!="",subscription!=""}` plus `authorized_hits{user!="",model!=""}`. The RHOAI Usage dashboard uses these Limitador metrics. |
+| Verify RHOAI observability dashboard | Check `oc get monitoring default-monitoring` and confirm **Observe & monitor** → **Dashboard** shows Cluster, Models, and Usage tabs. |
 | Verify model registry | `oc get modelregistry -n rhoai-model-registries` |
 | Verify GPU nodes | `oc get nodes -l nvidia.com/gpu.present=true` and `oc describe node <gpu-node>` |
 | Scale GPU MachineSets | Use `oc scale machineset ... -n openshift-machine-api`; Step 01 self-heal is disabled to allow this. |

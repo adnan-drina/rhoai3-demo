@@ -45,13 +45,15 @@ spec:
       kind: Auth
       jqPathExpressions:
         - .spec
-    # MaaS Route host and destination CA are cluster-specific runtime values.
+    # MaaS Route host, Gateway service name, and destination CA are cluster-specific runtime values.
     - group: route.openshift.io
       kind: Route
       name: maas-gateway
       namespace: openshift-ingress
       jsonPointers:
         - /spec/host
+        - /spec/to/name
+        - /spec/port/targetPort
         - /spec/tls/destinationCACertificate
         - /metadata/annotations/openshift.io~1host.generated
     # Subscriptions - OLM manages these

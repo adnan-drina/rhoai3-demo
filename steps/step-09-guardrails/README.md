@@ -54,7 +54,7 @@ Manifests: [`gitops/step-09-guardrails/base/`](../../gitops/step-09-guardrails/b
 
 > **Prompt guidance is separate from enforcement:** The `acme-rag-guarded` prompt in Step 07 gives the model expected behavior for guarded RAG, while NeMo Guardrails remains the runtime policy boundary. This matches the RHOAI 3.4 Prompts flow for reusable system instructions without treating a prompt as a security control.
 
-> **OpenAI-compatible integration:** NeMo calls the MaaS gateway at `https://maas-default-gateway-data-science-gateway-class.openshift-ingress.svc/v1` with a runtime-generated MaaS API key. This keeps the guardrails service on the same governed model-consumption path as the RAG backend.
+> **OpenAI-compatible integration:** NeMo calls the live MaaS gateway service discovered by `deploy.sh` with the same runtime-generated `60d` MaaS API key stored in `enterprise-rag/rag-maas-api-key`. This keeps the guardrails service on the same governed model-consumption path as the RAG backend, and `validate.sh` confirms the NeMo token stays synchronized with that key.
 
 > **Support-status clarity:** The support-status matrix records the current documentation discrepancy: RHOAI 3.4 release notes mark NeMo Guardrails fully supported, while the guardrails chapter page still contains Technology Preview text. Demo presenters should cite the release notes and confirm the current support scope before SLA-bound delivery.
 

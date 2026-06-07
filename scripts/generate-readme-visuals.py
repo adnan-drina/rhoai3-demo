@@ -215,7 +215,7 @@ ROWS = (
         caps=(
             Capability("ai-pipelines", "step-07-rag", ("AI pipelines", "(KFP v2)")),
             Capability("rag-ingestion-pipeline", "step-07-rag", ("RAG ingestion", "pipeline")),
-            Capability("llm-judge-eval", "step-08-model-evaluation", ("LLM-as-judge", "evaluation")),
+            Capability("llm-judge-eval", "step-08-model-evaluation", ("EvalHub", "and LLM judge")),
             Capability("mlops-training-pipeline", "step-12-mlops-pipeline", ("MLOps training", "pipeline")),
             Capability("modelcar-promotion", "step-12-mlops-pipeline", ("ModelCar", "edge promotion")),
         ),

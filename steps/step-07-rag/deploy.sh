@@ -93,7 +93,8 @@ fi
 echo ""
 
 log_step "Configuring RAG model access through MaaS..."
-ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" "enterprise-demo-subscription" "24h"
+ensure_maas_api_key "$NAMESPACE" "rag-maas-api-key" "enterprise-rag-chatbot" \
+    "enterprise-demo-subscription" "${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
 MAAS_API_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' | base64 -d)
 MAAS_BASE_URL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_BASE_URL}' | base64 -d)
 patch_secret_literal "$NAMESPACE" "llamastack-vllm-secret" "VLLM_URL" "$MAAS_BASE_URL"

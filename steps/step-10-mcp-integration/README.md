@@ -43,7 +43,7 @@ Step 10 deploys an `acme-corp` namespace with three simulated equipment monitori
 | `acme-equipment-0005` | L-900-07 | Healthy | Logs OK health checks every 30s |
 | `acme-equipment-0007` | L-900-08 | **CrashLoopBackOff** | Exits with DFO calibration error |
 
-Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates this failure. Because Argo CD includes this sample pod in the application graph, the Step 10 application can report **Degraded** even when the platform and MCP services are healthy. That degraded state is the demo signal, not an infrastructure failure.
+Pod `acme-equipment-0007` is deliberately broken — the demo agent investigates this failure. The pod is annotated as an intentional demo failure, and bootstrap configures Argo CD Pod health so the Step 10 application stays **Healthy** while the pod remains in `CrashLoopBackOff` as troubleshooting data.
 
 #### MCP Server Tools
 
@@ -132,7 +132,7 @@ Manifests: [`gitops/step-10-mcp-integration/base/`](../../gitops/step-10-mcp-int
 
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
-| ArgoCD sync/health | App is Synced; Healthy or Degraded only because `acme-equipment-0007` is intentionally CrashLoopBackOff | Synced + expected health reason |
+| ArgoCD sync/health | App is Synced and Healthy; `acme-equipment-0007` is marked as an intentional demo failure | Synced + Healthy + demo failure annotations |
 | MCP deployments | database-mcp, openshift-mcp, slack-mcp | All available |
 | PostgreSQL | Pod running | Ready |
 | ConfigMap | `gen-ai-aa-mcp-servers` in `redhat-ods-applications` | Exists |

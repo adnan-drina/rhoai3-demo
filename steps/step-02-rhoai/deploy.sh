@@ -18,6 +18,72 @@ STEP_NAME="step-02-rhoai"
 load_env
 check_oc_logged_in
 
+configure_observability_exporters() {
+    local patch
+
+    patch="$(python3 - <<'PY'
+import json
+import os
+
+monitoring = {}
+
+metrics_endpoint = os.environ.get("RHOAI_OBSERVABILITY_METRICS_EXPORTER_ENDPOINT", "").strip()
+if metrics_endpoint:
+    monitoring["metrics"] = {
+        "exporters": [
+            {
+                "name": os.environ.get("RHOAI_OBSERVABILITY_METRICS_EXPORTER_NAME", "external-metrics"),
+                "type": os.environ.get("RHOAI_OBSERVABILITY_METRICS_EXPORTER_TYPE", "otlp"),
+                "endpoint": metrics_endpoint,
+            }
+        ]
+    }
+
+traces_endpoint = os.environ.get("RHOAI_OBSERVABILITY_TRACES_EXPORTER_ENDPOINT", "").strip()
+if traces_endpoint:
+    monitoring["traces"] = {
+        "exporters": [
+            {
+                "name": os.environ.get("RHOAI_OBSERVABILITY_TRACES_EXPORTER_NAME", "external-traces"),
+                "type": os.environ.get("RHOAI_OBSERVABILITY_TRACES_EXPORTER_TYPE", "otlp"),
+                "endpoint": traces_endpoint,
+            }
+        ]
+    }
+
+print(json.dumps({"spec": {"monitoring": monitoring}} if monitoring else {}))
+PY
+)"
+
+    if [[ "$patch" == "{}" ]]; then
+        log_info "No external observability exporters configured; set RHOAI_OBSERVABILITY_*_EXPORTER_ENDPOINT to opt in"
+        return 0
+    fi
+
+    oc patch dscinitializations default-dsci --type merge -p "$patch" >/dev/null \
+        && log_success "Optional DSCI external observability exporters configured" \
+        || log_warn "Optional DSCI external observability exporter patch failed"
+}
+
+configure_observability_alerting() {
+    if [[ "${RHOAI_OBSERVABILITY_ENABLE_ALERTING:-false}" == "true" ]]; then
+        oc patch dscinitializations default-dsci --type merge \
+            -p '{"spec":{"monitoring":{"alerting":{}}}}' >/dev/null \
+            && log_success "Optional DSCI monitoring alerting branch enabled" \
+            || log_warn "Optional DSCI monitoring alerting patch failed"
+        return 0
+    fi
+
+    if [[ "$(oc get dscinitialization default-dsci -o jsonpath='{.spec.monitoring.alerting}' 2>/dev/null || true)" == "{}" ]]; then
+        oc patch dscinitializations default-dsci --type=json \
+            -p='[{"op":"remove","path":"/spec/monitoring/alerting"}]' 2>/dev/null \
+            && log_success "Removed optional DSCI monitoring alerting branch" \
+            || log_warn "Could not remove optional DSCI monitoring alerting branch"
+    else
+        log_info "DSCI monitoring alerting remains deferred; set RHOAI_OBSERVABILITY_ENABLE_ALERTING=true to opt in after verifying the MLflow alert rules issue is resolved"
+    fi
+}
+
 log_step "Step 02: Red Hat OpenShift AI 3.4"
 
 log_step "Checking prerequisites..."
@@ -149,18 +215,64 @@ else
     log_warn "Could not read cluster CA bundle"
 fi
 
+log_step "Ensuring OpenShift AI observability stack is configured..."
+oc patch dscinitializations default-dsci --type merge \
+    -p '{"spec":{"monitoring":{"managementState":"Managed","namespace":"redhat-ods-monitoring","metrics":{"storage":{"size":"5Gi","retention":"24h"}},"traces":{"sampleRatio":"1.0","storage":{"backend":"pv","size":"5Gi","retention":"24h"}}}}}' 2>/dev/null \
+    && log_success "DSCI monitoring configured for the RHOAI observability dashboard" \
+    || log_warn "DSCI monitoring patch failed; Step 02 validation will report any drift"
+configure_observability_exporters
+configure_observability_alerting
+
+for attempt in $(seq 1 60); do
+    MONITORING_READY=$(oc get monitoring default-monitoring -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+    if [[ "$MONITORING_READY" == "True" ]]; then
+        log_success "OpenShift AI observability stack ready"
+        break
+    fi
+    if [[ "$attempt" -eq 60 ]]; then
+        log_warn "OpenShift AI observability stack not Ready yet; continuing with dashboard setup"
+        break
+    fi
+    log_info "Waiting for OpenShift AI observability stack..."
+    sleep 10
+done
+
 log_step "Ensuring GenAI Studio is enabled..."
 
 until oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications &>/dev/null; do
     sleep 5
 done
 oc patch odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
-    --type merge -p '{"spec":{"dashboardConfig":{"genAiStudio":true,"aiAssetCustomEndpoints":true,"modelAsService":true,"vLLMDeploymentOnMaaS":true,"maasAuthPolicies":true},"genAiStudioConfig":{"aiAssetCustomEndpoints":{"externalProviders":false,"clusterDomains":[]}}}}' 2>/dev/null \
-    && log_success "GenAI Studio, internal custom endpoints, and MaaS dashboard flags enabled" \
+    --type merge -p '{"spec":{"dashboardConfig":{"genAiStudio":true,"aiAssetCustomEndpoints":true,"modelAsService":true,"vLLMDeploymentOnMaaS":true,"maasAuthPolicies":true,"observabilityDashboard":true},"genAiStudioConfig":{"aiAssetCustomEndpoints":{"externalProviders":false,"clusterDomains":[]}}}}' 2>/dev/null \
+    && log_success "GenAI Studio, internal custom endpoints, MaaS, and observability dashboard flags enabled" \
     || log_warn "Dashboard feature-flag patch failed"
+
+log_step "Configuring RHOAI dashboard auth groups..."
+for attempt in $(seq 1 24); do
+    if oc get auth auth &>/dev/null; then
+        break
+    fi
+    sleep 5
+done
+oc patch auth auth --type merge \
+    -p '{"spec":{"adminGroups":["rhoai-admins","system:cluster-admins"],"allowedGroups":["rhoai-users","system:authenticated"]}}' 2>/dev/null \
+    && log_success "RHOAI Auth groups aligned for ai-admin and ai-developer demo access" \
+    || log_warn "RHOAI Auth group patch failed; Step 02 validation will report any drift"
 
 log_step "Configuring MaaS gateway route for dashboard integration..."
 configure_maas_gateway_route || log_warn "MaaS gateway route will be retried by Step 05"
+
+log_step "Enabling MaaS telemetry for usage observability..."
+for attempt in $(seq 1 36); do
+    if oc get tenant default-tenant -n models-as-a-service &>/dev/null; then
+        break
+    fi
+    sleep 5
+done
+oc patch tenant default-tenant -n models-as-a-service --type merge \
+    -p '{"spec":{"telemetry":{"enabled":true,"metrics":{"captureOrganization":true,"captureUser":true,"captureGroup":false,"captureModelUsage":true}}}}' 2>/dev/null \
+    && log_success "MaaS Tenant telemetry enabled" \
+    || log_warn "MaaS Tenant telemetry patch failed; Step 02 validation will report any drift"
 
 log_step "Deployment Complete"
 

@@ -1,13 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# Upload notebook assets (images, videos, training photos) to the
-# face-recognition-wb workbench pod via oc cp.
+# Sync notebook files and assets (images, videos, training photos) to the
+# face-recognition-wb workbench pod via oc cp. This keeps persisted workbench
+# PVCs aligned with the repo when the initContainer skips its first-run sync.
 #
-# Safe to re-run — skips folders that don't exist locally and overwrites
-# files already present in the pod.
+# Safe to re-run — skips asset folders that don't exist locally and overwrites
+# repo-managed notebooks/helpers already present in the pod.
 #
 # Usage:
 #   ./steps/step-11-face-recognition/upload-to-workbench.sh
+#   INCLUDE_TRAINING_ASSETS=true ./steps/step-11-face-recognition/upload-to-workbench.sh
 # =============================================================================
 
 set -euo pipefail
@@ -22,6 +24,7 @@ WB_POD="${WB_NAME}-0"
 WB_CONTAINER="$WB_NAME"
 WB_WORKSPACE="/opt/app-root/src"
 NOTEBOOKS_DIR="$SCRIPT_DIR/notebooks"
+INCLUDE_TRAINING_ASSETS="${INCLUDE_TRAINING_ASSETS:-false}"
 
 check_oc_logged_in
 
@@ -49,10 +52,35 @@ if [[ "$PHASE" != "Running" ]]; then
 fi
 log_success "Workbench pod is Running"
 
-# ── Upload folders ────────────────────────────────────────────────────────
-UPLOADED=0
+# ── Sync notebooks and helper files ───────────────────────────────────────
+log_step "Syncing notebooks and helper files..."
 
-for FOLDER in images videos my_photos; do
+SYNCED=0
+for PATTERN in "*.ipynb" "*.py" "*.txt"; do
+    while IFS= read -r -d '' FILE; do
+        BASENAME="$(basename "$FILE")"
+        log_info "Syncing $BASENAME"
+        oc cp "$FILE" "$NAMESPACE/$WB_POD:$WB_WORKSPACE/$BASENAME" -c "$WB_CONTAINER"
+        SYNCED=$((SYNCED + 1))
+    done < <(find "$NOTEBOOKS_DIR" -maxdepth 1 -type f -name "$PATTERN" -print0)
+done
+
+if [[ $SYNCED -eq 0 ]]; then
+    log_warn "No notebook/helper files found in $NOTEBOOKS_DIR"
+else
+    log_success "Synced $SYNCED notebook/helper files"
+fi
+
+# ── Upload asset folders ──────────────────────────────────────────────────
+UPLOADED=0
+ASSET_FOLDERS=(images videos)
+if [[ "$INCLUDE_TRAINING_ASSETS" == "true" ]]; then
+    ASSET_FOLDERS+=(my_photos unknown_face)
+else
+    log_info "Skipping training asset folders by default; set INCLUDE_TRAINING_ASSETS=true to upload my_photos/ and unknown_face/"
+fi
+
+for FOLDER in "${ASSET_FOLDERS[@]}"; do
     LOCAL_DIR="$NOTEBOOKS_DIR/$FOLDER"
     if [[ -d "$LOCAL_DIR" ]]; then
         FILE_COUNT=$(find "$LOCAL_DIR" -type f | wc -l | tr -d ' ')
@@ -72,7 +100,8 @@ if [[ $UPLOADED -eq 0 ]]; then
     log_warn "No files uploaded. Place assets in:"
     log_warn "  $NOTEBOOKS_DIR/images/     (test face + group photos)"
     log_warn "  $NOTEBOOKS_DIR/videos/     (test video)"
-    log_warn "  $NOTEBOOKS_DIR/my_photos/  (selfies for training)"
+    log_warn "  $NOTEBOOKS_DIR/my_photos/  (selfies for optional training; requires INCLUDE_TRAINING_ASSETS=true)"
+    log_warn "  $NOTEBOOKS_DIR/unknown_face/  (known negatives for optional training; requires INCLUDE_TRAINING_ASSETS=true)"
     exit 0
 fi
 
