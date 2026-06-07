@@ -41,7 +41,7 @@ must preserve this pattern or the scoring pipeline will fail to extract grades.
 ## EvalHub vs KFP/Pod Evaluation
 
 EvalHub is the primary path for ACME/whoami pre/post RAG evaluation:
-- `run-evalhub-rag-scenarios.sh` — submits the `rhoai-rag-pre-post-v1` EvalHub collection
+- `run-evalhub-rag-scenarios.sh` — submits ACME/whoami pre/post RAG benchmarks as independent EvalHub jobs by default
 - `rhoai-rag-scenarios` — custom EvalHub SDK provider that reads `eval-test-cases` and `eval-configs`
 - `run-rag-eval.sh` — optional KFP compatibility path via DSPA
 - `run-eval-report.sh` — direct pod execution for faster debugging and localhost access

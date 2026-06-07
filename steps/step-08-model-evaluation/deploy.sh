@@ -3,7 +3,7 @@
 # 1. Applies ArgoCD Application (deploys ConfigMaps + PostSync Job for eval configs)
 # 2. Builds the custom EvalHub RAG scenario adapter image
 # 3. Waits for EvalHub and runs the product-native smoke evaluation
-# 4. Launches the EvalHub ACME/whoami pre/post RAG evaluation suite
+# 4. Launches independent EvalHub ACME/whoami pre/post RAG evaluations
 # 5. Compiles the legacy KFP RAG eval pipeline for optional compatibility runs
 
 set -euo pipefail
@@ -258,7 +258,7 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5: Run EvalHub ACME/whoami pre/post RAG scenario suite
+# Step 5: Run independent EvalHub ACME/whoami pre/post RAG scenario evaluations
 # ═══════════════════════════════════════════════════════════════════════════
 if [ -f "$SCRIPT_DIR/run-evalhub-rag-scenarios.sh" ]; then
     chmod +x "$SCRIPT_DIR/run-evalhub-rag-scenarios.sh"
@@ -320,7 +320,7 @@ echo "║    Model:   granite-8b-agent                                  ║"
 echo "║    Rerun:   ./steps/step-08-model-evaluation/run-evalhub-smoke.sh ║"
 echo "║                                                                ║"
 echo "║  EvalHub RAG scenarios (automated):                            ║"
-echo "║    Suite:   rhoai-rag-pre-post-v1                              ║"
+echo "║    Jobs:    ACME pre, ACME post, whoami pre, whoami post        ║"
 echo "║    Rerun:   ./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh ║"
 echo "║                                                                ║"
 echo "║  KFP RAG Evaluation (optional compatibility):                  ║"

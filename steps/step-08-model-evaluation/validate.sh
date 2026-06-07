@@ -13,11 +13,15 @@ EVALHUB_JOB_SERVICE_ACCOUNT="evalhub-redhat-ods-applications-job"
 MODEL_NAMESPACE="maas"
 EVALHUB_SMOKE_NAME_PREFIX="evalhub-granite-smoke"
 EVALHUB_EXPERIMENT_NAME="evalhub-granite-smoke"
-EVALHUB_RAG_NAME_PREFIX="evalhub-rag-pre-post"
-EVALHUB_RAG_EXPERIMENT_NAME="evalhub-rag-pre-post"
 EVALHUB_RAG_PROVIDER_ID="rhoai_rag_scenarios"
 EVALHUB_RAG_PROVIDER_CONFIGMAP="rhoai-rag-scenarios"
 EVALHUB_RAG_COLLECTION_ID="rhoai-rag-pre-post-v1"
+EVALHUB_RAG_SCENARIOS=(
+    acme_corporate_pre_rag
+    acme_corporate_post_rag
+    whoami_pre_rag
+    whoami_post_rag
+)
 
 record_pass() {
     echo -e "${GREEN}[PASS]${NC} $*"
@@ -215,6 +219,26 @@ print("|".join([
     str(benchmark_count(item)),
 ]))
 PY
+}
+
+rag_scenario_slug() {
+    case "$1" in
+        acme_corporate_pre_rag) printf '%s' "acme-corporate-pre-rag" ;;
+        acme_corporate_post_rag) printf '%s' "acme-corporate-post-rag" ;;
+        whoami_pre_rag) printf '%s' "whoami-pre-rag" ;;
+        whoami_post_rag) printf '%s' "whoami-post-rag" ;;
+        *) return 1 ;;
+    esac
+}
+
+rag_scenario_title() {
+    case "$1" in
+        acme_corporate_pre_rag) printf '%s' "ACME Corporate Pre-RAG Baseline" ;;
+        acme_corporate_post_rag) printf '%s' "ACME Corporate Post-RAG Evaluation" ;;
+        whoami_pre_rag) printf '%s' "Whoami Pre-RAG Baseline" ;;
+        whoami_post_rag) printf '%s' "Whoami Post-RAG Evaluation" ;;
+        *) return 1 ;;
+    esac
 }
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
@@ -688,58 +712,66 @@ if [[ -n "${EVALHUB_BASE_URL:-}" ]]; then
         record_fail "No EvalHub smoke job found — run: ./steps/step-08-model-evaluation/run-evalhub-smoke.sh"
     fi
 
-    RAG_JOB_ID="$(latest_evalhub_job_id_from_file "$JOBS_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME")"
-    RAG_DETAIL_FILE="$(mktemp)"
-    if [[ -n "$RAG_JOB_ID" ]]; then
-        RAG_DETAIL_CODE="$(curl -sk --max-time 30 \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "X-Tenant: $NAMESPACE" \
-            "$EVALHUB_BASE_URL/api/v1/evaluations/jobs/$RAG_JOB_ID" \
-            -o "$RAG_DETAIL_FILE" \
-            -w "%{http_code}" 2>/dev/null || echo "000")"
-        if [[ "$RAG_DETAIL_CODE" == "200" ]]; then
-            RAG_INFO="$(evalhub_job_info_from_file "$RAG_DETAIL_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME" acme_corporate_pre_rag acme_corporate_post_rag whoami_pre_rag whoami_post_rag)"
-        else
-            RAG_INFO="$(evalhub_job_info_from_file "$JOBS_FILE" "$EVALHUB_RAG_NAME_PREFIX" "$EVALHUB_RAG_EXPERIMENT_NAME" acme_corporate_pre_rag acme_corporate_post_rag whoami_pre_rag whoami_post_rag)"
-        fi
-    else
-        RAG_INFO=""
-    fi
-    rm -f "$JOBS_FILE" "$SMOKE_DETAIL_FILE" "$RAG_DETAIL_FILE"
+    for RAG_SCENARIO in "${EVALHUB_RAG_SCENARIOS[@]}"; do
+        RAG_SLUG="$(rag_scenario_slug "$RAG_SCENARIO")"
+        RAG_TITLE="$(rag_scenario_title "$RAG_SCENARIO")"
+        RAG_NAME_PREFIX="evalhub-${RAG_SLUG}"
+        RAG_EXPERIMENT_NAME="evalhub-${RAG_SLUG}"
+        RAG_JOB_ID="$(latest_evalhub_job_id_from_file "$JOBS_FILE" "$RAG_NAME_PREFIX" "$RAG_EXPERIMENT_NAME")"
+        RAG_DETAIL_FILE="$(mktemp)"
 
-    if [[ -n "$RAG_INFO" ]]; then
-        RAG_JOB_ID="${RAG_INFO%%|*}"
-        REST="${RAG_INFO#*|}"
-        RAG_JOB_NAME="${REST%%|*}"
-        REST="${REST#*|}"
-        RAG_STATE="${REST%%|*}"
-        REST="${REST#*|}"
-        RAG_MLFLOW_URL="${REST%%|*}"
-        REST="${REST#*|}"
-        RAG_CREATED="${REST%%|*}"
-        RAG_BENCHMARK_COUNT="${REST#*|}"
-
-        if [[ "$RAG_STATE" == "completed" ]]; then
-            record_pass "Latest EvalHub RAG pre/post job completed: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+        if [[ -n "$RAG_JOB_ID" ]]; then
+            RAG_DETAIL_CODE="$(curl -sk --max-time 30 \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "X-Tenant: $NAMESPACE" \
+                "$EVALHUB_BASE_URL/api/v1/evaluations/jobs/$RAG_JOB_ID" \
+                -o "$RAG_DETAIL_FILE" \
+                -w "%{http_code}" 2>/dev/null || echo "000")"
+            if [[ "$RAG_DETAIL_CODE" == "200" ]]; then
+                RAG_INFO="$(evalhub_job_info_from_file "$RAG_DETAIL_FILE" "$RAG_NAME_PREFIX" "$RAG_EXPERIMENT_NAME" "$RAG_SCENARIO")"
+            else
+                RAG_INFO="$(evalhub_job_info_from_file "$JOBS_FILE" "$RAG_NAME_PREFIX" "$RAG_EXPERIMENT_NAME" "$RAG_SCENARIO")"
+            fi
         else
-            record_fail "Latest EvalHub RAG pre/post job state is ${RAG_STATE:-unknown}: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+            RAG_INFO=""
         fi
-        check_recent_timestamp "Latest EvalHub RAG pre/post job" "$RAG_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+        rm -f "$RAG_DETAIL_FILE"
 
-        if [[ "$RAG_BENCHMARK_COUNT" =~ ^[0-9]+$ && "$RAG_BENCHMARK_COUNT" -ge 4 ]]; then
-            record_pass "EvalHub RAG pre/post job includes all 4 scenario benchmarks"
-        else
-            record_fail "EvalHub RAG pre/post job does not show all 4 scenario benchmarks (found ${RAG_BENCHMARK_COUNT:-0})"
-        fi
+        if [[ -n "$RAG_INFO" ]]; then
+            RAG_JOB_ID="${RAG_INFO%%|*}"
+            REST="${RAG_INFO#*|}"
+            RAG_JOB_NAME="${REST%%|*}"
+            REST="${REST#*|}"
+            RAG_STATE="${REST%%|*}"
+            REST="${REST#*|}"
+            RAG_MLFLOW_URL="${REST%%|*}"
+            REST="${REST#*|}"
+            RAG_CREATED="${REST%%|*}"
+            RAG_BENCHMARK_COUNT="${REST#*|}"
 
-        if [[ -n "$RAG_MLFLOW_URL" ]]; then
-            record_pass "EvalHub RAG pre/post job has MLflow experiment URL: $RAG_MLFLOW_URL"
+            if [[ "$RAG_STATE" == "completed" ]]; then
+                record_pass "Latest EvalHub $RAG_TITLE job completed: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+            else
+                record_fail "Latest EvalHub $RAG_TITLE job state is ${RAG_STATE:-unknown}: ${RAG_JOB_NAME:-$RAG_JOB_ID}"
+            fi
+            check_recent_timestamp "Latest EvalHub $RAG_TITLE job" "$RAG_CREATED" "${DEMO_FRESHNESS_HOURS:-24}" "warn"
+
+            if [[ "$RAG_BENCHMARK_COUNT" =~ ^[0-9]+$ && "$RAG_BENCHMARK_COUNT" -ge 1 ]]; then
+                record_pass "EvalHub $RAG_TITLE job includes benchmark $RAG_SCENARIO"
+            else
+                record_fail "EvalHub $RAG_TITLE job does not show benchmark $RAG_SCENARIO"
+            fi
+
+            if [[ -n "$RAG_MLFLOW_URL" ]]; then
+                record_pass "EvalHub $RAG_TITLE job has MLflow experiment URL: $RAG_MLFLOW_URL"
+            else
+                record_fail "EvalHub $RAG_TITLE job results missing mlflow_experiment_url"
+            fi
         else
-            record_fail "EvalHub RAG pre/post job results missing mlflow_experiment_url"
+            record_fail "No EvalHub $RAG_TITLE job found — run: ./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh"
         fi
-    else
-        record_fail "No EvalHub RAG pre/post job found — run: ./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh"
-    fi
+    done
+    rm -f "$JOBS_FILE" "$SMOKE_DETAIL_FILE"
 else
     record_fail "Skipping EvalHub API checks because route URL is missing"
 fi

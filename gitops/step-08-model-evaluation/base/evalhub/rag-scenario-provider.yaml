@@ -49,6 +49,13 @@ data:
           - pass_rate
           - mean_judge_score
           - tool_pass_rate
+          - answer_rate
+          - rag_tool_call_rate
+          - questions_passed
+          - questions_failed
+          - grade_a_count
+          - grade_b_count
+          - grade_e_count
         dataset_size: 6
         tags:
           - acme
@@ -66,6 +73,13 @@ data:
           - pass_rate
           - mean_judge_score
           - tool_pass_rate
+          - answer_rate
+          - rag_tool_call_rate
+          - questions_passed
+          - questions_failed
+          - grade_a_count
+          - grade_b_count
+          - grade_e_count
         dataset_size: 6
         tags:
           - acme
@@ -83,6 +97,13 @@ data:
           - pass_rate
           - mean_judge_score
           - tool_pass_rate
+          - answer_rate
+          - rag_tool_call_rate
+          - questions_passed
+          - questions_failed
+          - grade_a_count
+          - grade_b_count
+          - grade_e_count
         dataset_size: 4
         tags:
           - whoami
@@ -100,6 +121,13 @@ data:
           - pass_rate
           - mean_judge_score
           - tool_pass_rate
+          - answer_rate
+          - rag_tool_call_rate
+          - questions_passed
+          - questions_failed
+          - grade_a_count
+          - grade_b_count
+          - grade_e_count
         dataset_size: 4
         tags:
           - whoami

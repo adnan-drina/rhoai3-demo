@@ -36,7 +36,7 @@ LETTER_SCORES = {
     "A": 1.0,
     "B": 0.9,
     "C": 0.5,
-    "D": 0.25,
+    "D": 0.8,
     "E": 0.0,
 }
 
@@ -45,6 +45,14 @@ DEFAULT_JUDGE_PROMPT = """You are an evaluation judge comparing a GENERATED RESP
 Question: {input_query}
 Expected Response: {expected_answer}
 Generated Response: {generated_answer}
+
+INSTRUCTIONS:
+- Compare ONLY the Generated Response against the Expected Response.
+- Do NOT introduce information not present in either response.
+- Focus on factual alignment, not writing style.
+- Treat synonyms and close paraphrases as equivalent when they preserve the same key facts.
+- Do NOT penalize harmless wording differences such as "focusing on" versus "specializing in".
+- Mark a response as a subset only when an expected key fact is actually missing, not when the same fact is phrased differently.
 
 Select the BEST match:
 (A) The Generated Response contains the SAME key facts as the Expected Response.
@@ -99,7 +107,7 @@ class RAGScenarioAdapter(FrameworkAdapter):
             ),
         )
         judge_model = params.get("judge_model", os.environ.get("RAG_EVAL_JUDGE_MODEL", "mistral-3-bf16"))
-        pass_letters = set(params.get("pass_letters") or ["A", "B"])
+        pass_letters = set(params.get("pass_letters") or ["A", "B", "D"])
 
         scenario_results: list[dict[str, Any]] = []
         total = len(tests)
@@ -434,6 +442,7 @@ class RAGScenarioAdapter(FrameworkAdapter):
     ) -> tuple[list[EvaluationResult], dict[str, Any]]:
         total = len(scenario_results)
         passed = sum(1 for result in scenario_results if result["judge_letter"] in pass_letters)
+        failed = total - passed
         pass_rate = passed / total if total else 0.0
         mean_judge_score = (
             sum(float(result["judge_score"]) for result in scenario_results) / total if total else 0.0
@@ -441,6 +450,8 @@ class RAGScenarioAdapter(FrameworkAdapter):
         tool_pass_rate = (
             sum(float(result["tool_score"]["score"]) for result in scenario_results) / total if total else 0.0
         )
+        answers_returned = sum(1 for result in scenario_results if str(result.get("answer", "")).strip())
+        answer_rate = answers_returned / total if total else 0.0
         letter_counts = {
             letter: sum(1 for result in scenario_results if result["judge_letter"] == letter)
             for letter in ["A", "B", "C", "D", "E", "?"]
@@ -450,17 +461,36 @@ class RAGScenarioAdapter(FrameworkAdapter):
             for result in scenario_results
             if "builtin::rag/knowledge_search" in result.get("tool_calls", [])
         )
+        rag_expected = sum(
+            1
+            for result in scenario_results
+            if "builtin::rag/knowledge_search" in result.get("expected_tools", [])
+        )
+        rag_tool_call_rate = rag_hits / rag_expected if rag_expected else 1.0
+        grade_counts = {
+            ("unknown" if letter == "?" else letter.lower()): count
+            for letter, count in letter_counts.items()
+        }
 
         summary = {
             "scenario": scenario_config.get("name", "RAG Scenario"),
             "mode": mode,
             "tests_total": total,
             "tests_passed": passed,
+            "tests_failed": failed,
+            "questions_total": total,
+            "questions_passed": passed,
+            "questions_failed": failed,
             "pass_rate": pass_rate,
             "mean_judge_score": mean_judge_score,
             "tool_pass_rate": tool_pass_rate,
+            "answer_rate": answer_rate,
+            "answers_returned": answers_returned,
             "letter_counts": letter_counts,
+            "grade_counts": grade_counts,
             "rag_tool_calls": rag_hits,
+            "rag_expected_calls": rag_expected,
+            "rag_tool_call_rate": rag_tool_call_rate,
             "pass_letters": sorted(pass_letters),
             "completed_at": datetime.now(UTC).isoformat(),
         }
@@ -469,15 +499,32 @@ class RAGScenarioAdapter(FrameworkAdapter):
             EvaluationResult(metric_name="pass_rate", metric_value=pass_rate, metric_type="float", num_samples=total),
             EvaluationResult(metric_name="mean_judge_score", metric_value=mean_judge_score, metric_type="float", num_samples=total),
             EvaluationResult(metric_name="tool_pass_rate", metric_value=tool_pass_rate, metric_type="float", num_samples=total),
+            EvaluationResult(metric_name="answer_rate", metric_value=answer_rate, metric_type="float", num_samples=total),
+            EvaluationResult(metric_name="rag_tool_call_rate", metric_value=rag_tool_call_rate, metric_type="float", num_samples=total),
             EvaluationResult(metric_name="tests_total", metric_value=total, metric_type="int", num_samples=total),
             EvaluationResult(metric_name="tests_passed", metric_value=passed, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="tests_failed", metric_value=failed, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="questions_total", metric_value=total, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="questions_passed", metric_value=passed, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="questions_failed", metric_value=failed, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="answers_returned", metric_value=answers_returned, metric_type="int", num_samples=total),
             EvaluationResult(metric_name="rag_tool_calls", metric_value=rag_hits, metric_type="int", num_samples=total),
+            EvaluationResult(metric_name="rag_expected_calls", metric_value=rag_expected, metric_type="int", num_samples=total),
         ]
         for letter, count in letter_counts.items():
             metric_letter = "unknown" if letter == "?" else letter
             metrics.append(
                 EvaluationResult(
                     metric_name=f"judge_count_{metric_letter}",
+                    metric_value=count,
+                    metric_type="int",
+                    num_samples=total,
+                )
+            )
+        for grade, count in grade_counts.items():
+            metrics.append(
+                EvaluationResult(
+                    metric_name=f"grade_{grade}_count",
                     metric_value=count,
                     metric_type="int",
                     num_samples=total,

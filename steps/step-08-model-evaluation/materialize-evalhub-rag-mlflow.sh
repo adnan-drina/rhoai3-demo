@@ -115,6 +115,180 @@ def numeric(value: Any) -> float | None:
     return None
 
 
+def short_text(value: Any, limit: int = 480) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 3]}..."
+
+
+def as_metric_dict(raw_metrics: Any) -> dict[str, Any]:
+    if isinstance(raw_metrics, dict):
+        return dict(raw_metrics)
+    if not isinstance(raw_metrics, list):
+        return {}
+
+    metrics: dict[str, Any] = {}
+    for item in raw_metrics:
+        if not isinstance(item, dict):
+            continue
+        name = (
+            item.get("metric_name")
+            or item.get("name")
+            or item.get("key")
+            or item.get("metric")
+        )
+        if not name:
+            continue
+        if "metric_value" in item:
+            value = item.get("metric_value")
+        elif "value" in item:
+            value = item.get("value")
+        else:
+            value = item.get("score")
+        metrics[str(name)] = value
+    return metrics
+
+
+def ensure_experiment_id(experiment_name: str, candidate_id: str = "") -> str:
+    if candidate_id:
+        return candidate_id
+
+    experiments = mlflow_post(
+        "/api/2.0/mlflow/experiments/search",
+        {"filter": f"name = '{experiment_name}'", "max_results": 1},
+    ).get("experiments", [])
+    if experiments:
+        return str(experiments[0]["experiment_id"])
+
+    created = mlflow_post(
+        "/api/2.0/mlflow/experiments/create",
+        {"name": experiment_name},
+    )
+    experiment_id = created.get("experiment_id")
+    if not experiment_id:
+        raise RuntimeError(f"MLflow did not create experiment {experiment_name}: {created}")
+    return str(experiment_id)
+
+
+def benchmark_artifacts(benchmark: dict[str, Any]) -> dict[str, Any]:
+    artifacts = benchmark.get("artifacts")
+    if isinstance(artifacts, dict):
+        return artifacts
+
+    metadata = benchmark.get("metadata")
+    if isinstance(metadata, dict):
+        nested = metadata.get("artifacts")
+        if isinstance(nested, dict):
+            return nested
+
+    evaluation_metadata = benchmark.get("evaluation_metadata")
+    if isinstance(evaluation_metadata, dict):
+        nested = evaluation_metadata.get("artifacts")
+        if isinstance(nested, dict):
+            return nested
+
+    return {}
+
+
+def benchmark_metrics(benchmark: dict[str, Any]) -> dict[str, Any]:
+    metrics = as_metric_dict(benchmark.get("metrics") or benchmark.get("results"))
+    test = benchmark.get("test") or {}
+    summary = benchmark_artifacts(benchmark).get("rag_scenario_summary") or {}
+    scenario_results = benchmark_artifacts(benchmark).get("rag_scenario_results") or []
+
+    for key, value in summary.items():
+        if key in {"letter_counts", "grade_counts", "pass_letters", "completed_at", "scenario", "mode"}:
+            continue
+        if numeric(value) is not None:
+            metrics.setdefault(key, value)
+
+    letter_counts = summary.get("letter_counts") or {}
+    if isinstance(letter_counts, dict):
+        for letter, count in letter_counts.items():
+            suffix = "unknown" if letter == "?" else str(letter).lower()
+            metrics.setdefault(f"grade_{suffix}_count", count)
+
+    pass_rate = numeric(metrics.get("pass_rate"))
+    if pass_rate is not None:
+        metrics.setdefault("pass_rate_percent", pass_rate * 100.0)
+    mean_judge_score = numeric(metrics.get("mean_judge_score"))
+    if mean_judge_score is not None:
+        metrics.setdefault("mean_judge_score_percent", mean_judge_score * 100.0)
+
+    questions_total = numeric(metrics.get("questions_total") or metrics.get("tests_total"))
+    questions_passed = numeric(metrics.get("questions_passed") or metrics.get("tests_passed"))
+    if questions_total is not None and questions_passed is not None:
+        metrics.setdefault("questions_failed", max(questions_total - questions_passed, 0.0))
+
+    metrics["threshold"] = test.get("threshold")
+    metrics["benchmark_pass"] = test.get("pass")
+
+    if isinstance(scenario_results, list):
+        for fallback_index, result in enumerate(scenario_results, 1):
+            if not isinstance(result, dict):
+                continue
+            index = int(result.get("index") or fallback_index)
+            prefix = f"q{index:02d}"
+            metrics[f"{prefix}_judge_score"] = result.get("judge_score")
+            metrics[f"{prefix}_passed"] = result.get("passed")
+            tool_score = result.get("tool_score") or {}
+            if isinstance(tool_score, dict):
+                metrics[f"{prefix}_tool_score"] = tool_score.get("score")
+    return metrics
+
+
+def benchmark_params(
+    benchmark: dict[str, Any],
+    summary: dict[str, Any],
+    scenario_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    params = {
+        "evalhub_job_id": job_id,
+        "benchmark_id": benchmark.get("id", "unknown"),
+        "provider_id": benchmark.get("provider_id", ""),
+        "scenario": summary.get("scenario", benchmark.get("id", "unknown")),
+        "mode": summary.get("mode", ""),
+        "model_name": (job.get("model") or {}).get("name", ""),
+        "questions_total": summary.get("questions_total", summary.get("tests_total", "")),
+        "questions_passed": summary.get("questions_passed", summary.get("tests_passed", "")),
+        "questions_failed": summary.get("questions_failed", summary.get("tests_failed", "")),
+        "pass_letters": ",".join(str(item) for item in summary.get("pass_letters", [])),
+    }
+
+    for result in scenario_results:
+        if not isinstance(result, dict):
+            continue
+        index = int(result.get("index") or 0)
+        if index <= 0:
+            continue
+        prefix = f"q{index:02d}"
+        params[f"{prefix}_prompt"] = short_text(result.get("prompt"), 260)
+        params[f"{prefix}_grade"] = result.get("judge_letter", "")
+        params[f"{prefix}_passed"] = result.get("passed", "")
+        params[f"{prefix}_answer"] = short_text(result.get("answer"), 360)
+        params[f"{prefix}_expected"] = short_text(result.get("expected"), 360)
+        params[f"{prefix}_judge_feedback"] = short_text(result.get("judge_feedback"), 420)
+        params[f"{prefix}_tools_called"] = ",".join(str(item) for item in result.get("tool_calls", []))
+        params[f"{prefix}_tools_expected"] = ",".join(str(item) for item in result.get("expected_tools", []))
+
+    return params
+
+
+def default_experiment_name_for(benchmarks: list[dict[str, Any]]) -> str:
+    if len(benchmarks) != 1:
+        return "evalhub-rag-pre-post"
+
+    benchmark_id = benchmarks[0].get("id", "")
+    scenario_experiments = {
+        "acme_corporate_pre_rag": "evalhub-acme-corporate-pre-rag",
+        "acme_corporate_post_rag": "evalhub-acme-corporate-post-rag",
+        "whoami_pre_rag": "evalhub-whoami-pre-rag",
+        "whoami_post_rag": "evalhub-whoami-post-rag",
+    }
+    return scenario_experiments.get(str(benchmark_id), "evalhub-rag-pre-post")
+
+
 def existing_run_keys(experiment_id: str) -> set[tuple[str, str]]:
     runs = mlflow_post(
         "/api/2.0/mlflow/runs/search",
@@ -197,25 +371,19 @@ job = request_json("GET", f"{evalhub_url}/api/v1/evaluations/jobs/{job_id}")
 resource = job.get("resource") or {}
 results = job.get("results") or {}
 experiment = job.get("experiment") or {}
-experiment_id = str(resource.get("mlflow_experiment_id") or "")
-experiment_name = experiment.get("name") or "evalhub-rag-pre-post"
-if not experiment_id:
-    experiments = mlflow_post(
-        "/api/2.0/mlflow/experiments/search",
-        {"filter": f"name = '{experiment_name}'", "max_results": 1},
-    ).get("experiments", [])
-    if not experiments:
-        raise RuntimeError(f"MLflow experiment not found: {experiment_name}")
-    experiment_id = str(experiments[0]["experiment_id"])
-
 benchmarks = results.get("benchmarks") or []
 if not benchmarks:
     raise RuntimeError(f"EvalHub job {job_id} has no benchmark results")
+
+experiment_id = str(resource.get("mlflow_experiment_id") or "").strip()
+experiment_name = experiment.get("name") or default_experiment_name_for(benchmarks)
+experiment_id = ensure_experiment_id(experiment_name, experiment_id)
 
 seen = existing_run_keys(experiment_id)
 created: list[tuple[str, str]] = []
 start_ms = iso_to_ms(resource.get("created_at"))
 end_ms = int(time.time() * 1000)
+single_benchmark_job = len(benchmarks) == 1
 
 base_tags = {
     "rhoai.demo.step": "08",
@@ -224,10 +392,11 @@ base_tags = {
     "evalhub.job_id": job_id,
     "evalhub.job_name": job.get("name", ""),
     "evalhub.experiment_name": experiment_name,
+    "evalhub.evaluation_style": "independent" if single_benchmark_job else "grouped",
 }
 
 summary_key = ("summary", "")
-if summary_key not in seen:
+if not single_benchmark_job and summary_key not in seen:
     summary_metrics: dict[str, Any] = {
         "collection_score": (results.get("test") or {}).get("score"),
         "collection_pass": (results.get("test") or {}).get("pass"),
@@ -235,7 +404,7 @@ if summary_key not in seen:
     }
     for benchmark in benchmarks:
         benchmark_id = benchmark.get("id", "unknown")
-        for key, value in (benchmark.get("metrics") or {}).items():
+        for key, value in benchmark_metrics(benchmark).items():
             metric_value = numeric(value)
             if metric_value is not None:
                 summary_metrics[f"{benchmark_id}_{key}"] = metric_value
@@ -257,32 +426,27 @@ if summary_key not in seen:
 
 for benchmark in sorted(benchmarks, key=lambda item: item.get("benchmark_index", 0)):
     benchmark_id = benchmark.get("id", "unknown")
-    key = ("benchmark", benchmark_id)
+    run_kind = "evaluation" if single_benchmark_job else "benchmark"
+    key = (run_kind, benchmark_id)
     if key in seen:
         continue
 
-    metrics = dict(benchmark.get("metrics") or {})
+    artifacts = benchmark_artifacts(benchmark)
+    summary = artifacts.get("rag_scenario_summary") or {}
+    scenario_results = artifacts.get("rag_scenario_results") or []
+    if not isinstance(scenario_results, list):
+        scenario_results = []
+
+    metrics = benchmark_metrics(benchmark)
     test = benchmark.get("test") or {}
-    metrics["threshold"] = test.get("threshold")
-    metrics["benchmark_pass"] = test.get("pass")
-    summary = (benchmark.get("artifacts") or {}).get("rag_scenario_summary") or {}
-    params = {
-        "evalhub_job_id": job_id,
-        "benchmark_id": benchmark_id,
-        "provider_id": benchmark.get("provider_id", ""),
-        "scenario": summary.get("scenario", benchmark_id),
-        "mode": summary.get("mode", ""),
-        "model_name": (job.get("model") or {}).get("name", ""),
-        "threshold": test.get("threshold", ""),
-        "tests_total": metrics.get("tests_total", ""),
-        "tests_passed": metrics.get("tests_passed", ""),
-    }
+    params = benchmark_params(benchmark, summary, scenario_results)
+    params["threshold"] = test.get("threshold", "")
     run_id = create_run(
         experiment_id,
         f"evalhub-{benchmark_id}-{job_short}",
         {
             **base_tags,
-            "evalhub.run_kind": "benchmark",
+            "evalhub.run_kind": run_kind,
             "evalhub.benchmark_id": benchmark_id,
             "evalhub.scenario": str(summary.get("scenario", benchmark_id)),
             "evalhub.mode": str(summary.get("mode", "")),
