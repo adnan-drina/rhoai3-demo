@@ -151,7 +151,7 @@ cat > "$REQUEST_JSON" <<JSON
   "benchmarks": [
     {
       "provider_id": "$PROVIDER_ID",
-      "benchmark_id": "$BENCHMARK_ID"
+      "id": "$BENCHMARK_ID"
     }
   ],
   "experiment": {

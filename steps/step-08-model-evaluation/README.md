@@ -118,7 +118,7 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 > **Demo database credential.** The EvalHub PostgreSQL Secret is committed with placeholder demo values so Argo CD can build a complete workshop environment without a separate secret manager. The manifest header includes the replacement command, and production use must replace both `database-password` and `db-url` through an external secret mechanism or a pre-created OpenShift Secret.
 
-> **MLflow as experiment memory.** RHOAI 3.4 documents MLflow as EvalHub's experiment tracker. This step sets `MLFLOW_TRACKING_URI`, `MLFLOW_WORKSPACE=enterprise-rag`, and `MLFLOW_INSECURE_SKIP_VERIFY=true` for the demo cluster's self-signed internal service. The EvalHub smoke job uses experiment name `evalhub-granite-smoke`, while the KFP RAG evaluation still logs richer scenario-level evidence to the `enterprise-rag` experiment.
+> **MLflow as experiment memory.** RHOAI 3.4 documents MLflow as EvalHub's experiment tracker. This step sets `MLFLOW_TRACKING_URI`, `MLFLOW_WORKSPACE=enterprise-rag`, and `MLFLOW_INSECURE_SKIP_VERIFY=true` for the demo cluster's self-signed internal service. The EvalHub service account is bound to `mlflow-operator-mlflow-integration` in `enterprise-rag` so the server's projected MLflow token can create and read smoke-test experiments. The EvalHub smoke job uses experiment name `evalhub-granite-smoke`, while the KFP RAG evaluation still logs richer scenario-level evidence to the `enterprise-rag` experiment.
 
 > **Prompt versions are evaluation inputs.** RHOAI 3.4 Gen AI Studio stores reusable system instructions as project-scoped Prompts. Step 08 accepts prompt metadata (`PROMPT_NAME`, `PROMPT_VERSION`, `PROMPT_ALIAS`, `PROMPT_SOURCE`, `PROMPT_COMMIT_MESSAGE`) and logs it to MLflow with the scenario quality metrics. `PROMPT_ALIAS` is a demo promotion label, not a required RHOAI UI field. This keeps prompt iteration auditable without claiming direct runtime loading from the Prompt Registry.
 
@@ -177,7 +177,8 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | Step 12 MLflow | Cluster-scoped MLflow server | Available=True |
 | EvalHub server | CR, PostgreSQL, service, route, health | Ready + HTTP 200 |
 | EvalHub tenant | Namespace label and operator-created tenant resources | Present |
-| EvalHub RBAC | Users/groups can create virtual `evaluations` | `oc auth can-i` returns yes |
+| EvalHub RBAC | Users/groups can create virtual `evaluations` | SubjectAccessReview returns allowed |
+| EvalHub MLflow RBAC | EvalHub service account can reach the tenant MLflow workspace | Internal MLflow search returns HTTP 200 |
 | EvalHub providers | REST provider registry | Includes `lm_evaluation_harness` |
 | EvalHub smoke | Latest smoke job | `completed` plus MLflow experiment URL |
 | Eval ConfigMaps | eval-configs and eval-test-cases | Both present |
@@ -256,7 +257,7 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 ./steps/step-08-model-evaluation/run-evalhub-smoke.sh
 ```
 
-**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits one `tinyTruthfulQA` benchmark against `granite-8b-agent`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
+**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits one `tinyTruthfulQA` benchmark by benchmark `id` against `granite-8b-agent`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
 
 > This is intentionally small. It proves the EvalHub control plane and tenant path without replacing the richer KFP RAG quality harness or the longer `LMEvalJob` benchmarks. The demo message is that standardized provider benchmarks, custom application evaluations, and MLflow evidence can coexist under one RHOAI evaluation story.
 
@@ -454,7 +455,17 @@ Log in to the intended cluster, clear or correct `RHOAI_EXPECTED_API_SERVER` if 
 oc get evalhub evalhub -n evalhub-system -o yaml
 oc get namespace enterprise-rag --show-labels | grep evalhub
 oc get serviceaccount,rolebinding,configmap -n enterprise-rag | grep evalhub
-oc auth can-i create evaluations.trustyai.opendatahub.io -n enterprise-rag --as=ai-developer
+oc create -f - -o json <<'EOF'
+apiVersion: authorization.k8s.io/v1
+kind: SubjectAccessReview
+spec:
+  user: ai-developer
+  resourceAttributes:
+    namespace: enterprise-rag
+    verb: create
+    group: trustyai.opendatahub.io
+    resource: evaluations
+EOF
 ```
 
 The tenant label value should be empty: `evalhub.trustyai.opendatahub.io/tenant=`.
@@ -468,7 +479,7 @@ The tenant label value should be empty: `evalhub.trustyai.opendatahub.io/tenant=
 ```bash
 oc get evalhub evalhub -n evalhub-system -o jsonpath='{.spec.env}'
 oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
-oc auth can-i get experiments.mlflow.kubeflow.org -n enterprise-rag --as=ai-developer
+oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
 ```
 
 ### Evaluations page not visible in Dashboard

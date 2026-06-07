@@ -44,6 +44,43 @@ evalhub_url() {
     return 1
 }
 
+sar_allowed() {
+    local user="$1"
+    local verb="$2"
+    local api_group="$3"
+    local resource="$4"
+    local namespace="$5"
+    local group="${6:-}"
+
+    if [[ -n "$group" ]]; then
+        oc create -f - -o json 2>/dev/null <<EOF | python3 -c 'import json,sys; print("yes" if json.load(sys.stdin).get("status", {}).get("allowed") else "no")' 2>/dev/null
+apiVersion: authorization.k8s.io/v1
+kind: SubjectAccessReview
+spec:
+  user: "$user"
+  groups:
+    - "$group"
+  resourceAttributes:
+    namespace: "$namespace"
+    verb: "$verb"
+    group: "$api_group"
+    resource: "$resource"
+EOF
+    else
+        oc create -f - -o json 2>/dev/null <<EOF | python3 -c 'import json,sys; print("yes" if json.load(sys.stdin).get("status", {}).get("allowed") else "no")' 2>/dev/null
+apiVersion: authorization.k8s.io/v1
+kind: SubjectAccessReview
+spec:
+  user: "$user"
+  resourceAttributes:
+    namespace: "$namespace"
+    verb: "$verb"
+    group: "$api_group"
+    resource: "$resource"
+EOF
+    fi
+}
+
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║  Step 08: Model Evaluation — Validation                        ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
@@ -180,6 +217,10 @@ check "RAG pipeline ServiceAccount has MLflow integration RoleBinding" \
     "oc get rolebinding rag-eval-pipeline-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "mlflow-operator-mlflow-integration"
 
+check "EvalHub service account has MLflow integration RoleBinding" \
+    "oc get rolebinding evalhub-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "mlflow-operator-mlflow-integration"
+
 MLFLOW_SELECTOR=$(oc get mlflow mlflow -o json 2>/dev/null | python3 -c '
 import json
 import sys
@@ -197,6 +238,22 @@ if [[ "$MLFLOW_SELECTOR" == *"enterprise-rag"* && "$MLFLOW_SELECTOR" == *"enterp
 else
     echo -e "${YELLOW}[WARN]${NC} MLflow server does not yet select enterprise-rag workspaces"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
+EVALHUB_MLFLOW_CODE="$(oc exec deployment/evalhub -n "$EVALHUB_NAMESPACE" -- sh -c '
+TOKEN="$(cat /var/run/secrets/mlflow/token)"
+curl -sk --max-time 20 -X POST "https://mlflow.redhat-ods-applications.svc:8443/api/2.0/mlflow/experiments/search" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "x-mlflow-workspace: enterprise-rag" \
+  -H "Content-Type: application/json" \
+  -d "{\"max_results\":1}" \
+  -o /dev/null \
+  -w "%{http_code}"
+' 2>/dev/null || echo "000")"
+if [[ "$EVALHUB_MLFLOW_CODE" == "200" ]]; then
+    record_pass "EvalHub service account can access the enterprise-rag MLflow workspace"
+else
+    record_fail "EvalHub service account cannot access the enterprise-rag MLflow workspace (HTTP $EVALHUB_MLFLOW_CODE)"
 fi
 
 # --- EvalHub Server and Tenant ---
@@ -292,24 +349,17 @@ else
 fi
 
 for user in kube:admin ai-admin ai-developer; do
-    if [[ "$(oc auth can-i create evaluations.trustyai.opendatahub.io -n "$NAMESPACE" --as="$user" 2>/dev/null || true)" == "yes" ]]; then
+    if [[ "$(sar_allowed "$user" create trustyai.opendatahub.io evaluations "$NAMESPACE")" == "yes" ]]; then
         record_pass "$user can create EvalHub evaluations in $NAMESPACE"
     else
         record_fail "$user cannot create EvalHub evaluations in $NAMESPACE"
     fi
 done
 
-if [[ "$(oc auth can-i create evaluations.trustyai.opendatahub.io -n "$NAMESPACE" \
-    --as=rhoai-group-check --as-group=rhoai-users 2>/dev/null || true)" == "yes" ]]; then
+if [[ "$(sar_allowed rhoai-group-check create trustyai.opendatahub.io evaluations "$NAMESPACE" rhoai-users)" == "yes" ]]; then
     record_pass "rhoai-users group can create EvalHub evaluations in $NAMESPACE"
 else
     record_fail "rhoai-users group cannot create EvalHub evaluations in $NAMESPACE"
-fi
-
-if [[ "$(oc auth can-i get experiments.mlflow.kubeflow.org -n "$NAMESPACE" --as=ai-developer 2>/dev/null || true)" == "yes" ]]; then
-    record_pass "ai-developer can access MLflow experiments for EvalHub"
-else
-    record_fail "ai-developer cannot access MLflow experiments for EvalHub"
 fi
 
 log_step "EvalHub API and Smoke Job"
