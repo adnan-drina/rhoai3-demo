@@ -6,6 +6,7 @@ resources:
   - rag-scenario-collection.yaml
   - namespace.yaml
   - postgresql-secret.yaml
+  - evalhub-db-client-secret.yaml
   - postgresql-pvc.yaml
   - postgresql-deployment.yaml
   - postgresql-service.yaml

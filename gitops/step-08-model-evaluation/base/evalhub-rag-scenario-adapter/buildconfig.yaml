@@ -24,8 +24,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
+  failedBuildsHistoryLimit: 5
+  nodeSelector: null
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
   source:
     type: Binary
+    binary: {}
   strategy:
     type: Docker
     dockerStrategy:
@@ -34,4 +40,4 @@ spec:
     to:
       kind: ImageStreamTag
       name: evalhub-rag-scenario-adapter:latest
-  triggers: []
+  successfulBuildsHistoryLimit: 5

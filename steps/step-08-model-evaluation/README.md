@@ -60,9 +60,9 @@ Model Evaluation
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
-| **EvalHub CR** | Technology Preview evaluation API reconciled by TrustyAI Operator | `evalhub-system` |
+| **EvalHub CR** | Technology Preview evaluation API reconciled by TrustyAI Operator; placed where the RHOAI Dashboard EvalHub UI discovers it | `redhat-ods-applications` |
 | **EvalHub PostgreSQL** | Durable EvalHub database using RHEL 9 PostgreSQL 16 | `evalhub-system` |
-| **EvalHub Route** | External API route for health, provider listing, and job submission | `evalhub-system` |
+| **EvalHub Route** | External API route for health, provider listing, and job submission | `redhat-ods-applications` |
 | **EvalHub tenant RBAC** | Allows selected users/groups to submit tenant-scoped jobs | `enterprise-rag` |
 | **`run-evalhub-smoke.sh`** | Submit a small EvalHub job against `granite-8b-agent` | `enterprise-rag` tenant |
 | **`run-evalhub-rag-scenarios.sh`** | Submit ACME/whoami pre/post RAG scenario suite through EvalHub | `enterprise-rag` tenant |
@@ -120,6 +120,8 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 > **EvalHub is Technology Preview.** RHOAI 3.4 introduces EvalHub for early access to a unified evaluation control plane. It is appropriate for this demo and for evaluation workflow design, but production positioning must keep Red Hat Technology Preview support limits visible.
 
 > **EvalHub two-layer control plane.** The TrustyAI Operator reconciles the declarative `EvalHub` custom resource into the API server, service, route, provider mounts, and runtime environment. The EvalHub server is the second control plane: it accepts `/api/v1/evaluations/...` requests, validates tenant-scoped requests, stores job state, creates isolated Kubernetes Jobs in the tenant namespace, and aggregates results. The official RHOAI docs remain the source of truth for API fields, RBAC, and configuration.
+
+> **Dashboard-aligned EvalHub namespace.** The RHOAI 3.4 Dashboard EvalHub UI checks for `EvalHub/evalhub` in `redhat-ods-applications`. Step 08 therefore keeps the EvalHub CR, generated service, and route in `redhat-ods-applications`, while the PostgreSQL database remains isolated in `evalhub-system`. A same-named `evalhub-db-credentials` Secret in `redhat-ods-applications` points the EvalHub server at that database.
 
 > **Demo database credential.** The EvalHub PostgreSQL Secret is committed with placeholder demo values so Argo CD can build a complete workshop environment without a separate secret manager. The manifest header includes the replacement command, and production use must replace both `database-password` and `db-url` through an external secret mechanism or a pre-created OpenShift Secret.
 
@@ -185,7 +187,7 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | EvalHub server | CR, PostgreSQL, service, route, health | Ready + HTTP 200 |
 | EvalHub tenant | Namespace label and operator-created tenant resources | Present |
 | EvalHub RBAC | Users/groups can create virtual `evaluations` | SubjectAccessReview returns allowed |
-| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs; benchmark Jobs have tenant service account, CA bundle, MLflow, and callback access | Product TrustyAI roles are bound in `enterprise-rag` and `evalhub-system` |
+| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs; benchmark Jobs have tenant service account, CA bundle, MLflow, and callback access | Product TrustyAI roles are bound in `enterprise-rag` and `redhat-ods-applications` |
 | EvalHub MLflow RBAC | EvalHub service account can reach the tenant MLflow workspace | Internal MLflow search returns HTTP 200 |
 | EvalHub providers | REST provider registry | Includes `lm_evaluation_harness` |
 | EvalHub smoke | Latest smoke job | `completed` plus MLflow experiment URL |
@@ -211,10 +213,10 @@ oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
 oc get subscription rhods-operator -n redhat-ods-operator \
   -o jsonpath='{.status.installedCSV}'
 
-oc get evalhub evalhub -n evalhub-system \
+oc get evalhub evalhub -n redhat-ods-applications \
   -o jsonpath='{.status.phase} {.status.url}'
 
-EVALHUB_URL=https://$(oc get route evalhub -n evalhub-system -o jsonpath='{.spec.host}')
+EVALHUB_URL=https://$(oc get route evalhub -n redhat-ods-applications -o jsonpath='{.spec.host}')
 TOKEN=$(oc whoami -t)
 curl -sk -H "Authorization: Bearer $TOKEN" -H "X-Tenant: enterprise-rag" \
   "$EVALHUB_URL/api/v1/evaluations/providers" | \
@@ -290,9 +292,9 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 ./steps/step-08-model-evaluation/run-eval-report.sh
 ```
 
-**Expect:** The script verifies provider ID `rhoai_rag_scenarios`, verifies collection `rhoai-rag-pre-post-v1`, submits one EvalHub job, and polls until all four benchmarks complete: `acme_corporate_pre_rag`, `acme_corporate_post_rag`, `whoami_pre_rag`, and `whoami_post_rag`.
+**Expect:** The script verifies provider ID `rhoai_rag_scenarios`, verifies collection `rhoai-rag-pre-post-v1`, submits one EvalHub job, polls until all four benchmarks complete, and materializes the finished EvalHub result into MLflow runs under experiment `evalhub-rag-pre-post`.
 
-> Each benchmark runs in an EvalHub-managed Kubernetes Job using the same YAML test assets that powered the original pre-EvalHub evaluation. EvalHub stores benchmark status, metrics, JSON artifacts, and the MLflow experiment link under the tenant job record.
+> Each benchmark runs in an EvalHub-managed Kubernetes Job using the same YAML test assets that powered the original pre-EvalHub evaluation. EvalHub stores benchmark status, metrics, JSON artifacts, and the MLflow experiment link under the tenant job record. The script then creates dashboard-visible MLflow runs: one summary run plus one run per scenario benchmark.
 
 ### Review Results
 
@@ -304,14 +306,19 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
    - Benchmarks: all four scenario IDs completed
    - Metrics per benchmark: `pass_rate`, `mean_judge_score`, `tool_pass_rate`, `tests_total`, `tests_passed`, and judge letter counts
    - Artifacts: `rag_scenario_summary` and `rag_scenario_results`
-2. Check the optional KFP compatibility path only if you need the older Dashboard HTML reports:
+2. Check the RHOAI Dashboard MLflow view:
+   - Page: **Develop & train > Experiments (MLflow)**
+   - Project: `Enterprise RAG`
+   - Experiment: `evalhub-rag-pre-post`
+   - Runs: `evalhub-rag-pre-post-summary-<job>`, `evalhub-acme_corporate_pre_rag-<job>`, `evalhub-acme_corporate_post_rag-<job>`, `evalhub-whoami_pre_rag-<job>`, `evalhub-whoami_post_rag-<job>`
+3. Check the optional KFP compatibility path only if you need the older Dashboard HTML reports:
    - Pipeline: `rag-evaluation-pipeline`
    - Reports: `s3://rhoai-storage/eval-results/<run_id>/`
    - MLflow experiment: `enterprise-rag`
 
-**Expect:** A clear quality gap — ~20% without documents to ~90% with them.
+**Expect:** A clear quality gap between pre-RAG and post-RAG runs. Post-RAG runs should show materially higher pass rates and should record RAG tool usage for every post-RAG question.
 
-> Every EvalHub run is versioned under a tenant job and linked to MLflow. The custom collection keeps the scenario suite reusable, so the demo can be rerun after ingestion, prompt, or model changes without reassembling the benchmark list.
+> Every EvalHub run is versioned under a tenant job and linked to MLflow. The RHOAI Dashboard **Jobs** page lists TrainJobs and RayJobs, so EvalHub benchmark Jobs do not appear there; use EvalHub status, Kubernetes Jobs, and the materialized MLflow runs for this demo evidence. The custom collection keeps the scenario suite reusable, so the demo can be rerun after ingestion, prompt, or model changes without reassembling the benchmark list.
 
 ### Scoring Breakdown
 
@@ -455,7 +462,7 @@ oc get configmap -n redhat-ods-applications \
 oc get configmap -n redhat-ods-applications \
   -l trustyai.opendatahub.io/evalhub-collection-name=rhoai-rag-pre-post-v1
 
-oc get evalhub evalhub -n evalhub-system \
+oc get evalhub evalhub -n redhat-ods-applications \
   -o jsonpath='{.spec.providers} {.spec.collections}'
 ```
 
@@ -477,6 +484,8 @@ oc get imagestreamtag evalhub-rag-scenario-adapter:latest -n enterprise-rag
 
 The normal `deploy.sh` runs this build automatically before submitting the EvalHub RAG scenario suite.
 
+Keep `spec.source.binary: {}` explicit in the BuildConfig manifest. OpenShift defaults that field on Binary builds, and leaving it implicit causes ArgoCD to report a persistent BuildConfig diff after sync.
+
 ### EvalHub RAG scenario job cannot read eval-test-cases
 
 **Root Cause:** The EvalHub benchmark Job service account needs read-only access to the `eval-test-cases` and `eval-configs` ConfigMaps in `enterprise-rag`.
@@ -488,7 +497,7 @@ oc get role evalhub-rag-scenario-config-reader -n enterprise-rag -o yaml
 oc get rolebinding evalhub-rag-scenario-config-reader -n enterprise-rag -o yaml
 
 oc auth can-i get configmap/eval-test-cases -n enterprise-rag \
-  --as=system:serviceaccount:enterprise-rag:evalhub-evalhub-system-job
+  --as=system:serviceaccount:enterprise-rag:evalhub-redhat-ods-applications-job
 ```
 
 ### EvalHub deploy refuses to run
@@ -514,7 +523,7 @@ Log in to the intended cluster, clear or correct `RHOAI_EXPECTED_API_SERVER` if 
 **Solution:**
 
 ```bash
-oc get evalhub evalhub -n evalhub-system -o yaml
+oc get evalhub evalhub -n redhat-ods-applications -o yaml
 oc get namespace enterprise-rag --show-labels | grep evalhub
 oc get serviceaccount,rolebinding,configmap -n enterprise-rag | grep evalhub
 oc create -f - -o json <<'EOF'
@@ -539,27 +548,27 @@ The tenant label value should be empty: `evalhub.trustyai.opendatahub.io/tenant=
 **Solution:**
 
 ```bash
-oc get evalhub evalhub -n evalhub-system -o jsonpath='{.spec.env}'
+oc get evalhub evalhub -n redhat-ods-applications -o jsonpath='{.spec.env}'
 oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
 oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
 ```
 
 ### EvalHub smoke job cannot create tenant resources
 
-**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-evalhub-system-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a tenant `status-events` callback RoleBinding.
+**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-redhat-ods-applications-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a tenant `status-events` callback RoleBinding.
 
 **Solution:**
 
 ```bash
 oc get rolebinding evalhub-job-config-client -n enterprise-rag -o yaml
 oc get rolebinding evalhub-jobs-writer-client -n enterprise-rag -o yaml
-oc get serviceaccount evalhub-evalhub-system-job -n enterprise-rag -o yaml
+oc get serviceaccount evalhub-redhat-ods-applications-job -n enterprise-rag -o yaml
 oc get configmap evalhub-service-ca -n enterprise-rag -o yaml
 oc get rolebinding evalhub-job-mlflow-client -n enterprise-rag -o yaml
 oc get role evalhub-job-status-events -n enterprise-rag -o yaml
 oc get rolebinding evalhub-job-status-callback -n enterprise-rag -o yaml
-oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
-oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
+oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:redhat-ods-applications:evalhub-service
+oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:redhat-ods-applications:evalhub-service
 ```
 
 ### EvalHub smoke job cannot load tokenizer

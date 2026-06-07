@@ -16,7 +16,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: evalhub-service
-    namespace: evalhub-system
+    namespace: redhat-ods-applications
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -57,13 +57,13 @@ roleRef:
   name: evalhub-rag-scenario-config-reader
 subjects:
   - kind: ServiceAccount
-    name: evalhub-evalhub-system-job
+    name: evalhub-redhat-ods-applications-job
     namespace: enterprise-rag
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: evalhub-evalhub-system-job
+  name: evalhub-redhat-ods-applications-job
   namespace: enterprise-rag
   annotations:
     argocd.argoproj.io/sync-wave: "4"
@@ -102,7 +102,7 @@ roleRef:
   name: trustyai-service-operator-evalhub-mlflow-jobs-access
 subjects:
   - kind: ServiceAccount
-    name: evalhub-evalhub-system-job
+    name: evalhub-redhat-ods-applications-job
     namespace: enterprise-rag
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -141,7 +141,7 @@ roleRef:
   name: evalhub-job-status-events
 subjects:
   - kind: ServiceAccount
-    name: evalhub-evalhub-system-job
+    name: evalhub-redhat-ods-applications-job
     namespace: enterprise-rag
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -162,4 +162,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: evalhub-service
-    namespace: evalhub-system
+    namespace: redhat-ods-applications

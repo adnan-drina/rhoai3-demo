@@ -12,7 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STEP_NAME="step-08-model-evaluation"
 NAMESPACE="enterprise-rag"
-EVALHUB_NAMESPACE="evalhub-system"
+EVALHUB_NAMESPACE="redhat-ods-applications"
+EVALHUB_DB_NAMESPACE="evalhub-system"
 RUN_ID="eval-$(date +%s)"
 
 source "$REPO_ROOT/scripts/lib.sh"
@@ -98,7 +99,7 @@ wait_for_evalhub_ready() {
     local timeout="${1:-600}" elapsed=0 phase ready route_host health_code
 
     log_step "Waiting for EvalHub readiness..."
-    oc wait deployment/evalhub-postgres -n "$EVALHUB_NAMESPACE" \
+    oc wait deployment/evalhub-postgres -n "$EVALHUB_DB_NAMESPACE" \
         --for=condition=Available --timeout=300s >/dev/null
     log_success "EvalHub PostgreSQL is available"
 
@@ -130,6 +131,7 @@ wait_for_evalhub_ready() {
     log_error "Timed out waiting for EvalHub readiness"
     oc get evalhub evalhub -n "$EVALHUB_NAMESPACE" -o yaml || true
     oc get pods,svc,route -n "$EVALHUB_NAMESPACE" || true
+    oc get pods,svc -n "$EVALHUB_DB_NAMESPACE" -l app=evalhub-postgres || true
     exit 1
 }
 

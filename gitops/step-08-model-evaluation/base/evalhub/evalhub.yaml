@@ -2,7 +2,7 @@ apiVersion: trustyai.opendatahub.io/v1alpha1
 kind: EvalHub
 metadata:
   name: evalhub
-  namespace: evalhub-system
+  namespace: redhat-ods-applications
   labels:
     app.kubernetes.io/name: evalhub
     app.kubernetes.io/instance: evalhub

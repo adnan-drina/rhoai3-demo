@@ -2,7 +2,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: evalhub
-  namespace: evalhub-system
+  namespace: redhat-ods-applications
   labels:
     app.kubernetes.io/name: evalhub
     app.kubernetes.io/instance: evalhub

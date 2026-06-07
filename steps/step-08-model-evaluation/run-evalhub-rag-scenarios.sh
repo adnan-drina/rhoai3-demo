@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 NAMESPACE="${NAMESPACE:-enterprise-rag}"
-EVALHUB_NAMESPACE="${EVALHUB_NAMESPACE:-evalhub-system}"
+EVALHUB_NAMESPACE="${EVALHUB_NAMESPACE:-redhat-ods-applications}"
 RUN_ID="${1:-evalhub-rag-$(date +%s)}"
 JOB_NAME="${EVALHUB_RAG_JOB_NAME:-evalhub-rag-pre-post-${RUN_ID}}"
 EXPERIMENT_NAME="${EVALHUB_RAG_EXPERIMENT_NAME:-evalhub-rag-pre-post}"
@@ -245,6 +245,9 @@ done
 case "$STATE" in
     completed)
         log_success "EvalHub RAG scenario job completed"
+        if [[ -x "$SCRIPT_DIR/materialize-evalhub-rag-mlflow.sh" ]]; then
+            "$SCRIPT_DIR/materialize-evalhub-rag-mlflow.sh" "$JOB_ID"
+        fi
         ;;
     failed|cancelled|partially_failed)
         log_error "EvalHub RAG scenario job finished in terminal state: $STATE"

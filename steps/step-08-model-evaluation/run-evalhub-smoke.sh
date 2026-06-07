@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/lib.sh"
 
 NAMESPACE="${NAMESPACE:-enterprise-rag}"
-EVALHUB_NAMESPACE="${EVALHUB_NAMESPACE:-evalhub-system}"
+EVALHUB_NAMESPACE="${EVALHUB_NAMESPACE:-redhat-ods-applications}"
 RUN_ID="${1:-evalhub-$(date +%s)}"
 JOB_NAME="${EVALHUB_JOB_NAME:-evalhub-granite-smoke-${RUN_ID}}"
 EXPERIMENT_NAME="${EVALHUB_EXPERIMENT_NAME:-evalhub-granite-smoke}"

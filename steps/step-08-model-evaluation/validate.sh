@@ -7,7 +7,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$REPO_ROOT/scripts/validate-lib.sh"
 
 NAMESPACE="enterprise-rag"
-EVALHUB_NAMESPACE="evalhub-system"
+EVALHUB_NAMESPACE="redhat-ods-applications"
+EVALHUB_DB_NAMESPACE="evalhub-system"
+EVALHUB_JOB_SERVICE_ACCOUNT="evalhub-redhat-ods-applications-job"
 MODEL_NAMESPACE="maas"
 EVALHUB_SMOKE_NAME_PREFIX="evalhub-granite-smoke"
 EVALHUB_EXPERIMENT_NAME="evalhub-granite-smoke"
@@ -429,19 +431,23 @@ check "EvalHub namespace exists" \
     "oc get namespace $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
     "$EVALHUB_NAMESPACE"
 
+check "EvalHub database namespace exists" \
+    "oc get namespace $EVALHUB_DB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "$EVALHUB_DB_NAMESPACE"
+
 EVALHUB_DB_URL="$(oc get secret evalhub-db-credentials -n "$EVALHUB_NAMESPACE" \
     -o jsonpath='{.data.db-url}' 2>/dev/null | base64 -d 2>/dev/null || true)"
 if [[ "$EVALHUB_DB_URL" == postgres*evalhub-postgres* ]]; then
-    record_pass "EvalHub PostgreSQL db-url Secret exists"
+    record_pass "EvalHub db-url Secret exists in dashboard namespace"
 else
-    record_fail "EvalHub PostgreSQL db-url Secret missing or invalid"
+    record_fail "EvalHub db-url Secret missing or invalid in dashboard namespace"
 fi
 
 check "EvalHub PostgreSQL PVC exists" \
-    "oc get pvc evalhub-postgres-data -n $EVALHUB_NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "oc get pvc evalhub-postgres-data -n $EVALHUB_DB_NAMESPACE -o jsonpath='{.metadata.name}'" \
     "evalhub-postgres-data"
 
-POSTGRES_AVAILABLE="$(oc get deployment evalhub-postgres -n "$EVALHUB_NAMESPACE" \
+POSTGRES_AVAILABLE="$(oc get deployment evalhub-postgres -n "$EVALHUB_DB_NAMESPACE" \
     -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || true)"
 if [[ "$POSTGRES_AVAILABLE" == "True" ]]; then
     record_pass "EvalHub PostgreSQL deployment is Available"
@@ -517,8 +523,8 @@ check "EvalHub service account has tenant job writer RoleBinding" \
     "trustyai-service-operator-evalhub-jobs-writer"
 
 check "EvalHub benchmark Job ServiceAccount exists in tenant namespace" \
-    "oc get serviceaccount evalhub-evalhub-system-job -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
-    "evalhub-evalhub-system-job"
+    "oc get serviceaccount $EVALHUB_JOB_SERVICE_ACCOUNT -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "$EVALHUB_JOB_SERVICE_ACCOUNT"
 
 check "EvalHub benchmark Job service CA ConfigMap exists in tenant namespace" \
     "oc get configmap evalhub-service-ca -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
@@ -552,7 +558,7 @@ else
 fi
 
 EVALHUB_SA="system:serviceaccount:${EVALHUB_NAMESPACE}:evalhub-service"
-EVALHUB_JOB_SA="system:serviceaccount:${NAMESPACE}:evalhub-evalhub-system-job"
+EVALHUB_JOB_SA="system:serviceaccount:${NAMESPACE}:${EVALHUB_JOB_SERVICE_ACCOUNT}"
 if [[ "$(oc auth can-i create configmaps -n "$NAMESPACE" --as="$EVALHUB_SA" 2>/dev/null || true)" == "yes" ]]; then
     record_pass "EvalHub service account can create tenant ConfigMaps"
 else
