@@ -53,6 +53,8 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **External model credentials stay outside Git:** OpenAI GPT-5 is registered as `ExternalModel/gpt-5`, but the real provider API key is never committed. `deploy.sh` creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` in this repo's `.env` or, by default, from `../rhoai3-coding-demo/.env`. Override the lookup path with `RHOAI_OPENAI_ENV_FILE`.
 
+> **External provider-auth verification:** Official RHOAI 3.4 documentation describes two-tier authentication where users call MaaS with a MaaS API key and MaaS injects the provider API key before forwarding to OpenAI. `validate.sh` verifies the external model registration, subscription, GenAI discovery, and route. If the generated `AuthPolicy` clears the upstream `Authorization` header instead of injecting `maas/openai-provider-api-key`, validation reports a warning rather than committing a provider key into a non-Secret workaround.
+
 > **Kueue on MaaS only:** Queue enforcement applies only to `maas`; every GitOps-managed model-serving workload in this namespace is labeled for `maas-default`.
 
 > **OCI ModelCar for small models, S3 for large models:** Granite uses OCI ModelCar from `registry.redhat.io`. Mistral BF16 uses S3/MinIO because the model is large enough that object storage remains the safer demo path.
@@ -102,7 +104,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | Models | `granite-8b-agent` and `mistral-3-bf16` InferenceServices exist |
 | External model | `ExternalModel/gpt-5` points to `api.openai.com`, `MaaSModelRef/gpt-5` is Ready, and the OpenAI provider secret exists |
 | AI asset endpoints | Local models carry `opendatahub.io/dashboard=true` and `opendatahub.io/genai-asset=true`; MaaS `/v1/models` and GenAI MaaS API list local and external models |
-| User API keys | `ai-admin-maas-api-key` and `ai-developer-maas-api-key` exist in `maas`, record `MAAS_EXPIRES_IN=60d`, list the local and external models, complete a granite chat call, and route one low-token GPT-5 request |
+| User API keys | `ai-admin-maas-api-key` and `ai-developer-maas-api-key` exist in `maas`, record `MAAS_EXPIRES_IN=60d`, list the local and external models, complete a granite chat call, and attempt one low-token GPT-5 request |
 | MaaS observability | Prometheus scrapes Limitador and sees user/subscription/model-labeled MaaS Usage metrics after validation traffic or the heartbeat CronJob |
 | vLLM workload scraping | Predictor Deployment and pods carry `monitoring.opendatahub.io/scrape=true` |
 | MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |

@@ -238,6 +238,7 @@ Product-aligned next improvements:
 | Verify KServe models | `oc get inferenceservice -A` |
 | Verify MaaS API keys | `oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n maas` and `oc get secret rag-maas-api-key -n enterprise-rag` |
 | Verify external MaaS models | `oc get externalmodel gpt-5 -n maas -o yaml`, `oc get maasmodelref gpt-5 -n maas`, and confirm `maas/openai-provider-api-key` has an `api-key` data key. |
+| Verify external provider auth | If a GPT-5 chat request reaches OpenAI but returns `You didn't provide an API key`, inspect `oc get authpolicy maas-auth-gpt-5 -n maas -o yaml`; the current RHOAI 3.4 TP controller might clear upstream `Authorization` instead of injecting the provider Secret. Keep the provider key in `maas/openai-provider-api-key`; do not patch it into GitOps manifests. |
 | Verify MaaS usage metrics | Query `up{job="kuadrant-system/kuadrant-limitador-monitor"}`, confirm `oc get cronjob maas-usage-heartbeat -n maas`, then generate or wait for model-route traffic with `X-Gateway-Model-Name: granite-8b-agent` and query `authorized_calls{user!="",subscription!=""}` plus `authorized_hits{user!="",model!=""}`. The RHOAI Usage dashboard uses these Limitador metrics. |
 | Verify RHOAI observability dashboard | Check `oc get monitoring default-monitoring` and confirm **Observe & monitor** → **Dashboard** shows Cluster, Models, and Usage tabs. |
 | Verify model registry | `oc get modelregistry -n rhoai-model-registries` |

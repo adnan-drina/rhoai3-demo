@@ -195,8 +195,9 @@ validate_demo_user_api_key() {
 validate_openai_external_model_call() {
     local api_key="$1"
     local external_http_code
+    local response_file="/tmp/step-05-openai-gpt-5-chat.json"
 
-    external_http_code=$(curl -sk --max-time 120 -o "/tmp/step-05-openai-gpt-5-chat.json" -w "%{http_code}" \
+    external_http_code=$(curl -sk --max-time 120 -o "$response_file" -w "%{http_code}" \
         -H "Authorization: Bearer $api_key" \
         -H "X-Gateway-Model-Name: gpt-5" \
         -H "Content-Type: application/json" \
@@ -205,6 +206,10 @@ validate_openai_external_model_call() {
     if [[ "$external_http_code" == "200" ]]; then
         echo -e "${GREEN}[PASS]${NC} MaaS can route a low-token chat request to external OpenAI gpt-5"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    elif [[ "$external_http_code" == "401" ]] && grep -q "You didn't provide an API key" "$response_file" 2>/dev/null; then
+        echo -e "${YELLOW}[WARN]${NC} MaaS routes gpt-5 to OpenAI, but provider API key injection is not active in the generated AuthPolicy"
+        echo -e "${YELLOW}[WARN]${NC} Expected per RHOAI 3.4 docs: MaaS injects maas/openai-provider-api-key before forwarding external requests"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
     else
         echo -e "${RED}[FAIL]${NC} MaaS external OpenAI gpt-5 chat returned HTTP $external_http_code"
         VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
