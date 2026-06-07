@@ -361,9 +361,13 @@ check "EvalHub benchmark Job has tenant MLflow RoleBinding" \
     "oc get rolebinding evalhub-job-mlflow-client -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
     "trustyai-service-operator-evalhub-mlflow-jobs-access"
 
+check "EvalHub benchmark Job status-events Role exists in tenant namespace" \
+    "oc get role evalhub-job-status-events -n $NAMESPACE -o jsonpath='{.metadata.name}'" \
+    "evalhub-job-status-events"
+
 check "EvalHub benchmark Job has status callback RoleBinding" \
-    "oc get rolebinding evalhub-job-status-callback -n $EVALHUB_NAMESPACE -o jsonpath='{.roleRef.name}'" \
-    "evalhub-evalhub-system-job-access-role"
+    "oc get rolebinding evalhub-job-status-callback -n $NAMESPACE -o jsonpath='{.roleRef.name}'" \
+    "evalhub-job-status-events"
 
 TENANT_OPERATOR_OBJECTS="$(oc get serviceaccount,rolebinding,configmap -n "$NAMESPACE" --no-headers 2>/dev/null | grep -c evalhub || true)"
 if [[ "$TENANT_OPERATOR_OBJECTS" -gt 0 ]]; then
@@ -373,6 +377,7 @@ else
 fi
 
 EVALHUB_SA="system:serviceaccount:${EVALHUB_NAMESPACE}:evalhub-service"
+EVALHUB_JOB_SA="system:serviceaccount:${NAMESPACE}:evalhub-evalhub-system-job"
 if [[ "$(oc auth can-i create configmaps -n "$NAMESPACE" --as="$EVALHUB_SA" 2>/dev/null || true)" == "yes" ]]; then
     record_pass "EvalHub service account can create tenant ConfigMaps"
 else
@@ -383,6 +388,12 @@ if [[ "$(oc auth can-i create jobs.batch -n "$NAMESPACE" --as="$EVALHUB_SA" 2>/d
     record_pass "EvalHub service account can create tenant benchmark Jobs"
 else
     record_fail "EvalHub service account cannot create tenant benchmark Jobs"
+fi
+
+if [[ "$(sar_allowed "$EVALHUB_JOB_SA" create trustyai.opendatahub.io status-events "$NAMESPACE")" == "yes" ]]; then
+    record_pass "EvalHub benchmark Job service account can create tenant status events"
+else
+    record_fail "EvalHub benchmark Job service account cannot create tenant status events"
 fi
 
 for user in kube:admin ai-admin ai-developer; do

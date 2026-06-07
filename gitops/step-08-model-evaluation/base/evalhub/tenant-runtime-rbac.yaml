@@ -64,10 +64,29 @@ subjects:
     namespace: enterprise-rag
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: evalhub-job-status-events
+  namespace: enterprise-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/name: evalhub-runtime
+    app.kubernetes.io/part-of: rag-evaluation
+rules:
+  - apiGroups:
+      - trustyai.opendatahub.io
+    resources:
+      - status-events
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: evalhub-job-status-callback
-  namespace: evalhub-system
+  namespace: enterprise-rag
   annotations:
     argocd.argoproj.io/sync-wave: "4"
   labels:
@@ -77,7 +96,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: evalhub-evalhub-system-job-access-role
+  name: evalhub-job-status-events
 subjects:
   - kind: ServiceAccount
     name: evalhub-evalhub-system-job

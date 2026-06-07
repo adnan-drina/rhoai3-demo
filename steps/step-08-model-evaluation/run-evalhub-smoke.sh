@@ -17,6 +17,8 @@ MODEL_NAME="${EVALHUB_MODEL_NAME:-granite-8b-agent}"
 MODEL_URL="${EVALHUB_MODEL_URL:-http://granite-8b-agent-predictor.maas.svc.cluster.local:8080/v1}"
 PROVIDER_ID="${EVALHUB_PROVIDER_ID:-lm_evaluation_harness}"
 BENCHMARK_ID="${EVALHUB_BENCHMARK_ID:-tinyTruthfulQA}"
+TOKENIZER="${EVALHUB_TOKENIZER:-ibm-granite/granite-3.1-8b-instruct}"
+EXAMPLE_LIMIT="${EVALHUB_EXAMPLE_LIMIT:-1}"
 POLL_ATTEMPTS="${EVALHUB_POLL_ATTEMPTS:-120}"
 POLL_SECONDS="${EVALHUB_POLL_SECONDS:-10}"
 
@@ -151,7 +153,11 @@ cat > "$REQUEST_JSON" <<JSON
   "benchmarks": [
     {
       "provider_id": "$PROVIDER_ID",
-      "id": "$BENCHMARK_ID"
+      "id": "$BENCHMARK_ID",
+      "parameters": {
+        "tokenizer": "$TOKENIZER",
+        "limit": $EXAMPLE_LIMIT
+      }
     }
   ],
   "experiment": {

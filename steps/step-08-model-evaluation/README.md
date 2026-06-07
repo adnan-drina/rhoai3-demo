@@ -258,7 +258,7 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 ./steps/step-08-model-evaluation/run-evalhub-smoke.sh
 ```
 
-**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits one `tinyTruthfulQA` benchmark by benchmark `id` against `granite-8b-agent`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
+**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits one `tinyTruthfulQA` benchmark by benchmark `id` against `granite-8b-agent`, passes tokenizer `ibm-granite/granite-3.1-8b-instruct`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
 
 > This is intentionally small. It proves the EvalHub control plane and tenant path without replacing the richer KFP RAG quality harness or the longer `LMEvalJob` benchmarks. The demo message is that standardized provider benchmarks, custom application evaluations, and MLflow evidence can coexist under one RHOAI evaluation story.
 
@@ -485,7 +485,7 @@ oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
 
 ### EvalHub smoke job cannot create tenant resources
 
-**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-evalhub-system-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a status callback RoleBinding to the EvalHub namespace.
+**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-evalhub-system-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a tenant `status-events` callback RoleBinding.
 
 **Solution:**
 
@@ -495,9 +495,21 @@ oc get rolebinding evalhub-jobs-writer-client -n enterprise-rag -o yaml
 oc get serviceaccount evalhub-evalhub-system-job -n enterprise-rag -o yaml
 oc get configmap evalhub-service-ca -n enterprise-rag -o yaml
 oc get rolebinding evalhub-job-mlflow-client -n enterprise-rag -o yaml
-oc get rolebinding evalhub-job-status-callback -n evalhub-system -o yaml
+oc get role evalhub-job-status-events -n enterprise-rag -o yaml
+oc get rolebinding evalhub-job-status-callback -n enterprise-rag -o yaml
 oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
 oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:evalhub-system:evalhub-service
+```
+
+### EvalHub smoke job cannot load tokenizer
+
+**Root Cause:** LM-Eval needs a real tokenizer identifier for OpenAI-compatible completions. The demo serving name `granite-8b-agent` is not a Hugging Face tokenizer repo.
+
+**Solution:**
+
+```bash
+EVALHUB_TOKENIZER=ibm-granite/granite-3.1-8b-instruct \
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh
 ```
 
 ### Evaluations page not visible in Dashboard
