@@ -3,7 +3,7 @@
 
 ## Overview
 
-This step moves LLM serving out of the old shared project model and into `maas`, the dedicated namespace for shared model endpoints. The active implementation uses KServe `Standard` deployment mode with the Red Hat AI Inference Server powered by vLLM, and the platform posture is now RHOAI 3.4 MaaS-ready:
+This step moves LLM serving out of the old shared project model and into `maas`, displayed as `MaaS Runtime` in the dashboard, the dedicated namespace for shared model endpoints. The active implementation uses KServe `Standard` deployment mode with the Red Hat AI Inference Server powered by vLLM, and the platform posture is now RHOAI 3.4 MaaS-ready:
 
 - `kserve.modelsAsService.managementState: Managed` is enabled in the DSC.
 - The dashboard exposes Model Catalog, Model Registry, GenAI Studio, MaaS, MLflow, and Kueue controls.
@@ -43,6 +43,8 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 <summary>Design Decisions</summary>
 
 > **MaaS namespace boundary:** LLM runtime ownership is separated from RAG and MLOps workloads. RAG consumers use MaaS API keys and the MaaS gateway, but do not own serving runtime resources.
+
+> **Product MaaS namespace is separate:** RHOAI creates the product-managed `models-as-a-service` namespace for MaaS `Tenant`, `MaaSSubscription`, and `MaaSAuthPolicy` resources. It may be visible to cluster admins, but it is not the runtime project that contains models. The demo runtime namespace is `maas`, displayed as `MaaS Runtime`, to avoid duplicate Models-as-a-Service project names.
 
 > **Verified GitOps for MaaS governance:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview. This repo commits only installed, schema-verified MaaS CRDs (`ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`) and validates them with `oc explain` and live API-key calls.
 
@@ -138,7 +140,7 @@ oc exec deploy/granite-8b-agent-predictor -n maas -c kserve-container -- \
 > The Red Hat product UI should be part of the demo, not only the custom ACME chatbot. Here we prove that the same governed endpoints can be compared directly in GenAI Studio before developers package them into an application.
 
 1. Open **GenAI Studio** → **Playground**
-2. Create a new playground in the `maas` project
+2. Create a new playground in the `MaaS Runtime` (`maas`) project
 3. Add `granite-8b-agent` in the first chat instance
 4. Add `mistral-3-bf16` in a second chat instance
 5. Set temperature to `0.1` and leave streaming enabled so the comparison is deterministic and visibly responsive

@@ -5,13 +5,15 @@
 
 RHOAI 3.4 is the point where the demo stops treating every workload as one `private-ai` project. This step creates three enterprise projects with distinct responsibilities:
 
-- `maas` for shared LLM serving and Model-as-a-Service endpoints.
+- `maas` (`MaaS Runtime` in the dashboard) for shared LLM serving and Models-as-a-Service endpoints.
 - `enterprise-rag` for RAG, Llama Stack, MCP, guardrails, and GenAI evaluation.
 - `enterprise-mlops` for predictive AI, pipelines, MLflow, TrustyAI, and workbenches.
 
 The storage and identity story remains common across all three. MinIO provides the S3-compatible storage layer, RHOAI data connection secrets make that storage visible in the dashboard, and OpenShift RBAC maps `ai-admin` and `ai-developer` to the right project roles.
 
 `maas` is the only Kueue-managed project in this slice. RHOAI 3.4 documents namespace-level Kueue enforcement, so this step deliberately avoids applying `kueue.openshift.io/managed=true` to `enterprise-rag` or `enterprise-mlops` until those workloads are made queue-aware.
+RHOAI also creates a product-managed `models-as-a-service` namespace for MaaS governance objects such as the default `Tenant`. The demo keeps runtime serving in `maas` and labels it as `MaaS Runtime` so admins do not see two nearly identical Models-as-a-Service entries in project lists.
+`enterprise-rag` is also labeled as an EvalHub tenant so Step 08 can submit tenant-scoped evaluation jobs without relying on an imperative relabel after GitOps sync.
 `enterprise-rag` and `enterprise-mlops` are selected as MLflow workspaces through the stable Kubernetes namespace-name label. Step 08 configures the RAG evaluation workspace; Step 12 deploys the Technology Preview MLflow server and the predictive MLOps workspace.
 
 Narrative alignment uses `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/products/Red Hat OpenShift AI.md` for the enterprise platform framing. Configuration correctness is pinned to official RHOAI 3.4 and OCP 4.20 documentation.
