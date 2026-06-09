@@ -48,6 +48,7 @@ venv/
 # Session prompts and local working docs (except shared SVG diagrams for README embedding)
 /docs/**
 !/docs/README.md
+!/docs/AI_COLLABORATION.md
 !/docs/OPERATIONS.md
 !/docs/alignment-evidence-ledger.md
 !/docs/assets/

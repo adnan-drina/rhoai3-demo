@@ -32,6 +32,7 @@ platform components in this project.
 | Complex multi-step task needing context isolation | **Subagent** (`.cursor/agents/*.md`) | Own context window; parallel execution; readonly option |
 | Automated validation after file edits | **Hook** (`.cursor/hooks.json`) | Runs scripts automatically; no agent decision needed |
 | Gate risky shell commands | **Hook** (`beforeShellExecution`) | Blocks or warns before dangerous operations |
+| Gate risky Codex shell commands | **Codex hook** (`.codex/hooks.json`) | Blocks unsafe `oc`/`kubectl` mutations before execution |
 | Pre-merge product-doc evidence | **Script + ledger** (`scripts/audit-doc-alignment.sh`, `docs/alignment-evidence-ledger.md`) | Records component alignment against pinned RHOAI 3.4 / OCP 4.20 docs |
 
 Ref: [Rules](https://cursor.com/docs/context/rules), [Skills](https://cursor.com/docs/skills),
@@ -42,20 +43,22 @@ Ref: [Rules](https://cursor.com/docs/context/rules), [Skills](https://cursor.com
 | Type | Count | Location |
 |------|-------|----------|
 | Rules | 13 | `.cursor/rules/*.mdc` |
-| Skills | 8 | `.cursor/skills/*/SKILL.md` |
-| Hooks | 4 | `.cursor/hooks.json` |
+| Skills | 9 | `.cursor/skills/*/SKILL.md` |
+| Cursor hooks | 4 | `.cursor/hooks.json`, `.cursor/hooks/` |
+| Codex hooks | 1 | `.codex/hooks.json`, `.codex/hooks/` |
 | Subagents | 3 | `.cursor/agents/*.md` |
 | Claude Code rules | 4 | `.claude/rules/*.md` (bridge files) |
 | CLAUDE.md | 1 | `CLAUDE.md` (root entry point) |
 
-Design doc: `docs/cursor-skills-and-rules.md`
-Audit log: `docs/rules-skills-audit.md`
+Canonical governance: `docs/AI_COLLABORATION.md`
+Historical design notes: `docs/cursor-skills-and-rules.md`
+Historical audit log: `docs/rules-skills-audit.md`
 
 ## Instructions
 
 ### Before Creating Any Component
 
-1. Read `docs/cursor-skills-and-rules.md` for current inventory and conventions
+1. Read `docs/AI_COLLABORATION.md` for current governance, taxonomy, and inventory
 2. Read `references/conventions.md` for detailed patterns
 3. Check for overlaps — does an existing rule/skill already cover this?
 4. Decide the component type using the decision framework above
@@ -95,6 +98,14 @@ Audit log: `docs/rules-skills-audit.md`
 - Use `failClosed: true` for security-critical hooks
 - Test hooks manually before relying on them
 
+### Creating a Codex Hook
+
+- Define in `.codex/hooks.json` only for project-local Codex behavior
+- Scripts go in `.codex/hooks/`
+- Keep hooks deterministic and non-secret; never print full commands containing credentials
+- Use them for safety checks such as blocking risky `oc`/`kubectl` mutations when the expected cluster guard is absent or mismatched
+- Document user-visible behavior in `AGENTS.md` and `docs/AI_COLLABORATION.md`
+
 ### Auditing All Components
 
 Run this audit periodically (monthly or after major changes):
@@ -105,7 +116,8 @@ Run this audit periodically (monthly or after major changes):
 4. Verify skill `name` fields match folder names
 5. Verify always-apply budget hasn't crept up
 6. Check Red Hat doc links still resolve
-7. Update `docs/rules-skills-audit.md` with findings
+7. Update `docs/AI_COLLABORATION.md` when inventory or taxonomy changes
+8. Update `docs/rules-skills-audit.md` only for a dated deep audit
 
 For detailed conventions and patterns, read `references/conventions.md`.
 
@@ -158,7 +170,7 @@ skills and agents natively but have different rule formats.
 - Key commands change (bootstrap, deploy, validate patterns)
 - New skills or agents are added
 
-Both `.cursor/` and `.claude/` are gitignored — local dev configuration only.
+Shared `.cursor/`, `.claude/`, and `.codex/` files in this repo are project guidance and should be reviewed like source. Personal or machine-specific guidance belongs in home-directory config, not the repo.
 
 ### Parallel Agents (Worktrees)
 `.cursor/worktrees.json` sets up isolated worktrees for parallel agents. Each worktree
