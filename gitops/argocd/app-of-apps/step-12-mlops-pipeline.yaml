@@ -29,6 +29,7 @@ spec:
       - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
     retry:
       limit: 10
       backoff:

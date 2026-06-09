@@ -23,11 +23,25 @@ load_env() {
 }
 
 check_oc_logged_in() {
-    oc whoami &>/dev/null || { log_error "Not logged in. Run: oc login <cluster>"; exit 1; }
+    local request_timeout="${RHOAI_OC_REQUEST_TIMEOUT:-10s}"
+
+    oc --request-timeout="$request_timeout" whoami &>/dev/null || {
+        log_error "Not logged in or OpenShift API did not respond within ${request_timeout}."
+        log_error "Run: oc login <cluster>"
+        exit 1
+    }
 
     local server expected
-    server="$(oc whoami --show-server 2>/dev/null || true)"
+    server="$(oc --request-timeout="$request_timeout" whoami --show-server 2>/dev/null || true)"
     expected="${RHOAI_EXPECTED_API_SERVER:-${RHOAI_EXPECTED_CLUSTER:-}}"
+
+    if [[ -z "$expected" && "${RHOAI_ALLOW_UNGUARDED_CLUSTER:-false}" != "true" ]]; then
+        log_error "OpenShift API server guard is not configured"
+        log_error "  Set RHOAI_EXPECTED_API_SERVER in .env to a unique target API-server substring."
+        log_error "  Current API: ${server:-unknown}"
+        log_error "  To bypass intentionally, set RHOAI_ALLOW_UNGUARDED_CLUSTER=true."
+        exit 43
+    fi
 
     if [[ -n "$expected" && "$server" != *"$expected"* ]]; then
         log_error "OpenShift API server guard failed"
@@ -39,6 +53,40 @@ check_oc_logged_in() {
     if [[ -n "$server" ]]; then
         log_info "OpenShift API: $server"
     fi
+}
+
+repair_maas_authconfig_for_authorino_upgrade() {
+    if ! oc get crd authconfigs.authorino.kuadrant.io &>/dev/null; then
+        return 0
+    fi
+
+    local authconfigs authconfig yaml
+    authconfigs="$(
+        oc get authconfig -n kuadrant-system \
+            -o jsonpath='{range .items[?(@.metadata.annotations.HTTPRouteRule\.gateway\.networking\.k8s\.io=="httproute.gateway.networking.k8s.io:redhat-ods-applications/maas-api-route#rule-2")]}{.metadata.name}{"\n"}{end}' \
+            2>/dev/null || true
+    )"
+
+    if [[ -z "$authconfigs" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r authconfig; do
+        [[ -z "$authconfig" ]] && continue
+        yaml="$(oc get authconfig "$authconfig" -n kuadrant-system -o yaml 2>/dev/null || true)"
+        if [[ "$yaml" != *"predicate:"* ]]; then
+            continue
+        fi
+
+        log_info "Repairing MaaS AuthConfig ${authconfig} for Authorino v1beta2 schema compatibility"
+        oc patch authconfig "$authconfig" -n kuadrant-system --type=json -p='[
+          {"op":"replace","path":"/spec/authentication/openshift-identities/when/0","value":{"operator":"matches","selector":"request.headers.authorization","value":"^Bearer (sha256~|eyJ).*"}},
+          {"op":"replace","path":"/spec/response/success/headers/X-MaaS-Group-OC/when/0","value":{"operator":"matches","selector":"request.headers.authorization","value":"^Bearer (sha256~|eyJ).*"}},
+          {"op":"replace","path":"/spec/response/success/headers/X-MaaS-Username-OC/when/0","value":{"operator":"matches","selector":"request.headers.authorization","value":"^Bearer (sha256~|eyJ).*"}}
+        ]' \
+            && log_success "MaaS AuthConfig ${authconfig} is Authorino-upgrade compatible" \
+            || log_warn "Could not patch MaaS AuthConfig ${authconfig}; inspect RHCL install plans if Authorino upgrade is blocked"
+    done <<< "$authconfigs"
 }
 
 ensure_namespace() {

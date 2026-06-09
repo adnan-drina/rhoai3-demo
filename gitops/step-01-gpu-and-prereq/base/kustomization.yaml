@@ -41,15 +41,9 @@ resources:
   - serverless/knative-serving-namespace.yaml
   - serverless/knative-serving.yaml
   # Red Hat Connectivity Link stack required by RHOAI 3.4 Models-as-a-Service.
-  - authorino/namespace.yaml
-  - authorino/operatorgroup.yaml
-  - authorino/subscription.yaml
-  - limitador/namespace.yaml
-  - limitador/operatorgroup.yaml
-  - limitador/subscription.yaml
-  - dns-operator/namespace.yaml
-  - dns-operator/operatorgroup.yaml
-  - dns-operator/subscription.yaml
+  # RHCL 1.3.4 installs its Authorino, Limitador, and DNS Operator dependencies
+  # from the RHOAI catalog in openshift-operators. Do not install duplicate
+  # standalone subscriptions in component-specific namespaces.
   - rhcl-operator/kuadrant-system-namespace.yaml
   - rhcl-operator/subscription.yaml
   - rhcl-operator/kuadrant.yaml

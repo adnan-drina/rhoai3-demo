@@ -17,6 +17,8 @@ fi
 GIT_REPO_URL="${GIT_REPO_URL%.git}.git"
 log_info "Repository: $GIT_REPO_URL"
 
+OPENSHIFT_GITOPS_CHANNEL="${OPENSHIFT_GITOPS_CHANNEL:-gitops-1.20}"
+
 # Update all ArgoCD Applications to use the detected repo URL
 if [[ "$GIT_REPO_URL" != "https://github.com/adnan-drina/rhoai3-demo.git" ]]; then
     log_step "Updating ArgoCD Applications for fork: $GIT_REPO_URL"
@@ -39,7 +41,8 @@ metadata:
   name: openshift-gitops-operator
   namespace: openshift-operators
 spec:
-  channel: gitops-1.15
+  channel: ${OPENSHIFT_GITOPS_CHANNEL}
+  installPlanApproval: Automatic
   name: openshift-gitops-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
@@ -71,8 +74,16 @@ log_step "Configuring resource tracking method"
 until oc get argocd openshift-gitops -n openshift-gitops &>/dev/null; do sleep 5; done
 oc patch argocd openshift-gitops -n openshift-gitops --type merge \
     -p '{"spec":{"resourceTrackingMethod":"annotation"}}' 2>/dev/null \
-    && log_success "Resource tracking set to annotation (GitOps 1.19 default)" \
+    && log_success "Resource tracking set to annotation (GitOps 1.20 default)" \
     || log_warn "Could not patch ArgoCD tracking method (may not be ready yet)"
+
+# Operator-owned resources update status frequently and can emit high-volume
+# Argo CD watch events during RHOAI and OLM reconciliation. Ignore status-only
+# updates while still diffing and syncing desired specs.
+oc patch argocd openshift-gitops -n openshift-gitops --type merge \
+    -p '{"spec":{"extraConfig":{"resource.ignoreResourceUpdatesEnabled":"true","resource.customizations.ignoreResourceUpdates.datasciencecluster.opendatahub.io_DataScienceCluster":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.dscinitialization.opendatahub.io_DSCInitialization":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.operators.coreos.com_Subscription":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.operators.coreos.com_OperatorGroup":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.serving.kserve.io_InferenceService":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.modelregistry.opendatahub.io_ModelRegistry":"jsonPointers:\n- /status\n","resource.customizations.ignoreResourceUpdates.llamastack.io_LlamaStackDistribution":"jsonPointers:\n- /status\n"},"resourceIgnoreDifferences":{"resourceIdentifiers":[{"group":"datasciencecluster.opendatahub.io","kind":"DataScienceCluster","customization":{"jsonPointers":["/status"]}},{"group":"dscinitialization.opendatahub.io","kind":"DSCInitialization","customization":{"jsonPointers":["/status"]}},{"group":"operators.coreos.com","kind":"Subscription","customization":{"jsonPointers":["/status"]}},{"group":"operators.coreos.com","kind":"OperatorGroup","customization":{"jsonPointers":["/status"]}},{"group":"serving.kserve.io","kind":"InferenceService","customization":{"jsonPointers":["/status"]}},{"group":"modelregistry.opendatahub.io","kind":"ModelRegistry","customization":{"jsonPointers":["/status"]}},{"group":"llamastack.io","kind":"LlamaStackDistribution","customization":{"jsonPointers":["/status"]}}]}}}' 2>/dev/null \
+    && log_success "Ignored operator-owned status-only updates in Argo CD" \
+    || log_warn "Could not configure operator status update ignores"
 
 oc patch argocd openshift-gitops -n openshift-gitops --type merge \
     -p '{"spec":{"controller":{"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"500m","memory":"2Gi"}}}}}' 2>/dev/null \

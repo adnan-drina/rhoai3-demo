@@ -50,6 +50,8 @@ Manifests: [`gitops/step-03-enterprise-projects/base/`](../../gitops/step-03-ent
 
 > **Shared MinIO, project-local connections:** The storage provider stays in `minio-storage`, but each enterprise project gets its own dashboard-visible connection and KServe storage config secret. That keeps the user experience project-scoped while avoiding three storage systems in a demo.
 
+> **MinIO sized for model artifact transfer:** The shared MinIO deployment has CPU/memory headroom and less aggressive health probes because Step 05 can stream multi-shard LLM artifacts into KServe storage initializers. Under-sizing this service causes probe-driven restarts, failed model loads, and avoidable controller churn during demo recovery.
+
 > **OpenShift Groups created by `deploy.sh`:** Groups are created at deploy time because Argo CD cannot reliably diff `user.openshift.io/v1 Group` resources.
 
 > **No `opendatahub.io/managed` label on `storage-config`:** The RHOAI model controller deletes some secrets it did not create when that label is present. The dashboard connection secret keeps the managed label; the KServe storage config secret does not.
@@ -71,7 +73,7 @@ Manifests: [`gitops/step-03-enterprise-projects/base/`](../../gitops/step-03-ent
 
 | Check | Pass Criteria |
 |-------|---------------|
-| MinIO | `minio` deployment ready in `minio-storage` |
+| MinIO | `minio` deployment ready in `minio-storage` with model-transfer-sized resources and probes |
 | Projects | `maas`, `enterprise-rag`, and `enterprise-mlops` namespaces exist |
 | Data connections | `minio-connection` exists in all three enterprise projects |
 | Storage config | `storage-config` exists in all three enterprise projects |

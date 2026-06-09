@@ -37,6 +37,7 @@ metadata:
     opendatahub.io/genai-asset: "true"  # AI Asset Endpoint for Playground
     networking.kserve.io/visibility: exposed
     kueue.x-k8s.io/queue-name: maas-default
+    modelregistry.opendatahub.io/name: enterprise-ai-registry
   annotations:
     argocd.argoproj.io/sync-wave: "10"
     opendatahub.io/hardware-profile-name: nvidia-l4-1gpu

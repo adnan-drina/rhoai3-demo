@@ -59,6 +59,32 @@ check_subscription_csv_succeeded() {
 log_step "RHOAI Operator"
 check_subscription_csv_succeeded "redhat-ods-operator" "rhods-operator" "Red Hat OpenShift AI"
 
+RHOAI_CHANNEL=$(oc get subscription rhods-operator -n redhat-ods-operator -o jsonpath='{.spec.channel}' 2>/dev/null || true)
+if [[ "$RHOAI_CHANNEL" == "stable-3.x" ]]; then
+    echo -e "${GREEN}[PASS]${NC} RHOAI subscription channel: stable-3.x"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} RHOAI subscription channel (expected: stable-3.x, got: ${RHOAI_CHANNEL:-missing})"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
+# --- Service Mesh 3 side-effect Operator ---
+log_step "Service Mesh 3 Operator"
+check_subscription_csv_succeeded "openshift-operators" "servicemeshoperator3" "Red Hat OpenShift Service Mesh 3"
+
+SM_CURRENT_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators -o jsonpath='{.status.currentCSV}' 2>/dev/null || true)
+SM_STARTING_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators -o jsonpath='{.spec.startingCSV}' 2>/dev/null || true)
+if [[ "$SM_CURRENT_CSV" == servicemeshoperator3.v* && "$SM_STARTING_CSV" == "$SM_CURRENT_CSV" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Service Mesh startingCSV is aligned: $SM_STARTING_CSV"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+elif [[ "$SM_CURRENT_CSV" == servicemeshoperator3.v* ]]; then
+    echo -e "${YELLOW}[WARN]${NC} Service Mesh startingCSV differs from currentCSV (starting: ${SM_STARTING_CSV:-unset}, current: $SM_CURRENT_CSV)"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Service Mesh currentCSV is not populated yet"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
+
 # --- DSCInitialization ---
 log_step "DSCInitialization"
 check "DSCInitialization exists" \

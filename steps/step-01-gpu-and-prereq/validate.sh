@@ -53,6 +53,38 @@ check_subscription_csv_succeeded() {
     fi
 }
 
+check_subscription_field() {
+    local namespace="$1"
+    local subscription="$2"
+    local jsonpath="$3"
+    local expected="$4"
+    local label="$5"
+    local actual
+
+    actual=$(oc get subscription "$subscription" -n "$namespace" -o jsonpath="$jsonpath" 2>/dev/null || true)
+    if [[ "$actual" == "$expected" ]]; then
+        echo -e "${GREEN}[PASS]${NC} $label: $actual"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} $label (expected: $expected, got: ${actual:-missing})"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+}
+
+check_subscription_absent() {
+    local namespace="$1"
+    local subscription="$2"
+    local label="$3"
+
+    if oc get subscription "$subscription" -n "$namespace" &>/dev/null; then
+        echo -e "${RED}[FAIL]${NC} Legacy subscription still exists: $label ($subscription in $namespace)"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    else
+        echo -e "${GREEN}[PASS]${NC} Legacy subscription absent: $label"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    fi
+}
+
 # --- CRDs ---
 log_step "Required CRDs"
 check_crd_exists "nodefeaturediscoveries.nfd.openshift.io"
@@ -80,10 +112,17 @@ check_subscription_csv_succeeded "openshift-cluster-observability-operator" "clu
 check_subscription_csv_succeeded "openshift-tempo-operator" "tempo-product" "Tempo Operator"
 check_subscription_csv_succeeded "openshift-opentelemetry-operator" "opentelemetry-product" "Red Hat build of OpenTelemetry"
 check_subscription_csv_succeeded "openshift-kueue-operator" "kueue-operator" "Red Hat build of Kueue"
-check_subscription_csv_succeeded "openshift-authorino" "authorino-operator" "Authorino Operator"
-check_subscription_csv_succeeded "openshift-limitador-operator" "limitador-operator" "Limitador Operator"
-check_subscription_csv_succeeded "openshift-dns-operator" "dns-operator" "DNS Operator"
 check_subscription_csv_succeeded "openshift-operators" "rhcl-operator" "Red Hat Connectivity Link"
+check_subscription_csv_succeeded "openshift-operators" "authorino-operator-stable-redhat-operators-rhoai-openshift-marketplace" "RHCL Authorino dependency"
+check_subscription_csv_succeeded "openshift-operators" "limitador-operator-stable-redhat-operators-rhoai-openshift-marketplace" "RHCL Limitador dependency"
+check_subscription_csv_succeeded "openshift-operators" "dns-operator-stable-redhat-operators-rhoai-openshift-marketplace" "RHCL DNS dependency"
+
+log_step "Operator Subscription Alignment"
+check_subscription_field "openshift-operators" "rhcl-operator" "{.spec.source}" "redhat-operators-rhoai" "RHCL catalog source"
+check_subscription_field "openshift-operators" "rhcl-operator" "{.spec.startingCSV}" "rhcl-operator.v1.3.4" "RHCL RHOAI 3.4 starting CSV"
+check_subscription_absent "openshift-authorino" "authorino-operator" "standalone Authorino"
+check_subscription_absent "openshift-limitador-operator" "limitador-operator" "standalone Limitador"
+check_subscription_absent "openshift-dns-operator" "dns-operator" "standalone DNS Operator"
 
 # --- Observability Operator Runtime Networking ---
 log_step "Observability Operator Runtime Networking"

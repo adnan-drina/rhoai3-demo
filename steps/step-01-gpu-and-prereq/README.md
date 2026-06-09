@@ -22,6 +22,7 @@ OpenShift 4.20 Cluster
 ├── Observability stack   → Cluster Observability, Tempo, OpenTelemetry
 ├── Red Hat build of Kueue → Queue management for MaaS GPU workloads
 ├── RHCL + Kuadrant       → MaaS authorization and token-limit policy CRDs
+├── RHCL dependencies     → Authorino, Limitador, DNS Operator via RHOAI catalog
 └── User Workload Mon.    → Prometheus scraping for GPU and MaaS telemetry
 ```
 
@@ -35,10 +36,8 @@ OpenShift 4.20 Cluster
 | Tempo Operator | Trace storage used by the RHOAI observability stack | `openshift-tempo-operator` |
 | Red Hat build of OpenTelemetry | Collector and instrumentation used by the RHOAI observability stack | `openshift-opentelemetry-operator` |
 | Red Hat build of Kueue | Queue controller used by the MaaS namespace in Step 03 | `openshift-kueue-operator` |
-| Authorino Operator | AuthConfig CRDs and authorization service for MaaS/RHCL | `openshift-authorino` |
-| Limitador Operator | Rate-limit backing service for RHCL token policies | `openshift-limitador-operator` |
-| DNS Operator | DNS resources used by the RHCL gateway stack | `openshift-dns-operator` |
 | Red Hat Connectivity Link Operator | Kuadrant, AuthPolicy, and token rate-limit policy CRDs | `openshift-operators` |
+| RHCL dependency operators | Authorino, Limitador, and DNS Operator installed from the RHOAI catalog by OLM | `openshift-operators` |
 | Kuadrant | RHCL control-plane instance for MaaS policy enforcement | `kuadrant-system` |
 | User Workload Monitoring | Prometheus scraping for DCGM, Kuadrant, and MaaS metrics | `openshift-monitoring` |
 
@@ -72,7 +71,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 
 > **GPU node taints (`nvidia.com/gpu=true:NoSchedule`):** Reserves expensive GPU instances exclusively for workloads that explicitly request GPU resources.
 
-> **RHCL stack for MaaS:** RHOAI 3.4 MaaS uses RHCL and Kuadrant for authorization policy and token-limit enforcement. The RHCL operator is installed in `openshift-operators`, and the `Kuadrant` CR is created in `kuadrant-system` to match the RHOAI 3.4 MaaS prerequisites. `observability.enable: true` is set so Kuadrant creates the documented Limitador `PodMonitor` used by MaaS usage monitoring. `deploy.sh` also patches the generated `Limitador` CR to `telemetry: exhaustive`, which is required for token-rate metrics such as `authorized_calls`, `authorized_hits`, and `limited_calls` to populate the MaaS Usage dashboard. `deploy.sh` performs the documented Authorino TLS runtime configuration because the target Service and generated certificate are created by the operator at install time.
+> **RHCL stack for MaaS:** RHOAI 3.4 MaaS uses RHCL and Kuadrant for authorization policy and token-limit enforcement. The RHCL operator is installed in `openshift-operators`, and the `Kuadrant` CR is created in `kuadrant-system` to match the RHOAI 3.4 MaaS prerequisites. In this upgraded lab, the live RHCL subscription is sourced from the RHOAI recovery catalog (`redhat-operators-rhoai`), so the GitOps manifest is aligned to that source to avoid subscription drift during OLM recovery. RHCL/OLM installs the matching Authorino, Limitador, and DNS Operator dependency subscriptions in `openshift-operators`; Step 01 does not install duplicate standalone subscriptions in `openshift-authorino`, `openshift-limitador-operator`, or `openshift-dns-operator`. If a previously generated MaaS API `AuthConfig` still contains the older `predicate` condition shape, `deploy.sh` repairs it before RHCL/Authorino upgrade validation so OLM can validate the updated CRD schema. `observability.enable: true` is set so Kuadrant creates the documented Limitador `PodMonitor` used by MaaS usage monitoring. `deploy.sh` also patches the generated `Limitador` CR to `telemetry: exhaustive`, which is required for token-rate metrics such as `authorized_calls`, `authorized_hits`, and `limited_calls` to populate the MaaS Usage dashboard. `deploy.sh` performs the documented Authorino TLS runtime configuration because the target Service and generated certificate are created by the operator at install time.
 
 > **Centralized RHOAI observability prerequisites:** The RHOAI 3.4 observability dashboard under **Observe & monitor** depends on Cluster Observability Operator, Tempo Operator, and Red Hat build of OpenTelemetry. Step 01 installs those prerequisite operators; Step 02 configures `DSCInitialization.spec.monitoring` so RHOAI creates the `MonitoringStack`, Perses dashboards, Tempo, and OpenTelemetry collector in `redhat-ods-monitoring`.
 
@@ -106,7 +105,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 |-------|--------------|---------------|
 | GPU nodes online | Two nodes with `nvidia.com/gpu` allocatable | 1 GPU + 4 GPUs |
 | DCGM dashboard | GPU utilization, temperature, and memory | Visible in OpenShift Monitoring |
-| All operators Succeeded | NFD, GPU, Serverless, Cluster Observability, Tempo, OpenTelemetry, Kueue, Authorino, Limitador, DNS, RHCL | All Succeeded |
+| All operators Succeeded | NFD, GPU, Serverless, Cluster Observability, Tempo, OpenTelemetry, Kueue, RHCL, and RHCL dependency CSVs | All Succeeded |
 | Tempo webhook available | Tempo Operator can validate RHOAI-managed `TempoMonolithic` resources | Controller deployment available, webhook endpoint exists |
 | KnativeServing Ready | Control plane healthy | Ready in `knative-serving` |
 | Kuadrant Ready | MaaS policy control plane | Ready in `kuadrant-system` |
@@ -136,7 +135,7 @@ Manifests: [`gitops/step-01-gpu-and-prereq/base/`](../../gitops/step-01-gpu-and-
 1. Navigate to **Operators** → **Installed Operators**
 2. Filter by the GPU and AI-related namespaces
 
-**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, Kueue, Authorino, Limitador, DNS Operator, and Red Hat Connectivity Link. `Kuadrant` should be `Ready` in `kuadrant-system`.
+**Expect:** All operators showing `Succeeded` — NFD, GPU Operator, Serverless, Kueue, Red Hat Connectivity Link, and the RHCL dependency CSVs for Authorino, Limitador, and DNS Operator in `openshift-operators`. `Kuadrant` should be `Ready` in `kuadrant-system`.
 
 **Also expect:** Cluster Observability Operator, Tempo Operator, and Red Hat build of OpenTelemetry are installed. These are prerequisites for the RHOAI 3.4 **Observe & monitor** dashboard tabs.
 

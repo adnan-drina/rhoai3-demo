@@ -11,6 +11,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$REPO_ROOT/scripts/lib.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -24,6 +26,9 @@ MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
 
 PASS=0
 FAIL=0
+
+load_env
+check_oc_logged_in
 
 check() {
     local desc="$1"

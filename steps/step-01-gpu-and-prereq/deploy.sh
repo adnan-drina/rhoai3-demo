@@ -174,17 +174,19 @@ done
 log_success "Kueue CRD available"
 
 log_step "Waiting for Red Hat Connectivity Link stack..."
-wait_for_csv "authorino-operator" "openshift-authorino" "Authorino Operator"
-wait_for_csv "limitador-operator" "openshift-limitador-operator" "Limitador Operator"
-wait_for_csv "dns-operator" "openshift-dns-operator" "DNS Operator"
+repair_maas_authconfig_for_authorino_upgrade || true
 until RHCL_CSV=$(oc get subscription rhcl-operator -n openshift-operators -o jsonpath='{.status.installedCSV}' 2>/dev/null) && \
       [[ -n "$RHCL_CSV" ]] && \
       [[ "$(oc get csv "$RHCL_CSV" -n openshift-operators -o jsonpath='{.status.phase}' 2>/dev/null)" == "Succeeded" ]]; do
     approve_matching_installplans "openshift-operators" "rhcl-operator|authorino-operator|limitador-operator|dns-operator"
+    repair_maas_authconfig_for_authorino_upgrade || true
     log_info "Waiting for Red Hat Connectivity Link Operator..."
     sleep 10
 done
 log_success "Red Hat Connectivity Link Operator ready (${RHCL_CSV})"
+wait_for_csv "authorino-operator-stable-redhat-operators-rhoai-openshift-marketplace" "openshift-operators" "RHCL Authorino dependency"
+wait_for_csv "limitador-operator-stable-redhat-operators-rhoai-openshift-marketplace" "openshift-operators" "RHCL Limitador dependency"
+wait_for_csv "dns-operator-stable-redhat-operators-rhoai-openshift-marketplace" "openshift-operators" "RHCL DNS dependency"
 
 for crd in \
     authconfigs.authorino.kuadrant.io \

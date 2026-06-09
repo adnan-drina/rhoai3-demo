@@ -24,9 +24,11 @@ load_openai_provider_key() {
         return 0
     fi
 
-    local openai_env_file="${RHOAI_OPENAI_ENV_FILE:-$REPO_ROOT/../rhoai3-coding-demo/.env}"
-    if [[ -f "$openai_env_file" ]]; then
+    local openai_env_file="${RHOAI_OPENAI_ENV_FILE:-}"
+    if [[ -n "$openai_env_file" && -f "$openai_env_file" ]]; then
         set -a; source "$openai_env_file"; set +a
+    elif [[ -n "$openai_env_file" ]]; then
+        log_warn "RHOAI_OPENAI_ENV_FILE is set but not readable: $openai_env_file"
     fi
 }
 
@@ -148,6 +150,7 @@ echo ""
 log_step "Configuring MaaS model publication..."
 
 configure_maas_gateway_route || log_warn "MaaS gateway route still needs Step 02 reconciliation"
+repair_maas_authconfig_for_authorino_upgrade || true
 
 for model in granite-8b-agent mistral-3-bf16; do
     for attempt in $(seq 1 24); do
@@ -280,6 +283,7 @@ else:
             oc patch inferenceservice "$ISVC_NAME" -n "$NAMESPACE" --type=merge -p "{
               \"metadata\": {
                 \"labels\": {
+                  \"modelregistry.opendatahub.io/name\": \"enterprise-ai-registry\",
                   \"modelregistry.opendatahub.io/registered-model-id\": \"${RM_ID}\",
                   \"modelregistry.opendatahub.io/model-version-id\": \"${MV_ID}\"
                 }

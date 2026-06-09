@@ -151,6 +151,16 @@ until oc get subscription servicemeshoperator3 -n openshift-operators &>/dev/nul
     sleep 10
 done
 
+SM_CURRENT_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators \
+    -o jsonpath='{.status.currentCSV}' 2>/dev/null || true)
+SM_STARTING_CSV=$(oc get subscription servicemeshoperator3 -n openshift-operators \
+    -o jsonpath='{.spec.startingCSV}' 2>/dev/null || true)
+if [[ "$SM_CURRENT_CSV" == servicemeshoperator3.v* && "$SM_STARTING_CSV" != "$SM_CURRENT_CSV" ]]; then
+    log_info "Aligning Service Mesh 3 startingCSV from '${SM_STARTING_CSV:-unset}' to '$SM_CURRENT_CSV'"
+    oc patch subscription servicemeshoperator3 -n openshift-operators \
+        --type merge -p "{\"spec\":{\"startingCSV\":\"${SM_CURRENT_CSV}\"}}"
+fi
+
 SM_PLANS_APPROVED=0
 while IFS='|' read -r plan approved csvs; do
     [[ -z "$plan" || "$approved" == "true" ]] && continue

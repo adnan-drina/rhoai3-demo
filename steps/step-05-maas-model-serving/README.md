@@ -51,9 +51,11 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 
 > **Verified GitOps for MaaS governance:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview. This repo commits only installed, schema-verified MaaS CRDs (`ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy`) and validates them with `oc explain` and live API-key calls.
 
-> **External model credentials stay outside Git:** OpenAI GPT-5 is registered as `ExternalModel/gpt-5`, but the real provider API key is never committed. `deploy.sh` creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` in this repo's `.env` or, by default, from `../rhoai3-coding-demo/.env`. Override the lookup path with `RHOAI_OPENAI_ENV_FILE`.
+> **External model credentials stay outside Git:** OpenAI GPT-5 is registered as `ExternalModel/gpt-5`, but the real provider API key is never committed. `deploy.sh` creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` in this repo's `.env`. If cross-project credential reuse is intentional and approved, set `RHOAI_OPENAI_ENV_FILE` explicitly; the script does not read another project by default.
 
 > **External provider-auth verification:** Official RHOAI 3.4 documentation describes two-tier authentication where users call MaaS with a MaaS API key and MaaS injects the provider API key before forwarding to OpenAI. `validate.sh` verifies the external model registration, subscription, GenAI discovery, and route. If the generated `AuthPolicy` clears the upstream `Authorization` header instead of injecting `maas/openai-provider-api-key`, validation reports a warning rather than committing a provider key into a non-Secret workaround.
+
+> **MaaS AuthConfig upgrade guard:** During RHOAI 3.4 upgrades, the generated MaaS API `AuthConfig` can retain an older `predicate` condition shape that blocks Authorino/RHCL CRD validation. `deploy.sh` reapplies the shared schema-compatible repair after MaaS route publication so regenerated policies do not reintroduce the upgrade blocker.
 
 > **Kueue on MaaS only:** Queue enforcement applies only to `maas`; every GitOps-managed model-serving workload in this namespace is labeled for `maas-default`.
 
@@ -108,7 +110,7 @@ Manifests: [`gitops/step-05-maas-model-serving/base/`](../../gitops/step-05-maas
 | MaaS observability | Prometheus scrapes Limitador and sees user/subscription/model-labeled MaaS Usage metrics after validation traffic or the heartbeat CronJob |
 | vLLM workload scraping | Predictor Deployment and pods carry `monitoring.opendatahub.io/scrape=true` |
 | MaaS | both `MaaSModelRef` objects are `Ready`, subscription and auth policy are `Active` |
-| Registry linkage | deployed models have model registry labels after `deploy.sh` linking |
+| Registry linkage | deployed models have `modelregistry.opendatahub.io/name=enterprise-ai-registry` plus model/version registry labels after `deploy.sh` linking |
 | Playground | deployed model appears in GenAI Playground / AI assets |
 
 ```bash

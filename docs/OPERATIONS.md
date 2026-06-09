@@ -46,9 +46,13 @@ Use the same pattern for each step:
 | Action | Why It Exists |
 |--------|---------------|
 | Installs OpenShift GitOps | Provides the Argo CD instance used by every step. |
+| Pins OpenShift GitOps to `gitops-1.20` by default | Keeps the GitOps operator aligned with the OCP 4.20 demo baseline and avoids stale conversion webhooks from older channels. Override with `OPENSHIFT_GITOPS_CHANNEL` only for a documented compatibility test. |
 | Detects Git remote | Makes forks work without manually editing all Application manifests. |
 | Grants Argo CD cluster-admin | Simplifies a demo that installs operators and cluster-scoped resources. Do not copy this blindly into production. |
 | Sets `resourceTrackingMethod: annotation` | Avoids label tracking collisions on resources managed by operators. |
+| Ignores operator-owned status-only updates | Prevents RHOAI, OLM, KServe, Model Registry, and Llama Stack status heartbeats from forcing continuous Argo CD reconciliation. |
+| Applies only out-of-sync resources | Step Applications set `ApplyOutOfSyncOnly=true` so Argo CD does not rewrite every managed object during recovery or refresh cycles. This reduces API and etcd write pressure while operators are already reconciling. |
+| Aligns RHCL to the RHOAI recovery catalog | Step 01 uses `redhat-operators-rhoai` for `rhcl-operator` because the RHOAI 3.4 upgrade installed the live RHCL stack from that catalog in this lab. RHCL dependency subscriptions for Authorino, Limitador, and DNS Operator are left to OLM in `openshift-operators`; Step 01 does not install duplicate standalone subscriptions in component-specific namespaces. |
 | Adds Argo CD health checks | Handles PVC `WaitForFirstConsumer`, KServe `InferenceService`, and `TrustyAIService` health more accurately. |
 | Creates `rhoai-demo` AppProject | All step Applications use this project. |
 
@@ -60,10 +64,10 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 
 | Step | Runtime Work |
 |------|--------------|
-| 01 | Detects cluster ID, AMI, region, and availability zone; installs the RHOAI observability prerequisite operators; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
+| 01 | Detects cluster ID, AMI, region, and availability zone; installs the RHOAI observability prerequisite operators; approves RHCL dependency install plans when OLM requires them; repairs MaaS AuthConfig schema drift before RHCL/Authorino upgrade validation; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
 | 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; configures `DSCI.spec.monitoring` metrics/traces; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
-| 05 | Creates Hugging Face token secret if available; creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` if available; uploads large Mistral model to MinIO; registers local and external MaaS models. |
+| 05 | Creates Hugging Face token secret if available; creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` if available; uploads large Mistral model to MinIO; registers local and external MaaS models; reapplies the MaaS AuthConfig schema repair when MaaS route objects are regenerated. |
 | 07 | Builds or deploys ingestion/chatbot resources and initializes RAG data. |
 | 08 | Copies evaluation configs and can launch evaluation jobs. |
 | 10 | Creates Slack secret from `.env`, patches route-specific MCP config, registers MCP tool groups in Llama Stack. |
@@ -71,6 +75,17 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 | 12 | Uploads training data when present, ensures YOLO base model, launches the KFP training pipeline, configures TrustyAI metrics. |
 | 13 | Optionally builds/pushes edge camera image, then waits for the edge app and InferenceService. |
 | 13b | SSHes to the edge host, installs/configures MicroShift, creates ModelCar image, and deploys edge workloads. |
+
+## Operator Subscription Alignment
+
+Use the alignment helper when an upgraded RHOAI 3.4 cluster shows stale OLM channels, copied CSV churn, or RHCL dependency drift:
+
+```bash
+./scripts/align-operator-subscriptions.sh --verify
+./scripts/align-operator-subscriptions.sh --apply
+```
+
+The helper is intentionally scoped to subscriptions used by this demo. It aligns RHOAI to `stable-3.x`, OpenShift GitOps to `gitops-1.20`, RHCL to `rhcl-operator.v1.3.4` from `redhat-operators-rhoai`, keeps Authorino/Limitador/DNS as RHCL-generated dependencies in `openshift-operators`, approves pending RHCL and Service Mesh install plans, and removes the old standalone RHCL dependency namespaces.
 
 ## GitOps And Argo CD Operating Model
 
@@ -84,7 +99,11 @@ The GitOps source of truth is split intentionally:
 | `steps/step-*/deploy.sh` | Runtime orchestration around the GitOps source. |
 | `steps/step-*/validate.sh` | Read-only checks for cluster state. |
 
-Most Applications enable automated sync and pruning. Step 01 and Step 05 intentionally set `selfHeal: false` for cases where operators or manual scaling can legitimately change live state during the demo.
+Most Applications enable automated sync and pruning. Step 01, Step 02, and Step 05 intentionally set `selfHeal: false` for cases where platform operators or manual scaling can legitimately change live state during the demo. Step 02 still syncs desired RHOAI specs when the Application is applied, but it does not continuously reapply while the RHOAI operator reconciles generated resources.
+
+Step 02 manages `DataScienceCluster/default-dsc`, whose status can update frequently while RHOAI components reconcile. Bootstrap configures Argo CD to ignore `/status`-only updates for this and other operator-owned resources; the Step 02 Application also ignores RHOAI CR status fields directly. This keeps the application managing desired specs while avoiding high-frequency reconciliation loops.
+
+All step Applications include `ApplyOutOfSyncOnly=true`. During normal operation this is equivalent to standard auto-sync for changed resources, but during control-plane recovery it avoids full-application rewrites that amplify OLM, RHOAI, KServe, and Gateway controller lease churn.
 
 When Argo CD reports drift, first check whether the Application contains an `ignoreDifferences` entry for an operator-managed field. If drift is not covered and the field matters, update the manifest and README together.
 
