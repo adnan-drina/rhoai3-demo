@@ -20,6 +20,10 @@ FILENAME=$(basename "$LOCAL_FILE")
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$REPO_ROOT/scripts/lib.sh"
+
+load_env
+check_oc_logged_in
 
 MINIO_KEY=$(oc -n "$MINIO_NS" get secret minio-credentials \
     -o jsonpath='{.data.MINIO_ROOT_USER}' | base64 -d 2>/dev/null)

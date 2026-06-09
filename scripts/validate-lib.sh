@@ -155,6 +155,73 @@ check_crd_exists() {
     fi
 }
 
+check_inferenceservice_scrape_label() {
+    local ns="$1" isvc="$2"
+    local desired deploy_name deploy_label selector pod_labels bad_labels
+
+    desired=$(oc get inferenceservice "$isvc" -n "$ns" \
+        -o jsonpath='{.spec.predictor.labels.monitoring\.opendatahub\.io/scrape}' 2>/dev/null || true)
+    if [[ "$desired" == "true" ]]; then
+        echo -e "${GREEN}[PASS]${NC} InferenceService $isvc opts predictor pods into RHOAI metrics scraping"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} InferenceService $isvc missing spec.predictor.labels monitoring scrape opt-in"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        return
+    fi
+
+    deploy_name=$(oc get deploy -n "$ns" -l "serving.kserve.io/inferenceservice=$isvc" \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+    if [[ -z "$deploy_name" ]] && oc get deploy "${isvc}-predictor" -n "$ns" &>/dev/null; then
+        deploy_name="${isvc}-predictor"
+    fi
+
+    if [[ -z "$deploy_name" ]]; then
+        echo -e "${YELLOW}[WARN]${NC} Predictor Deployment for $isvc not found; generated pod scrape label cannot be checked yet"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+        return
+    fi
+
+    deploy_label=$(oc get deploy "$deploy_name" -n "$ns" \
+        -o jsonpath='{.spec.template.metadata.labels.monitoring\.opendatahub\.io/scrape}' 2>/dev/null || true)
+    if [[ "$deploy_label" == "true" ]]; then
+        echo -e "${GREEN}[PASS]${NC} Predictor Deployment $deploy_name propagates RHOAI scrape label"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} Predictor Deployment $deploy_name missing RHOAI scrape label"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+
+    selector=$(oc get deploy "$deploy_name" -n "$ns" -o json 2>/dev/null | jq -r '
+        .spec.selector.matchLabels
+        | to_entries
+        | map("\(.key)=\(.value)")
+        | join(",")
+    ' 2>/dev/null || true)
+    if [[ -z "$selector" || "$selector" == "null" ]]; then
+        selector="serving.kserve.io/inferenceservice=$isvc"
+    fi
+
+    pod_labels=$(oc get pods -n "$ns" -l "$selector" -o json 2>/dev/null | jq -r '
+        .items[]
+        | "\(.metadata.name)=\(.metadata.labels["monitoring.opendatahub.io/scrape"] // "")"
+    ' 2>/dev/null || true)
+    if [[ -z "$pod_labels" ]]; then
+        echo -e "${YELLOW}[WARN]${NC} No generated predictor pods found for $isvc; scrape label will be checked after rollout"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+        return
+    fi
+
+    bad_labels=$(printf '%s\n' "$pod_labels" | awk -F= '$2 != "true" {print}')
+    if [[ -z "$bad_labels" ]]; then
+        echo -e "${GREEN}[PASS]${NC} Generated predictor pods for $isvc carry RHOAI scrape label"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} Generated predictor pods for $isvc missing RHOAI scrape label: $bad_labels"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+}
+
 check_csv_succeeded() {
     local ns="$1" pattern="$2"
     local phase

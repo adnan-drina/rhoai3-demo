@@ -70,6 +70,16 @@ spec:
               value: "https://nemo-guardrails.enterprise-rag.svc.cluster.local"
             - name: NEMO_GUARDRAILS_MODEL
               value: "granite-8b-agent"
+            - name: RAG_CHATBOT_OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "rag-chatbot"
+            - name: OTEL_SERVICE_NAMESPACE
+              value: "enterprise-rag"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://data-science-collector.redhat-ods-monitoring.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
             - name: RAG_QUESTION_SUGGESTIONS
               value: >-
                 {
@@ -99,6 +109,18 @@ spec:
                       "mode": "Direct",
                       "question": "What is ACME Corp?",
                       "expected": "ACME Corp|semiconductor|Amsterdam|lithography"
+                    },
+                    {
+                      "use_case": "Product portfolio",
+                      "mode": "Direct",
+                      "question": "What products and services does ACME Corp offer?",
+                      "expected": "L-900|PX-7|Metrix Analyzer|ScanGuard|TierLink"
+                    },
+                    {
+                      "use_case": "Leadership contact",
+                      "mode": "Direct",
+                      "question": "Who is the Managing Director of ACME Corp, and how can I contact them?",
+                      "expected": "Adnan Drina|Managing Director|adnan@acme.com|\\+31 6 4544 545"
                     },
                     {
                       "use_case": "Equipment troubleshooting",

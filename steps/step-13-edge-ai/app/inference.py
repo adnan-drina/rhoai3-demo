@@ -66,7 +66,7 @@ def report_to_trustyai(detections):
         pass
 
 
-def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.7):
+def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.6):
     """Parse ONNX output tensor, apply NMS + identity uniqueness, draw boxes."""
     outputs = np.array([cv2.transpose(response_data[0])])
     rows = outputs.shape[1]
@@ -74,7 +74,8 @@ def postprocess(response_data, scale, img_bgr, conf_threshold: float = 0.7):
     boxes, scores, class_ids = [], [], []
     for i in range(rows):
         classes_scores = outputs[0][i][4:]
-        (_, max_score, _, (_, max_class_idx)) = cv2.minMaxLoc(classes_scores)
+        max_score = float(np.max(classes_scores))
+        max_class_idx = int(np.argmax(classes_scores))
         if max_score >= conf_threshold:
             cx, cy, w, h = outputs[0][i][:4]
             boxes.append([cx - 0.5 * w, cy - 0.5 * h, w, h])
@@ -148,7 +149,7 @@ def send_request(blob, endpoint: str, model_name: str):
     return [result.as_numpy("output0")]
 
 
-def detect_faces(img_bgr, endpoint: str, model_name: str, conf_threshold: float = 0.7):
+def detect_faces(img_bgr, endpoint: str, model_name: str, conf_threshold: float = 0.6):
     """End-to-end: preprocess, infer via gRPC, postprocess with identity uniqueness."""
     blob, scale = preprocess(img_bgr)
     response = send_request(blob, endpoint, model_name)

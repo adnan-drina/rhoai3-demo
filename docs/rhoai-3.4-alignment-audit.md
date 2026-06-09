@@ -24,7 +24,7 @@ Validated baseline:
 | Step 09 Guardrails | Migrated from legacy FMS `GuardrailsOrchestrator` resources to TrustyAI-managed `NemoGuardrails`. |
 | Step 07 RAG | Removed unsupported `Notebook.spec.template.metadata`; strict server validation now passes. |
 | Audit gate | Existing PVC immutable spec drift is recorded as a non-blocking note when the matching Argo CD app ignores PVC `/spec`. |
-| Step 10 MCP | `acme-equipment-0007` `CrashLoopBackOff` is documented and validated as intentional demo state. Platform and MCP resources still must be healthy. |
+| Step 10 MCP | `acme-equipment-0007` `CrashLoopBackOff` is documented and validated as intentional demo state. It is marked as an intentional demo failure and handled by the bootstrap Argo CD Pod health check so platform and MCP resources must remain healthy. |
 | GitOps cleanup | Removed central-cluster direct applies for resources now managed by Argo CD in Steps 03 and 07. Remote MicroShift bootstrap actions remain Step 13b exceptions. |
 | Audit artifacts | `docs/alignment-evidence-ledger.md` refreshed; this audit report is tracked with `git add -f` because `docs/**` is ignored for new files. |
 
@@ -58,7 +58,7 @@ Validated baseline:
 | 07 RAG | Aligned with notes | Notebook strict validation passes; workbench connectivity is handled by NetworkPolicy. |
 | 08 Model evaluation | Aligned with notes | `LMEvalJob` resources use the documented TrustyAI API. |
 | 09 Guardrails | Aligned with notes | Uses `NemoGuardrails`; README explicitly notes the release-note/product-book support-status discrepancy. |
-| 10 MCP integration | Aligned with intentional degraded sample | MCP/platform resources must be healthy; `acme-equipment-0007` is expected `CrashLoopBackOff` incident data. |
+| 10 MCP integration | Aligned with intentional incident sample | MCP/platform resources must be healthy; `acme-equipment-0007` is expected `CrashLoopBackOff` incident data and marked for the bootstrap Argo CD Pod health check. |
 | 11 Face recognition | Aligned with notes | CPU OpenVINO/KServe story remains valid. |
 | 12 MLOps pipeline | Aligned with notes | DSPA, MLflow, Model Registry, and `TrustyAIService` remain the strongest predictive AI platform story. |
 | 13 Edge AI | Aligned with notes | Central edge simulation remains distinct from MicroShift edge deployment. |

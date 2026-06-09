@@ -28,6 +28,7 @@ spec:
       - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
     retry:
       limit: 10
       backoff:
@@ -54,12 +55,14 @@ spec:
       kind: OperatorGroup
       jsonPointers:
         - /metadata/annotations
+        - /status
     # Subscriptions have fields managed by OLM
     - group: operators.coreos.com
       kind: Subscription
       jsonPointers:
         - /metadata/annotations
         - /spec/startingCSV
+        - /status
     # ClusterPolicy fields managed by GPU Operator
     - group: nvidia.com
       kind: ClusterPolicy

@@ -8,6 +8,9 @@ INSTRUCTIONS:
 - Compare ONLY the Generated Response against the Expected Response.
 - Do NOT introduce information not present in either response.
 - Focus on factual alignment, not writing style.
+- Treat synonyms and close paraphrases as equivalent when they preserve the same key facts.
+- Do NOT penalize harmless wording differences such as "focusing on" versus "specializing in".
+- Mark a response as a subset only when an expected key fact is actually missing, not when the same fact is phrased differently.
 
 Select the BEST match (A is best, E is worst):
 (A) The Generated Response contains the SAME key facts as the Expected Response — full alignment.
@@ -18,4 +21,4 @@ Select the BEST match (A is best, E is worst):
 
 You MUST respond with exactly one letter in parentheses followed by a brief explanation.
 
-Answer: 
+Answer:

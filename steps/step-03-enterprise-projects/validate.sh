@@ -102,6 +102,14 @@ for ns in maas enterprise-rag enterprise-mlops; do
         "$ns"
 done
 
+check "maas project display name avoids MaaS system namespace collision" \
+    "oc get namespace maas -o jsonpath='{.metadata.annotations.openshift\\.io/display-name}'" \
+    "MaaS Runtime"
+
+check "enterprise-rag namespace is an EvalHub tenant" \
+    "oc get namespace enterprise-rag -o json | python3 -c 'import json,sys; labels=json.load(sys.stdin).get(\"metadata\",{}).get(\"labels\",{}); print(\"present\" if \"evalhub.trustyai.opendatahub.io/tenant\" in labels else \"missing\")'" \
+    "present"
+
 check "minio-storage namespace exists" \
     "oc get namespace minio-storage -o jsonpath='{.metadata.name}'" \
     "minio-storage"

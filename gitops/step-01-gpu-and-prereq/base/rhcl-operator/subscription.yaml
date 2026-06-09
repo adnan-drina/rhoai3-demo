@@ -9,6 +9,9 @@ spec:
   channel: stable
   installPlanApproval: Automatic
   name: rhcl-operator
-  source: redhat-operators
+  # RHOAI 3.4 installs the RHCL MaaS dependency from the RHOAI recovery
+  # catalog in this lab environment. Keep GitOps aligned with the live
+  # Subscription so ArgoCD does not fight OLM during operator recovery.
+  source: redhat-operators-rhoai
   sourceNamespace: openshift-marketplace
-
+  startingCSV: rhcl-operator.v1.3.4

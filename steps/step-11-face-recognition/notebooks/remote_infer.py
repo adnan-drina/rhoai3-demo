@@ -55,6 +55,16 @@ TRUSTYAI_ADAPTER_URL = os.environ.get(
 )
 
 
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+DEFAULT_CONF_THRESHOLD = _env_float("FACE_RECOGNITION_CONFIDENCE_THRESHOLD", 0.6)
+
+
 def report_to_trustyai(detections):
     """Fire-and-forget reporting of detection results to TrustyAI adapter.
 
@@ -100,7 +110,7 @@ def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):
     cv2.putText(img, label, (x, y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
 
-def postprocess(response_data, scale, original_image, conf_threshold: float = 0.7):
+def postprocess(response_data, scale, original_image, conf_threshold: float = DEFAULT_CONF_THRESHOLD):
     """Parse ONNX/OpenVINO output tensor, apply NMS, and draw boxes."""
     outputs = np.array([cv2.transpose(response_data[0])])
     rows = outputs.shape[1]
@@ -108,7 +118,8 @@ def postprocess(response_data, scale, original_image, conf_threshold: float = 0.
     boxes, scores, class_ids = [], [], []
     for i in range(rows):
         classes_scores = outputs[0][i][4:]
-        (_, max_score, _, (_, max_class_idx)) = cv2.minMaxLoc(classes_scores)
+        max_score = float(np.max(classes_scores))
+        max_class_idx = int(np.argmax(classes_scores))
         if max_score >= conf_threshold:
             cx, cy, w, h = outputs[0][i][:4]
             box = [cx - 0.5 * w, cy - 0.5 * h, w, h]
@@ -183,7 +194,7 @@ def send_request(blob, endpoint: str):
     ]
 
 
-def process_image(image_path: str, endpoint: str, conf_threshold: float = 0.7):
+def process_image(image_path: str, endpoint: str, conf_threshold: float = DEFAULT_CONF_THRESHOLD):
     """End-to-end: preprocess, infer via REST, postprocess, and return annotated image."""
     blob, scale, original_image = preprocess(image_path)
     response = send_request(blob, endpoint)
@@ -209,7 +220,7 @@ def _to_h264(input_path: str) -> str:
     return input_path
 
 
-def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = 0.7):
+def process_video_local(video_path: str, model, output_path: Optional[str] = None, conf: float = DEFAULT_CONF_THRESHOLD):
     """Process a video using a local YOLO model with identity uniqueness constraint.
 
     Each frame is run through the model, then enforce_identity_uniqueness()
@@ -220,7 +231,7 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
         video_path: Path to input video.
         model: A loaded ultralytics YOLO model.
         output_path: Path for annotated output video. If None, auto-generated.
-        conf: Confidence threshold (default: 0.6).
+        conf: Confidence threshold.
 
     Returns:
         Path to the output video (H.264 encoded for browser playback).
@@ -298,7 +309,7 @@ def process_video_local(video_path: str, model, output_path: Optional[str] = Non
     return output_path
 
 
-def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = 0.7):
+def process_video_rest(video_path: str, endpoint: str, output_path: Optional[str] = None, conf_threshold: float = DEFAULT_CONF_THRESHOLD):
     """Process a video frame-by-frame via the KServe REST API.
 
     Args:

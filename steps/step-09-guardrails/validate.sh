@@ -50,6 +50,36 @@ else
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
 fi
 
+# --- MaaS API Key ---
+log_step "MaaS API Key"
+RAG_MAAS_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' 2>/dev/null | base64 -d 2>/dev/null || true)
+RAG_MAAS_TTL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_EXPIRES_IN}' 2>/dev/null | base64 -d 2>/dev/null || true)
+RAG_MAAS_EXTERNAL_URL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_EXTERNAL_URL}' 2>/dev/null | base64 -d 2>/dev/null || true)
+NEMO_TOKEN=$(oc get secret nemo-guardrails-api-token -n "$NAMESPACE" -o jsonpath='{.data.token}' 2>/dev/null | base64 -d 2>/dev/null || true)
+EXPECTED_MAAS_TTL="${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
+if [[ -n "$RAG_MAAS_KEY" && "$RAG_MAAS_KEY" == "$NEMO_TOKEN" && "$RAG_MAAS_TTL" == "$EXPECTED_MAAS_TTL" ]]; then
+    echo -e "${GREEN}[PASS]${NC} NeMo token is synchronized with the $EXPECTED_MAAS_TTL RAG MaaS API key"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} NeMo token is not synchronized with the expected MaaS API key metadata"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+if [[ -n "$NEMO_TOKEN" && -n "$RAG_MAAS_EXTERNAL_URL" ]]; then
+    MAAS_HTTP=$(curl -sk --max-time 20 -o /tmp/step-09-maas-models.json -w "%{http_code}" \
+        -H "Authorization: Bearer $NEMO_TOKEN" \
+        "${RAG_MAAS_EXTERNAL_URL}/models" 2>/dev/null || echo "000")
+    if [[ "$MAAS_HTTP" == "200" ]] && grep -q "$MODEL_NAME" /tmp/step-09-maas-models.json; then
+        echo -e "${GREEN}[PASS]${NC} NeMo MaaS API key can list $MODEL_NAME"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} NeMo MaaS API key failed model discovery (HTTP $MAAS_HTTP)"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+else
+    echo -e "${RED}[FAIL]${NC} NeMo MaaS API key or external URL missing"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
 # --- Functional NeMo Tests ---
 log_step "NeMo Functional Tests"
 if [[ -n "$ROUTE_HOST" ]]; then

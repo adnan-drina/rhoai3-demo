@@ -22,6 +22,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$REPO_ROOT/scripts/lib.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,6 +40,9 @@ OPERATOR_APP_NAME="step-13b-edge-ai-microshift-operator"
 PIPELINE_APP_NAME="step-13b-edge-ai-microshift"
 ARGO_NAMESPACE="${ARGO_NAMESPACE:-openshift-gitops}"
 MLOPS_NAMESPACE="${MLOPS_NAMESPACE:-enterprise-mlops}"
+
+load_env
+check_oc_logged_in
 
 wait_for_tekton_crds() {
     log_info "Waiting for OpenShift Pipelines CRDs..."

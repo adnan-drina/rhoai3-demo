@@ -100,6 +100,10 @@ metadata:
     status: error
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/ignore-healthcheck: "true"
+    argocd.argoproj.io/ignore-resource-updates: "true"
+    demo.rhoai.redhat.com/intentional-failure: "true"
+    demo.rhoai.redhat.com/health-message: "Intentional MCP troubleshooting pod failure"
     equipment.acme.com/type: "L-900 EUV Scanner"
     equipment.acme.com/model: "ASML TWINSCAN NXE:3600D"
     equipment.acme.com/location: "Fab 3, Bay 8"

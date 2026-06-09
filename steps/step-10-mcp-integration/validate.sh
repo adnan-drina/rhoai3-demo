@@ -30,11 +30,23 @@ fi
 
 ACME_0007_REASON=$(oc get pod acme-equipment-0007 -n acme-corp \
     -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || true)
+ACME_0007_ANNOTATIONS=$(oc get pod acme-equipment-0007 -n acme-corp -o json 2>/dev/null || echo '{}')
+ACME_0007_IGNORE_HEALTH=$(printf '%s' "$ACME_0007_ANNOTATIONS" \
+    | jq -r '.metadata.annotations["argocd.argoproj.io/ignore-healthcheck"] // ""' 2>/dev/null || true)
+ACME_0007_IGNORE_UPDATES=$(printf '%s' "$ACME_0007_ANNOTATIONS" \
+    | jq -r '.metadata.annotations["argocd.argoproj.io/ignore-resource-updates"] // ""' 2>/dev/null || true)
+ACME_0007_DEMO_FAILURE=$(printf '%s' "$ACME_0007_ANNOTATIONS" \
+    | jq -r '.metadata.annotations["demo.rhoai.redhat.com/intentional-failure"] // ""' 2>/dev/null || true)
+if [[ "$ACME_0007_DEMO_FAILURE" == "true" && "$ACME_0007_IGNORE_HEALTH" == "true" && "$ACME_0007_IGNORE_UPDATES" == "true" ]]; then
+    echo -e "${GREEN}[PASS]${NC} acme-equipment-0007 is marked as intentional demo failure and ignored for Argo CD resource-update noise"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${RED}[FAIL]${NC} acme-equipment-0007 missing demo failure or Argo CD ignore annotations"
+    VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+fi
+
 if [[ "$APP_HEALTH" == "Healthy" ]]; then
     echo -e "${GREEN}[PASS]${NC} Argo CD app 'step-10-mcp-integration' health: Healthy"
-    VALIDATE_PASS=$((VALIDATE_PASS + 1))
-elif [[ "$APP_HEALTH" == "Degraded" && "$ACME_0007_REASON" == "CrashLoopBackOff" ]]; then
-    echo -e "${GREEN}[PASS]${NC} Argo CD app health is Degraded only for intentional acme-equipment-0007 CrashLoopBackOff demo state"
     VALIDATE_PASS=$((VALIDATE_PASS + 1))
 else
     echo -e "${RED}[FAIL]${NC} Argo CD app health unexpected (got: $APP_HEALTH, acme-equipment-0007 reason: ${ACME_0007_REASON:-unknown})"
@@ -61,8 +73,8 @@ check "ConfigMap gen-ai-aa-mcp-servers exists" \
 
 # Verify SSE-only servers have transport:sse (gen-ai backend defaults to streamable-http)
 for mcp_key in "Database-MCP" "Slack-MCP"; do
-    TRANSPORT=$(oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications \
-        -o jsonpath="{.data.${mcp_key}}" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('transport',''))" 2>/dev/null || true)
+    TRANSPORT=$(oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o json 2>/dev/null \
+        | jq -r --arg key "$mcp_key" '.data[$key] | fromjson | .transport // ""' 2>/dev/null || true)
     if [[ "$TRANSPORT" == "sse" ]]; then
         echo -e "${GREEN}[PASS]${NC} $mcp_key has transport: sse"
         VALIDATE_PASS=$((VALIDATE_PASS + 1))

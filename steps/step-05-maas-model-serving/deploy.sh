@@ -19,9 +19,22 @@ NAMESPACE="maas"
 load_env
 check_oc_logged_in
 
+load_openai_provider_key() {
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        return 0
+    fi
+
+    local openai_env_file="${RHOAI_OPENAI_ENV_FILE:-}"
+    if [[ -n "$openai_env_file" && -f "$openai_env_file" ]]; then
+        set -a; source "$openai_env_file"; set +a
+    elif [[ -n "$openai_env_file" ]]; then
+        log_warn "RHOAI_OPENAI_ENV_FILE is set but not readable: $openai_env_file"
+    fi
+}
+
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 05: MaaS Model Serving on vLLM                                 ║"
-echo "║  2 Active Models in the maas Namespace                               ║"
+echo "║  2 Local Models + OpenAI GPT-5 through MaaS                          ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -60,6 +73,7 @@ log_step "Model Portfolio (5 GPUs Total)"
 echo ""
 echo "  granite-8b-agent   1-GPU  OCI  FP8   RAG/MCP/Guardrails/Eval candidate"
 echo "  mistral-3-bf16     4-GPU  S3   BF16  Playground chat/Eval judge"
+echo "  gpt-5              0-GPU  SaaS OpenAI external model via MaaS"
 echo ""
 
 # Create HF token secret (upload jobs need this before ArgoCD sync)
@@ -73,6 +87,21 @@ if [[ -n "${HF_TOKEN:-}" ]]; then
 else
     log_warn "HF_TOKEN not set in .env — uploads will use unauthenticated HF access (slower)"
 fi
+
+# Create OpenAI provider secret for external MaaS models.
+log_step "Ensuring OpenAI provider credential secret exists..."
+
+load_openai_provider_key
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    oc create secret generic openai-provider-api-key -n "$NAMESPACE" \
+        --from-literal=api-key="$OPENAI_API_KEY" \
+        --dry-run=client -o yaml | oc apply -f - 2>/dev/null
+    log_success "openai-provider-api-key secret ready in $NAMESPACE"
+else
+    log_warn "OPENAI_API_KEY not set — gpt-5 ExternalModel will wait for maas/openai-provider-api-key"
+    log_warn "Set OPENAI_API_KEY in .env or set RHOAI_OPENAI_ENV_FILE to a file containing it"
+fi
+echo ""
 
 # Upload mistral-3-bf16 model to MinIO (must complete before ISVC creation)
 log_step "Ensuring mistral-3-bf16 model is in MinIO..."
@@ -121,6 +150,7 @@ echo ""
 log_step "Configuring MaaS model publication..."
 
 configure_maas_gateway_route || log_warn "MaaS gateway route still needs Step 02 reconciliation"
+repair_maas_authconfig_for_authorino_upgrade || true
 
 for model in granite-8b-agent mistral-3-bf16; do
     for attempt in $(seq 1 24); do
@@ -148,6 +178,21 @@ if oc get route maas-gateway -n openshift-ingress &>/dev/null; then
 else
     log_warn "MaaS gateway route not found — deploy step-02 to expose system API key creation"
 fi
+echo ""
+
+log_step "Creating demo user MaaS API keys..."
+DEMO_PASSWORD="${RHOAI_DEMO_PASSWORD:-redhat123}"
+DEMO_KEY_TTL="${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
+
+ensure_maas_user_api_key "ai-admin" "$DEMO_PASSWORD" "$NAMESPACE" \
+    "ai-admin-maas-api-key" "ai-admin-persistent-demo-60d" \
+    "enterprise-demo-subscription" "$DEMO_KEY_TTL" || \
+    log_warn "ai-admin MaaS API key could not be created; check Step 03 demo identities and MaaS subscription access"
+
+ensure_maas_user_api_key "ai-developer" "$DEMO_PASSWORD" "$NAMESPACE" \
+    "ai-developer-maas-api-key" "ai-developer-persistent-demo-60d" \
+    "enterprise-demo-subscription" "$DEMO_KEY_TTL" || \
+    log_warn "ai-developer MaaS API key could not be created; check Step 03 demo identities and MaaS subscription access"
 echo ""
 
 log_step "Applying AI Asset labels for GenAI Playground..."
@@ -238,6 +283,7 @@ else:
             oc patch inferenceservice "$ISVC_NAME" -n "$NAMESPACE" --type=merge -p "{
               \"metadata\": {
                 \"labels\": {
+                  \"modelregistry.opendatahub.io/name\": \"enterprise-ai-registry\",
                   \"modelregistry.opendatahub.io/registered-model-id\": \"${RM_ID}\",
                   \"modelregistry.opendatahub.io/model-version-id\": \"${MV_ID}\"
                 }
@@ -259,8 +305,11 @@ echo "    oc get inferenceservice -n $NAMESPACE -w"
 echo ""
 echo "  GenAI Playground:"
 echo "    1. RHOAI Dashboard → GenAI Studio → Playground"
-echo "    2. Select the 'Model-as-a-Service' project"
+echo "    2. Select the 'MaaS Runtime' project"
 echo "    3. Create playground with RUNNING models only"
+echo ""
+echo "  Demo MaaS API key secrets:"
+echo "    oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n $NAMESPACE"
 echo ""
 log_info "Validate: ./steps/step-05-maas-model-serving/validate.sh"
 echo ""

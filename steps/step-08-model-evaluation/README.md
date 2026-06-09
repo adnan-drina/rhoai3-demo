@@ -1,11 +1,27 @@
 # Step 08: Model Evaluation
-**"Trust but Verify"** — Quantify RAG value and benchmark model capabilities using RHOAI-native evaluation tools.
+**"Trust but Verify"** — Introduce EvalHub as the product-native evaluation control plane, then quantify RAG value and model quality with repeatable evidence.
 
 ## Overview
 
-Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, and benchmarking deployed models on standard tasks. That is how teams move from "it feels right" to evidence stakeholders and compliance can review. **Red Hat OpenShift AI 3.4** provides RAG quality evaluation with Ragas/TrustyAI patterns, **Standard Model Evaluation** with `LMEvalJob`, and **MLflow** experiment tracking. This step uses a KFP RAG evaluation harness and logs durable RAG quality evidence to MLflow when the RHOAI MLflow server is available.
+Building on **RAG** from Step 07 — within the same governed platform — this step adds **evaluation**: quantifying how much document grounding improves answers versus the base model, benchmarking deployed models on standard tasks, and submitting a product-native EvalHub job. That is how teams move from "it feels right" to evidence stakeholders and compliance can review.
+
+**Red Hat OpenShift AI 3.4 introduces EvalHub as a Technology Preview evaluation control plane.** EvalHub replaces one-off benchmark scripts with a unified, cluster-native service: a versioned REST API, SDK and CLI access, tenant-scoped authorization, curated and custom evaluation providers, isolated Kubernetes Jobs for each benchmark, MLflow result tracking, and optional OCI result export. In this demo, EvalHub becomes the first-class entry point for standardized LLM evaluation and for independent ACME/whoami pre/post RAG scenario evaluations. The older KFP RAG evaluation remains as an optional compatibility path for HTML reports and deeper pipeline debugging.
 
 This step demonstrates RHOAI's **Evaluation** capability — repeatable scoring and benchmarking for models and RAG pipelines — while reusing **AI pipelines**, **MLflow**, and **Model observability and governance** to make model quality measurable before production deployment.
+
+### EvalHub in This Demo
+
+EvalHub is intentionally introduced as the control plane, not just another benchmark runner:
+
+| EvalHub capability | Demo implementation |
+|--------------------|---------------------|
+| Unified REST API | `run-evalhub-smoke.sh` calls health, provider, benchmark, job submit, and job status APIs. |
+| SDK/CLI-ready workflow | README commands use REST today; CLI/SDK use is documented as the same tenant/job workflow. |
+| Framework-agnostic providers | The EvalHub CR mounts provider ConfigMaps labeled `lm-evaluation-harness`, `garak`, `guidellm`, `lighteval`, and `rhoai-rag-scenarios`; the REST API exposes the RAG provider as `rhoai_rag_scenarios`. |
+| Tenant isolation | Requests use `X-Tenant: enterprise-rag`; validation checks namespace label, tenant resources, and RBAC. |
+| Kubernetes-native execution | EvalHub runs benchmark work as tenant-scoped Kubernetes Jobs, separate from the server. |
+| MLflow evidence | Smoke jobs use experiment `evalhub-granite-smoke`; ACME/whoami RAG scenarios use independent experiments such as `evalhub-acme-corporate-post-rag` and `evalhub-whoami-post-rag`. |
+| Governance extensions | OCI result export, additional custom providers, and agent-discoverable evaluation access are tracked as follow-on items until implemented and schema-validated. |
 
 ## Architecture
 
@@ -15,7 +31,16 @@ This step demonstrates RHOAI's **Evaluation** capability — repeatable scoring 
 
 ```text
 Model Evaluation
-├── RAG Evaluation (KFP Pipeline — 4 steps)
+├── EvalHub (TrustyAI-managed product-native evaluation)
+│   ├── EvalHub CR           → TrustyAI-managed API server and route
+│   ├── PostgreSQL           → Durable EvalHub job and registry state
+│   ├── Provider registry    → lm-evaluation-harness, garak, guidellm, lighteval, rhoai-rag-scenarios
+│   ├── RAG collection       → rhoai-rag-pre-post-v1 reusable grouped collection
+│   ├── Adapter image        → EvalHub SDK provider that reads GitOps-managed eval ConfigMaps
+│   ├── Tenant RBAC          → enterprise-rag X-Tenant isolation and SAR checks
+│   ├── run-evalhub-smoke.sh → Submit granite-8b-agent smoke job with MLflow experiment
+│   └── run-evalhub-rag-scenarios.sh → Submit independent ACME/whoami pre/post RAG evaluations
+├── Optional KFP RAG Evaluation (compatibility path — 4 steps)
 │   ├── scan_tests           → Discover *_tests.yaml configs from PVC
 │   ├── run_and_score_tests  → Execute RAG agent, score via LLM-as-judge, HTML reports
 │   ├── eval_summary         → Aggregate results, log pre/post RAG quality + improvement
@@ -30,13 +55,20 @@ Model Evaluation
     ├── Candidate model      → Agent model (step-05) generates answers
     ├── Judge model          → Larger model (step-05) evaluates quality
     ├── lsd-rag + pgvector   → RAG infrastructure (step-07)
-    └── MLflow server        → Cluster-scoped Step 12 server, optional before MLOps deploy
+    └── MLflow server        → Cluster-scoped Step 12 server for EvalHub + KFP evidence
 ```
 
 | Component | Purpose | Namespace |
 |-----------|---------|-----------|
+| **EvalHub CR** | Technology Preview evaluation API reconciled by TrustyAI Operator; placed where the RHOAI Dashboard EvalHub UI discovers it | `redhat-ods-applications` |
+| **EvalHub PostgreSQL** | Durable EvalHub database using RHEL 9 PostgreSQL 16 | `evalhub-system` |
+| **EvalHub Route** | External API route for health, provider listing, and job submission | `redhat-ods-applications` |
+| **EvalHub tenant RBAC** | Allows selected users/groups to submit tenant-scoped jobs | `enterprise-rag` |
+| **`run-evalhub-smoke.sh`** | Submit a small EvalHub job against `granite-8b-agent` | `enterprise-rag` tenant |
+| **`run-evalhub-rag-scenarios.sh`** | Submit independent ACME/whoami pre/post RAG scenario evaluations through EvalHub | `enterprise-rag` tenant |
+| **`evalhub-rag-scenario-adapter`** | Custom EvalHub SDK provider image for YAML-backed RAG scenario tests | `enterprise-rag` |
 | **Test YAMLs** | Version-controlled Q&A pairs with expected answers | `enterprise-rag` (ConfigMaps) |
-| **`run-rag-eval.sh`** | Launch KFP RAG eval pipeline | `enterprise-rag` |
+| **`run-rag-eval.sh`** | Launch optional KFP RAG eval pipeline | `enterprise-rag` |
 | **`run-eval-report.sh`** | Quick eval via lsd-rag pod (debug/demo) | `enterprise-rag` |
 | **`run-lmeval.sh`** | Trigger LM-Eval standard benchmarks | `enterprise-rag` |
 | **MLflowConfig** | Project-specific artifact root for RAG evaluation runs | `enterprise-rag` |
@@ -51,9 +83,10 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | | Feature | Status |
 |---|---|---|
 | RHOAI | Evaluation (LM-Eval, LLM-as-Judge) | Introduced |
+| RHOAI | EvalHub | Technology Preview; introduced as the evaluation control plane |
 | RHOAI | Model observability and governance | Used |
-| RHOAI | AI pipelines (KFP v2) | Used |
-| RHOAI | MLflow tracking server | Technology Preview; used when Step 12 MLflow server is present |
+| RHOAI | AI pipelines (KFP v2) | Optional compatibility path |
+| RHOAI | MLflow tracking server | Technology Preview; Step 12 prerequisite for EvalHub |
 | RHOAI | Gen AI Studio Prompts | Technology Preview; prompt identity is logged as MLflow run metadata |
 | RHOAI | Optimized model serving (judge model) | Used |
 
@@ -64,7 +97,7 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 | **(A)** | Exact match — same key facts | Green | Best |
 | **(B)** | Superset — all expected points plus additional correct detail | Green | Great |
 | **(C)** | Subset — covers some but not all expected points | Yellow | Partial |
-| **(D)** | Minor differences that don't affect factual accuracy | Grey | Okay |
+| **(D)** | Minor differences that don't affect factual accuracy | Grey | Pass |
 | **(E)** | Disagrees with or contradicts the expected response | Red | Fail |
 
 </details>
@@ -76,19 +109,31 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 
 > **Identical test sets:** Pre-RAG and Post-RAG use the same questions and expected answers. The only variable is document context. The score difference directly quantifies RAG value.
 
-> **Judge model hardcoded in pipeline:** `mistral-3-bf16` is called directly via its vLLM endpoint (`http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/chat/completions`). This bypasses LlamaStack's scoring API for more reliable A–E grading.
+> **Judge model hardcoded in RAG scenario runners:** `mistral-3-bf16` is called directly via its vLLM endpoint (`http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080/v1/chat/completions`). This bypasses LlamaStack's scoring API for more reliable A-E grading.
 
-> **Two eval scripts coexist:** `run-rag-eval.sh` (KFP pipeline, platform-native, tracked) and `run-eval-report.sh` (quick pod-based, localhost access, simpler debugging). KFP is the primary path; the shell script is the fast demo path.
+> **Factual pass letters:** A, B, and D count as passing. D is not a perfect answer, but by definition its wording differences do not affect factual accuracy. C and E remain non-passing because they omit key facts or contradict the expected answer.
 
-> **Tests in GitOps:** Test YAMLs deploy as ConfigMaps via ArgoCD. A PostSync Job copies them to the shared PVC for the KFP pipeline. `run-eval-report.sh` copies them directly to the lsd-rag pod.
+> **EvalHub RAG scenarios are the primary path:** `run-evalhub-rag-scenarios.sh` submits ACME pre-RAG, ACME post-RAG, whoami pre-RAG, and whoami post-RAG as separate EvalHub jobs by default. Set `EVALHUB_RAG_SUBMISSION_MODE=collection` to run the reusable `rhoai-rag-pre-post-v1` grouped collection. `run-rag-eval.sh` remains as an optional KFP compatibility path, and `run-eval-report.sh` remains the fast pod-local debugging path.
+
+> **Tests in GitOps:** Test YAMLs deploy as ConfigMaps via ArgoCD. The EvalHub RAG scenario adapter reads those ConfigMaps directly at runtime. A PostSync Job also copies them to the shared PVC for the optional KFP path, and `run-eval-report.sh` copies them directly to the lsd-rag pod.
 
 > **LM-Eval via LMEvalJob CR:** RHOAI 3.4's native evaluation service, managed by the TrustyAI operator. Templates are stored in `gitops/step-08-model-evaluation/base/lmeval/` and applied on demand.
 
-> **MLflow evidence for enterprise RAG.** RHOAI 3.4 documents MLflow as the central tracking server for parameters, metrics, and artifacts. The `log_rag_mlflow` component records the same RAG evaluation summary that appears in the Dashboard into an `enterprise-rag` MLflow experiment. This gives teams before/after comparison across prompt, model, retriever, vector-store, and guardrail changes.
+> **EvalHub is Technology Preview.** RHOAI 3.4 introduces EvalHub for early access to a unified evaluation control plane. It is appropriate for this demo and for evaluation workflow design, but production positioning must keep Red Hat Technology Preview support limits visible.
 
-> **Prompt versions are evaluation inputs.** RHOAI 3.4 Gen AI Studio stores reusable system instructions as project-scoped Prompts. Step 08 accepts prompt metadata (`PROMPT_NAME`, `PROMPT_VERSION`, `PROMPT_ALIAS`, `PROMPT_SOURCE`, `PROMPT_COMMIT_MESSAGE`) and logs it to MLflow with the scenario quality metrics. `PROMPT_ALIAS` is a demo promotion label, not a required RHOAI UI field. This keeps prompt iteration auditable without claiming direct runtime loading from the Prompt Registry.
+> **EvalHub two-layer control plane.** The TrustyAI Operator reconciles the declarative `EvalHub` custom resource into the API server, service, route, provider mounts, and runtime environment. The EvalHub server is the second control plane: it accepts `/api/v1/evaluations/...` requests, validates tenant-scoped requests, stores job state, creates isolated Kubernetes Jobs in the tenant namespace, and aggregates results. The official RHOAI docs remain the source of truth for API fields, RBAC, and configuration.
 
-> **EvalHub alignment without overclaiming.** RHOAI 3.4 also documents EvalHub with MLflow experiment tracking for evaluation jobs. This step does not deploy EvalHub yet; it implements the same tracking intent directly from the KFP RAG evaluation pipeline and keeps EvalHub as a follow-up platform enhancement.
+> **Dashboard-aligned EvalHub namespace.** The RHOAI 3.4 Dashboard EvalHub UI checks for `EvalHub/evalhub` in `redhat-ods-applications`. Step 08 therefore keeps the EvalHub CR, generated service, and route in `redhat-ods-applications`, while the PostgreSQL database remains isolated in `evalhub-system`. A same-named `evalhub-db-credentials` Secret in `redhat-ods-applications` points the EvalHub server at that database.
+
+> **Demo database credential.** The EvalHub PostgreSQL Secret is committed with placeholder demo values so Argo CD can build a complete workshop environment without a separate secret manager. The manifest header includes the replacement command, and production use must replace both `database-password` and `db-url` through an external secret mechanism or a pre-created OpenShift Secret.
+
+> **MLflow as experiment memory.** RHOAI 3.4 documents MLflow as EvalHub's experiment tracker. This step sets `MLFLOW_TRACKING_URI`, `MLFLOW_WORKSPACE=enterprise-rag`, and `MLFLOW_INSECURE_SKIP_VERIFY=true` for the demo cluster's self-signed internal service. The EvalHub service account is bound to `mlflow-operator-mlflow-integration` in `enterprise-rag` so the server's projected MLflow token can create and read experiments. The EvalHub smoke job uses experiment name `evalhub-granite-smoke`, and each EvalHub RAG scenario uses its own experiment (`evalhub-acme-corporate-pre-rag`, `evalhub-acme-corporate-post-rag`, `evalhub-whoami-pre-rag`, `evalhub-whoami-post-rag`). The optional KFP RAG evaluation still logs compatibility evidence to the `enterprise-rag` experiment.
+
+> **Prompt versions remain evaluation inputs for the optional KFP path.** RHOAI 3.4 Gen AI Studio stores reusable system instructions as project-scoped Prompts. The legacy KFP runner accepts prompt metadata (`PROMPT_NAME`, `PROMPT_VERSION`, `PROMPT_ALIAS`, `PROMPT_SOURCE`, `PROMPT_COMMIT_MESSAGE`) and logs it to MLflow with scenario quality metrics. `PROMPT_ALIAS` is a demo promotion label, not a required RHOAI UI field. The EvalHub RAG scenario provider currently evaluates the deployed runtime behavior and the GitOps-managed test YAMLs.
+
+> **Tenant label uses the official empty value.** The Red Hat Developer article uses a simplified `tenant=true` explanation, but the RHOAI 3.4 docs specify `evalhub.trustyai.opendatahub.io/tenant=` and state that the empty value is intentional. The operator checks label presence, not label value.
+
+> **EvalHub gaps intentionally deferred.** OCI result export, CLI/SDK demo profiles, EvalHub MCP-style agent access, richer OTEL/Prometheus dashboards, and multi-replica scaling are future enhancements. This implementation proves product-native server deployment, tenant setup, built-in and custom provider discovery, independent benchmark job submission, Kubernetes job isolation, and MLflow result linkage.
 
 > **Configurable sample limits:** LMEvalJob templates default to 50 samples per task for fast demo runs (~10 min). Increase via CLI (`run-lmeval.sh model 200`) or remove for full benchmarks.
 
@@ -100,15 +145,19 @@ Manifests: [`gitops/step-08-model-evaluation/base/`](../../gitops/step-08-model-
 <summary>Deploy</summary>
 
 ```bash
-./steps/step-08-model-evaluation/deploy.sh     # ArgoCD app + compile pipeline + launch eval
-./steps/step-08-model-evaluation/validate.sh   # Verify eval ConfigMaps, providers, judge model, fresh results
+./steps/step-12-mlops-pipeline/validate.sh     # Step 12 MLflow prerequisite
+./steps/step-08-model-evaluation/deploy.sh     # ArgoCD app + EvalHub smoke + independent EvalHub RAG scenarios
+./steps/step-08-model-evaluation/validate.sh   # Verify EvalHub, RAG eval, LM-Eval, MLflow evidence
 ```
 
 Additional operations:
 
 ```bash
 # RAG Evaluation
-./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]   # KFP pipeline (tracked in DSPA)
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh [run_id] # EvalHub product-native smoke job
+./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh [run_id] # Independent EvalHub ACME/whoami pre/post jobs
+RUN_KFP_RAG_EVAL=true ./steps/step-08-model-evaluation/deploy.sh # Optional KFP compatibility run
+./steps/step-08-model-evaluation/run-rag-eval.sh [run_id]   # Optional KFP pipeline (tracked in DSPA)
 ./steps/step-08-model-evaluation/run-eval-report.sh          # Quick eval via lsd-rag pod
 ./steps/step-07-rag/run-batch-ingestion.sh acme --eval       # Trigger eval after ingestion
 
@@ -134,18 +183,46 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | Check | What It Tests | Pass Criteria |
 |-------|--------------|---------------|
 | ArgoCD sync | App synced and healthy | Synced / Healthy |
+| Target context | API server access, optional guard | `oc whoami --show-server`; set `RHOAI_EXPECTED_API_SERVER` to enforce a specific cluster |
+| RHOAI readiness | `rhods-operator.3.4.0`, DSC Ready, EvalHub CRD | All present |
+| Step 12 MLflow | Cluster-scoped MLflow server | Available=True |
+| EvalHub server | CR, PostgreSQL, service, route, health | Ready + HTTP 200 |
+| EvalHub tenant | Namespace label and operator-created tenant resources | Present |
+| EvalHub RBAC | Users/groups can create virtual `evaluations` | SubjectAccessReview returns allowed |
+| EvalHub runtime RBAC | EvalHub service account can create tenant ConfigMaps and Jobs; benchmark Jobs have tenant service account, CA bundle, MLflow, and callback access | Product TrustyAI roles are bound in `enterprise-rag` and `redhat-ods-applications` |
+| EvalHub MLflow RBAC | EvalHub service account can reach the tenant MLflow workspace | Internal MLflow search returns HTTP 200 |
+| EvalHub providers | REST provider registry | Includes `lm_evaluation_harness` |
+| EvalHub smoke | Latest smoke job | `completed` plus MLflow experiment URL |
+| EvalHub RAG provider | Custom provider registry | Includes `rhoai_rag_scenarios` |
+| EvalHub RAG collection | Custom collection registry | Includes `rhoai-rag-pre-post-v1` |
+| EvalHub RAG scenarios | Latest ACME/whoami independent jobs | All 4 jobs `completed`, each with its benchmark and MLflow experiment URL |
+| Adapter image | Custom provider runtime image | `evalhub-rag-scenario-adapter:latest` exists |
 | Eval ConfigMaps | eval-configs and eval-test-cases | Both present |
 | Eval provider | LlamaStack eval provider registered | At least 1 provider |
 | Judge model | mistral-3-bf16 InferenceService | READY=True |
 | LM-Eval config | DataScienceCluster LM-Eval permissions | `permitOnline: allow` |
-| RAG eval reports | HTML reports in MinIO | Latest report within `DEMO_FRESHNESS_HOURS` |
+| Optional KFP RAG reports | HTML reports in MinIO | Latest report within `DEMO_FRESHNESS_HOURS` when KFP path is used |
 | MLflow workspace | `enterprise-rag` MLflowConfig and pipeline RoleBinding | Present |
-| MLflow run evidence | Latest `enterprise-rag` run tagged `rhoai.demo.step=08` | Fresh finished run, or warning if MLflow not deployed yet |
+| Optional KFP MLflow evidence | Latest `enterprise-rag` KFP run tagged `rhoai.demo.step=08` | Fresh finished run when KFP path is used |
 | LM-Eval runs | LMEvalJob CRs | Recent completed job per model |
+
+> **Pre-merge branch validation:** While this branch is under test, the Step 08 ArgoCD `Application` is pinned to `targetRevision: feat/step-08-evalhub` so live validation uses the branch contents. Restore the Application manifest to `targetRevision: main` before merging to trunk.
 
 ```bash
 oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \
   -o jsonpath='{.status.sync.status} / {.status.health.status}'
+
+oc get subscription rhods-operator -n redhat-ods-operator \
+  -o jsonpath='{.status.installedCSV}'
+
+oc get evalhub evalhub -n redhat-ods-applications \
+  -o jsonpath='{.status.phase} {.status.url}'
+
+EVALHUB_URL=https://$(oc get route evalhub -n redhat-ods-applications -o jsonpath='{.spec.host}')
+TOKEN=$(oc whoami -t)
+curl -sk -H "Authorization: Bearer $TOKEN" -H "X-Tenant: enterprise-rag" \
+  "$EVALHUB_URL/api/v1/evaluations/providers" | \
+  python3 -c "import json,sys; print([p['resource']['id'] for p in json.load(sys.stdin)['items']])"
 
 oc get configmap eval-configs eval-test-cases -n enterprise-rag
 
@@ -188,44 +265,62 @@ oc exec deploy/lsd-rag -n enterprise-rag -- curl -s -X POST http://localhost:832
 
 > Without documents, the model hallucinates. It thinks ACME is a cartoon company, not our semiconductor client. This is the gap RAG fills — and evaluation measures.
 
-### Run RAG Evaluation
+### Product-Native EvalHub Smoke
 
-> Now we run the evaluation pipeline to systematically compare pre-RAG and post-RAG answers across all test questions. The same questions, the same expected answers — the only variable is document context.
+> EvalHub demonstrates the RHOAI 3.4 product-native evaluation path: one API, tenant-scoped authorization, provider discovery, isolated Kubernetes evaluation Jobs, and MLflow experiment tracking.
+
+1. Run the EvalHub smoke job:
+
+```bash
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh
+```
+
+**Expect:** The script checks `/api/v1/health`, lists `/api/v1/evaluations/providers`, verifies provider ID `lm_evaluation_harness`, submits the `arc_easy` benchmark by benchmark `id` against `granite-8b-agent`, passes tokenizer `ibm-granite/granite-3.1-8b-instruct`, and polls until the job reaches a terminal state. A successful run prints the EvalHub `results` object and `results.mlflow_experiment_url`.
+
+> This is intentionally scoped to one provider benchmark. It proves the EvalHub control plane and tenant path before the custom ACME/whoami collection runs. The demo message is that standardized provider benchmarks, custom application evaluations, and MLflow evidence can coexist under one RHOAI evaluation story.
+
+### Run EvalHub RAG Scenario Evaluation
+
+> Now we run the EvalHub collection that systematically compares pre-RAG and post-RAG answers across all ACME and whoami questions. The same questions, the same expected answers — the only variable is document context.
 
 1. Run the evaluation:
 
 ```bash
-# Option A: Quick eval via lsd-rag pod (faster, good for demos)
-./steps/step-08-model-evaluation/run-eval-report.sh
+# Product-native independent EvalHub scenario evaluations
+./steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh
 
-# Option B: KFP pipeline (platform-native, tracked in DSPA)
+# Optional compatibility/debug paths
 ./steps/step-08-model-evaluation/run-rag-eval.sh
+./steps/step-08-model-evaluation/run-eval-report.sh
 ```
 
-**Expect:** A 4-step pipeline: `scan_tests` → `run_and_score_tests` → `eval_summary` → `log_rag_mlflow`. The summary step logs pre/post-RAG quality and RAG improvement metrics to the Dashboard. The `run_and_score_tests` step produces an `Output[HTML]` artifact viewable inline in the Dashboard, plus 4 HTML reports uploaded to MinIO. When the MLflow server is present, `log_rag_mlflow` creates an `enterprise-rag` run with only per-scenario quality metrics, params, tags, and compact JSON evidence artifacts.
+**Expect:** The script verifies provider ID `rhoai_rag_scenarios`, submits four independent EvalHub jobs, polls each job to completion, and materializes each finished EvalHub result into its own MLflow experiment.
 
-> The evaluation pipeline is a Kubeflow Pipeline — tracked, versioned, and visible in the RHOAI Dashboard. Every run is reproducible and auditable, not a one-off script execution.
+> Each scenario runs in an EvalHub-managed Kubernetes Job using the same YAML test assets that powered the original pre-EvalHub evaluation. The runner embeds the repo's current `judge_prompt.txt` in each independent job request, so the MLflow evidence can be traced to the exact scoring instructions used. EvalHub stores benchmark status, metrics, JSON artifacts, and the MLflow experiment link under the tenant job record. The script then creates one dashboard-visible MLflow run per scenario, including pass/fail counts, A-E grade counts, RAG retrieval coverage, and per-question prompt, answer, expected answer, grade, and judge feedback previews.
 
 ### Review Results
 
-> The evaluation summary quantifies the value of RAG in a single number: the quality improvement from document grounding.
+> The EvalHub job quantifies RAG value by comparing pre-RAG and post-RAG pass rates for the same questions.
 
-1. Check the `eval_summary` Dashboard metrics:
-   - `pre_rag_quality` — baseline without documents (expect ~20%)
-   - `post_rag_quality` — with RAG context (expect ~90%)
-   - `rag_improvement` — quality delta (expect +70pp)
-   - `reports` — clickable MinIO console URL to view full HTML reports
-2. Check the MLflow experiment:
-   - Experiment: `enterprise-rag`
-   - Run name: `rag-eval-<run_id>`
-   - Metrics: one quality percentage per scenario/mode, such as `scenario_ACME_Corporate_Post-RAG_Evaluation_post-rag_quality_pct`
-   - Params: `prompt_name`, `prompt_version`, `prompt_alias`, `prompt_source`, `prompt_commit_message`
-   - Tags: `rhoai.demo.step=08`, `rhoai.demo.capability=enterprise-rag-evaluation`
-   - Artifacts: `rag-eval-summary.json`, `rag-eval-context.json`, `rag-eval-references.json`, including the aggregate rollup for audit review
+1. Check the EvalHub jobs:
+   - Job names: `evalhub-acme-corporate-pre-rag-<run_id>`, `evalhub-acme-corporate-post-rag-<run_id>`, `evalhub-whoami-pre-rag-<run_id>`, `evalhub-whoami-post-rag-<run_id>`
+   - Experiments: `evalhub-acme-corporate-pre-rag`, `evalhub-acme-corporate-post-rag`, `evalhub-whoami-pre-rag`, `evalhub-whoami-post-rag`
+   - Benchmarks: one scenario ID completed per job
+   - Metrics per job: `pass_rate`, `pass_rate_percent`, `mean_judge_score`, `tool_pass_rate`, `answer_rate`, `rag_tool_call_rate`, `questions_total`, `questions_passed`, `questions_failed`, `grade_a_count`, `grade_b_count`, and `grade_e_count`
+   - Artifacts: `rag_scenario_summary` and `rag_scenario_results`
+2. Check the RHOAI Dashboard MLflow view:
+   - Page: **Develop & train > Experiments (MLflow)**
+   - Project: `Enterprise RAG`
+   - Experiments: `evalhub-acme-corporate-pre-rag`, `evalhub-acme-corporate-post-rag`, `evalhub-whoami-pre-rag`, `evalhub-whoami-post-rag`
+   - Runs: one `evalhub-<scenario>-<job>` run per experiment, with per-question metrics and compact answer evidence in run parameters
+3. Check the optional KFP compatibility path only if you need the older Dashboard HTML reports:
+   - Pipeline: `rag-evaluation-pipeline`
+   - Reports: `s3://rhoai-storage/eval-results/<run_id>/`
+   - MLflow experiment: `enterprise-rag`
 
-**Expect:** A clear quality gap — ~20% without documents to ~90% with them.
+**Expect:** A clear quality gap between pre-RAG and post-RAG runs. Post-RAG runs should show materially higher pass rates and should record RAG tool usage for every post-RAG question.
 
-> Every evaluation run is versioned and stored in object storage. MLflow keeps the scenario-level evidence easy to compare across runs, while the aggregate RAG improvement remains in the pipeline summary and JSON artifacts.
+> Every EvalHub run is versioned under a tenant job and linked to MLflow. The RHOAI Dashboard **Jobs** page lists TrainJobs and RayJobs, so EvalHub benchmark Jobs do not appear there; use EvalHub status, Kubernetes Jobs, and the materialized MLflow runs for this demo evidence. The default independent jobs make the dashboard easier to read during a demo. The grouped collection is still available with `EVALHUB_RAG_SUBMISSION_MODE=collection` when you need one aggregate suite run.
 
 ### Scoring Breakdown
 
@@ -295,7 +390,8 @@ oc get lmevaljob granite-8b-agent-eval -n enterprise-rag \
 
 **For technical teams:**
 
-- Evaluate RAG quality in a tracked pipeline and persist the run in MLflow
+- Deploy EvalHub as the product-native evaluation control plane for tenant-scoped jobs
+- Evaluate RAG quality through an EvalHub custom provider and reusable collection
 - Benchmark served models with standard tasks using TrustyAI tooling
 - Keep evaluation results versioned, reviewable, and tied to the deployed platform
 
@@ -340,9 +436,9 @@ oc get svc -n maas | grep mistral
 
 The KFP pipeline connects to `http://mistral-3-bf16-predictor.maas.svc.cluster.local:8080`. Verify the service exists in maas and the model is Ready.
 
-### MLflow run evidence is missing
+### Optional KFP MLflow run evidence is missing
 
-**Root Cause:** Step 08 can run before the Step 12 MLflow server exists, or the `pipeline-runner-dspa-rag` ServiceAccount does not yet have the MLflow integration RoleBinding.
+**Root Cause:** Step 12 MLflow is not available, the optional KFP compatibility path has not run, or the `pipeline-runner-dspa-rag` ServiceAccount does not yet have the MLflow integration RoleBinding.
 
 **Solution:**
 
@@ -353,7 +449,151 @@ oc get rolebinding rag-eval-pipeline-mlflow-client -n enterprise-rag
 ./steps/step-08-model-evaluation/run-rag-eval.sh
 ```
 
-If the MLflow server is not deployed yet, deploy Step 12 and rerun the RAG evaluation.
+If the MLflow server is not deployed yet, deploy Step 12 and rerun Step 08.
+
+### EvalHub RAG scenario provider is missing
+
+**Root Cause:** The TrustyAI Operator has not discovered the custom provider or collection ConfigMaps, or the EvalHub CR does not reference them.
+
+**Solution:**
+
+```bash
+oc get configmap -n redhat-ods-applications \
+  -l trustyai.opendatahub.io/evalhub-provider-name=rhoai-rag-scenarios
+
+oc get configmap -n redhat-ods-applications \
+  -l trustyai.opendatahub.io/evalhub-collection-name=rhoai-rag-pre-post-v1
+
+oc get evalhub evalhub -n redhat-ods-applications \
+  -o jsonpath='{.spec.providers} {.spec.collections}'
+```
+
+The REST provider ID is `rhoai_rag_scenarios`; the EvalHub CR provider reference and ConfigMap label use `rhoai-rag-scenarios`.
+
+### EvalHub RAG scenario job cannot pull or start the adapter image
+
+**Root Cause:** The binary BuildConfig exists, but the adapter image has not been built from this branch yet.
+
+**Solution:**
+
+```bash
+oc start-build evalhub-rag-scenario-adapter -n enterprise-rag \
+  --from-dir=steps/step-08-model-evaluation/evalhub-rag-scenario-adapter \
+  --wait --follow
+
+oc get imagestreamtag evalhub-rag-scenario-adapter:latest -n enterprise-rag
+```
+
+The normal `deploy.sh` runs this build automatically before submitting the independent EvalHub RAG scenario evaluations.
+
+Keep `spec.source.binary: {}` explicit in the BuildConfig manifest. OpenShift defaults that field on Binary builds, and leaving it implicit causes ArgoCD to report a persistent BuildConfig diff after sync.
+
+### EvalHub RAG scenario job cannot read eval-test-cases
+
+**Root Cause:** The EvalHub benchmark Job service account needs read-only access to the `eval-test-cases` and `eval-configs` ConfigMaps in `enterprise-rag`.
+
+**Solution:**
+
+```bash
+oc get role evalhub-rag-scenario-config-reader -n enterprise-rag -o yaml
+oc get rolebinding evalhub-rag-scenario-config-reader -n enterprise-rag -o yaml
+
+oc auth can-i get configmap/eval-test-cases -n enterprise-rag \
+  --as=system:serviceaccount:enterprise-rag:evalhub-redhat-ods-applications-job
+```
+
+### EvalHub deploy refuses to run
+
+**Root Cause:** Step 08 has RHOAI 3.4 readiness gates. It refuses to run if `rhods-operator.3.4.0` is not installed, if `DataScienceCluster/default-dsc` is not Ready, or if the EvalHub CRD is missing. If you set `RHOAI_EXPECTED_API_SERVER`, the shared login guard also refuses to run when `oc whoami --show-server` does not match that value.
+
+**Solution:**
+
+```bash
+oc whoami --show-server
+echo "$RHOAI_EXPECTED_API_SERVER"
+oc get subscription rhods-operator -n redhat-ods-operator -o jsonpath='{.status.installedCSV}'
+oc get datasciencecluster default-dsc -o jsonpath='{.status.phase}'
+oc get crd evalhubs.trustyai.opendatahub.io
+```
+
+Log in to the intended cluster, clear or correct `RHOAI_EXPECTED_API_SERVER` if you enabled the guard, or finish the RHOAI 3.4 upgrade before deploying Step 08. The script does not patch the RHOAI Subscription automatically.
+
+### EvalHub smoke job cannot list providers
+
+**Root Cause:** The EvalHub server is not ready, the `enterprise-rag` namespace is not labeled as a tenant, or the caller does not have tenant RBAC for EvalHub virtual resources.
+
+**Solution:**
+
+```bash
+oc get evalhub evalhub -n redhat-ods-applications -o yaml
+oc get namespace enterprise-rag --show-labels | grep evalhub
+oc get serviceaccount,rolebinding,configmap -n enterprise-rag | grep evalhub
+oc create -f - -o json <<'EOF'
+apiVersion: authorization.k8s.io/v1
+kind: SubjectAccessReview
+spec:
+  user: ai-developer
+  resourceAttributes:
+    namespace: enterprise-rag
+    verb: create
+    group: trustyai.opendatahub.io
+    resource: evaluations
+EOF
+```
+
+The tenant label value should be empty: `evalhub.trustyai.opendatahub.io/tenant=`.
+
+### EvalHub smoke job completes without an MLflow URL
+
+**Root Cause:** EvalHub submitted the job but could not log results to MLflow. Check the EvalHub CR environment, Step 12 MLflow availability, and the tenant MLflow experiment RBAC.
+
+**Solution:**
+
+```bash
+oc get evalhub evalhub -n redhat-ods-applications -o jsonpath='{.spec.env}'
+oc get mlflow mlflow -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+oc get rolebinding evalhub-mlflow-client -n enterprise-rag -o yaml
+```
+
+### EvalHub smoke job cannot create tenant resources
+
+**Root Cause:** EvalHub creates a tenant ConfigMap and Kubernetes Job for each benchmark. The `evalhub-service` service account needs the product-provided TrustyAI EvalHub job roles in the tenant namespace. The generated benchmark Job also needs a tenant `evalhub-redhat-ods-applications-job` ServiceAccount, an `evalhub-service-ca` ConfigMap, MLflow job access, and a tenant `status-events` callback RoleBinding.
+
+**Solution:**
+
+```bash
+oc get rolebinding evalhub-job-config-client -n enterprise-rag -o yaml
+oc get rolebinding evalhub-jobs-writer-client -n enterprise-rag -o yaml
+oc get serviceaccount evalhub-redhat-ods-applications-job -n enterprise-rag -o yaml
+oc get configmap evalhub-service-ca -n enterprise-rag -o yaml
+oc get rolebinding evalhub-job-mlflow-client -n enterprise-rag -o yaml
+oc get role evalhub-job-status-events -n enterprise-rag -o yaml
+oc get rolebinding evalhub-job-status-callback -n enterprise-rag -o yaml
+oc auth can-i create configmaps -n enterprise-rag --as=system:serviceaccount:redhat-ods-applications:evalhub-service
+oc auth can-i create jobs.batch -n enterprise-rag --as=system:serviceaccount:redhat-ods-applications:evalhub-service
+```
+
+### EvalHub smoke job cannot load tokenizer
+
+**Root Cause:** LM-Eval needs a real tokenizer identifier for OpenAI-compatible completions. The demo serving name `granite-8b-agent` is not a Hugging Face tokenizer repo.
+
+**Solution:**
+
+```bash
+EVALHUB_TOKENIZER=ibm-granite/granite-3.1-8b-instruct \
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh
+```
+
+### EvalHub tinyTruthfulQA smoke job fails with missing tinyBenchmarks
+
+**Root Cause:** The RHOAI 3.4 LM-Eval adapter image in this demo cluster lists `tinyTruthfulQA`, but that task requires the optional `tinyBenchmarks` Python package at runtime. The packaged adapter image does not include that dependency.
+
+**Solution:** Use the validated default `arc_easy` smoke benchmark, or pass an explicit known-good benchmark:
+
+```bash
+EVALHUB_BENCHMARK_ID=arc_easy \
+./steps/step-08-model-evaluation/run-evalhub-smoke.sh
+```
 
 ### Evaluations page not visible in Dashboard
 
@@ -366,10 +606,11 @@ If the MLflow server is not deployed yet, deploy Step 12 and rerun the RAG evalu
 ## References
 
 - [RHOAI 3.4 — Evaluating Large Language Models (LM-Eval)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-large-language-models_evaluate)
+- [RHOAI 3.4 — Evaluate LLMs with EvalHub](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-llms-with-evalhub_evaluate)
 - [RHOAI 3.4 — Evaluating RAG Systems with Ragas](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-rag-systems-with-ragas_evaluate)
 - [RHOAI 3.4 — Working with MLflow](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow/index)
 - [RHOAI 3.4 — Reusable system instructions in Gen AI Studio](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground/reusable-system-instructions_rhoai-user)
-- [RHOAI 3.4 — Configure MLflow experiment tracking for EvalHub evaluation jobs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/evaluating-llms-with-evalhub_evaluate)
+- [Red Hat Developer — How EvalHub manages two-layer Kubernetes control planes](https://developers.redhat.com/articles/2026/05/12/how-evalhub-manages-two-layer-kubernetes-control-planes)
 - [RHOAI 3.4 — Overview of Evaluating AI Systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems/overview-evaluating-ai-systems_evaluate)
 - [rhoai-genaiops/evals](https://github.com/rhoai-genaiops/evals) — KFP pipeline pattern for LlamaStack scoring
 - [fantaco-redhat-one-2026](https://github.com/burrsutter/fantaco-redhat-one-2026/tree/main/evals-llama-stack) — Llama Stack eval API examples

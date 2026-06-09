@@ -1,0 +1,18 @@
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /app
+
+ENV EVALHUB_MODE=k8s \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+COPY . /app/
+
+USER 1001
+
+ENTRYPOINT ["/opt/app-root/bin/python", "/app/entrypoint.py"]

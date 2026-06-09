@@ -50,6 +50,14 @@ manifests directly with `oc apply -k` for ArgoCD-managed resources.
 - All Applications use `project: rhoai-demo`
 - ArgoCD has `cluster-admin` (acceptable for demo)
 
+## OpenShift safety guard
+
+- Open this repository as its own Codex project; do not open `/Users/adrina/Sandbox` as the active project for live cluster work.
+- Before running live `oc`/`kubectl` commands, call `load_env` and `check_oc_logged_in` from `scripts/lib.sh`.
+- Set `RHOAI_EXPECTED_API_SERVER` in the local `.env` to a unique target API-server substring before deploy, validate, bootstrap, or resource-management scripts run.
+- Do not bypass the guard with `RHOAI_ALLOW_UNGUARDED_CLUSTER=true` unless the user explicitly confirms the current cluster and the command is low risk.
+- Do not read credentials from another project by default. Use `RHOAI_OPENAI_ENV_FILE` only when cross-project credential reuse is intentional and approved.
+
 ## Code and docs must be aligned
 
 Never update a README without changing the corresponding manifest, and never change

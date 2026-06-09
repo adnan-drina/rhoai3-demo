@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: evalhub-collection-rhoai-rag-pre-post-v1
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: evalhub-collection-rhoai-rag-pre-post-v1
+    app.kubernetes.io/component: model-evaluation
+    app.kubernetes.io/part-of: rag-evaluation
+    app.kubernetes.io/managed-by: argocd
+    trustyai.opendatahub.io/evalhub-collection-name: rhoai-rag-pre-post-v1
+    trustyai.opendatahub.io/evalhub-collection-type: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  rhoai-rag-pre-post-v1.yaml: |
+    id: rhoai-rag-pre-post-v1
+    name: RHOAI RAG Pre/Post Scenario Suite
+    category: rag
+    description: ACME Corp and whoami scenario evaluations before and after RAG ingestion.
+    tags:
+      - rag
+      - acme
+      - whoami
+      - pre-post
+      - llm-as-judge
+    pass_criteria:
+      threshold: 0.6
+    benchmarks:
+      - id: acme_corporate_pre_rag
+        provider_id: rhoai_rag_scenarios
+        weight: 1
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.34
+        parameters:
+          config_name: acme_corporate_pre_rag_tests.yaml
+      - id: acme_corporate_post_rag
+        provider_id: rhoai_rag_scenarios
+        weight: 2
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.8
+        parameters:
+          config_name: acme_corporate_post_rag_tests.yaml
+      - id: whoami_pre_rag
+        provider_id: rhoai_rag_scenarios
+        weight: 1
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.5
+        parameters:
+          config_name: whoami_pre_rag_tests.yaml
+      - id: whoami_post_rag
+        provider_id: rhoai_rag_scenarios
+        weight: 2
+        primary_score:
+          metric: pass_rate
+          lower_is_better: false
+        pass_criteria:
+          threshold: 0.8
+        parameters:
+          config_name: whoami_post_rag_tests.yaml

@@ -25,6 +25,70 @@ check() {
     fi
 }
 
+check_inferenceservice_scrape_label() {
+    local isvc="$1"
+    local desired deploy_name deploy_label selector pod_labels bad_labels
+
+    desired=$(oc get inferenceservice "$isvc" -n "$NAMESPACE" \
+        -o jsonpath='{.spec.predictor.labels.monitoring\.opendatahub\.io/scrape}' 2>/dev/null || true)
+    if [[ "$desired" == "true" ]]; then
+        log_success "InferenceService $isvc opts predictor pods into RHOAI metrics scraping"
+        PASS=$((PASS + 1))
+    else
+        log_error "FAIL: InferenceService $isvc missing RHOAI metrics scrape opt-in"
+        FAIL=$((FAIL + 1))
+        return
+    fi
+
+    deploy_name=$(oc get deploy -n "$NAMESPACE" -l "serving.kserve.io/inferenceservice=$isvc" \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+    if [[ -z "$deploy_name" ]] && oc get deploy "${isvc}-predictor" -n "$NAMESPACE" &>/dev/null; then
+        deploy_name="${isvc}-predictor"
+    fi
+    if [[ -z "$deploy_name" ]]; then
+        log_warn "Predictor Deployment for $isvc not found; generated pod scrape label cannot be checked yet"
+        return
+    fi
+
+    deploy_label=$(oc get deploy "$deploy_name" -n "$NAMESPACE" \
+        -o jsonpath='{.spec.template.metadata.labels.monitoring\.opendatahub\.io/scrape}' 2>/dev/null || true)
+    if [[ "$deploy_label" == "true" ]]; then
+        log_success "Predictor Deployment $deploy_name propagates RHOAI scrape label"
+        PASS=$((PASS + 1))
+    else
+        log_error "FAIL: Predictor Deployment $deploy_name missing RHOAI scrape label"
+        FAIL=$((FAIL + 1))
+    fi
+
+    selector=$(oc get deploy "$deploy_name" -n "$NAMESPACE" -o json 2>/dev/null | jq -r '
+        .spec.selector.matchLabels
+        | to_entries
+        | map("\(.key)=\(.value)")
+        | join(",")
+    ' 2>/dev/null || true)
+    if [[ -z "$selector" || "$selector" == "null" ]]; then
+        selector="serving.kserve.io/inferenceservice=$isvc"
+    fi
+
+    pod_labels=$(oc get pods -n "$NAMESPACE" -l "$selector" -o json 2>/dev/null | jq -r '
+        .items[]
+        | "\(.metadata.name)=\(.metadata.labels["monitoring.opendatahub.io/scrape"] // "")"
+    ' 2>/dev/null || true)
+    if [[ -z "$pod_labels" ]]; then
+        log_warn "No generated predictor pods found for $isvc; scrape label will be checked after rollout"
+        return
+    fi
+
+    bad_labels=$(printf '%s\n' "$pod_labels" | awk -F= '$2 != "true" {print}')
+    if [[ -z "$bad_labels" ]]; then
+        log_success "Generated predictor pods for $isvc carry RHOAI scrape label"
+        PASS=$((PASS + 1))
+    else
+        log_error "FAIL: Generated predictor pods for $isvc missing RHOAI scrape label: $bad_labels"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
 echo "╔══════════════════════════════════════════════════════════════════════╗"
 echo "║  Step 13 Validation: Edge AI                                        ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
@@ -41,6 +105,8 @@ check "InferenceService face-recognition-edge exists" \
 
 check "InferenceService face-recognition-edge is Ready" \
     "test \$(oc get inferenceservice face-recognition-edge -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}') = 'True'"
+
+check_inferenceservice_scrape_label "face-recognition-edge"
 
 check "edge-camera Deployment exists" \
     "oc get deployment edge-camera -n $NAMESPACE"

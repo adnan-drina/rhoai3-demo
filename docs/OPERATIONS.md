@@ -11,7 +11,7 @@ This guide keeps runbook content out of the step READMEs. Use it when you are de
 | AWS GPU capacity | Step 01 creates `g6.4xlarge` and `g6.12xlarge` MachineSets for NVIDIA L4 GPUs. Confirm regional quota before deployment. |
 | `oc` CLI | Required by every script. Login before running bootstrap or step scripts. |
 | Git remote | `scripts/bootstrap.sh` detects `origin` and rewrites Argo CD Application repo URLs for forks. |
-| Optional credentials | `HF_TOKEN` speeds or authorizes Hugging Face downloads; `SLACK_BOT_TOKEN` enables Slack MCP; Step 13b needs `EDGE_HOST`, `EDGE_USER`, and `EDGE_PASS`. |
+| Optional credentials | `HF_TOKEN` speeds or authorizes Hugging Face downloads; `OPENAI_API_KEY` enables Step 05 external MaaS models; `SLACK_BOT_TOKEN` enables Slack MCP; Step 13b needs `EDGE_HOST`, `EDGE_USER`, and `EDGE_PASS`. |
 | Pull access | Red Hat registry, Quay, and other image sources must be reachable unless you adapt the demo for disconnected mirroring. |
 
 Self-signed or demo certificates are expected. The scripts and examples use `--insecure-skip-tls-verify=true` and `curl -k` where needed.
@@ -46,9 +46,13 @@ Use the same pattern for each step:
 | Action | Why It Exists |
 |--------|---------------|
 | Installs OpenShift GitOps | Provides the Argo CD instance used by every step. |
+| Pins OpenShift GitOps to `gitops-1.20` by default | Keeps the GitOps operator aligned with the OCP 4.20 demo baseline and avoids stale conversion webhooks from older channels. Override with `OPENSHIFT_GITOPS_CHANNEL` only for a documented compatibility test. |
 | Detects Git remote | Makes forks work without manually editing all Application manifests. |
 | Grants Argo CD cluster-admin | Simplifies a demo that installs operators and cluster-scoped resources. Do not copy this blindly into production. |
 | Sets `resourceTrackingMethod: annotation` | Avoids label tracking collisions on resources managed by operators. |
+| Ignores operator-owned status-only updates | Prevents RHOAI, OLM, KServe, Model Registry, and Llama Stack status heartbeats from forcing continuous Argo CD reconciliation. |
+| Applies only out-of-sync resources | Step Applications set `ApplyOutOfSyncOnly=true` so Argo CD does not rewrite every managed object during recovery or refresh cycles. This reduces API and etcd write pressure while operators are already reconciling. |
+| Aligns RHCL to the RHOAI recovery catalog | Step 01 uses `redhat-operators-rhoai` for `rhcl-operator` because the RHOAI 3.4 upgrade installed the live RHCL stack from that catalog in this lab. RHCL dependency subscriptions for Authorino, Limitador, and DNS Operator are left to OLM in `openshift-operators`; Step 01 does not install duplicate standalone subscriptions in component-specific namespaces. |
 | Adds Argo CD health checks | Handles PVC `WaitForFirstConsumer`, KServe `InferenceService`, and `TrustyAIService` health more accurately. |
 | Creates `rhoai-demo` AppProject | All step Applications use this project. |
 
@@ -60,10 +64,10 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 
 | Step | Runtime Work |
 |------|--------------|
-| 01 | Detects cluster ID, AMI, region, and availability zone; approves RHCL dependency install plans when OLM requires them; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
-| 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; re-enables GenAI Studio if reconciled away. |
+| 01 | Detects cluster ID, AMI, region, and availability zone; installs the RHOAI observability prerequisite operators; approves RHCL dependency install plans when OLM requires them; repairs MaaS AuthConfig schema drift before RHCL/Authorino upgrade validation; creates GPU MachineSets; applies documented Authorino TLS runtime configuration after Kuadrant creates generated services. |
+| 02 | Approves pending Service Mesh 3 install plans when RHOAI creates them manually; patches DSCI CA bundle; configures `DSCI.spec.monitoring` metrics/traces; re-enables GenAI Studio if reconciled away. |
 | 03 | Creates OpenShift groups; applies MinIO console Route excluded from Argo CD due to diff behavior. |
-| 05 | Creates Hugging Face token secret if available; uploads large Mistral model to MinIO; registers models. |
+| 05 | Creates Hugging Face token secret if available; creates `maas/openai-provider-api-key` from `OPENAI_API_KEY` if available; uploads large Mistral model to MinIO; registers local and external MaaS models; reapplies the MaaS AuthConfig schema repair when MaaS route objects are regenerated. |
 | 07 | Builds or deploys ingestion/chatbot resources and initializes RAG data. |
 | 08 | Copies evaluation configs and can launch evaluation jobs. |
 | 10 | Creates Slack secret from `.env`, patches route-specific MCP config, registers MCP tool groups in Llama Stack. |
@@ -71,6 +75,17 @@ Some deploy scripts then perform runtime actions that cannot live cleanly in Git
 | 12 | Uploads training data when present, ensures YOLO base model, launches the KFP training pipeline, configures TrustyAI metrics. |
 | 13 | Optionally builds/pushes edge camera image, then waits for the edge app and InferenceService. |
 | 13b | SSHes to the edge host, installs/configures MicroShift, creates ModelCar image, and deploys edge workloads. |
+
+## Operator Subscription Alignment
+
+Use the alignment helper when an upgraded RHOAI 3.4 cluster shows stale OLM channels, copied CSV churn, or RHCL dependency drift:
+
+```bash
+./scripts/align-operator-subscriptions.sh --verify
+./scripts/align-operator-subscriptions.sh --apply
+```
+
+The helper is intentionally scoped to subscriptions used by this demo. It aligns RHOAI to `stable-3.x`, OpenShift GitOps to `gitops-1.20`, RHCL to `rhcl-operator.v1.3.4` from `redhat-operators-rhoai`, keeps Authorino/Limitador/DNS as RHCL-generated dependencies in `openshift-operators`, approves pending RHCL and Service Mesh install plans, and removes the old standalone RHCL dependency namespaces.
 
 ## GitOps And Argo CD Operating Model
 
@@ -84,7 +99,11 @@ The GitOps source of truth is split intentionally:
 | `steps/step-*/deploy.sh` | Runtime orchestration around the GitOps source. |
 | `steps/step-*/validate.sh` | Read-only checks for cluster state. |
 
-Most Applications enable automated sync and pruning. Step 01 and Step 05 intentionally set `selfHeal: false` for cases where operators or manual scaling can legitimately change live state during the demo.
+Most Applications enable automated sync and pruning. Step 01, Step 02, and Step 05 intentionally set `selfHeal: false` for cases where platform operators or manual scaling can legitimately change live state during the demo. Step 02 still syncs desired RHOAI specs when the Application is applied, but it does not continuously reapply while the RHOAI operator reconciles generated resources.
+
+Step 02 manages `DataScienceCluster/default-dsc`, whose status can update frequently while RHOAI components reconcile. Bootstrap configures Argo CD to ignore `/status`-only updates for this and other operator-owned resources; the Step 02 Application also ignores RHOAI CR status fields directly. This keeps the application managing desired specs while avoiding high-frequency reconciliation loops.
+
+All step Applications include `ApplyOutOfSyncOnly=true`. During normal operation this is equivalent to standard auto-sync for changed resources, but during control-plane recovery it avoids full-application rewrites that amplify OLM, RHOAI, KServe, and Gateway controller lease churn.
 
 When Argo CD reports drift, first check whether the Application contains an `ignoreDifferences` entry for an operator-managed field. If drift is not covered and the field matters, update the manifest and README together.
 
@@ -98,7 +117,7 @@ Most validation scripts source `scripts/validate-lib.sh`:
 | 1 | One or more critical checks failed. |
 | 2 | Warnings only; the step may still be usable while asynchronous resources settle. |
 
-Validation checks are deterministic cluster checks, not narrative demos. They normally verify Argo CD status, CRDs, CSVs, pods, Routes, key CR conditions, jobs, services, secrets, and selected API calls.
+Validation checks are deterministic cluster checks, not narrative demos. They normally verify Argo CD status, CRDs, CSVs, pods, Routes, key CR conditions, jobs, services, secrets, API-key metadata, and selected API calls.
 
 The full ACME flow has a separate validator:
 
@@ -107,7 +126,93 @@ The full ACME flow has a separate validator:
 ./scripts/validate-demo-flow.sh
 ```
 
-`validate-genai-playground-readiness.sh` checks the product-native Playground prerequisites: GenAI Studio flags, internal custom endpoint posture, model AI asset labels, MCP ConfigMap JSON, RAG project storage, vector-store availability, and MLflow workspace readiness. `validate-demo-flow.sh` checks tool runtime, agentic behavior, and guardrail behavior across the custom RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
+`validate-genai-playground-readiness.sh` checks the product-native Playground prerequisites: GenAI Studio flags, internal custom endpoint posture, model AI asset labels, MCP ConfigMap JSON, RAG project storage, vector-store availability, and MLflow workspace readiness. Step 08 `validate.sh` now checks the product-native EvalHub path: target cluster guard, RHOAI 3.4 readiness gates, EvalHub CR/route/health, tenant RBAC, provider discovery, latest smoke job, and MLflow experiment URL. `validate-demo-flow.sh` checks tool runtime, agentic behavior, and guardrail behavior across the custom RAG/MCP flow. Slack tests require a valid Slack token and expected channel configuration.
+
+MaaS API key handling is part of deployment, not a manual post-step. Step 05 creates user-owned `60d` keys for `ai-admin` and `ai-developer`; Step 07 creates the system key used by Llama Stack and the Streamlit chatbot; Step 09 syncs the same key into NeMo Guardrails. The default lifetime can be overridden with `RHOAI_DEMO_MAAS_KEY_TTL`, and the validation scripts fail if the stored key metadata or model-discovery calls drift.
+
+RHOAI creates a product-managed `models-as-a-service` namespace for MaaS governance (`Tenant`, `MaaSSubscription`, and `MaaSAuthPolicy`). Do not delete it during cleanup. The demo serving namespace is `maas`, displayed as `MaaS Runtime`, and that is where KServe models, Grafana, GuideLLM jobs, and model-serving routes live.
+
+MaaS usage monitoring is enabled across the foundation steps. Step 01 installs Cluster Observability Operator, Tempo, and Red Hat build of OpenTelemetry, enables Kuadrant observability, and patches the generated `Limitador` CR to `telemetry: exhaustive`; Step 02 configures the RHOAI monitoring service for metrics and traces, enables the RHOAI observability dashboard, and enables MaaS Tenant telemetry with user capture for the demo; Step 05 generates model-route MaaS traffic with `X-Gateway-Model-Name` and verifies Prometheus can see dashboard-facing `authorized_calls` and `authorized_hits`.
+
+The product MaaS Usage dashboard is a recent-window view, so it can legitimately return to zero after idle periods. Step 05 includes the GitOps-managed `maas-usage-heartbeat` CronJob to keep a low-rate stream of MaaS-gateway traffic alive for the demo. GuideLLM jobs in Step 06 call predictor services directly for performance benchmarking and do not populate MaaS Usage data.
+
+`DSCInitialization.spec.monitoring.alerting` is intentionally not set for this demo baseline. On the target RHOAI 3.4 cluster, enabling the optional alerting branch caused the RHOAI operator to repeatedly log `failed to add prometheus rules for component mlflowoperator: prometheus rules file for component mlflowoperator not found`. Keep metrics/traces enabled for the dashboard and revisit alerting after a product fix or documented MLflow alerting posture is available.
+
+To retest built-in alerting after the MLflow prometheus-rules issue is resolved:
+
+```bash
+RHOAI_OBSERVABILITY_ENABLE_ALERTING=true ./steps/step-02-rhoai/deploy.sh
+oc get pods -n redhat-ods-monitoring | grep alertmanager
+oc get svc -n redhat-ods-monitoring | grep alertmanager
+oc port-forward svc/data-science-monitoringstack-alertmanager 9093:9093 -n redhat-ods-monitoring
+```
+
+The product-native **Observe & monitor** dashboard depends on `Monitoring/default-monitoring` being `Ready` and on the generated `redhat-ods-monitoring` stack. If the dashboard shows `Error loading components` or `Service Unavailable`, verify:
+
+```bash
+oc get csv -n openshift-cluster-observability-operator
+oc get csv -n openshift-tempo-operator
+oc get csv -n openshift-opentelemetry-operator
+oc get networkpolicy tempo-operator-egress-to-kubernetes-service -n openshift-tempo-operator
+oc get endpoints tempo-operator-controller-service -n openshift-tempo-operator
+oc get monitoring default-monitoring
+oc get pods,pvc,monitoringstack,perses,persesdashboard,tempomonolithic,opentelemetrycollector -n redhat-ods-monitoring
+oc get svc -n redhat-ods-monitoring | grep -E 'data-science-collector|tempo.*query|query.*tempo'
+oc rollout restart deployment/rhods-dashboard -n redhat-ods-applications
+```
+
+Workload metrics scraping is opt-in. Only workloads that expose `/metrics` should carry `monitoring.opendatahub.io/scrape=true` on generated pods. In this demo that currently means vLLM predictor pods in `maas` and OVMS predictor pods in `enterprise-mlops` and `edge-ai-demo`:
+
+```bash
+oc get pods -n maas -l serving.kserve.io/inferenceservice=granite-8b-agent \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.monitoring\.opendatahub\.io/scrape}{"\n"}{end}'
+oc get pods -n enterprise-mlops -l serving.kserve.io/inferenceservice=face-recognition \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.monitoring\.opendatahub\.io/scrape}{"\n"}{end}'
+```
+
+External observability exporters are optional. Do not configure placeholder endpoints; use a real OTLP or Prometheus remote-write receiver. Step 02 can patch the documented DSCI exporter lists from environment variables:
+
+```bash
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_ENDPOINT=https://otel.example.com:4318 \
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_NAME=enterprise-metrics \
+RHOAI_OBSERVABILITY_METRICS_EXPORTER_TYPE=otlp \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_ENDPOINT=https://tempo.example.com:4318 \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_NAME=enterprise-traces \
+RHOAI_OBSERVABILITY_TRACES_EXPORTER_TYPE=otlp \
+./steps/step-02-rhoai/deploy.sh
+```
+
+Equivalent manual patch:
+
+```bash
+oc patch dscinitialization default-dsci --type merge -p '{
+  "spec": {
+    "monitoring": {
+      "metrics": {
+        "exporters": [
+          {"name": "enterprise-metrics", "type": "otlp", "endpoint": "https://otel.example.com:4318"}
+        ]
+      },
+      "traces": {
+        "exporters": [
+          {"name": "enterprise-traces", "type": "otlp", "endpoint": "https://tempo.example.com:4318"}
+        ]
+      }
+    }
+  }
+}'
+oc get pods -n redhat-ods-monitoring | grep data-science-collector
+```
+
+The Step 07 chatbot is wired to the in-cluster collector for minimal app traces:
+
+```bash
+oc get deploy rag-chatbot -n enterprise-rag \
+  -o jsonpath='{.spec.template.spec.containers[?(@.name=="chatbot")].env[?(@.name=="OTEL_EXPORTER_OTLP_ENDPOINT")].value}{"\n"}'
+oc port-forward svc/tempo-query-frontend 3200:3200 -n redhat-ods-monitoring
+```
+
+If the Tempo query service name differs, use `oc get svc -n redhat-ods-monitoring | grep -E 'tempo.*query|query.*tempo'` and port-forward that service instead.
 
 The Streamlit chatbot also has a browser-level validator:
 
@@ -138,7 +243,8 @@ Product-aligned next improvements:
 | Guardrails OpenTelemetry | Adds traces and metrics for safety decisions, detector latency, and blocked prompts. |
 | Guardrails Gateway | Provides a governed guarded endpoint demo in addition to the chatbot's direct detector-control path. |
 | Product-native guardrail asset registration | The custom chatbot validates NeMo guardrails today. Add a Dashboard-native guardrail asset scene once the supported registration path is schema-verified on the target RHOAI 3.4 cluster. |
-| MLflow/EvalHub integration | Persists RAG evaluation evidence beyond generated HTML reports and aligns with the RHOAI 3.4 MLflow/EvalHub direction. |
+| EvalHub MCP integration | Exposes product-native EvalHub operations to agentic clients once the supported MCP surface is documented for RHOAI 3.4. |
+| EvalHub observability | Adds OTEL/Prometheus dashboards for EvalHub server latency, job states, provider runtime failures, and MLflow logging outcomes. |
 
 ## Day-2 Operational Notes
 
@@ -149,6 +255,11 @@ Product-aligned next improvements:
 | Watch pods for a step | `oc get pods -n maas -w` or the step-specific namespace. |
 | Verify RHOAI health | `oc get datasciencecluster default-dsc -o yaml` |
 | Verify KServe models | `oc get inferenceservice -A` |
+| Verify MaaS API keys | `oc get secret ai-admin-maas-api-key ai-developer-maas-api-key -n maas` and `oc get secret rag-maas-api-key -n enterprise-rag` |
+| Verify external MaaS models | `oc get externalmodel gpt-5 -n maas -o yaml`, `oc get maasmodelref gpt-5 -n maas`, and confirm `maas/openai-provider-api-key` has an `api-key` data key. |
+| Verify external provider auth | If a GPT-5 chat request reaches OpenAI but returns `You didn't provide an API key`, inspect `oc get authpolicy maas-auth-gpt-5 -n maas -o yaml`; the current RHOAI 3.4 TP controller might clear upstream `Authorization` instead of injecting the provider Secret. Keep the provider key in `maas/openai-provider-api-key`; do not patch it into GitOps manifests. |
+| Verify MaaS usage metrics | Query `up{job="kuadrant-system/kuadrant-limitador-monitor"}`, confirm `oc get cronjob maas-usage-heartbeat -n maas`, then generate or wait for model-route traffic with `X-Gateway-Model-Name: granite-8b-agent` and query `authorized_calls{user!="",subscription!=""}` plus `authorized_hits{user!="",model!=""}`. The RHOAI Usage dashboard uses these Limitador metrics. |
+| Verify RHOAI observability dashboard | Check `oc get monitoring default-monitoring` and confirm **Observe & monitor** → **Dashboard** shows Cluster, Models, and Usage tabs. |
 | Verify model registry | `oc get modelregistry -n rhoai-model-registries` |
 | Verify GPU nodes | `oc get nodes -l nvidia.com/gpu.present=true` and `oc describe node <gpu-node>` |
 | Scale GPU MachineSets | Use `oc scale machineset ... -n openshift-machine-api`; Step 01 self-heal is disabled to allow this. |

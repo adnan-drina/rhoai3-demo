@@ -16,7 +16,7 @@ This step demonstrates RHOAI's **model development and customization**, **optimi
 ```text
 RHOAI 3.4 Platform
 ├── RHOAI Operator         → stable-3.x channel, manages all components
-├── DSCInitialization      → Service Mesh 3 auto-installed
+├── DSCInitialization      → Service Mesh 3 auto-installed, observability stack configured
 ├── MaaS Gateway           → Gateway API endpoint with RHCL/Authorino bootstrap
 ├── MaaS PostgreSQL        → Demo database and `maas-db-config` connection Secret
 ├── DataScienceCluster     → Full component stack (see table)
@@ -34,6 +34,7 @@ RHOAI 3.4 Platform
 | KServe | Managed | Model serving (RawDeployment mode) |
 | MaaS Gateway | Managed | `maas-default-gateway` for the RHOAI 3.4 MaaS component, annotated for RHCL/Authorino TLS |
 | MaaS PostgreSQL | Managed | Demo PostgreSQL 16 database and required `maas-db-config` Secret |
+| Observability stack | Managed | Cluster, Models, and Usage dashboards backed by MonitoringStack, Perses, Tempo, and OpenTelemetry |
 | Model Registry | Managed | Model versioning and catalog |
 | MLflow Operator | Managed | Experiment tracking foundation for `enterprise-mlops` |
 | Training Operator | Managed | Kubernetes-native distributed training |
@@ -72,15 +73,29 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 
 > **Internal custom endpoints enabled, external providers disabled:** `aiAssetCustomEndpoints: true` enables the documented RHOAI 3.4 custom endpoint flow for same-cluster/private endpoints. `externalProviders: false` keeps third-party provider egress disabled by default, preserving the Private AI posture. If a customer wants external providers, treat that as a separate security decision and verify the live `OdhDashboardConfig` schema with `oc explain`.
 
+> **Dashboard auth groups are reconciled at deploy time:** The GitOps Auth resource maps `rhoai-admins` to dashboard administration and `rhoai-users` to allowed demo access. `deploy.sh` patches the live `Auth/auth` resource after the RHOAI operator is ready because this resource can drift during first-install reconciliation; `validate.sh` fails if `ai-admin` and `ai-developer` would lose the expected dashboard/MaaS workflow.
+
+> **GitOps drift posture:** The Step 02 Argo CD Application keeps desired RHOAI specs in Git but ignores operator-owned status fields on `DataScienceCluster`, `DSCInitialization`, and `Auth`. This avoids repeated Argo CD comparison errors and reconciliation pressure when RHOAI conversion webhooks or status updates are transient during an operator upgrade.
+
 > **DSCI CA bundle (runtime patch):** `deploy.sh` patches `DSCInitialization` with the cluster CA certificate (`kube-root-ca.crt`) so LlamaStack distributions can reach internal services over TLS. This is a runtime patch because the CA cert is cluster-specific and should not be committed to git. Ref: [Working with certificates](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/working-with-certificates_certs).
 
-> **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
+> **Service Mesh 3 install plan approval (Manual, enforced by operator):** The RHOAI operator auto-creates the `servicemeshoperator3` Subscription with `installPlanApproval: Manual` and reconciles it back to `Manual` if patched to `Automatic`. This is an operator-enforced constraint — the approval policy cannot be overridden. As a consequence, `deploy.sh` must explicitly approve pending Service Mesh install plans after the DSCI triggers the subscription creation. The script also aligns `spec.startingCSV` to the subscription's live `status.currentCSV` so an upgraded cluster does not keep an old Service Mesh 3 starting point after the RHOAI 3.4 catalog advances. Without this step, the Gateway controller never starts and the RHOAI Dashboard becomes unreachable. ArgoCD cannot detect this because the Service Mesh subscription is a side effect of DSCI reconciliation, not a GitOps-managed resource.
 
 > **MaaS gateway prerequisite:** The current RHOAI 3.4 Models-as-a-Service guide labels MaaS as Technology Preview and documents the subscription/API key governance model. The service still requires a Gateway named `maas-default-gateway` in `openshift-ingress` before `kserve.modelsAsService.managementState: Managed` can reconcile. This step manages that Gateway so the DSC does not remain `Not Ready` with `GatewayNotReady`.
 
-> **MaaS product host and TLS:** The MaaS and GenAI BFFs discover MaaS through `https://maas.<apps-domain>/maas-api`. `deploy.sh` patches the OpenShift Route to that host and switches it to re-encrypt TLS with the OpenShift service CA as a cluster-specific runtime value; the Argo CD Application ignores only the route host and backend CA so self-heal does not remove those live-cluster values. Without this, the dashboard can show `Models as a Service could not be loaded` even when the MaaS CRDs and model gateway are healthy.
+> **MaaS product host and TLS:** The MaaS and GenAI BFFs discover MaaS through `https://maas.<apps-domain>/maas-api`. `deploy.sh` creates or patches the OpenShift Route to that host, targets the live Gateway service created for the installed GatewayClass, and switches it to re-encrypt TLS with the OpenShift service CA as cluster-specific runtime values. The Argo CD Application ignores only the route host, Gateway service target, and backend CA so self-heal does not remove those live-cluster values. Without this, the dashboard can show `Models as a Service could not be loaded` even when the MaaS CRDs and model gateway are healthy.
 
 > **MaaS feature flags and RHCL prerequisite:** Step 01 installs RHCL 1.2+, creates `Kuadrant` in `kuadrant-system`, and configures Authorino TLS. This step then enables `modelAsService`, `vLLMDeploymentOnMaaS`, and `maasAuthPolicies` in `OdhDashboardConfig`. vLLM on MaaS remains Technology Preview in RHOAI 3.4.
+
+> **MaaS observability:** The RHOAI 3.4 MaaS Usage dashboard requires User Workload Monitoring, Kuadrant observability, the RHOAI observability dashboard flag, and MaaS Tenant telemetry. Step 01 enables Kuadrant observability and detailed Limitador token-rate metrics. This step enables `observabilityDashboard: true` and patches `Tenant/default-tenant` with telemetry enabled, organization, user, and model-usage dimensions on, and group dimensions off. User labels are enabled for the demo because the product Usage dashboard is user-oriented; keep the GDPR and metric-cardinality impact visible before using this setting outside a controlled demo.
+
+> **Observe & monitor dashboard:** The RHOAI 3.4 **Observe & monitor** dashboard requires the observability prerequisite operators from Step 01 plus a non-empty `DSCInitialization.spec.monitoring` configuration. This step configures metrics storage and PV-backed tracing so the operator creates the `Monitoring/default-monitoring` service, `MonitoringStack`, Perses dashboards, Tempo, and OpenTelemetry collector. The optional alerting branch is intentionally left unset in this demo because the target RHOAI 3.4 cluster repeatedly logged a missing MLflow prometheus-rules file during alerting reconciliation. If monitoring is missing, the dashboard page shows `Error loading components` / `Service Unavailable` instead of the documented Cluster, Models, and Usage tabs.
+
+> **Alerting posture:** The RHOAI 3.4 docs document `DSCInitialization.spec.monitoring.alerting: {}` and Alertmanager access through `redhat-ods-monitoring`, but this demo keeps it deferred by default until the observed MLflow prometheus-rules packaging issue is resolved. To re-test after a product fix, run Step 02 with `RHOAI_OBSERVABILITY_ENABLE_ALERTING=true`; `validate.sh` then requires Alertmanager pods and service to exist.
+
+> **External exporters:** Metrics and trace exporters are optional and must point to real external receivers. `deploy.sh` reads `RHOAI_OBSERVABILITY_METRICS_EXPORTER_ENDPOINT` and `RHOAI_OBSERVABILITY_TRACES_EXPORTER_ENDPOINT` and patches the documented DSCI exporter lists only when those values are set. The default demo remains in-cluster only.
+
+> **Application traces:** Step 07 wires the Streamlit RAG chatbot to the product collector endpoint `http://data-science-collector.redhat-ods-monitoring.svc.cluster.local:4318` with a small OpenTelemetry HTTP exporter. This is application-level instrumentation, so traces appear only after the chatbot is rebuilt, running, and handling page requests.
 
 > **MaaS demo database:** RHOAI 3.4 MaaS requires a PostgreSQL 14+ database and a `maas-db-config` Secret with `DB_CONNECTION_URL` in `redhat-ods-applications`. This demo deploys a small PostgreSQL 16 instance with committed demo credentials. Production deployments should replace this with an enterprise PostgreSQL service and externalized secrets.
 
@@ -105,6 +120,9 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 | GenAI Studio visible | Playground, AI asset endpoints, and Model Catalog in left nav | All menu items present |
 | Internal custom endpoints | `aiAssetCustomEndpoints=true`, `externalProviders=false` | Internal endpoints enabled, third-party providers disabled |
 | MaaS enabled | `modelsAsService`, MaaS dashboard flags, database Secret, Gateway annotations, and product route | Managed/true, Secret present, Gateway `Programmed=True`, `https://maas.apps.<cluster>/maas-api/health` returns 200 |
+| MaaS database storage | PostgreSQL PVC for MaaS demo state | `gp3-csi` PVC bound |
+| MaaS observability | User Workload Monitoring, dashboard flag, Tenant telemetry, and Istio Telemetry | Enabled/created |
+| Observe & monitor dashboard | RHOAI monitoring service, MonitoringStack, Perses Cluster/Models/Usage dashboards, Tempo, OpenTelemetry, and Tempo query service | Ready and dashboards created |
 | Hardware Profiles | Four profiles listed in Settings | CPU Small, L4 1GPU, L4 1GPU Default, L4 4GPU |
 | DataScienceCluster Ready | `default-dsc` phase | Ready with all components managed |
 | Service Mesh 3 | Auto-installed by DSCInitialization | KServe traffic management operational |
@@ -137,6 +155,15 @@ Manifests: [`gitops/step-02-rhoai/base/`](../../gitops/step-02-rhoai/base/)
 **Expect:** The Dashboard allows same-cluster/custom endpoint registration while third-party provider registration remains disabled.
 
 > This keeps the demo aligned with Private AI. Teams can add internal model endpoints for experimentation without silently routing prompts to an external SaaS provider.
+
+### Observability Dashboard
+
+> Platform operators need the same self-service view that model users get. We confirm that the product-native observability stack is available before relying on MaaS usage views or model health panels.
+
+1. Navigate to **Observe & monitor** → **Dashboard**
+2. Confirm the dashboard loads without component errors
+
+**Expect:** The page displays the documented Cluster, Models, and Usage tabs backed by the RHOAI-managed Perses dashboards.
 
 ### Hardware Profiles
 
@@ -213,7 +240,7 @@ oc get gateway data-science-gateway -n openshift-ingress
 curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<cluster>
 ```
 
-> **Note (RHOAI 3.4):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step.
+> **Note (RHOAI 3.4):** The DSCI auto-installs Service Mesh 3 with `installPlanApproval: Manual`. On shared demo clusters where the operator catalog updates, pending upgrades require manual approval. If the cluster sits idle for hours, a new version may appear and require this approval step. If `spec.startingCSV` still references an older Service Mesh 3 CSV after an upgrade, rerun `steps/step-02-rhoai/deploy.sh`; it aligns the starting CSV to the live current CSV before approving install plans.
 
 </details>
 
@@ -222,6 +249,7 @@ curl -sk -o /dev/null -w '%{http_code}' https://data-science-gateway.apps.<clust
 - [RHOAI 3.4 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/release_notes/index)
 - [RHOAI 3.4 Installation Guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/installing_and_uninstalling_openshift_ai_self-managed/index)
 - [RHOAI 3.4 — Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/govern_llm_access_with_models-as-a-service)
+- [RHOAI 3.4 — Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai)
 - [RHOAI 3.4 — Experimenting with models in the Gen AI Playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/experimenting_with_models_in_the_gen_ai_playground/index)
 - [Installing Distributed Workloads Components](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-the-distributed-workloads-components_install)
 - [Configuring Hardware Profiles](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index#working-with-hardware-profiles)

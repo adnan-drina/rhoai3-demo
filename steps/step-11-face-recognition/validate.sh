@@ -88,6 +88,19 @@ if [[ "$EXISTS" == "face-recognition" ]]; then
         echo -e "${YELLOW}[WARN]${NC} InferenceService face-recognition: exists but not Ready ($READY) — model upload may be pending"
         VALIDATE_WARN=$((VALIDATE_WARN + 1))
     fi
+    check_inferenceservice_scrape_label "$NAMESPACE" "face-recognition"
+
+    REG_ID=$(oc get inferenceservice face-recognition -n "$NAMESPACE" \
+        -o jsonpath='{.metadata.labels.modelregistry\.opendatahub\.io/registered-model-id}' 2>/dev/null || echo "")
+    VER_ID=$(oc get inferenceservice face-recognition -n "$NAMESPACE" \
+        -o jsonpath='{.metadata.labels.modelregistry\.opendatahub\.io/model-version-id}' 2>/dev/null || echo "")
+    if [[ -n "$REG_ID" && -n "$VER_ID" ]]; then
+        echo -e "${GREEN}[PASS]${NC} InferenceService linked to Model Registry (model-id=$REG_ID, version-id=$VER_ID)"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} InferenceService is Ready but not linked to a Model Registry version yet"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
 else
     echo -e "${RED}[FAIL]${NC} InferenceService face-recognition: not found"
     VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
@@ -100,6 +113,19 @@ check_warn "face-recognition-wb Notebook exists" \
     "face-recognition-wb"
 
 check_pods_ready "$NAMESPACE" "app=face-recognition-wb" 1
+
+WB_POD=$(oc get pods -n "$NAMESPACE" -l app=face-recognition-wb --no-headers 2>/dev/null | awk '$3=="Running" {print $1; exit}' || true)
+if [[ -n "$WB_POD" ]]; then
+    NOTEBOOK_SYNC=$(oc exec -n "$NAMESPACE" "$WB_POD" -c face-recognition-wb -- \
+        sh -c 'test -f /opt/app-root/src/04-query-model-server.ipynb && test -f /opt/app-root/src/remote_infer.py && test -f /opt/app-root/src/requirements.txt && echo ok' 2>/dev/null || echo "")
+    if [[ "$NOTEBOOK_SYNC" == "ok" ]]; then
+        echo -e "${GREEN}[PASS]${NC} Workbench notebook files are present"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${YELLOW}[WARN]${NC} Workbench notebook files are missing or stale — rerun upload-to-workbench.sh"
+        VALIDATE_WARN=$((VALIDATE_WARN + 1))
+    fi
+fi
 
 # --- Model Server Health ---
 log_step "Model Server Health"

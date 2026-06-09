@@ -1,15 +1,13 @@
-# Part of Red Hat Connectivity Link (RHCL) - provides rate limiting for inference endpoints
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: limitador-operator
-  namespace: openshift-limitador-operator
+  name: opentelemetry-product
+  namespace: openshift-opentelemetry-operator
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   channel: stable
   installPlanApproval: Automatic
-  name: limitador-operator
+  name: opentelemetry-product
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-

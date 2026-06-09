@@ -60,7 +60,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 
 > **Product-native Playground RAG is shown as experimentation, not the durable knowledge base.** The RHOAI Dashboard Playground can upload files into a playground-scoped vector database and tune chunk length, overlap, and delimiter settings. The durable ACME implementation remains this step's GitOps/KFP/Llama Stack ingestion pipeline because it is repeatable, auditable, and backed by pgvector.
 
-> **Non-human MaaS consumption.** The RHOAI MaaS guide documents that users generate a MaaS API key from the Models as a service endpoint dialog and use that key as the Bearer token for `/v1/models` and `/v1/chat/completions`. For the chatbot, `deploy.sh` performs the same key-management flow with the current OpenShift identity, stores the generated `sk-oai-*` MaaS key in `enterprise-rag/rag-maas-api-key`, and patches `llamastack-vllm-secret`. Runtime calls use the MaaS API key, not an OpenShift user token.
+> **Non-human MaaS consumption.** The RHOAI MaaS guide documents that users generate a MaaS API key from the Models as a service endpoint dialog and use that key as the Bearer token for `/v1/models` and `/v1/chat/completions`. For the chatbot, `deploy.sh` performs the same key-management flow with the current OpenShift identity, stores the generated `sk-oai-*` MaaS key in `enterprise-rag/rag-maas-api-key`, records the default `60d` expiry, and patches `llamastack-vllm-secret`. Runtime calls use the MaaS API key, not an OpenShift user token. Override the demo key lifetime with `RHOAI_DEMO_MAAS_KEY_TTL`.
 
 > **MCP connectors are registered from Llama Stack config.** Step 10 deploys the MCP servers; this step prepares `lsd-rag` with the RHOAI 3.4 Llama Stack `connectors` API and persistent connector storage so the servers are available through `/v1beta/connectors` after Step 10 refreshes the runtime.
 
@@ -81,6 +81,8 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 > **Chatbot Inspect page dependencies are packaged in the image.** The image installs `streamlit-option-menu` because the Inspect tab imports `streamlit_option_menu` for its resource selector.
 
 > **Chatbot validation has a browser-level regression check.** The lightweight Step 07 validator checks the chatbot pod and health route. For the full UI path, run `./scripts/validate-chatbot-ui.sh`; it exercises page load, every configured example prompt, MCP tool use, prompt-injection guardrails, and the Inspect page.
+
+> **Chatbot trace wiring:** The chatbot includes a minimal OpenTelemetry HTTP exporter and sets `OTEL_EXPORTER_OTLP_ENDPOINT=http://data-science-collector.redhat-ods-monitoring.svc.cluster.local:4318`. This follows the RHOAI 3.4 observability guidance for instrumented applications sending traces to the product collector. The app emits a page-run span; richer request/tool spans are a future enhancement.
 
 > **Agent-based system prompt uses grounding, retry, tool hints, and Sources suppression.** The prompt combines: (1) grounding instruction, (2) retry on failure, (3) execute_sql hint for database, (4) OpenShift hint for pod queries, (5) concise answers, and (6) `"don't print Sources"` to suppress citation skeletons. See `docs/prompt-engineering-session.md` for the full prompt and test results.
 
@@ -148,6 +150,7 @@ Manifests: [`gitops/step-07-rag/base/`](../../gitops/step-07-rag/base/)
 | Vector stores | acme_corporate and whoami populated | 8 files + 1 file |
 | Ingestion freshness | Latest vector-store file timestamp | Within `DEMO_FRESHNESS_HOURS` (default 24h) |
 | Chatbot route | rag-chatbot HTTPS route | URL accessible |
+| Chatbot traces | OTLP endpoint env points at RHOAI collector | `data-science-collector...:4318` |
 
 ```bash
 oc get deploy llamastack-postgres -n enterprise-rag -o jsonpath='{.status.readyReplicas}'
@@ -196,6 +199,8 @@ oc exec deploy/lsd-rag -n enterprise-rag -- \
 | Expertise discovery | Direct | `What are Adnan Drina key areas of expertise?` |
 | Event discovery | Direct | `What events has Adnan Drina spoken at?` |
 | Corporate profile | Direct | `What is ACME Corp?` |
+| Product portfolio | Direct | `What products and services does ACME Corp offer?` |
+| Leadership contact | Direct | `Who is the Managing Director of ACME Corp, and how can I contact them?` |
 | Equipment troubleshooting | Direct | `Search for known issues related to the L-900 EUV scanner` |
 | OpenShift operations | Agent-based + `openshift-mcp` | `List all pods in the acme-corp namespace` |
 | Asset database lookup | Agent-based + `database-mcp` | `Fetch the equipment name for pod acme-equipment-0007` |

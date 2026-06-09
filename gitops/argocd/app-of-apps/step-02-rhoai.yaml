@@ -22,12 +22,13 @@ spec:
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true
+      selfHeal: false
     syncOptions:
       - CreateNamespace=true
       - ServerSideDiff=true
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
     retry:
       limit: 10
       backoff:
@@ -35,23 +36,33 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    # DSCInitialization - operator manages spec
+    # DSCInitialization - operator manages spec/status defaults during upgrades
     - group: dscinitialization.opendatahub.io
       kind: DSCInitialization
       jqPathExpressions:
         - .spec
-    # Auth - operator may modify spec
+        - .status
+    # DataScienceCluster - operator owns status and may add runtime annotations
+    - group: datasciencecluster.opendatahub.io
+      kind: DataScienceCluster
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    # Auth - operator may modify spec/status
     - group: services.platform.opendatahub.io
       kind: Auth
       jqPathExpressions:
         - .spec
-    # MaaS Route host and destination CA are cluster-specific runtime values.
+        - .status
+    # MaaS Route host, Gateway service name, and destination CA are cluster-specific runtime values.
     - group: route.openshift.io
       kind: Route
       name: maas-gateway
       namespace: openshift-ingress
       jsonPointers:
         - /spec/host
+        - /spec/to/name
+        - /spec/port/targetPort
         - /spec/tls/destinationCACertificate
         - /metadata/annotations/openshift.io~1host.generated
     # Subscriptions - OLM manages these
@@ -60,6 +71,7 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /spec/startingCSV
+        - /status
     # PVC spec is immutable after creation; cluster may add storageClassName, volumeName
     - group: ""
       kind: PersistentVolumeClaim

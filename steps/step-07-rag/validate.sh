@@ -75,6 +75,15 @@ else
     echo -e "${YELLOW}[WARN]${NC} Streamlit chatbot health route unavailable"
     VALIDATE_WARN=$((VALIDATE_WARN + 1))
 fi
+CHATBOT_OTEL_ENDPOINT=$(oc get deployment rag-chatbot -n "$NAMESPACE" \
+    -o jsonpath='{.spec.template.spec.containers[?(@.name=="chatbot")].env[?(@.name=="OTEL_EXPORTER_OTLP_ENDPOINT")].value}' 2>/dev/null || true)
+if [[ "$CHATBOT_OTEL_ENDPOINT" == "http://data-science-collector.redhat-ods-monitoring.svc.cluster.local:4318" ]]; then
+    echo -e "${GREEN}[PASS]${NC} Streamlit chatbot has optional OTLP endpoint wiring"
+    VALIDATE_PASS=$((VALIDATE_PASS + 1))
+else
+    echo -e "${YELLOW}[WARN]${NC} Streamlit chatbot OTLP endpoint wiring missing"
+    VALIDATE_WARN=$((VALIDATE_WARN + 1))
+fi
 
 # --- pgvector Extension ---
 log_step "pgvector Extension"
@@ -202,6 +211,33 @@ except:
 
     # --- MaaS-backed inference ---
     log_step "MaaS-backed Inference"
+    RAG_MAAS_KEY=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_API_KEY}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    RAG_MAAS_TTL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_EXPIRES_IN}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    RAG_MAAS_EXTERNAL_URL=$(oc get secret rag-maas-api-key -n "$NAMESPACE" -o jsonpath='{.data.MAAS_EXTERNAL_URL}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    EXPECTED_MAAS_TTL="${RHOAI_DEMO_MAAS_KEY_TTL:-60d}"
+    if [[ -n "$RAG_MAAS_KEY" && "$RAG_MAAS_TTL" == "$EXPECTED_MAAS_TTL" ]]; then
+        echo -e "${GREEN}[PASS]${NC} RAG system MaaS API key exists and expires in $EXPECTED_MAAS_TTL"
+        VALIDATE_PASS=$((VALIDATE_PASS + 1))
+    else
+        echo -e "${RED}[FAIL]${NC} RAG system MaaS API key metadata drift (expiresIn=${RAG_MAAS_TTL:-missing})"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+    if [[ -n "$RAG_MAAS_KEY" && -n "$RAG_MAAS_EXTERNAL_URL" ]]; then
+        RAG_MAAS_HTTP=$(curl -sk --max-time 20 -o /tmp/step-07-rag-maas-models.json -w "%{http_code}" \
+            -H "Authorization: Bearer $RAG_MAAS_KEY" \
+            "${RAG_MAAS_EXTERNAL_URL}/models" 2>/dev/null || echo "000")
+        if [[ "$RAG_MAAS_HTTP" == "200" ]] && grep -q "granite-8b-agent" /tmp/step-07-rag-maas-models.json; then
+            echo -e "${GREEN}[PASS]${NC} RAG system MaaS API key can list granite-8b-agent"
+            VALIDATE_PASS=$((VALIDATE_PASS + 1))
+        else
+            echo -e "${RED}[FAIL]${NC} RAG system MaaS API key failed model discovery (HTTP $RAG_MAAS_HTTP)"
+            VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+        fi
+    else
+        echo -e "${RED}[FAIL]${NC} RAG system MaaS API key or external URL missing"
+        VALIDATE_FAIL=$((VALIDATE_FAIL + 1))
+    fi
+
     VLLM_URL=$(oc exec "$LSD_POD" -n "$NAMESPACE" -- sh -c 'printf "%s" "$VLLM_URL"' 2>/dev/null || true)
     if [[ "$VLLM_URL" == *"maas-default-gateway"* ]]; then
         echo -e "${GREEN}[PASS]${NC} LlamaStack VLLM_URL uses MaaS gateway"

@@ -38,14 +38,18 @@ The judge prompt in `scoring-templates/judge_prompt.txt` must end with a line th
 anchors the A-E extraction regex (`Answer: (A|B|C|D|E)`). Any prompt modification
 must preserve this pattern or the scoring pipeline will fail to extract grades.
 
-## Pipeline vs Pod Evaluation
+## EvalHub vs KFP/Pod Evaluation
 
-Two paths exist for RAG eval:
-- `run-eval.sh` — KFP pipeline via DSPA (platform-native, auditable)
-- `run-eval-report.sh` — direct pod execution (faster debugging, localhost access)
+EvalHub is the primary path for ACME/whoami pre/post RAG evaluation:
+- `run-evalhub-rag-scenarios.sh` — submits ACME/whoami pre/post RAG benchmarks as independent EvalHub jobs by default
+- `rhoai-rag-scenarios` — custom EvalHub SDK provider that reads `eval-test-cases` and `eval-configs`
+- `run-rag-eval.sh` — optional KFP compatibility path via DSPA
+- `run-eval-report.sh` — direct pod execution for faster debugging and localhost access
 
-Both paths should produce identical results. When modifying evaluation logic, test
-with `run-eval-report.sh` first (faster feedback), then confirm with `run-eval.sh`.
+All paths should use the same YAML test assets and judge prompt. When modifying
+evaluation logic, test the adapter locally where possible, then run
+`run-evalhub-rag-scenarios.sh` in the cluster. Use `run-eval-report.sh` for
+fast LlamaStack/RAG debugging when EvalHub itself is not the issue.
 
 ## References
 

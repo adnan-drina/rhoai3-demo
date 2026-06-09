@@ -12,7 +12,17 @@ spec:
   applicationsNamespace: redhat-ods-applications
   monitoring:
     managementState: Managed
+    metrics:
+      storage:
+        retention: 24h
+        size: 5Gi
     namespace: redhat-ods-monitoring
+    traces:
+      sampleRatio: "1.0"
+      storage:
+        backend: pv
+        retention: 24h
+        size: 5Gi
   serviceMesh:
     managementState: Managed
     controlPlane:
