@@ -505,7 +505,7 @@ rg -n "OPENAI|AZURE|BEDROCK|WATSONX|SLACK|HF_TOKEN|HuggingFace|quay.io|registry.
 
 ## References
 
-- [Red Hat OpenShift AI Self-Managed 3.3 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)
+- [Red Hat OpenShift AI Self-Managed 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/)
 - [OpenShift Container Platform 4.20 documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/)
 - [OpenShift GitOps documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/latest/)
 - [Using AI models on Red Hat build of MicroShift 4.20](https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.20/html-single/using_ai_models/index)

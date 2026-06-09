@@ -57,6 +57,25 @@ Check:
 - no wildcard RBAC outside documented Argo CD demo posture
 - no unsupported ODH managed labels on GitOps-owned secrets
 
+## Source Grounding Handoff
+
+Manifest review does not decide whether a Red Hat API field, operator channel,
+container image, or model artifact is officially supported. It should identify
+where source grounding is required and route that evidence check to
+`project-red-hat-doc-alignment-review`.
+
+Flag a `[SOURCE]` finding when:
+
+- a RHOAI or OpenShift custom resource uses a new or changed API version
+- a manifest introduces or changes top-level CR spec fields
+- an Operator `Subscription` channel, package, catalog source, or install
+  posture changes
+- a manifest introduces or changes a container image reference
+- a model-serving, registry, pipeline, or workbench manifest introduces an
+  external model artifact or runtime dependency
+- the companion README claims Red Hat-supported behavior that is not clearly
+  reflected in the GitOps artifacts
+
 ## Output Categories
 
 Use stable categories:
@@ -66,6 +85,7 @@ Use stable categories:
 - `[REFERENCE]`
 - `[PORT]`
 - `[SECURITY]`
+- `[SOURCE]`
 - `[YAML]`
 - `[ORPHAN]`
 - `[DOCS]`

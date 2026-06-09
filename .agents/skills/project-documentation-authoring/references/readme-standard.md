@@ -1,81 +1,142 @@
 # Step README Standard
 
-Each step README is an educational demo document. It should tell the platform
-story, show proof, and connect the technical implementation to business value.
+Each step README is a concise Why/What document for a technical audience. It
+should educate a new reader, explain the RHOAI value introduced by the step,
+and stay short enough to become a three-slide presentation segment.
 
-## Narrative Alignment
+GitOps manifests, deploy scripts, validation scripts, and the live demo show
+How. Step READMEs explain Why the step matters and What Red Hat technologies
+make it possible.
 
-Use official Red Hat terminology and active-baseline docs. Connect the step to
-the relevant OpenShift AI capability:
+## Reader Promise
 
-| Capability | Demo steps |
-|------------|------------|
-| Intelligent GPU and hardware speed | 01, 02, 03 |
-| Catalog and registry | 04 |
-| Optimized model serving | 05, 06 |
-| Model development and customization | 07, 11 |
-| AI pipelines | 07, 08, 12 |
-| Observability and governance | 06, 08, 09, 12 |
-| Agentic AI and GenAI UIs | 05, 09, 10 |
-| Training and experimentation | 11, 12 |
-| Disconnected environments and edge | 13, 13b |
+Each step README should let an enterprise architect, platform engineer, data
+scientist, risk owner, or business stakeholder quickly answer:
 
-## Architecture Section
+- What concept is introduced in this step?
+- Why should a European-regulated enterprise care?
+- What business or platform value does it provide?
+- Which RHOAI, OpenShift, or Red Hat AI technologies enable it?
+- Which components are new in this step, and which were introduced earlier?
 
-Every root or step README should include a `## Architecture` section using the
-generated SVG capability maps under `docs/assets/architecture/`.
+## Required README Shape
+
+Use this shape for step READMEs:
+
+1. H1 title and one-line tagline.
+2. `## Why This Matters`
+3. `## What Enables It`
+4. `## Architecture`
+5. `## References`
+
+Avoid extra sections unless the step genuinely needs a short known limitation
+or explicit demo boundary. Put operational detail elsewhere.
+
+## Why This Matters
+
+This section is the source for slide 1: concept and value.
+
+Keep it short. Define the concept introduced by the step and explain why a
+European-regulated enterprise should care. Focus on the value to the audience,
+not implementation mechanics.
+
+Include:
+
+- a plain definition of the concept in Red Hat terminology
+- the enterprise concern it addresses, such as governance, control, cost,
+  compliance, traceability, productivity, portability, safety, or scale
+- the specific value this step adds to the demo story
+- at least one Red Hat article, blog, guide, datasheet, or product page found
+  through `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
+
+Do not use generic market claims when a Red Hat source exists.
+
+## What Enables It
+
+This section is the source for slide 2: technology enablers.
+
+Explain the RHOAI, OpenShift, or Red Hat AI components that make the concept
+real in this demo. Prefer a short table over long prose.
+
+Recommended table:
+
+```markdown
+| Technology | Role in this step | Source |
+|------------|-------------------|--------|
+| Red Hat OpenShift AI <component> | <what it enables> | <official Red Hat docs link> |
+```
+
+For every RHOAI technical component introduced in the README:
+
+- link to the active-baseline official Red Hat documentation used as the
+  configuration source
+- describe the component's role in one sentence
+- distinguish product capability from custom demo glue
+- state preview, technology-preview, deferred, or demo-only posture when
+  relevant
+
+## Architecture
+
+This section is the source for slide 3: architecture delta.
+
+Every root or step README should include a generated SVG capability map from
+`docs/assets/architecture/`.
 
 - Root map: `docs/assets/architecture/rhoai3-demo-capability-map.svg`
 - Step maps: `../../docs/assets/architecture/step-NN-capability-map.svg`
 
-Place the diagram after motivation and before the first technical breakdown.
+The step diagram must make the current-step components visually distinct from
+previously introduced components. Follow the architecture diagram skill for
+the exact styling and regeneration workflow.
+
+After the diagram, add a short architecture delta list:
+
+```markdown
+- New in this step: <components introduced now>
+- Already available: <relevant components from earlier steps>
+- Value of the integration: <why the combined architecture matters>
+```
+
 Change `scripts/generate-readme-visuals.py` and regenerate SVGs instead of
 hand-editing generated diagrams.
 
-## Required README Shape
+## References
 
-1. H1 title and one-line tagline.
-2. Overview that includes problem framing, product introduction,
-   `## Architecture`, what gets deployed, design decisions, and concise
-   deploy/validate entry points.
-3. Demo section with scenes.
-4. Key takeaways for business and technical audiences.
-5. Step-specific troubleshooting notes only when they help the reader
-   understand the demo; link reusable recovery procedures to
-   `docs/TROUBLESHOOTING.md`.
-6. References to active-baseline official docs and relevant Red Hat pages.
-7. Next steps as the final section.
+References should be short and source-focused:
+
+- one or more Red Hat narrative sources from `rh-brain` for concept/value
+- active-baseline official Red Hat docs for product configuration
+- links to `docs/BACKLOG.md` only for actionable deferred capabilities
+- links to `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md` only when the
+  reader needs the operational path or recovery procedure
+
+## Presentation Extraction Contract
+
+Write READMEs so a future deck-generation skill can create three slides per
+step without guessing:
+
+| Slide | README source | Purpose |
+|-------|---------------|---------|
+| 1 | `## Why This Matters` | Define the concept and explain why the audience should care |
+| 2 | `## What Enables It` | Explain the RHOAI and Red Hat technologies used |
+| 3 | `## Architecture` | Show new components in context with previous steps |
+
+Keep each section concise enough that the deck generator can lift the main
+message directly instead of summarizing long runbook content.
 
 ## Content Boundaries
 
-- Keep step READMEs focused on the educational platform story and what the
-  step proves.
-- Include short deploy and validate commands when they anchor the demo flow,
-  but put deployment order, environment preparation, shutdown/recovery, and
-  day-2 runbooks in `docs/OPERATIONS.md`.
+- Step READMEs should not be deployment runbooks.
+- Do not include scripted walkthroughs, long command blocks, or repeated
+  validation output.
+- Put deployment order, environment preparation, shutdown/recovery, and day-2
+  operations in `docs/OPERATIONS.md`.
 - Put repeated symptoms, root causes, and repair procedures in
-  `docs/TROUBLESHOOTING.md`; the README may link to them.
-- Put active product targets and source hierarchy in
-  `docs/PLATFORM_BASELINE.md`.
+  `docs/TROUBLESHOOTING.md`.
+- Put active product targets, documentation category index, version-match rule,
+  and source hierarchy in `docs/PLATFORM_BASELINE.md`.
 - Put deferred capabilities, future enhancements, and prioritized product
-  coverage gaps in `docs/BACKLOG.md`; README references may link to the
-  backlog instead of repeating backlog detail.
-
-## Demo Scene Pattern
-
-```markdown
-### Scene Title
-
-> Context: what we are about to see and why it matters.
-
-1. Action step
-2. Action step
-3. Action step
-
-**Expect:** What the audience sees on screen.
-
-> Value: what this proves and why it matters.
-```
+  coverage gaps in `docs/BACKLOG.md`.
 
 ## Formatting
 
@@ -85,20 +146,21 @@ hand-editing generated diagrams.
 - Use backticks for filenames, commands, config keys, and resource names.
 - Use relative links within the repository.
 - Use descriptive link text.
-- Narrative blockquotes should be written as spoken demo narration.
-- Do not expose Tell-Show-Tell methodology labels in the README.
+- Prefer short paragraphs and compact tables.
 
 ## Review Checklist
 
 After editing a README:
 
-- `## Architecture` exists and points to the correct SVG.
-- The architecture section appears after motivation and before component detail.
-- Headings do not skip levels.
-- Fenced code blocks include language identifiers.
-- Relative links resolve.
-- References include active-baseline technical docs and Red Hat product pages
-  where relevant.
-- Long runbook or recovery content has been routed to `docs/OPERATIONS.md` or
-  `docs/TROUBLESHOOTING.md`.
+- The README follows the Why/What/Architecture/References shape.
+- `## Why This Matters` defines the concept and states enterprise value.
+- Concept framing cites Red Hat narrative material from `rh-brain`.
+- `## What Enables It` maps each RHOAI technical component to an official Red
+  Hat documentation link for the active baseline.
+- Product capability, custom demo glue, preview posture, and deferred work are
+  clearly separated.
+- `## Architecture` points to the correct SVG and distinguishes current-step
+  components from previously introduced components.
+- Long runbook, demo-scene, validation, and recovery content has been routed to
+  `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md`.
 - Deferred work links to `docs/BACKLOG.md` when it is actionable project work.

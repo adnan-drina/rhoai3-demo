@@ -2,7 +2,7 @@
 name: project-architecture-diagrams
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -59,12 +59,19 @@ State treatment:
 
 Do not use pale product fills for previously introduced capabilities; they look too white in this dark design and compete with the current-step highlight.
 
+Step maps must remain suitable as slide 3 for each README-derived presentation
+segment: they should highlight capabilities introduced in the current demo step
+while keeping previously introduced components visible for architectural
+context.
+
 ## Refactor Process
 
 1. Read `README.md`, all `steps/*/README.md`, and `scripts/generate-readme-visuals.py`.
 2. Identify the canonical root capability list from the demo story, existing tables, and generator data.
-3. Preserve the step sequence, including optional `13b`.
-4. Map each capability to the step where it is first introduced.
+3. Preserve the current step inventory from the repository; do not hard-code
+   optional step names or step counts in this skill.
+4. Map each capability to the current step where it is first introduced,
+   deriving that mapping from the active README and generator data.
 5. Update only `scripts/generate-readme-visuals.py` for diagram generation unless README links or rules are stale.
 6. Regenerate with `python3 scripts/generate-readme-visuals.py`.
 7. Render representative SVGs to PNG for visual inspection.

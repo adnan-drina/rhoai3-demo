@@ -26,5 +26,11 @@ Official Red Hat documentation for the active baseline in
 `docs/PLATFORM_BASELINE.md` is the product source of truth. Use Red Hat articles
 and `rh-brain` examples only as supporting implementation evidence.
 
+When a README introduces a RHOAI capability, pair the concept narrative with an
+official documentation link for each technical component used. When a manifest
+introduces images or model artifacts, verify Red Hat registry, validated model,
+or explicitly documented demo-exception provenance before treating it as
+aligned.
+
 Do not invent CR fields, API versions, annotations, or operator settings. If a
 field is uncertain, verify it through official docs or schema inspection.

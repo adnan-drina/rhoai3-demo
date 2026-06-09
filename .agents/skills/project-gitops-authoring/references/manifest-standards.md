@@ -23,6 +23,18 @@ Argo CD YAML.
 - If the target cluster exposes a different API version than expected, call out
   the mismatch explicitly.
 
+## Image And Artifact Provenance
+
+- Prefer Red Hat product images, Red Hat registry sources, Red Hat validated
+  model artifacts, or internally built demo images.
+- Pin image tags where reproducibility matters.
+- Do not introduce community images or external model artifacts as if they were
+  Red Hat-supported. If a non-Red Hat dependency is required for the demo,
+  document the exception in the README and keep credentials out of Git.
+- For model-serving, registry, pipeline, and workbench resources, check
+  `project-red-hat-doc-alignment-review` before merge so the README, manifests,
+  and source references agree.
+
 ## Validation
 
 Use the narrowest deterministic validation available:

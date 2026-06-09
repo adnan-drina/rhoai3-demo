@@ -2,7 +2,7 @@
 name: project-gitops-authoring
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -12,10 +12,11 @@ description: >
   Applications, labels, annotations, demo secrets, and per-step deployment
   scripts. Use when editing gitops/**, kustomization.yaml files, Argo CD
   app-of-apps entries, ServingRuntime annotations, OpenShift labels, GitOps
-  deployment flow, demo secrets, or self-signed certificate handling. Also use
-  when creating a new demo step's GitOps folder. Do NOT use for readonly review
-  only (use project-manifest-review) or product-doc conformance review only
-  (use project-red-hat-doc-alignment-review).
+  deployment flow, demo secrets, self-signed certificate handling, container
+  image source, or model artifact source. Also use when creating a new demo
+  step's GitOps folder. Do NOT use for readonly review only (use
+  project-manifest-review) or Red Hat source alignment review only (use
+  project-red-hat-doc-alignment-review).
 ---
 
 # GitOps Authoring
@@ -39,6 +40,10 @@ aligned with the active product baseline.
    read `references/security-and-secrets.md`.
 7. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
    read `references/labels-and-annotations.md`.
+8. For new or changed images, model artifacts, CR fields, or operator settings,
+   use `project-red-hat-doc-alignment-review` to confirm official Red Hat docs,
+   Red Hat registry sources, validated model sources, or explicitly documented
+   demo exceptions.
 
 ## Output Expectations
 

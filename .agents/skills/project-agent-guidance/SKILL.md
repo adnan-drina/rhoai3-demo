@@ -38,7 +38,7 @@ and tool-specific bridges in this project.
 | Automated validation after file edits | **Tool hook config + script** | Runs scripts automatically; no agent decision needed |
 | Gate risky shell commands | **Shared hook implementation** (`.agents/hooks/`) | Reusable safety logic called by tool-specific configs |
 | Gate risky Codex shell commands | **Codex hook bridge** (`.codex/hooks.json`) | Calls shared guard before execution |
-| Pre-merge product-doc audit | **Script** (`scripts/audit-doc-alignment.sh`) | Reports component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` |
+| Pre-merge Red Hat source audit | **Script** (`scripts/audit-doc-alignment.sh`) | Reports component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` |
 
 Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/hooks),
 [Subagents](https://cursor.com/docs/subagents)
@@ -63,7 +63,7 @@ for logical ownership:
 
 | Group | Prefix | Purpose |
 |-------|--------|---------|
-| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, manifest review, Red Hat doc alignment, Red Hat narrative alignment, and shared AI guidance |
+| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed active-baseline RHOAI component installation, configuration, KFP pipelines, and usage |
 | Assets & Miscellaneous | `assets-*` | Visual, deck, and presentation assets |

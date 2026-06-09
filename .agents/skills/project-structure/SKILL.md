@@ -2,7 +2,7 @@
 name: project-structure
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.2.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -27,14 +27,16 @@ Red Hat-aligned narrative standards.
 
 ## Source Hierarchy
 
-When changing project structure or documentation, use this evidence order:
+When changing project structure or documentation, use this evidence model:
 
 1. Official Red Hat product docs for the active `docs/PLATFORM_BASELINE.md`
-   versions.
-2. Red Hat articles, blogs, and product messaging for narrative and examples.
-3. `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` as read-only research input.
-4. Existing repo implementation, scripts, and READMEs.
-5. Live cluster schema checks only as verification, using `oc explain` or
+   versions are the source of truth for supported product configuration.
+2. Red Hat articles, blogs, product pages, datasheets, and
+   `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` ground README concept
+   framing, European enterprise value, and example implementation patterns.
+3. Existing repo implementation, scripts, and READMEs show current demo
+   behavior but are not product authority.
+4. Live cluster schema checks are verification only, using `oc explain` or
    `oc get crd`; never invent CR fields or API versions.
 
 Official docs remain the source of truth for supported configuration. Treat
@@ -50,7 +52,7 @@ for a proven tool-only gap.
 
 | Group | Prefix | Purpose | Current skills |
 |-------|--------|---------|----------------|
-| Project Structure | `project-*` | Repo architecture, GitOps step layout, docs, Red Hat narrative alignment, skill governance, manifest review, Red Hat doc alignment | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` |
+| Project Structure | `project-*` | Repo architecture, GitOps step layout, docs, Red Hat narrative grounding, skill governance, manifest review, Red Hat source alignment | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo lifecycle: bootstrap, deploy, validate, troubleshoot, shutdown/recovery, redeploy | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed component guidance for installing, configuring, and using active RHOAI baseline capabilities | `rhoai-model-evaluation`, `rhoai-chatbot-customization`, `rhoai-kfp-pipeline-authoring`; component skills planned |
 | Assets & Miscellaneous | `assets-*` | Supporting assets and presentation outputs not tied to live cluster operations | `assets-red-hat-quick-deck` |
@@ -68,9 +70,11 @@ Platform skills.
    label.
 4. Keep operational details in `docs/OPERATIONS.md` and recovery details in
    `docs/TROUBLESHOOTING.md`; keep deferred capabilities and future work in
-   `docs/BACKLOG.md`; step READMEs should teach the platform story.
-5. For RHOAI component claims, cite official docs and record supporting
-   `rh-brain` examples only as secondary evidence.
+   `docs/BACKLOG.md`; step READMEs should stay focused on concise Why/What
+   content, technology mapping, and architecture delta.
+5. For README concepts, cite Red Hat narrative sources from `rh-brain`; for
+   RHOAI component configuration, cite official active-baseline docs. Use
+   `project-red-hat-doc-alignment-review` to check both.
 6. Update `AGENTS.md`, `.agents/rules/*.md`, and the relevant project skills
    when skill groups, inventory, or source hierarchy change.
 

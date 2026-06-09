@@ -9,7 +9,7 @@ should stay limited to the documents in this index; architecture SVGs under
 | [BACKLOG.md](BACKLOG.md) | Deferred capabilities, future enhancements, and prioritized product coverage gaps. |
 | [OPERATIONS.md](OPERATIONS.md) | Prerequisites, deployment order, bootstrap behavior, deploy and validate script usage, GitOps operating model, validation strategy, and day-2 notes. |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Symptom-based diagnostics, likely causes, recovery commands, and references. |
-| [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) | Active RHOAI/OCP product baseline and documentation source hierarchy. |
+| [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) | Active RHOAI/OCP product baseline, version-match rule, Red Hat documentation category index, and source hierarchy. |
 
 The workshop narrative lives in the root [README.md](../README.md) and the step-level `README.md` files under [steps](../steps/).
 
@@ -19,7 +19,8 @@ index.
 
 Documentation rules for this repository:
 
-- READMEs are educational technical articles, not runbooks.
+- READMEs provide concise Why/What content for a technical audience, not
+  deployment runbooks.
 - Operations content belongs in [OPERATIONS.md](OPERATIONS.md).
 - Failure recovery belongs in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 - Code, manifests, scripts, validation, and docs must stay aligned.

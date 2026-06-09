@@ -35,7 +35,7 @@ gitops/                    # Kustomize manifests (GitOps source of truth)
   step-XX-name/base/       # Kustomize base per step
 steps/                     # Deployment docs + scripts per step
   step-XX-name/
-    README.md               # Educational technical article, not a runbook
+    README.md               # Concise Why/What document, not a runbook
     deploy.sh               # Applies ArgoCD app + runtime tasks
     validate.sh             # Post-deploy verification
 scripts/                   # Shared utilities (lib.sh, validate-lib.sh)
@@ -64,8 +64,10 @@ manifests directly with `oc apply -k` for ArgoCD-managed resources.
 
 Never update a README without changing the corresponding manifest, and never change
 a manifest without updating the README. Every change is atomic: code + docs together.
-READMEs should teach the platform story first and keep commands concise. Put operational
-details in `docs/OPERATIONS.md` and failure recovery in `docs/TROUBLESHOOTING.md`.
+READMEs should provide the Why and What for a technical audience: concept value,
+RHOAI technology mapping, and architecture delta. GitOps and live demos show
+the How. Put operational details in `docs/OPERATIONS.md` and failure recovery
+in `docs/TROUBLESHOOTING.md`.
 Do not claim capabilities that are not implemented. Future or deferred capabilities
 must be clearly labeled.
 
@@ -76,9 +78,12 @@ production PKI for this demo.
 
 ## Branching and commits
 
-GitHub Flow + Trunk-Based Development. `main` is the trunk — ArgoCD syncs from it.
-Commit directly to `main` for small changes. Use feature branches (`feat/step-XX-desc`)
-for multi-step or parallel agent work. Always merge via PR with `--no-ff`.
+GitHub Flow + Trunk-Based Development. `main` is the stable trunk for released
+demo content. During active refactoring, ArgoCD Applications may temporarily
+pin to the active refactoring branch; update the Application `targetRevision`
+back to the intended release ref when stabilizing. Commit directly to `main`
+for small changes. Use feature branches (`feat/step-XX-desc`) for multi-step
+or parallel agent work. Always merge via PR with `--no-ff`.
 
 Commit format: `type(scope): description` — types: feat, fix, docs, refactor, chore, ci.
 Scope: step number for step-specific, component name for cross-cutting.
@@ -92,8 +97,8 @@ Scope: step number for step-specific, component name for cross-cutting.
 
 ## Detailed rules
 
-For project structure, GitOps authoring, documentation, manifest review, doc
-alignment, and shared agent guidance, read `.agents/rules/project.md`.
+For project structure, GitOps authoring, documentation, manifest review, Red
+Hat source alignment, and shared agent guidance, read `.agents/rules/project.md`.
 
 For live demo environment deployment, validation, troubleshooting, shutdown,
 recovery, and redeploy, read `.agents/rules/env.md`.
@@ -113,7 +118,7 @@ tool-specific skill discovery folders in this repo. Use the prefix plus
 
 | Group | Prefix | Skills | Purpose |
 |-------|--------|--------|---------|
-| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Repo layout, GitOps step conventions, documentation structure, Red Hat narrative alignment, manifest review, Red Hat doc alignment, and shared AI guidance |
+| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Repo layout, GitOps step conventions, documentation structure, Red Hat narrative grounding, manifest review, Red Hat source alignment, and shared AI guidance |
 | Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
 | Assets & Miscellaneous | `assets-*` | `assets-red-hat-quick-deck` | Visual, deck, and presentation assets |
