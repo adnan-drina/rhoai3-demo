@@ -8,9 +8,11 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "RHOAI Platform"
 description: >
-  Guide Step 07 RHOAI chatbot UI and behavior changes — system prompts,
-  guardrails toggle, suggested questions, tool_choice, Inspect page tabs, and
-  prompt engineering for the Llama Stack RAG application.
+  Guide RHOAI chatbot UI and behavior changes once the active chatbot exists;
+  during the reimplementation, use this skill to rebuild chatbot requirements
+  from legacy Step 07 references. Covers system prompts, guardrails toggle,
+  suggested questions, tool_choice, Inspect page tabs, and prompt engineering
+  for the Llama Stack RAG application.
   Use when the user asks to customize the chatbot, update the system prompt,
   change suggested questions, modify guardrails behavior, adjust tool_choice,
   tweak agent parameters (max_infer_iters, max_output_tokens), or fix chatbot
@@ -26,6 +28,16 @@ description: >
 Structured workflow for modifying the active-baseline RHOAI RAG chatbot — a Streamlit app
 backed by LlamaStack with agent/direct modes, guardrails integration, and MCP
 tool support.
+
+## Reimplementation Status
+
+The active implementation is being rewritten. No active chatbot code, Step 07
+GitOps content, or Step 07 README exists yet. Treat the file paths and command
+examples in this skill as legacy reference material for rebuilding the chatbot,
+not as active-project instructions.
+
+Do not run or modify scripts from `backup/legacy-implementation-2026-06-09/`
+unless the user explicitly asks to restore or inspect the legacy implementation.
 
 ## Architecture at a Glance
 

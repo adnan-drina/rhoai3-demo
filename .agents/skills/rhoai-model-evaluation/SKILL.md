@@ -8,12 +8,13 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "RHOAI Platform"
 description: >
-  Guide RHOAI evaluation workflows: EvalHub, RAG evaluation, KFP/MLflow
-  evidence, RAGAS patterns, and standard model benchmarking with LM-Eval. Use
-  when the user asks to run evaluation, evaluate a model, benchmark model
-  performance, check RAG quality, compare pre-RAG vs post-RAG answers, run
-  LM-Eval, create an LMEvalJob, interpret eval results, add new test questions,
-  or modify the judge prompt.
+  Guide RHOAI evaluation workflows once active evaluation content exists;
+  during the reimplementation, use this skill to rebuild EvalHub, RAG
+  evaluation, KFP/MLflow evidence, RAGAS patterns, and standard model
+  benchmarking workflows from legacy references. Use when the user asks to run
+  evaluation, evaluate a model, benchmark model performance, check RAG quality,
+  compare pre-RAG vs post-RAG answers, run LM-Eval, create an LMEvalJob,
+  interpret eval results, add new test questions, or modify the judge prompt.
   Also use when eval pipelines fail, LMEvalJob pods are stuck, or evaluation
   reports show unexpected scores.
   Do NOT use for chatbot UI changes (use rhoai-chatbot-customization), deployment
@@ -25,6 +26,16 @@ description: >
 
 Structured workflow for running model evaluations in the active-baseline RHOAI demo — both
 RAG quality assessment (LLM-as-judge) and standard benchmarks (LM-Eval).
+
+## Reimplementation Status
+
+The active implementation is being rewritten. No active evaluation scripts,
+EvalHub GitOps content, LMEvalJob templates, or Step 08 README exists yet.
+Treat the file paths and command examples in this skill as legacy reference
+material for rebuilding evaluation, not as active-project instructions.
+
+Do not run or modify scripts from `backup/legacy-implementation-2026-06-09/`
+unless the user explicitly asks to restore or inspect the legacy implementation.
 
 ## Two Evaluation Paths
 

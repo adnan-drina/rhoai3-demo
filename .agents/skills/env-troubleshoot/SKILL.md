@@ -8,7 +8,9 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "Demo Environment"
 description: >
-  Diagnose and fix issues in the live rhoai3-demo AWS/OpenShift environment.
+  Diagnose and fix issues in the live rhoai3-demo AWS/OpenShift environment
+  once active deploy and validate scripts exist. During the reimplementation,
+  use this skill to rebuild troubleshooting coverage from legacy references.
   Use when a deployment step fails, validate.sh reports errors, pods are in
   CrashLoopBackOff/Pending/Error/ImagePullBackOff, ArgoCD shows OutOfSync or
   Degraded, operators are not installing, GPU nodes are not joining,
@@ -25,6 +27,16 @@ description: >
 Structured diagnostic workflow for resolving issues with the RHOAI demo on the
 active product baseline in `docs/PLATFORM_BASELINE.md`.
 
+## Reimplementation Status
+
+The active implementation is being rewritten. No active deploy or validate
+scripts exist yet. Treat legacy step names, validation commands, and diagnostic
+patterns in this skill as reference material for rebuilding troubleshooting
+coverage, not as active-project instructions.
+
+Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
+user explicitly asks to restore or inspect the legacy implementation.
+
 ## When to Use
 
 - A `validate.sh` script reports failures
@@ -37,12 +49,13 @@ active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 **Never guess.** Every diagnosis must be backed by official documentation or observable cluster state.
 
-### Step 1: Run the Validation Script
+### Step 1: Run the Validation Script When It Exists
 
 ```bash
 ./steps/step-XX-<name>/validate.sh
 ```
-Check exit code: 0 = pass, 1 = failures, 2 = warnings only.
+Check exit code: 0 = pass, 1 = failures, 2 = warnings only. During the
+reimplementation, skip this step until active validation scripts are recreated.
 
 ### Step 2: Consult Official RHOAI Documentation
 
@@ -74,7 +87,8 @@ Check `references/diagnostic-patterns.md` for the symptom. Common patterns cover
 
 ### Step 5: Apply Fix and Verify
 
-Execute the smallest change that fixes the issue. Re-run `validate.sh` to confirm.
+Execute the smallest change that fixes the issue. Re-run the active
+`validate.sh` to confirm when it exists.
 
 ### Step 6: Update Knowledge Base
 

@@ -79,8 +79,8 @@ For every RHOAI technical component introduced in the README:
 
 This section is the source for slide 3: architecture delta.
 
-Every root or step README should include a generated SVG capability map from
-`docs/assets/architecture/`.
+Every root or step README should include a generated SVG capability map once the
+active diagram generator has been recreated.
 
 - Root map: `docs/assets/architecture/rhoai3-demo-capability-map.svg`
 - Step maps: `../../docs/assets/architecture/step-NN-capability-map.svg`
@@ -97,8 +97,8 @@ After the diagram, add a short architecture delta list:
 - Value of the integration: <why the combined architecture matters>
 ```
 
-Change `scripts/generate-readme-visuals.py` and regenerate SVGs instead of
-hand-editing generated diagrams.
+Once the active generator exists, change `scripts/generate-readme-visuals.py`
+and regenerate SVGs instead of hand-editing generated diagrams.
 
 ## References
 

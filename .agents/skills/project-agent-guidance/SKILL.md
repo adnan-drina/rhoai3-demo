@@ -38,7 +38,7 @@ and tool-specific bridges in this project.
 | Automated validation after file edits | **Tool hook config + script** | Runs scripts automatically; no agent decision needed |
 | Gate risky shell commands | **Shared hook implementation** (`.agents/hooks/`) | Reusable safety logic called by tool-specific configs |
 | Gate risky Codex shell commands | **Codex hook bridge** (`.codex/hooks.json`) | Calls shared guard before execution |
-| Pre-merge Red Hat source audit | **Script** (`scripts/audit-doc-alignment.sh`) | Reports component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` |
+| Pre-merge Red Hat source audit | **Future script** (`scripts/audit-doc-alignment.sh`) | Reports component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` once recreated |
 
 Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/hooks),
 [Subagents](https://cursor.com/docs/subagents)
@@ -154,7 +154,8 @@ are authored, keep the product-documentation loop current:
 
 1. Check whether the change affects a GitOps-managed component, ArgoCD app, or
    step README.
-2. Run the local gate before merge:
+2. If `scripts/audit-doc-alignment.sh` exists in the active implementation, run
+   the local gate before merge:
 
    ```bash
    ./scripts/audit-doc-alignment.sh --base origin/main
@@ -166,8 +167,11 @@ are authored, keep the product-documentation loop current:
    ./scripts/audit-doc-alignment.sh --component step-05-maas-model-serving
    ```
 
-4. Review the script output before merge.
-5. Use `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` only for narrative,
+4. If the active audit script has not been recreated yet, document the missing
+   gate in the change summary and use the Red Hat source-alignment checklist
+   manually.
+5. Review the script output before merge when the script exists.
+6. Use `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` only for narrative,
    customer framing, and Red Hat article alignment. Do not treat it as product
    configuration truth.
 

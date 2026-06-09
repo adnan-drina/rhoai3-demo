@@ -23,6 +23,11 @@ For README architecture diagrams, also use:
 
 - `.agents/skills/project-architecture-diagrams/SKILL.md`
 
+The active implementation is being rewritten. Legacy generated architecture
+SVGs and the previous README visual generator are backed up under
+`backup/legacy-implementation-2026-06-09/` and should be treated as reference
+material until new active assets are introduced.
+
 Keep visual outputs aligned with Red Hat brand guidance and the implemented
 demo story. Do not hand-edit generated architecture SVGs; update the generator
 and regenerate outputs.

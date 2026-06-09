@@ -8,9 +8,10 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "Demo Environment"
 description: >
-  Deploy and validate the full rhoai3-demo environment on the active OpenShift
-  baseline. Use
-  when the user asks to deploy the demo, set up a new AWS demo environment,
+  Deploy and validate the rhoai3-demo environment on the active OpenShift
+  baseline once active scripts and steps exist. During the reimplementation,
+  use this skill to rebuild the deployment workflow from legacy references.
+  Use when the user asks to deploy the demo, set up a new AWS demo environment,
   evaluate an existing deployment, re-deploy a specific step, check deployment
   status, run the ordered step sequence, or asks "is my cluster ready?". Also
   use for planned ArgoCD sync and deployment reports.
@@ -23,6 +24,16 @@ description: >
 
 Orchestrates a controlled, step-by-step deployment of the RHOAI demo on the
 active product baseline in `docs/PLATFORM_BASELINE.md`.
+
+## Reimplementation Status
+
+The active implementation is being rewritten. No active bootstrap, deploy,
+validate, or demo-flow scripts exist yet. Treat the deployment sequence and
+legacy command references in this skill as reference material for rebuilding
+the workflow, not as runnable active-project instructions.
+
+Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
+user explicitly asks to restore or inspect the legacy implementation.
 
 ## When to Use
 
@@ -41,11 +52,13 @@ active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 **NEVER advance to the next step until the current step fully validates.**
 
-1. **Read** `steps/step-XX/README.md` (demo walkthrough focus)
-2. **Deploy** — run `deploy.sh` (applies ArgoCD Application as first action)
+1. **Read** the active step README once a step exists.
+2. **Deploy** with the active `deploy.sh` once recreated; it must apply the
+   ArgoCD Application as its first action.
 3. **Wait** — operators take minutes, GPU nodes take 5-10 min
 4. **Diagnose** — consult official docs for the active baseline; use the `env-troubleshoot` skill for issues
-5. **Validate** — run `validate.sh`, confirm exit code 0 (exit 2 = warnings only, acceptable)
+5. **Validate** with the active `validate.sh` once recreated; confirm exit code
+   0 (exit 2 = warnings only, acceptable).
 6. **Record** — note result, move to next step
 
 ### Deployment Sequence
@@ -95,7 +108,7 @@ active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 ### GitOps Deployment Pattern
 
-Every `deploy.sh` applies an ArgoCD Application as its first action:
+Every future `deploy.sh` must apply an ArgoCD Application as its first action:
 ```bash
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
 ```
@@ -103,7 +116,7 @@ Never apply manifests directly with `oc apply -k` for ArgoCD-managed resources.
 
 ### Final E2E Validation
 
-After all steps pass:
+After the demo-flow script has been recreated and all steps pass:
 ```bash
 ./scripts/validate-demo-flow.sh
 ```
@@ -127,7 +140,8 @@ After all steps pass:
 Before deploying to a fresh cluster, first read the Fresh Environment Checklist
 in `docs/OPERATIONS.md`. Confirm local `.env` has the new environment's
 `KUBECONFIG`, `RHOAI_EXPECTED_API_SERVER`, `GIT_REPO_URL`, `GIT_REPO_BRANCH`,
-and required local credentials. Then run the prerequisite validation:
+and required local credentials. Then run the prerequisite validation if that
+skill helper is still present:
 ```bash
 ./.agents/skills/env-deploy-and-evaluate/scripts/validate-prerequisites.sh
 ```

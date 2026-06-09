@@ -9,10 +9,12 @@ metadata:
   skill-group: "Demo Environment"
 description: >
   Validate the end-to-end ACME demo flow by running the 3-layer agentic
-  workflow against the live cluster. Use when the user asks to validate the
-  demo, test the demo flow, check if the demo works, run the 4-question
-  test, verify MCP tools are working, check RAG quality, test guardrails
-  PII detection, or asks "is the demo ready to present?".
+  workflow against the live cluster once active validation scripts exist.
+  During the reimplementation, use this skill to rebuild demo-flow validation
+  from legacy references. Use when the user asks to validate the demo, test the
+  demo flow, check if the demo works, run the 4-question test, verify MCP tools
+  are working, check RAG quality, test guardrails PII detection, or asks "is
+  the demo ready to present?".
   Do NOT use for deploying or re-deploying steps (use env-deploy-and-evaluate),
   chatbot customization (use rhoai-chatbot-customization), or model benchmarking
   (use rhoai-model-evaluation).
@@ -21,6 +23,16 @@ description: >
 # Validate ACME Demo Flow
 
 Run the 3-layer end-to-end demo validation against a live OpenShift cluster.
+
+## Reimplementation Status
+
+The active implementation is being rewritten. No active demo-flow validation
+script exists yet. Treat the ACME flow, step references, and command examples
+in this skill as reference material for rebuilding validation, not as runnable
+active-project instructions.
+
+Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
+user explicitly asks to restore or inspect the legacy implementation.
 
 ## When to Use
 
@@ -56,6 +68,8 @@ Layer 3: Guardrails (deterministic)
 
 ### Running the Validation
 
+Run this only after the active demo-flow script has been recreated:
+
 ```bash
 ./scripts/validate-demo-flow.sh
 ```
@@ -66,7 +80,7 @@ Layer 3: Guardrails (deterministic)
 |-------|-------|--------------|------------|
 | Tool Runtime | Q1: Pod listing | `acme-equipment-0007` in output | Deploy step-10; register mcp::openshift tool_group |
 | Tool Runtime | Q2: Equipment lookup | `L-900-08` in response | Check PostgreSQL running; env var ordering in database-mcp |
-| Tool Runtime | Q3: RAG search | >= 1 chunk from pgvector | Run `./steps/step-07-rag/run-batch-ingestion.sh acme` |
+| Tool Runtime | Q3: RAG search | >= 1 chunk from pgvector | Run the active ingestion workflow once recreated |
 | Tool Runtime | Q4: Slack message | `ok` or `message_ts` in response | Check slack-mcp + SLACK_BOT_TOKEN |
 | Agentic | A1-A4 | Keywords in LLM response | WARN is acceptable (non-deterministic); FAIL indicates model issue |
 | Guardrails | PII detection | >= 2 regex matches | Check guardrails-orchestrator health on port 8034 |

@@ -1,21 +1,23 @@
 # Documentation Index
 
-This directory has promoted project documentation. Tracked Markdown files
-should stay limited to the documents in this index; architecture SVGs under
-`docs/assets/architecture/` are generated README assets.
+This directory contains promoted project documentation for the reimplementation.
+Tracked Markdown files should stay limited to the documents in this index.
 
 | Document | Purpose |
 |----------|---------|
-| [BACKLOG.md](BACKLOG.md) | Deferred capabilities, future enhancements, and prioritized product coverage gaps. |
-| [OPERATIONS.md](OPERATIONS.md) | Prerequisites, deployment order, bootstrap behavior, deploy and validate script usage, GitOps operating model, validation strategy, and day-2 notes. |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Symptom-based diagnostics, likely causes, recovery commands, and references. |
+| [BACKLOG.md](BACKLOG.md) | Active backlog for the reimplementation. |
+| [OPERATIONS.md](OPERATIONS.md) | Active operating model, deployment order, validation strategy, and day-2 notes once the new implementation exists. |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Active symptom-based diagnostics and recovery guidance once the new implementation exists. |
 | [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) | Active RHOAI/OCP product baseline, version-match rule, Red Hat documentation category index, and source hierarchy. |
 
-The workshop narrative lives in the root [README.md](../README.md) and the step-level `README.md` files under [steps](../steps/).
+The previous root README, step READMEs, operational runbooks, troubleshooting
+notes, backlog, and generated architecture SVGs are backed up under:
 
-Keep session notes, migration notes, one-off working documents, and generated
-evidence outside tracked `docs/` content unless they are promoted into this
-index.
+- `../backup/legacy-implementation-2026-06-09/`
+
+The reimplemented workshop narrative will live in the root README and
+step-level README files under `../steps/` when the new step structure is
+created.
 
 Documentation rules for this repository:
 
@@ -26,4 +28,5 @@ Documentation rules for this repository:
 - Code, manifests, scripts, validation, and docs must stay aligned.
 - Documentation must not claim capabilities that are not implemented.
 - Future or deferred capabilities must be labeled clearly as future or deferred.
-- Run `./scripts/audit-doc-alignment.sh --base origin/main` before merging GitOps component changes.
+- Official Red Hat documentation for the active baseline in
+  [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) is the product source of truth.

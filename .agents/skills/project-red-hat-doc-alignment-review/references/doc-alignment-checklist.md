@@ -143,8 +143,9 @@ Do not infer fields from upstream projects or older product versions.
 ## Pre-Merge Audit
 
 For touched GitOps-managed components, run or request
-`./scripts/audit-doc-alignment.sh --base origin/main`. If live evidence cannot
-be checked, record the reason as deferred in the review notes or PR description.
+`./scripts/audit-doc-alignment.sh --base origin/main` once the active audit
+script has been recreated. If the script or live evidence is unavailable,
+record the reason as deferred in the review notes or PR description.
 
 ## Review Output
 

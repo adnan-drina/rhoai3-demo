@@ -9,12 +9,14 @@ metadata:
   skill-group: "Project Structure"
 description: >
   Refactor README architecture capability diagrams for the active-baseline
-  RHOAI demo.
-  Use when the user asks to align root and step diagrams, update
-  docs/assets/architecture/*.svg, change scripts/generate-readme-visuals.py,
-  revise architecture diagram layout, apply Red Hat product-layer coloring,
-  or distinguish new, previously introduced, and not-yet-introduced
-  capabilities across steps. Use as part of Project Structure content work.
+  RHOAI demo once active README visual assets exist; during the
+  reimplementation, use this skill to rebuild the diagram generator and visual
+  standards from legacy references. Use when the user asks to align root and
+  step diagrams, update docs/assets/architecture/*.svg, change
+  scripts/generate-readme-visuals.py, revise architecture diagram layout, apply
+  Red Hat product-layer coloring, or distinguish new, previously introduced,
+  and not-yet-introduced capabilities across steps. Use as part of Project
+  Structure content work.
   Do NOT use for live cluster troubleshooting (use env-troubleshoot),
   deploying steps (use env-deploy-and-evaluate), or changing chatbot behavior
   (use rhoai-chatbot-customization).
@@ -25,12 +27,21 @@ description: >
 Use this workflow to update the root and step README architecture diagrams
 without losing the project-specific story.
 
+## Reimplementation Status
+
+The active implementation is being rewritten. No active README visual generator
+or architecture SVG output exists yet. Treat the previous generator and SVGs
+under `backup/legacy-implementation-2026-06-09/` as design references until a
+new active generator is introduced.
+
 ## Source Of Truth
 
-- Generator: `scripts/generate-readme-visuals.py`
-- Output directory: `docs/assets/architecture/`
-- Root SVG: `docs/assets/architecture/rhoai3-demo-capability-map.svg`
-- Step SVGs: `docs/assets/architecture/step-NN-capability-map.svg`
+- Future generator location: `scripts/generate-readme-visuals.py`
+- Future output directory: `docs/assets/architecture/`
+- Legacy generator:
+  `backup/legacy-implementation-2026-06-09/scripts/generate-readme-visuals.py`
+- Legacy SVGs:
+  `backup/legacy-implementation-2026-06-09/docs/assets/architecture/`
 - Assets rule: `.agents/rules/assets.md`
 
 Do not hand-edit generated SVG files. Update the generator, regenerate all SVGs,
@@ -66,25 +77,29 @@ context.
 
 ## Refactor Process
 
-1. Read `README.md`, all `steps/*/README.md`, and `scripts/generate-readme-visuals.py`.
+1. Read `README.md`, all active `steps/*/README.md` files, and the active
+   visual generator if it exists.
 2. Identify the canonical root capability list from the demo story, existing tables, and generator data.
 3. Preserve the current step inventory from the repository; do not hard-code
    optional step names or step counts in this skill.
 4. Map each capability to the current step where it is first introduced,
    deriving that mapping from the active README and generator data.
-5. Update only `scripts/generate-readme-visuals.py` for diagram generation unless README links or rules are stale.
-6. Regenerate with `python3 scripts/generate-readme-visuals.py`.
+5. Recreate or update `scripts/generate-readme-visuals.py` for diagram
+   generation unless README links or rules are stale.
+6. Regenerate with `python3 scripts/generate-readme-visuals.py` once the
+   generator exists.
 7. Render representative SVGs to PNG for visual inspection.
-8. Run validation:
+8. Run validation when the referenced files exist:
 
 ```bash
 python3 -m py_compile scripts/generate-readme-visuals.py
 python3 scripts/generate-readme-visuals.py
-./scripts/validate-demo-flow.sh
 git diff --check
 ```
 
-If live cluster validation is unavailable, state that static validation only was performed.
+If demo-flow validation has been recreated and live cluster validation is
+available, run that separately. Otherwise, state that static validation only was
+performed.
 
 ## Expected Output
 

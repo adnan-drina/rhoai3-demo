@@ -26,6 +26,12 @@ Official Red Hat documentation for the active baseline in
 `docs/PLATFORM_BASELINE.md` is the product source of truth. Use Red Hat articles
 and `rh-brain` examples only as supporting implementation evidence.
 
+The active implementation is being rewritten. RHOAI manifests, notebooks,
+pipelines, chatbot code, and evaluation workflows under
+`backup/legacy-implementation-2026-06-09/` are legacy references only until
+corresponding active content is recreated under `gitops/`, `steps/`, or
+`scripts/`.
+
 When a README introduces a RHOAI capability, pair the concept narrative with an
 official documentation link for each technical component used. When a manifest
 introduces images or model artifacts, verify Red Hat registry, validated model,

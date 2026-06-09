@@ -36,6 +36,12 @@ GitOps, step READMEs, operational docs, architecture diagrams, and agent
 guidance must stay aligned with the active baseline in
 `docs/PLATFORM_BASELINE.md`.
 
+The active implementation is being rewritten. Current implementation folders
+`gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is
+introduced. Legacy implementation artifacts live under
+`backup/legacy-implementation-2026-06-09/` and should be used as reference
+material, not as active project structure.
+
 Step READMEs should be concise Why/What documents: introduce the business
 concept, ground European enterprise value in Red Hat narrative sources from
 `rh-brain`, map the concept to official Red Hat product documentation, and show

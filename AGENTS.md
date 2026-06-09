@@ -1,101 +1,109 @@
-# RHOAI Demo — Codex Instructions
+# RHOAI Demo - Codex Instructions
 
 Demo of building Private AI platform infrastructure for enterprise generative
 and predictive AI use cases using the product baseline in
 `docs/PLATFORM_BASELINE.md`.
 
-## Documentation first
+The active implementation is being rewritten. Legacy implementation artifacts
+are backed up under `backup/legacy-implementation-2026-06-09/` and must be
+treated as reference material unless the user explicitly asks to restore or run
+them.
+
+## Documentation First
 
 - Official Red Hat docs for the active `docs/PLATFORM_BASELINE.md` versions are
-  the source of truth
-- Do not invent CR fields, API versions, annotations, or operator configurations
-- If unsure, propose a verification command (`oc explain`, `oc get crd`)
+  the source of truth.
+- Do not invent CR fields, API versions, annotations, or operator
+  configurations.
+- If unsure, propose a verification command (`oc explain`, `oc get crd`) or
+  consult the official docs index in `docs/PLATFORM_BASELINE.md`.
 
-## Key commands
+## Active Implementation State
 
-```bash
-# First-time setup (installs ArgoCD + AppProject)
-./scripts/bootstrap.sh
+No active bootstrap, deploy, validate, or demo-flow commands exist yet.
 
-# Deploy a step (applies ArgoCD Application first, then waits)
-./steps/step-XX-name/deploy.sh
+Clean-slate implementation areas:
 
-# Validate a step (deterministic cluster checks)
-./steps/step-XX-name/validate.sh
-
-# E2E demo validation (3-layer: Tool Runtime + Agentic + Guardrails)
-./scripts/validate-demo-flow.sh
+```text
+gitops/   # New GitOps source tree; currently placeholder-only
+scripts/  # New project automation; currently placeholder-only
+steps/    # New demo step structure; currently placeholder-only
+docs/     # Active project docs and product baseline
+.agents/  # Shared skills, rules, and hooks
 ```
 
-## Repository structure
+Legacy implementation areas are preserved under the backup root with their
+original relative paths:
 
-```
-gitops/                    # Kustomize manifests (GitOps source of truth)
-  argocd/app-of-apps/      # ArgoCD Application per step
-  step-XX-name/base/       # Kustomize base per step
-steps/                     # Deployment docs + scripts per step
-  step-XX-name/
-    README.md               # Concise Why/What document, not a runbook
-    deploy.sh               # Applies ArgoCD app + runtime tasks
-    validate.sh             # Post-deploy verification
-scripts/                   # Shared utilities (lib.sh, validate-lib.sh)
-docs/assets/architecture/  # SVG layered capability maps for workshop + step READMEs (generate-readme-visuals.py)
+```text
+backup/legacy-implementation-2026-06-09/gitops/
+backup/legacy-implementation-2026-06-09/scripts/
+backup/legacy-implementation-2026-06-09/steps/
 ```
 
-Every `deploy.sh` applies its ArgoCD Application as the first action. Never apply
-manifests directly with `oc apply -k` for ArgoCD-managed resources.
+Do not run backup scripts as active project commands.
 
-## Bootstrap constraints
+## Future GitOps Constraints
 
-- ArgoCD `resourceTrackingMethod` MUST be `annotation` (not `label`)
-- All Applications use `project: rhoai-demo`
-- ArgoCD has `cluster-admin` (acceptable for demo)
+When the new GitOps implementation is introduced:
 
-## OpenShift safety guard
+- ArgoCD `resourceTrackingMethod` MUST be `annotation` (not `label`).
+- All demo Applications should use `project: rhoai-demo` unless the
+  reimplementation explicitly changes the project model.
+- ArgoCD cluster-admin remains acceptable for this demo only when documented in
+  `docs/OPERATIONS.md`.
+- New deploy automation must apply ArgoCD Applications first and avoid direct
+  `oc apply -k` against ArgoCD-managed resources.
 
-- Open this repository as its own Codex project; do not open `/Users/adrina/Sandbox` as the active project for live cluster work.
-- Before running live `oc`/`kubectl` commands, call `load_env` and `check_oc_logged_in` from `scripts/lib.sh`.
-- Set `RHOAI_EXPECTED_API_SERVER` in the local `.env` to a unique target API-server substring before deploy, validate, bootstrap, or resource-management scripts run.
-- If using a project-local kubeconfig, set `KUBECONFIG` in `.env` to an absolute path under `tmp/`; never commit kubeconfig files.
-- Do not bypass the guard with `RHOAI_ALLOW_UNGUARDED_CLUSTER=true` unless the user explicitly confirms the current cluster and the command is low risk.
-- Do not read credentials from another project by default. Use `RHOAI_OPENAI_ENV_FILE` only when cross-project credential reuse is intentional and approved.
+## OpenShift Safety Guard
 
-## Code and docs must be aligned
+- Open this repository as its own Codex project; do not open
+  `/Users/adrina/Sandbox` as the active project for live cluster work.
+- Before running live `oc`/`kubectl` commands, verify the target cluster against
+  the repo-local environment guard.
+- Set `RHOAI_EXPECTED_API_SERVER` in the local `.env` to a unique target
+  API-server substring before deploy, validate, bootstrap, or
+  resource-management scripts run.
+- If using a project-local kubeconfig, set `KUBECONFIG` in `.env` to an
+  absolute path under `tmp/`; never commit kubeconfig files.
+- Do not bypass the guard with `RHOAI_ALLOW_UNGUARDED_CLUSTER=true` unless the
+  user explicitly confirms the current cluster and the command is low risk.
+- Do not read credentials from another project by default. Use
+  `RHOAI_OPENAI_ENV_FILE` only when cross-project credential reuse is
+  intentional and approved.
+- New scripts that touch a live cluster must include the guard behavior before
+  they are considered active.
 
-Never update a README without changing the corresponding manifest, and never change
-a manifest without updating the README. Every change is atomic: code + docs together.
+## Code And Docs Must Be Aligned
+
+During reimplementation, every new capability should be introduced as an atomic
+set of documentation, GitOps artifacts, scripts, and validation.
+
 READMEs should provide the Why and What for a technical audience: concept value,
-RHOAI technology mapping, and architecture delta. GitOps and live demos show
-the How. Put operational details in `docs/OPERATIONS.md` and failure recovery
-in `docs/TROUBLESHOOTING.md`.
-Do not claim capabilities that are not implemented. Future or deferred capabilities
-must be clearly labeled.
+RHOAI technology mapping, and architecture delta. GitOps and live demos show the
+How. Put operational details in `docs/OPERATIONS.md` and failure recovery in
+`docs/TROUBLESHOOTING.md`.
 
-## Self-signed certs
+Do not claim capabilities that are not implemented. Future or deferred
+capabilities must be clearly labeled.
 
-Use `--insecure-skip-tls-verify=true` (oc) and `-k` (curl) freely. Do not implement
-production PKI for this demo.
+## Self-Signed Certs
 
-## Branching and commits
+Use `--insecure-skip-tls-verify=true` (oc) and `-k` (curl) freely. Do not
+implement production PKI for this demo.
+
+## Branching And Commits
 
 GitHub Flow + Trunk-Based Development. `main` is the stable trunk for released
 demo content. During active refactoring, ArgoCD Applications may temporarily
 pin to the active refactoring branch; update the Application `targetRevision`
-back to the intended release ref when stabilizing. Commit directly to `main`
-for small changes. Use feature branches (`feat/step-XX-desc`) for multi-step
-or parallel agent work. Always merge via PR with `--no-ff`.
+back to the intended release ref when stabilizing.
 
-Commit format: `type(scope): description` — types: feat, fix, docs, refactor, chore, ci.
-Scope: step number for step-specific, component name for cross-cutting.
+Commit format: `type(scope): description` - types: feat, fix, docs, refactor,
+chore, ci. Scope: step number for step-specific changes, component name for
+cross-cutting changes.
 
-## GPU configuration
-
-| Node | GPUs | Model | Role |
-|------|------|-------|------|
-| g6.4xlarge | 1 | granite-8b-agent (FP8) | MaaS, RAG, MCP, Guardrails |
-| g6.12xlarge | 4 | mistral-3-bf16 (BF16) | Judge, Benchmarking |
-
-## Detailed rules
+## Detailed Rules
 
 For project structure, GitOps authoring, documentation, manifest review, Red
 Hat source alignment, and shared agent guidance, read `.agents/rules/project.md`.
@@ -119,11 +127,12 @@ tool-specific skill discovery folders in this repo. Use the prefix plus
 | Group | Prefix | Skills | Purpose |
 |-------|--------|--------|---------|
 | Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Repo layout, GitOps step conventions, documentation structure, Red Hat narrative grounding, manifest review, Red Hat source alignment, and shared AI guidance |
-| Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
+| Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy. These skills are planning/reference aids until active scripts are recreated. |
 | RHOAI Platform | `rhoai-*` | `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
 | Assets & Miscellaneous | `assets-*` | `assets-red-hat-quick-deck` | Visual, deck, and presentation assets |
 
-Use `.agents/skills/project-agent-guidance/SKILL.md` for the full governance model.
+Use `.agents/skills/project-agent-guidance/SKILL.md` for the full governance
+model.
 
 ## Subagents
 

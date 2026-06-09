@@ -9,7 +9,10 @@ metadata:
   skill-group: "Demo Environment"
 disable-model-invocation: true
 description: >
-  Scale models and GPU MachineSets up or down in the RHOAI demo environment.
+  Scale models and GPU MachineSets up or down in the RHOAI demo environment
+  once active GitOps Applications and resource-management scripts exist.
+  During the reimplementation, use this skill to rebuild the resource workflow
+  from legacy references.
   Use when the user wants to stop/start models, scale GPU nodes, save costs,
   manage cluster resources, reduce cloud spend overnight, prepare for demo
   shutdown, or recover from shutdown by bringing resources back up. Also use
@@ -25,6 +28,16 @@ description: >
 Scale InferenceServices (models) and MachineSets (GPU nodes) without
 conflicting with ArgoCD. Steps 01 and 05 have `selfHeal: false`, so manual
 changes show OutOfSync but are not auto-reverted.
+
+## Reimplementation Status
+
+The active implementation is being rewritten. No active resource-management
+scripts or current GitOps Applications exist yet. Treat the resource inventory,
+step names, and legacy command references in this skill as reference material
+for rebuilding the workflow, not as active-project instructions.
+
+Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
+user explicitly asks to restore or inspect the legacy implementation.
 
 ## Prerequisites
 
@@ -116,8 +129,9 @@ oc patch isvc <MODEL_NAME> -n maas --type merge \
   -p '{"spec":{"predictor":{"minReplicas":1}}}'
 ```
 
-Step 05 also performs this scale-up guard automatically unless
-`RHOAI_SKIP_GPU_SCALE=true` is set:
+In the legacy implementation, Step 05 also performed this scale-up guard
+automatically unless `RHOAI_SKIP_GPU_SCALE=true` was set. Recreate that behavior
+before relying on this command path:
 
 ```bash
 ./steps/step-05-maas-model-serving/deploy.sh
