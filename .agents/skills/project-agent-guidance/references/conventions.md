@@ -26,7 +26,7 @@ Current rule taxonomy:
 
 | Rule | Skill prefix | Purpose |
 |------|--------------|---------|
-| `project.md` | `project-` | Repo structure, GitOps authoring, docs, manifest review, doc alignment, and shared guidance |
+| `project.md` | `project-` | Repo structure, GitOps authoring, docs, manifest review, Red Hat doc alignment, and shared guidance |
 | `env.md` | `env-` | Live demo environment deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | `rhoai.md` | `rhoai-` | Official-doc-backed RHOAI component behavior and configuration |
 | `assets.md` | `assets-` | Visual assets, diagrams, decks, and presentation outputs |

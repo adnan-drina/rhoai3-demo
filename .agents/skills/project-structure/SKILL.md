@@ -50,7 +50,7 @@ for a proven tool-only gap.
 
 | Group | Prefix | Purpose | Current skills |
 |-------|--------|---------|----------------|
-| Project Structure | `project-*` | Repo architecture, GitOps step layout, docs, Red Hat narrative alignment, skill governance, manifest review, doc alignment | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-doc-alignment-review` |
+| Project Structure | `project-*` | Repo architecture, GitOps step layout, docs, Red Hat narrative alignment, skill governance, manifest review, Red Hat doc alignment | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo lifecycle: bootstrap, deploy, validate, troubleshoot, shutdown/recovery, redeploy | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed component guidance for installing, configuring, and using active RHOAI baseline capabilities | `rhoai-model-evaluation`, `rhoai-chatbot-customization`, `rhoai-kfp-pipeline-authoring`; component skills planned |
 | Assets & Miscellaneous | `assets-*` | Supporting assets and presentation outputs not tied to live cluster operations | `assets-red-hat-quick-deck` |

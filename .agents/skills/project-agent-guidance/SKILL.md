@@ -65,7 +65,7 @@ for logical ownership:
 
 | Group | Prefix | Purpose |
 |-------|--------|---------|
-| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, manifest review, doc alignment, Red Hat narrative alignment, and shared AI guidance |
+| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, manifest review, Red Hat doc alignment, Red Hat narrative alignment, and shared AI guidance |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed active-baseline RHOAI component installation, configuration, KFP pipelines, and usage |
 | Assets & Miscellaneous | `assets-*` | Visual, deck, and presentation assets |

@@ -8,19 +8,22 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "Project Structure"
 description: >
-  Author and review rhoai3-demo documentation: root README, step READMEs,
+  Author and improve rhoai3-demo documentation: root README, step READMEs,
   PLAN.md files, troubleshooting entries, design decisions, references, and
-  Red Hat narrative alignment. Use when creating or updating demo docs,
+  Red Hat narrative alignment. Use when creating or updating demo prose,
   adding architecture sections, improving European enterprise messaging,
   writing implementation plans, or capturing project knowledge from repeated
-  questions or deployment discoveries. Do NOT use for GitOps manifest authoring
-  itself (use project-gitops-authoring).
+  questions or deployment discoveries. Also use when documentation needs to
+  explain implemented GitOps behavior in business and technical terms. Do NOT
+  use for GitOps manifest authoring itself (use project-gitops-authoring) or
+  official Red Hat product-doc conformance audits (use
+  project-red-hat-doc-alignment-review).
 ---
 
 # Documentation Authoring
 
 Use this skill to keep repo documentation clear, demonstrable, and aligned with
-official Red Hat messaging.
+official Red Hat messaging and the implemented demo story.
 
 ## Workflow
 
@@ -33,6 +36,8 @@ official Red Hat messaging.
 5. For continuous documentation and troubleshooting knowledge capture, read
    `references/knowledge-governance.md`.
 6. For `PLAN.md` and planning documents, read `references/plan-documents.md`.
+7. When adding product claims, baseline-specific component details, or official
+   documentation references, pair with `project-red-hat-doc-alignment-review`.
 
 ## Documentation Principles
 
@@ -41,6 +46,9 @@ official Red Hat messaging.
 - Failure recovery detail belongs in `docs/TROUBLESHOOTING.md`.
 - Future or deferred capabilities must be labeled explicitly.
 - References sections should point to active-baseline official docs.
+- Official product-documentation conformance belongs to
+  `project-red-hat-doc-alignment-review`; do not infer RHOAI API behavior from
+  narrative sources.
 
 ## References
 

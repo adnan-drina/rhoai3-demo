@@ -8,7 +8,7 @@ the relevant skill instead of duplicating procedure text.
 
 | Rule | Purpose |
 |------|---------|
-| `project.md` | Project structure, GitOps authoring, documentation, manifest review, doc alignment, and shared agent guidance |
+| `project.md` | Project structure, GitOps authoring, documentation, manifest review, Red Hat doc alignment, and shared agent guidance |
 | `env.md` | Live demo environment deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | `rhoai.md` | RHOAI platform component guidance backed by official Red Hat documentation |
 | `assets.md` | Visual assets, architecture diagrams, decks, and presentation outputs |

@@ -15,7 +15,7 @@ description: >
   deployment flow, demo secrets, or self-signed certificate handling. Also use
   when creating a new demo step's GitOps folder. Do NOT use for readonly review
   only (use project-manifest-review) or product-doc conformance review only
-  (use project-doc-alignment-review).
+  (use project-red-hat-doc-alignment-review).
 ---
 
 # GitOps Authoring
@@ -47,7 +47,7 @@ When proposing or making changes, include:
 - exact files changed
 - whether the change affects manifests, deployment scripts, READMEs, or all three
 - validation performed or still required
-- documentation alignment evidence when GitOps-managed components changed
+- Red Hat documentation alignment evidence when GitOps-managed components changed
 
 ## References
 

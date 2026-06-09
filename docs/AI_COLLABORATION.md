@@ -70,7 +70,7 @@ of nesting folders.
 
 | Group | Prefix | Skills | Purpose |
 |-------|--------|--------|---------|
-| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-doc-alignment-review` | Evolve repo layout, GitOps step conventions, documentation structure, Red Hat narrative alignment, manifest review, doc alignment, and shared AI guidance |
+| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Evolve repo layout, GitOps step conventions, documentation structure, Red Hat narrative alignment, manifest review, Red Hat doc alignment, and shared AI guidance |
 | Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Deploy, validate, troubleshoot, shut down, recover, and redeploy the live AWS/OpenShift demo environment |
 | RHOAI Platform | `rhoai-*` | `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Install, configure, and use active-baseline RHOAI components from official Red Hat documentation, enhanced by verified Red Hat article examples |
 | Assets & Miscellaneous | `assets-*` | `assets-red-hat-quick-deck` | Supporting visual, deck, and presentation assets |

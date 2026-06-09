@@ -1,5 +1,5 @@
 ---
-name: project-doc-alignment-review
+name: project-red-hat-doc-alignment-review
 metadata:
   author: rhoai3-demo
   version: 1.0.0
@@ -8,19 +8,23 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "Project Structure"
 description: >
-  Review GitOps manifests, step READMEs, and RHOAI resources against official
-  Red Hat documentation for the active product baseline. Use when creating or
-  modifying CRs, operator configuration, InferenceServices, ServingRuntimes,
-  LlamaStack, Guardrails, Model Registry, DSPA, LMEvalJob, TrustyAI, Notebook,
-  or any RHOAI-managed resource. Also use for periodic documentation alignment
-  audits and evidence-ledger refreshes.
+  Review rhoai3-demo manifests, step READMEs, product references, and RHOAI
+  resources against official Red Hat documentation for the active product
+  baseline. Use when creating or modifying CRs, operator configuration,
+  InferenceServices, ServingRuntimes, LlamaStack, Guardrails, Model Registry,
+  DSPA, LMEvalJob, TrustyAI, Notebook, or any RHOAI-managed resource. Also use
+  when adding baseline-specific product claims, refreshing evidence ledgers, or
+  running periodic Red Hat documentation alignment audits. Do NOT use for
+  general prose authoring, README narrative, PLAN.md writing, or knowledge
+  capture (use project-documentation-authoring).
 ---
 
-# Documentation Alignment Review
+# Red Hat Documentation Alignment Review
 
-Use this skill to verify product documentation alignment. This is stricter than
-YAML validity: a manifest can render but still use unsupported fields or stale
-product assumptions.
+Use this skill to verify official Red Hat product-documentation conformance.
+This is stricter than YAML validity and separate from prose authoring: a
+manifest can render, and a README can read well, while still relying on
+unsupported fields, stale product references, or undocumented assumptions.
 
 ## Workflow
 
@@ -33,6 +37,8 @@ product assumptions.
    product configuration truth.
 6. If a field cannot be verified from docs, flag it and propose a schema
    verification command such as `oc explain` or CRD inspection.
+7. For prose improvements, README structure, plans, or troubleshooting entries,
+   switch to `project-documentation-authoring`.
 
 ## Output Format
 
