@@ -43,13 +43,13 @@ __pycache__/
 .venv-*/
 venv/
 
-# Session prompts and local working docs (except shared SVG diagrams for README embedding)
+# Session prompts and local working docs (except promoted docs and shared SVG diagrams for README embedding)
 /docs/**
 !/docs/README.md
-!/docs/AI_COLLABORATION.md
+!/docs/BACKLOG.md
 !/docs/OPERATIONS.md
 !/docs/PLATFORM_BASELINE.md
-!/docs/alignment-evidence-ledger.md
+!/docs/TROUBLESHOOTING.md
 !/docs/assets/
 !/docs/assets/architecture/
 !/docs/assets/architecture/**/*.svg
@@ -70,4 +70,4 @@ steps/step-11-face-recognition/notebooks/.venv/
 steps/step-11-face-recognition/notebooks/yolo11n.pt
 steps/step-11-face-recognition/notebooks/yolo11m.pt
 runs/
-BACKLOG.md
+/BACKLOG.md

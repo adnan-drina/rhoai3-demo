@@ -3,7 +3,7 @@
 #
 # The audit requires live access to the target OpenShift cluster. It renders
 # Kustomize bases, checks for stale product-version references, verifies schemas
-# against the live API server, and writes a durable evidence ledger. It does not
+# against the live API server, and prints a pre-merge audit report. It does not
 # produce offline fallback evidence.
 
 set -euo pipefail
@@ -14,7 +14,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BASE_REF="origin/main"
 COMPONENT=""
 ORIGINAL_ARGS="$*"
-LEDGER_PATH="$REPO_ROOT/docs/alignment-evidence-ledger.md"
 RH_BRAIN_DIR="${RH_BRAIN_DIR:-/Users/adrina/Sandbox/rh-brain/Red Hat Brain}"
 STRICT_CLUSTER="${AUDIT_STRICT_CLUSTER:-true}"
 OC_REQUEST_TIMEOUT="${OC_REQUEST_TIMEOUT:-5s}"
@@ -415,18 +414,9 @@ while IFS= read -r component; do
     done < <(dependencies_for "$component")
 done < "$components"
 
-if [[ -s "$audit_components" && -f "$LEDGER_PATH" ]]; then
-    # Audits should not discard unrelated evidence that is already in the
-    # committed ledger. Refresh existing component sections as well until
-    # section-level replacement is implemented.
-    while IFS= read -r existing_component; do
-        add_unique "$existing_component" "$audit_components"
-    done < <(awk '/^### / { print $2 }' "$LEDGER_PATH")
-fi
-
 sort -u "$audit_components" -o "$audit_components"
 
-ledger_tmp="$tmp_dir/alignment-evidence-ledger.md"
+report_tmp="$tmp_dir/doc-alignment-audit.md"
 blocked_total=0
 warning_total=0
 OC_CLUSTER_AVAILABLE=false
@@ -441,7 +431,7 @@ else
 fi
 
 {
-    echo "# Documentation Alignment Evidence Ledger"
+    echo "# Documentation Alignment Audit"
     echo ""
     echo "**Generated:** $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     echo "**Command:** \`$0 $ORIGINAL_ARGS\`"
@@ -450,7 +440,7 @@ fi
     echo "**Live cluster:** \`${OC_CLUSTER_SERVER:-unknown}\`"
     echo "**rh-brain source:** \`$RH_BRAIN_DIR\`"
     echo ""
-    echo "This ledger is produced by \`scripts/audit-doc-alignment.sh\`. Official product documentation is the source of truth for supported configuration. \`rh-brain\` is read-only research input for narrative and Red Hat article alignment."
+    echo "This report is produced by \`scripts/audit-doc-alignment.sh\`. Official product documentation is the source of truth for supported configuration. \`rh-brain\` is read-only research input for narrative and Red Hat article alignment."
     echo ""
     echo "## Baseline References"
     echo ""
@@ -458,7 +448,7 @@ fi
     echo "- [RHOAI 3.4 Release Notes]($RHOAI_RELEASE_NOTES)"
     echo "- [OpenShift Container Platform 4.20]($OCP_DOCS)"
     echo ""
-} > "$ledger_tmp"
+} > "$report_tmp"
 
 if [[ ! -s "$audit_components" ]]; then
     {
@@ -469,12 +459,12 @@ if [[ ! -s "$audit_components" ]]; then
         echo "| Status | Decision |"
         echo "|--------|----------|"
         echo "| aligned | No component-level evidence refresh required for this branch. |"
-    } >> "$ledger_tmp"
+    } >> "$report_tmp"
 else
     {
         echo "## Component Evidence"
         echo ""
-    } >> "$ledger_tmp"
+    } >> "$report_tmp"
 fi
 
 while IFS= read -r component; do
@@ -663,7 +653,7 @@ while IFS= read -r component; do
             echo "- No matching read-only rh-brain sources found."
         fi
         echo ""
-    } >> "$ledger_tmp"
+    } >> "$report_tmp"
 done < "$audit_components"
 
 {
@@ -679,11 +669,10 @@ done < "$audit_components"
     else
         echo "**Decision:** aligned. Notes may be handled as follow-up work."
     fi
-} >> "$ledger_tmp"
+} >> "$report_tmp"
 
-mv "$ledger_tmp" "$LEDGER_PATH"
+cat "$report_tmp"
 
-echo "Alignment evidence written to: $LEDGER_PATH"
 echo "Blocking findings: $blocked_total"
 echo "Notes: $warning_total"
 

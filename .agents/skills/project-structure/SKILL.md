@@ -67,11 +67,12 @@ Platform skills.
    README capability claims require implemented manifests or a clear deferred
    label.
 4. Keep operational details in `docs/OPERATIONS.md` and recovery details in
-   `docs/TROUBLESHOOTING.md`; step READMEs should teach the platform story.
+   `docs/TROUBLESHOOTING.md`; keep deferred capabilities and future work in
+   `docs/BACKLOG.md`; step READMEs should teach the platform story.
 5. For RHOAI component claims, cite official docs and record supporting
    `rh-brain` examples only as secondary evidence.
-6. Update `AGENTS.md`, `docs/AI_COLLABORATION.md`, and this skill when skill
-   groups, inventory, or source hierarchy change.
+6. Update `AGENTS.md`, `.agents/rules/*.md`, and the relevant project skills
+   when skill groups, inventory, or source hierarchy change.
 
 ## Naming Guidance
 

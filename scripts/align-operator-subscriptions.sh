@@ -13,7 +13,6 @@ if [[ "$MODE" != "--apply" && "$MODE" != "--verify" ]]; then
 fi
 
 load_env
-RHOAI_EXPECTED_API_SERVER="${RHOAI_EXPECTED_API_SERVER:-cluster-5dmgr}"
 check_oc_logged_in
 
 APPLY="false"

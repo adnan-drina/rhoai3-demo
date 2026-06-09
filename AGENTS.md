@@ -56,6 +56,7 @@ manifests directly with `oc apply -k` for ArgoCD-managed resources.
 - Open this repository as its own Codex project; do not open `/Users/adrina/Sandbox` as the active project for live cluster work.
 - Before running live `oc`/`kubectl` commands, call `load_env` and `check_oc_logged_in` from `scripts/lib.sh`.
 - Set `RHOAI_EXPECTED_API_SERVER` in the local `.env` to a unique target API-server substring before deploy, validate, bootstrap, or resource-management scripts run.
+- If using a project-local kubeconfig, set `KUBECONFIG` in `.env` to an absolute path under `tmp/`; never commit kubeconfig files.
 - Do not bypass the guard with `RHOAI_ALLOW_UNGUARDED_CLUSTER=true` unless the user explicitly confirms the current cluster and the command is low risk.
 - Do not read credentials from another project by default. Use `RHOAI_OPENAI_ENV_FILE` only when cross-project credential reuse is intentional and approved.
 
@@ -117,7 +118,7 @@ tool-specific skill discovery folders in this repo. Use the prefix plus
 | RHOAI Platform | `rhoai-*` | `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
 | Assets & Miscellaneous | `assets-*` | `assets-red-hat-quick-deck` | Visual, deck, and presentation assets |
 
-See [docs/AI_COLLABORATION.md](docs/AI_COLLABORATION.md) for the full governance model.
+Use `.agents/skills/project-agent-guidance/SKILL.md` for the full governance model.
 
 ## Subagents
 

@@ -121,5 +121,5 @@ Run this after major guidance changes:
 - [ ] No active references point to removed tool-specific rule, skill, agent,
       or discovery-bridge paths.
 - [ ] Hook scripts pass syntax checks and JSON hook configs parse.
-- [ ] `docs/AI_COLLABORATION.md`, `.agents/README.md`, and
-      `project-agent-guidance` inventories match the filesystem.
+- [ ] `AGENTS.md`, `.agents/rules/*.md`, and `project-agent-guidance`
+      inventories match the filesystem.

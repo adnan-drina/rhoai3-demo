@@ -20,7 +20,7 @@
 #   TTFT: <90ms p95 (well within 150ms SLO)
 # WARNING: Do NOT reduce max-model-len below 16384.
 #   The RAG chatbot with all MCP tools enabled (step-10) produces 12-16K input tokens.
-#   See docs/prompt-engineering-session.md "Critical Findings #1" for details.
+#   Run MCP functional validation after vLLM tuning changes.
 # Demo Role: Key model for Step 06 (Agent Playground)
 # Ref: https://docs.redhat.com/en/documentation/red_hat_ai/3/html-single/validated_models/index#validated-red-hat-ai-modelcar-container-images
 apiVersion: serving.kserve.io/v1beta1

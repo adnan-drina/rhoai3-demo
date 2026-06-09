@@ -38,7 +38,7 @@ and tool-specific bridges in this project.
 | Automated validation after file edits | **Tool hook config + script** | Runs scripts automatically; no agent decision needed |
 | Gate risky shell commands | **Shared hook implementation** (`.agents/hooks/`) | Reusable safety logic called by tool-specific configs |
 | Gate risky Codex shell commands | **Codex hook bridge** (`.codex/hooks.json`) | Calls shared guard before execution |
-| Pre-merge product-doc evidence | **Script + ledger** (`scripts/audit-doc-alignment.sh`, `docs/alignment-evidence-ledger.md`) | Records component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` |
+| Pre-merge product-doc audit | **Script** (`scripts/audit-doc-alignment.sh`) | Reports component alignment against the pinned product baseline in `docs/PLATFORM_BASELINE.md` |
 
 Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/hooks),
 [Subagents](https://cursor.com/docs/subagents)
@@ -54,9 +54,7 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 | Codex hook bridge | 1 config, 1 compatibility wrapper | `.codex/hooks.json`, `.codex/hooks/` |
 | Claude Code bridge | 1 | `.claude/CLAUDE.md` |
 
-Canonical governance: `docs/AI_COLLABORATION.md`
-Historical design notes: `docs/cursor-skills-and-rules.md`
-Historical audit log: `docs/rules-skills-audit.md`
+Canonical governance: `AGENTS.md`, `.agents/rules/*.md`, and this skill.
 
 ## Skill Groups
 
@@ -78,7 +76,7 @@ RHOAI component skills.
 
 ### Before Creating Any Component
 
-1. Read `docs/AI_COLLABORATION.md` for current governance, taxonomy, and inventory
+1. Read `AGENTS.md`, `.agents/rules/*.md`, and this skill for current governance, taxonomy, and inventory
 2. Read `references/conventions.md` for detailed patterns
 3. Check for overlaps — does an existing rule/skill already cover this?
 4. Decide the component type using the decision framework above
@@ -132,7 +130,7 @@ RHOAI component skills.
 - Keep `.codex/hooks/` limited to compatibility wrappers when needed
 - Keep hooks deterministic and non-secret; never print full commands containing credentials
 - Use them for safety checks such as blocking risky `oc`/`kubectl` mutations when the expected cluster guard is absent or mismatched
-- Document user-visible behavior in `AGENTS.md` and `docs/AI_COLLABORATION.md`
+- Document user-visible behavior in `AGENTS.md` and the relevant shared skill
 
 ### Auditing All Components
 
@@ -144,8 +142,8 @@ Run this audit periodically (monthly or after major changes):
 4. Verify skill `name` fields match folder names
 5. Verify always-apply budget hasn't crept up
 6. Check Red Hat doc links still resolve
-7. Update `docs/AI_COLLABORATION.md` when inventory or taxonomy changes
-8. Update `docs/rules-skills-audit.md` only for a dated deep audit
+7. Update `AGENTS.md`, `.agents/rules/*.md`, and this skill when inventory or taxonomy changes
+8. Keep dated deep-audit notes out of `docs/` unless they are promoted to one of the maintained docs
 
 For detailed conventions and patterns, read `references/conventions.md`.
 
@@ -168,7 +166,7 @@ are authored, keep the product-documentation loop current:
    ./scripts/audit-doc-alignment.sh --component step-05-maas-model-serving
    ```
 
-4. Commit the refreshed `docs/alignment-evidence-ledger.md` with the branch.
+4. Review the script output before merge.
 5. Use `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` only for narrative,
    customer framing, and Red Hat article alignment. Do not treat it as product
    configuration truth.

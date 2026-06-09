@@ -68,13 +68,17 @@ def read_guard_from_env_file(repo_root: Path) -> dict[str, str]:
             "RHOAI_EXPECTED_API_SERVER",
             "RHOAI_EXPECTED_CLUSTER",
             "RHOAI_ALLOW_UNGUARDED_CLUSTER",
+            "KUBECONFIG",
         }:
             continue
         result[key] = value.strip().strip('"').strip("'")
     return result
 
 
-def current_api_server() -> str:
+def current_api_server(kubeconfig: str = "") -> str:
+    env = os.environ.copy()
+    if kubeconfig:
+        env["KUBECONFIG"] = kubeconfig
     try:
         completed = subprocess.run(
             ["oc", "whoami", "--show-server"],
@@ -82,6 +86,7 @@ def current_api_server() -> str:
             capture_output=True,
             text=True,
             timeout=8,
+            env=env,
         )
     except Exception:
         return ""
@@ -149,7 +154,7 @@ def main() -> int:
             "before running deployment, bootstrap, or resource-management commands."
         )
 
-    server = current_api_server()
+    server = current_api_server(file_guard.get("KUBECONFIG", ""))
     if expected and not server:
         block("Blocked OpenShift mutation: unable to verify current oc API server.")
     if expected and expected not in server:

@@ -124,7 +124,10 @@ After all steps pass:
 
 ### Prerequisite Check
 
-Before deploying to a fresh cluster, run the prerequisite validation:
+Before deploying to a fresh cluster, first read the Fresh Environment Checklist
+in `docs/OPERATIONS.md`. Confirm local `.env` has the new environment's
+`KUBECONFIG`, `RHOAI_EXPECTED_API_SERVER`, `GIT_REPO_URL`, `GIT_REPO_BRANCH`,
+and required local credentials. Then run the prerequisite validation:
 ```bash
 ./.agents/skills/env-deploy-and-evaluate/scripts/validate-prerequisites.sh
 ```

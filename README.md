@@ -41,8 +41,8 @@ This demo covers 11 of 13 features from the [Red Hat OpenShift AI production AI 
 | **Catalog and registry** | Central registry and curated catalog for predictive and gen AI models, metadata, and deployment artifacts. | Steps 04, 05, 12 |
 | **AI safety and security** | Guardrails and detector chains for prompt injection, toxic content, and PII leakage before broader deployment. | Step 09 |
 | **Disconnected environments and edge** | Portable AI workloads across edge and constrained environments for data locality and operational consistency. | Steps 13, 13b |
-| Feature store | *Centralized, reusable feature definitions for reducing redundant feature engineering and training-serving skew.* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
-| **Models-as-a-service** | Self-service API access to approved models through a managed gateway with usage tracking, quota, and showback. Preview posture is called out in the step README and evidence ledger. | Step 05 |
+| Feature store | *Centralized, reusable feature definitions for reducing redundant feature engineering and training-serving skew.* | *Not yet demonstrated — see [BACKLOG.md](docs/BACKLOG.md)* |
+| **Models-as-a-service** | Self-service API access to approved models through a managed gateway with usage tracking, quota, and showback. Preview posture is called out in the step README. | Step 05 |
 
 ## OpenShift Container Platform 4.20 Features Used
 
@@ -60,8 +60,8 @@ The demo runs on [Red Hat OpenShift Container Platform 4.20](https://docs.redhat
 | **OpenShift GitOps (ArgoCD)** | Declarative GitOps continuous delivery — Git as the single source of truth for cluster and application configuration | All steps |
 | **OpenShift Pipelines (Tekton)** | Cloud-native CI/CD with Kubernetes-native pipelines that scale on demand in isolated containers | Step 12 |
 | **MicroShift 4.20** | Small-form-factor container orchestration runtime designed for edge computing on managed RHEL devices | Step 13b |
-| OpenShift Data Foundation | *Persistent storage, data services, and data protection for containers and virtual machines* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
-| AMQ Streams (Kafka) | *Event streaming platform for real-time data pipelines and streaming applications* | *Not yet demonstrated — see [BACKLOG.md](BACKLOG.md)* |
+| OpenShift Data Foundation | *Persistent storage, data services, and data protection for containers and virtual machines* | *Not yet demonstrated — see [BACKLOG.md](docs/BACKLOG.md)* |
+| AMQ Streams (Kafka) | *Event streaming platform for real-time data pipelines and streaming applications* | *Not yet demonstrated — see [BACKLOG.md](docs/BACKLOG.md)* |
 
 ## Four Demo Themes
 

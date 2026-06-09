@@ -11,19 +11,25 @@
 
 ## Phase 0: Environment Setup
 
-1. `oc login` with provided credentials (`--insecure-skip-tls-verify=true`)
-2. Verify cluster version: `oc get clusterversion`
-3. GPU quota check — sandbox accounts have 64 vCPU limit (1x g6.4xlarge + 1x g6.12xlarge = 64)
-4. Populate `.env` from `env.example`
-5. Run `./scripts/bootstrap.sh`
-6. Verify ArgoCD configuration:
+1. Store the cluster kubeconfig as an ignored local file under `tmp/` and point
+   `.env` `KUBECONFIG` to it with an absolute path.
+2. Set `.env` `RHOAI_EXPECTED_API_SERVER` to a unique API-server substring for
+   the new cluster.
+3. Set `.env` `GIT_REPO_URL` and `GIT_REPO_BRANCH` to the repo and branch Argo
+   CD should sync.
+4. `oc login` with provided credentials (`--insecure-skip-tls-verify=true`) if
+   the kubeconfig does not already contain a valid context.
+5. Verify cluster version: `oc get clusterversion`
+6. GPU quota check — sandbox accounts have 64 vCPU limit (1x g6.4xlarge + 1x g6.12xlarge = 64)
+7. Run `./scripts/bootstrap.sh`
+8. Verify ArgoCD configuration:
    ```bash
    # AppProject must exist
    oc get appproject rhoai-demo -n openshift-gitops
    # Tracking method must be annotation
    oc get argocd openshift-gitops -n openshift-gitops -o jsonpath='{.spec.resourceTrackingMethod}'
    ```
-7. Patch DSCI CA bundle:
+9. Patch DSCI CA bundle:
    ```bash
    CA=$(oc get configmap kube-root-ca.crt -n openshift-config -o jsonpath='{.data.ca\.crt}')
    oc patch dscinitializations default-dsci --type merge \
@@ -38,7 +44,7 @@
 - **Step 06**: Run benchmarks via `./steps/step-06-model-metrics/run-benchmark.sh`.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
-- **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources". See `docs/prompt-engineering-session.md`.
+- **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
 - **Step 07 — Annotation template override**: LlamaStack's default `annotation_instruction_template` tells the model to cite with `<|file-id|>` format. Overridden via `lsd-rag-config` ConfigMap (Lightspeed team approach) to "Never include any citation that is in the form file-id."
 - **Step 07 — max_output_tokens=512**: The chatbot passes `max_output_tokens` from the sidebar slider to the Responses API. Without this, vLLM defaults to 4096, which overflows the 16K context after MCP tool results consume 12-16K tokens (`response.failed: Unknown error`).
 - **Step 07 — max_infer_iters=20**: Default raised from 10 to 20. MCP multi-step chains need 4-5 iterations; 10 was too low for database-mcp queries.

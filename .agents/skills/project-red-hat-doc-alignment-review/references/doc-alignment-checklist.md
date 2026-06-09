@@ -42,8 +42,8 @@ propose one of:
 
 Do not infer fields from upstream projects or older product versions.
 
-## Evidence Ledger
+## Pre-Merge Audit
 
-For touched GitOps-managed components, refresh or request refresh of
-`docs/alignment-evidence-ledger.md`. If evidence cannot be refreshed, record the
-reason as deferred.
+For touched GitOps-managed components, run or request
+`./scripts/audit-doc-alignment.sh --base origin/main`. If live evidence cannot
+be checked, record the reason as deferred in the review notes or PR description.

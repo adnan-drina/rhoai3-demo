@@ -10,11 +10,40 @@ This guide keeps runbook content out of the step READMEs. Use it when you are de
 | Cluster-admin access | Bootstrap grants the OpenShift GitOps Argo CD application controller cluster-admin for this demo. |
 | AWS GPU capacity | Step 01 creates `g6.4xlarge` and `g6.12xlarge` MachineSets for NVIDIA L4 GPUs. Confirm regional quota before deployment. |
 | `oc` CLI | Required by every script. Login before running bootstrap or step scripts. |
+| Optional project kubeconfig | Set `KUBECONFIG` in local `.env` to an absolute path under `tmp/` when this repo owns a cluster-specific kubeconfig. |
 | Git remote | `scripts/bootstrap.sh` detects `origin` and rewrites Argo CD Application repo URLs for forks. |
 | Optional credentials | `HF_TOKEN` speeds or authorizes Hugging Face downloads; `OPENAI_API_KEY` enables Step 05 external MaaS models; `SLACK_BOT_TOKEN` enables Slack MCP; Step 13b needs `EDGE_HOST`, `EDGE_USER`, and `EDGE_PASS`. |
 | Pull access | Red Hat registry, Quay, and other image sources must be reachable unless you adapt the demo for disconnected mirroring. |
 
 Self-signed or demo certificates are expected. The scripts and examples use `--insecure-skip-tls-verify=true` and `curl -k` where needed.
+
+## Fresh Environment Checklist
+
+When moving the demo to a new cluster, update local environment state before
+running bootstrap or step scripts:
+
+1. Save the new cluster kubeconfig as an ignored repo-local file, for example
+   `tmp/current-cluster.kubeconfig`.
+2. Update local `.env`:
+   - `KUBECONFIG=/absolute/path/to/rhoai3-demo/tmp/current-cluster.kubeconfig`
+   - `RHOAI_EXPECTED_API_SERVER=<unique substring or full API hostname>`
+   - `GIT_REPO_URL=<repo URL Argo CD should sync from>`
+   - `GIT_REPO_BRANCH=<branch Argo CD should sync from>`
+3. Refresh local-only credentials as needed: `HF_TOKEN`, `OPENAI_API_KEY`,
+   Slack values, and edge host values.
+4. Confirm AWS GPU quota and region can create the required `g6.4xlarge` and
+   `g6.12xlarge` MachineSets.
+5. Run the prerequisite validation:
+
+   ```bash
+   ./.agents/skills/env-deploy-and-evaluate/scripts/validate-prerequisites.sh
+   ```
+
+6. Run `./scripts/bootstrap.sh`, then deploy and validate steps in order.
+
+Do not encode a generated cluster name such as `cluster-abcde` in tracked
+files. Use it only as a local `.env` guard value or local kubeconfig filename
+when that helps identify the active environment.
 
 ## Deployment Order
 
@@ -268,7 +297,7 @@ Product-aligned next improvements:
 
 ## Pre-Merge Documentation Alignment Gate
 
-Before merging a branch that changes GitOps-managed components, refresh the documentation alignment evidence ledger:
+Before merging a branch that changes GitOps-managed components, run the documentation alignment audit:
 
 ```bash
 ./scripts/audit-doc-alignment.sh --base origin/main
@@ -282,7 +311,7 @@ For a focused check while developing a single step:
 
 The gate is pinned to RHOAI 3.4 and OCP 4.20 until the demo baseline changes. It blocks only high-risk drift, including invalid Kustomize output, stale pre-3.4 product references in touched components, and unsupported API/schema evidence when strict live-cluster checks are enabled.
 
-The generated ledger lives in `docs/alignment-evidence-ledger.md`. Treat it as the branch's evidence record. It can cite `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` as read-only research input for Red Hat article alignment, but official product documentation remains the source of truth.
+The audit prints a transient report and exits nonzero when it finds blocking drift. It can cite `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` as read-only research input for Red Hat article alignment, but official product documentation remains the source of truth.
 
 ## Cleanup
 

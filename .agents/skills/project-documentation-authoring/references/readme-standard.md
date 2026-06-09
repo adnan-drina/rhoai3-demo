@@ -36,13 +36,30 @@ hand-editing generated diagrams.
 
 1. H1 title and one-line tagline.
 2. Overview that includes problem framing, product introduction,
-   `## Architecture`, what gets deployed, design decisions, deploy instructions,
-   and deterministic verification.
+   `## Architecture`, what gets deployed, design decisions, and concise
+   deploy/validate entry points.
 3. Demo section with scenes.
 4. Key takeaways for business and technical audiences.
-5. Troubleshooting when applicable.
+5. Step-specific troubleshooting notes only when they help the reader
+   understand the demo; link reusable recovery procedures to
+   `docs/TROUBLESHOOTING.md`.
 6. References to active-baseline official docs and relevant Red Hat pages.
 7. Next steps as the final section.
+
+## Content Boundaries
+
+- Keep step READMEs focused on the educational platform story and what the
+  step proves.
+- Include short deploy and validate commands when they anchor the demo flow,
+  but put deployment order, environment preparation, shutdown/recovery, and
+  day-2 runbooks in `docs/OPERATIONS.md`.
+- Put repeated symptoms, root causes, and repair procedures in
+  `docs/TROUBLESHOOTING.md`; the README may link to them.
+- Put active product targets and source hierarchy in
+  `docs/PLATFORM_BASELINE.md`.
+- Put deferred capabilities, future enhancements, and prioritized product
+  coverage gaps in `docs/BACKLOG.md`; README references may link to the
+  backlog instead of repeating backlog detail.
 
 ## Demo Scene Pattern
 
@@ -82,3 +99,6 @@ After editing a README:
 - Relative links resolve.
 - References include active-baseline technical docs and Red Hat product pages
   where relevant.
+- Long runbook or recovery content has been routed to `docs/OPERATIONS.md` or
+  `docs/TROUBLESHOOTING.md`.
+- Deferred work links to `docs/BACKLOG.md` when it is actionable project work.

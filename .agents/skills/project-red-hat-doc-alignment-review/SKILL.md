@@ -13,8 +13,8 @@ description: >
   baseline. Use when creating or modifying CRs, operator configuration,
   InferenceServices, ServingRuntimes, LlamaStack, Guardrails, Model Registry,
   DSPA, LMEvalJob, TrustyAI, Notebook, or any RHOAI-managed resource. Also use
-  when adding baseline-specific product claims, refreshing evidence ledgers, or
-  running periodic Red Hat documentation alignment audits. Do NOT use for
+  when adding baseline-specific product claims or running periodic Red Hat
+  documentation alignment audits. Do NOT use for
   general prose authoring, README narrative, PLAN.md writing, or knowledge
   capture (use project-documentation-authoring).
 ---

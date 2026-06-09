@@ -5,33 +5,58 @@ documentation.
 
 ## Read Before Writing
 
-Before changing a step, read its README. Step READMEs contain:
+Before changing documentation, read the document that owns the knowledge you are
+about to edit and its nearest companion docs. Step READMEs are not the catch-all
+for every operational detail.
 
-- design decisions and rationale
-- known limitations and workarounds
-- troubleshooting notes from real deployments
-- official documentation references
+Step READMEs should contain:
+
+- the step-specific platform story and business framing
+- what the step deploys or demonstrates
+- major design decisions needed to understand the step
+- concise demo flow, verification, and references
+
+Other durable knowledge belongs elsewhere:
+
+- deferred capabilities, future enhancements, and prioritized gaps:
+  `docs/BACKLOG.md`
+- operational procedures and deployment order: `docs/OPERATIONS.md`
+- repeated failure symptoms, root causes, and recovery: `docs/TROUBLESHOOTING.md`
+- active product targets and source hierarchy: `docs/PLATFORM_BASELINE.md`
+- promoted documentation index and ownership notes: `docs/README.md`
 
 ## Knowledge Sources
 
 | Source | Purpose |
 |--------|---------|
 | `README.md` | overall architecture and demo flow |
-| `steps/step-XX-name/README.md` | step-specific platform story and details |
-| `docs/alignment-evidence-ledger.md` | product-doc alignment evidence |
-| `docs/OPERATIONS.md` | operational procedures |
-| `docs/TROUBLESHOOTING.md` | failure recovery |
+| `docs/README.md` | index of promoted project documents and documentation ownership rules |
+| `docs/BACKLOG.md` | deferred capabilities, future enhancements, and prioritized product coverage gaps |
+| `steps/step-XX-name/README.md` | step-specific educational platform story, architecture, deployed capabilities, demo flow, and concise verification |
+| `docs/OPERATIONS.md` | prerequisites, deployment order, bootstrap behavior, deploy and validate script usage, GitOps operating model, validation strategy, and day-2 operations |
+| `docs/TROUBLESHOOTING.md` | symptom-based diagnostics, likely causes, recovery commands, and recurring failure notes |
+| `docs/PLATFORM_BASELINE.md` | active RHOAI/OCP product baseline and source hierarchy |
 | `rh-brain` | read-only Red Hat narrative and article research |
 
 ## Capture New Knowledge
 
 When fixing a bug or discovering a pattern, update the relevant documentation:
 
-- Add troubleshooting entries for repeated symptoms.
-- Add design decisions for non-obvious choices.
-- Add known limitations with active-baseline version notes.
-- Cross-reference related steps when one step affects another.
-- Refresh alignment evidence for GitOps-managed component changes.
+- Put repeated symptoms, root causes, and recovery steps in
+  `docs/TROUBLESHOOTING.md`.
+- Put deployment order, validation strategy, day-2 operations, and script usage
+  in `docs/OPERATIONS.md`.
+- Put non-obvious design decisions in the step README only when they are needed
+  to understand the platform story; otherwise place operational detail in
+  `docs/OPERATIONS.md`.
+- Put known limitations in the document where the reader needs them most, with
+  active-baseline version notes and a link to the source.
+- Put deferred capabilities, future enhancements, and prioritized product
+  coverage gaps in `docs/BACKLOG.md`.
+- Cross-reference related steps or docs instead of duplicating long procedures.
+- For GitOps-managed component changes, request or run the Red Hat
+  documentation alignment workflow rather than hand-editing product-doc
+  evidence by guesswork.
 
 ## Recommended Snippets
 
@@ -59,6 +84,7 @@ Known limitation:
 
 ## Source Hierarchy
 
-README knowledge supplements official documentation; it does not replace it.
-If official docs and implementation disagree, document the gap and explain the
-validated demo choice.
+Repository documentation supplements official product documentation; it does not
+replace it. If official docs and implementation disagree, document the gap in
+the relevant human-facing doc and use `project-red-hat-doc-alignment-review` to
+decide whether the product-doc evidence needs refresh.

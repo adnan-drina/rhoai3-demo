@@ -1,16 +1,21 @@
 # Documentation Index
 
-This directory has published operational documents and generated evidence:
+This directory has promoted project documentation. Tracked Markdown files
+should stay limited to the documents in this index; architecture SVGs under
+`docs/assets/architecture/` are generated README assets.
 
 | Document | Purpose |
 |----------|---------|
+| [BACKLOG.md](BACKLOG.md) | Deferred capabilities, future enhancements, and prioritized product coverage gaps. |
 | [OPERATIONS.md](OPERATIONS.md) | Prerequisites, deployment order, bootstrap behavior, deploy and validate script usage, GitOps operating model, validation strategy, and day-2 notes. |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Symptom-based diagnostics, likely causes, recovery commands, and references. |
-| [alignment-evidence-ledger.md](alignment-evidence-ledger.md) | Generated pre-merge evidence that changed GitOps components still align with the pinned RHOAI/OCP product documentation baseline. |
+| [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) | Active RHOAI/OCP product baseline and documentation source hierarchy. |
 
 The workshop narrative lives in the root [README.md](../README.md) and the step-level `README.md` files under [steps](../steps/).
 
-Other files that may exist in this directory are local session notes, migration notes, or one-off working documents. Treat them as internal scratch material unless they are promoted into this index. They may describe a specific cluster, a past state of the repository, or a deferred idea.
+Keep session notes, migration notes, one-off working documents, and generated
+evidence outside tracked `docs/` content unless they are promoted into this
+index.
 
 Documentation rules for this repository:
 
