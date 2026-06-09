@@ -14,22 +14,18 @@
 .DS_Store
 Thumbs.db
 
-# IDE — ignore Cursor IDE config except tracked repo rules under .cursor/rules/
+# IDE — ignore local state, track shared agent guidance and safety automation
 .idea/
 .vscode/
 .cursor/**
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/agents/
-!.cursor/agents/doc-alignment-reviewer.md
-!.cursor/skills/
-!.cursor/skills/maintain-rules-and-skills/
-!.cursor/skills/maintain-rules-and-skills/SKILL.md
-!.cursor/skills/red-hat-quick-deck/
-!.cursor/skills/red-hat-quick-deck/**
+!.cursor/hooks.json
+!.cursor/hooks/
+!.cursor/hooks/**
 
-.claude/
-CLAUDE.md
+.claude/**
+!.claude/
+!.claude/CLAUDE.md
+/CLAUDE.md
 *.code-workspace
 
 # Build outputs
@@ -52,6 +48,7 @@ venv/
 !/docs/README.md
 !/docs/AI_COLLABORATION.md
 !/docs/OPERATIONS.md
+!/docs/PLATFORM_BASELINE.md
 !/docs/alignment-evidence-ledger.md
 !/docs/assets/
 !/docs/assets/architecture/

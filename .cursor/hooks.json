@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/validate-yaml.sh",
+        "matcher": "Write"
+      },
+      {
+        "command": ".cursor/hooks/check-docs-consistency.sh",
+        "matcher": "Write"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "python3 .agents/hooks/guard-openshift-command.py",
+        "matcher": "\\b(oc|kubectl)\\s+(apply|create|delete|patch|replace|scale|adm|annotate|label|rollout|edit|expose|set)\\b|scripts/bootstrap\\.sh|scripts/resume-gpu-demo\\.sh|deploy\\.sh|upload-to-minio\\.sh|run-guidellm-load-test\\.sh"
+      }
+    ]
+  }
+}

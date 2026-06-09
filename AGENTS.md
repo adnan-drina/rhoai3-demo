@@ -1,12 +1,13 @@
-# RHOAI 3.4 Demo — Codex Instructions
+# RHOAI Demo — Codex Instructions
 
-Demo of building Private AI platform infrastructure for enterprise generative and
-predictive AI use cases using **Red Hat OpenShift AI (RHOAI) 3.4** on
-**Red Hat OpenShift Container Platform (RHOCP) 4.20**.
+Demo of building Private AI platform infrastructure for enterprise generative
+and predictive AI use cases using the product baseline in
+`docs/PLATFORM_BASELINE.md`.
 
 ## Documentation first
 
-- Official RHOAI 3.4 and RHOCP 4.20 docs are the source of truth
+- Official Red Hat docs for the active `docs/PLATFORM_BASELINE.md` versions are
+  the source of truth
 - Do not invent CR fields, API versions, annotations, or operator configurations
 - If unsure, propose a verification command (`oc explain`, `oc get crd`)
 
@@ -90,37 +91,36 @@ Scope: step number for step-specific, component name for cross-cutting.
 
 ## Detailed rules
 
-For YAML standards, cross-resource consistency, and comment hygiene:
-@.cursor/rules/40-openshift-rhoai-manifests.mdc
+For project structure, GitOps authoring, documentation, manifest review, doc
+alignment, and shared agent guidance, read `.agents/rules/project.md`.
 
-For GitOps structure, ArgoCD Application standards, and Kustomize patterns:
-@.cursor/rules/10-gitops-kustomize.mdc
+For live demo environment deployment, validation, troubleshooting, shutdown,
+recovery, and redeploy, read `.agents/rules/env.md`.
 
-For README structure (Tell-Show-Tell demo format, Red Hat narrative alignment):
-@.cursor/rules/20-readme-standard.mdc
+For RHOAI platform component guidance, chatbot behavior, KFP, and evaluation,
+read `.agents/rules/rhoai.md`.
 
-For Kubernetes labels, OpenShift Topology annotations, and RHOAI Dashboard labels:
-@.cursor/rules/50-kubernetes-labels.mdc
+For visual assets, architecture diagrams, decks, and presentation outputs, read
+`.agents/rules/assets.md`.
 
-For secrets handling, ODH managed label gotcha, and security posture:
-@.cursor/rules/30-secrets-and-certs.mdc
+## Shared Skills
 
-## Shared skills
+Canonical skills live in `.agents/skills/`, the Codex repo-skill discovery
+path. Short tool-neutral rules live in `.agents/rules/`. Do not maintain
+tool-specific skill discovery folders in this repo. Use the prefix plus
+`metadata.skill-group` taxonomy for skill review:
 
-Skills in `.cursor/skills/` are invoked workflows. Keep skill folders flat for tool discovery and use this taxonomy for review:
-
-| Category | Skills | Purpose |
-|----------|--------|---------|
-| Deployment and validation | `deploy-and-evaluate`, `validate-demo-flow` | Deploy and verify the end-to-end demo |
-| Live operations | `rhoai-troubleshoot`, `manage-resources` | Diagnose or intentionally change live cluster resources |
-| Domain workflows | `chatbot-customization`, `model-evaluation`, `refactor-architecture-diagrams`, `red-hat-quick-deck` | Workflows for specific demo content or deliverables |
-| Governance | `maintain-rules-and-skills` | Add, update, or audit shared rules, skills, hooks, and agents |
+| Group | Prefix | Skills | Purpose |
+|-------|--------|--------|---------|
+| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-doc-alignment-review` | Repo layout, GitOps step conventions, documentation structure, Red Hat narrative alignment, manifest review, doc alignment, and shared AI guidance |
+| Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
+| RHOAI Platform | `rhoai-*` | `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
+| Assets & Miscellaneous | `assets-*` | `assets-red-hat-quick-deck` | Visual, deck, and presentation assets |
 
 See [docs/AI_COLLABORATION.md](docs/AI_COLLABORATION.md) for the full governance model.
 
-## Subagents available
+## Subagents
 
-Subagents in `.cursor/agents/` for context-isolated tasks:
-- `cluster-inspector` (readonly, fast) — gather cluster state safely
-- `manifest-reviewer` (readonly) — review manifests for compliance
-- `doc-alignment-reviewer` (readonly) — verify manifests match pinned RHOAI 3.4/OCP 4.20 docs
+No shared subagents are currently tracked. Add tool-specific subagents only for
+genuinely tool-specific context isolation needs; shared workflows belong in
+`.agents/skills/`.
