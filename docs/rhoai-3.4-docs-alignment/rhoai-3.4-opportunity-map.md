@@ -101,7 +101,7 @@ Observed:
 | Item | Action | Acceptance |
 |---|---|---|
 | Support-status matrix | Keep `support-status-matrix.md` current for MaaS, vLLM-on-MaaS, NeMo, MLflow, Llama Stack, Responses API, MCP, EvalHub, AutoRAG, AutoML, Feature Store, llm-d, MLServer, Trainer v2, Spark, TrustyAI, and Model Registry APIs. Include release-note status and product-book status where they conflict. | Every README claim points to the matrix or an exact official doc link. |
-| Step 09 target revision cleanup | Done. Live Step 09 target revision is `main`; app remains `Synced/Healthy`. | `oc get app step-09-guardrails -n openshift-gitops -o jsonpath='{.spec.source.targetRevision}'` returns `main`; app remains `Synced/Healthy`. |
+| Step 09 target revision cleanup | Done. Previous cleanup restored Step 09 to `main`; the RHOAI 3.4 refactoring branch now intentionally pins all per-step Applications to `rhoai34-refactoring`. | `oc get app step-09-guardrails -n openshift-gitops -o jsonpath='{.spec.source.targetRevision}'` returns the active branch or release tag; app remains `Synced/Healthy`. |
 | README stale status | Keep Step 02/05/09/12 wording tied to release notes and the support matrix: MaaS is not blanket-TP, NeMo uses the release-note support posture, and MLflow is Technology Preview. | Step docs stop underselling or misclassifying 3.4 features. |
 
 ### P1: Turn Installed Components Into Demo Value

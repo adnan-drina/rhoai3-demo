@@ -85,7 +85,7 @@ Shared skills should:
 - avoid secrets, local paths, private URLs, and local cluster assumptions
 - mark destructive or expensive workflows with `disable-model-invocation: true`
 
-`red-hat-quick-deck` is intentionally shared between both demo repos today, but it is oversized and should be split into a lean `SKILL.md` plus references before further feature growth.
+`red-hat-quick-deck` is intentionally shared between both demo repos and is organized as a lean entry-point `SKILL.md` plus detailed `references/` files. Keep future deck-system detail in references instead of expanding the entry point.
 
 ## Hooks and cluster safety
 

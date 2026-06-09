@@ -206,7 +206,7 @@ PROMPT_COMMIT_MESSAGE="Initial agentic RAG prompt" \
 | Optional KFP MLflow evidence | Latest `enterprise-rag` KFP run tagged `rhoai.demo.step=08` | Fresh finished run when KFP path is used |
 | LM-Eval runs | LMEvalJob CRs | Recent completed job per model |
 
-> **Pre-merge branch validation:** While this branch is under test, the Step 08 ArgoCD `Application` is pinned to `targetRevision: feat/step-08-evalhub` so live validation uses the branch contents. Restore the Application manifest to `targetRevision: main` before merging to trunk.
+> **Refactoring branch validation:** During RHOAI 3.4 refactoring, all per-step ArgoCD `Application` manifests are pinned to `targetRevision: rhoai34-refactoring` so live validation uses the branch contents. Restore the Applications to `targetRevision: main` or a release tag when returning to trunk-based demo operation.
 
 ```bash
 oc get applications.argoproj.io step-08-model-evaluation -n openshift-gitops \

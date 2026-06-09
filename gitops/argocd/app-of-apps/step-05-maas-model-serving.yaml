@@ -15,7 +15,7 @@ spec:
   project: rhoai-demo
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
-    targetRevision: main
+    targetRevision: rhoai34-refactoring
     path: gitops/step-05-maas-model-serving/base
   destination:
     server: https://kubernetes.default.svc

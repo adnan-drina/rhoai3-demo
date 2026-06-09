@@ -15,7 +15,7 @@ spec:
   project: rhoai-demo
   source:
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
-    targetRevision: main
+    targetRevision: rhoai34-refactoring
     path: gitops/step-11-face-recognition/base
   destination:
     server: https://kubernetes.default.svc
