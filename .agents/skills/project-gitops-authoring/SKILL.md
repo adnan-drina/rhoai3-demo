@@ -11,10 +11,12 @@ description: >
   Author and update rhoai3-demo GitOps manifests, Kustomize bases, Argo CD
   Applications, labels, annotations, demo secrets, and per-step deployment
   scripts. Use when editing gitops/**, kustomization.yaml files, Argo CD
-  app-of-apps entries, ServingRuntime annotations, OpenShift labels, GitOps
-  deployment flow, demo secrets, self-signed certificate handling, container
-  image source, or model artifact source. Also use when creating a new demo
-  step's GitOps folder. Do NOT use for readonly review only (use
+  app-of-apps entries, operator bases and overlays, ServingRuntime annotations,
+  OpenShift labels, GitOps deployment flow, demo secrets, self-signed
+  certificate handling, container image source, or model artifact source. Also
+  use when creating a new demo step's GitOps folder. Pair with
+  project-red-hat-operator-gitops when deploying Red Hat Operators through OLM
+  and Kustomize. Do NOT use for readonly review only (use
   project-manifest-review) or Red Hat source alignment review only (use
   project-red-hat-doc-alignment-review).
 ---
@@ -34,15 +36,18 @@ aligned with the active product baseline.
    wording.
 4. For GitOps structure and Argo CD standards, read
    `references/argocd-kustomize.md`.
-5. For OpenShift GitOps Operator, Argo CD product boundary, platform RBAC, or
+5. For Red Hat Operator installation through OLM, Kustomize operator bases,
+   channel overlays, operand instance overlays, or aggregate overlays, use
+   `project-red-hat-operator-gitops`.
+6. For OpenShift GitOps Operator, Argo CD product boundary, platform RBAC, or
    resource tracking questions, use `ocp-gitops-operator` first.
-6. For YAML, cross-resource consistency, and validation, read
+7. For YAML, cross-resource consistency, and validation, read
    `references/manifest-standards.md`.
-7. For secrets, local `.env` handling, TLS bypasses, and demo security posture,
+8. For secrets, local `.env` handling, TLS bypasses, and demo security posture,
    read `references/security-and-secrets.md`.
-8. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
+9. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
    read `references/labels-and-annotations.md`.
-9. For new or changed images, model artifacts, CR fields, or operator settings,
+10. For new or changed images, model artifacts, CR fields, or operator settings,
    use `project-red-hat-doc-alignment-review` to confirm official Red Hat docs,
    Red Hat registry sources, validated model sources, or explicitly documented
    demo exceptions.
@@ -62,3 +67,4 @@ When proposing or making changes, include:
 - `references/manifest-standards.md`
 - `references/security-and-secrets.md`
 - `references/labels-and-annotations.md`
+- `.agents/skills/project-red-hat-operator-gitops/SKILL.md`

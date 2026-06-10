@@ -27,6 +27,7 @@ standards, Red Hat source alignment, or shared agent guidance:
 - `.agents/skills/project-agent-guidance/SKILL.md`
 - `.agents/skills/project-red-hat-doc-skill-authoring/SKILL.md`
 - `.agents/skills/project-rhoai-doc-chapter-skill-authoring/SKILL.md`
+- `.agents/skills/project-red-hat-operator-gitops/SKILL.md`
 - `.agents/skills/project-gitops-authoring/SKILL.md`
 - `.agents/skills/project-documentation-authoring/SKILL.md`
 - `.agents/skills/project-manifest-review/SKILL.md`
@@ -47,6 +48,13 @@ version, category, book, and chapter topic to an existing or planned flat
 skill. Generated component skills must capture official sources, extraction
 notes, validation rules, examples, and the corresponding doc-map route before
 they are treated as reusable product guidance.
+
+Use `project-red-hat-operator-gitops` when deploying Red Hat Operators through
+GitOps. Follow the Red Hat Community of Practice catalog structure as a local
+curation pattern: operator base, channel overlay, instance resources, optional
+components, and aggregate overlays. Do not commit direct remote Kustomize
+references to the community catalog; product fields and channels still come
+from official Red Hat docs and product skills.
 
 The active implementation is being rewritten. Current implementation folders
 `gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is
