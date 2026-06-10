@@ -9,6 +9,7 @@ Update it first when preparing an upgrade.
 |-----------|---------|---------------|
 | Red Hat OpenShift AI Self-Managed | 3.4 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/ |
 | Red Hat OpenShift Container Platform | 4.20 | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/ |
+| Red Hat OpenShift Data Foundation | 4.20 | https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/ |
 | Red Hat build of OpenTelemetry | 3.9 | https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9 |
 | Red Hat OpenShift distributed tracing platform | 3.9 | https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9 |
 
@@ -30,6 +31,12 @@ For the current baseline, OCP product-documentation links should use:
 https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
 ```
 
+For the current baseline, ODF product-documentation links should use:
+
+```text
+https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/
+```
+
 For the current baseline, Red Hat build of OpenTelemetry documentation links
 should use:
 
@@ -49,9 +56,10 @@ the Red Hat documentation landing page intentionally links to an unversioned
 Customer Portal article or no version-specific document exists. Record that as
 an explicit exception in the relevant README, review note, or skill reference.
 
-OpenShift Data Foundation is not pinned yet. Do not generate reusable `odf-*`
-skills until an ODF product version and official documentation source are
-added to this baseline.
+OpenShift Data Foundation is pinned to `4.20` because the demo OpenShift
+baseline is OCP `4.20`. Red Hat ODF update guidance says the ODF version should
+match the OCP minor version, and on OCP `4.20`, ODF `4.20` is the latest
+compatible ODF version that can be installed.
 
 ## Red Hat OpenShift AI 3.4 Documentation Index
 
@@ -149,6 +157,43 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
   [Networking](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/index)
 - **Storage**:
   [Storage](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/storage/index)
+
+## OpenShift Data Foundation 4.20 Documentation Index
+
+Use the official ODF 4.20 landing page as the entry point:
+https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/
+
+- **Planning**:
+  [4.20 Release Notes](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html/4.20_release_notes/index),
+  [Planning your deployment](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/planning_your_deployment/index),
+  [Red Hat OpenShift Data Foundation architecture](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/red_hat_openshift_data_foundation_architecture/index)
+- **Deploying**:
+  [Deploying OpenShift Data Foundation using Amazon Web Services](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_using_amazon_web_services/index),
+  [Deploying OpenShift Data Foundation on any platform](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_on_any_platform/index)
+- **Managing**:
+  [Managing hybrid and multicloud resources](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html/managing_hybrid_and_multicloud_resources/index),
+  [Managing and allocating storage resources](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/managing_and_allocating_storage_resources/index)
+- **Updating**:
+  [Updating OpenShift Data Foundation](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/updating_openshift_data_foundation/index)
+- **Monitoring and troubleshooting**:
+  [Monitoring OpenShift Data Foundation](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/monitoring_openshift_data_foundation/index),
+  [Troubleshooting OpenShift Data Foundation](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/troubleshooting_openshift_data_foundation/index)
+
+## ODF Demo Storage Intent
+
+The demo should start with the minimum ODF footprint needed by RHOAI:
+
+- Prefer standalone Multicloud Object Gateway (MCG/NooBaa) for S3-compatible
+  object storage used by model artifacts, AI Pipelines, MLflow, evaluation
+  evidence, and other RHOAI object-store integrations.
+- Prefer `ObjectBucketClaim` resources for project-scoped buckets and
+  generated ConfigMaps/Secrets containing S3 connection information.
+- Keep full ODF StorageCluster/Ceph block and file storage as an explicit
+  implementation decision only when the demo needs ODF-provided RWO/RWX PVCs
+  beyond the underlying OpenShift storage classes.
+- Use the Red Hat Developer ODF article as narrative and implementation context
+  for lightweight MCG and OBC workflows; product configuration truth remains
+  the ODF 4.20 documentation above.
 
 ## Source Hierarchy
 
