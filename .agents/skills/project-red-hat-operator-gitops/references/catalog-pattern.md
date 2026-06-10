@@ -132,6 +132,23 @@ For this repo:
 If the selected overlay does not exist in a catalog example, create it locally
 as a small channel patch.
 
+## Lifecycle Management
+
+The same `operator/base` and `operator/overlays/<channel>` split is the
+upgrade mechanism:
+
+- keep the Subscription channel and `installPlanApproval` policy in Git
+- add a new channel overlay when moving to a different supported stream
+- update aggregate overlays or Argo CD Application paths only when the selected
+  overlay path changes
+- let Argo CD reconcile the Subscription and let OLM create generated
+  InstallPlans and CSVs
+- validate the new CSV and CRD schema before changing operand CRs
+
+Avoid live Subscription patches, web console channel edits, or hand-managed
+CSV changes as the normal lifecycle path. If an emergency cluster-side change
+is made, reconcile it into Git or let Argo CD intentionally revert it.
+
 ## Local Curation Rules
 
 - Copy only the pattern and minimal manifest shape needed for this demo.

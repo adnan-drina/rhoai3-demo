@@ -50,6 +50,15 @@ Channel overlay patch:
   value: <verified-channel>
 ```
 
+Approval-strategy patch, only when the overlay intentionally changes lifecycle
+policy:
+
+```yaml
+- op: replace
+  path: /spec/installPlanApproval
+  value: Manual
+```
+
 Aggregate overlay:
 
 ```yaml
@@ -68,6 +77,34 @@ Before committing this pattern:
 - render each overlay with `kustomize build`
 - create Argo CD Applications using `project-gitops-authoring`
 - run `scripts/validate-agent-guidance.rb` if skills or rules changed
+
+## Operator Upgrade Example
+
+For a controlled channel move, add a new overlay or update the selected overlay:
+
+```text
+gitops/operators/<operator-name>/operator/overlays/<new-channel>/
+  patch-channel.yaml
+  kustomization.yaml
+```
+
+```yaml
+- op: replace
+  path: /spec/channel
+  value: <new-verified-channel>
+```
+
+Then update the aggregate overlay or Argo CD Application path to select the new
+overlay, sync the operator Application, and validate:
+
+```sh
+oc get subscription -n <operator-namespace> <subscription-name> -o yaml
+oc get installplan,csv -n <operator-namespace>
+oc describe subscription -n <operator-namespace> <subscription-name>
+```
+
+Do not commit generated InstallPlans or CSVs. Do not rely on a Git revert as a
+generic Operator downgrade.
 
 ## RHOAI Progressive Component Example
 

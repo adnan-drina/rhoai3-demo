@@ -6,6 +6,8 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 
 - The active product baseline is read from `docs/PLATFORM_BASELINE.md`.
 - The Red Hat CoP GitOps Catalog is used only as a pattern source.
+- Official OCP Operator lifecycle docs are used for Subscription, InstallPlan,
+  CSV, channel, approval, and OLM behavior.
 - Operator package name, channel, catalog source, and namespace are verified
   against official Red Hat docs, package metadata, or live cluster schema.
 - Operand CR fields are verified against official docs or `oc explain`.
@@ -29,6 +31,25 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 - Aggregate overlays select the intended channel and profile.
 - No committed Kustomize resource references
   `github.com/redhat-cop/gitops-catalog`.
+
+## Lifecycle Review
+
+- Subscription channel, source, source namespace, package name, and
+  `installPlanApproval` are represented in Git.
+- Channel changes are made through `operator/overlays/<channel>` patches or
+  selected overlay paths, not direct live `oc patch` commands.
+- `installPlanApproval: Automatic` is intentional and matches the product
+  posture; `Manual` is used only when required or deliberately documented.
+- Generated InstallPlans, CSVs, and copied CSVs are not committed as desired
+  state.
+- `startingCSV` is absent unless official docs or a controlled install plan
+  require it.
+- Product baseline changes update `docs/PLATFORM_BASELINE.md` in the same
+  lifecycle work.
+- Operator Application sync happens before operand CR fields that depend on
+  new CRDs or schema.
+- Rollback language does not claim that reverting Git will downgrade an
+  already-upgraded Operator.
 
 ## Argo CD Review
 
@@ -58,6 +79,7 @@ Run these only after the OpenShift safety guard confirms the target cluster:
 oc get packagemanifest -n openshift-marketplace <operator-package> -o yaml
 oc get subscription,installplan,csv -A
 oc explain subscription.operators.coreos.com.spec
+oc describe subscription -n <operator-namespace> <subscription-name>
 ```
 
 For operand validation, use the product-specific CRDs:

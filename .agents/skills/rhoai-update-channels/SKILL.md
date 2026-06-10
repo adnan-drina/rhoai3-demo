@@ -49,6 +49,9 @@ Default policy:
   production-like demo environments unless the user explicitly wants
   unsupported early-access behavior.
 - Do not use `embedded` or `beta` for new Operator installations.
+- Represent RHOAI channel and approval strategy in Git through the operator
+  overlay pattern from `project-red-hat-operator-gitops`; do not change the
+  live Subscription as the normal lifecycle path.
 
 Technology Preview note: choosing a faster update channel does not make every
 Technology Preview feature production-supported. Use the relevant release notes
@@ -68,7 +71,10 @@ accordingly.
 4. Verify channel availability in the active OLM catalog before writing GitOps.
 5. When implementing the Subscription, keep channel policy, install-plan
    approval strategy, and support posture documented together.
-6. Validate with `references/validation-checklist.md`.
+6. For upgrades, update the GitOps channel overlay and sync the operator
+   Application before changing DSC/DSCI component patches that rely on new
+   schema.
+7. Validate with `references/validation-checklist.md`.
 
 ## References
 

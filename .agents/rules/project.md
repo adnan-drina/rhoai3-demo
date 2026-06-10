@@ -54,7 +54,10 @@ GitOps. Follow the Red Hat Community of Practice catalog structure as a local
 curation pattern: operator base, channel overlay, instance resources, optional
 components, and aggregate overlays. Do not commit direct remote Kustomize
 references to the community catalog; product fields and channels still come
-from official Red Hat docs and product skills.
+from official Red Hat docs and product skills. Operator lifecycle management
+is also GitOps state: channel changes, approval strategy, selected overlay,
+product baseline, and operand patches should be changed in Git and reconciled
+by Argo CD, not maintained as live Subscription drift.
 
 The active implementation is being rewritten. Current implementation folders
 `gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is

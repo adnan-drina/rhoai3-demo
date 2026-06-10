@@ -45,6 +45,10 @@ troubleshooting content:
   validation signals.
 - Use ODF 4.20 documentation with OCP 4.20. Do not lift ODF 4.21 procedures
   into the active baseline unless the platform baseline is upgraded.
+- Keep ODF Operator channel and update approval strategy in Git through the
+  operator lifecycle pattern from `project-red-hat-operator-gitops`. ODF
+  same-channel updates normally use automatic approval when the official ODF
+  update docs and active environment allow it.
 
 ## Workflow
 
@@ -54,9 +58,11 @@ troubleshooting content:
    `odf-multicloud-gateway`.
 3. If PVC-facing ODF block/file storage is needed, review ODF architecture and
    AWS deployment sources before proposing StorageCluster content.
-4. For any live validation, use readonly checks where possible and follow the
+4. For ODF upgrades, verify OCP/ODF compatibility, storage health, and data
+   resilience before changing Subscription channel or approval strategy in Git.
+5. For any live validation, use readonly checks where possible and follow the
    OpenShift safety guard in `AGENTS.md`.
-5. For troubleshooting, start with ODF status, pod health, dashboards, and ODF
+6. For troubleshooting, start with ODF status, pod health, dashboards, and ODF
    must-gather. Do not run unsupported Ceph commands unless Red Hat docs or
    support explicitly require them.
 
@@ -69,6 +75,8 @@ troubleshooting content:
 - `odf-storage-classes` for ODF storage class behavior.
 - `ocp-storage` for generic OpenShift PV/PVC and StorageClass behavior.
 - `rhoai-s3-object-storage-data` for RHOAI user workflows consuming S3.
+- `project-red-hat-operator-gitops` for GitOps-native ODF Operator
+  Subscription lifecycle, channel overlays, and approval strategy.
 
 ## References
 

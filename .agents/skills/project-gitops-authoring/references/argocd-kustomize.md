@@ -58,6 +58,20 @@ For RHOAI, follow the `project-red-hat-operator-gitops` pattern:
 - the same Argo CD Application owns the rendered DSC/DSCI objects throughout
   the demo
 
+## Operator Lifecycle Changes
+
+Treat Red Hat Operator lifecycle as GitOps state. Subscription channel,
+catalog source, source namespace, package name, and install-plan approval
+strategy should be changed through the operator Kustomize base or selected
+channel overlay, then reconciled by Argo CD. Do not use live `oc patch
+subscription` or web console channel edits as the normal upgrade path.
+
+For regular demo updates, the Git-managed Subscription can use automatic
+approval when product docs allow it. For controlled upgrades, change the
+channel overlay and product baseline in Git, sync the operator Application
+first, validate Subscription/InstallPlan/CSV/CRD readiness, and only then
+change operand CR patches that require the new schema.
+
 ## Naming
 
 - Step folders: `step-XX-descriptive-name`

@@ -12,6 +12,40 @@
 | OpenShift Data Foundation Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-data-foundation-operator |
 | Capture date | 2026-06-10 |
 
+## Official Lifecycle Sources
+
+| Source | URL | Use |
+|--------|-----|-----|
+| OCP 4.20 Operators - Understanding Operators | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/understanding-operators | OLM concepts, Subscription, InstallPlan, CSV, CatalogSource, OperatorGroup, channel, update graph |
+| OCP 4.20 Operators - Administrator tasks | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/administrator-tasks | Operator install settings, CLI Subscription shape, changing update channel, manual approval, subscription status, uninstall and refresh behavior |
+| RHOAI 3.4 - Understanding update channels | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/understanding-update-channels_install | RHOAI channel meanings, fast/stable/EUS/alpha posture, legacy channel warning |
+| ODF 4.20 - Updating OpenShift Data Foundation | https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/updating_openshift_data_foundation/index | ODF update process, OCP/ODF compatibility, automatic/manual approval guidance, storage health checks |
+
+## Official Lifecycle Extraction
+
+- OLM controls installation, upgrade, and RBAC for application Operators on
+  OpenShift.
+- Operator installation requires deliberate choices for installation mode,
+  update channel, and approval strategy.
+- A Subscription tracks an Operator package channel. OLM uses that desired
+  policy to create or update InstallPlans and CSVs.
+- Automatic approval allows OLM to upgrade the running Operator when a newer
+  version is available in the selected channel.
+- Manual approval creates a pending update request that a cluster
+  administrator must review and approve.
+- Installed Operators cannot be moved to an older channel as a generic update
+  operation.
+- `startingCSV` is for specific-version installation and should be paired with
+  manual approval when used to prevent automatic movement to a later available
+  version.
+- Default OpenShift cluster Operators are CVO-managed and do not use
+  Subscription objects; this skill targets OLM-managed application Operators.
+- ODF update docs recommend `Automatic` approval for same-channel automatic
+  storage-system updates and require ODF/OCP compatibility checks.
+- RHOAI 3.4 docs recommend `fast` or `fast-x.y` for production environments
+  that want latest product features, while warning that `embedded` and `beta`
+  are legacy channels for new installations.
+
 ## Captured Pattern
 
 - Catalog root provides Kustomize bases and overlays for OpenShift Operators
@@ -77,3 +111,6 @@ Hat product configuration truth. For this repo:
 - catalog examples suggest local GitOps organization and Kustomize layering
 - live cluster schema verifies installed CRDs and field availability
 - `docs/PLATFORM_BASELINE.md` controls product versions
+- operator lifecycle changes should be represented as Git changes to
+  Subscription overlays, approval strategy, product baseline, and operand
+  patches; direct live edits are exceptions that must be reconciled back to Git

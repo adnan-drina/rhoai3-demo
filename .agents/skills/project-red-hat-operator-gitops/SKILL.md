@@ -13,14 +13,15 @@ description: >
   Catalog style: curated local Kustomize operator bases, channel overlays,
   Namespace, OperatorGroup, Subscription, instance resources, aggregate
   overlays, progressive RHOAI DataScienceCluster component patching, Argo CD
-  Application ordering, sync options, and operator readiness handoff. Use when
-  deploying RHOAI, ODF, NFD, NVIDIA GPU Operator, OpenShift GitOps,
-  cert-manager, Kueue, OpenTelemetry, Tempo, or other Red Hat Operators
-  through GitOps. Do NOT use as product authority for Subscription channels,
-  CR fields, API versions, or support posture; use official Red Hat docs and
-  the matching rhoai-*, ocp-*, or odf-* skill. Do NOT reference the Community
-  of Practice catalog directly as a remote base in committed GitOps; curate
-  the pattern locally.
+  Application ordering, sync options, operator readiness handoff, and
+  GitOps-native Operator lifecycle management through Subscription channel and
+  approval-strategy changes. Use when deploying or upgrading RHOAI, ODF, NFD,
+  NVIDIA GPU Operator, OpenShift GitOps, cert-manager, Kueue, OpenTelemetry,
+  Tempo, or other Red Hat Operators through GitOps. Do NOT use as product
+  authority for Subscription channels, CR fields, API versions, or support
+  posture; use official Red Hat docs and the matching rhoai-*, ocp-*, or
+  odf-* skill. Do NOT reference the Community of Practice catalog directly as
+  a remote base in committed GitOps; curate the pattern locally.
 ---
 
 # Red Hat Operator GitOps
@@ -36,7 +37,8 @@ Read `references/source-capture.md` first. The Red Hat CoP GitOps Catalog is an
 implementation pattern source, not product support authority. Official Red Hat
 product documentation and cluster schema verification remain authoritative for
 operator channels, operands, CR fields, API versions, namespaces, and support
-posture.
+posture. Use `references/operator-lifecycle.md` for the GitOps-native lifecycle
+model for install, update, approval, verification, rollback, and drift.
 
 ## Catalog Pattern
 
@@ -71,6 +73,12 @@ the operator is installed. The `aggregate` layer combines the selected operator
 overlay and instance overlay for a profile such as `fast`, `fast-nvidia-gpu`,
 or `aws`.
 
+Lifecycle changes are also Git changes. A channel move, approval-strategy
+change, or product baseline upgrade should update the operator overlay and the
+project baseline in Git, then let Argo CD reconcile the Subscription and let OLM
+create the required InstallPlan and CSV. Do not patch Subscriptions directly in
+the cluster as the normal upgrade path.
+
 For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 
 - `instance/base` owns the baseline `DSCInitialization`, `DataScienceCluster`,
@@ -94,6 +102,12 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 - For the current demo posture, RHOAI Operator channel selection belongs to
   `rhoai-update-channels`; ODF channel selection belongs to the ODF baseline
   and `odf-storagecluster`.
+- Keep lifecycle policy in Git: Subscription channel, catalog source, source
+  namespace, install-plan approval strategy, and any deliberate `startingCSV`
+  exception.
+- Prefer automatic approval for the regular feature-forward demo path when
+  product docs and environment constraints allow it. Use manual approval only
+  when official docs require it or the demo deliberately needs a human gate.
 - Do not apply `operator/base` directly when the channel is intentionally
   patched by overlays.
 - Keep operator install resources separate from operand instance resources
@@ -111,6 +125,9 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 - Use Argo CD sync waves, retries, and `SkipDryRunOnMissingResource=true` for
   operator/operand sequencing; use `project-gitops-authoring` for exact
   Application standards.
+- Treat channel downgrades and generic Git rollback of Operator upgrades as
+  product-specific recovery work, not a guaranteed downgrade mechanism. Check
+  official docs and current CSV/operand health before rollback claims.
 - Any cluster-scoped RBAC, console plugin enablement job, node labeler job, or
   privileged helper from a catalog pattern must be reviewed with the matching
   OCP skill before it is accepted into this repo.
@@ -123,24 +140,32 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
    - ODF Operator and operands: `odf-*`
    - OCP platform Operators, RBAC, routes, storage, images: `ocp-*`
 3. Read `references/catalog-pattern.md`.
-4. Create or update a local curated operator layout with:
+4. Read `references/operator-lifecycle.md` when adding or changing a
+   Subscription, channel overlay, install-plan policy, product baseline, or
+   Operator upgrade procedure.
+5. Create or update a local curated operator layout with:
    - `operator/base`
    - `operator/overlays/<channel>`
    - `instance/base`
    - optional `instance/components`
    - optional `instance/overlays/<profile>`
    - optional `aggregate/overlays/<profile>`
-5. For RHOAI, decide the progressive DSC owner path before adding steps:
+6. For RHOAI, decide the progressive DSC owner path before adding steps:
    - base DSC/DSCI in the first RHOAI platform step
    - later component patches under the same platform instance tree
    - one Argo CD Application owning the final rendered DSC/DSCI
-6. For Argo CD, choose whether the operator and operand are separate
+7. For Argo CD, choose whether the operator and operand are separate
    Applications or a single aggregate Application. Prefer separate
    Applications when CRD ordering is material.
-7. Verify Subscription channel, package name, catalog source, namespace,
+8. Verify Subscription channel, package name, catalog source, namespace,
    OperatorGroup shape, install-plan approval, and CR fields against official
    docs or live schema.
-8. Validate the rendered manifests and review with
+9. For upgrades, plan the GitOps lifecycle sequence:
+   - update `docs/PLATFORM_BASELINE.md` when the product baseline changes
+   - update channel overlays or approval strategy in Git
+   - sync the operator Application before operand CR changes
+   - validate Subscription, InstallPlan, CSV, CRDs, and operand readiness
+10. Validate the rendered manifests and review with
    `references/validation-checklist.md`.
 
 ## Related Skills
@@ -163,5 +188,6 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 
 - `references/source-capture.md`
 - `references/catalog-pattern.md`
+- `references/operator-lifecycle.md`
 - `references/validation-checklist.md`
 - `examples/operator-layout.md`

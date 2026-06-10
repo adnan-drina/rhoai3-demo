@@ -35,6 +35,9 @@ version in `docs/PLATFORM_BASELINE.md`.
 - Use full ODF StorageCluster/Ceph block and file storage only when a demo step
   explicitly needs ODF-provided RWO/RWX PVCs beyond the underlying OpenShift
   storage classes.
+- Manage ODF Operator lifecycle through GitOps: keep the Subscription channel
+  and approval strategy in Git, keep ODF version compatibility aligned with the
+  OCP baseline, and validate storage health before and after upgrades.
 - Treat generated OBC Secrets as credentials. Never commit generated bucket
   credentials.
 - Live `oc` or `kubectl` commands that inspect or mutate the cluster must
