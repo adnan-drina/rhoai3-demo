@@ -147,14 +147,15 @@ product documentation categories and books to flat skills.
 
 Run this audit periodically (monthly or after major changes):
 
-1. Read every rule and skill file
-2. Check for content duplication between rules and skills
-3. Check for stale references (removed steps, renamed files)
-4. Verify skill `name` fields match folder names
-5. Verify always-apply budget hasn't crept up
-6. Check Red Hat doc links still resolve
-7. Update `AGENTS.md`, `.agents/rules/*.md`, and this skill when inventory or taxonomy changes
-8. Keep dated deep-audit notes out of `docs/` unless they are promoted to one of the maintained docs
+1. Run `scripts/validate-agent-guidance.rb`.
+2. Read every rule and skill file.
+3. Check for content duplication between rules and skills.
+4. Check for stale references (removed steps, renamed files).
+5. Verify skill `name` fields match folder names.
+6. Verify always-apply budget hasn't crept up.
+7. Check Red Hat doc links still resolve.
+8. Update `AGENTS.md`, `.agents/rules/*.md`, and this skill when inventory or taxonomy changes.
+9. Keep dated deep-audit notes out of `docs/` unless they are promoted to one of the maintained docs.
 
 For detailed conventions and patterns, read `references/conventions.md`.
 

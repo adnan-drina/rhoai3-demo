@@ -36,7 +36,7 @@ under `.agents/skills/` with one of these prefixes:
 Read only the files needed for the current task:
 
 - `.agents/references/red-hat-doc-map.yaml` for routing Red Hat product
-  documentation hierarchy to flat repo skills
+  documentation sources and repo routing categories to flat repo skills
 - `references/platform-skill-taxonomy.md` for product-family routing,
   frontmatter metadata, and rule/roadmap expectations
 - `references/source-capture.md` for the source ledger template and baseline
@@ -66,6 +66,8 @@ Read only the files needed for the current task:
 6. Capture official sources before writing the skill:
    - product and version
    - chapter or page URL
+   - source type, such as versioned docs.redhat.com documentation, Customer
+     Portal article, external Red Hat product docs, or repo-specific guidance
    - documentation category
    - retrieved date
    - sections used
@@ -89,6 +91,9 @@ Read only the files needed for the current task:
 9. Add examples only when they are traceable to official docs or are clearly
    marked as demo-specific examples requiring schema verification.
 10. Validate the generated skill with `references/validation-checklist.md`.
+    For repository-level consistency, also run
+    `scripts/validate-agent-guidance.rb` after updating the doc map, rules, or
+    shared skill inventory.
 11. Update shared inventory when adding or renaming a skill:
    - `.agents/references/red-hat-doc-map.yaml`
    - `AGENTS.md`
@@ -124,8 +129,8 @@ placement, verification commands, or recommended workflow shape.
 - Do not treat rh-brain as product configuration truth; use it for narrative,
   Red Hat articles, blogs, and code examples after official docs are captured.
 - Do not create nested skill folders to mirror Red Hat documentation
-  categories; represent product/category/book/chapter routing in
-  `.agents/references/red-hat-doc-map.yaml`.
+  categories; represent product/category/book/chapter routing and source type
+  in `.agents/references/red-hat-doc-map.yaml`.
 - Do not generate new `odf-*` skills unless the ODF product version and
   official documentation source are pinned in `docs/PLATFORM_BASELINE.md`.
 - If official docs are ambiguous, mark the item unresolved and include an

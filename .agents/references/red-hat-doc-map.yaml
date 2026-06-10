@@ -3,8 +3,9 @@ owner: project-red-hat-doc-skill-authoring
 baseline_source: docs/PLATFORM_BASELINE.md
 purpose: >
   Route official Red Hat documentation sources to flat repo skills. This file
-  models the Red Hat documentation hierarchy without mirroring that hierarchy
-  in .agents/skills/.
+  references Red Hat documentation products, versions, categories, books, and
+  topics, but uses repo-specific routing categories where useful. It does not
+  mirror the documentation hierarchy in .agents/skills/.
 
 usage:
   - Read docs/PLATFORM_BASELINE.md first and verify the product version.
@@ -20,8 +21,15 @@ status_values:
   active: Skill exists and is the preferred route.
   planned: Skill does not exist yet but the route is expected.
   blocked-baseline: Do not create until docs/PLATFORM_BASELINE.md pins a version.
-  external-product: Route is backed by a Red Hat product doc outside the main
-    RHOAI or OCP documentation tree.
+
+source_types:
+  docs_redhat_com: Versioned Red Hat product documentation on docs.redhat.com.
+  customer_portal_article: Red Hat Customer Portal article or lifecycle policy
+    outside docs.redhat.com.
+  external_redhat_product_docs: Versioned docs.redhat.com documentation for a
+    Red Hat product outside the current product family.
+  repo_specific: Repo-owned guidance that is grounded in official docs but is
+    not itself a Red Hat documentation book.
 
 products:
   rhoai:
@@ -39,9 +47,13 @@ products:
             status: active
             skill: rhoai-release-and-support-posture
           - book: red_hat_openshift_ai_self_managed_lifecycle
+            source_type: customer_portal_article
+            source_url: https://access.redhat.com/support/policy/updates/rhoai-sm/lifecycle
             status: active
             skill: rhoai-release-and-support-posture
           - book: api_tiers
+            source_type: customer_portal_article
+            source_url: https://access.redhat.com/articles/7047935
             status: active
             skill: rhoai-api-tiers
       plan:
@@ -51,6 +63,8 @@ products:
             status: active
             skill: rhoai-platform-planning
           - book: rhoai_supported_configurations_3_x
+            source_type: customer_portal_article
+            source_url: https://access.redhat.com/articles/rhoai-supported-configs-3.x
             status: active
             skill: rhoai-platform-planning
           - book: red_hat_ai_validated_models
@@ -59,22 +73,22 @@ products:
       install:
         description: Install, upgrade-channel, accelerator, certificate, logs, troubleshooting, and uninstall workflows.
         routes:
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - architecture
             status: active
             skill: rhoai-architecture-overview
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - update_channels
             status: active
             skill: rhoai-update-channels
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - installing_and_deploying
             status: active
             skill: rhoai-self-managed-installation
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - custom_namespaces
               - datasciencecluster
@@ -82,39 +96,52 @@ products:
               - component_management
             status: active
             skill: rhoai-dsci-dsc-configuration
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - distributed_workloads_components
             status: active
             skill: rhoai-distributed-workloads
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - accelerators
               - nvidia_gpus
               - hardware_profiles
             status: active
             skill: rhoai-nvidia-gpu-accelerators
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - certificates
             status: active
             skill: rhoai-certificate-management
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - logs
               - audit_records
             status: active
             skill: rhoai-logs-and-audit-records
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - troubleshooting
             status: active
             skill: rhoai-installation-troubleshooting
-          - book: installing_and_uninstalling_openshift_ai_self_managed
+          - book: installing_and_uninstalling_openshift_ai_self-managed
             topics:
               - uninstalling
             status: active
             skill: rhoai-uninstallation
+          - book: installing_and_uninstalling_openshift_ai_self-managed_in_a_disconnected_environment
+            topics:
+              - disconnected_installation
+              - mirroring_images
+              - private_registry
+              - operator_installation
+              - component_management
+              - certificates
+              - logs
+              - troubleshooting
+              - uninstalling
+            status: planned
+            skill: rhoai-disconnected-installation
       administer:
         description: Administrator workflows for RHOAI access, dashboard, resources, workloads, and observability.
         routes:
@@ -240,7 +267,7 @@ products:
           - book: working_with_distributed_workloads
             status: active
             skill: rhoai-distributed-workload-workflows
-          - book: working_with_data_in_an_s3_compatible_object_store
+          - book: working_with_data_in_an_s3-compatible_object_store
             status: active
             skill: rhoai-s3-object-storage-data
           - book: working_on_projects
@@ -270,7 +297,7 @@ products:
       deploy_and_operate_ai:
         description: Model serving, registries, catalog governance, MaaS, Llama Stack, llm-d, monitoring, safety, and evaluation.
         routes:
-          - book: configuring_your_model_serving_platform
+          - book: configuring_your_model-serving_platform
             status: active
             skill: rhoai-model-serving-platform
           - book: managing_and_monitoring_models
@@ -300,29 +327,32 @@ products:
           - book: deploying_models
             status: active
             skill: rhoai-model-deployment
-          - book: govern_llm_access_with_models_as_a_service
+          - book: govern_llm_access_with_models-as-a-service
             status: active
             skill: rhoai-maas-governance
-          - book: govern_llm_access_with_models_as_a_service
+          - book: govern_llm_access_with_models-as-a-service
             topics:
               - maas_telemetry
               - usage_dashboard
               - csv_export
             status: active
             skill: rhoai-telemetry-admin-settings
-          - book: deploy_models_using_distributed_inference_with_llm_d
+          - book: deploy_models_using_distributed_inference_with_llm-d
             status: active
             skill: rhoai-distributed-inference-llmd
       repo_specific_extensions:
         description: Skills grounded in official docs but specialized for this repo implementation.
         routes:
           - book: repo_kfp_pipeline_authoring
+            source_type: repo_specific
             status: active
             skill: rhoai-kfp-pipeline-authoring
           - book: repo_model_evaluation_implementation
+            source_type: repo_specific
             status: active
             skill: rhoai-model-evaluation
           - book: repo_chatbot_customization
+            source_type: repo_specific
             status: active
             skill: rhoai-chatbot-customization
 
@@ -370,10 +400,12 @@ products:
             status: active
             skill: ocp-observability
           - book: red_hat_build_of_opentelemetry
-            status: external-product
+            source_type: external_redhat_product_docs
+            status: active
             skill: ocp-opentelemetry
           - book: red_hat_openshift_distributed_tracing_platform
-            status: external-product
+            source_type: external_redhat_product_docs
+            status: active
             skill: ocp-distributed-tracing
       ai_workloads:
         routes:

@@ -1,5 +1,7 @@
 ---
 name: odf
+skill-group: OpenShift Data Foundation
+skill-prefix: odf-
 applies-to:
   - "docs/PLATFORM_BASELINE.md"
   - "docs/**/*.md"

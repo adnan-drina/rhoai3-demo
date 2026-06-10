@@ -8,3 +8,9 @@ Legacy scripts are backed up under:
 
 New scripts should be deterministic, safe to rerun, and must use the project
 OpenShift safety guard before live cluster mutations.
+
+## Local Validation
+
+- `validate-agent-guidance.rb` checks `.agents/` rules, skills, and Red Hat
+  documentation routing for logical consistency. It is read-only and does not
+  contact a live OpenShift cluster.

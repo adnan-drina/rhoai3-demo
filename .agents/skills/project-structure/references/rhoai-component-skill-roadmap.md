@@ -19,6 +19,7 @@ https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
 | Release cadence, component support phases, lifecycle dates, EUS, GA, Early Access, and upgrade support windows | What's New, lifecycle | Added: `rhoai-release-and-support-posture` |
 | Platform planning, validated models, hardware | Plan | Added: `rhoai-platform-planning` |
 | Self-managed install, Operator Subscription, DataScienceCluster component management | Install | Added: `rhoai-self-managed-installation` |
+| Disconnected self-managed install, image mirroring, private registry, custom namespaces, components, certificates, logs, troubleshooting, and uninstall | Install | Missing: `rhoai-disconnected-installation` |
 | DSCI/DSC configuration deep dive | Install, Administer | Added: `rhoai-dsci-dsc-configuration` |
 | Distributed workloads component installation: Kueue, Ray, Training Operator, dashboard, pipelines, and workbenches DSC states | Install | Added: `rhoai-distributed-workloads` |
 | Kueue workload management, namespace queue enforcement, dashboard enablement, queue labels, troubleshooting, and embedded Kueue migration | Administer | Added: `rhoai-kueue-workload-management` |
