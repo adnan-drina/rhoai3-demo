@@ -18,9 +18,11 @@ description: >
   content for later slide generation, writing implementation plans,
   documenting deferred capabilities, or routing captured project knowledge to
   the correct documentation home. Also use when documentation needs to explain
-  implemented GitOps behavior in business and technical terms. Do NOT use for
-  GitOps manifest authoring itself (use project-gitops-authoring) or official
-  Red Hat source conformance audits (use project-red-hat-doc-alignment-review).
+  implemented GitOps behavior in business and technical terms. Pair with
+  project-demo-step-authoring when creating a new step end to end. Do NOT use
+  for GitOps manifest authoring itself (use project-gitops-authoring) or
+  official Red Hat source conformance audits (use
+  project-red-hat-doc-alignment-review).
 ---
 
 # Documentation Authoring
@@ -36,6 +38,7 @@ official Red Hat messaging and the implemented demo story.
    README for concise Why/What story, `docs/OPERATIONS.md` for runbooks,
    `docs/TROUBLESHOOTING.md` for recovery, `docs/PLATFORM_BASELINE.md` for
    product targets, and `PLAN.md` files for implementation planning.
+   For a new step, start with `project-demo-step-authoring`.
 2. Read the relevant existing document before changing it.
 3. Confirm whether a companion manifest, script, README, or operations document
    change is required.

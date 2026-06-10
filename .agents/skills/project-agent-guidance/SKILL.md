@@ -48,7 +48,7 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 | Type | Count | Location |
 |------|-------|----------|
 | Shared rules | 6 | `.agents/rules/*.md` |
-| Shared skills | 97 | `.agents/skills/*/SKILL.md` |
+| Shared skills | 98 | `.agents/skills/*/SKILL.md` |
 | Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
@@ -65,7 +65,7 @@ for logical ownership:
 
 | Group | Prefix | Purpose |
 |-------|--------|---------|
-| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, RHOAI docs-to-skill generation, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
+| Project Structure | `project-*` | Repo layout, demo step authoring, GitOps authoring, documentation structure, RHOAI docs-to-skill generation, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed active-baseline RHOAI component installation, configuration, KFP pipelines, and usage |
 | OpenShift Platform | `ocp-*` | Official-doc-backed OpenShift Container Platform guidance plus repo-approved OpenShift platform extensions for infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration |

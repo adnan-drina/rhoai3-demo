@@ -28,6 +28,7 @@ standards, Red Hat source alignment, or shared agent guidance:
 - `.agents/skills/project-red-hat-doc-skill-authoring/SKILL.md`
 - `.agents/skills/project-rhoai-doc-chapter-skill-authoring/SKILL.md`
 - `.agents/skills/project-red-hat-operator-gitops/SKILL.md`
+- `.agents/skills/project-demo-step-authoring/SKILL.md`
 - `.agents/skills/project-gitops-authoring/SKILL.md`
 - `.agents/skills/project-documentation-authoring/SKILL.md`
 - `.agents/skills/project-manifest-review/SKILL.md`
@@ -64,6 +65,12 @@ The active implementation is being rewritten. Current implementation folders
 introduced. Legacy implementation artifacts live under
 `backup/legacy-implementation-2026-06-09/` and should be used as reference
 material, not as active project structure.
+
+Use `project-demo-step-authoring` for every new demo step. Start with intent,
+source capture, skill routing, and `PLAN.md`; then author the README, GitOps,
+Argo CD Application, manifests, deploy script, validation script, and review
+evidence as one atomic step. Do not let README claims, GitOps manifests, and
+validation scripts drift apart.
 
 Step READMEs should be concise Why/What documents: introduce the business
 concept, ground European enterprise value in Red Hat narrative sources from

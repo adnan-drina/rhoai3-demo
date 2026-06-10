@@ -52,10 +52,10 @@ for a proven tool-only gap.
 
 | Group | Prefix | Purpose | Current skills |
 |-------|--------|---------|----------------|
-| Project Structure | `project-*` | Repo architecture, GitOps step layout, docs, Red Hat narrative grounding, skill governance, Red Hat docs-to-skill generation, Red Hat Operator GitOps deployment patterns, manifest review, Red Hat source alignment | `project-structure`, `project-agent-guidance`, `project-red-hat-doc-skill-authoring`, `project-rhoai-doc-chapter-skill-authoring`, `project-red-hat-operator-gitops`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` |
+| Project Structure | `project-*` | Repo architecture, demo step lifecycle, GitOps step layout, docs, Red Hat narrative grounding, skill governance, Red Hat docs-to-skill generation, Red Hat Operator GitOps deployment patterns, manifest review, Red Hat source alignment | `project-structure`, `project-agent-guidance`, `project-red-hat-doc-skill-authoring`, `project-rhoai-doc-chapter-skill-authoring`, `project-red-hat-operator-gitops`, `project-demo-step-authoring`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo lifecycle: bootstrap, deploy, validate, troubleshoot, shutdown/recovery, redeploy | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed component guidance for installing, configuring, and using active RHOAI baseline capabilities | `rhoai-architecture-overview`, `rhoai-release-and-support-posture`, `rhoai-platform-planning`, `rhoai-api-tiers`, `rhoai-update-channels`, `rhoai-self-managed-installation`, `rhoai-dsci-dsc-configuration`, `rhoai-distributed-workloads`, `rhoai-kueue-workload-management`, `rhoai-distributed-workload-operations`, `rhoai-distributed-workload-workflows`, `rhoai-kubeflow-spark-operator`, `rhoai-nvidia-gpu-accelerators`, `rhoai-certificate-management`, `rhoai-observability`, `rhoai-logs-and-audit-records`, `rhoai-installation-troubleshooting`, `rhoai-uninstallation`, `rhoai-users-groups-access`, `rhoai-access-group-selection`, `rhoai-central-authentication-service`, `rhoai-dashboard-applications`, `rhoai-connected-applications`, `rhoai-dashboard-customization`, `rhoai-cluster-pvc-size`, `rhoai-storage-classes`, `rhoai-connection-types`, `rhoai-s3-object-storage-data`, `rhoai-project-workflows`, `rhoai-data-science-ide-workflows`, `rhoai-project-scoped-resources`, `rhoai-component-resource-customization`, `rhoai-telemetry-admin-settings`, `rhoai-feature-store`, `rhoai-automl`, `rhoai-basic-workbenches`, `rhoai-workbenches-custom-images`, `rhoai-workbench-image-import`, `rhoai-workbench-gateway-api-migration`, `rhoai-model-serving-platform`, `rhoai-model-deployment`, `rhoai-maas-governance`, `rhoai-distributed-inference-llmd`, `rhoai-model-management-monitoring`, `rhoai-monitoring-trustyai`, `rhoai-model-catalog-sources`, `rhoai-model-catalog-workflows`, `rhoai-gen-ai-playground`, `rhoai-autorag`, `rhoai-model-registry`, `rhoai-model-registry-workflows`, `rhoai-llama-stack`, `rhoai-ai-pipelines`, `rhoai-mlflow`, `rhoai-model-customization-training`, `rhoai-evaluation`, `rhoai-guardrails-safety`, `rhoai-model-evaluation`, `rhoai-chatbot-customization`, `rhoai-kfp-pipeline-authoring`; component skills planned |
-| OpenShift Platform | `ocp-*` | Official-doc-backed OpenShift Container Platform infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration guidance | `ocp-ai-workloads`, `ocp-authentication-identity-providers`, `ocp-cicd-builds`, `ocp-distributed-tracing`, `ocp-etcd`, `ocp-gitops-operator`, `ocp-image-registry-and-mirroring`, `ocp-ingress-gateway-routes`, `ocp-machine-configuration`, `ocp-machine-management`, `ocp-node-feature-discovery`, `ocp-nodes`, `ocp-observability`, `ocp-opentelemetry`, `ocp-security-rbac-scc`, `ocp-storage`, `ocp-web-console`; component skills planned |
+| OpenShift Platform | `ocp-*` | Official-doc-backed OpenShift Container Platform guidance plus repo-approved OpenShift platform extensions for infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration | `ocp-ai-workloads`, `ocp-authentication-identity-providers`, `ocp-cicd-builds`, `ocp-distributed-tracing`, `ocp-etcd`, `ocp-grafana-operator`, `ocp-gitops-operator`, `ocp-image-registry-and-mirroring`, `ocp-ingress-gateway-routes`, `ocp-machine-configuration`, `ocp-machine-management`, `ocp-node-feature-discovery`, `ocp-nodes`, `ocp-observability`, `ocp-opentelemetry`, `ocp-security-rbac-scc`, `ocp-storage`, `ocp-web-console`; component skills planned |
 | OpenShift Data Foundation | `odf-*` | Official-doc-backed OpenShift Data Foundation storage, object storage, Ceph, NooBaa, storage class, and data-service integration guidance | `odf-storagecluster`, `odf-storage-classes`, `odf-object-bucket-claims`, `odf-multicloud-gateway` |
 | Assets & Miscellaneous | `assets-*` | Supporting assets and presentation outputs not tied to live cluster operations | `assets-red-hat-quick-deck` |
 
@@ -72,19 +72,22 @@ routing layer; keep skill folders flat under `.agents/skills/`.
 ## Project Change Workflow
 
 1. Identify the group and owner skill for the work.
-2. Read the relevant `.agents/rules/*.md` files before editing GitOps,
+2. For a new demo step, start with `project-demo-step-authoring` to define
+   intent, sources, skill routing, plan, GitOps ownership, scripts, validation,
+   and review gates.
+3. Read the relevant `.agents/rules/*.md` files before editing GitOps,
    README, labels, secrets, or generated architecture diagrams.
-3. Keep code and docs aligned: manifest changes require README updates, and
+4. Keep code and docs aligned: manifest changes require README updates, and
    README capability claims require implemented manifests or a clear deferred
    label.
-4. Keep operational details in `docs/OPERATIONS.md` and recovery details in
+5. Keep operational details in `docs/OPERATIONS.md` and recovery details in
    `docs/TROUBLESHOOTING.md`; keep deferred capabilities and future work in
    `docs/BACKLOG.md`; step READMEs should stay focused on concise Why/What
    content, technology mapping, and architecture delta.
-5. For README concepts, cite Red Hat narrative sources from `rh-brain`; for
+6. For README concepts, cite Red Hat narrative sources from `rh-brain`; for
    RHOAI component configuration, cite official active-baseline docs. Use
    `project-red-hat-doc-alignment-review` to check both.
-6. Update `AGENTS.md`, `.agents/rules/*.md`, and the relevant project skills
+7. Update `AGENTS.md`, `.agents/rules/*.md`, and the relevant project skills
    when skill groups, inventory, or source hierarchy change.
 
 ## Naming Guidance

@@ -15,6 +15,10 @@ Do not manage Argo CD-owned resources through direct imperative manifest
 application except for documented prerequisites such as locally supplied
 secrets.
 
+For a new step, use `project-demo-step-authoring` first. That process records
+whether the step owns an independent GitOps path or patches a shared platform
+owner before any manifests are written.
+
 ## Repository Layout
 
 Use the split layout:
