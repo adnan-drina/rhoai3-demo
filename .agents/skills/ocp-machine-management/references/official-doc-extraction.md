@@ -40,6 +40,12 @@ For AWS demo work, use the AWS compute MachineSet chapter as the starting
 point. Keep exact GPU instance selection aligned with the active
 `rhoai-nvidia-gpu-accelerators` skill and the live environment plan.
 
+For demo.redhat.com GPU workers, the Red Hat CoP GPU Operator catalog provides
+a useful pattern for deriving a GPU MachineSet from an existing AWS worker
+MachineSet. Use that pattern to identify transformation steps, but preserve the
+provider-specific fields from the live cluster and commit the reviewed result
+as GitOps desired state by default.
+
 ## Scaling And Modification
 
 Manual scaling changes the number of replicas for a compute MachineSet. The

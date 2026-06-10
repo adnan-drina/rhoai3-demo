@@ -170,3 +170,22 @@ Operator Applications need enough ordering support for OLM and CRDs:
 
 Avoid direct `oc apply -k` as the normal deployment path. It is acceptable as a
 temporary local render or schema check only when clearly documented.
+
+## Generator Hook Boundary
+
+Some catalog components, such as the GPU Operator AWS MachineSet component, use
+an Argo CD hook Job to inspect the live cluster and create resources
+imperatively. Treat this as a bootstrap pattern, not the default desired-state
+model for this repo.
+
+Prefer to:
+
+- reuse the generator's transformation logic
+- capture the resulting MachineSet and MachineAutoscaler as reviewed manifests
+  in Git
+- apply them through normal Argo CD resource tracking
+
+Use a hook Job only when the environment is intentionally disposable or the
+live provider shape cannot be known until first sync. Review hook RBAC with
+`ocp-security-rbac-scc` and document any generated resources that Argo CD does
+not own directly.

@@ -12,11 +12,11 @@ description: >
   accelerator support for the rhoai3-demo OpenShift AI environment: accelerator
   prerequisites, Node Feature Discovery, Kernel Module Management, NVIDIA GPU
   Operator, NVIDIA ClusterPolicy, GPU detection through nvidia.com/gpu, NVIDIA
-  RDMA support boundaries, OpenShift AI dashboard restart requirements, and
-  RHOAI hardware profiles for NVIDIA GPU-backed workbenches, pipelines, and
-  model serving. Do NOT use for AMD, Intel Gaudi, IBM Spyre, generic RHOAI
-  installation, queue design, or live troubleshooting; use the relevant rhoai-*
-  or env-* skill instead.
+  RDMA support boundaries, AWS demo.redhat.com GPU MachineSet curation,
+  OpenShift AI dashboard restart requirements, and RHOAI hardware profiles for
+  NVIDIA GPU-backed workbenches, pipelines, and model serving. Do NOT use for
+  AMD, Intel Gaudi, IBM Spyre, generic RHOAI installation, queue design, or
+  live troubleshooting; use the relevant rhoai-* or env-* skill instead.
 ---
 
 # RHOAI NVIDIA GPU Accelerators
@@ -43,6 +43,12 @@ The demo hardware intent is:
   `nvidia.com/gpu`.
 - Default node count: one GPU worker node unless an environment-specific
   resource plan says otherwise.
+- Default AWS environment source: demo.redhat.com OpenShift on AWS.
+- Default GPU worker scheduling handoff:
+  - MachineSet template label `node-role.kubernetes.io/gpu`
+  - MachineSet and template label `cluster-api/accelerator=nvidia-gpu`
+  - taint `nvidia-gpu-only:NoSchedule`
+  - matching NVIDIA `ClusterPolicy` daemonset toleration
 - Primary private GenAI model:
   `nemotron-3-nano-30b-a3b`.
 - Primary model source:
@@ -85,7 +91,18 @@ support complete.
 For this repo:
 
 - Install prerequisite Operators and runtime instances through ArgoCD/GitOps.
-- Keep GPU node provisioning and scale management in environment workflows.
+- Keep GPU node provisioning and scale management in GitOps-aware environment
+  workflows.
+- Use the Red Hat CoP GPU Operator catalog as a local curation pattern only.
+  Reuse its operator/channel layout, instance component composition, and AWS
+  MachineSet transformation logic; do not commit remote Kustomize references.
+- Prefer a reviewed, Git-tracked AWS GPU MachineSet and MachineAutoscaler in
+  the environment overlay. Use an Argo CD hook generator only as a deliberate
+  demo.redhat.com bootstrap exception, because generated MachineSets are not
+  normal declarative GitOps state unless captured back into Git.
+- Derive AWS GPU MachineSet provider details from an existing worker MachineSet
+  in the target cluster, then change only reviewed fields such as instance
+  type, replicas, labels, taints, and autoscaler bounds.
 - Create hardware profiles only after the GPU Operator and NFD have reconciled
   and nodes report `nvidia.com/gpu` capacity and allocatable values.
 - When converting dashboard-created hardware profiles to GitOps, first verify
@@ -99,15 +116,17 @@ For this repo:
 1. Confirm the active baseline in `docs/PLATFORM_BASELINE.md`.
 2. Confirm the active OpenShift cluster has the expected AWS GPU worker shape.
 3. Read `references/official-doc-extraction.md`.
-4. Install or review NFD, KMM, and NVIDIA GPU Operator prerequisites.
-5. Confirm `NodeFeatureDiscovery` and NVIDIA `ClusterPolicy` exist.
-6. Delete the OpenShift AI `migration-gpu-status` ConfigMap when required by
+4. Read `references/gitops-catalog-gpu-pattern.md` when rebuilding the GPU
+   Operator, AWS GPU MachineSet, or GPU instance overlay.
+5. Install or review NFD, KMM, and NVIDIA GPU Operator prerequisites.
+6. Confirm `NodeFeatureDiscovery` and NVIDIA `ClusterPolicy` exist.
+7. Delete the OpenShift AI `migration-gpu-status` ConfigMap when required by
    the NVIDIA GPU enablement procedure.
-7. Restart the OpenShift AI dashboard deployment after NVIDIA GPU enablement.
-8. Validate GPU capacity and allocatable values on GPU worker nodes.
-9. Create or review NVIDIA hardware profiles using
+8. Restart the OpenShift AI dashboard deployment after NVIDIA GPU enablement.
+9. Validate GPU capacity and allocatable values on GPU worker nodes.
+10. Create or review NVIDIA hardware profiles using
    `examples/demo-nvidia-l4-hardware-profile-contract.md`.
-10. Validate with `references/validation-checklist.md`.
+11. Validate with `references/validation-checklist.md`.
 
 ## Related Skills
 
@@ -121,5 +140,7 @@ For this repo:
 
 - `references/source-capture.md`
 - `references/official-doc-extraction.md`
+- `references/gitops-catalog-gpu-pattern.md`
 - `references/validation-checklist.md`
 - `examples/demo-nvidia-l4-hardware-profile-contract.md`
+- `examples/aws-gpu-machineset-gitops-pattern.md`

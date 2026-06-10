@@ -10,6 +10,8 @@
 | OpenShift AI catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai |
 | OpenShift AI instance pattern | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai/instance |
 | OpenShift Data Foundation Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-data-foundation-operator |
+| NVIDIA GPU Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified |
+| NVIDIA GPU Operator AWS MachineSet component | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified/instance/components/aws-gpu-machineset |
 | Capture date | 2026-06-10 |
 
 ## Official Lifecycle Sources
@@ -101,6 +103,24 @@
 - The catalog's AWS aggregate overlay observed during capture referenced an
   older operator channel overlay even though newer channel overlays exist. This
   is a reminder to verify and curate locally instead of copying blindly.
+
+## NVIDIA GPU Operator Observations
+
+- Root item: `gpu-operator-certified`.
+- Operator base includes `nvidia-gpu-operator` Namespace, OperatorGroup, and
+  `gpu-operator-certified` Subscription from the `certified-operators`
+  catalog source.
+- Operator overlays patch channels such as `stable`, `v24.9`, and `v25.3`.
+- Instance base includes NVIDIA `ClusterPolicy` and a device-plugin ConfigMap.
+- Instance components include AWS GPU MachineSet generation, monitoring
+  dashboard, time-slicing variants, and MIG variants.
+- The AWS instance overlay composes `../../base` plus the
+  `aws-gpu-machineset` component.
+- The AWS GPU MachineSet component uses an Argo CD sync-hook Job to detect AWS,
+  clone an existing worker MachineSet, change the instance type, add GPU labels
+  and taints, and create MachineAutoscalers. For this repo, reuse this as a
+  curation and generation pattern; prefer Git-tracked MachineSet resources for
+  maintained environments.
 
 ## Source Boundaries
 

@@ -178,6 +178,9 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 - Use `rhoai-self-managed-installation`, `rhoai-update-channels`,
   `rhoai-dsci-dsc-configuration`, and related RHOAI component skills for
   RHOAI Operator and operand details.
+- Use `rhoai-nvidia-gpu-accelerators` and `ocp-machine-management` for NVIDIA
+  GPU Operator, ClusterPolicy, AWS GPU MachineSet, MachineAutoscaler, and
+  RHOAI hardware-profile handoff details.
 - Use `odf-storagecluster`, `odf-multicloud-gateway`, and
   `odf-object-bucket-claims` for ODF details.
 - Use `ocp-security-rbac-scc`, `ocp-image-registry-and-mirroring`,

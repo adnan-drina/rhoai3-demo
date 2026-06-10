@@ -23,11 +23,33 @@ hardware profile changes.
 - The `rhods-dashboard` deployment is restarted after NVIDIA enablement.
 - `migration-gpu-status` cleanup is handled when applicable.
 
+## AWS GPU MachineSet Review
+
+- MachineSet shape is derived from an existing worker MachineSet in the active
+  AWS cluster, not copied from another environment.
+- Instance type is `g6e.2xlarge` unless an environment-specific plan says
+  otherwise.
+- Default desired GPU worker count is one node.
+- GPU MachineSet and template labels include
+  `cluster-api/accelerator=nvidia-gpu`.
+- GPU node template includes `node-role.kubernetes.io/gpu`.
+- GPU node template taint is `nvidia-gpu-only:NoSchedule`, or any replacement
+  taint is updated consistently across ClusterPolicy, hardware profiles, and
+  workload tolerations.
+- MachineAutoscaler bounds match the environment plan and do not inherit a
+  catalog example without cost and quota review.
+- If an Argo CD sync-hook generator is used, generated MachineSets and
+  MachineAutoscalers are captured back into Git or explicitly documented as a
+  disposable bootstrap exception.
+- Hook Job RBAC, if used, is reviewed with `ocp-security-rbac-scc`.
+
 ## GPU Detection Review
 
 Run only after following the OpenShift safety guard in `AGENTS.md`:
 
 ```bash
+oc get machinesets -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu
+oc get machineautoscalers -n openshift-machine-api
 oc get csv -A | rg -i "nvidia|node feature|nfd|kernel module|kmm|gpu"
 oc get nodefeaturediscovery -A
 oc get clusterpolicy

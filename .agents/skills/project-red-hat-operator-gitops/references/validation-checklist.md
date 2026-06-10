@@ -31,6 +31,8 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 - Aggregate overlays select the intended channel and profile.
 - No committed Kustomize resource references
   `github.com/redhat-cop/gitops-catalog`.
+- Hook Jobs that create or mutate resources are explicitly reviewed and are not
+  used when a declarative Git-tracked manifest is feasible.
 
 ## Lifecycle Review
 
@@ -60,6 +62,8 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 - `SkipDryRunOnMissingResource=true` is used only where CRDs can be absent
   during first sync.
 - Retry/backoff is configured for operator readiness.
+- Argo CD hook resources that generate infrastructure, such as GPU MachineSets,
+  have reviewed RBAC and a documented plan for generated resource ownership.
 
 ## Local Validation Commands
 

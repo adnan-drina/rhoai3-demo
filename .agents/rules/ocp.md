@@ -90,7 +90,10 @@ state changes, and control-plane scheduling changes as live-environment
 operations unless they are only documented as future intent. Treat MachineSet
 scale, machine deletion, control plane machine replacement, autoscaler changes,
 and MachineHealthCheck changes as live-environment operations unless they are
-only documented as future GitOps intent. Treat MCO, MCP, `MachineConfig`,
+only documented as future GitOps intent. For demo.redhat.com NVIDIA GPU
+workers, pair `ocp-machine-management` with `rhoai-nvidia-gpu-accelerators` and
+prefer reviewed Git-tracked MachineSets over hook-generated live drift. Treat
+MCO, MCP, `MachineConfig`,
 `MachineConfiguration`, `KubeletConfig`, `ContainerRuntimeConfig`,
 `PinnedImageSet`, and image mode changes as live-environment operations unless
 they are only documented as future GitOps intent. Treat Console Operator

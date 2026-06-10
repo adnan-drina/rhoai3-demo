@@ -32,6 +32,13 @@ manifests, autoscaler resources, or machine lifecycle runbooks.
   review.
 - MachineAutoscaler min/max bounds match the intended capacity range.
 - ClusterAutoscaler global limits allow the MachineAutoscaler behavior.
+- For the rhoai3-demo default GPU pool, instance type is `g6e.2xlarge`,
+  desired replicas start at `1`, MachineSet labels include
+  `cluster-api/accelerator=nvidia-gpu`, node template labels include
+  `node-role.kubernetes.io/gpu`, and the taint/toleration handoff is reviewed
+  with `rhoai-nvidia-gpu-accelerators`.
+- If a generated MachineSet is created by a hook Job, it is captured back into
+  Git or explicitly documented as a disposable bootstrap exception.
 
 ## Live Read-Only Checks
 

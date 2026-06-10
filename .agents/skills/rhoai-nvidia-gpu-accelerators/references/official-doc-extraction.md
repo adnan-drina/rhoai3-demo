@@ -116,7 +116,8 @@ The captured RHOAI chapters do not fully define:
 - complete `NodeFeatureDiscovery` YAML fields
 - complete NVIDIA `ClusterPolicy` YAML fields
 - complete `HardwareProfile` YAML schema
-- AWS MachineSet shape for GPU worker nodes
+- exact AWS MachineSet provider shape for GPU worker nodes
 
 Resolve these with official OpenShift/NVIDIA/Red Hat docs, active Operator CSVs,
-or active CRDs before committing GitOps manifests.
+active CRDs, and `references/gitops-catalog-gpu-pattern.md` before committing
+GitOps manifests.

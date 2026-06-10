@@ -25,6 +25,15 @@
 | `.agents/skills/rhoai-distributed-workloads/SKILL.md` | Distributed workload dependency when GPU workloads use Kueue, Ray, or Training Operator |
 | `.agents/skills/env-manage-resources/SKILL.md` | Live environment GPU node scale-up and scale-down workflows |
 
+## Supporting GitOps Pattern Sources
+
+| Source | Role |
+|--------|------|
+| https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified | Red Hat CoP GPU Operator catalog layout: operator base, channel overlays, instance base, components, overlays |
+| https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified/instance/components/aws-gpu-machineset | AWS GPU MachineSet component pattern tested on demo.redhat.com |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/gpu-operator-certified/instance/components/aws-gpu-machineset/job.sh | Transformation logic for cloning an AWS worker MachineSet and adding GPU labels, taints, instance type, and MachineAutoscaler |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/gpu-operator-certified/instance/base/cluster-policy.yaml | Example NVIDIA ClusterPolicy handoff, including daemonset toleration for GPU-only taint |
+
 ## Source Boundaries
 
 - Product authority: official Red Hat documentation above.
@@ -35,5 +44,8 @@
   verified against the active `HardwareProfile` CRD before GitOps promotion.
 - Demo hardware profile names, AWS instance types, node selectors, and taints
   are project policy, not Red Hat product requirements.
+- Red Hat CoP GitOps Catalog sources are implementation patterns only. Curate
+  them locally and verify every channel, CR field, RBAC rule, and MachineSet
+  provider field against official docs and the live cluster.
 - Legacy backup manifests are implementation references only; they are not
   authoritative unless revalidated against official docs and active CRDs.

@@ -42,6 +42,10 @@ For this AWS-hosted RHOAI demo:
 
 - Use AWS compute MachineSets as the normal GitOps path for adding GPU worker
   capacity after the active GitOps implementation is recreated.
+- For demo.redhat.com AWS GPU workers, use the Red Hat CoP GPU Operator
+  catalog's `aws-gpu-machineset` component as a generation pattern only:
+  derive from an existing worker MachineSet, then capture reviewed GPU
+  MachineSet and MachineAutoscaler resources in Git.
 - Verify the existing cluster's Machine API namespace, provider spec, failure
   domains, subnets, security groups, IAM/profile references, AMI/image
   references, labels, taints, and autoscaler annotations before authoring a new
@@ -89,9 +93,12 @@ Use the official docs to frame:
    - machine health checks
 4. For GitOps manifests, verify the target cluster's existing machine set
    shape and provider spec before writing a new resource.
-5. For live operations, use the repo environment guard and pair this skill with
+5. For GPU MachineSets, pair this skill with
+   `rhoai-nvidia-gpu-accelerators` and keep instance type, labels, taints,
+   replicas, and autoscaler bounds aligned with the NVIDIA/RHOAI handoff.
+6. For live operations, use the repo environment guard and pair this skill with
    `env-manage-resources`, `env-troubleshoot`, or `env-deploy-and-evaluate`.
-6. Validate the output with `references/validation-checklist.md`.
+7. Validate the output with `references/validation-checklist.md`.
 
 ## Related Skills
 

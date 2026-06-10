@@ -57,6 +57,16 @@
   enablement:
   https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/specialized_hardware_and_driver_enablement/
 
+## Supporting Pattern Sources
+
+- Red Hat CoP GPU Operator catalog:
+  https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified
+- Red Hat CoP AWS GPU MachineSet component:
+  https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified/instance/components/aws-gpu-machineset
+
+These are implementation pattern sources only. They do not replace OCP Machine
+management documentation or live provider-spec verification.
+
 ## Source Boundaries
 
 - This source is authoritative for OCP 4.20 Machine API, MachineSet,
@@ -69,5 +79,8 @@
   operations.
 - This source does not define RHOAI model-serving capacity policy or GPU
   workload placement.
+- The CoP AWS GPU MachineSet component is useful for demo.redhat.com
+  transformation logic, but the default project posture is reviewed
+  Git-tracked MachineSet desired state.
 - Recheck this source whenever `docs/PLATFORM_BASELINE.md` moves to a new OCP
   version.
