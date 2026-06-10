@@ -9,21 +9,49 @@ Update it first when preparing an upgrade.
 |-----------|---------|---------------|
 | Red Hat OpenShift AI Self-Managed | 3.4 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/ |
 | Red Hat OpenShift Container Platform | 4.20 | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/ |
+| Red Hat build of OpenTelemetry | 3.9 | https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9 |
+| Red Hat OpenShift distributed tracing platform | 3.9 | https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9 |
 
 ## Version Match Rule
 
-Project documentation, skills, and GitOps review notes must use the Red Hat
-OpenShift AI Self-Managed documentation version that matches this baseline.
+Project documentation, skills, and GitOps review notes must use the official
+Red Hat documentation version that matches the pinned baseline for each product
+family.
+
 For the current baseline, RHOAI product-documentation links should use:
 
 ```text
 https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
 ```
 
-Do not use `latest` or another RHOAI version for product configuration unless
+For the current baseline, OCP product-documentation links should use:
+
+```text
+https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
+```
+
+For the current baseline, Red Hat build of OpenTelemetry documentation links
+should use:
+
+```text
+https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9/
+```
+
+For the current baseline, Red Hat OpenShift distributed tracing platform
+documentation links should use:
+
+```text
+https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9/
+```
+
+Do not use `latest` or another product version for product configuration unless
 the Red Hat documentation landing page intentionally links to an unversioned
 Customer Portal article or no version-specific document exists. Record that as
 an explicit exception in the relevant README, review note, or skill reference.
+
+OpenShift Data Foundation is not pinned yet. Do not generate reusable `odf-*`
+skills until an ODF product version and official documentation source are
+added to this baseline.
 
 ## Red Hat OpenShift AI 3.4 Documentation Index
 
@@ -49,31 +77,78 @@ https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
   [Configuring your model-serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/configuring_your_model-serving_platform),
   [Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack),
   [Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_model_registries),
+  [Manage and govern model catalog sources](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/manage_and_govern_model_catalog_sources/index),
   [Managing and monitoring models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_and_monitoring_models)
 - **Develop**:
   [Working with model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_model_registries),
   [Working with the model catalog](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_the_model_catalog),
   [Experimenting with models in the gen AI playground](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/experimenting_with_models_in_the_gen_ai_playground),
+  [Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index),
   [Working with distributed workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_distributed_workloads),
+  [Working with data in an S3-compatible object store](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_data_in_an_s3-compatible_object_store/index),
   [Working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_on_projects),
-  [Working with AI pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines),
-  [Working with MLflow](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_mlflow)
+  [Working in your data science IDE](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_in_your_data_science_ide/index),
+  [Working with connected applications](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_connected_applications/index),
+  [Creating distributed data processing applications with the Kubeflow Spark Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/creating_distributed_data_processing_applications_with_the_kubeflow_spark_operator/index),
+  [Working with AI pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index),
+  [Working with machine learning features](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_machine_learning_features/index),
+  [Working with AutoML](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_automl/index),
+  [Working with MLflow](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_mlflow/index)
 - **Train**:
-  [Customize Models for Gen AI and Agentic AI Applications](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications)
+  [Customize Models for Gen AI and Agentic AI Applications](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/customize_models_for_gen_ai_and_agentic_ai_applications/index)
 - **Evaluate**:
-  [Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/evaluating_ai_systems)
+  [Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/evaluating_ai_systems/index)
 - **Maintain Safety**:
-  [Ensuring AI safety with guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/enabling_ai_safety_with_guardrails)
+  [Ensuring AI safety with guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/enabling_ai_safety_with_guardrails/index)
 - **Monitor**:
-  [Monitoring your AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/monitoring_your_ai_systems)
+  [Monitoring your AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/monitoring_your_ai_systems/index)
 - **Deploy**:
-  [Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploying_models),
-  [Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/govern_llm_access_with_models-as-a-service),
-  [Deploy models using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploy_models_using_distributed_inference_with_llm-d)
+  [Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index),
+  [Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index),
+  [Deploy models using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploy_models_using_distributed_inference_with_llm-d/index)
 - **Learn**:
   [RHOAI supported configurations](https://access.redhat.com/articles/rhoai-supported-configs-3.x),
   [Red Hat AI Foundations](https://docs.redhat.com/en/ai-foundations),
   [Red Hat AI learning hub](https://docs.redhat.com/en/learn/ai)
+
+## OpenShift Container Platform 4.20 Documentation Index
+
+Use the official OCP 4.20 landing page as the entry point:
+https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
+
+- **Configure**:
+  [etcd](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/etcd/index)
+- **Update and migrate**:
+  [Updating clusters](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/updating_clusters/index)
+- **Authentication and authorization**:
+  [Authentication and authorization](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index)
+- **Observability**:
+  [Observability overview](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/observability_overview/index),
+  [Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index),
+  [Logging](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/logging/index),
+  [Cluster Observability Operator](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index),
+  [Red Hat build of OpenTelemetry](https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9),
+  [Red Hat OpenShift distributed tracing platform](https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9)
+- **AI workloads**:
+  [AI workloads](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/index)
+- **CI/CD, GitOps, and builds**:
+  [CI/CD overview](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cicd_overview/index),
+  [GitOps](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/gitops/index),
+  [Builds using Shipwright](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/builds_using_shipwright/index),
+  [Builds using BuildConfig](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/builds_using_buildconfig/index)
+- **Machine management, machine configuration, and nodes**:
+  [Machine management](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/index),
+  [Machine configuration](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_configuration/index),
+  [Nodes](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/index)
+- **Specialized hardware and driver enablement**:
+  [Specialized hardware and driver enablement](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/specialized_hardware_and_driver_enablement/index)
+- **CLI and web console**:
+  [CLI tools](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/index),
+  [Web console](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/web_console/index)
+- **Networking**:
+  [Networking](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/index)
+- **Storage**:
+  [Storage](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/storage/index)
 
 ## Source Hierarchy
 

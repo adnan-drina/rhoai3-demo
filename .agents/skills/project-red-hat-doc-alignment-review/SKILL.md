@@ -47,16 +47,18 @@ claims, or undocumented assumptions.
      articles used only for examples, implementation patterns, and narrative
      support
 5. Check GitOps manifests:
-   - custom resource API versions, top-level spec fields, annotations,
-     operator channels, image sources, and model artifacts match official Red
-     Hat documentation or verified installed schemas
+   - custom resource API versions, API tier support posture, top-level spec
+     fields, annotations, operator channels, image sources, and model artifacts
+     match official Red Hat documentation or verified installed schemas
    - Red Hat product images and validated artifacts are preferred whenever the
      demo claims Red Hat-supported posture
 6. Use `references/doc-alignment-checklist.md` for the detailed review model.
-7. If a field or artifact cannot be verified from docs, flag it and propose a
+7. Use `rhoai-api-tiers` when the change depends on RHOAI API stability,
+   Technology Preview, Developer Preview, or Tier 4 support posture.
+8. If a field or artifact cannot be verified from docs, flag it and propose a
    schema or catalog verification command such as `oc explain`, CRD inspection,
    or image/catalog lookup.
-8. For prose rewrites, README structure, plans, or troubleshooting entries,
+9. For prose rewrites, README structure, plans, or troubleshooting entries,
    switch to `project-documentation-authoring`.
 
 ## Output Format

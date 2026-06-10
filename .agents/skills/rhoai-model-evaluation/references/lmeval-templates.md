@@ -70,20 +70,15 @@ spec:
 
 ## Available Templates
 
-### granite-8b-eval.yaml
+The active reimplementation should create a Nemotron template after the
+`LLMInferenceService` internal endpoint and tokenizer settings are verified.
+
+### nemotron-3-nano-30b-a3b-eval.yaml
 
 | Field | Value |
 |-------|-------|
-| base_url | `http://granite-8b-agent-predictor.private-ai.svc.cluster.local:8080/v1/completions` |
-| tokenizer | `ibm-granite/granite-3.1-8b-instruct` |
-| limit | 50 |
-
-### mistral-bf16-eval.yaml
-
-| Field | Value |
-|-------|-------|
-| base_url | `http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/completions` |
-| tokenizer | `mistralai/Mistral-Small-24B-Instruct-2501` |
+| base_url | Verify from the active `LLMInferenceService` or MaaS endpoint before writing the template |
+| tokenizer | Verify against the Red Hat modelcar or validated model documentation |
 | limit | 50 |
 
 ## Task Selection
@@ -106,17 +101,17 @@ increase runtime significantly.
 ### Via script
 
 ```bash
-# Default: granite-8b-agent, 50 samples
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
+# Default: nemotron-3-nano-30b-a3b, 50 samples
+./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
 
-# Custom: mistral, 200 samples
-./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16 200
+# Custom: 200 samples
+./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
 ```
 
 ### Manual CR application
 
 ```bash
-oc apply -f gitops/step-08-model-evaluation/base/lmeval/granite-8b-eval.yaml
+oc apply -f gitops/step-08-model-evaluation/base/lmeval/nemotron-3-nano-30b-a3b-eval.yaml
 ```
 
 ### Monitoring
@@ -133,10 +128,8 @@ oc logs -n private-ai -l app=lmeval --tail=50 -f
 
 | Model | Tasks | Limit | Approximate Time |
 |-------|-------|-------|-----------------|
-| granite-8b-agent | 4 | 50 | ~10 minutes |
-| granite-8b-agent | 4 | full | ~2 hours |
-| mistral-3-bf16 | 4 | 50 | ~15 minutes |
-| mistral-3-bf16 | 4 | full | ~4 hours |
+| nemotron-3-nano-30b-a3b | 4 | 50 | Measure during reimplementation |
+| nemotron-3-nano-30b-a3b | 4 | full | Measure during reimplementation |
 
 ## Interpreting Results
 
@@ -156,10 +149,10 @@ oc get lmevaljob <name> -n private-ai -o jsonpath='{.status.results}'
 
 | Model | hellaswag | arc_challenge | winogrande | boolq |
 |-------|-----------|---------------|------------|-------|
-| granite-8b-agent | ~0.65 | ~0.55 | ~0.68 | ~0.78 |
-| mistral-3-bf16 | ~0.78 | ~0.68 | ~0.75 | ~0.85 |
+| nemotron-3-nano-30b-a3b | Measure | Measure | Measure | Measure |
 
-These are approximate — 50-sample runs have high variance. Full runs are more stable.
+Record measured values after the new evaluation templates are rebuilt. 50-sample
+runs have high variance. Full runs are more stable.
 
 ## Troubleshooting
 
@@ -179,8 +172,8 @@ LMEvalJob pods run on CPU — they don't need GPU. If stuck, check resource quot
 
 ```bash
 # Verify model is serving
-oc get inferenceservice -n private-ai
-oc get pods -n private-ai -l serving.kserve.io/inferenceservice=<model>
+oc get llminferenceservice -n maas
+oc get pods -n maas -l app.kubernetes.io/part-of=llminferenceservice
 ```
 
 The model must have `READY=True` before starting LM-Eval.

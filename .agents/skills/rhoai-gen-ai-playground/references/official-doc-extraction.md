@@ -1,0 +1,327 @@
+# Official Documentation Extraction
+
+This extraction is derived from the official RHOAI 3.4 guide captured in
+`source-capture.md`.
+
+## Support Posture
+
+The gen AI playground is Technology Preview in Red Hat OpenShift AI 3.4.
+Technology Preview features are not supported with Red Hat production SLAs,
+might not be functionally complete, and are not recommended by Red Hat for
+production use.
+
+The captured guide also labels these related areas as Technology Preview:
+
+- AI asset endpoints
+- custom endpoints
+- multi-model comparison
+- prompt management
+
+## Concept Model
+
+The gen AI playground is an interactive environment in the OpenShift AI
+dashboard. Users can prototype and evaluate foundation models, custom models,
+external model endpoints, RAG behavior, and MCP tool use before building an
+application.
+
+The playground settings panel includes these tabs:
+
+- Model: select models and adjust parameters such as temperature and streaming
+- Prompt: write, save, and load system instructions
+- Knowledge: upload files for RAG or select knowledge sources exposed by the
+  product workflow
+- MCP: connect to Model Context Protocol servers and authorize tool access
+
+Chat history and parameter settings are not preserved across browser refresh or
+session end. Saved prompts are stored in MLflow and persist across sessions.
+
+## Cluster Administrator Prerequisites
+
+Before users configure a playground, the administrator completes platform
+setup:
+
+- OpenShift AI is installed on an OpenShift cluster running 4.19 or later.
+- Dashboard configuration sets `spec.dashboardConfig.genAiStudio` to `true`.
+- If OpenShift AI groups are used, users are added to the relevant
+  `rhods-users` and `rhods-admins` groups.
+- The Llama Stack Operator is enabled through the `DataScienceCluster` custom
+  resource by setting its management state to `Managed`.
+- MCP servers are configured when the demo needs playground tool use.
+
+## User Prerequisites
+
+Before using the playground, the user:
+
+- is logged in to OpenShift AI
+- belongs to the appropriate OpenShift AI user or administrator group when
+  group access is configured
+- has created or selected a project
+- has added a connection to the project when required by the workflow
+- has deployed a model in the project and made it available as an AI asset
+  endpoint
+
+## MCP Server Configuration
+
+The official guide configures MCP servers at the platform level with a
+`ConfigMap` in `redhat-ods-applications`.
+
+Resource shape:
+
+- `kind: ConfigMap`
+- `apiVersion: v1`
+- `metadata.name: gen-ai-aa-mcp-servers`
+- `metadata.namespace: redhat-ods-applications`
+- each `data` key is a unique, case-sensitive MCP server display name
+- each `data` value is valid JSON containing server information such as `url`
+  and `description`
+
+Verification checks that the `ConfigMap` exists and includes the expected
+server key.
+
+## Model And Runtime Requirements
+
+RAG and MCP features rely on model tool-calling behavior. The official guide
+calls out these model selection factors:
+
+- tool-calling support, verified from the model card or model documentation
+- sufficient context length for RAG documents and conversation history
+- vLLM version and configuration
+
+Common runtime arguments called out by the guide:
+
+- `--enable-auto-tool-choice`
+- `--tool-call-parser`
+- `--chat-template=/opt/app-root/template/<template_file>.jinja`
+
+The chat template path must be absolute and must use `/opt/app-root/template/`
+for standard Jinja templates in the Red Hat OpenShift AI image. Relative paths
+can cause deployment failure.
+
+If the model or runtime is not configured correctly, RAG document search or MCP
+tool execution can fail without a clear user-facing error.
+
+The official guide includes a Qwen model example for field placement. Treat it
+as an example, not as this demo's default model choice.
+
+## AI Asset Endpoints
+
+The AI asset endpoints page is scoped to the selected project and organizes
+available generative AI assets.
+
+Model sources:
+
+- models deployed in the project namespace and marked as AI asset endpoints
+- custom endpoints from models in another namespace on the same cluster
+- external third-party provider endpoints when enabled
+- MaaS models provided through Models as a Service
+
+MCP server assets come from the platform-level MCP server `ConfigMap`.
+
+Users can start playground testing from the AI asset endpoints page by adding a
+model to a playground or trying a model in the playground.
+
+## Configure A Playground
+
+Dashboard paths:
+
+```text
+Gen AI studio -> Playground
+Gen AI studio -> AI asset endpoints
+```
+
+The user selects the project that contains the model deployment, creates a
+playground, and selects models for the playground. For each selected model, the
+user chooses whether the model is used for inference or embedding.
+
+Verification:
+
+- playground interface loads with chat area and settings panel
+- Model tab shows the selected model
+- chatbot header model list shows the selected model name
+
+## Custom Endpoints
+
+Custom endpoints are Technology Preview.
+
+Administrator enablement fields in `OdhDashboardConfig`:
+
+```yaml
+spec:
+  dashboardConfig:
+    aiAssetCustomEndpoints: true
+  genAiStudioConfig:
+    aiAssetCustomEndpoints:
+      externalProviders: true
+      clusterDomains: []
+```
+
+Field intent:
+
+- `aiAssetCustomEndpoints` shows the custom endpoints feature; default is
+  `false`
+- `externalProviders` allows external third-party provider endpoints; default
+  is `false` and requires custom endpoints to be enabled
+- `clusterDomains` adds internal domains beyond `.svc.cluster.local`, which is
+  always treated as internal
+
+External provider warning:
+
+- Responses API data can be sent outside the cluster.
+- This data can include RAG context, MCP tool results, and user input.
+- External endpoint use must match the organization's data security policy.
+
+User workflow fields for custom endpoints:
+
+- model type: inference or embedding
+- model ID, matching the provider ID exactly
+- display name
+- embedding dimension for embedding models
+- URL for an internal cluster service or external provider
+- token or API key, stored as a Kubernetes Secret shared at project level
+- optional use case
+
+Verification:
+
+- optional Verify model sends a test request and checks that the endpoint is
+  reachable and returns an OpenAI-compatible response
+- endpoint appears on AI asset endpoints
+- model can be selected in the playground and returns inference responses
+
+## Model Experimentation
+
+The playground supports testing one model or comparing two models side by side.
+
+Parameters:
+
+- temperature from 0 to 2
+- streaming on or off
+- system instructions
+
+Temperature behavior:
+
+- near 0: more deterministic and factual output
+- around 0.7: balanced output
+- near 1: more creative output
+- over 1: can produce incoherent output
+
+Multi-model comparison helps compare quality, tone, accuracy, latency, model
+versions, and open source versus commercial model trade-offs. Starting
+comparison clears the current chat history and copies the configuration to both
+chat panels.
+
+## Playground RAG
+
+The playground RAG upload feature uses an inline vector database. The official
+guide states there is no mechanism for this playground RAG feature to connect
+to an external or remote vector database.
+
+Upload limits:
+
+- supported file formats: PDF, DOC, CSV
+- up to 10 files
+- maximum 10 MB per file
+
+Configurable chunk settings:
+
+- maximum chunk length
+- chunk overlap
+- delimiter
+
+Prompt guidance:
+
+- if the model does not use uploaded RAG documents, edit the system
+  instructions to explicitly tell the model to use the knowledge search tool
+  for the relevant questions.
+
+## Reusable Prompts
+
+Prompt management is Technology Preview.
+
+Saved system instructions are stored in MLflow, scoped to the project, and can
+be loaded by project members. Saving a refinement creates a new prompt version.
+The prompt workflow supports optional commit messages.
+
+Prompt workflows are available from:
+
+- Prompt tab in the playground
+- Gen AI studio Prompts page
+
+Prerequisite:
+
+- the MLflow service is available in the project
+
+## MCP Testing
+
+To test MCP tools in the playground:
+
+- the selected model must have tool-calling capabilities enabled
+- a playground instance must exist
+- an administrator must have configured an MCP server
+- the MCP server must appear in the settings panel MCP tab
+
+The user selects the server, authorizes it when required, views available
+tools, and sends a prompt that uses a tool.
+
+Authorization tokens for MCP servers are stored only for the current browser
+session. Closing the browser requires re-authorization.
+
+## Export, Update, And Delete
+
+Export:
+
+- the playground can export the current configuration as a Python code template
+- the template is not a runnable script
+- the template captures selected model, model parameters, optional RAG files,
+  and optional MCP tools
+
+Update:
+
+- updating a playground lets users add new models, re-register stopped models,
+  or change selected models
+- updating permanently deletes the inline vector database for all users in the
+  project
+
+Delete:
+
+- deleting a playground removes the instance for every user with access to the
+  project
+- after deletion, models on AI asset endpoints no longer show Try in
+  playground and instead show Add to playground
+
+## Troubleshooting
+
+The chatbot thinks indefinitely:
+
+- likely cause: query or accumulated context exceeds the model's maximum
+  context length
+- check the playground pod `lsd-genai-playground-<id>`
+- check the model-serving predictor pod `<model-name>-predictor-<id>`
+- look for context length or OOM errors
+
+The model does not use RAG data:
+
+- update Prompt tab system instructions to explicitly force use of the search
+  tool for questions that require the uploaded documents
+
+MCP servers are missing from the UI:
+
+- MCP servers must be configured at the cluster level by an administrator
+
+The model fails to call MCP tools:
+
+- verify the model supports tool calling
+- verify vLLM runtime arguments such as `--enable-auto-tool-choice` and
+  `--tool-call-parser`
+- when a model outputs raw thinking tags, the guide suggests adding
+  `/no_think` to the prompt
+
+## Out Of Scope For This Guide
+
+This guide does not define:
+
+- full Llama Stack server configuration
+- production support for Technology Preview capabilities
+- full model-serving runtime configuration
+- production MaaS governance for external model providers
+- formal evaluation metrics or evidence workflows
+- custom demo chatbot implementation

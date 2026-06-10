@@ -18,9 +18,13 @@ description: >
   tweak agent parameters (max_infer_iters, max_output_tokens), or fix chatbot
   UI issues. Also use when the user reports the chatbot is not using tools,
   giving truncated answers, or behaving unexpectedly in agent mode.
-  Do NOT use for live deployment issues (use env-troubleshoot), model serving
-  infrastructure changes (use env-deploy-and-evaluate plus the relevant RHOAI
-  Platform skill), or evaluation workflows (use rhoai-model-evaluation).
+  Do NOT use for Llama Stack server, provider, vector store, RAG platform,
+  OAuth, ABAC, CA, or HA configuration (use rhoai-llama-stack), live deployment
+  issues (use env-troubleshoot), model serving infrastructure changes (use
+  env-deploy-and-evaluate plus the relevant RHOAI Platform skill), product Gen
+  AI studio playground workflows (use rhoai-gen-ai-playground), official
+  NeMo/FMS Guardrails product configuration (use rhoai-guardrails-safety), or
+  evaluation workflows (use rhoai-model-evaluation).
 ---
 
 # Chatbot Customization
@@ -28,6 +32,14 @@ description: >
 Structured workflow for modifying the active-baseline RHOAI RAG chatbot — a Streamlit app
 backed by LlamaStack with agent/direct modes, guardrails integration, and MCP
 tool support.
+
+Use `rhoai-llama-stack` for the Llama Stack platform beneath this chatbot:
+`LlamaStackDistribution`, providers, vector stores, OpenAI-compatible APIs,
+OAuth, ABAC, CA trust, and HA/autoscaling.
+
+Use `rhoai-guardrails-safety` for official NeMo Guardrails, FMS Guardrails,
+TrustyAI guardrails CRs, detector services, and guardrails endpoints. This
+skill only covers how the custom chatbot UI calls or presents those controls.
 
 ## Reimplementation Status
 
@@ -57,7 +69,7 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 └─────────────────────────────────────────────────────────────────┘
          │ (optional)
          ▼
-  Guardrails Orchestrator (step-09, port 8032)
+  Legacy Guardrails Orchestrator (step-09 reference, port 8032)
 ```
 
 ## When to Use
@@ -100,9 +112,9 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 4. Test the change via the chatbot UI (sidebar shows the editable prompt)
 5. Update `steps/step-07-rag/README.md` design decisions
 
-**Prompt engineering constraints for Granite 8B:**
+**Prompt engineering constraints for the current private model path:**
 - Verbose prompts cause narration instead of action
-- Negative instructions ("do NOT ...") are ignored — use positive framing
+- Prefer positive framing over long lists of negative instructions
 - Include explicit tool hints ("use execute_sql on the acme_pod_equipment_map table")
 - Keep retry instructions short ("If a tool call fails, retry with corrected parameters")
 
@@ -129,7 +141,8 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 Guardrails are only available in Agent mode (not Direct mode).
 - Toggle is in `chat.py` sidebar (~line 243-259)
-- Requires step-09 Guardrails Orchestrator deployed
+- Legacy references require the step-09 Guardrails Orchestrator; new product
+  guardrails work should be checked with `rhoai-guardrails-safety`
 - Input checks: HAP + Prompt Injection
 - Output checks: HAP + PII regex (email, phone, credit card, LinkedIn, GitHub)
 - Implementation: `guardrails.py` → called from `agent.py`

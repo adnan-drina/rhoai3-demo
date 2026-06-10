@@ -65,10 +65,8 @@ fi
 echo ""
 echo "--- GPU Infrastructure ---"
 GPU_NODES=$(oc get nodes -l nvidia.com/gpu.present=true --no-headers 2>/dev/null | wc -l | tr -d ' ')
-if [[ "$GPU_NODES" -ge 2 ]]; then
+if [[ "$GPU_NODES" -ge 1 ]]; then
   pass "GPU nodes found: $GPU_NODES"
-elif [[ "$GPU_NODES" -ge 1 ]]; then
-  warn "Only $GPU_NODES GPU node found (demo expects 2: g6.4xlarge + g6.12xlarge)"
 else
   fail "No GPU nodes found (label: nvidia.com/gpu.present=true)"
 fi

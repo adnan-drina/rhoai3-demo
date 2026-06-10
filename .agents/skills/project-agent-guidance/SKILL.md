@@ -47,8 +47,8 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 
 | Type | Count | Location |
 |------|-------|----------|
-| Shared rules | 4 | `.agents/rules/*.md` |
-| Shared skills | 15 | `.agents/skills/*/SKILL.md` |
+| Shared rules | 5 | `.agents/rules/*.md` |
+| Shared skills | 83 | `.agents/skills/*/SKILL.md` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
 | Codex hook bridge | 1 config, 1 compatibility wrapper | `.codex/hooks.json`, `.codex/hooks/` |
@@ -63,14 +63,19 @@ for logical ownership:
 
 | Group | Prefix | Purpose |
 |-------|--------|---------|
-| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
+| Project Structure | `project-*` | Repo layout, GitOps authoring, documentation structure, RHOAI docs-to-skill generation, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed active-baseline RHOAI component installation, configuration, KFP pipelines, and usage |
+| OpenShift Platform | `ocp-*` | Official-doc-backed OpenShift Container Platform infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration guidance |
+| OpenShift Data Foundation | `odf-*` | Official-doc-backed OpenShift Data Foundation storage, object storage, Ceph, NooBaa, storage class, and data-service integration guidance |
 | Assets & Miscellaneous | `assets-*` | Visual, deck, and presentation assets |
 
-Use `project-structure` for the taxonomy and
-`project-structure/references/rhoai-component-skill-roadmap.md` for missing
-RHOAI component skills.
+Use `project-structure` for the taxonomy,
+`project-structure/references/rhoai-component-skill-roadmap.md` for RHOAI
+component skills, and
+`project-structure/references/ocp-component-skill-roadmap.md` for OpenShift
+Platform component skills. Use `project-red-hat-doc-skill-authoring` for new
+`rhoai-*`, `ocp-*`, and `odf-*` skills generated from official Red Hat docs.
 
 ## Instructions
 

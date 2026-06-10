@@ -139,7 +139,7 @@ Deployment: rag-chatbot
 
 Dependencies:
   - lsd-rag (LlamaStack distribution)
-  - granite-8b-agent (InferenceService)
+  - nemotron-3-nano-30b-a3b (LLMInferenceService/MaaS)
   - llamastack-postgres (pgvector)
   - guardrails-orchestrator (step-09, optional)
 ```

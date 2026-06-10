@@ -34,13 +34,15 @@ aligned with the active product baseline.
    wording.
 4. For GitOps structure and Argo CD standards, read
    `references/argocd-kustomize.md`.
-5. For YAML, cross-resource consistency, and validation, read
+5. For OpenShift GitOps Operator, Argo CD product boundary, platform RBAC, or
+   resource tracking questions, use `ocp-gitops-operator` first.
+6. For YAML, cross-resource consistency, and validation, read
    `references/manifest-standards.md`.
-6. For secrets, local `.env` handling, TLS bypasses, and demo security posture,
+7. For secrets, local `.env` handling, TLS bypasses, and demo security posture,
    read `references/security-and-secrets.md`.
-7. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
+8. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
    read `references/labels-and-annotations.md`.
-8. For new or changed images, model artifacts, CR fields, or operator settings,
+9. For new or changed images, model artifacts, CR fields, or operator settings,
    use `project-red-hat-doc-alignment-review` to confirm official Red Hat docs,
    Red Hat registry sources, validated model sources, or explicitly documented
    demo exceptions.

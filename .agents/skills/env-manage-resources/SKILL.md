@@ -25,9 +25,10 @@ description: >
 
 # Manage Demo Resources
 
-Scale InferenceServices (models) and MachineSets (GPU nodes) without
-conflicting with ArgoCD. Steps 01 and 05 have `selfHeal: false`, so manual
-changes show OutOfSync but are not auto-reverted.
+Scale model-serving resources and MachineSets (GPU nodes) without conflicting
+with ArgoCD. Active reimplementation should support RHOAI `LLMInferenceService`
+for the private Nemotron model; legacy `InferenceService` patterns are reference
+material only.
 
 ## Reimplementation Status
 
@@ -50,7 +51,8 @@ Discover the current state before making changes:
 
 ```bash
 # Models
-oc get isvc -n maas -o custom-columns='NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status,MIN_REPLICAS:.spec.predictor.minReplicas'
+oc get llminferenceservice -n maas
+oc get isvc -n maas
 
 # GPU MachineSets
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
@@ -63,20 +65,23 @@ done
 
 ## Scale Down a Model
 
-Set `minReplicas: 0` — KServe scales the predictor pod to zero after the
-grace period (~60s). The ISVC resource remains; only the pod is removed.
+For the current target architecture, first verify the active
+`LLMInferenceService` schema and GitOps owner. The imported implementation uses
+`spec.replicas` for `nemotron-3-nano-30b-a3b`; scale only through the supported
+field or through GitOps.
 
 ```bash
-oc patch isvc <MODEL_NAME> -n maas --type merge \
-  -p '{"spec":{"predictor":{"minReplicas":0}}}'
+oc explain llminferenceservice.spec.replicas
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
+  -p '{"spec":{"replicas":0}}'
 ```
 
 **Models in this demo:**
 
 | Model | GPU | Purpose | Safe to stop? |
 |-------|-----|---------|---------------|
-| `granite-8b-agent` | 1× g6.4xl | Primary MaaS agent model | Chatbot, RAG, MCP, and guardrails will stop |
-| `mistral-3-bf16` | 4× g6.12xl | MaaS chat and judge model | Playground and eval pipelines will fail |
+| `nemotron-3-nano-30b-a3b` | 1× `g6e.2xlarge` per replica | Primary private MaaS GenAI model | Private GenAI, RAG, MCP, guardrails, Playground, and private evals stop |
+| OpenAI `gpt-5` external MaaS model | 0 cluster GPU | Approved external model path | MaaS external calls fail only if the MaaS model, policy, or provider credentials are removed |
 | `hap-detector` | 0 (CPU) | HAP guardrail | Guardrails degrade |
 | `prompt-injection-detector` | 0 (CPU) | Prompt injection guardrail | Guardrails degrade |
 | `face-recognition` | 0 (CPU) | YOLO face detection | Face recognition stops |
@@ -99,18 +104,11 @@ oc get nodes -l node-role.kubernetes.io/gpu --watch
 1. Stop models that use the GPU node first
 2. Then scale down the MachineSet
 
-**Scale-down sequence for 4-GPU node (Mistral):**
+**Scale-down sequence for the private Nemotron GPU path:**
 ```bash
-oc patch isvc mistral-3-bf16 -n maas --type merge -p '{"spec":{"predictor":{"minReplicas":0}}}'
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge -p '{"spec":{"replicas":0}}'
 sleep 60
-oc scale machineset $(oc get machineset -n openshift-machine-api --no-headers | grep g6-12xlarge | awk '{print $1}') -n openshift-machine-api --replicas=0
-```
-
-**Scale-down sequence for 1-GPU node (Granite):**
-```bash
-oc patch isvc granite-8b-agent -n maas --type merge -p '{"spec":{"predictor":{"minReplicas":0}}}'
-sleep 60
-oc scale machineset $(oc get machineset -n openshift-machine-api --no-headers | grep g6-4xlarge | awk '{print $1}') -n openshift-machine-api --replicas=0
+oc scale machineset $(oc get machineset -n openshift-machine-api --no-headers | grep g6e | awk '{print $1}') -n openshift-machine-api --replicas=0
 ```
 
 ## Scale Back Up
@@ -125,8 +123,8 @@ oc scale machineset <MACHINESET_NAME> -n openshift-machine-api --replicas=1
 oc get nodes -l node-role.kubernetes.io/gpu --watch
 
 # 3. Restore model
-oc patch isvc <MODEL_NAME> -n maas --type merge \
-  -p '{"spec":{"predictor":{"minReplicas":1}}}'
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
+  -p '{"spec":{"replicas":1}}'
 ```
 
 In the legacy implementation, Step 05 also performed this scale-up guard
@@ -164,6 +162,7 @@ oc get application step-01-gpu-and-prereq step-05-maas-model-serving -n openshif
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness
+oc get llminferenceservice -n maas
 oc get isvc -n maas
 
 # Check node availability

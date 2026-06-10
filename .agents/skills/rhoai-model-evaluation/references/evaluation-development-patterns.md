@@ -5,10 +5,18 @@ test assets, or scripts.
 
 ## Judge Model
 
-The RAG evaluation judge model is `mistral-3-bf16`. This is deliberate: using
-the same small model for candidate and judge produces biased or hallucinated
-judgments. Do not change the judge model without re-running all four scenarios
-and comparing grade distributions.
+The current reimplementation target is:
+
+- Candidate/private model: `nemotron-3-nano-30b-a3b`.
+- Preferred judge for non-sensitive or synthetic evaluation: approved external
+  OpenAI `gpt-5` through MaaS, after MaaS gateway/API compatibility is
+  verified.
+- Private-only fallback: an explicitly selected private judge strategy using
+  `nemotron-3-nano-30b-a3b`, with the bias risk documented.
+
+Using the same model for candidate and judge can produce biased or
+hallucinated judgments. Do not change judge strategy without re-running all
+scenarios and comparing grade distributions.
 
 ## Test Asset Integrity
 

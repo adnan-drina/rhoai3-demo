@@ -15,8 +15,9 @@ description: >
   kustomization, auditing labels, or running a periodic manifest compliance
   pass. Do NOT use for authoring new manifests unless paired with
   project-gitops-authoring. Do NOT use as the final source-of-truth check for
-  Red Hat product APIs, image support posture, or model artifact provenance;
-  pair with project-red-hat-doc-alignment-review for those checks.
+  Red Hat product APIs, API tier support posture, image support posture, or
+  model artifact provenance; pair with project-red-hat-doc-alignment-review
+  and rhoai-api-tiers for those checks.
 ---
 
 # Manifest Review
@@ -39,6 +40,8 @@ files unless the user asks for fixes.
 7. For CR field authority, operator channel support, Red Hat product images,
    validated model artifacts, or README source grounding, hand off to
    `project-red-hat-doc-alignment-review`.
+8. For RHOAI API compatibility tiers, Technology Preview or Developer Preview
+   labeling, and Tier 4 boundary review, use `rhoai-api-tiers`.
 
 ## Output Format
 

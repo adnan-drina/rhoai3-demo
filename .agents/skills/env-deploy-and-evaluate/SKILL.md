@@ -68,7 +68,7 @@ user explicitly asks to restore or inspect the legacy implementation.
 02  RHOAI Platform
 03  Private AI / GPU-as-a-Service (MinIO, auth, RBAC)
 04  Model Registry
-05  LLM on vLLM (granite-8b-agent + mistral-3-bf16 active; additional models in Registry)
+05  Private model serving and MaaS (nemotron-3-nano-30b-a3b active; approved external gpt-5 via MaaS)
 06  Model Metrics (Grafana, GuideLLM benchmarks)
 07  RAG (pgvector, Docling, DSPA, LlamaStack RAG)
 08  Model Evaluation (pre/post RAG with LLM-as-Judge)
@@ -103,8 +103,8 @@ user explicitly asks to restore or inspect the legacy implementation.
 
 | Node | GPUs | Active Model | Role |
 |------|------|-------------|------|
-| g6.4xlarge (1 GPU) | 1 | `granite-8b-agent` (FP8) | RAG, MCP, Guardrails, Playground |
-| g6.12xlarge (4 GPU) | 4 | `mistral-3-bf16` (BF16) | LLM judge, Playground, Benchmarking |
+| g6e.2xlarge | 1 per node | `nemotron-3-nano-30b-a3b` (FP8 modelcar) | Private GenAI, RAG, MCP, guardrails, Playground |
+| External provider | 0 | OpenAI `gpt-5` through MaaS | Approved external reasoning/judge path when policy allows |
 
 ### GitOps Deployment Pattern
 
@@ -126,7 +126,7 @@ After the demo-flow script has been recreated and all steps pass:
 ```markdown
 # RHOAI Demo Deployment Report
 **Cluster:** <api-url>  **Date:** <YYYY-MM-DD>
-**GPU Config:** 1x g6.4xlarge + 1x g6.12xlarge
+**GPU Config:** 1x g6e.2xlarge by default; 1 GPU per node
 
 | Step | Name | Status | Duration |
 |------|------|--------|----------|

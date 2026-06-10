@@ -14,14 +14,14 @@
 ```yaml
 name: "Human-readable scenario name"
 description: "What this scenario tests"
-vector_db_id: acme_corporate    # vector store name, or null for pre-RAG
-model_id: granite-8b-agent      # candidate model
+vector_db_id: acme_corporate          # vector store name, or null for pre-RAG
+model_id: nemotron-3-nano-30b-a3b     # candidate model
 mode: post-rag                  # pre-rag | post-rag
 
 scoring_params:
   "llm-as-judge::base":
     type: llm_as_judge
-    judge_model: mistral-3-bf16
+    judge_model: gpt-5
     prompt_template: scoring-templates/judge_prompt.txt
     judge_score_regexes:
       - "Answer: (A|B|C|D|E)"
@@ -69,12 +69,13 @@ improvement is due to RAG, not different questions.
 
 | Field | Value |
 |-------|-------|
-| Model | `mistral-3-bf16` (Mistral Small 24B) |
-| Endpoint | `http://mistral-3-bf16-predictor.private-ai.svc.cluster.local:8080/v1/chat/completions` |
-| Transport | Direct vLLM (not via LlamaStack scoring API) |
+| Model | OpenAI `gpt-5` through MaaS, when approved external processing is allowed |
+| Endpoint | MaaS OpenAI-compatible endpoint for the approved external model |
+| Transport | MaaS, with centralized credentials, subscription policy, rate limits, token limits, and telemetry |
 
-Using a different (larger) model as judge is a design decision: the same small model
-for both candidate and judge produces biased judgments.
+Using a separate judge is a design decision: the same model for both candidate
+and judge can produce biased judgments. For private-only runs, document the
+fallback judge strategy and expected bias risk.
 
 ### Scoring Scale
 
@@ -137,7 +138,7 @@ eval_pipeline
   ├── scan_tests        # Finds *_tests.yaml in /shared-data/eval-configs
   └── run_and_score_tests  # For each config:
         ├── Generate answers (via LlamaStack or direct vLLM)
-        ├── Judge each answer (via mistral-3-bf16)
+        ├── Judge each answer (via approved MaaS judge)
         ├── Produce HTML report
         └── Upload to MinIO S3
 ```

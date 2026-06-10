@@ -25,6 +25,8 @@ standards, Red Hat source alignment, or shared agent guidance:
 
 - `.agents/skills/project-structure/SKILL.md`
 - `.agents/skills/project-agent-guidance/SKILL.md`
+- `.agents/skills/project-red-hat-doc-skill-authoring/SKILL.md`
+- `.agents/skills/project-rhoai-doc-chapter-skill-authoring/SKILL.md`
 - `.agents/skills/project-gitops-authoring/SKILL.md`
 - `.agents/skills/project-documentation-authoring/SKILL.md`
 - `.agents/skills/project-manifest-review/SKILL.md`
@@ -35,6 +37,13 @@ Keep the demo coherent as a RHOAI platform story for European enterprises.
 GitOps, step READMEs, operational docs, architecture diagrams, and agent
 guidance must stay aligned with the active baseline in
 `docs/PLATFORM_BASELINE.md`.
+
+Use `project-red-hat-doc-skill-authoring` when turning official Red Hat product
+documentation into `rhoai-*`, `ocp-*`, or `odf-*` component skills. The older
+`project-rhoai-doc-chapter-skill-authoring` remains compatible for RHOAI-only
+chapter work. Generated component skills must capture official sources,
+extraction notes, validation rules, and examples before they are treated as
+reusable product guidance.
 
 The active implementation is being rewritten. Current implementation folders
 `gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is

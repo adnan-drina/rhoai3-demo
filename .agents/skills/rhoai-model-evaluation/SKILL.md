@@ -17,9 +17,16 @@ description: >
   interpret eval results, add new test questions, or modify the judge prompt.
   Also use when eval pipelines fail, LMEvalJob pods are stuck, or evaluation
   reports show unexpected scores.
-  Do NOT use for chatbot UI changes (use rhoai-chatbot-customization), deployment
-  issues (use env-troubleshoot), or inference performance tuning (see
-  step-06 GuideLLM benchmarks).
+  Do NOT use for official product EvalHub, LM-Eval, LMEvalJob, or automated
+  risk assessment workflows from the Red Hat evaluation guide (use
+  rhoai-evaluation), product AutoRAG dashboard optimization runs, leaderboard
+  review, or generated notebooks (use rhoai-autorag), MLflow platform
+  installation, SDK authentication, or artifact storage configuration (use
+  rhoai-mlflow), Training Hub, SDG Hub, Docling, or ITS Hub model
+  customization workflows (use rhoai-model-customization-training), chatbot UI
+  changes (use rhoai-chatbot-customization), deployment issues (use
+  env-troubleshoot), or inference performance tuning (see step-06 GuideLLM
+  benchmarks).
 ---
 
 # Model Evaluation
@@ -43,8 +50,8 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 Path A: RAG Evaluation (LLM-as-Judge)
   ┌────────────┐    ┌──────────────┐    ┌────────────┐    ┌──────────┐
   │ Test YAML  │ →  │ Generate     │ →  │ Judge with │ →  │ HTML     │
-  │ questions  │    │ answers via  │    │ mistral-3  │    │ report   │
-  │ + expected │    │ granite-8b   │    │ -bf16 (A-E)│    │ → MinIO  │
+  │ questions  │    │ answers via  │    │ approved   │    │ report   │
+  │ + expected │    │ Nemotron     │    │ MaaS judge │    │ → MinIO  │
   └────────────┘    └──────────────┘    └────────────┘    └──────────┘
 
 Path B: Standard Benchmarks (LM-Eval)
@@ -120,11 +127,11 @@ Path B: Standard Benchmarks (LM-Eval)
 **Prerequisites:** Steps 01-05 deployed. Model InferenceService ready.
 
 ```bash
-# Benchmark granite-8b-agent (default 50 samples/task)
-./steps/step-08-model-evaluation/run-lmeval.sh granite-8b-agent
+# Benchmark nemotron-3-nano-30b-a3b (default 50 samples/task)
+./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
 
-# Benchmark mistral-3-bf16 with 200 samples
-./steps/step-08-model-evaluation/run-lmeval.sh mistral-3-bf16 200
+# Benchmark with 200 samples
+./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
 ```
 
 **Tasks:** hellaswag, arc_challenge, winogrande, boolq
@@ -152,10 +159,10 @@ oc get lmevaljob <name> -n private-ai -o yaml
 ### Critical Constraints
 
 For the full set of constraints, read
-`references/evaluation-development-patterns.md`: fixed judge model
-(`mistral-3-bf16`), test question integrity, on-demand LMEvalJob pattern,
-EvalHub/KFP/pod path selection, and judge prompt anchoring. Post-RAG eval
-depends on vector stores — run step-07 ingestion first.
+`references/evaluation-development-patterns.md`: judge model selection,
+test question integrity, on-demand LMEvalJob pattern, EvalHub/KFP/pod path
+selection, and judge prompt anchoring. Post-RAG eval depends on vector stores —
+run step-07 ingestion first.
 
 ### Validation
 

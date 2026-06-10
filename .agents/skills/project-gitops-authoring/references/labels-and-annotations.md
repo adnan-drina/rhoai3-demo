@@ -10,9 +10,9 @@ Most resources should include:
 | Label | Purpose | Example |
 |-------|---------|---------|
 | `app.kubernetes.io/part-of` | Topology grouping | `llm-serving` |
-| `app.kubernetes.io/name` | Component name | `mistral-3-bf16` |
+| `app.kubernetes.io/name` | Component name | `nemotron-3-nano-30b-a3b` |
 | `app.kubernetes.io/component` | Component role | `inference` |
-| `app.kubernetes.io/instance` | Unique instance when useful | `mistral-3-bf16-private-ai` |
+| `app.kubernetes.io/instance` | Unique instance when useful | `nemotron-private-ai` |
 
 Label values must be Kubernetes-label safe and under 63 characters.
 

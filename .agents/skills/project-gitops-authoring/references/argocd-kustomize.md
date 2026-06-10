@@ -111,5 +111,6 @@ operator-generated OpenShift resources.
 ## References
 
 - Current RHOAI baseline DSPA docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
-- Current OCP baseline GitOps docs: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cicd/gitops
+- Current OCP baseline GitOps docs: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/gitops/index
+- OCP GitOps platform skill: `.agents/skills/ocp-gitops-operator/SKILL.md`
 - Argo CD sync options: https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/

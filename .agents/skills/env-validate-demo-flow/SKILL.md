@@ -87,12 +87,15 @@ Run this only after the active demo-flow script has been recreated:
 
 ### Key Details
 
-- **Model ID**: `vllm-inference/granite-8b-agent` (not `granite-8b-agent` — LlamaStack uses provider-prefixed IDs)
+- **Model ID**: use the provider-prefixed Llama Stack/MaaS model ID for
+  `nemotron-3-nano-30b-a3b`; do not assume the bare model name is accepted.
 - **Slack channel ID**: `C09JL81TUQJ` (`#all-acme-mcp-demo`)
 - **Orchestrator API**: HTTPS port 8032, v2 API (`/api/v2/text/detection/content`)
 - **DB tool parameter**: `sql` (not `query`) for `execute_sql`
 - **Agentic tests use `tool_choice=required`, `max_infer_iters=20`, `max_output_tokens=512`**
-- **Each agentic test scopes tools to its relevant MCP server** — Granite 8B picks the wrong tool when all 31 are available in independent (non-conversational) tests; in the chatbot UI, conversational context compensates
+- **Each agentic test scopes tools to its relevant MCP server** — broad tool
+  sets make deterministic validation harder; in the chatbot UI, conversational
+  context can compensate, but automated tests should stay scoped.
 - **file_search requires vector store IDs** — the script resolves `acme_corporate` → `vs_...` at runtime via `/v1/vector_stores`
 - **Agent instructions include execute_sql hint** — "For database lookups, use execute_sql on the acme_pod_equipment_map table" steers the model to the correct database tool
 

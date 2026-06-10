@@ -14,13 +14,21 @@ description: >
   editing steps/**/kfp/**/*.py, KFP components, pipeline runner scripts, DSPA
   client code, pipeline PVC/RBAC integration, Output[Metrics]/Output[Model]/
   Output[HTML] artifacts, caching behavior, or RHOAI Dashboard pipeline
-  visibility. Do NOT use for generic GitOps changes unless paired with
-  project-gitops-authoring.
+  visibility. Do NOT use for AI Pipelines product lifecycle, pipeline server
+  setup, dashboard import/version/run/schedule operations, Elyra runtime
+  configuration, or DSPA troubleshooting (use rhoai-ai-pipelines). Do NOT use
+  for generic GitOps changes unless paired with project-gitops-authoring.
 ---
 
 # KFP Pipeline Authoring
 
 Use this skill when working on KFP v2 pipelines in the RHOAI demo.
+
+Use `rhoai-ai-pipelines` first for official product behavior around pipeline
+servers, KFP SDK prerequisites, Kubernetes API storage, pipeline versions,
+caching, experiments, runs, schedules, logs, Elyra, workspaces, and DSPA
+troubleshooting. Use this skill when the task reaches repo-specific pipeline
+Python, components, compiled artifacts, or runner scripts.
 
 ## Reimplementation Status
 
@@ -42,7 +50,7 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 4. Keep pipeline infrastructure in GitOps and compiled/uploaded pipeline
    definitions in step scripts.
 5. Keep component functions hermetic, typed, Dashboard-visible where possible,
-   and aligned with the active RHOAI pipeline documentation.
+   and aligned with `rhoai-ai-pipelines` and the active official documentation.
 
 ## Validation
 

@@ -10,15 +10,14 @@ patterns. Changes to one mode must not break the other.
 
 ## Agent Mode Defaults
 
-- `agent.py` sets `tool_choice="required"` when tools are present. Granite 8B
-  often skips tools with `"auto"`. Do not change this without testing all four
-  agentic demo scenarios.
+- `agent.py` sets `tool_choice="required"` when tools are present. Do not
+  change this without testing all agentic demo scenarios against
+  `nemotron-3-nano-30b-a3b`.
 - `max_output_tokens=512` protects the 16K context window from overflow when
   MCP and `file_search` results consume 12-16K tokens. Increase only with a
   matching model `max-model-len` change.
-- Keep the agent system prompt action-oriented and short. Granite 8B tends to
-  narrate verbose prompts instead of acting on them. Prefer positive framing
-  such as "You MUST use tools".
+- Keep the agent system prompt action-oriented and short. Prefer positive
+  framing such as "You MUST use tools".
 
 ## Build And Restart
 
@@ -50,6 +49,7 @@ The chatbot `Containerfile` should stay aligned with OpenShift image guidance:
 
 ## References
 
-- Current baseline LlamaStack docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_llama_stack/
+- Llama Stack platform skill: `.agents/skills/rhoai-llama-stack/SKILL.md`
+- Current baseline Llama Stack docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index
 - Current baseline Guardrails docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/ai_safety_with_guardrails/
 - Current OCP image guidance: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/images/creating-images

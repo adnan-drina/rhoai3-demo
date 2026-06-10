@@ -2,15 +2,17 @@
 
 ## Table of Contents
 
-- [Granite 8B Behavioral Traits](#granite-8b-behavioral-traits)
+- [Private Model Behavioral Traits](#private-model-behavioral-traits)
 - [Current System Prompts](#current-system-prompts)
 - [Tested Patterns](#tested-patterns)
 - [Anti-Patterns](#anti-patterns)
 - [Parameter Tuning](#parameter-tuning)
 
-## Granite 8B Behavioral Traits
+## Private Model Behavioral Traits
 
-These traits were discovered through iterative testing. They affect prompt design choices:
+These traits came from earlier private-model testing and must be revalidated
+against `nemotron-3-nano-30b-a3b` during the reimplementation. They affect
+prompt design choices:
 
 | Trait | Impact | Mitigation |
 |-------|--------|------------|
@@ -58,7 +60,7 @@ Your response format: provide only the answer. Do not add a Sources section.
 
 | Pattern | Example | Why it works |
 |---------|---------|--------------|
-| Positive action commands | "You MUST use your tools" | Granite follows positive directives |
+| Positive action commands | "You MUST use your tools" | Keeps tool-use intent explicit |
 | Explicit tool hints | "use execute_sql on acme_pod_equipment_map" | Removes ambiguity about which tool to call |
 | Short retry instruction | "If a tool call fails, retry with corrected parameters" | Model actually retries; long explanation makes it narrate |
 | Citation template | "Sources:\n- filename.md" | Model follows formatting templates |
@@ -75,7 +77,8 @@ Your response format: provide only the answer. Do not add a Sources section.
 
 ## Anti-Patterns
 
-1. **Over-scoping tools**: Making all 31 MCP tools available in a single session causes Granite 8B to pick wrong tools. Scope tools per use case.
+1. **Over-scoping tools**: Making all MCP tools available in a single session
+   can cause the model to pick wrong tools. Scope tools per use case.
 
 2. **Temperature too high**: For tool-calling tasks, keep temperature low (0.1-0.3). Higher values cause the model to vary tool parameters randomly.
 
@@ -93,7 +96,7 @@ Your response format: provide only the answer. Do not add a Sources section.
 | max_infer_iters | chat.py sidebar | 20 | 10-30 | MCP chains need 4-5 iterations minimum |
 | tool_choice | agent.py | "required" | "required" | Don't change to "auto" without testing |
 
-### Context Window Budget (granite-8b-agent, 16384 tokens)
+### Context Window Budget
 
 ```
 System prompt:         ~200 tokens

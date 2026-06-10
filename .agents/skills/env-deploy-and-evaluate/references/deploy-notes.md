@@ -20,7 +20,9 @@
 4. `oc login` with provided credentials (`--insecure-skip-tls-verify=true`) if
    the kubeconfig does not already contain a valid context.
 5. Verify cluster version: `oc get clusterversion`
-6. GPU quota check — sandbox accounts have 64 vCPU limit (1x g6.4xlarge + 1x g6.12xlarge = 64)
+6. GPU quota check — current demo intent is a `g6e.2xlarge` GPU worker with
+   one `nvidia.com/gpu` per node; default desired count is one node unless the
+   active environment plan says otherwise.
 7. Run `./scripts/bootstrap.sh`
 8. Verify ArgoCD configuration:
    ```bash
@@ -38,8 +40,8 @@
 
 ## Per-Step Notes
 
-- **Step 01**: Create MachineSets for 1x g6.4xlarge + 1x g6.12xlarge. deploy.sh auto-detects the availability zone from existing worker machinesets. GPU Operator uses `installPlanApproval: Automatic`.
-- **Step 05**: deploy.sh runs the mistral-3-bf16 upload job and waits for completion BEFORE applying the ArgoCD Application. This prevents the storage-initializer race condition (partial S3 download). Only 2 models deployed (granite-8b-agent + mistral-3-bf16); 3 more registered in Model Registry for on-demand deployment. Playground RAG requires system prompt: "You MUST use the knowledge_search tool" (this is the GenAI Playground's `knowledge_search`, distinct from the step-07 chatbot's `file_search`).
+- **Step 01**: Create or reconcile GPU MachineSets for `g6e.2xlarge` workers. The current demo default is one replica. GPU nodes should be labeled with `node-role.kubernetes.io/gpu`, tainted with `nvidia.com/gpu=true:NoSchedule`, and expected to advertise one allocatable `nvidia.com/gpu`.
+- **Step 05**: Private model serving should use `nemotron-3-nano-30b-a3b` from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` through RHOAI `LLMInferenceService` and vLLM. Approved external OpenAI `gpt-5` should be registered behind MaaS only after MaaS gateway/API compatibility is verified.
 - **Step 05 → Playground**: Create Playground LSD via Dashboard UI (not GitOps-managed). Only register RUNNING models.
 - **Step 06**: Run benchmarks via `./steps/step-06-model-metrics/run-benchmark.sh`.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
@@ -55,7 +57,7 @@
 - **Step 09 — Guardrails validation**: `validate.sh` runs 12 checks including 4 functional detector tests (HAP, prompt injection, PII regex, clean input). Uses orchestrator v2 API on HTTPS port 8032. Detector names in config are `hap`, `prompt_injection`, `regex` (not the ISVC names).
 - **Step 07 — Two LSDs coexist**: `lsd-genai-playground` (Dashboard) and `lsd-rag` (GitOps) in same namespace.
 - **Step 07/08 — llama-stack-client**: Must be `>=0.4,<0.5` for server v0.4.2.1+rhai0.
-- **Step 08 — Two models, two roles**: Candidate = `granite-8b-agent`. Judge = `mistral-3-bf16`. Never use same model for both.
+- **Step 08 — Model roles**: Candidate = `nemotron-3-nano-30b-a3b` for private-path evaluation. Judge = approved external OpenAI `gpt-5` through MaaS when policy allows; otherwise use an explicitly selected private judge strategy and document the bias risk.
 - **Step 08 — Reports**: `run-eval-report.sh` uploads HTML to `s3://rhoai-storage/eval-results/{run-id}/`.
 - **Step 10 — MCP ConfigMap**: `gen-ai-aa-mcp-servers` in `redhat-ods-applications` managed by ArgoCD. Each JSON entry supports `url`, `description`, and `transport` fields.
 - **Step 10 — MCP transport**: The gen-ai backend defaults to `streamable-http` transport. SSE-only servers (database-mcp, slack-mcp) MUST include `"transport": "sse"` in the ConfigMap JSON or the Dashboard shows "Error". OpenShift-MCP (kubernetes-mcp-server) supports streamable-http on `/mcp`.
@@ -83,8 +85,7 @@ The canonical ArgoCD Application standards (syncPolicy, ignoreDifferences, AppPr
 
 | Model Family | `--tool-call-parser` | Chat Template |
 |-------------|---------------------|---------------|
-| Granite | `granite` | Built-in |
-| Mistral | `mistral` | Built-in |
+| Nemotron 3 Nano | `qwen3_coder` | Use the validated modelcar/vLLM arguments from the active `LLMInferenceService` |
 | Llama 3.x | `llama3_json` | `/opt/app-root/template/tool_chat_template_llama3.1_json.jinja` |
 
 ## Known Deployment Issues
@@ -112,4 +113,6 @@ Vector store data persists across pod restarts. The `rh-dev` template manages st
 
 ## Upload Hooks Awareness
 
-The mistral-3-bf16 upload Job uses `argocd.argoproj.io/hook: Skip` — it is not managed by ArgoCD sync. deploy.sh runs it before the ArgoCD Application to prevent the storage-initializer race condition. The job is idempotent (skips if model already in MinIO with >= 1 safetensors + >= 5 total files). First upload takes 15-25 min for the 48GB model.
+Legacy object-storage model upload jobs are no longer the target model path.
+The current target uses Red Hat modelcar images, with
+`nemotron-3-nano-30b-a3b` served by `LLMInferenceService`.
