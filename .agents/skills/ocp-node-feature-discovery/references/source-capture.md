@@ -22,6 +22,16 @@
 - Using the NFD Topology Updater
 - `NodeResourceTopology` custom resource examples and topology updater flags
 
+## Supporting GitOps Pattern Sources
+
+| Source | Role |
+|--------|------|
+| https://github.com/redhat-cop/gitops-catalog/tree/main/nfd | Red Hat CoP NFD operator, instance, and aggregate GitOps layout |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/nfd/operator/base/subscription.yaml | NFD Subscription shape and catalog source pattern |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/nfd/instance/base/node-feature-discovery.yaml | Baseline NodeFeatureDiscovery instance shape |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/nfd/instance/overlays/only-nvidia/patch-node-feature-discovery.yaml | NVIDIA-focused NFD instance overlay pattern |
+| https://raw.githubusercontent.com/redhat-cop/gitops-catalog/main/nfd/aggregate/overlays/only-nvidia/kustomization.yaml | Aggregate overlay pattern for operator plus NVIDIA-focused instance |
+
 ## Source Boundaries
 
 The same official documentation page also covers Driver Toolkit and Kernel
@@ -33,6 +43,11 @@ driver container behavior.
 This skill does not define NVIDIA GPU Operator, RHOAI hardware profile, KServe,
 or model-serving behavior. Use `rhoai-nvidia-gpu-accelerators` and relevant
 `rhoai-*` serving skills for that layer.
+
+The Red Hat CoP GitOps Catalog is a pattern source only. Curate the NFD layout
+locally and verify every Subscription channel, `NodeFeatureDiscovery` field,
+`operand.image` requirement, feature-source option, and topology updater setting
+against official OCP docs and the active cluster schema.
 
 ## Related Official Sources
 

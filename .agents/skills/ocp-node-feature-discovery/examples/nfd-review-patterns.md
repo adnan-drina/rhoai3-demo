@@ -84,6 +84,41 @@ Expected review distinction:
 - `nvidia.com/gpu` allocatable resource comes from NVIDIA device plugin
   integration, not from NFD alone.
 
+## NVIDIA-Only Overlay Pattern
+
+The Red Hat CoP catalog includes an `only-nvidia` instance overlay that narrows
+PCI discovery to accelerator-relevant classes and publishes only the vendor
+label. Use this as a review pattern, not as an unverified manifest:
+
+```yaml
+apiVersion: nfd.openshift.io/v1
+kind: NodeFeatureDiscovery
+metadata:
+  name: nfd-instance
+spec:
+  topologyUpdater: false
+  workerConfig:
+    configData: |
+      core:
+        sleepInterval: 60s
+      sources:
+        pci:
+          deviceClassWhitelist:
+            - "0200"
+            - "03"
+            - "12"
+          deviceLabelFields:
+            - "vendor"
+```
+
+Review points:
+
+- Confirm whether `operand.image` must be explicit in the active OCP version
+  before committing GitOps.
+- Verify the active CRD field name for topology updater settings.
+- Confirm generated node labels before using them in selectors.
+- Keep this separate from `nvidia.com/gpu` resource validation.
+
 ## Topology Updater Review
 
 Only enable NFD Topology Updater when the implementation needs topology-aware

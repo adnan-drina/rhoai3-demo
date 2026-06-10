@@ -37,6 +37,11 @@ For RHOAI, the instance layer usually starts with `DSCInitialization` and
 `OCSInitialization`, `StorageCluster`, standalone Multicloud Object Gateway, or
 ObjectBucketClaim resources depending on the chosen storage posture.
 
+For NFD, the instance layer usually starts with a `NodeFeatureDiscovery`
+resource in `openshift-nfd`. Treat CoP profiles such as `default` and
+`only-nvidia` as examples of how to keep product instance posture separate from
+the OLM Subscription.
+
 ## RHOAI Progressive DSC Patching
 
 The CoP `openshift-ai/instance` pattern is especially important for this demo.
@@ -116,6 +121,11 @@ operator plus its default instance. Prefer separate Applications when:
 
 When using one aggregate Application, include Argo CD sync handling for missing
 CRDs and give the Application enough retry budget.
+
+The CoP NFD aggregate overlays are a useful compact example: they compose the
+stable operator overlay with an instance overlay and add
+`SkipDryRunOnMissingResource=true` so Argo CD can reconcile the operand after
+the Operator provides the CRD.
 
 ## Channel And Version Selection
 

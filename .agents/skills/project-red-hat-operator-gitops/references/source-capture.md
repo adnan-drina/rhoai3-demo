@@ -10,6 +10,7 @@
 | OpenShift AI catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai |
 | OpenShift AI instance pattern | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai/instance |
 | OpenShift Data Foundation Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-data-foundation-operator |
+| Node Feature Discovery catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/nfd |
 | NVIDIA GPU Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified |
 | NVIDIA GPU Operator AWS MachineSet component | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified/instance/components/aws-gpu-machineset |
 | Capture date | 2026-06-10 |
@@ -121,6 +122,28 @@
   and taints, and create MachineAutoscalers. For this repo, reuse this as a
   curation and generation pattern; prefer Git-tracked MachineSet resources for
   maintained environments.
+
+## Node Feature Discovery Observations
+
+- Root item: `nfd`.
+- Operator base includes `openshift-nfd` Namespace, `nfd-group`
+  OperatorGroup, and `nfd` Subscription from the `redhat-operators` catalog
+  source.
+- Operator overlay patches the Subscription channel to `stable`.
+- Instance base contains a `NodeFeatureDiscovery` named `nfd-instance` in the
+  `openshift-nfd` namespace.
+- Instance overlays include profiles such as `default`, `kata`, and
+  `only-nvidia`.
+- Aggregate overlays combine the stable operator overlay with the selected
+  instance overlay and add the Argo CD sync option annotation
+  `SkipDryRunOnMissingResource=true`.
+- The `only-nvidia` overlay narrows PCI feature publication to class whitelist
+  values `0200`, `03`, and `12`, publishes the `vendor` field, keeps the
+  worker `sleepInterval` at `60s`, and disables the topology updater.
+- For this repo, reuse the catalog item as a local curation pattern for NFD
+  operator and instance layering. Verify `NodeFeatureDiscovery` fields,
+  `operand.image`, topology updater behavior, and generated labels against
+  official docs or live schema before committing GitOps manifests.
 
 ## Source Boundaries
 

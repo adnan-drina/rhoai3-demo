@@ -15,6 +15,8 @@ operations.
 
 - NFD Operator installation, namespace, subscription, and catalog choices are
   verified against the active cluster and official docs.
+- GitOps layout is curated locally; no committed Kustomize resource points
+  directly to `github.com/redhat-cop/gitops-catalog`.
 - `NodeFeatureDiscovery` manifests use official API versions and fields.
 - If `NodeFeatureDiscovery` is created manually by CLI, web console, or GitOps,
   `operand.image` is set explicitly from a verified source.
@@ -31,6 +33,9 @@ operations.
 - Topology Updater is enabled only when topology-aware placement is required.
 - `NodeResourceTopology` usage accounts for its documented
   `topology.node.k8s.io/v1alpha1` API version.
+- For the NVIDIA-only demo path, the NFD overlay is reviewed against
+  `references/gitops-catalog-nfd-pattern.md`; PCI class whitelist, vendor label
+  publication, and topology updater posture are intentional.
 
 ## Read-Only Cluster Checks
 
@@ -39,6 +44,7 @@ Run only after the repo environment guard confirms the target cluster:
 ```bash
 oc get csv -A | grep -i feature
 oc get subscription -A | grep -i feature
+oc get subscription -n openshift-nfd nfd -o yaml
 oc get nodefeaturediscovery -A
 oc get nodefeaturerule -A
 oc get noderesourcetopology -A

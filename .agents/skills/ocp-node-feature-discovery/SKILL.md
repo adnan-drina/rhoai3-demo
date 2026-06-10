@@ -14,10 +14,11 @@ description: >
   resources, operand.image handling, NFD worker configuration, feature labels,
   NodeFeatureRule labels and taints, NFD Topology Updater, NodeResourceTopology,
   PCI, USB, kernel, and custom feature sources, and accelerator node label
-  validation. Do NOT use for provisioning GPU workers; use
-  ocp-machine-management. Do NOT use for NVIDIA GPU Operator, ClusterPolicy, or
-  RHOAI hardware profiles; use rhoai-nvidia-gpu-accelerators. Do NOT run live
-  NFD changes without the env safety guard and explicit approval.
+  validation, and the Red Hat CoP NFD GitOps catalog pattern. Do NOT use for
+  provisioning GPU workers; use ocp-machine-management. Do NOT use for NVIDIA
+  GPU Operator, ClusterPolicy, or RHOAI hardware profiles; use
+  rhoai-nvidia-gpu-accelerators. Do NOT run live NFD changes without the env
+  safety guard and explicit approval.
 ---
 
 # OCP Node Feature Discovery
@@ -44,6 +45,12 @@ For this AWS-hosted RHOAI demo:
 - Treat NFD as a prerequisite gate for NVIDIA GPU enablement, not as the source
   of `nvidia.com/gpu` capacity. GPU capacity is exposed by the NVIDIA GPU
   Operator and device plugin and is handled in `rhoai-nvidia-gpu-accelerators`.
+- Use the Red Hat CoP `nfd` catalog as a local curation pattern only. Reuse its
+  operator/channel layout, aggregate overlay shape, and NVIDIA-focused instance
+  overlay idea; do not commit remote Kustomize references.
+- For the NVIDIA-only demo path, prefer an `only-nvidia` NFD instance overlay
+  that limits PCI label publication to the accelerator-relevant class/vendor
+  signal after the active CRD schema and official docs are verified.
 - Verify feature labels from the live cluster or official CRD/schema before
   writing placement rules, hardware-profile assumptions, or README claims.
 - Use `NodeFeatureRule` only for intentional vendor-specific or
@@ -72,7 +79,9 @@ Use the official docs to frame:
 
 1. Confirm the active OpenShift baseline in `docs/PLATFORM_BASELINE.md`.
 2. Read `references/official-doc-extraction.md`.
-3. Identify whether the task concerns:
+3. Read `references/gitops-catalog-nfd-pattern.md` when rebuilding NFD
+   operator, instance, aggregate overlays, or NVIDIA-only discovery posture.
+4. Identify whether the task concerns:
    - NFD Operator installation or subscription review
    - `NodeFeatureDiscovery` custom resource configuration
    - feature sources, label filtering, or no-publish behavior
@@ -80,11 +89,11 @@ Use the official docs to frame:
    - `NodeFeatureRule` labels or taints
    - NFD Topology Updater and `NodeResourceTopology`
    - GPU accelerator discovery handoff to RHOAI/NVIDIA skills
-4. For GitOps manifests, verify CR fields against the active cluster schema or
+5. For GitOps manifests, verify CR fields against the active cluster schema or
    official docs before committing.
-5. For live operations, use the repo environment guard and pair this skill with
+6. For live operations, use the repo environment guard and pair this skill with
    `env-troubleshoot`, `env-manage-resources`, or `env-deploy-and-evaluate`.
-6. Validate the output with `references/validation-checklist.md`.
+7. Validate the output with `references/validation-checklist.md`.
 
 ## Related Skills
 
@@ -104,5 +113,6 @@ Use the official docs to frame:
 
 - `references/source-capture.md`
 - `references/official-doc-extraction.md`
+- `references/gitops-catalog-nfd-pattern.md`
 - `references/validation-checklist.md`
 - `examples/nfd-review-patterns.md`
