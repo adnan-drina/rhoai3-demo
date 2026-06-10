@@ -130,6 +130,8 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
   [Updating clusters](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/updating_clusters/index)
 - **Authentication and authorization**:
   [Authentication and authorization](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index)
+- **Security and compliance**:
+  [Security and compliance](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/index)
 - **Observability**:
   [Observability overview](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/observability_overview/index),
   [Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index),
@@ -154,9 +156,15 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
   [CLI tools](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/index),
   [Web console](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/web_console/index)
 - **Networking**:
-  [Networking](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/index)
+  [Networking](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/index),
+  [Ingress and load balancing](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ingress_and_load_balancing/index),
+  [Networking Operators](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking_operators/index)
 - **Storage**:
   [Storage](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/storage/index)
+- **Images, registry, and mirroring**:
+  [Images](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/images/index),
+  [Registry](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/registry/index),
+  [Disconnected environments](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/disconnected_environments/index)
 
 ## OpenShift Data Foundation 4.20 Documentation Index
 

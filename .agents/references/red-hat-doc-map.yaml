@@ -347,13 +347,13 @@ products:
       authentication_and_authorization:
         routes:
           - book: authentication_and_authorization
-            status: planned
+            status: active
             skill: ocp-authentication-identity-providers
           - book: authentication_and_authorization
             topics:
               - rbac
               - scc
-            status: planned
+            status: active
             skill: ocp-security-rbac-scc
       observability:
         routes:
@@ -433,7 +433,7 @@ products:
               - ingress
               - routes
               - gateway_api
-            status: planned
+            status: active
             skill: ocp-ingress-gateway-routes
       storage:
         routes:
@@ -450,7 +450,18 @@ products:
       image_registry_and_mirroring:
         routes:
           - book: images
-            status: planned
+            status: active
+            skill: ocp-image-registry-and-mirroring
+          - book: registry
+            status: active
+            skill: ocp-image-registry-and-mirroring
+          - book: disconnected_environments
+            topics:
+              - oc_mirror
+              - mirroring
+              - imagedigestmirrorset
+              - imagetagmirrorset
+            status: active
             skill: ocp-image-registry-and-mirroring
 
   odf:

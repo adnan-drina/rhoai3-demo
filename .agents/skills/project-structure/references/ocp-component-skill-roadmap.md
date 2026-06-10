@@ -15,7 +15,7 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
 |----------|------------------------|--------------|
 | etcd, control plane data store, quorum, performance, backup/restore, encryption, unhealthy member replacement, disaster recovery, and stretched-cluster caveats | Configure > Postinstallation configuration > etcd | Added: `ocp-etcd` |
 | Cluster updates, channels, release images, Cincinnati graph, update safety, and upgrade troubleshooting | Update and migrate | Missing: `ocp-cluster-updates` |
-| Authentication, OAuth, identity providers, groups, and cluster-admin boundaries | Configure, Authentication and authorization | Missing: `ocp-authentication-identity-providers` |
+| Authentication, OAuth, identity providers, groups, and cluster-admin boundaries | Configure, Authentication and authorization | Added: `ocp-authentication-identity-providers` |
 | Observability overview, default monitoring stack, user-defined project monitoring, metrics, customized alerts, monitoring release boundary, logging overview, node system audit logs, application container logs, infrastructure logs, logging release boundary, and Cluster Observability Operator customizable monitoring stacks | Observability overview, Monitoring, Logging, Cluster Observability Operator | Added: `ocp-observability` |
 | Red Hat OpenShift distributed tracing platform, Tempo Operator, `TempoStack`, `TempoMonolithic`, object storage, tenants, trace read/write RBAC, Jaeger UI, distributed tracing UI plugin, Tempo monitoring, upgrades, removal, and must-gather troubleshooting | Red Hat OpenShift distributed tracing platform 3.9 | Added: `ocp-distributed-tracing` |
 | Red Hat build of OpenTelemetry Operator, `OpenTelemetryCollector`, `Instrumentation`, Collector deployment modes, receivers, processors, exporters, connectors, extensions, metrics integration, telemetry forwarding, telemetry receiving, and troubleshooting | Red Hat build of OpenTelemetry 3.9 | Added: `ocp-opentelemetry` |
@@ -27,10 +27,10 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
 | Machine API, compute MachineSets, AWS MachineSets, manual scaling, MachineSet modification, machine phases and lifecycle, deletion, autoscaling, infrastructure MachineSets, user-provisioned infrastructure, control plane machines, and machine health checks | Machine management | Added: `ocp-machine-management` |
 | Machine Config Operator, MachineConfig, MachineConfigPool, MachineConfiguration, KubeletConfig, ContainerRuntimeConfig, PinnedImageSet, node disruption policies, boot image management, rendered machine config pruning, image mode, MachineOSConfig, MachineOSBuild, and Machine Config Daemon metrics | Machine configuration | Added: `ocp-machine-configuration` |
 | Node Feature Discovery Operator, specialized hardware detection, feature labels, `NodeFeatureDiscovery`, `NodeFeatureRule`, NFD Topology Updater, `NodeResourceTopology`, and accelerator discovery handoff | Specialized hardware and driver enablement | Added: `ocp-node-feature-discovery` |
-| Ingress, Routes, Gateway API, certificates, and external access patterns | Networking | Missing: `ocp-ingress-gateway-routes` |
+| Ingress, Routes, Gateway API, certificates, and external access patterns | Networking | Added: `ocp-ingress-gateway-routes` |
 | Storage overview, ephemeral storage, persistent storage, PV/PVC lifecycle, StorageClass behavior, dynamic provisioning, CSI, snapshots, cloning, expansion, local storage, and volume detach after non-graceful node shutdown | Storage | Added: `ocp-storage` |
-| Registry, image streams, pull secrets, disconnected mirroring, and trusted registries | Images, Disconnected environments | Missing: `ocp-image-registry-and-mirroring` |
-| SecurityContextConstraints, RBAC, service accounts, and workload security posture | Security and compliance | Missing: `ocp-security-rbac-scc` |
+| Registry, image streams, pull secrets, disconnected mirroring, and trusted registries | Images, Disconnected environments | Added: `ocp-image-registry-and-mirroring` |
+| SecurityContextConstraints, RBAC, service accounts, and workload security posture | Security and compliance | Added: `ocp-security-rbac-scc` |
 
 ## Skill Build Standard
 
@@ -51,7 +51,7 @@ Each `ocp-*` skill should include:
 
 Build these before the new GitOps implementation depends on them:
 
-1. `ocp-authentication-identity-providers` for user and group integration.
+1. `ocp-cluster-updates` before upgrade or lifecycle automation work.
 2. Create narrower observability skills only when implementation requires them,
    such as `ocp-network-observability` or `ocp-power-monitoring`.
 3. Create narrower machine-management skills only when implementation requires

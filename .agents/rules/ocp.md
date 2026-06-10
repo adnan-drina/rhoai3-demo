@@ -17,16 +17,20 @@ infrastructure, control plane, networking, authentication, monitoring, GitOps,
 and cluster integration guidance:
 
 - `.agents/skills/ocp-ai-workloads/SKILL.md`
+- `.agents/skills/ocp-authentication-identity-providers/SKILL.md`
 - `.agents/skills/ocp-cicd-builds/SKILL.md`
 - `.agents/skills/ocp-distributed-tracing/SKILL.md`
 - `.agents/skills/ocp-etcd/SKILL.md`
 - `.agents/skills/ocp-gitops-operator/SKILL.md`
+- `.agents/skills/ocp-image-registry-and-mirroring/SKILL.md`
+- `.agents/skills/ocp-ingress-gateway-routes/SKILL.md`
 - `.agents/skills/ocp-machine-configuration/SKILL.md`
 - `.agents/skills/ocp-machine-management/SKILL.md`
 - `.agents/skills/ocp-node-feature-discovery/SKILL.md`
 - `.agents/skills/ocp-nodes/SKILL.md`
 - `.agents/skills/ocp-observability/SKILL.md`
 - `.agents/skills/ocp-opentelemetry/SKILL.md`
+- `.agents/skills/ocp-security-rbac-scc/SKILL.md`
 - `.agents/skills/ocp-storage/SKILL.md`
 - `.agents/skills/ocp-web-console/SKILL.md`
 
@@ -59,7 +63,14 @@ OpenTelemetry receivers, processors, exporters, connectors, extensions,
 auto-instrumentation annotations, Tempo Operator, TempoStack,
 TempoMonolithic, Tempo storage, Tempo tenants, Tempo read/write RBAC, Jaeger
 UI, distributed tracing UI plugin, Network Observability, or Power monitoring
-behavior.
+behavior, OAuth, identity provider, direct OIDC, user, group, identity, LDAP
+group sync, kubeadmin removal, RBAC, Role, ClusterRole, RoleBinding,
+ClusterRoleBinding, service account, SecurityContextConstraints, SCC, pod
+security admission, IngressController, Route, route TLS, wildcard route,
+Gateway API, GatewayClass, Gateway, HTTPRoute, GRPCRoute, ReferenceGrant,
+Image Registry Operator, internal registry, image stream, image stream tag,
+image import, pull secret, registry trust, disconnected image mirroring,
+oc-mirror, ImageDigestMirrorSet, or ImageTagMirrorSet behavior.
 
 Use `.agents/references/red-hat-doc-map.yaml` to route OCP documentation by
 category, book, and chapter topic to the matching flat `ocp-*` skill. If an
@@ -114,6 +125,13 @@ secret changes, tenant changes, trace read/write RBAC changes, Jaeger UI route
 changes, distributed tracing UI plugin changes, receiver TLS changes, and
 trace retention or deletion changes as live-environment operations unless they
 are only documented as future GitOps intent.
+
+Treat OAuth, identity-provider, direct external OIDC, LDAP group sync,
+`kubeadmin` removal, RBAC binding, service-account token, SCC grant, custom
+SCC, IngressController, route admission, router certificate, GatewayClass,
+Gateway API, Image Registry Operator, cluster image configuration, pull-secret,
+registry trust, and mirror-set changes as live-environment operations unless
+they are only documented as future GitOps intent.
 
 Use `project-red-hat-doc-skill-authoring` to create additional `ocp-*` skills
 from official OpenShift documentation chapters.

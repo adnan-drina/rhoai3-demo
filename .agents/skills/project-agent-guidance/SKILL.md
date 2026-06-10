@@ -48,7 +48,7 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 | Type | Count | Location |
 |------|-------|----------|
 | Shared rules | 6 | `.agents/rules/*.md` |
-| Shared skills | 91 | `.agents/skills/*/SKILL.md` |
+| Shared skills | 95 | `.agents/skills/*/SKILL.md` |
 | Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
