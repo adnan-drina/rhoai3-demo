@@ -20,9 +20,12 @@ configuration, pipelines, chatbot behavior, and evaluation workflows:
 
 - `.agents/skills/rhoai-chatbot-customization/SKILL.md`
 - `.agents/skills/rhoai-architecture-overview/SKILL.md`
+- `.agents/skills/rhoai-release-and-support-posture/SKILL.md`
+- `.agents/skills/rhoai-platform-planning/SKILL.md`
 - `.agents/skills/rhoai-api-tiers/SKILL.md`
 - `.agents/skills/rhoai-update-channels/SKILL.md`
 - `.agents/skills/rhoai-self-managed-installation/SKILL.md`
+- `.agents/skills/rhoai-dsci-dsc-configuration/SKILL.md`
 - `.agents/skills/rhoai-distributed-workloads/SKILL.md`
 - `.agents/skills/rhoai-kueue-workload-management/SKILL.md`
 - `.agents/skills/rhoai-distributed-workload-operations/SKILL.md`
@@ -48,6 +51,7 @@ configuration, pipelines, chatbot behavior, and evaluation workflows:
 - `.agents/skills/rhoai-data-science-ide-workflows/SKILL.md`
 - `.agents/skills/rhoai-project-scoped-resources/SKILL.md`
 - `.agents/skills/rhoai-component-resource-customization/SKILL.md`
+- `.agents/skills/rhoai-telemetry-admin-settings/SKILL.md`
 - `.agents/skills/rhoai-feature-store/SKILL.md`
 - `.agents/skills/rhoai-automl/SKILL.md`
 - `.agents/skills/rhoai-basic-workbenches/SKILL.md`

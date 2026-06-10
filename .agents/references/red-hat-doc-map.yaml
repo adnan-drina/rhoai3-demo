@@ -36,7 +36,10 @@ products:
         description: Release posture, lifecycle, API tiers, and support notes.
         routes:
           - book: release_notes
-            status: planned
+            status: active
+            skill: rhoai-release-and-support-posture
+          - book: red_hat_openshift_ai_self_managed_lifecycle
+            status: active
             skill: rhoai-release-and-support-posture
           - book: api_tiers
             status: active
@@ -45,7 +48,10 @@ products:
         description: Platform planning, supported configurations, hardware, and validated models.
         routes:
           - book: red_hat_ai_supported_product_and_hardware_configurations
-            status: planned
+            status: active
+            skill: rhoai-platform-planning
+          - book: rhoai_supported_configurations_3_x
+            status: active
             skill: rhoai-platform-planning
           - book: red_hat_ai_validated_models
             status: active
@@ -68,6 +74,14 @@ products:
               - installing_and_deploying
             status: active
             skill: rhoai-self-managed-installation
+          - book: installing_and_uninstalling_openshift_ai_self_managed
+            topics:
+              - custom_namespaces
+              - datasciencecluster
+              - dscinitialization
+              - component_management
+            status: active
+            skill: rhoai-dsci-dsc-configuration
           - book: installing_and_uninstalling_openshift_ai_self_managed
             topics:
               - distributed_workloads_components
@@ -198,6 +212,13 @@ products:
               - basic_workbenches
             status: active
             skill: rhoai-basic-workbenches
+          - book: managing_resources
+            topics:
+              - usage_data_collection
+              - telemetry
+              - disable_tracking
+            status: active
+            skill: rhoai-telemetry-admin-settings
       develop:
         description: Data scientist, AI engineer, and app developer workflows.
         routes:
@@ -282,6 +303,13 @@ products:
           - book: govern_llm_access_with_models_as_a_service
             status: active
             skill: rhoai-maas-governance
+          - book: govern_llm_access_with_models_as_a_service
+            topics:
+              - maas_telemetry
+              - usage_dashboard
+              - csv_export
+            status: active
+            skill: rhoai-telemetry-admin-settings
           - book: deploy_models_using_distributed_inference_with_llm_d
             status: active
             skill: rhoai-distributed-inference-llmd

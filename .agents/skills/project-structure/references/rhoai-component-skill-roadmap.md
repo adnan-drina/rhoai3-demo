@@ -16,10 +16,10 @@ https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
 | Architecture, service layer, management layer, default projects | Install | Added: `rhoai-architecture-overview` |
 | Update channels, release cadence, preview support boundaries | Install, lifecycle, support scope | Added: `rhoai-update-channels` |
 | API tier support posture, deprecation windows, customer-accessible endpoint stability, Tier 4 boundaries, Beta/Alpha API handling, and KServe wildcard exceptions | What's New, supported APIs, supported configurations | Added: `rhoai-api-tiers` |
-| Release cadence, component support phases, lifecycle dates, EUS, GA, Early Access, and upgrade support windows | What's New, lifecycle | Missing: `rhoai-release-and-support-posture` |
-| Platform planning, validated models, hardware | Plan | Missing: `rhoai-platform-planning` |
+| Release cadence, component support phases, lifecycle dates, EUS, GA, Early Access, and upgrade support windows | What's New, lifecycle | Added: `rhoai-release-and-support-posture` |
+| Platform planning, validated models, hardware | Plan | Added: `rhoai-platform-planning` |
 | Self-managed install, Operator Subscription, DataScienceCluster component management | Install | Added: `rhoai-self-managed-installation` |
-| DSCI/DSC configuration deep dive | Install, Administer | Missing: `rhoai-dsci-dsc-configuration` |
+| DSCI/DSC configuration deep dive | Install, Administer | Added: `rhoai-dsci-dsc-configuration` |
 | Distributed workloads component installation: Kueue, Ray, Training Operator, dashboard, pipelines, and workbenches DSC states | Install | Added: `rhoai-distributed-workloads` |
 | Kueue workload management, namespace queue enforcement, dashboard enablement, queue labels, troubleshooting, and embedded Kueue migration | Administer | Added: `rhoai-kueue-workload-management` |
 | Distributed workload quota resources, NVIDIA Kueue ResourceFlavor/ClusterQueue/LocalQueue examples, RDMA setup, and Ray administrator troubleshooting | Administer | Added: `rhoai-distributed-workload-operations` |
@@ -42,7 +42,7 @@ https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
 | Workbench data access to S3-compatible object storage, Boto3 client setup, bucket/object operations, endpoint formatting, troubleshooting, and self-signed CA trust handoff | Develop | Added: `rhoai-s3-object-storage-data` |
 | Project-scoped workbench images, hardware profiles, KServe serving-runtime templates, and `disableProjectScoped` dashboard behavior | Administer | Added: `rhoai-project-scoped-resources` |
 | OpenShift AI Operator-related component Deployment CPU/memory requests and limits, `opendatahub.io/managed` behavior, and restore/re-enable workflow | Administer | Added: `rhoai-component-resource-customization` |
-| Telemetry and broader admin settings | Administer | Missing: `rhoai-telemetry-admin-settings` |
+| Telemetry and broader admin settings | Administer | Added: `rhoai-telemetry-admin-settings` |
 | Basic workbench administration, starting/accessing/stopping other users' workbenches, idle timeout, workbench pod tolerations, and administrator troubleshooting | Administer, Managing resources | Added: `rhoai-basic-workbenches` |
 | Workbenches, custom workbench image build/import, ImageStream, Notebook CRD, dashboard discovery, and optional Kueue queueing | Administer, Develop | Added: `rhoai-workbenches-custom-images` |
 | Dashboard import of an existing custom workbench image, support boundary, image metadata, accelerator metadata, and workbench selection verification | Administer, Managing resources | Added: `rhoai-workbench-image-import` |
