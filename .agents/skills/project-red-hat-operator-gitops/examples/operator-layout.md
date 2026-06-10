@@ -68,3 +68,53 @@ Before committing this pattern:
 - render each overlay with `kustomize build`
 - create Argo CD Applications using `project-gitops-authoring`
 - run `scripts/validate-agent-guidance.rb` if skills or rules changed
+
+## RHOAI Progressive Component Example
+
+Base overlay owns the RHOAI platform CRs:
+
+```text
+gitops/rhoai-platform/instance/base/
+  dsc-init.yaml
+  datasciencecluster.yaml
+  kustomization.yaml
+```
+
+Serving component patches only serving-related fields:
+
+```text
+gitops/rhoai-platform/instance/components/serving/
+  kustomization.yaml
+  patch-datasciencecluster.yaml
+  patch-dsc-init.yaml
+```
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - path: patch-datasciencecluster.yaml
+    target:
+      kind: DataScienceCluster
+      name: default
+  - path: patch-dsc-init.yaml
+    target:
+      kind: DSCInitialization
+      name: default-dsci
+```
+
+Demo overlay composes the base plus enabled features:
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+components:
+  - ../../components/serving
+  - ../../components/model-registry
+```
+
+When a later demo step introduces a new platform capability, add a focused
+component and append it to this same overlay. Do not create another Argo CD
+Application that owns a second full copy of `DataScienceCluster/default`.

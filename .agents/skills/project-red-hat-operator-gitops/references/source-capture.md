@@ -8,6 +8,7 @@
 | Repository | https://github.com/redhat-cop/gitops-catalog |
 | Root README | https://github.com/redhat-cop/gitops-catalog/tree/main |
 | OpenShift AI catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai |
+| OpenShift AI instance pattern | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-ai/instance |
 | OpenShift Data Foundation Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/openshift-data-foundation-operator |
 | Capture date | 2026-06-10 |
 
@@ -37,9 +38,20 @@
   EUS/stable minor variants.
 - Instance base contains `DSCInitialization`, `DataScienceCluster`,
   `OdhDashboardConfig`, and the `redhat-ods-applications` namespace.
-- Instance components patch DataScienceCluster and DSCInitialization for
-  serving, distributed compute, training, TrustyAI, dashboard settings, NVIDIA
-  GPU accelerator profile, and other optional features.
+- Instance components are modeled as Kustomize `kind: Component` entries that
+  patch `DataScienceCluster` and `DSCInitialization` or add related resources.
+  Examples observed:
+  - `components-serving` patches `kserve`, `modelmeshserving`, and DSCI
+    `serviceMesh`.
+  - `components-distributed-compute` patches `codeflare`, `kueue`, and `ray`.
+  - `components-training` patches `datasciencepipelines` and `workbenches`.
+  - `components-trustyai` patches `trustyai`.
+  - `components-modelregistry` patches `modelregistry` and
+    `registriesNamespace`.
+  - `nvidia-gpu-accelerator-profile` adds an `AcceleratorProfile`.
+- Instance overlays include `../../base` and compose selected components for
+  profiles such as `fast`, `fast-nvidia-gpu`, serving-only, training-only, and
+  modelregistry-only.
 - Aggregate overlays combine an operator channel overlay and an instance
   profile overlay.
 

@@ -12,14 +12,15 @@ description: >
   patterns for rhoai3-demo using the Red Hat Community of Practice GitOps
   Catalog style: curated local Kustomize operator bases, channel overlays,
   Namespace, OperatorGroup, Subscription, instance resources, aggregate
-  overlays, Argo CD Application ordering, sync options, and operator readiness
-  handoff. Use when deploying RHOAI, ODF, NFD, NVIDIA GPU Operator, OpenShift
-  GitOps, cert-manager, Kueue, OpenTelemetry, Tempo, or other Red Hat
-  Operators through GitOps. Do NOT use as product authority for Subscription
-  channels, CR fields, API versions, or support posture; use official Red Hat
-  docs and the matching rhoai-*, ocp-*, or odf-* skill. Do NOT reference the
-  Community of Practice catalog directly as a remote base in committed GitOps;
-  curate the pattern locally.
+  overlays, progressive RHOAI DataScienceCluster component patching, Argo CD
+  Application ordering, sync options, and operator readiness handoff. Use when
+  deploying RHOAI, ODF, NFD, NVIDIA GPU Operator, OpenShift GitOps,
+  cert-manager, Kueue, OpenTelemetry, Tempo, or other Red Hat Operators
+  through GitOps. Do NOT use as product authority for Subscription channels,
+  CR fields, API versions, or support posture; use official Red Hat docs and
+  the matching rhoai-*, ocp-*, or odf-* skill. Do NOT reference the Community
+  of Practice catalog directly as a remote base in committed GitOps; curate
+  the pattern locally.
 ---
 
 # Red Hat Operator GitOps
@@ -70,6 +71,20 @@ the operator is installed. The `aggregate` layer combines the selected operator
 overlay and instance overlay for a profile such as `fast`, `fast-nvidia-gpu`,
 or `aws`.
 
+For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
+
+- `instance/base` owns the baseline `DSCInitialization`, `DataScienceCluster`,
+  RHOAI applications namespace, and dashboard config.
+- `instance/components/<feature>` uses Kustomize `kind: Component` plus
+  minimal patches that target the same `DataScienceCluster` or
+  `DSCInitialization`.
+- `instance/overlays/<profile>` includes `../../base` and composes feature
+  components such as serving, distributed compute, training, TrustyAI, model
+  registry, dashboard access, and NVIDIA accelerator profile.
+- The same Argo CD Application should own the rendered DSC/DSCI objects. Later
+  demo steps should add component patches to that platform overlay instead of
+  creating separate Applications that also manage the same DSC/DSCI resources.
+
 ## Demo Rules
 
 - Curate catalog-inspired manifests into this repo; do not commit remote
@@ -84,6 +99,13 @@ or `aws`.
 - Keep operator install resources separate from operand instance resources
   unless a temporary aggregate overlay is needed for a single Argo CD
   Application.
+- For RHOAI, start with a minimal base DSC/DSCI deployment in the first demo
+  platform step. Later steps introduce capabilities by adding local Kustomize
+  Components or patches that update the same platform-owned
+  `DataScienceCluster`.
+- Avoid duplicating the full `DataScienceCluster` in every demo step. Duplicate
+  full-resource ownership can cause Argo CD ownership conflicts and can remove
+  previously enabled components.
 - Prefer separate Argo CD Applications for operator install and instance
   resources when CRDs must exist before operand CRs render or dry-run cleanly.
 - Use Argo CD sync waves, retries, and `SkipDryRunOnMissingResource=true` for
@@ -108,13 +130,17 @@ or `aws`.
    - optional `instance/components`
    - optional `instance/overlays/<profile>`
    - optional `aggregate/overlays/<profile>`
-5. For Argo CD, choose whether the operator and operand are separate
+5. For RHOAI, decide the progressive DSC owner path before adding steps:
+   - base DSC/DSCI in the first RHOAI platform step
+   - later component patches under the same platform instance tree
+   - one Argo CD Application owning the final rendered DSC/DSCI
+6. For Argo CD, choose whether the operator and operand are separate
    Applications or a single aggregate Application. Prefer separate
    Applications when CRD ordering is material.
-6. Verify Subscription channel, package name, catalog source, namespace,
+7. Verify Subscription channel, package name, catalog source, namespace,
    OperatorGroup shape, install-plan approval, and CR fields against official
    docs or live schema.
-7. Validate the rendered manifests and review with
+8. Validate the rendered manifests and review with
    `references/validation-checklist.md`.
 
 ## Related Skills

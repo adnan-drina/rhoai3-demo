@@ -37,6 +37,66 @@ For RHOAI, the instance layer usually starts with `DSCInitialization` and
 `OCSInitialization`, `StorageCluster`, standalone Multicloud Object Gateway, or
 ObjectBucketClaim resources depending on the chosen storage posture.
 
+## RHOAI Progressive DSC Patching
+
+The CoP `openshift-ai/instance` pattern is especially important for this demo.
+It does not create unrelated full `DataScienceCluster` resources for every
+feature. It starts from an `instance/base` that owns the baseline
+`DSCInitialization` and `DataScienceCluster`, then adds optional RHOAI
+capabilities through Kustomize Components that patch those same resources.
+
+Use this pattern for the demo:
+
+```text
+gitops/rhoai-platform/
+  instance/
+    base/
+      dsc-init.yaml
+      datasciencecluster.yaml
+      odhdashboardconfig.yaml
+      namespace.yaml
+      kustomization.yaml
+    components/
+      serving/
+        kustomization.yaml
+        patch-datasciencecluster.yaml
+        patch-dsc-init.yaml
+      distributed-workloads/
+        kustomization.yaml
+        patch-datasciencecluster.yaml
+      workbenches-pipelines/
+        kustomization.yaml
+        patch-datasciencecluster.yaml
+      model-registry/
+        kustomization.yaml
+        patch-datasciencecluster.yaml
+      trustyai/
+        kustomization.yaml
+        patch-datasciencecluster.yaml
+    overlays/
+      demo/
+        kustomization.yaml
+```
+
+The first platform step should introduce the operator and a minimal base
+DSC/DSCI. Later demo steps should add component directories and append those
+components to the platform overlay that is already owned by the RHOAI platform
+Argo CD Application.
+
+This avoids several failure modes:
+
+- two Argo CD Applications fighting over the same `DataScienceCluster`
+- a later step rendering a full DSC that accidentally removes a previously
+  enabled component
+- unclear ownership of shared RHOAI namespaces, DSCI service mesh, monitoring,
+  dashboard, or CA bundle settings
+- step-specific manifests encoding global platform state without updating the
+  platform source of truth
+
+Component patches should be minimal and additive. A component patch should only
+touch the component subtree it owns unless the official RHOAI docs require a
+shared DSCI setting.
+
 ## Aggregate Overlays
 
 An aggregate overlay combines an operator overlay and an instance overlay:

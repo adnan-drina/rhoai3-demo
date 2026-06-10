@@ -20,6 +20,12 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 - `instance/base` and `instance/overlays/<profile>` are separated from
   operator install resources.
 - Optional components are modeled as Kustomize Components or small patches.
+- For RHOAI, there is a single GitOps owner for the rendered
+  `DataScienceCluster` and `DSCInitialization`.
+- Later RHOAI demo steps patch the platform-owned DSC overlay instead of
+  creating competing full DSC resources in separate Applications.
+- Component patches are minimal and do not reset unrelated
+  `spec.components` entries.
 - Aggregate overlays select the intended channel and profile.
 - No committed Kustomize resource references
   `github.com/redhat-cop/gitops-catalog`.
@@ -43,6 +49,7 @@ kustomize build gitops/<path-to-operator-overlay>
 kustomize build gitops/<path-to-instance-overlay>
 kustomize build gitops/<path-to-aggregate-overlay>
 rg -n 'github.com/redhat-cop/gitops-catalog' gitops
+rg -n '^kind: DataScienceCluster$|^kind: DSCInitialization$' gitops
 ```
 
 Run these only after the OpenShift safety guard confirms the target cluster:

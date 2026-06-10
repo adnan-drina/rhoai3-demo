@@ -39,6 +39,25 @@ docs/
 - Prefer `resources:` plus `patches:` with minimal diffs.
 - Use consistent naming and labels so rendered output is easy to inspect.
 
+## Shared Platform Resource Ownership
+
+Some platform resources are global for the demo even when later steps depend
+on them. Examples include RHOAI `DataScienceCluster`, `DSCInitialization`,
+cluster-scoped Operator Subscriptions, ODF `StorageCluster`, and shared
+Gateway or observability resources.
+
+Do not let multiple Argo CD Applications render competing full copies of the
+same shared resource. Pick one owning path and evolve that path through patches
+or Kustomize Components.
+
+For RHOAI, follow the `project-red-hat-operator-gitops` pattern:
+
+- step 1 creates the base RHOAI Operator and minimal DSC/DSCI platform layer
+- later demo steps add feature components that patch the platform-owned
+  `DataScienceCluster`
+- the same Argo CD Application owns the rendered DSC/DSCI objects throughout
+  the demo
+
 ## Naming
 
 - Step folders: `step-XX-descriptive-name`
