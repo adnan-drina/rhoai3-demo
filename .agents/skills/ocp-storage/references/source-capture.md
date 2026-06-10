@@ -53,8 +53,7 @@
   https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
 - OpenShift Container Platform 4.20 API reference, Storage APIs:
   https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/storage_apis/
-- OpenShift Data Foundation documentation, once pinned in
-  `docs/PLATFORM_BASELINE.md`
+- OpenShift Data Foundation documentation pinned in `docs/PLATFORM_BASELINE.md`
 
 ## Source Boundaries
 
@@ -63,7 +62,7 @@
   provider or operator documentation.
 - This source references OpenShift Data Foundation, but it is not the authority
   for ODF StorageCluster, Ceph, NooBaa, object bucket claims, or ODF disaster
-  recovery behavior.
+  recovery behavior. Use the relevant `odf-*` skill.
 - This source does not define RHOAI dashboard behavior for storage class
   visibility, cluster default PVC size, project storage forms, or workbench
   storage UX.

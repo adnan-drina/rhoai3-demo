@@ -47,8 +47,8 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 
 | Type | Count | Location |
 |------|-------|----------|
-| Shared rules | 5 | `.agents/rules/*.md` |
-| Shared skills | 83 | `.agents/skills/*/SKILL.md` |
+| Shared rules | 6 | `.agents/rules/*.md` |
+| Shared skills | 87 | `.agents/skills/*/SKILL.md` |
 | Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
@@ -76,10 +76,12 @@ Use `project-structure` for the taxonomy,
 `project-structure/references/rhoai-component-skill-roadmap.md` for RHOAI
 component skills, and
 `project-structure/references/ocp-component-skill-roadmap.md` for OpenShift
-Platform component skills. Use `project-red-hat-doc-skill-authoring` for new
-`rhoai-*`, `ocp-*`, and `odf-*` skills generated from official Red Hat docs,
-and use `.agents/references/red-hat-doc-map.yaml` to route Red Hat product
-documentation categories and books to flat skills.
+Platform component skills, and
+`project-structure/references/odf-component-skill-roadmap.md` for OpenShift
+Data Foundation component skills. Use `project-red-hat-doc-skill-authoring`
+for new `rhoai-*`, `ocp-*`, and `odf-*` skills generated from official Red Hat
+docs, and use `.agents/references/red-hat-doc-map.yaml` to route Red Hat
+product documentation categories and books to flat skills.
 
 ## Instructions
 

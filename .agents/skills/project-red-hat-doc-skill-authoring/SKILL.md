@@ -126,8 +126,8 @@ placement, verification commands, or recommended workflow shape.
 - Do not create nested skill folders to mirror Red Hat documentation
   categories; represent product/category/book/chapter routing in
   `.agents/references/red-hat-doc-map.yaml`.
-- Do not generate `odf-*` skills until the ODF product version and official
-  documentation source are pinned in `docs/PLATFORM_BASELINE.md`.
+- Do not generate new `odf-*` skills unless the ODF product version and
+  official documentation source are pinned in `docs/PLATFORM_BASELINE.md`.
 - If official docs are ambiguous, mark the item unresolved and include an
   `oc explain`, CRD, CSV, catalog, registry, or image lookup command.
 - If the official source cannot be accessed and no local export is provided,

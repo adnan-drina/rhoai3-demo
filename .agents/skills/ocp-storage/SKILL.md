@@ -92,7 +92,7 @@ Use the official docs to frame storage as:
 - Use `rhoai-cluster-pvc-size` for OpenShift AI cluster default PVC size.
 - Use `rhoai-s3-object-storage-data` for RHOAI workbench access to
   S3-compatible object storage.
-- Use future `odf-*` skills for OpenShift Data Foundation implementation.
+- Use `odf-*` skills for OpenShift Data Foundation implementation.
 - Use `project-gitops-authoring` and `project-manifest-review` for GitOps
   manifests.
 - Use `env-troubleshoot` for live PVC, pod, or node storage diagnostics.

@@ -13,7 +13,7 @@ book, and chapter topic routes to which existing or planned skill.
 |----------------|--------|-------------|-----------------------------|-----------|
 | Red Hat OpenShift AI Self-Managed | `rhoai-*` | `RHOAI Platform` | `rhoai` | `.agents/rules/rhoai.md` |
 | Red Hat OpenShift Container Platform | `ocp-*` | `OpenShift Platform` | `ocp` | `.agents/rules/ocp.md` |
-| Red Hat OpenShift Data Foundation | `odf-*` | `OpenShift Data Foundation` | `odf` | `.agents/rules/odf.md` after first real `odf-*` skill |
+| Red Hat OpenShift Data Foundation | `odf-*` | `OpenShift Data Foundation` | `odf` | `.agents/rules/odf.md` |
 
 Do not create empty OCP or ODF component skills. Create the first `ocp-*` or
 `odf-*` skill only when an official Red Hat source is provided and the product

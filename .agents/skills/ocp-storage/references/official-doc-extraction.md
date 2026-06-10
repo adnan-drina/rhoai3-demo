@@ -132,5 +132,6 @@ pair it with `env-troubleshoot`.
 
 The OCP storage guide references OpenShift Data Foundation as a persistent
 storage provider. Do not infer ODF implementation details from this skill.
-Create `odf-*` skills from pinned ODF documentation before authoring ODF
+Use `odf-storagecluster`, `odf-storage-classes`,
+`odf-object-bucket-claims`, or `odf-multicloud-gateway` before authoring ODF
 StorageCluster, Ceph, NooBaa, object bucket, or ODF disaster recovery content.

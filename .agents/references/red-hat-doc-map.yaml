@@ -432,21 +432,21 @@ products:
     rule: .agents/rules/odf.md
     documentation_root: https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/
     active_baseline_root: https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/
-    status: planned
+    status: active
     note: >
       ODF is pinned to 4.20 to match the OCP 4.20 baseline. The demo should
       start with the minimum ODF footprint needed for RHOAI object storage:
       standalone Multicloud Object Gateway, NooBaa, and ObjectBucketClaims.
-      Full StorageCluster/Ceph guidance remains planned for cases where the
-      demo needs ODF-provided block or file storage.
+      Full StorageCluster/Ceph guidance is covered for cases where the demo
+      needs ODF-provided block or file storage.
     categories:
       planning:
         routes:
           - book: planning_your_deployment
-            status: planned
+            status: active
             skill: odf-storagecluster
           - book: red_hat_openshift_data_foundation_architecture
-            status: planned
+            status: active
             skill: odf-storagecluster
       install_and_configure:
         routes:
@@ -455,26 +455,26 @@ products:
               - operator_installation
               - storagecluster
               - standalone_multicloud_object_gateway
-            status: planned
+            status: active
             skill: odf-storagecluster
           - book: deploying_openshift_data_foundation_using_amazon_web_services
             topics:
               - standalone_multicloud_object_gateway
               - noobaa
               - minimum_s3_object_storage
-            status: planned
+            status: active
             skill: odf-multicloud-gateway
       storage_classes:
         routes:
           - book: managing_and_allocating_storage_resources
-            status: planned
+            status: active
             skill: odf-storage-classes
       object_storage:
         routes:
           - book: managing_hybrid_and_multicloud_resources
             topics:
               - object_bucket_claims
-            status: planned
+            status: active
             skill: odf-object-bucket-claims
           - book: managing_hybrid_and_multicloud_resources
             topics:
@@ -482,26 +482,26 @@ products:
               - noobaa
               - s3_endpoint
               - bucket_classes
-            status: planned
+            status: active
             skill: odf-multicloud-gateway
       monitoring_and_troubleshooting:
         routes:
           - book: monitoring_openshift_data_foundation
-            status: planned
+            status: active
             skill: odf-storagecluster
           - book: troubleshooting_openshift_data_foundation
-            status: planned
+            status: active
             skill: odf-storagecluster
       supporting_red_hat_articles:
         routes:
           - book: red_hat_openshift_data_foundation_for_developers_and_data_scientists
-            status: planned
+            status: active
             skill: odf-multicloud-gateway
           - book: red_hat_openshift_data_foundation_for_developers_and_data_scientists
             topics:
               - object_bucket_claims
               - s3_credentials
-            status: planned
+            status: active
             skill: odf-object-bucket-claims
 
 route_update_rules:

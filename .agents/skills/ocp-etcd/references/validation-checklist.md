@@ -67,7 +67,7 @@ etcdctl flags.
 - Multi-site assumptions are linked to official OCP guidance and support
   posture.
 - ODF or other layered-product latency requirements are deferred to the
-  relevant product docs and future `odf-*` skills.
+  relevant product docs and active `odf-*` skills.
 
 ## Fail Conditions
 
