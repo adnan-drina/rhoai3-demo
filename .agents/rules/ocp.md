@@ -61,6 +61,13 @@ TempoMonolithic, Tempo storage, Tempo tenants, Tempo read/write RBAC, Jaeger
 UI, distributed tracing UI plugin, Network Observability, or Power monitoring
 behavior.
 
+Use `.agents/references/red-hat-doc-map.yaml` to route OCP documentation by
+category, book, and chapter topic to the matching flat `ocp-*` skill. If an
+official OCP source is not mapped yet, use
+`project-red-hat-doc-skill-authoring` to update the map and create or update
+the relevant flat skill; do not create nested skill folders that mirror Red Hat
+documentation categories.
+
 For live `oc` or `kubectl` commands, follow the OpenShift safety guard in
 `AGENTS.md` and pair OCP skills with the relevant `env-*` skill. Treat etcd,
 control plane, MachineConfig, and cluster-wide authentication changes as

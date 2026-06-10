@@ -78,6 +78,12 @@ configuration, pipelines, chatbot behavior, and evaluation workflows:
 Official Red Hat documentation for the active baseline in
 `docs/PLATFORM_BASELINE.md` is the product source of truth. Use Red Hat articles
 and `rh-brain` examples only as supporting implementation evidence.
+Use `.agents/references/red-hat-doc-map.yaml` to route RHOAI documentation by
+category, book, and chapter topic to the matching flat `rhoai-*` skill. If an
+official RHOAI source is not mapped yet, use
+`project-red-hat-doc-skill-authoring` to update the map and create or update
+the relevant flat skill; do not create nested skill folders that mirror Red Hat
+documentation categories.
 
 The active implementation is being rewritten. RHOAI manifests, notebooks,
 pipelines, chatbot code, and evaluation workflows under

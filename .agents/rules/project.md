@@ -41,9 +41,12 @@ guidance must stay aligned with the active baseline in
 Use `project-red-hat-doc-skill-authoring` when turning official Red Hat product
 documentation into `rhoai-*`, `ocp-*`, or `odf-*` component skills. The older
 `project-rhoai-doc-chapter-skill-authoring` remains compatible for RHOAI-only
-chapter work. Generated component skills must capture official sources,
-extraction notes, validation rules, and examples before they are treated as
-reusable product guidance.
+chapter work. Before selecting or creating a product skill, consult
+`.agents/references/red-hat-doc-map.yaml` to map the official Red Hat product,
+version, category, book, and chapter topic to an existing or planned flat
+skill. Generated component skills must capture official sources, extraction
+notes, validation rules, examples, and the corresponding doc-map route before
+they are treated as reusable product guidance.
 
 The active implementation is being rewritten. Current implementation folders
 `gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is

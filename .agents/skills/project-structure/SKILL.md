@@ -64,7 +64,9 @@ Use `project-red-hat-doc-skill-authoring` for new `rhoai-*`, `ocp-*`, and
 `project-rhoai-doc-chapter-skill-authoring` and
 `references/rhoai-component-skill-roadmap.md` for existing RHOAI-only component
 planning, and use `references/ocp-component-skill-roadmap.md` for OpenShift
-Platform component planning.
+Platform component planning. Use `.agents/references/red-hat-doc-map.yaml` as
+the product/category/book/topic routing layer; keep skill folders flat under
+`.agents/skills/`.
 
 ## Project Change Workflow
 

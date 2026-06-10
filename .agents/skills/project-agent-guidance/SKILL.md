@@ -49,12 +49,14 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 |------|-------|----------|
 | Shared rules | 5 | `.agents/rules/*.md` |
 | Shared skills | 83 | `.agents/skills/*/SKILL.md` |
+| Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
 | Codex hook bridge | 1 config, 1 compatibility wrapper | `.codex/hooks.json`, `.codex/hooks/` |
 | Claude Code bridge | 1 | `.claude/CLAUDE.md` |
 
-Canonical governance: `AGENTS.md`, `.agents/rules/*.md`, and this skill.
+Canonical governance: `AGENTS.md`, `.agents/rules/*.md`,
+`.agents/references/red-hat-doc-map.yaml`, and this skill.
 
 ## Skill Groups
 
@@ -75,7 +77,9 @@ Use `project-structure` for the taxonomy,
 component skills, and
 `project-structure/references/ocp-component-skill-roadmap.md` for OpenShift
 Platform component skills. Use `project-red-hat-doc-skill-authoring` for new
-`rhoai-*`, `ocp-*`, and `odf-*` skills generated from official Red Hat docs.
+`rhoai-*`, `ocp-*`, and `odf-*` skills generated from official Red Hat docs,
+and use `.agents/references/red-hat-doc-map.yaml` to route Red Hat product
+documentation categories and books to flat skills.
 
 ## Instructions
 
@@ -190,6 +194,7 @@ then exposes that guidance to tools through small bridge files only when needed.
 - **Project contract**: `AGENTS.md`
 - **Rules**: `.agents/rules/*.md`
 - **Skills**: `.agents/skills/*/SKILL.md`
+- **Reference maps**: `.agents/references/*.yaml`
 - **Reusable hook implementations**: `.agents/hooks/`
 - **Platform baseline**: `docs/PLATFORM_BASELINE.md`
 

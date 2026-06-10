@@ -37,6 +37,8 @@ Create `references/source-capture.md` inside the generated component skill:
 | Chapter or page title | <official title> |
 | Source URL | <versioned docs.redhat.com or official Red Hat URL> |
 | Documentation category | <Install/Administer/Networking/Storage/etc.> |
+| Doc-map route | `.agents/references/red-hat-doc-map.yaml` -> `<product>.<category>.<book/topic>` |
+| Mapped skill | `<rhoai-*|ocp-*|odf-*>` |
 | Retrieved date | <YYYY-MM-DD> |
 | Sections used | <section names or anchors> |
 

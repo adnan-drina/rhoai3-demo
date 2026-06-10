@@ -29,7 +29,7 @@ gitops/   # New GitOps source tree; currently placeholder-only
 scripts/  # New project automation; currently placeholder-only
 steps/    # New demo step structure; currently placeholder-only
 docs/     # Active project docs and product baseline
-.agents/  # Shared skills, rules, and hooks
+.agents/  # Shared skills, rules, reference maps, and hooks
 ```
 
 Legacy implementation areas are preserved under the backup root with their

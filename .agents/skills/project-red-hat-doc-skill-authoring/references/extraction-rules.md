@@ -58,6 +58,12 @@ Do not promote these into skill instructions without verification:
 
 ## Skill Mapping
 
+Before mapping extracted content, read
+`.agents/references/red-hat-doc-map.yaml` and classify the source by product,
+version, category, book, and chapter topic. Use the mapped skill when the route
+is `active`, create the planned flat skill when the route is `planned`, and
+update the map when a new route is needed.
+
 | Extracted content | Generated skill location |
 |-------------------|--------------------------|
 | component purpose, when to use | `SKILL.md` intro and description |

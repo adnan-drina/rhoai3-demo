@@ -2,6 +2,11 @@
 
 Use this taxonomy when creating official-doc-backed Red Hat product skills.
 
+Use `.agents/references/red-hat-doc-map.yaml` as the routing layer between Red
+Hat product documentation hierarchy and flat repo skills. The taxonomy below
+defines naming and ownership; the doc map defines which product, category,
+book, and chapter topic routes to which existing or planned skill.
+
 ## Product Families
 
 | Product family | Prefix | Skill group | Metadata `platform-family` | Rule file |
@@ -41,6 +46,10 @@ Use stable capability names:
 Prefer names based on product capability rather than one demo step. Avoid
 version numbers in skill names.
 
+Keep skill folders flat under `.agents/skills/<skill-name>/`. Do not create
+category or product subdirectories to mirror Red Hat documentation structure;
+represent that hierarchy in `.agents/references/red-hat-doc-map.yaml`.
+
 ## Frontmatter Template
 
 ```yaml
@@ -77,6 +86,7 @@ When adding the first skill in a new product family:
 
 When adding later skills in an existing family:
 
+- update `.agents/references/red-hat-doc-map.yaml`
 - update the family rule file
 - update the relevant roadmap
 - update inventory counts in `project-agent-guidance`

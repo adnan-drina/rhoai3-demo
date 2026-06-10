@@ -35,6 +35,8 @@ under `.agents/skills/` with one of these prefixes:
 
 Read only the files needed for the current task:
 
+- `.agents/references/red-hat-doc-map.yaml` for routing Red Hat product
+  documentation hierarchy to flat repo skills
 - `references/platform-skill-taxonomy.md` for product-family routing,
   frontmatter metadata, and rule/roadmap expectations
 - `references/source-capture.md` for the source ledger template and baseline
@@ -46,22 +48,29 @@ Read only the files needed for the current task:
 ## Workflow
 
 1. Read `docs/PLATFORM_BASELINE.md`.
-2. Identify the product family and prefix:
+2. Read `.agents/references/red-hat-doc-map.yaml` and identify whether the
+   official source already maps to an existing, planned, or blocked skill.
+3. Identify the product family and prefix:
    - Red Hat OpenShift AI Self-Managed -> `rhoai-*`
    - Red Hat OpenShift Container Platform -> `ocp-*`
    - Red Hat OpenShift Data Foundation -> `odf-*`
-3. Confirm the input source matches the active baseline for that product.
+4. Confirm the input source matches the active baseline for that product.
    If the product version is not pinned in `docs/PLATFORM_BASELINE.md`, stop
    after drafting the source-capture note and ask to pin the baseline before
    creating a reusable component skill.
-4. Capture official sources before writing the skill:
+5. If the doc-map route is `active`, update the mapped skill unless the source
+   clearly belongs to a different capability. If the route is `planned`, create
+   the planned flat skill. If the route is missing, choose a stable flat skill
+   name and add a route for it. If the route is `blocked-baseline`, do not
+   create the reusable skill until the baseline is pinned.
+6. Capture official sources before writing the skill:
    - product and version
    - chapter or page URL
    - documentation category
    - retrieved date
    - sections used
    - related Red Hat docs, articles, and rh-brain examples
-5. Extract only supported product behavior:
+7. Extract only supported product behavior:
    - purpose and supported posture
    - prerequisites
    - install/configure/use/upgrade/remove workflows
@@ -69,7 +78,7 @@ Read only the files needed for the current task:
      annotations, images, and artifacts
    - validation commands and failure signals
    - boundaries between Red Hat product behavior and demo glue
-6. Design the target skill:
+8. Design the target skill:
    - folder name uses the selected prefix and a stable capability name
    - frontmatter `name` matches the folder name
    - metadata uses `platform-baseline: "repo"` and `ocp-baseline: "repo"`
@@ -77,10 +86,11 @@ Read only the files needed for the current task:
    - `metadata.skill-group` matches the taxonomy
    - description lists strong positive triggers and negative triggers
    - `SKILL.md` stays concise; move detail into one-level reference files
-7. Add examples only when they are traceable to official docs or are clearly
+9. Add examples only when they are traceable to official docs or are clearly
    marked as demo-specific examples requiring schema verification.
-8. Validate the generated skill with `references/validation-checklist.md`.
-9. Update shared inventory when adding or renaming a skill:
+10. Validate the generated skill with `references/validation-checklist.md`.
+11. Update shared inventory when adding or renaming a skill:
+   - `.agents/references/red-hat-doc-map.yaml`
    - `AGENTS.md`
    - `.agents/rules/<family>.md` when that family has at least one real skill
    - `.agents/skills/project-structure/SKILL.md`
@@ -113,6 +123,9 @@ placement, verification commands, or recommended workflow shape.
 - Do not treat upstream community documentation as Red Hat product authority.
 - Do not treat rh-brain as product configuration truth; use it for narrative,
   Red Hat articles, blogs, and code examples after official docs are captured.
+- Do not create nested skill folders to mirror Red Hat documentation
+  categories; represent product/category/book/chapter routing in
+  `.agents/references/red-hat-doc-map.yaml`.
 - Do not generate `odf-*` skills until the ODF product version and official
   documentation source are pinned in `docs/PLATFORM_BASELINE.md`.
 - If official docs are ambiguous, mark the item unresolved and include an
@@ -127,3 +140,4 @@ placement, verification commands, or recommended workflow shape.
 - `references/extraction-rules.md`
 - `references/validation-checklist.md`
 - `examples/component-skill-outline.md`
+- `.agents/references/red-hat-doc-map.yaml`
