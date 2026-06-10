@@ -32,6 +32,15 @@ https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/
 | Registry, image streams, pull secrets, disconnected mirroring, and trusted registries | Images, Disconnected environments | Added: `ocp-image-registry-and-mirroring` |
 | SecurityContextConstraints, RBAC, service accounts, and workload security posture | Security and compliance | Added: `ocp-security-rbac-scc` |
 
+## Repo-Specific Extensions
+
+These skills support the demo implementation but are not generated from a
+single official OCP documentation chapter.
+
+| Extension area | Source basis | Skill status |
+|----------------|--------------|--------------|
+| GitOps-managed Grafana Operator, Grafana instance, OpenShift OAuth route posture, Prometheus/Thanos datasource, dashboard CRs, and monitoring RBAC | Red Hat CoP GitOps Catalog pattern plus OCP Operator, monitoring, route, and RBAC verification | Added: `ocp-grafana-operator` |
+
 ## Skill Build Standard
 
 Each `ocp-*` skill should include:

@@ -42,6 +42,12 @@ resource in `openshift-nfd`. Treat CoP profiles such as `default` and
 `only-nvidia` as examples of how to keep product instance posture separate from
 the OLM Subscription.
 
+For Grafana, the CoP `grafana-operator` item uses an older shape:
+`base/operator`, `base/instance`, and deployable overlays. When implementing it
+in this repo, normalize that split into the project layout while preserving the
+same separation between OLM install, Grafana instance, datasource, dashboard,
+and aggregate overlays.
+
 ## RHOAI Progressive DSC Patching
 
 The CoP `openshift-ai/instance` pattern is especially important for this demo.

@@ -22,8 +22,10 @@ description: >
   (use rhoai-nvidia-gpu-accelerators), TrustyAI fairness/drift monitoring
   (use rhoai-monitoring-trustyai), initial Deploy a model wizard and endpoint
   smoke-test workflows (use rhoai-model-deployment), model evaluation workflows
-  (use rhoai-model-evaluation), or live cluster changes without the OpenShift
-  safety guard.
+  (use rhoai-model-evaluation), GitOps-managed Grafana Operator deployment,
+  Grafana instance lifecycle, datasource authentication, OAuth routes, or
+  Grafana RBAC (use ocp-grafana-operator), or live cluster changes without the
+  OpenShift safety guard.
 ---
 
 # RHOAI Model Management And Monitoring
@@ -73,6 +75,8 @@ Use other skills for adjacent work:
   profiles
 - `rhoai-monitoring-trustyai` for TrustyAI bias metrics, data drift metrics,
   `TrustyAIService`, model observations, and OVMS support boundaries
+- `ocp-grafana-operator` for deploying and managing the Grafana Operator,
+  Grafana instance, datasource authentication, OAuth route, and Grafana RBAC
 - `rhoai-kueue-workload-management` for Kueue installation, queues, and
   namespace enforcement
 - `rhoai-storage-classes` for RWX storage class readiness when multi-node

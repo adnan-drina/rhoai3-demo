@@ -21,6 +21,7 @@ and cluster integration guidance:
 - `.agents/skills/ocp-cicd-builds/SKILL.md`
 - `.agents/skills/ocp-distributed-tracing/SKILL.md`
 - `.agents/skills/ocp-etcd/SKILL.md`
+- `.agents/skills/ocp-grafana-operator/SKILL.md`
 - `.agents/skills/ocp-gitops-operator/SKILL.md`
 - `.agents/skills/ocp-image-registry-and-mirroring/SKILL.md`
 - `.agents/skills/ocp-ingress-gateway-routes/SKILL.md`
@@ -57,8 +58,10 @@ credentials, GitOps RBAC, SSO, notifications, resource tracking, or sync
 behavior, OpenShift monitoring stack, user workload monitoring, Prometheus,
 Alertmanager, Thanos, ServiceMonitor, PodMonitor, PrometheusRule,
 AlertmanagerConfig, logging collectors, log stores, log forwarders, logging
-outputs, Cluster Observability Operator, observability dashboards, telemetry,
-tracing, OpenTelemetry, `OpenTelemetryCollector`, `Instrumentation`,
+outputs, Cluster Observability Operator, observability dashboards, Grafana
+Operator, `Grafana`, `GrafanaDatasource`, `GrafanaDashboard`, Grafana OAuth
+proxy, datasource token, or dashboard selector behavior, telemetry, tracing,
+OpenTelemetry, `OpenTelemetryCollector`, `Instrumentation`,
 OpenTelemetry receivers, processors, exporters, connectors, extensions,
 auto-instrumentation annotations, Tempo Operator, TempoStack,
 TempoMonolithic, Tempo storage, Tempo tenants, Tempo read/write RBAC, Jaeger
@@ -119,15 +122,17 @@ intent.
 Treat monitoring stack changes, user workload monitoring changes, alerting
 rule changes, logging Operator, collector, forwarder, store, or output changes,
 Cluster Observability Operator changes, observability dashboard changes, and
-observability credential or endpoint changes, OpenTelemetry Operator changes,
-Collector changes, `Instrumentation` changes, auto-instrumentation injection,
-telemetry pipeline changes, and telemetry sink changes as live-environment
-operations unless they are only documented as future GitOps intent. Treat
-Tempo Operator changes, TempoStack or TempoMonolithic changes, object storage
-secret changes, tenant changes, trace read/write RBAC changes, Jaeger UI route
-changes, distributed tracing UI plugin changes, receiver TLS changes, and
-trace retention or deletion changes as live-environment operations unless they
-are only documented as future GitOps intent.
+observability credential or endpoint changes, Grafana Operator installation,
+Grafana instance changes, Route exposure, datasource token handling, dashboard
+CR changes, and Grafana RBAC changes, OpenTelemetry Operator changes, Collector
+changes, `Instrumentation` changes, auto-instrumentation injection, telemetry
+pipeline changes, and telemetry sink changes as live-environment operations
+unless they are only documented as future GitOps intent. Treat Tempo Operator
+changes, TempoStack or TempoMonolithic changes, object storage secret changes,
+tenant changes, trace read/write RBAC changes, Jaeger UI route changes,
+distributed tracing UI plugin changes, receiver TLS changes, and trace
+retention or deletion changes as live-environment operations unless they are
+only documented as future GitOps intent.
 
 Treat OAuth, identity-provider, direct external OIDC, LDAP group sync,
 `kubeadmin` removal, RBAC binding, service-account token, SCC grant, custom

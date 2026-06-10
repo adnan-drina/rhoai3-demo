@@ -17,11 +17,13 @@ description: >
   GitOps-native Operator lifecycle management through Subscription channel and
   approval-strategy changes. Use when deploying or upgrading RHOAI, ODF, NFD,
   NVIDIA GPU Operator, OpenShift GitOps, cert-manager, Kueue, OpenTelemetry,
-  Tempo, or other Red Hat Operators through GitOps. Do NOT use as product
-  authority for Subscription channels, CR fields, API versions, or support
-  posture; use official Red Hat docs and the matching rhoai-*, ocp-*, or
-  odf-* skill. Do NOT reference the Community of Practice catalog directly as
-  a remote base in committed GitOps; curate the pattern locally.
+  Tempo, or other Red Hat Operators through GitOps, and for approved
+  community-operator exceptions such as Grafana when support boundaries are
+  documented. Do NOT use as product authority for Subscription channels, CR
+  fields, API versions, or support posture; use official Red Hat docs, active
+  cluster schema, and the matching rhoai-*, ocp-*, or odf-* skill. Do NOT
+  reference the Community of Practice catalog directly as a remote base in
+  committed GitOps; curate the pattern locally.
 ---
 
 # Red Hat Operator GitOps
@@ -183,6 +185,8 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
   RHOAI hardware-profile handoff details.
 - Use `ocp-node-feature-discovery` for NFD Operator, NodeFeatureDiscovery,
   feature-label, topology updater, and NVIDIA-only discovery overlay details.
+- Use `ocp-grafana-operator` for GitOps-managed Grafana Operator, Grafana
+  instance, datasource, dashboard, OAuth route, and monitoring-access details.
 - Use `odf-storagecluster`, `odf-multicloud-gateway`, and
   `odf-object-bucket-claims` for ODF details.
 - Use `ocp-security-rbac-scc`, `ocp-image-registry-and-mirroring`,

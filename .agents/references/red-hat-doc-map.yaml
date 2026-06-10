@@ -399,6 +399,18 @@ products:
           - book: cluster_observability_operator
             status: active
             skill: ocp-observability
+          - book: grafana_operator_gitops
+            source_type: repo_specific
+            source_url: https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator
+            topics:
+              - grafana_operator
+              - grafana_instance
+              - grafana_datasource
+              - grafana_dashboard
+              - openshift_oauth_proxy
+              - monitoring_datasource
+            status: active
+            skill: ocp-grafana-operator
           - book: red_hat_build_of_opentelemetry
             source_type: external_redhat_product_docs
             status: active

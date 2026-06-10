@@ -18,8 +18,10 @@ description: >
   observability documentation. Do NOT use for Red Hat OpenShift AI
   observability stack configuration, TrustyAI model monitoring, deployed model
   metrics, or RHOAI dashboard observability; use the relevant rhoai-* skill.
-  Do NOT invent monitoring, logging, or COO custom resource fields from OCP
-  overview pages alone.
+  Do NOT use for GitOps-managed Grafana Operator, Grafana instances,
+  datasources, dashboards, OAuth routes, or Grafana RBAC; use
+  ocp-grafana-operator. Do NOT invent monitoring, logging, or COO custom
+  resource fields from OCP overview pages alone.
 ---
 
 # OCP Observability
@@ -117,6 +119,8 @@ Use the official docs to frame:
 - Use `ocp-distributed-tracing` for Red Hat OpenShift distributed tracing
   platform, Tempo Operator, `TempoStack`, `TempoMonolithic`, tenants, trace
   RBAC, Jaeger UI, and distributed tracing UI plugin behavior.
+- Use `ocp-grafana-operator` for GitOps-managed Grafana Operator, Grafana
+  instances, datasources, dashboards, OAuth routes, and Grafana RBAC.
 - Create narrower `ocp-*` skills for Network Observability or Power monitoring
   when official sources are provided and implementation needs them.
 

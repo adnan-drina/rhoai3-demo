@@ -13,6 +13,7 @@
 | Node Feature Discovery catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/nfd |
 | NVIDIA GPU Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified |
 | NVIDIA GPU Operator AWS MachineSet component | https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified/instance/components/aws-gpu-machineset |
+| Grafana Operator catalog item | https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator |
 | Capture date | 2026-06-10 |
 
 ## Official Lifecycle Sources
@@ -145,6 +146,32 @@
   `operand.image`, topology updater behavior, and generated labels against
   official docs or live schema before committing GitOps manifests.
 
+## Grafana Operator Observations
+
+- Root item: `grafana-operator`.
+- The catalog uses an older layout than the newer operator/instance/aggregate
+  pattern: `base/operator`, `base/instance`, and deployable overlays under
+  `overlays/`.
+- Operator base includes only a `Subscription`; the deployable example overlay
+  adds Namespace and OperatorGroup.
+- Subscription installs package `grafana-operator` from `community-operators`,
+  uses channel `v5`, and sets `installPlanApproval: Automatic`.
+- Instance base includes a `Grafana` custom resource, OAuth proxy RBAC,
+  injected CA bundle ConfigMap, and a placeholder session secret.
+- The `Grafana` resource uses API `grafana.integreatly.org/v1beta1`,
+  configures an OpenShift OAuth redirect reference, creates a reencrypt Route,
+  uses service serving certificates, and mounts an OAuth proxy sidecar.
+- Aggregate overlay combines `base/operator` and `base/instance` with
+  `SkipDryRunOnMissingResource=true`.
+- The `user-app` overlay adds a `GrafanaDatasource` for OpenShift Thanos
+  Querier, a service-account token Secret pattern, a
+  `cluster-monitoring-view` ClusterRoleBinding, and patches the Grafana
+  deployment to read `GRAFANA_TOKEN` from the Secret.
+- For this repo, treat Grafana as a community Operator support-boundary
+  decision. Curate the GitOps layout locally and verify channel, CRD fields,
+  OAuth proxy image, route settings, RBAC, and token handling before
+  implementation.
+
 ## Source Boundaries
 
 The GitOps Catalog is a pattern source only. Do not treat it as official Red
@@ -154,6 +181,8 @@ Hat product configuration truth. For this repo:
 - catalog examples suggest local GitOps organization and Kustomize layering
 - live cluster schema verifies installed CRDs and field availability
 - `docs/PLATFORM_BASELINE.md` controls product versions
+- community-operator exceptions, such as Grafana, require explicit support
+  boundary and upgrade-risk review
 - operator lifecycle changes should be represented as Git changes to
   Subscription overlays, approval strategy, product baseline, and operand
   patches; direct live edits are exceptions that must be reconciled back to Git
