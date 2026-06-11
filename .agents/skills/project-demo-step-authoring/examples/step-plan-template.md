@@ -19,10 +19,13 @@ Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
 ## Acceptance Criteria
 
 - [ ] README explains Why and What without runbook detail.
+- [ ] Why and business value are grounded in at least one Red Hat narrative source from `rh-brain/`.
+- [ ] What and related product components are grounded in active-baseline official Red Hat docs.
 - [ ] Official Red Hat docs are captured for every product component.
+- [ ] Design decisions and applied configuration choices reference the sources used.
 - [ ] GitOps ownership model is explicit.
-- [ ] Manifests render.
-- [ ] Deploy script applies Argo CD Application or shared owner first.
+- [ ] Manifests render and configuration is cross-checked against official sources or verified schema.
+- [ ] Deploy script applies the Argo CD Application or shared owner first and handles sensitive data through documented non-committed paths.
 - [ ] Validate script proves the user-visible outcome.
 - [ ] Manifest and Red Hat source-alignment reviews pass.
 
