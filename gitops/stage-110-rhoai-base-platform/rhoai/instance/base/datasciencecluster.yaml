@@ -1,4 +1,8 @@
-apiVersion: datasciencecluster.opendatahub.io/v1
+# v2 is the current served+storage version in RHOAI 3.4. The component schema
+# (e.g. spec.components.aipipelines) exists only in v2; v1 is retained for
+# compatibility but rejects v2-only fields under ServerSideApply.
+# Verified live: oc get crd datascienceclusters.datasciencecluster.opendatahub.io
+apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   annotations:
