@@ -6,8 +6,7 @@ Active backlog for the reimplementation.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Verify ODF StorageSystem MCG-only CR fields | high | `storage-system.yaml` uses `spec.kind: noobaa.noobaa.io/v1alpha1`; confirm with `oc explain storagesystem.odf.openshift.io` after ODF operator installs on cluster-klvxt |
-| Live validation of stage-110 end-to-end | high | Cluster cluster-klvxt (OCP 4.20.24) is available; run `deploy.sh` then `validate.sh` |
+| Live validation of stage-110 end-to-end | high | Cluster cluster-klvxt (OCP 4.20.24): bootstrap + ArgoCD sync done; run `validate.sh` once NooBaa + DSC reach Ready |
 | GPU accelerator foundation | medium | NFD, GPU Operator, AWS GPU MachineSet, RHOAI hardware profile — future `stage-130-gpu-accelerator-foundation` |
 | Identity provider and access groups | medium | RHOAI users/groups/RBAC — future stage in 1xx family |
 | ODF RHOAI data connection (first OBC) | low | First `ObjectBucketClaim` for RHOAI AI Pipelines backend — can be added to stage-110 GitOps or as a dedicated stage-120 item |

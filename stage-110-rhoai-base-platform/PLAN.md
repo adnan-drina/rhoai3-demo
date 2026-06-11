@@ -88,7 +88,7 @@
 | `gitops/stage-110-rhoai-base-platform/odf/operator/base/namespace.yaml` | Namespace | ODF 4.20 AWS guide | `oc get ns openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/operator/base/operator-group.yaml` | OperatorGroup | ODF 4.20 install | `oc get operatorgroup -n openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/operator/base/subscription.yaml` | Subscription (odf-operator, `stable-4.20`) | ODF 4.20 AWS guide (verified live) | `oc get csv -n openshift-storage` |
-| `gitops/stage-110-rhoai-base-platform/odf/instance/base/storage-system.yaml` | StorageSystem (MCG-only) | ODF 4.20 AWS guide (MCG standalone section) | `oc get noobaa -n openshift-storage` |
+| `gitops/stage-110-rhoai-base-platform/odf/instance/base/storagecluster.yaml` | StorageCluster (standalone MCG, `reconcileStrategy: standalone`) | ODF 4.20 live CRD (StorageSystem API removed in 4.20) | `oc get noobaa -n openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/instance/base/ocs-initialization.yaml` | OCSInitialization (enableCephTools:false) | colleague config (adapted) | `oc get ocsinitialization -n openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/instance/base/console-plugin-{rbac,script,job}.yaml` | SA/ClusterRole/CRB/ConfigMap/Job | colleague config (adapted) | `oc get consoles.operator.openshift.io cluster -o jsonpath='{.spec.plugins}'` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/namespace.yaml` | Namespace | RHOAI 3.4 install guide | `oc get ns redhat-ods-operator` |
@@ -137,7 +137,7 @@
 | Item | Type | Resolution |
 |------|------|------------|
 | OpenShift GitOps channel for OCP 4.20 | resolved | Verified live on cluster-klvxt (OCP 4.20.24): pinned to `gitops-1.20`; operator v1.20.4 installed |
-| ODF StorageSystem MCG-only CR fields | risk | Verify with `oc explain storagesystem.odf.openshift.io` once the ODF CRD installs during sync |
+| ODF StorageSystem MCG-only CR fields | resolved | ODF 4.20 removed the `odf.openshift.io` StorageSystem CRD; replaced with `StorageCluster` (`ocs.openshift.io/v1`) + `multiCloudGateway.reconcileStrategy: standalone`, verified against live CRD |
 | GPU accelerator foundation | deferred | Future stage `stage-130-gpu-accelerator-foundation` (NFD + GPU Operator + AWS GPU MachineSet) |
 | Identity provider / access groups | deferred | Future stage in 1xx family |
 | RHOAI component enablement (kserve, kueue, ray, etc.) | deferred | Each component added by its dedicated 2xx/4xx stage via DSC patch |
@@ -147,5 +147,5 @@
 
 - Manifest review: pending
 - Red Hat source-alignment review: pending
-- Live deploy: bootstrap succeeded on cluster-klvxt (OCP 4.20.24) 2026-06-11; ArgoCD Application created, ODF + RHOAI syncing
-- Live validation: in progress (run `validate.sh` after sync completes)
+- Live deploy: succeeded on cluster-klvxt (OCP 4.20.24) 2026-06-11
+- Live validation: PASSED 2026-06-11 — `validate.sh` 11/11 (GitOps, ArgoCD Synced+Healthy, ODF, NooBaa Ready, RHOAI, DSCI Ready, DSC Ready, model registry operator, dashboard route HTTP 2xx)
