@@ -34,7 +34,9 @@ if [[ "$ACTUAL_SERVER" != *"$RHOAI_EXPECTED_API_SERVER"* ]]; then
 fi
 echo "✓ Cluster guard passed: $ACTUAL_SERVER"
 
-gen_pw() { LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 16; }
+# openssl produces finite output and cut consumes all stdin, so no SIGPIPE under
+# `set -o pipefail` (unlike `/dev/urandom | head -c`).
+gen_pw() { openssl rand -base64 24 | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-16; }
 htpasswd_entry() {  # <user> <password> -> "user:hash"
   if command -v htpasswd > /dev/null 2>&1; then
     htpasswd -nbB "$1" "$2"

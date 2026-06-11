@@ -104,7 +104,7 @@ MR_READY=$(oc get deployment model-registry-operator-controller-manager \
 [[ "${MR_READY:-0}" -ge 1 ]] && R="pass" || R="readyReplicas=${MR_READY:-0}"
 check "Model Registry operator running" "$R"
 
-# ── 11. RHOAI Dashboard route responds ───────────────────────────────────────
+# ── 10. RHOAI Dashboard route responds ───────────────────────────────────────
 DASHBOARD_HOST=$(oc get route rhods-dashboard -n redhat-ods-applications \
   -o jsonpath='{.spec.host}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 if [[ -n "$DASHBOARD_HOST" ]]; then
@@ -114,6 +114,36 @@ if [[ -n "$DASHBOARD_HOST" ]]; then
 else
   check "RHOAI Dashboard route reachable" "route not found"
 fi
+
+# ── 11. htpasswd identity provider configured ────────────────────────────────
+IDP=$(oc get oauth cluster \
+  -o jsonpath='{.spec.identityProviders[*].name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$IDP" == *"demo-htpasswd"* ]] && R="pass" || R="idps=${IDP:-none}"
+check "htpasswd identity provider configured" "$R"
+
+# ── 12. ai-admin is a RHOAI administrator ────────────────────────────────────
+ADMINS=$(oc get group rhods-admins \
+  -o jsonpath='{.users}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$ADMINS" == *"ai-admin"* ]] && R="pass" || R="rhods-admins=${ADMINS:-empty}"
+check "ai-admin in rhods-admins (RHOAI admin)" "$R"
+
+# ── 13. demo-sandbox data science project exists ─────────────────────────────
+DS_LABEL=$(oc get namespace demo-sandbox \
+  -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$DS_LABEL" == "true" ]] && R="pass" || R="dashboard-label=${DS_LABEL:-missing}"
+check "demo-sandbox data science project present" "$R"
+
+# ── 14. demo-sandbox object bucket bound ─────────────────────────────────────
+OBC_PHASE=$(oc get obc demo-sandbox-bucket -n demo-sandbox \
+  -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBC_PHASE" == "Bound" ]] && R="pass" || R="phase=${OBC_PHASE:-not found}"
+check "demo-sandbox ObjectBucketClaim Bound" "$R"
+
+# ── 15. demo-sandbox S3 connection present ───────────────────────────────────
+CONN_LABEL=$(oc get secret demo-sandbox-s3 -n demo-sandbox \
+  -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$CONN_LABEL" == "true" ]] && R="pass" || R="connection=${CONN_LABEL:-missing}"
+check "demo-sandbox S3 connection present" "$R"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
