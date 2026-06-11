@@ -6,8 +6,11 @@ kind: Kustomization
 # ClusterPolicy + time-slicing, DSC patch, Kueue quota, hardware profiles, vLLM
 # serving) are added after the operators install and their CRD schemas are
 # verified live, per the GPU/Kueue skills.
+# cert-manager is a prerequisite for the Red Hat build of Kueue operator. It is
+# already present on this cluster (RHOAI/Service Mesh dependency) and OLM installs
+# it automatically as a Kueue dependency, so stage-120 verifies it rather than
+# installing it (avoids a duplicate OperatorGroup conflict).
 resources:
-  - cert-manager/operator
   - kueue/operator
   - nfd/operator
   - gpu-operator/operator
