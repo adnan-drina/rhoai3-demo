@@ -9,7 +9,7 @@ metadata:
   skill-group: "Project Structure"
 description: >
   Author and improve rhoai3-demo documentation: root README, docs/README.md,
-  docs/BACKLOG.md, step READMEs, docs/OPERATIONS.md,
+  docs/BACKLOG.md, stage READMEs, docs/OPERATIONS.md,
   docs/TROUBLESHOOTING.md, PLAN.md files, design decisions, references, and
   Red Hat narrative alignment. Use when creating or updating demo prose, adding
   architecture sections, introducing concepts such as Private AI,
@@ -19,7 +19,7 @@ description: >
   documenting deferred capabilities, or routing captured project knowledge to
   the correct documentation home. Also use when documentation needs to explain
   implemented GitOps behavior in business and technical terms. Pair with
-  project-demo-step-authoring when creating a new step end to end. Do NOT use
+  project-demo-stage-authoring when creating a new stage end to end. Do NOT use
   for GitOps manifest authoring itself (use project-gitops-authoring) or
   official Red Hat source conformance audits (use
   project-red-hat-doc-alignment-review).
@@ -34,11 +34,11 @@ official Red Hat messaging and the implemented demo story.
 
 1. Identify the documentation home before writing:
    root README for demo overview, `docs/README.md` for the promoted docs
-   index, `docs/BACKLOG.md` for deferred capabilities and future work, step
+   index, `docs/BACKLOG.md` for deferred capabilities and future work, stage
    README for concise Why/What story, `docs/OPERATIONS.md` for runbooks,
    `docs/TROUBLESHOOTING.md` for recovery, `docs/PLATFORM_BASELINE.md` for
    product targets, and `PLAN.md` files for implementation planning.
-   For a new step, start with `project-demo-step-authoring`.
+   For a new stage, start with `project-demo-stage-authoring`.
 2. Read the relevant existing document before changing it.
 3. Confirm whether a companion manifest, script, README, or operations document
    change is required.
@@ -47,7 +47,7 @@ official Red Hat messaging and the implemented demo story.
    to GitHub reference implementations or code examples when several sources
    are relevant. For product configuration, use active-baseline official Red
    Hat docs first.
-5. For step README structure and presentation style, read
+5. For stage README structure and presentation style, read
    `references/readme-standard.md`.
 6. For continuous documentation and troubleshooting knowledge capture, read
    `references/knowledge-governance.md`.
@@ -57,12 +57,12 @@ official Red Hat messaging and the implemented demo story.
 
 ## Documentation Principles
 
-- Step READMEs are concise Why/What documents, not deployment runbooks.
-- Step READMEs should introduce the concept first, explain why a
+- Stage READMEs are concise Why/What documents, not deployment runbooks.
+- Stage READMEs should introduce the concept first, explain why a
   European-regulated enterprise should care, and cite Red Hat narrative
   material from `rh-brain`; prefer sources that include concrete GitHub
   projects or code examples when available.
-- Step READMEs should support a future three-slide presentation pattern:
+- Stage READMEs should support a future three-slide presentation pattern:
   concept/value, technology enablers, and architecture delta.
 - Operational runbook detail belongs in `docs/OPERATIONS.md`.
 - Failure recovery detail belongs in `docs/TROUBLESHOOTING.md`.

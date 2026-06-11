@@ -13,14 +13,14 @@ applies-to:
   - "**/README.md"
   - docs/**/*.md
   - gitops/**
-  - steps/**
+  - stage-*/**
   - scripts/**
 ---
 
 # Project Structure
 
 Use the `project-*` skills as the source of truth for work that changes the
-repository, GitOps layout, step content, documentation structure, manifest
+repository, GitOps layout, stage content, documentation structure, manifest
 standards, Red Hat source alignment, or shared agent guidance:
 
 - `.agents/skills/project-structure/SKILL.md`
@@ -28,7 +28,7 @@ standards, Red Hat source alignment, or shared agent guidance:
 - `.agents/skills/project-red-hat-doc-skill-authoring/SKILL.md`
 - `.agents/skills/project-rhoai-doc-chapter-skill-authoring/SKILL.md`
 - `.agents/skills/project-red-hat-operator-gitops/SKILL.md`
-- `.agents/skills/project-demo-step-authoring/SKILL.md`
+- `.agents/skills/project-demo-stage-authoring/SKILL.md`
 - `.agents/skills/project-gitops-authoring/SKILL.md`
 - `.agents/skills/project-documentation-authoring/SKILL.md`
 - `.agents/skills/project-manifest-review/SKILL.md`
@@ -36,7 +36,7 @@ standards, Red Hat source alignment, or shared agent guidance:
 - `.agents/skills/project-architecture-diagrams/SKILL.md`
 
 Keep the demo coherent as a RHOAI platform story for European enterprises.
-GitOps, step READMEs, operational docs, architecture diagrams, and agent
+GitOps, stage READMEs, operational docs, architecture diagrams, and agent
 guidance must stay aligned with the active baseline in
 `docs/PLATFORM_BASELINE.md`.
 
@@ -61,18 +61,19 @@ product baseline, and operand patches should be changed in Git and reconciled
 by Argo CD, not maintained as live Subscription drift.
 
 The active implementation is being rewritten. Current implementation folders
-`gitops/`, `scripts/`, and `steps/` are placeholder-only until new content is
-introduced. Legacy implementation artifacts live under
+`gitops/` and `scripts/` are placeholder-only until new content is introduced.
+New demo stages must be created as root-level `stage-YXX-slug/` folders.
+Legacy implementation artifacts live under
 `backup/legacy-implementation-2026-06-09/` and should be used as reference
 material, not as active project structure.
 
-Use `project-demo-step-authoring` for every new demo step. Start with intent,
+Use `project-demo-stage-authoring` for every new demo stage. Start with intent,
 source capture, skill routing, and `PLAN.md`; then author the README, GitOps,
 Argo CD Application, manifests, deploy script, validation script, and review
-evidence as one atomic step. Do not let README claims, GitOps manifests, and
+evidence as one atomic stage. Do not let README claims, GitOps manifests, and
 validation scripts drift apart.
 
-Step READMEs should be concise Why/What documents: introduce the business
+Stage READMEs should be concise Why/What documents: introduce the business
 concept, ground European enterprise value in Red Hat narrative sources from
 `rh-brain`, map the concept to official Red Hat product documentation, and show
 the architecture delta. GitOps artifacts and live demos show the How. GitOps

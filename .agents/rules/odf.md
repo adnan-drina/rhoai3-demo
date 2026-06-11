@@ -32,7 +32,7 @@ version in `docs/PLATFORM_BASELINE.md`.
 
 - Start with the minimum ODF footprint needed for the RHOAI demo:
   standalone Multicloud Object Gateway, NooBaa, and ObjectBucketClaims.
-- Use full ODF StorageCluster/Ceph block and file storage only when a demo step
+- Use full ODF StorageCluster/Ceph block and file storage only when a demo stage
   explicitly needs ODF-provided RWO/RWX PVCs beyond the underlying OpenShift
   storage classes.
 - Manage ODF Operator lifecycle through GitOps: keep the Subscription channel

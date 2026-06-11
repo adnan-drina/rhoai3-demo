@@ -10,14 +10,15 @@ Tracked Markdown files should stay limited to the documents in this index.
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Active symptom-based diagnostics and recovery guidance once the new implementation exists. |
 | [PLATFORM_BASELINE.md](PLATFORM_BASELINE.md) | Active RHOAI/OCP product baseline, version-match rule, Red Hat documentation category index, and source hierarchy. |
 
-The previous root README, step READMEs, operational runbooks, troubleshooting
-notes, backlog, and generated architecture SVGs are backed up under:
+The previous root README, legacy step READMEs, operational runbooks,
+troubleshooting notes, backlog, and generated architecture SVGs are backed up
+under:
 
 - `../backup/legacy-implementation-2026-06-09/`
 
 The reimplemented workshop narrative will live in the root README and
-step-level README files under `../steps/` when the new step structure is
-created.
+root-level stage README files under `../stage-YXX-slug/` folders when new
+stages are created.
 
 Documentation rules for this repository:
 

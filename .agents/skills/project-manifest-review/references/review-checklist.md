@@ -28,9 +28,9 @@ Check:
 - `app.kubernetes.io/component`
 - `app.kubernetes.io/instance` where useful
 - `app.openshift.io/runtime` on visible resources
-- `demo.rhoai.io/step` on Argo CD Applications
+- `demo.rhoai.io/stage` on Argo CD Applications
 
-Use functional group names, not step numbers.
+Use functional group names, not stage identifiers.
 
 ## YAML Standards
 

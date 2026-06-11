@@ -92,7 +92,7 @@ Each `rhoai-*` skill should include:
 
 ## Recommended First Component Skills
 
-Build these first because they map directly to implemented demo steps:
+Build these first because they map directly to implemented demo stages:
 
 1. `rhoai-update-channels`, `rhoai-self-managed-installation`,
    `rhoai-nvidia-gpu-accelerators`, `rhoai-distributed-workloads`,

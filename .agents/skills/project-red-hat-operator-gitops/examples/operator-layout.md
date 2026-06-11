@@ -152,6 +152,6 @@ components:
   - ../../components/model-registry
 ```
 
-When a later demo step introduces a new platform capability, add a focused
+When a later demo stage introduces a new platform capability, add a focused
 component and append it to this same overlay. Do not create another Argo CD
 Application that owns a second full copy of `DataScienceCluster/default`.

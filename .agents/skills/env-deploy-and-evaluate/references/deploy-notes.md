@@ -43,7 +43,8 @@
 - **Step 01**: Create or reconcile GPU MachineSets for `g6e.2xlarge` workers. The current demo default is one replica. GPU nodes should be labeled with `node-role.kubernetes.io/gpu`, tainted with `nvidia.com/gpu=true:NoSchedule`, and expected to advertise one allocatable `nvidia.com/gpu`.
 - **Step 05**: Private model serving should use `nemotron-3-nano-30b-a3b` from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` through RHOAI `LLMInferenceService` and vLLM. Approved external OpenAI `gpt-5` should be registered behind MaaS only after MaaS gateway/API compatibility is verified.
 - **Step 05 → Playground**: Create Playground LSD via Dashboard UI (not GitOps-managed). Only register RUNNING models.
-- **Step 06**: Run benchmarks via `./steps/step-06-model-metrics/run-benchmark.sh`.
+- **Model metrics stage**: Run benchmarks through the active metrics stage
+  script once recreated, for example `./stage-440-observability-and-governance/run-benchmark.sh`.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".

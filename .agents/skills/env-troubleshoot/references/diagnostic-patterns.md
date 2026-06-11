@@ -30,7 +30,7 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | llama-stack-client HTTP 426 | Client/server version mismatch | Pin `llama-stack-client>=0.4,<0.5` |
 | Docling KFP component 404 | Old v1alpha API path | Change to `/v1/convert/file` |
 | Tool-call parser errors | vLLM/model parser mismatch | Verify the active `LLMInferenceService` tool-call and reasoning parser arguments for the served model |
-| Responses API file_search empty | pgvector vector store has no data | Re-ingest: `./steps/step-07-rag/run-batch-ingestion.sh` |
+| Responses API file_search empty | pgvector vector store has no data | Re-ingest with the active RAG stage script once recreated, for example `./stage-240-private-data-rag/run-batch-ingestion.sh` |
 | Vector store data missing after restart | pgvector extension not enabled | Check: `oc exec deploy/llamastack-postgres -- psql -c "SELECT extname FROM pg_extension WHERE extname='vector';"` |
 | Eval pipeline scoring 404 | DNS resolution in short-lived executor pods | Use `llama_stack_client` SDK with retry logic |
 | `llm-as-judge::base` scoring 500 | `prompt_template` is null | Provide prompt with `{input_query}`, `{generated_answer}`, `{expected_answer}` placeholders |
@@ -38,4 +38,4 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | Secret deleted seconds after ArgoCD creates it | `opendatahub.io/managed: "true"` label triggers ODH controller deletion | Remove the label from the GitOps manifest; ODH only manages secrets it created |
 | ArgoCD Application uses `project: default` | Bootstrap didn't run or Applications weren't updated after bootstrap | Verify `oc get appproject rhoai-demo -n openshift-gitops`; update Application to `project: rhoai-demo` |
 | ArgoCD shows false Out-of-Sync on operator resources | Label tracking instead of annotation tracking | Verify: `oc get argocd openshift-gitops -n openshift-gitops -o jsonpath='{.spec.resourceTrackingMethod}'` must be `annotation` |
-| ArgoCD reconciles all steps on unrelated commit | Missing `manifest-generate-paths` annotation on Applications | Add `argocd.argoproj.io/manifest-generate-paths: gitops/step-XX-name` to each Application |
+| ArgoCD reconciles all stages on unrelated commit | Missing `manifest-generate-paths` annotation on Applications | Add `argocd.argoproj.io/manifest-generate-paths: gitops/stage-YXX-slug` to each Application |

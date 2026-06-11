@@ -11,8 +11,8 @@ applies-to:
   - scripts/lib.sh
   - scripts/validate-lib.sh
   - scripts/validate-demo-flow.sh
-  - steps/**/deploy.sh
-  - steps/**/validate.sh
+  - stage-*/deploy.sh
+  - stage-*/validate.sh
 ---
 
 # Demo Environment
@@ -27,7 +27,7 @@ demo environments:
 
 The active implementation is being rewritten. No active bootstrap, deploy,
 validate, demo-flow, or resource-management scripts exist until they are
-reintroduced under `scripts/` or `steps/`. Legacy scripts under
+reintroduced under `scripts/` or root-level `stage-YXX-slug/` folders. Legacy scripts under
 `backup/legacy-implementation-2026-06-09/` are reference material only and must
 not be run unless the user explicitly asks to restore or inspect the old
 implementation.
@@ -36,6 +36,6 @@ Before live cluster work, load the repo-local environment, verify the expected
 API server guard, and keep credentials scoped to this project. Do not bypass the
 OpenShift safety guard without explicit user confirmation.
 
-When the new environment automation is recreated, use GitOps and per-step
+When the new environment automation is recreated, use GitOps and per-stage
 scripts for environment changes. Keep operational runbooks in
 `docs/OPERATIONS.md` and recovery guidance in `docs/TROUBLESHOOTING.md`.

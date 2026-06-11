@@ -76,25 +76,25 @@ Path B: Standard Benchmarks (LM-Eval)
 
 | File | Purpose |
 |------|---------|
-| `steps/step-08-model-evaluation/run-rag-eval.sh` | Run RAG eval via KFP pipeline |
-| `steps/step-08-model-evaluation/run-eval-report.sh` | Run RAG eval as pod (simpler debugging) |
-| `steps/step-08-model-evaluation/run-evalhub-smoke.sh` | Run EvalHub smoke evaluation |
-| `steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh` | Run EvalHub RAG scenario collection |
-| `steps/step-08-model-evaluation/materialize-evalhub-rag-mlflow.sh` | Materialize EvalHub RAG results into MLflow evidence |
-| `steps/step-08-model-evaluation/run-lmeval.sh` | Submit LMEvalJob CR |
-| `steps/step-08-model-evaluation/eval-configs/*.yaml` | Test question sets (4 scenarios) |
-| `steps/step-08-model-evaluation/eval-configs/scoring-templates/judge_prompt.txt` | Judge prompt template |
-| `steps/step-08-model-evaluation/kfp/eval_pipeline.py` | Optional KFP pipeline definition |
-| `gitops/step-08-model-evaluation/base/evalhub/` | EvalHub CR, PostgreSQL, route, tenant RBAC, and provider configuration |
-| `gitops/step-08-model-evaluation/base/lmeval/*.yaml` | LMEvalJob CR templates |
-| `gitops/step-08-model-evaluation/base/eval-configs/` | GitOps-managed test configs |
-| `steps/step-08-model-evaluation/README.md` | Design decisions, architecture |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-rag-eval.sh` | Run RAG eval via KFP pipeline |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-eval-report.sh` | Run RAG eval as pod (simpler debugging) |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-evalhub-smoke.sh` | Run EvalHub smoke evaluation |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-evalhub-rag-scenarios.sh` | Run EvalHub RAG scenario collection |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/materialize-evalhub-rag-mlflow.sh` | Materialize EvalHub RAG results into MLflow evidence |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-lmeval.sh` | Submit LMEvalJob CR |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/eval-configs/*.yaml` | Test question sets (4 scenarios) |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/eval-configs/scoring-templates/judge_prompt.txt` | Judge prompt template |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/kfp/eval_pipeline.py` | Optional KFP pipeline definition |
+| `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/evalhub/` | EvalHub CR, PostgreSQL, route, tenant RBAC, and provider configuration |
+| `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/lmeval/*.yaml` | LMEvalJob CR templates |
+| `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/eval-configs/` | GitOps-managed test configs |
+| `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/README.md` | Design decisions, architecture |
 
 ## Instructions
 
 ### Read Before You Write
 
-1. Read `steps/step-08-model-evaluation/README.md`
+1. Read `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/README.md`
 2. For RAG eval details, read `references/rag-eval-configs.md`
 3. For LM-Eval templates, read `references/lmeval-templates.md`
 
@@ -105,10 +105,10 @@ Path B: Standard Benchmarks (LM-Eval)
 
 ```bash
 # Via KFP pipeline (platform-native, uses DSPA)
-./steps/step-08-model-evaluation/run-rag-eval.sh
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-rag-eval.sh
 
 # Via pod (simpler, good for debugging)
-./steps/step-08-model-evaluation/run-eval-report.sh
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-eval-report.sh
 ```
 
 **Output:** HTML reports uploaded to MinIO at `s3://rhoai-storage/eval-results/{run_id}/`
@@ -128,10 +128,10 @@ Path B: Standard Benchmarks (LM-Eval)
 
 ```bash
 # Benchmark nemotron-3-nano-30b-a3b (default 50 samples/task)
-./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
 
 # Benchmark with 200 samples
-./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
 ```
 
 **Tasks:** hellaswag, arc_challenge, winogrande, boolq
@@ -144,15 +144,15 @@ oc get lmevaljob <name> -n private-ai -o yaml
 
 ### Adding New Test Questions
 
-1. Edit the relevant test YAML in `steps/step-08-model-evaluation/eval-configs/`
-2. Copy to `gitops/step-08-model-evaluation/base/eval-configs/` (files must match)
+1. Edit the relevant test YAML in `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/eval-configs/`
+2. Copy to `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/eval-configs/` (files must match)
 3. Follow the test YAML structure documented in `references/rag-eval-configs.md`
 4. Re-run evaluation to verify
 
 ### Modifying the Judge Prompt
 
-1. Edit `steps/step-08-model-evaluation/eval-configs/scoring-templates/judge_prompt.txt`
-2. Copy to `gitops/step-08-model-evaluation/base/eval-configs/scoring-templates/`
+1. Edit `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/eval-configs/scoring-templates/judge_prompt.txt`
+2. Copy to `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/eval-configs/scoring-templates/`
 3. The prompt uses placeholders: `{input_query}`, `{expected_answer}`, `{generated_answer}`
 4. Must end with "Answer: " to anchor the A-E extraction regex
 

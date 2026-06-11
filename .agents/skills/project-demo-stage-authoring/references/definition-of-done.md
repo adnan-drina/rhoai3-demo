@@ -1,12 +1,12 @@
-# Demo Step Definition Of Done
+# Demo Stage Definition Of Done
 
-Use this checklist before declaring a step ready.
+Use this checklist before declaring a stage ready.
 
 ## Scope
 
-- Step number, slug, title, concept, audience, dependencies, and non-goals are
+- Stage identifier, slug, title, concept, audience, dependencies, and non-goals are
   recorded in `PLAN.md`.
-- The step introduces one coherent capability or clearly bounded integration.
+- The stage introduces one coherent capability or clearly bounded integration.
 - Deferred work is listed in `PLAN.md` or `docs/BACKLOG.md`.
 
 ## Sources
@@ -30,7 +30,7 @@ Use this checklist before declaring a step ready.
 
 ## GitOps
 
-- GitOps ownership is explicit: step-owned path or shared platform owner.
+- GitOps ownership is explicit: stage-owned path or shared platform owner.
 - No two Applications render competing full copies of the same shared resource.
 - Argo CD Application uses project standards from `project-gitops-authoring`.
 - Kustomize renders locally.
@@ -74,11 +74,11 @@ Use this checklist before declaring a step ready.
 
 ## Commit Boundary
 
-Commit each completed step as an atomic unit:
+Commit each completed stage as an atomic unit:
 
-- step README and PLAN
+- stage README and PLAN
 - GitOps manifests
 - Argo CD Application or shared owner patch
 - deploy and validation scripts
 - operations, troubleshooting, or backlog updates
-- skill/source updates needed by the step
+- skill/source updates needed by the stage

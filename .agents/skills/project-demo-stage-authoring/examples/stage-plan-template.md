@@ -1,13 +1,15 @@
-# Step PLAN.md Template
+# Stage PLAN.md Template
 
-Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
+Use this as the starting shape for `stage-YXX-slug/PLAN.md`.
 
 ```markdown
-# Step XX: <Title> Plan
+# Stage YXX: <Title> Plan
 
 ## Intent
 
-- Step slug: `step-XX-slug`
+- Stage identifier: `YXX`
+- Stage family: `1xx AI Platform Foundation | 2xx Production GenAI & Private Data | 3xx Agentic AI & Enterprise Integration | 4xx AI Operations, Evaluation & MLOps | 5xx Edge & Applied AI`
+- Stage slug: `stage-YXX-slug`
 - Concept introduced:
 - Target audience:
 - Enterprise value:
@@ -49,7 +51,7 @@ Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
 
 ## Skill Routing
 
-- Coordinator: `project-demo-step-authoring`
+- Coordinator: `project-demo-stage-authoring`
 - Documentation:
 - GitOps:
 - Product skills:
@@ -58,7 +60,7 @@ Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
 
 ## GitOps Ownership
 
-- Ownership model: step-owned | shared-owner
+- Ownership model: stage-owned | shared-owner
 - Owning Application:
 - Source path:
 - Shared resources touched:

@@ -24,7 +24,7 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
 - Optional components are modeled as Kustomize Components or small patches.
 - For RHOAI, there is a single GitOps owner for the rendered
   `DataScienceCluster` and `DSCInitialization`.
-- Later RHOAI demo steps patch the platform-owned DSC overlay instead of
+- Later RHOAI demo stages patch the platform-owned DSC overlay instead of
   creating competing full DSC resources in separate Applications.
 - Component patches are minimal and do not reset unrelated
   `spec.components` entries.

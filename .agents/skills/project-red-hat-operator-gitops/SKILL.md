@@ -92,7 +92,7 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
   components such as serving, distributed compute, training, TrustyAI, model
   registry, dashboard access, and NVIDIA accelerator profile.
 - The same Argo CD Application should own the rendered DSC/DSCI objects. Later
-  demo steps should add component patches to that platform overlay instead of
+  demo stages should add component patches to that platform overlay instead of
   creating separate Applications that also manage the same DSC/DSCI resources.
 
 ## Demo Rules
@@ -116,10 +116,10 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
   unless a temporary aggregate overlay is needed for a single Argo CD
   Application.
 - For RHOAI, start with a minimal base DSC/DSCI deployment in the first demo
-  platform step. Later steps introduce capabilities by adding local Kustomize
+  platform stage. Later stages introduce capabilities by adding local Kustomize
   Components or patches that update the same platform-owned
   `DataScienceCluster`.
-- Avoid duplicating the full `DataScienceCluster` in every demo step. Duplicate
+- Avoid duplicating the full `DataScienceCluster` in every demo stage. Duplicate
   full-resource ownership can cause Argo CD ownership conflicts and can remove
   previously enabled components.
 - Prefer separate Argo CD Applications for operator install and instance
@@ -152,8 +152,8 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
    - optional `instance/components`
    - optional `instance/overlays/<profile>`
    - optional `aggregate/overlays/<profile>`
-6. For RHOAI, decide the progressive DSC owner path before adding steps:
-   - base DSC/DSCI in the first RHOAI platform step
+6. For RHOAI, decide the progressive DSC owner path before adding stages:
+   - base DSC/DSCI in the first RHOAI platform stage
    - later component patches under the same platform instance tree
    - one Argo CD Application owning the final rendered DSC/DSCI
 7. For Argo CD, choose whether the operator and operand are separate

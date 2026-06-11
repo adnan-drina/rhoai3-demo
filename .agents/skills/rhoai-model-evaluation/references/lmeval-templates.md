@@ -14,7 +14,7 @@
 
 LM-Eval benchmarks use the TrustyAI operator's `LMEvalJob` custom resource
 (`trustyai.opendatahub.io/v1alpha1`). Templates are in
-`gitops/step-08-model-evaluation/base/lmeval/` and applied on-demand (not
+`backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/lmeval/` and applied on-demand (not
 ArgoCD-managed).
 
 ## LMEvalJob CR Structure
@@ -102,16 +102,19 @@ increase runtime significantly.
 
 ```bash
 # Default: nemotron-3-nano-30b-a3b, 50 samples
-./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b
 
 # Custom: 200 samples
-./steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
+./backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/run-lmeval.sh nemotron-3-nano-30b-a3b 200
 ```
 
-### Manual CR application
+### Legacy manual CR application reference
+
+Do not run this as an active project command. Recreate the equivalent through
+the new stage GitOps owner before use.
 
 ```bash
-oc apply -f gitops/step-08-model-evaluation/base/lmeval/nemotron-3-nano-30b-a3b-eval.yaml
+oc apply -f backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/lmeval/nemotron-3-nano-30b-a3b-eval.yaml
 ```
 
 ### Monitoring

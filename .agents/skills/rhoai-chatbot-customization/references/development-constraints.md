@@ -1,6 +1,6 @@
 # Chatbot Development Constraints
 
-Use these constraints when changing `steps/step-07-rag/chatbot/**`.
+Use these constraints when changing `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/**`.
 
 ## Architecture Constraints
 

@@ -89,19 +89,19 @@ gitops/rhoai-platform/
         kustomization.yaml
 ```
 
-The first platform step should introduce the operator and a minimal base
-DSC/DSCI. Later demo steps should add component directories and append those
+The first platform stage should introduce the operator and a minimal base
+DSC/DSCI. Later demo stages should add component directories and append those
 components to the platform overlay that is already owned by the RHOAI platform
 Argo CD Application.
 
 This avoids several failure modes:
 
 - two Argo CD Applications fighting over the same `DataScienceCluster`
-- a later step rendering a full DSC that accidentally removes a previously
+- a later stage rendering a full DSC that accidentally removes a previously
   enabled component
 - unclear ownership of shared RHOAI namespaces, DSCI service mesh, monitoring,
   dashboard, or CA bundle settings
-- step-specific manifests encoding global platform state without updating the
+- stage-specific manifests encoding global platform state without updating the
   platform source of truth
 
 Component patches should be minimal and additive. A component patch should only

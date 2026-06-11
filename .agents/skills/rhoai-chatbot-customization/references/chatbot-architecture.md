@@ -12,7 +12,7 @@
 ## Component Map
 
 ```
-steps/step-07-rag/chatbot/
+backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/
 ├── Containerfile                        # Build image
 ├── pyproject.toml                       # Dependencies
 └── llama_stack_ui/distribution/ui/
@@ -93,7 +93,7 @@ The chatbot uses env vars on the Deployment, not a ConfigMap:
 
 | Env Var | Source | Purpose |
 |---------|--------|---------|
-| `LLAMA_STACK_URL` | `gitops/step-07-rag/base/chatbot/chatbot.yaml` | LlamaStack API endpoint |
+| `LLAMA_STACK_URL` | `backup/legacy-implementation-2026-06-09/gitops/step-07-rag/base/chatbot/chatbot.yaml` | LlamaStack API endpoint |
 | `INFERENCE_MODEL` | Same file | Default model for inference |
 | `RAG_QUESTION_SUGGESTIONS` | Same file | JSON: `{"whoami": ["Q1", ...], "acme_corporate": ["Q1", ...]}` |
 
@@ -134,7 +134,7 @@ Namespace: private-ai
 Deployment: rag-chatbot
   Replicas: 1
   Image: image-registry.openshift-image-registry.svc:5000/private-ai/rag-chatbot:latest
-  BuildConfig: rag-chatbot (source: steps/step-07-rag/chatbot/)
+  BuildConfig: rag-chatbot (source: backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/)
   Route: rag-chatbot (edge TLS)
 
 Dependencies:

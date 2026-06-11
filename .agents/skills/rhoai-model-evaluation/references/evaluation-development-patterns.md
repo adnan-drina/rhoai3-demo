@@ -28,14 +28,14 @@ When updating expected answers:
 1. Run pre-RAG evaluation to establish the new baseline.
 2. Run post-RAG evaluation to confirm improvement.
 3. Update both copies of the test assets:
-   - `steps/step-08-model-evaluation/eval-configs/`
-   - `gitops/step-08-model-evaluation/base/eval-configs/`
+   - `backup/legacy-implementation-2026-06-09/steps/step-08-model-evaluation/eval-configs/`
+   - `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/eval-configs/`
 
-The step-level and GitOps-level copies must remain identical.
+The legacy step-level and legacy GitOps-level copies must remain identical.
 
 ## LMEvalJob Pattern
 
-LMEvalJob templates under `gitops/step-08-model-evaluation/base/lmeval/` are
+LMEvalJob templates under `backup/legacy-implementation-2026-06-09/gitops/step-08-model-evaluation/base/lmeval/` are
 on-demand templates applied by `run-lmeval.sh`. They are intentionally not
 ArgoCD-managed because evaluation jobs are one-shot workloads, not continuously
 reconciled resources. Do not add them to the ArgoCD Application kustomization.

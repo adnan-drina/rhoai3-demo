@@ -1,6 +1,6 @@
 # Red Hat Source Alignment Checklist
 
-Use this checklist to verify that step READMEs and GitOps artifacts are
+Use this checklist to verify that stage READMEs and GitOps artifacts are
 grounded in Red Hat source material for the active product baseline.
 
 ## Source Roles
@@ -31,7 +31,7 @@ Flag a `[DOC-REF]` finding when:
 
 - README text names one RHOAI version but links to another
 - a RHOAI product-documentation link uses `/latest/` without an explicit reason
-- a step README cites older RHOAI documentation for a current-baseline
+- a stage README cites older RHOAI documentation for a current-baseline
   configuration
 - a skill or rule hard-codes a RHOAI version instead of pointing to
   `docs/PLATFORM_BASELINE.md`, unless that file is intentionally
@@ -39,7 +39,7 @@ Flag a `[DOC-REF]` finding when:
 
 ## README Concept Checks
 
-Each step README should start by introducing the concept the step adds to the
+Each stage README should start by introducing the concept the stage adds to the
 demo, such as Private AI, GPU-as-a-Service, Models-as-a-Service, model
 registry, RAG, EvalHub, guardrails, MCP, MLOps, or edge AI.
 
@@ -73,7 +73,7 @@ After the concept introduction, the README should explain which technologies
 enable the concept in this project.
 
 For every RHOAI, OCP, MicroShift, OpenShift Pipelines, Red Hat AI, or Red Hat
-registry component introduced in the step:
+registry component introduced in the stage:
 
 - include an active-baseline official Red Hat documentation link
 - identify the product chapter or docs area used for configuration
@@ -81,7 +81,7 @@ registry component introduced in the step:
   the official docs
 - link to rh-brain examples only as supporting implementation examples
 - records any Red Hat-linked GitHub reference implementation that informed the
-  step design, or explicitly notes that no relevant implementation source was
+  stage design, or explicitly notes that no relevant implementation source was
   found
 - avoid claiming product-native behavior for custom demo code unless the
   boundary is explicit

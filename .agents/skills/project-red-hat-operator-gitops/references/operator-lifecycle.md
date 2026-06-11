@@ -65,7 +65,7 @@ Use a Git change for controlled lifecycle moves:
 4. Sync the operator Application first.
 5. Wait for Subscription, InstallPlan, and CSV readiness.
 6. Update operand CR patches after the new CRDs and fields are available.
-7. Validate product-specific health before merging further demo steps.
+7. Validate product-specific health before merging further demo stages.
 
 Do not use live `oc patch subscription` or console channel edits as the normal
 path. If an emergency live change is needed, capture it back into Git or let
@@ -99,7 +99,7 @@ For RHOAI, separate Operator lifecycle from platform capability lifecycle:
 - operator overlay controls `rhods-operator` Subscription channel and approval
   strategy
 - `instance/base` owns minimal `DSCInitialization` and `DataScienceCluster`
-- later demo steps add Kustomize Components that patch the same
+- later demo stages add Kustomize Components that patch the same
   platform-owned DSC/DSCI
 
 During an RHOAI version upgrade, sync the Operator first, verify the CSV and

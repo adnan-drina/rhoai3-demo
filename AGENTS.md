@@ -25,11 +25,11 @@ No active bootstrap, deploy, validate, or demo-flow commands exist yet.
 Clean-slate implementation areas:
 
 ```text
-gitops/   # New GitOps source tree; currently placeholder-only
-scripts/  # New project automation; currently placeholder-only
-steps/    # New demo step structure; currently placeholder-only
-docs/     # Active project docs and product baseline
-.agents/  # Shared skills, rules, reference maps, and hooks
+gitops/      # New GitOps source tree; currently placeholder-only
+scripts/     # New project automation; currently placeholder-only
+stage-*/     # Future root-level demo stage folders: stage-YXX-slug/
+docs/        # Active project docs and product baseline
+.agents/     # Shared skills, rules, reference maps, and hooks
 ```
 
 Legacy implementation areas are preserved under the backup root with their
@@ -77,12 +77,12 @@ When the new GitOps implementation is introduced:
 ## Code And Docs Must Be Aligned
 
 During reimplementation, every new capability should be introduced as an atomic
-set of documentation, GitOps artifacts, scripts, and validation.
+stage: documentation, GitOps artifacts, scripts, and validation.
 
-READMEs should provide the Why and What for a technical audience: concept value,
-RHOAI technology mapping, and architecture delta. GitOps and live demos show the
-How. Put operational details in `docs/OPERATIONS.md` and failure recovery in
-`docs/TROUBLESHOOTING.md`.
+Stage READMEs should provide the Why and What for a technical audience:
+concept value, RHOAI technology mapping, and architecture delta. GitOps and
+live demos show the How. Put operational details in `docs/OPERATIONS.md` and
+failure recovery in `docs/TROUBLESHOOTING.md`.
 
 Do not claim capabilities that are not implemented. Future or deferred
 capabilities must be clearly labeled.
@@ -100,8 +100,8 @@ pin to the active refactoring branch; update the Application `targetRevision`
 back to the intended release ref when stabilizing.
 
 Commit format: `type(scope): description` - types: feat, fix, docs, refactor,
-chore, ci. Scope: step number for step-specific changes, component name for
-cross-cutting changes.
+chore, ci. Scope: stage identifier or slug for stage-specific changes,
+component name for cross-cutting changes.
 
 ## Detailed Rules
 
@@ -133,7 +133,7 @@ tool-specific skill discovery folders in this repo. Use the prefix plus
 
 | Group | Prefix | Skills | Purpose |
 |-------|--------|--------|---------|
-| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-red-hat-doc-skill-authoring`, `project-rhoai-doc-chapter-skill-authoring`, `project-red-hat-operator-gitops`, `project-demo-step-authoring`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Repo layout, demo step lifecycle, GitOps step conventions, documentation structure, Red Hat narrative grounding, Red Hat docs-to-skill generation, Red Hat Operator GitOps deployment patterns, manifest review, Red Hat source alignment, and shared AI guidance |
+| Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-red-hat-doc-skill-authoring`, `project-rhoai-doc-chapter-skill-authoring`, `project-red-hat-operator-gitops`, `project-demo-stage-authoring`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review` | Repo layout, demo stage lifecycle, GitOps stage conventions, documentation structure, Red Hat narrative grounding, Red Hat docs-to-skill generation, Red Hat Operator GitOps deployment patterns, manifest review, Red Hat source alignment, and shared AI guidance |
 | Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy. These skills are planning/reference aids until active scripts are recreated. |
 | RHOAI Platform | `rhoai-*` | `rhoai-architecture-overview`, `rhoai-release-and-support-posture`, `rhoai-platform-planning`, `rhoai-api-tiers`, `rhoai-update-channels`, `rhoai-self-managed-installation`, `rhoai-dsci-dsc-configuration`, `rhoai-distributed-workloads`, `rhoai-kueue-workload-management`, `rhoai-distributed-workload-operations`, `rhoai-distributed-workload-workflows`, `rhoai-kubeflow-spark-operator`, `rhoai-nvidia-gpu-accelerators`, `rhoai-certificate-management`, `rhoai-observability`, `rhoai-logs-and-audit-records`, `rhoai-installation-troubleshooting`, `rhoai-uninstallation`, `rhoai-users-groups-access`, `rhoai-access-group-selection`, `rhoai-central-authentication-service`, `rhoai-dashboard-applications`, `rhoai-connected-applications`, `rhoai-dashboard-customization`, `rhoai-cluster-pvc-size`, `rhoai-storage-classes`, `rhoai-connection-types`, `rhoai-s3-object-storage-data`, `rhoai-project-workflows`, `rhoai-data-science-ide-workflows`, `rhoai-project-scoped-resources`, `rhoai-component-resource-customization`, `rhoai-telemetry-admin-settings`, `rhoai-feature-store`, `rhoai-automl`, `rhoai-basic-workbenches`, `rhoai-workbenches-custom-images`, `rhoai-workbench-image-import`, `rhoai-workbench-gateway-api-migration`, `rhoai-model-serving-platform`, `rhoai-model-deployment`, `rhoai-maas-governance`, `rhoai-distributed-inference-llmd`, `rhoai-model-management-monitoring`, `rhoai-monitoring-trustyai`, `rhoai-model-catalog-sources`, `rhoai-model-catalog-workflows`, `rhoai-gen-ai-playground`, `rhoai-autorag`, `rhoai-model-registry`, `rhoai-model-registry-workflows`, `rhoai-llama-stack`, `rhoai-ai-pipelines`, `rhoai-mlflow`, `rhoai-model-customization-training`, `rhoai-evaluation`, `rhoai-guardrails-safety`, `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
 | OpenShift Platform | `ocp-*` | `ocp-ai-workloads`, `ocp-authentication-identity-providers`, `ocp-cicd-builds`, `ocp-distributed-tracing`, `ocp-etcd`, `ocp-grafana-operator`, `ocp-gitops-operator`, `ocp-image-registry-and-mirroring`, `ocp-ingress-gateway-routes`, `ocp-machine-configuration`, `ocp-machine-management`, `ocp-node-feature-discovery`, `ocp-nodes`, `ocp-observability`, `ocp-opentelemetry`, `ocp-security-rbac-scc`, `ocp-storage`, `ocp-web-console`; additional component skills planned | Official-doc-backed OpenShift Container Platform guidance plus repo-approved OpenShift platform extensions for infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration |

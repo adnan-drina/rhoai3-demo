@@ -18,7 +18,7 @@ description: >
   shutdown, or recover from shutdown by bringing resources back up. Also use
   when the user asks "how do I shut down the demo?" or "which models can I stop
   safely?".
-  Do NOT use for deploying or re-deploying steps (use env-deploy-and-evaluate),
+  Do NOT use for deploying or re-deploying stages (use env-deploy-and-evaluate),
   troubleshooting failures (use env-troubleshoot), or chatbot changes
   (use rhoai-chatbot-customization).
 ---
@@ -34,7 +34,7 @@ material only.
 
 The active implementation is being rewritten. No active resource-management
 scripts or current GitOps Applications exist yet. Treat the resource inventory,
-step names, and legacy command references in this skill as reference material
+stage names, and legacy command references in this skill as reference material
 for rebuilding the workflow, not as active-project instructions.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
@@ -43,7 +43,8 @@ user explicitly asks to restore or inspect the legacy implementation.
 ## Prerequisites
 
 - Logged in with `oc` (cluster-admin)
-- ArgoCD Applications for step-01 and step-05 have `selfHeal: false`
+- ArgoCD Applications for the GPU infrastructure and private model-serving
+  stages have documented `selfHeal` behavior for intentional scale operations
 
 ## Resource Inventory
 
@@ -58,7 +59,7 @@ oc get isvc -n maas
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
 
 # ArgoCD sync status
-for app in step-01-gpu-and-prereq step-05-maas-model-serving; do
+for app in stage-130-gpu-accelerator-foundation stage-220-private-model-serving; do
   echo "$app: $(oc get application $app -n openshift-gitops -o jsonpath='{.status.sync.status}/{.status.health.status}')"
 done
 ```
@@ -127,12 +128,13 @@ oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
   -p '{"spec":{"replicas":1}}'
 ```
 
-In the legacy implementation, Step 05 also performed this scale-up guard
+In the legacy implementation, the model-serving step also performed this
+scale-up guard
 automatically unless `RHOAI_SKIP_GPU_SCALE=true` was set. Recreate that behavior
 before relying on this command path:
 
 ```bash
-./steps/step-05-maas-model-serving/deploy.sh
+./stage-220-private-model-serving/deploy.sh
 ```
 
 ## Restore Full Git State
@@ -141,11 +143,11 @@ To bring everything back to the Git-declared state, sync via ArgoCD:
 
 ```bash
 # Sync a specific app
-oc patch application step-05-maas-model-serving -n openshift-gitops \
+oc patch application stage-220-private-model-serving -n openshift-gitops \
   --type merge -p '{"operation":{"sync":{}}}'
 
 # Or sync both
-for app in step-01-gpu-and-prereq step-05-maas-model-serving; do
+for app in stage-130-gpu-accelerator-foundation stage-220-private-model-serving; do
   oc patch application "$app" -n openshift-gitops --type merge -p '{"operation":{"sync":{}}}'
 done
 ```
@@ -158,7 +160,7 @@ After any scaling operation, verify the state:
 
 ```bash
 # Check ArgoCD shows expected status
-oc get application step-01-gpu-and-prereq step-05-maas-model-serving -n openshift-gitops \
+oc get application stage-130-gpu-accelerator-foundation stage-220-private-model-serving -n openshift-gitops \
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness
@@ -175,5 +177,5 @@ oc get nodes -l node-role.kubernetes.io/gpu
 |--------|---------------|------------|
 | Manual scale down model | OutOfSync | No (selfHeal=false) |
 | Manual scale down MachineSet | OutOfSync | No (selfHeal=false) |
-| Push Git change to step-01/05 | Auto-syncs | Yes (automated=true) |
+| Push Git change to GPU or model-serving stage | Auto-syncs | Yes (automated=true) |
 | Click Sync in ArgoCD UI | Synced | Restores Git state |

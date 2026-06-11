@@ -1,28 +1,28 @@
-# Demo Step Lifecycle
+# Demo Stage Lifecycle
 
-Use this lifecycle for every new rhoai3-demo step. The goal is methodical
-product-demo delivery: each step introduces a clear Red Hat-aligned concept,
+Use this lifecycle for every new rhoai3-demo stage. The goal is methodical
+product-demo delivery: each stage introduces a clear Red Hat-aligned concept,
 implements it with GitOps, and proves it with validation.
 
 ## Phase 0: Intake
 
-Define the step before creating files:
+Define the stage before creating files:
 
-- step number and slug: `step-XX-slug`
+- stage identifier and slug: `stage-YXX-slug`
 - working title and one-line tagline
-- concept introduced by the step
+- concept introduced by the stage
 - target audience: architect, platform engineer, data scientist, risk owner,
   or business stakeholder
 - enterprise value: control, governance, compliance, cost, scale, safety,
   portability, productivity, traceability, or resilience
-- dependency on previous steps
+- dependency on previous stages
 - new components introduced now
-- reused components from earlier steps
+- reused components from earlier stages
 - explicit non-goals
 - acceptance criteria
 
 If scope does not fit in one concise README and one deployable GitOps slice,
-split the step or move future work to `docs/BACKLOG.md`.
+split the stage or move future work to `docs/BACKLOG.md`.
 
 ## Phase 1: Source Capture
 
@@ -32,7 +32,7 @@ Before writing implementation:
 - capture at least one Red Hat narrative source from
   `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` for concept/value framing
 - capture active-baseline official Red Hat docs for every product component
-  introduced by the step
+  introduced by the stage
 - use `.agents/references/red-hat-doc-map.yaml` to find matching skills
 - search for reference implementations in GitHub repositories published by or
   used by Red Hat product, field, solution, demo, or community-of-practice
@@ -61,9 +61,9 @@ posture, operator channels, image provenance, or API tier.
 
 ## Phase 2: Skill Routing
 
-List the skills that will govern the step:
+List the skills that will govern the stage:
 
-- one coordinator skill: `project-demo-step-authoring`
+- one coordinator skill: `project-demo-stage-authoring`
 - product skills: `rhoai-*`, `ocp-*`, `odf-*`, or approved repo extension
 - GitOps skills: `project-gitops-authoring` and possibly
   `project-red-hat-operator-gitops`
@@ -73,12 +73,12 @@ List the skills that will govern the step:
   support posture matters
 - environment skills for live deployment and validation
 
-The step `PLAN.md` must name the active skills so future agents know which
+The stage `PLAN.md` must name the active skills so future agents know which
 rules apply.
 
 ## Phase 3: Plan
 
-Create `steps/step-XX-slug/PLAN.md` before implementation. The plan must cover:
+Create `stage-YXX-slug/PLAN.md` before implementation. The plan must cover:
 
 - scope and non-goals
 - source list
@@ -92,11 +92,11 @@ Create `steps/step-XX-slug/PLAN.md` before implementation. The plan must cover:
 - rollback or cleanup notes
 - risks and deferred items
 
-Use `examples/step-plan-template.md` as the starting point.
+Use `examples/stage-plan-template.md` as the starting point.
 
 ## Phase 4: README
 
-Write `steps/step-XX-slug/README.md` using
+Write `stage-YXX-slug/README.md` using
 `project-documentation-authoring/references/readme-standard.md`.
 
 The README should answer Why and What:
@@ -113,15 +113,15 @@ the README.
 
 Decide where resources live before creating manifests.
 
-Use a step-owned GitOps path when the step owns independent resources:
+Use a stage-owned GitOps path when the stage owns independent resources:
 
 ```text
-gitops/step-XX-slug/base/
-gitops/step-XX-slug/overlays/<purpose>/
-gitops/argocd/app-of-apps/step-XX-slug.yaml
+gitops/stage-YXX-slug/base/
+gitops/stage-YXX-slug/overlays/<purpose>/
+gitops/argocd/app-of-apps/stage-YXX-slug.yaml
 ```
 
-Use a shared-owner path when the step changes global platform state:
+Use a shared-owner path when the stage changes global platform state:
 
 ```text
 gitops/<shared-platform-owner>/instance/components/<feature>/
@@ -155,12 +155,12 @@ artifacts, or internally built demo images unless a demo exception is approved.
 
 ## Phase 7: Scripts
 
-Each step normally has:
+Each stage normally has:
 
 - `deploy.sh`: applies the Argo CD Application or shared owner Application
   first, then waits or reports status
 - `validate.sh`: performs deterministic readiness, API, route, model, metric,
-  or workflow checks for the step
+  or workflow checks for the stage
 
 Scripts that touch a live cluster must:
 
@@ -181,12 +181,12 @@ Run the narrowest useful checks before live deployment:
 - dry-run or `oc explain` only after the safety guard confirms the target
   cluster
 
-Live validation should prove the user-visible step outcome, not just resource
+Live validation should prove the user-visible stage outcome, not just resource
 existence.
 
 ## Phase 9: Operations And Troubleshooting
 
-Update promoted docs only when the step creates reusable operational knowledge:
+Update promoted docs only when the stage creates reusable operational knowledge:
 
 - `docs/OPERATIONS.md`: deployment order, day-2 operation, shutdown/recovery,
   credential setup, or environment-specific procedure
@@ -195,11 +195,11 @@ Update promoted docs only when the step creates reusable operational knowledge:
 - `docs/BACKLOG.md`: deferred capabilities or follow-up work
 - `docs/PLATFORM_BASELINE.md`: product baseline changes only
 
-Do not scatter runbook content across step READMEs.
+Do not scatter runbook content across stage READMEs.
 
 ## Phase 10: Acceptance
 
-A step is ready only when:
+A stage is ready only when:
 
 - source capture is complete
 - README, PLAN, GitOps, scripts, and validation agree

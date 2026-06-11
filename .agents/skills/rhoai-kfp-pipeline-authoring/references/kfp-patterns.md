@@ -1,7 +1,9 @@
 # KFP Pipeline Patterns
 
-Use Step 12 (`steps/step-12-mlops-pipeline/kfp/`) as the project reference for
-KFP v2 pipeline authoring unless the task explicitly changes that standard.
+Use active `stage-*/kfp/` content as the project reference for KFP v2 pipeline
+authoring. Until active KFP content exists, treat
+`backup/legacy-implementation-2026-06-09/steps/step-12-mlops-pipeline/kfp/` as
+a legacy example only.
 
 ## Pipeline Definition
 

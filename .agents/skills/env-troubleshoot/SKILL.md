@@ -11,7 +11,7 @@ description: >
   Diagnose and fix issues in the live rhoai3-demo AWS/OpenShift environment
   once active deploy and validate scripts exist. During the reimplementation,
   use this skill to rebuild troubleshooting coverage from legacy references.
-  Use when a deployment step fails, validate.sh reports errors, pods are in
+  Use when a deployment stage fails, validate.sh reports errors, pods are in
   CrashLoopBackOff/Pending/Error/ImagePullBackOff, ArgoCD shows OutOfSync or
   Degraded, operators are not installing, GPU nodes are not joining,
   InferenceServices are not Ready, LlamaStack returns errors, Guardrails
@@ -52,28 +52,24 @@ user explicitly asks to restore or inspect the legacy implementation.
 ### Step 1: Run the Validation Script When It Exists
 
 ```bash
-./steps/step-XX-<name>/validate.sh
+./stage-YXX-slug/validate.sh
 ```
 Check exit code: 0 = pass, 1 = failures, 2 = warnings only. During the
-reimplementation, skip this step until active validation scripts are recreated.
+reimplementation, skip this check until active validation scripts are recreated.
 
 ### Step 2: Consult Official RHOAI Documentation
 
 Use official docs for the active baseline in `docs/PLATFORM_BASELINE.md`.
-Focus on the relevant section:
+Focus on the relevant section by using `.agents/references/red-hat-doc-map.yaml`
+and the stage family:
 
-| Steps | Doc Section |
-|-------|-------------|
-| 01, 02 | Installing and Uninstalling |
-| 03 | Managing Resources |
-| 04 | Enabling Model Registry |
-| 05 | Deploying Models, GenAI Playground |
-| 07 | Working with LlamaStack / RAG |
-| 08 | Evaluating AI Systems |
-| 09 | AI Safety with Guardrails |
-| 10 | GenAI Playground (MCP Servers) |
-| 11 | Deploying Models (OpenVINO, KServe) |
-| 12 | Working with AI Pipelines, Managing Model Registries |
+| Stage family | Primary docs route |
+|--------------|--------------------|
+| `1xx` | OCP, ODF, RHOAI install, DSCI/DSC, users/groups, accelerators, observability |
+| `2xx` | RHOAI model serving, model catalog, model registry, MaaS, RAG, guardrails |
+| `3xx` | RHOAI Llama Stack, Gen AI Studio, MCP, connected applications |
+| `4xx` | RHOAI AI Pipelines, MLflow, evaluation, monitoring, distributed workloads |
+| `5xx` | Edge or applied AI product docs selected by the stage `PLAN.md` |
 
 ### Step 3: Gather Cluster State
 

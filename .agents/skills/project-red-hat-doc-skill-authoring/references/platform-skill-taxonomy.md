@@ -43,7 +43,7 @@ Use stable capability names:
 - `odf-object-bucket-claims`
 - `odf-multicloud-gateway`
 
-Prefer names based on product capability rather than one demo step. Avoid
+Prefer names based on product capability rather than one demo stage. Avoid
 version numbers in skill names.
 
 Keep skill folders flat under `.agents/skills/<skill-name>/`. Do not create

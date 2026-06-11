@@ -1,22 +1,22 @@
 # Argo CD And Kustomize Standards
 
 Use these standards when authoring or changing `gitops/**`,
-`kustomization.yaml`, Argo CD Applications, or per-step deployment flow.
+`kustomization.yaml`, Argo CD Applications, or per-stage deployment flow.
 
 ## Golden Rule
 
-Every demo step must be reproducible from GitOps. A step normally has:
+Every demo stage must be reproducible from GitOps. A stage normally has:
 
-1. `gitops/step-XX-name/base/` as the Kustomize source of truth.
-2. `gitops/argocd/app-of-apps/step-XX-name.yaml` as its Argo CD Application.
-3. `steps/step-XX-name/` as the human-facing documentation and runtime wrapper.
+1. `gitops/stage-YXX-slug/base/` as the Kustomize source of truth.
+2. `gitops/argocd/app-of-apps/stage-YXX-slug.yaml` as its Argo CD Application.
+3. `stage-YXX-slug/` as the root-level documentation and runtime wrapper.
 
 Do not manage Argo CD-owned resources through direct imperative manifest
 application except for documented prerequisites such as locally supplied
 secrets.
 
-For a new step, use `project-demo-step-authoring` first. That process records
-whether the step owns an independent GitOps path or patches a shared platform
+For a new stage, use `project-demo-stage-authoring` first. That process records
+whether the stage owns an independent GitOps path or patches a shared platform
 owner before any manifests are written.
 
 ## Repository Layout
@@ -26,17 +26,16 @@ Use the split layout:
 ```text
 gitops/
   argocd/app-of-apps/
-  step-XX-name/base/
-  step-XX-name/overlays/<purpose>/
-steps/
-  step-XX-name/
+  stage-YXX-slug/base/
+  stage-YXX-slug/overlays/<purpose>/
+stage-YXX-slug/
 scripts/
 docs/
 ```
 
 ## Kustomize Structure
 
-- Prefer `base/` plus `overlays/<env-or-purpose>/` within each step.
+- Prefer `base/` plus `overlays/<env-or-purpose>/` within each stage.
 - Keep `base/` environment agnostic.
 - Put environment-specific deltas in overlays.
 - Avoid duplicating full resources across overlays; use patches.
@@ -45,7 +44,7 @@ docs/
 
 ## Shared Platform Resource Ownership
 
-Some platform resources are global for the demo even when later steps depend
+Some platform resources are global for the demo even when later stages depend
 on them. Examples include RHOAI `DataScienceCluster`, `DSCInitialization`,
 cluster-scoped Operator Subscriptions, ODF `StorageCluster`, and shared
 Gateway or observability resources.
@@ -56,8 +55,9 @@ or Kustomize Components.
 
 For RHOAI, follow the `project-red-hat-operator-gitops` pattern:
 
-- step 1 creates the base RHOAI Operator and minimal DSC/DSCI platform layer
-- later demo steps add feature components that patch the platform-owned
+- the foundation RHOAI stage creates the base Operator and minimal DSC/DSCI
+  platform layer
+- later demo stages add feature components that patch the platform-owned
   `DataScienceCluster`
 - the same Argo CD Application owns the rendered DSC/DSCI objects throughout
   the demo
@@ -78,7 +78,11 @@ change operand CR patches that require the new schema.
 
 ## Naming
 
-- Step folders: `step-XX-descriptive-name`
+- Stage folders: `stage-YXX-descriptive-slug`
+- Stage families: `1xx` AI Platform Foundation, `2xx` Production GenAI and
+  Private Data, `3xx` Agentic AI and Enterprise Integration, `4xx` AI
+  Operations, Evaluation, and MLOps. Use `5xx` only for a separate edge or
+  applied AI track.
 - Overlays: `overlays/<purpose>`
 - Operator folders: group by operator name, such as `nfd/`, `gpu-operator/`,
   or `rhoai-operator/`
@@ -93,13 +97,13 @@ Every Application in `gitops/argocd/app-of-apps/` must include:
 metadata:
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
-    demo.rhoai.io/step: "XX"
+    demo.rhoai.io/stage: "YXX"
   annotations:
-    argocd.argoproj.io/sync-wave: "<step-number * 10>"
-    argocd.argoproj.io/manifest-generate-paths: gitops/step-XX-name
+    argocd.argoproj.io/sync-wave: "<stage-number>"
+    argocd.argoproj.io/manifest-generate-paths: gitops/stage-YXX-slug
 ```
 
-`manifest-generate-paths` prevents unrelated step changes from causing
+`manifest-generate-paths` prevents unrelated stage changes from causing
 unnecessary reconciliation.
 
 ## Revision Policy
@@ -115,7 +119,7 @@ Required pattern:
 | Setting | Value | Why |
 |---------|-------|-----|
 | `automated.prune` | `true` | Remove resources deleted from Git |
-| `automated.selfHeal` | `true` by default | Revert drift; steps 01 and 05 may disable it for intentional scale operations |
+| `automated.selfHeal` | `true` by default | Revert drift; specific stages may disable it only for documented intentional scale operations |
 | `retry.limit` | `10` | Operators need time to install CRDs |
 | `retry.backoff` | `5s`, factor `2`, max `3m` | Exponential backoff |
 | `SkipDryRunOnMissingResource` | `true` | CRDs may not exist at first sync |

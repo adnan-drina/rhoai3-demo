@@ -1,27 +1,27 @@
-# Step README Standard
+# Stage README Standard
 
-Each step README is a concise Why/What document for a technical audience. It
-should educate a new reader, explain the RHOAI value introduced by the step,
+Each stage README is a concise Why/What document for a technical audience. It
+should educate a new reader, explain the RHOAI value introduced by the stage,
 and stay short enough to become a three-slide presentation segment.
 
 GitOps manifests, deploy scripts, validation scripts, and the live demo show
-How. Step READMEs explain Why the step matters and What Red Hat technologies
+How. Stage READMEs explain Why the stage matters and What Red Hat technologies
 make it possible.
 
 ## Reader Promise
 
-Each step README should let an enterprise architect, platform engineer, data
+Each stage README should let an enterprise architect, platform engineer, data
 scientist, risk owner, or business stakeholder quickly answer:
 
-- What concept is introduced in this step?
+- What concept is introduced in this stage?
 - Why should a European-regulated enterprise care?
 - What business or platform value does it provide?
 - Which RHOAI, OpenShift, or Red Hat AI technologies enable it?
-- Which components are new in this step, and which were introduced earlier?
+- Which components are new in this stage, and which were introduced earlier?
 
 ## Required README Shape
 
-Use this shape for step READMEs:
+Use this shape for stage READMEs:
 
 1. H1 title and one-line tagline.
 2. `## Why This Matters`
@@ -29,14 +29,14 @@ Use this shape for step READMEs:
 4. `## Architecture`
 5. `## References`
 
-Avoid extra sections unless the step genuinely needs a short known limitation
+Avoid extra sections unless the stage genuinely needs a short known limitation
 or explicit demo boundary. Put operational detail elsewhere.
 
 ## Why This Matters
 
 This section is the source for slide 1: concept and value.
 
-Keep it short. Define the concept introduced by the step and explain why a
+Keep it short. Define the concept introduced by the stage and explain why a
 European-regulated enterprise should care. Focus on the value to the audience,
 not implementation mechanics.
 
@@ -45,7 +45,7 @@ Include:
 - a plain definition of the concept in Red Hat terminology
 - the enterprise concern it addresses, such as governance, control, cost,
   compliance, traceability, productivity, portability, safety, or scale
-- the specific value this step adds to the demo story
+- the specific value this stage adds to the demo story
 - at least one Red Hat article, blog, guide, datasheet, or product page found
   through `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
 
@@ -66,7 +66,7 @@ real in this demo. Prefer a short table over long prose.
 Recommended table:
 
 ```markdown
-| Technology | Role in this step | Source |
+| Technology | Role in this stage | Source |
 |------------|-------------------|--------|
 | Red Hat OpenShift AI <component> | <what it enables> | <official Red Hat docs link> |
 ```
@@ -89,21 +89,21 @@ fields or support posture.
 
 This section is the source for slide 3: architecture delta.
 
-Every root or step README should include a generated SVG capability map once the
+Every root or stage README should include a generated SVG capability map once the
 active diagram generator has been recreated.
 
 - Root map: `docs/assets/architecture/rhoai3-demo-capability-map.svg`
-- Step maps: `../../docs/assets/architecture/step-NN-capability-map.svg`
+- Stage maps: `../docs/assets/architecture/stage-YXX-capability-map.svg`
 
-The step diagram must make the current-step components visually distinct from
+The stage diagram must make the current stage components visually distinct from
 previously introduced components. Follow the architecture diagram skill for
 the exact styling and regeneration workflow.
 
 After the diagram, add a short architecture delta list:
 
 ```markdown
-- New in this step: <components introduced now>
-- Already available: <relevant components from earlier steps>
+- New in this stage: <components introduced now>
+- Already available: <relevant components from earlier stages>
 - Value of the integration: <why the combined architecture matters>
 ```
 
@@ -125,20 +125,20 @@ References should be short and source-focused:
 ## Presentation Extraction Contract
 
 Write READMEs so a future deck-generation skill can create three slides per
-step without guessing:
+stage without guessing:
 
 | Slide | README source | Purpose |
 |-------|---------------|---------|
 | 1 | `## Why This Matters` | Define the concept and explain why the audience should care |
 | 2 | `## What Enables It` | Explain the RHOAI and Red Hat technologies used |
-| 3 | `## Architecture` | Show new components in context with previous steps |
+| 3 | `## Architecture` | Show new components in context with previous stages |
 
 Keep each section concise enough that the deck generator can lift the main
 message directly instead of summarizing long runbook content.
 
 ## Content Boundaries
 
-- Step READMEs should not be deployment runbooks.
+- Stage READMEs should not be deployment runbooks.
 - Do not include scripted walkthroughs, long command blocks, or repeated
   validation output.
 - Put deployment order, environment preparation, shutdown/recovery, and day-2
@@ -168,12 +168,12 @@ After editing a README:
 - `## Why This Matters` defines the concept and states enterprise value.
 - Concept framing cites Red Hat narrative material from `rh-brain`.
 - When available, selected `rh-brain` sources are preferred because they link
-  to concrete GitHub projects or code examples relevant to the step.
+  to concrete GitHub projects or code examples relevant to the stage.
 - `## What Enables It` maps each RHOAI technical component to an official Red
   Hat documentation link for the active baseline.
 - Product capability, custom demo glue, preview posture, and deferred work are
   clearly separated.
-- `## Architecture` points to the correct SVG and distinguishes current-step
+- `## Architecture` points to the correct SVG and distinguishes current stage
   components from previously introduced components.
 - Long runbook, demo-scene, validation, and recovery content has been routed to
   `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md`.

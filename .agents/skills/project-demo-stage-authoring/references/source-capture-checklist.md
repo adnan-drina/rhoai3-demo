@@ -1,7 +1,7 @@
 # Source Capture Checklist
 
 Use this checklist before authoring a README, GitOps manifest, script, or
-architecture diagram for a new step.
+architecture diagram for a new stage.
 
 ## Baseline
 
@@ -53,7 +53,7 @@ Capture implementation pattern sources separately:
 ```text
 Pattern source:
 Source type: official docs | Red Hat-linked GitHub repo | Red Hat CoP catalog | Red Hat blog | repo legacy reference | internal example
-Use in this step:
+Use in this stage:
 Verification required:
 ```
 
@@ -62,7 +62,7 @@ Kustomize references to catalog paths.
 
 ## GitHub Reference Implementations
 
-For most demo steps, actively look for relevant GitHub repositories used by
+For most demo stages, actively look for relevant GitHub repositories used by
 Red Hat product, field, solution, demo, or community-of-practice teams.
 
 Prefer this order:

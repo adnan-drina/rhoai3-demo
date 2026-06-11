@@ -12,19 +12,19 @@ description: >
   RHOAI demo once active README visual assets exist; during the
   reimplementation, use this skill to rebuild the diagram generator and visual
   standards from legacy references. Use when the user asks to align root and
-  step diagrams, update docs/assets/architecture/*.svg, change
+  stage diagrams, update docs/assets/architecture/*.svg, change
   scripts/generate-readme-visuals.py, revise architecture diagram layout, apply
   Red Hat product-layer coloring, or distinguish new, previously introduced,
-  and not-yet-introduced capabilities across steps. Use as part of Project
+  and not-yet-introduced capabilities across stages. Use as part of Project
   Structure content work.
   Do NOT use for live cluster troubleshooting (use env-troubleshoot),
-  deploying steps (use env-deploy-and-evaluate), or changing chatbot behavior
+  deploying stages (use env-deploy-and-evaluate), or changing chatbot behavior
   (use rhoai-chatbot-customization).
 ---
 
 # Refactor Architecture Diagrams
 
-Use this workflow to update the root and step README architecture diagrams
+Use this workflow to update the root and stage README architecture diagrams
 without losing the project-specific story.
 
 ## Reimplementation Status
@@ -70,19 +70,19 @@ State treatment:
 
 Do not use pale product fills for previously introduced capabilities; they look too white in this dark design and compete with the current-step highlight.
 
-Step maps must remain suitable as slide 3 for each README-derived presentation
-segment: they should highlight capabilities introduced in the current demo step
+Stage maps must remain suitable as slide 3 for each README-derived presentation
+segment: they should highlight capabilities introduced in the current demo stage
 while keeping previously introduced components visible for architectural
 context.
 
 ## Refactor Process
 
-1. Read `README.md`, all active `steps/*/README.md` files, and the active
+1. Read `README.md`, all active `stage-*/README.md` files, and the active
    visual generator if it exists.
 2. Identify the canonical root capability list from the demo story, existing tables, and generator data.
-3. Preserve the current step inventory from the repository; do not hard-code
-   optional step names or step counts in this skill.
-4. Map each capability to the current step where it is first introduced,
+3. Preserve the current stage inventory from the repository; do not hard-code
+   optional stage names or stage counts in this skill.
+4. Map each capability to the current stage where it is first introduced,
    deriving that mapping from the active README and generator data.
 5. Recreate or update `scripts/generate-readme-visuals.py` for diagram
    generation unless README links or rules are stale.
@@ -106,6 +106,6 @@ performed.
 The final change should include:
 
 - Updated generator.
-- Regenerated root and step SVGs.
+- Regenerated root and stage SVGs.
 - Any needed README/rule updates.
 - A short validation summary with visual inspection notes.

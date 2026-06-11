@@ -8,7 +8,7 @@ metadata:
   ocp-baseline: "repo"
   skill-group: "Project Structure"
 description: >
-  Review rhoai3-demo step READMEs, Red Hat concept narratives, official
+  Review rhoai3-demo stage READMEs, Red Hat concept narratives, official
   documentation references, GitOps manifests, images, and RHOAI resources
   against Red Hat source material for the active product baseline. Use when
   creating or modifying README concept framing, European enterprise value
@@ -42,7 +42,7 @@ claims, or undocumented assumptions.
      `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
 4. Check the README technical mapping:
    - every RHOAI, OCP, MicroShift, OpenShift Pipelines, or Red Hat AI component
-     introduced in the step has an active-baseline official documentation link
+     introduced in the stage has an active-baseline official documentation link
    - configuration guidance comes from official docs first, with rh-brain
      articles used only for examples, implementation patterns, and narrative
      support
@@ -64,7 +64,7 @@ claims, or undocumented assumptions.
 ## Output Format
 
 ```text
-Step: step-XX-name
+Stage: stage-YXX-slug
 Files reviewed: N
 
 Source-aligned:

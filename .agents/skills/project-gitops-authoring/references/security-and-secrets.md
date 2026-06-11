@@ -6,7 +6,7 @@ security posture.
 ## Secret Sources
 
 Secrets are created either from documented local operator commands or by the
-per-step deployment flow reading values from `.env`. Real credentials must not
+per-stage deployment flow reading values from `.env`. Real credentials must not
 be committed.
 
 ## Demo Secrets In GitOps
@@ -23,7 +23,7 @@ If adding a new committed placeholder secret:
 
 - use `envFrom.secretRef` or `env.valueFrom.secretKeyRef`
 - do not use inline secret values in normal environment variables
-- document the secret purpose in the step README
+- document the secret purpose in the stage README
 
 ## Production Alternatives
 

@@ -9,9 +9,9 @@ metadata:
   skill-group: "RHOAI Platform"
 description: >
   Author, refactor, and review Kubeflow Pipelines v2 pipelines for the
-  rhoai3-demo steps once active KFP content exists; during the reimplementation,
+  rhoai3-demo stages once active KFP content exists; during the reimplementation,
   use this skill to rebuild KFP standards from legacy references. Use when
-  editing steps/**/kfp/**/*.py, KFP components, pipeline runner scripts, DSPA
+  editing stage-*/**/kfp/**/*.py, KFP components, pipeline runner scripts, DSPA
   client code, pipeline PVC/RBAC integration, Output[Metrics]/Output[Model]/
   Output[HTML] artifacts, caching behavior, or RHOAI Dashboard pipeline
   visibility. Do NOT use for AI Pipelines product lifecycle, pipeline server
@@ -33,8 +33,8 @@ Python, components, compiled artifacts, or runner scripts.
 ## Reimplementation Status
 
 The active implementation is being rewritten. No active KFP pipeline
-implementation or step runner scripts exist yet. Treat references to previous
-step folders as legacy examples for rebuilding pipeline standards, not as
+implementation or stage runner scripts exist yet. Treat references to previous
+stage folders as legacy examples for rebuilding pipeline standards, not as
 active-project paths.
 
 Do not run or modify scripts from `backup/legacy-implementation-2026-06-09/`
@@ -42,13 +42,15 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 ## Workflow
 
-1. Read the affected step README and existing KFP implementation.
-2. Treat Step 12 (`steps/step-12-mlops-pipeline/kfp/`) as the reference
-   implementation unless the task explicitly changes that standard.
+1. Read the affected stage README and existing KFP implementation.
+2. Treat active `stage-*/kfp/` content as the implementation target. Until it
+   exists, use
+   `backup/legacy-implementation-2026-06-09/steps/step-12-mlops-pipeline/kfp/`
+   only as a legacy reference.
 3. Read `references/kfp-patterns.md` before editing pipeline definitions,
    components, runner scripts, artifacts, or DSPA client code.
 4. Keep pipeline infrastructure in GitOps and compiled/uploaded pipeline
-   definitions in step scripts.
+   definitions in stage scripts.
 5. Keep component functions hermetic, typed, Dashboard-visible where possible,
    and aligned with `rhoai-ai-pipelines` and the active official documentation.
 

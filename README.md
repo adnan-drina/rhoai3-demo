@@ -10,7 +10,7 @@ Active implementation areas:
 
 - `gitops/` - new GitOps source tree, currently empty except for its README
 - `scripts/` - new project automation, currently empty except for its README
-- `steps/` - new demo step structure, currently empty except for its README
+- `stage-YXX-slug/` - future root-level demo stage folders
 - `.agents/` and `AGENTS.md` - active shared agent guidance
 - `docs/PLATFORM_BASELINE.md` - active product baseline and official docs index
 

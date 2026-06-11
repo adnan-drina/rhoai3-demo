@@ -9,13 +9,13 @@ metadata:
   skill-group: "Project Structure"
 description: >
   Author and update rhoai3-demo GitOps manifests, Kustomize bases, Argo CD
-  Applications, labels, annotations, demo secrets, and per-step deployment
+  Applications, labels, annotations, demo secrets, and per-stage deployment
   scripts. Use when editing gitops/**, kustomization.yaml files, Argo CD
   app-of-apps entries, operator bases and overlays, ServingRuntime annotations,
   OpenShift labels, GitOps deployment flow, demo secrets, self-signed
   certificate handling, container image source, or model artifact source. Also
-  use when creating a new demo step's GitOps folder. Pair with
-  project-demo-step-authoring when creating a new step end to end, and with
+  use when creating a new demo stage's GitOps folder. Pair with
+  project-demo-stage-authoring when creating a new stage end to end, and with
   project-red-hat-operator-gitops when deploying Red Hat Operators through OLM
   and Kustomize. Do NOT use for readonly review only (use
   project-manifest-review) or Red Hat source alignment review only (use
@@ -29,10 +29,10 @@ aligned with the active product baseline.
 
 ## Workflow
 
-1. Read `AGENTS.md`, `docs/PLATFORM_BASELINE.md`, and the affected step README.
-2. For a new step, use `project-demo-step-authoring` first to define scope,
+1. Read `AGENTS.md`, `docs/PLATFORM_BASELINE.md`, and the affected stage README.
+2. For a new stage, use `project-demo-stage-authoring` first to define scope,
    source capture, skill routing, and GitOps ownership.
-3. Identify the step folder, Argo CD Application, Kustomize base, and per-step
+3. Identify the stage folder, Argo CD Application, Kustomize base, and per-stage
    deployment script that must change together.
 4. Keep code and docs atomic: manifest changes require README updates, and
    README capability claims require implemented manifests or clear deferred

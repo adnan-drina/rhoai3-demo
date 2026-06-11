@@ -9,11 +9,11 @@ metadata:
   skill-group: "Demo Environment"
 description: >
   Deploy and validate the rhoai3-demo environment on the active OpenShift
-  baseline once active scripts and steps exist. During the reimplementation,
+  baseline once active scripts and stages exist. During the reimplementation,
   use this skill to rebuild the deployment workflow from legacy references.
   Use when the user asks to deploy the demo, set up a new AWS demo environment,
-  evaluate an existing deployment, re-deploy a specific step, check deployment
-  status, run the ordered step sequence, or asks "is my cluster ready?". Also
+  evaluate an existing deployment, re-deploy a specific stage, check deployment
+  status, run the ordered stage sequence, or asks "is my cluster ready?". Also
   use for planned ArgoCD sync and deployment reports.
   Do NOT use for chatbot UI/prompt changes (use rhoai-chatbot-customization),
   model evaluation or benchmarking (use rhoai-model-evaluation), or diagnosis after a
@@ -22,7 +22,7 @@ description: >
 
 # Deploy and Evaluate RHOAI Demo
 
-Orchestrates a controlled, step-by-step deployment of the RHOAI demo on the
+Orchestrates a controlled, stage-by-stage deployment of the RHOAI demo on the
 active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 ## Reimplementation Status
@@ -48,56 +48,37 @@ user explicitly asks to restore or inspect the legacy implementation.
 
 **NEVER update documentation without updating the corresponding code, and vice versa.** Partial changes — updating a README design decision without changing the manifest, or changing a manifest without updating the README — are prohibited. Every change must be atomic: code + docs + SKILL knowledge in the same commit.
 
-### One Step at a Time
+### One Stage at a Time
 
-**NEVER advance to the next step until the current step fully validates.**
+**NEVER advance to the next stage until the current stage fully validates.**
 
-1. **Read** the active step README once a step exists.
+1. **Read** the active stage README once a stage exists.
 2. **Deploy** with the active `deploy.sh` once recreated; it must apply the
    ArgoCD Application as its first action.
 3. **Wait** — operators take minutes, GPU nodes take 5-10 min
 4. **Diagnose** — consult official docs for the active baseline; use the `env-troubleshoot` skill for issues
 5. **Validate** with the active `validate.sh` once recreated; confirm exit code
    0 (exit 2 = warnings only, acceptable).
-6. **Record** — note result, move to next step
+6. **Record** — note result, move to the next stage
 
 ### Deployment Sequence
 
-```
-01  GPU Infrastructure & Prerequisites
-02  RHOAI Platform
-03  Private AI / GPU-as-a-Service (MinIO, auth, RBAC)
-04  Model Registry
-05  Private model serving and MaaS (nemotron-3-nano-30b-a3b active; approved external gpt-5 via MaaS)
-06  Model Metrics (Grafana, GuideLLM benchmarks)
-07  RAG (pgvector, Docling, DSPA, LlamaStack RAG)
-08  Model Evaluation (pre/post RAG with LLM-as-Judge)
-09  Guardrails (NeMo guardrails)
-10  MCP Integration (database-mcp, openshift-mcp, slack-mcp)
-11  Face Recognition (YOLO11 + OpenVINO, CPU-only predictive AI)
-12  MLOps Pipeline (KFP training + Model Registry + TrustyAI monitoring)
-13  Edge AI
-13b Edge AI on MicroShift (optional)
-```
+Use the taxonomy in
+`.agents/skills/project-demo-stage-authoring/references/stage-taxonomy.md`.
+The active sequence is defined by existing root-level `stage-YXX-slug/`
+folders and their Argo CD Applications.
 
-### Step Dependencies
+Candidate flow for the reimplementation:
 
 ```
-01  (standalone — bootstrap required)
-02  requires 01
-03  requires 01, 02
-04  requires 01, 02, 03
-05  requires 01, 02, 03 (+ GPU nodes + model uploads)
-06  requires 01, 05
-07  requires 01-05
-08  requires 07
-09  requires 02, 05
-10  requires 05, 07
-11  requires 01-03 (CPU-only, no GPU needed)
-12  requires 03, 05, 11 (KFP pipeline + Model Registry + face-recognition ISVC)
-13  requires 05, 11
-13b requires 13 and separate MicroShift target preparation
+100  AI Platform Foundation
+200  Production GenAI & Private Data
+300  Agentic AI & Enterprise Integration
+400  AI Operations, Evaluation & MLOps
 ```
+
+Within each family, deploy lower stage identifiers before higher ones unless a
+stage `PLAN.md` documents a different dependency.
 
 ### Resource Configuration
 
@@ -110,13 +91,13 @@ user explicitly asks to restore or inspect the legacy implementation.
 
 Every future `deploy.sh` must apply an ArgoCD Application as its first action:
 ```bash
-oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STEP_NAME.yaml"
+oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STAGE_NAME.yaml"
 ```
 Never apply manifests directly with `oc apply -k` for ArgoCD-managed resources.
 
 ### Final E2E Validation
 
-After the demo-flow script has been recreated and all steps pass:
+After the demo-flow script has been recreated and all stages pass:
 ```bash
 ./scripts/validate-demo-flow.sh
 ```
@@ -128,9 +109,9 @@ After the demo-flow script has been recreated and all steps pass:
 **Cluster:** <api-url>  **Date:** <YYYY-MM-DD>
 **GPU Config:** 1x g6e.2xlarge by default; 1 GPU per node
 
-| Step | Name | Status | Duration |
+| Stage | Name | Status | Duration |
 |------|------|--------|----------|
-| 01 | GPU & Prerequisites | PASS | Xm |
+| 110 | GitOps Foundation | PASS | Xm |
 | ... | ... | ... | ... |
 | E2E | Demo Flow | PASS | Xm |
 ```
@@ -147,4 +128,4 @@ skill helper is still present:
 ```
 Exit codes: 0 = ready, 1 = blocking failures, 2 = warnings only.
 
-For per-step deploy notes, known issues, and ArgoCD standards, read `references/deploy-notes.md`.
+For per-stage deploy notes, known issues, and ArgoCD standards, read `references/deploy-notes.md`.

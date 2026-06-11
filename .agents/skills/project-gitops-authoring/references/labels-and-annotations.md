@@ -18,7 +18,7 @@ Label values must be Kubernetes-label safe and under 63 characters.
 
 ## `app.kubernetes.io/part-of` Values
 
-Use short functional group names, not step numbers.
+Use short functional group names, not stage identifiers.
 
 | Value | Typical resources |
 |-------|-------------------|
@@ -88,7 +88,7 @@ Argo CD Application objects use demo-level labels:
 metadata:
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
-    demo.rhoai.io/step: "XX"
+    demo.rhoai.io/stage: "YXX"
 ```
 
 Do not use workload `part-of` values such as `llm-serving` on Application
@@ -96,7 +96,7 @@ objects.
 
 ## Anti-Patterns
 
-- step numbers in workload `part-of`
+- stage identifiers in workload `part-of`
 - overly long group names
 - generic values such as `app` or `demo`
 - ServingRuntimes without Dashboard annotations

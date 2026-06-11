@@ -1,5 +1,5 @@
 ---
-name: project-demo-step-authoring
+name: project-demo-stage-authoring
 metadata:
   author: rhoai3-demo
   version: 1.0.0
@@ -9,7 +9,7 @@ metadata:
   skill-group: "Project Structure"
 description: >
   Use when creating, planning, implementing, or reviewing a new rhoai3-demo
-  demo step from ideation to validated GitOps implementation. Covers step
+  demo stage from ideation to validated GitOps implementation. Covers stage
   scope, dependencies, Red Hat narrative and official product source capture,
   Red Hat-team GitHub reference implementation discovery,
   skill routing, README Why/What/Architecture drafting, PLAN.md creation,
@@ -21,16 +21,16 @@ description: >
   rhoai-*, ocp-*, odf-*, or project-red-hat-operator-gitops skill.
 ---
 
-# Demo Step Authoring
+# Demo Stage Authoring
 
 Use this skill as the repeatable process for turning a demo idea into a
-validated Red Hat product demo step. A step is not complete until its
+validated Red Hat product demo stage. A stage is not complete until its
 documentation, GitOps, scripts, validation, source grounding, and operational
 notes move together.
 
 ## Core Rule
 
-Every new step must pass the same phase gates:
+Every new stage must pass the same phase gates:
 
 1. intent and scope
 2. source capture
@@ -43,26 +43,26 @@ Every new step must pass the same phase gates:
 9. operations and troubleshooting updates
 10. review and acceptance
 
-Do not start the next demo step until the current step has an explicit
+Do not start the next demo stage until the current stage has an explicit
 definition of done and the user accepts any deferred work.
 
-## Step Artifact Contract
+## Stage Artifact Contract
 
-Prefer this artifact set for a normal independent step:
+Prefer this artifact set for a normal independent stage:
 
 ```text
-steps/step-XX-slug/
+stage-YXX-slug/
   README.md
   PLAN.md
   deploy.sh
   validate.sh
 gitops/
-  argocd/app-of-apps/step-XX-slug.yaml
-  step-XX-slug/base/kustomization.yaml
-  step-XX-slug/overlays/<purpose>/kustomization.yaml
+  argocd/app-of-apps/stage-YXX-slug.yaml
+  stage-YXX-slug/base/kustomization.yaml
+  stage-YXX-slug/overlays/<purpose>/kustomization.yaml
 ```
 
-Shared platform resources are the main exception. If a step introduces a
+Shared platform resources are the main exception. If a stage introduces a
 capability by patching a shared owner such as the RHOAI `DataScienceCluster`,
 ODF storage layer, OpenShift GitOps bootstrap, or Grafana observability layer,
 record the shared owner path in `PLAN.md` and avoid duplicate full-resource
@@ -70,32 +70,33 @@ ownership.
 
 ## Workflow
 
-1. Read `references/step-lifecycle.md`.
-2. Create or update the step `PLAN.md` using
-   `examples/step-plan-template.md`.
-3. Capture sources with `references/source-capture-checklist.md`.
-4. Use `.agents/references/red-hat-doc-map.yaml` to route official product
+1. Read `references/stage-lifecycle.md`.
+2. Create or update the stage `PLAN.md` using
+   `examples/stage-plan-template.md`.
+3. Use `references/stage-taxonomy.md` to choose the `stage-YXX-slug` identifier.
+4. Capture sources with `references/source-capture-checklist.md`.
+5. Use `.agents/references/red-hat-doc-map.yaml` to route official product
    docs to existing `rhoai-*`, `ocp-*`, or `odf-*` skills.
-5. Search for relevant GitHub reference implementations from Red Hat product,
+6. Search for relevant GitHub reference implementations from Red Hat product,
    field, solution, or community-of-practice teams; use them as implementation
    patterns only after official docs are captured.
-6. Prefer `rh-brain` narrative sources that link to concrete GitHub projects
+7. Prefer `rh-brain` narrative sources that link to concrete GitHub projects
    or code examples when multiple Red Hat articles cover the same concept.
-7. If required product coverage is missing, create or update the product skill
+8. If required product coverage is missing, create or update the product skill
    before authoring manifests.
-8. Draft the step README with `project-documentation-authoring` and
-   `references/step-lifecycle.md`.
-9. Design GitOps with `project-gitops-authoring` and, for Operators,
+9. Draft the stage README with `project-documentation-authoring` and
+   `references/stage-lifecycle.md`.
+10. Design GitOps with `project-gitops-authoring` and, for Operators,
    `project-red-hat-operator-gitops`.
-10. Generate manifests only from official docs, active skills, verified live
+11. Generate manifests only from official docs, active skills, verified live
    schema, locally curated reference implementations, or explicitly documented
    demo exceptions.
-11. Add deploy and validation scripts only after the GitOps ownership decision
+12. Add deploy and validation scripts only after the GitOps ownership decision
    is clear. Scripts that touch a live cluster must use the repo OpenShift
    safety guard.
-12. Run the quality gates in `references/definition-of-done.md`.
-13. Use `project-manifest-review` and
-   `project-red-hat-doc-alignment-review` before treating the step as ready.
+13. Run the quality gates in `references/definition-of-done.md`.
+14. Use `project-manifest-review` and
+   `project-red-hat-doc-alignment-review` before treating the stage as ready.
 
 ## Required Handoffs
 
@@ -117,7 +118,7 @@ ownership.
 
 Stop and resolve before implementation if:
 
-- the step concept has no clear audience value
+- the stage concept has no clear audience value
 - required official product docs or product skills are missing
 - a custom resource field, API version, operator channel, image, or model
   artifact cannot be sourced or verified
@@ -130,7 +131,8 @@ Stop and resolve before implementation if:
 
 ## References
 
-- `references/step-lifecycle.md`
+- `references/stage-lifecycle.md`
+- `references/stage-taxonomy.md`
 - `references/source-capture-checklist.md`
 - `references/definition-of-done.md`
-- `examples/step-plan-template.md`
+- `examples/stage-plan-template.md`

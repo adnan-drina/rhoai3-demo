@@ -11,7 +11,7 @@ description: >
   Review Kubernetes, OpenShift, Argo CD, and RHOAI manifests for structural
   correctness, cross-resource consistency, label compliance, security posture,
   YAML standards, image and artifact provenance handoff, and orphaned
-  resources. Use when reviewing GitOps changes, adding a new step, checking a
+  resources. Use when reviewing GitOps changes, adding a new stage, checking a
   kustomization, auditing labels, or running a periodic manifest compliance
   pass. Do NOT use for authoring new manifests unless paired with
   project-gitops-authoring. Do NOT use as the final source-of-truth check for
@@ -27,7 +27,7 @@ files unless the user asks for fixes.
 
 ## Workflow
 
-1. Read the affected `gitops/step-XX-name/base/` folder and its
+1. Read the affected `gitops/stage-YXX-slug/base/` folder and its
    `kustomization.yaml`.
 2. Identify all rendered or referenced resources.
 3. Apply `references/review-checklist.md` to each manifest.
@@ -46,7 +46,7 @@ files unless the user asks for fixes.
 ## Output Format
 
 ```text
-Step: step-XX-name
+Stage: stage-YXX-slug
 Files reviewed: N
 Findings:
   - [LABEL] file.yaml: missing app.kubernetes.io/component

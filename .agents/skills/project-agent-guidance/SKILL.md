@@ -65,7 +65,7 @@ for logical ownership:
 
 | Group | Prefix | Purpose |
 |-------|--------|---------|
-| Project Structure | `project-*` | Repo layout, demo step authoring, GitOps authoring, documentation structure, RHOAI docs-to-skill generation, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
+| Project Structure | `project-*` | Repo layout, demo stage authoring, GitOps authoring, documentation structure, RHOAI docs-to-skill generation, manifest review, Red Hat source alignment, Red Hat narrative grounding, and shared AI guidance |
 | Demo Environment | `env-*` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | Official-doc-backed active-baseline RHOAI component installation, configuration, KFP pipelines, and usage |
 | OpenShift Platform | `ocp-*` | Official-doc-backed OpenShift Container Platform guidance plus repo-approved OpenShift platform extensions for infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration |
@@ -161,11 +161,11 @@ For detailed conventions and patterns, read `references/conventions.md`.
 
 ### Documentation Alignment Loop
 
-When a rules/skills/agent update changes how GitOps manifests or step READMEs
+When a rules/skills/agent update changes how GitOps manifests or stage READMEs
 are authored, keep the product-documentation loop current:
 
 1. Check whether the change affects a GitOps-managed component, ArgoCD app, or
-   step README.
+   stage README.
 2. If `scripts/audit-doc-alignment.sh` exists in the active implementation, run
    the local gate before merge:
 
@@ -176,7 +176,7 @@ are authored, keep the product-documentation loop current:
 3. For scoped follow-up, use:
 
    ```bash
-   ./scripts/audit-doc-alignment.sh --component step-05-maas-model-serving
+   ./scripts/audit-doc-alignment.sh --component stage-220-private-model-serving
    ```
 
 4. If the active audit script has not been recreated yet, document the missing

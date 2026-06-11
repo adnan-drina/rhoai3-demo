@@ -41,7 +41,7 @@ Optional input:
 
 - target skill name, such as `rhoai-model-serving-platform`
 - component scope, such as "KServe model serving" or "Llama Stack RAG"
-- demo step or future step that will consume the skill
+- demo stage or future stage that will consume the skill
 
 If the user gives broad input such as "create all install skills", split it
 into one skill per documentation chapter or tightly related component area.

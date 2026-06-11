@@ -86,19 +86,19 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 | File | What to edit |
 |------|-------------|
-| `steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/chat.py` | System prompts, sidebar config, suggested questions display, mode switching |
-| `steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/agent.py` | tool_choice, guardrails integration, Responses API streaming |
-| `steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/direct.py` | Direct mode RAG, completions API |
-| `steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/guardrails.py` | Input/output safety checks |
-| `steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/utils.py` | Question suggestions parsing, vector DB helpers |
-| `gitops/step-07-rag/base/chatbot/chatbot.yaml` | Env vars: LLAMA_STACK_URL, INFERENCE_MODEL, RAG_QUESTION_SUGGESTIONS |
-| `steps/step-07-rag/README.md` | Design decisions (must update with code changes) |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/chat.py` | System prompts, sidebar config, suggested questions display, mode switching |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/agent.py` | tool_choice, guardrails integration, Responses API streaming |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/direct.py` | Direct mode RAG, completions API |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/guardrails.py` | Input/output safety checks |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/utils.py` | Question suggestions parsing, vector DB helpers |
+| `backup/legacy-implementation-2026-06-09/gitops/step-07-rag/base/chatbot/chatbot.yaml` | Env vars: LLAMA_STACK_URL, INFERENCE_MODEL, RAG_QUESTION_SUGGESTIONS |
+| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/README.md` | Design decisions (must update with code changes) |
 
 ## Instructions
 
 ### Read Before You Write
 
-1. Read `steps/step-07-rag/README.md` — design decisions section
+1. Read `backup/legacy-implementation-2026-06-09/steps/step-07-rag/README.md` — design decisions section
 2. If doing prompt engineering, also read `references/prompt-engineering.md`
 3. If touching the architecture, also read `references/chatbot-architecture.md`
 
@@ -110,7 +110,7 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 2. Direct mode prompt: ~line 292-295
 3. Agent mode prompt: ~line 298-307
 4. Test the change via the chatbot UI (sidebar shows the editable prompt)
-5. Update `steps/step-07-rag/README.md` design decisions
+5. Update `backup/legacy-implementation-2026-06-09/steps/step-07-rag/README.md` design decisions
 
 **Prompt engineering constraints for the current private model path:**
 - Verbose prompts cause narration instead of action
@@ -120,7 +120,7 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 #### Change Suggested Questions
 
-1. Edit `RAG_QUESTION_SUGGESTIONS` in `gitops/step-07-rag/base/chatbot/chatbot.yaml`
+1. Edit `RAG_QUESTION_SUGGESTIONS` in `backup/legacy-implementation-2026-06-09/gitops/step-07-rag/base/chatbot/chatbot.yaml`
 2. Format: JSON object keyed by vector store name (`whoami`, `acme_corporate`)
 3. ArgoCD sync applies the change
 4. Restart deployment: `oc rollout restart deployment/rag-chatbot -n private-ai`
