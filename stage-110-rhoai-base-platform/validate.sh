@@ -145,6 +145,12 @@ CONN_LABEL=$(oc get secret demo-sandbox-s3 -n demo-sandbox \
 [[ "$CONN_LABEL" == "true" ]] && R="pass" || R="connection=${CONN_LABEL:-missing}"
 check "demo-sandbox S3 connection present" "$R"
 
+# ── 16. RHOAI admins can manage demo-sandbox ─────────────────────────────────
+ADMIN_RB=$(oc get rolebinding rhods-admins-admin -n demo-sandbox \
+  -o jsonpath='{.roleRef.name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$ADMIN_RB" == "admin" ]] && R="pass" || R="rolebinding=${ADMIN_RB:-missing}"
+check "rhods-admins admin on demo-sandbox" "$R"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

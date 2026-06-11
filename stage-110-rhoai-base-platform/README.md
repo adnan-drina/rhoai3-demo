@@ -58,7 +58,7 @@ The RHOAI operator installs the AI platform control plane. `DSCInitialization` c
 The base platform ships ready for a user to log in and start working. An htpasswd identity provider supplies two demo personas, and a first data science project is wired to S3 so a workbench can read and write objects immediately.
 
 - **Identity provider:** htpasswd (`demo-htpasswd`); `kubeadmin` retained as the cluster-admin recovery path
-- **`ai-admin`:** RHOAI administrator (member of the `rhods-admins` group referenced by the RHOAI `auth` CR `adminGroups`)
+- **`ai-admin`:** RHOAI administrator (member of the `rhods-admins` group referenced by the RHOAI `auth` CR `adminGroups`), and project-admin on `demo-sandbox` — the RHOAI dashboard-admin role alone does not grant access to an individual project namespace, so `rhods-admins` is bound to `admin` on the project
 - **`ai-developer`:** regular user; Contributor (`edit`) on the `demo-sandbox` project via the `rhoai-developers` group
 - **`demo-sandbox`:** the first data science project, used for platform validation and ad-hoc demos
 - **`demo-sandbox-s3`:** an S3 connection backed by a project-scoped `ObjectBucketClaim` on MCG, using the dashboard's pre-installed S3 connection type
