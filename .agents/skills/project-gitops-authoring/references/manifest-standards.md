@@ -22,6 +22,14 @@ Argo CD YAML.
 - If unsure, propose verification with `oc explain` or CRD inspection.
 - If the target cluster exposes a different API version than expected, call out
   the mismatch explicitly.
+- **Pin a CRD manifest to the version that declares the fields you use.** When a
+  CRD serves multiple versions, the field set can differ between them. Check
+  `oc get crd <name> -o jsonpath='{range .spec.versions[*]}{.name}{" storage="}{.storage}{"\n"}{end}'`
+  and `oc explain <kind>.<path> --api-version=<group>/<version>`. Declaring an
+  older version while using a newer-version-only field fails under ServerSideApply
+  with `field not declared in schema` (stage-110: the RHOAI DataScienceCluster
+  serves v1 and v2; `spec.components.aipipelines` exists only in v2). Prefer the
+  served storage version unless docs require otherwise.
 
 ## Image And Artifact Provenance
 
@@ -79,6 +87,20 @@ resources. Check these manually:
 
 Do not rationalize missing references. If a dependency is created by an
 operator or runtime script, document that in the manifest or README.
+
+## Operator-Owned Resources
+
+Some operators auto-create and continuously reconcile singleton CRs (for
+example, ODF's `OCSInitialization/ocsinit`). Do not also manage these in GitOps:
+the operator's reconciled spec differs from the committed copy, leaving the Argo
+CD Application permanently `OutOfSync`. Let the operator own them, and verify
+health with a read-only check instead of declaring the resource.
+
+If a resource was committed and later removed, ArgoCD with `prune: false` keeps
+it `OutOfSync` (pending prune) because the live object still carries the
+`argocd.argoproj.io/tracking-id` annotation. Clear it once with
+`oc annotate <kind> <name> -n <ns> argocd.argoproj.io/tracking-id-`; a clean
+deploy from current Git never recreates it.
 
 ## Orphan Prevention
 
