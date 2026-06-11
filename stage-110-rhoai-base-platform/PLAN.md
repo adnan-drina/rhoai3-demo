@@ -14,8 +14,8 @@
 - Non-goals:
   - GPU/accelerator setup (deferred to a future `stage-130-gpu-accelerator-foundation`)
   - Full ODF StorageCluster/Ceph block and file storage
-  - RHOAI model serving, Kueue, Ray, model registry, pipelines, TrustyAI (all deferred)
-  - Identity provider integration (deferred)
+  - RHOAI model serving, Kueue, Ray, pipelines, TrustyAI (all deferred)
+- Included access layer (added after initial deploy): htpasswd IdP (`ai-admin`, `ai-developer`), `demo-sandbox` data science project, Contributor RBAC, and an OBC-backed S3 connection. Model registry is enabled in the base DSC.
 
 **Scope note:** The stage taxonomy lists stages 110–140 as separate foundation slices. This stage deliberately compresses that range into a single deployable unit following the Red Hat AI Accelerator reference pattern. The rationale: a standalone GitOps bootstrap with no AI platform has no demo value. The minimum demonstrable foundation is GitOps + object storage + RHOAI base. Stages 120+ in the taxonomy are superseded by this stage's implementation scope.
 
@@ -96,6 +96,11 @@
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/subscription.yaml` | Subscription (rhods-operator) | RHOAI 3.4 install guide | `oc get csv -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/dsc-init.yaml` | DSCInitialization | RHOAI 3.4 Managing RHOAI docs | `oc get dscinitialization default-dsci` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed) | RHOAI 3.4 Managing RHOAI + Model registry docs | `oc get datasciencecluster default-dsc` |
+| `gitops/stage-110-rhoai-base-platform/access/base/namespace-demo-sandbox.yaml` | Namespace (DS project) | rhoai-project-workflows | `oc get ns demo-sandbox -o jsonpath='{.metadata.labels}'` |
+| `gitops/stage-110-rhoai-base-platform/access/base/group-rhoai-developers.yaml` | Group | rhoai-users-groups-access | `oc get group rhoai-developers` |
+| `gitops/stage-110-rhoai-base-platform/access/base/rolebinding-developer-edit.yaml` | RoleBinding (edit) | rhoai-project-workflows | `oc get rolebinding rhoai-developers-edit -n demo-sandbox` |
+| `gitops/stage-110-rhoai-base-platform/access/base/obc-demo-sandbox.yaml` | ObjectBucketClaim | odf-object-bucket-claims | `oc get obc demo-sandbox-bucket -n demo-sandbox` |
+| `setup-access.sh` (imperative) | htpasswd IdP, rhods-admins membership, `demo-sandbox-s3` connection | ocp-authentication-identity-providers, rhoai-users-groups-access, rhoai-s3-object-storage-data | `oc get oauth cluster`; `oc get secret demo-sandbox-s3 -n demo-sandbox` |
 | `gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml` | Application | project-gitops-authoring | `oc get application stage-110-rhoai-base-platform -n openshift-gitops` |
 
 ## Script Plan
@@ -148,4 +153,4 @@
 - Manifest review: pending
 - Red Hat source-alignment review: pending
 - Live deploy: succeeded on cluster-klvxt (OCP 4.20.24) 2026-06-11
-- Live validation: PASSED 2026-06-11 — `validate.sh` 11/11 (GitOps, ArgoCD Synced+Healthy, ODF, NooBaa Ready, RHOAI, DSCI Ready, DSC Ready, model registry operator, dashboard route HTTP 2xx)
+- Live validation: PASSED 2026-06-11 — `validate.sh` 16/16 (platform 11 + access 5: htpasswd IdP, ai-admin in rhods-admins, demo-sandbox project, OBC Bound, S3 connection). Login verified for both users; ai-developer Contributor-scoped to demo-sandbox.

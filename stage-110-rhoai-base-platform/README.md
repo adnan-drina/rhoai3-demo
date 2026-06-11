@@ -43,13 +43,27 @@ MCG-only deployment provides S3-compatible object storage for RHOAI workloads. T
 
 ### Red Hat OpenShift AI Self-Managed
 
-The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration. All other RHOAI components (`kserve`, `kueue`, `ray`, `modelregistry`, etc.) are set to `Removed` and added by later demo stages via Kustomize patches to this stage's owned `DataScienceCluster`.
+The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. All other RHOAI components (`kserve`, `kueue`, `ray`, etc.) are set to `Removed` and added by later demo stages via Kustomize patches to this stage's owned `DataScienceCluster`.
 
 - **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
 - **Channel:** `stable-3.4`
+- **API version:** `DataScienceCluster` pinned to `v2` (the served storage version that declares the 3.4 component schema)
 - **DSCI:** predefined namespaces, monitoring managed
-- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`; all other components `Removed`
+- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`); all other components `Removed`
+- **Model Registry database:** the registry instance is created day-2 from the dashboard using the default PostgreSQL (non-production); see `docs/OPERATIONS.md`
 - **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)
+
+### Platform Access and Demo Tenancy
+
+The base platform ships ready for a user to log in and start working. An htpasswd identity provider supplies two demo personas, and a first data science project is wired to S3 so a workbench can read and write objects immediately.
+
+- **Identity provider:** htpasswd (`demo-htpasswd`); `kubeadmin` retained as the cluster-admin recovery path
+- **`ai-admin`:** RHOAI administrator (member of the `rhods-admins` group referenced by the RHOAI `auth` CR `adminGroups`)
+- **`ai-developer`:** regular user; Contributor (`edit`) on the `demo-sandbox` project via the `rhoai-developers` group
+- **`demo-sandbox`:** the first data science project, used for platform validation and ad-hoc demos
+- **`demo-sandbox-s3`:** an S3 connection backed by a project-scoped `ObjectBucketClaim` on MCG, using the dashboard's pre-installed S3 connection type
+- **Secrets posture:** htpasswd, user passwords, and the connection secret are created imperatively by `setup-access.sh` and never committed; passwords are stored in the gitignored `.env`
+- **Docs:** [RHOAI 3.4 — Managing users and groups](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai); [OCP 4.20 — htpasswd identity provider](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index)
 
 ---
 
@@ -70,21 +84,35 @@ The RHOAI operator installs the AI platform control plane. `DSCInitialization` c
 │  │  ODF MCG        │   │  Red Hat OpenShift AI 3.4        │   │
 │  │  (openshift-    │   │  (redhat-ods-operator)           │   │
 │  │   storage)      │   │                                  │   │
-│  │  NooBaa/S3 ─────┼──▶│  DSCI · DSC                      │   │
+│  │  NooBaa/S3 ─────┼──▶│  DSCI · DSC (v2)                 │   │
 │  │  OBC storage    │   │  Dashboard · Workbenches         │   │
-│  │  class          │   │  (redhat-ods-applications)       │   │
-│  └─────────────────┘   └──────────────────────────────────┘   │
-│                                                                 │
+│  │  class          │   │  Model Registry                  │   │
+│  │       │         │   │  (redhat-ods-applications)       │   │
+│  └───────┼─────────┘   └──────────────────────────────────┘   │
+│          │ OBC                          ▲                      │
+│          ▼                              │ Contributor          │
+│  ┌──────────────────────────────────────┴────────────────┐   │
+│  │  demo-sandbox (data science project)                  │   │
+│  │  S3 connection (demo-sandbox-s3)  ·  ai-developer     │   │
+│  └───────────────────────────────────────────────────────┘   │
+│  Auth: htpasswd IdP — ai-admin (RHOAI admin), ai-developer    │
 └─────────────────────────────────────────────────────────────────┘
 
 New in this stage
   OpenShift GitOps operator + ArgoCD instance
   ODF operator + Multicloud Object Gateway (NooBaa)
-  RHOAI operator + DSCInitialization + DataScienceCluster (base)
+  RHOAI operator + DSCInitialization + DataScienceCluster (dashboard,
+    workbenches, model registry)
+  htpasswd IdP + ai-admin / ai-developer
+  demo-sandbox project + S3 connection (OBC-backed)
 
 Managed by Argo CD after bootstrap
-  ODF and RHOAI resources
-  AppProject rhoai-demo
+  ODF and RHOAI resources · AppProject rhoai-demo
+  demo-sandbox project, rhoai-developers group, RoleBinding, OBC
+
+Created imperatively (secret-bearing)
+  htpasswd secret + OAuth IdP · rhods-admins membership
+  demo-sandbox-s3 connection secret (from OBC)
 
 Extended by later stages
   DataScienceCluster components via Kustomize patches (kserve, kueue, ray …)

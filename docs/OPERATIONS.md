@@ -14,10 +14,11 @@ Active operations guidance for the reimplementation.
    - Applies `gitops/bootstrap/overlays/demo` (ArgoCD instance config for annotation resource tracking + the `rhoai-demo` AppProject), which depend on CRDs the operator installs.
    - Creates the `stage-110-rhoai-base-platform` Argo CD Application, which then reconciles ODF and RHOAI.
 3. Run `stage-110-rhoai-base-platform/validate.sh` to confirm all components are healthy.
+4. Run `stage-110-rhoai-base-platform/setup-access.sh` to configure platform access (htpasswd users, RHOAI admin, and the `demo-sandbox` S3 connection). This is a separate script because it modifies cluster authentication and depends on the GitOps-provisioned `ObjectBucketClaim`. See **Platform Access** below.
 
 ### Channel Verification
 
-GitOps operator channel is pinned to `gitops-1.20` in `gitops/bootstrap/overlays/demo/patch-channel.yaml`. Verified 2026-06-11 against OCP 4.20.24 on cluster-klvxt — no change needed before deploy.
+GitOps operator channel is pinned to `gitops-1.20` in `gitops/bootstrap/overlays/operator/patch-channel.yaml`. Verified 2026-06-11 against OCP 4.20.24 on cluster-klvxt — no change needed before deploy.
 
 ### Accessing Argo CD
 
@@ -77,6 +78,34 @@ oc get namespace rhoai-model-registries
 ```
 
 For a production registry, use an external PostgreSQL 16.x or MySQL 9.x database and configure the host, port, credentials, and CA certificate during registry creation.
+
+### Platform Access (Users, Project, Connection)
+
+`setup-access.sh` makes the platform ready for a user to log in and work. It is idempotent and re-runnable.
+
+What it creates:
+
+- **htpasswd identity provider** `demo-htpasswd` on the cluster `OAuth`, backed by `htpasswd-secret` in `openshift-config`. `kubeadmin` is retained as the cluster-admin recovery path.
+- **`ai-admin`** — added to the `rhods-admins` group, which the RHOAI `auth` CR lists under `adminGroups`, granting RHOAI administrator access.
+- **`ai-developer`** — a regular user; the GitOps-managed `rhoai-developers` group has Contributor (`edit`) access to `demo-sandbox`.
+- **`demo-sandbox-s3`** — an S3 connection secret built from the `demo-sandbox-bucket` ObjectBucketClaim, labeled `opendatahub.io/dashboard: "true"` and referencing the `s3` connection type.
+
+Credentials: passwords are generated and written to the gitignored `.env` (`AI_ADMIN_PASSWORD`, `AI_DEVELOPER_PASSWORD`). Set them in `.env` before running to use fixed values instead. Retrieve later with:
+
+```bash
+grep -E '^AI_(ADMIN|DEVELOPER)_PASSWORD=' .env
+```
+
+Login:
+
+```bash
+oc whoami --show-console   # console URL
+# Log in via the demo-htpasswd identity provider as ai-admin or ai-developer.
+```
+
+htpasswd identities are created on first login; allow ~1 minute for the OAuth pods to roll out after running the script. After a permission change, users must log out of active OpenShift AI/Jupyter sessions.
+
+Using `demo-sandbox`: log in as `ai-developer`, open the project in the RHOAI dashboard, create a workbench, and select the `demo-sandbox object storage` connection to mount `AWS_*` environment variables. The S3 endpoint is the in-cluster `https://s3.openshift-storage.svc:443` (self-signed; use `verify=False` in Boto3 for the demo).
 
 ### Adding RHOAI Components (Later Stages)
 
