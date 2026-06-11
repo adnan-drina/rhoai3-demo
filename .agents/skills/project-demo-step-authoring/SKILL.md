@@ -11,6 +11,7 @@ description: >
   Use when creating, planning, implementing, or reviewing a new rhoai3-demo
   demo step from ideation to validated GitOps implementation. Covers step
   scope, dependencies, Red Hat narrative and official product source capture,
+  Red Hat-team GitHub reference implementation discovery,
   skill routing, README Why/What/Architecture drafting, PLAN.md creation,
   GitOps ownership decisions, Argo CD Application setup, Kustomize manifests,
   official-doc-backed configuration, deploy and validation scripts, operations
@@ -75,19 +76,25 @@ ownership.
 3. Capture sources with `references/source-capture-checklist.md`.
 4. Use `.agents/references/red-hat-doc-map.yaml` to route official product
    docs to existing `rhoai-*`, `ocp-*`, or `odf-*` skills.
-5. If required product coverage is missing, create or update the product skill
+5. Search for relevant GitHub reference implementations from Red Hat product,
+   field, solution, or community-of-practice teams; use them as implementation
+   patterns only after official docs are captured.
+6. Prefer `rh-brain` narrative sources that link to concrete GitHub projects
+   or code examples when multiple Red Hat articles cover the same concept.
+7. If required product coverage is missing, create or update the product skill
    before authoring manifests.
-6. Draft the step README with `project-documentation-authoring` and
+8. Draft the step README with `project-documentation-authoring` and
    `references/step-lifecycle.md`.
-7. Design GitOps with `project-gitops-authoring` and, for Operators,
+9. Design GitOps with `project-gitops-authoring` and, for Operators,
    `project-red-hat-operator-gitops`.
-8. Generate manifests only from official docs, active skills, verified live
-   schema, or explicitly documented demo exceptions.
-9. Add deploy and validation scripts only after the GitOps ownership decision
+10. Generate manifests only from official docs, active skills, verified live
+   schema, locally curated reference implementations, or explicitly documented
+   demo exceptions.
+11. Add deploy and validation scripts only after the GitOps ownership decision
    is clear. Scripts that touch a live cluster must use the repo OpenShift
    safety guard.
-10. Run the quality gates in `references/definition-of-done.md`.
-11. Use `project-manifest-review` and
+12. Run the quality gates in `references/definition-of-done.md`.
+13. Use `project-manifest-review` and
    `project-red-hat-doc-alignment-review` before treating the step as ready.
 
 ## Required Handoffs

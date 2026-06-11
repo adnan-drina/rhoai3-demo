@@ -13,6 +13,8 @@ Use this checklist before declaring a step ready.
 
 - Active baseline versions are checked.
 - Red Hat narrative source exists for the concept and enterprise value.
+- Relevant Red Hat-linked GitHub reference implementations were searched,
+  captured, and bounded as examples, or their absence is documented.
 - Official Red Hat docs exist for every product component introduced.
 - Required product skills are named and available.
 - Unsupported, Technology Preview, Developer Preview, community, or demo-only
@@ -39,6 +41,8 @@ Use this checklist before declaring a step ready.
 ## Manifests
 
 - API versions and fields are sourced from official docs or verified schema.
+- GitHub reference implementations are locally curated and never used as
+  product API or support authority.
 - Images and model artifacts have documented provenance.
 - Labels and annotations follow project standards.
 - Cross-resource references resolve.

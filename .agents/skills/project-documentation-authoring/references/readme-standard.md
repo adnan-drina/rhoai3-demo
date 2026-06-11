@@ -49,6 +49,11 @@ Include:
 - at least one Red Hat article, blog, guide, datasheet, or product page found
   through `/Users/adrina/Sandbox/rh-brain/Red Hat Brain`
 
+When several Red Hat narrative sources are available, prefer sources that link
+to concrete GitHub reference implementations, manifests, notebooks, pipelines,
+or application code used by Red Hat product, field, solution, demo, or
+community-of-practice teams.
+
 Do not use generic market claims when a Red Hat source exists.
 
 ## What Enables It
@@ -74,6 +79,11 @@ For every RHOAI technical component introduced in the README:
 - distinguish product capability from custom demo glue
 - state preview, technology-preview, deferred, or demo-only posture when
   relevant
+
+If a Red Hat-linked GitHub reference implementation informed the component
+selection or demo shape, mention it in `## References` or `PLAN.md` as an
+example source. Do not use the GitHub example as the authority for product API
+fields or support posture.
 
 ## Architecture
 
@@ -105,6 +115,8 @@ and regenerate SVGs instead of hand-editing generated diagrams.
 References should be short and source-focused:
 
 - one or more Red Hat narrative sources from `rh-brain` for concept/value
+- Red Hat-linked GitHub reference implementations when they informed the demo
+  shape or code
 - active-baseline official Red Hat docs for product configuration
 - links to `docs/BACKLOG.md` only for actionable deferred capabilities
 - links to `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md` only when the
@@ -155,6 +167,8 @@ After editing a README:
 - The README follows the Why/What/Architecture/References shape.
 - `## Why This Matters` defines the concept and states enterprise value.
 - Concept framing cites Red Hat narrative material from `rh-brain`.
+- When available, selected `rh-brain` sources are preferred because they link
+  to concrete GitHub projects or code examples relevant to the step.
 - `## What Enables It` maps each RHOAI technical component to an official Red
   Hat documentation link for the active baseline.
 - Product capability, custom demo glue, preview posture, and deferred work are

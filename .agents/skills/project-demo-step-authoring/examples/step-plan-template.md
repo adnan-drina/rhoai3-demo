@@ -21,6 +21,7 @@ Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
 - [ ] README explains Why and What without runbook detail.
 - [ ] Why and business value are grounded in at least one Red Hat narrative source from `rh-brain/`.
 - [ ] What and related product components are grounded in active-baseline official Red Hat docs.
+- [ ] Relevant Red Hat-linked GitHub reference implementations were searched and captured, or absence is documented.
 - [ ] Official Red Hat docs are captured for every product component.
 - [ ] Design decisions and applied configuration choices reference the sources used.
 - [ ] GitOps ownership model is explicit.
@@ -36,6 +37,15 @@ Use this as the starting shape for `steps/step-XX-slug/PLAN.md`.
 | Concept/value | <rh-brain or Red Hat narrative source> | project-documentation-authoring | <why it matters> |
 | Product config | <official docs URL> | <rhoai/ocp/odf skill> | <fields/examples used> |
 | Pattern | <CoP/blog/legacy reference> | <skill> | <curation boundary> |
+| Reference implementation | <GitHub repo/path/ref> | <skill> | <Red Hat linkage and reuse boundary> |
+
+### `rh-brain` Article Selection
+
+- Candidate articles reviewed:
+- Selected article:
+- Reason selected:
+- Links to GitHub/code examples: yes | no
+- Linked implementation source:
 
 ## Skill Routing
 

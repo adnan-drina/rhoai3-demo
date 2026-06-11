@@ -34,12 +34,30 @@ Before writing implementation:
 - capture active-baseline official Red Hat docs for every product component
   introduced by the step
 - use `.agents/references/red-hat-doc-map.yaml` to find matching skills
+- search for reference implementations in GitHub repositories published by or
+  used by Red Hat product, field, solution, demo, or community-of-practice
+  teams
 - identify Red Hat articles or blogs that provide implementation examples,
   but keep official docs as product authority
+- when multiple `rh-brain` articles cover the same concept, prefer articles
+  that link to concrete GitHub repositories, manifests, notebooks, pipelines,
+  or application code that can inform the implementation
 - record unsupported, technology-preview, community, or demo-only exceptions
 
 Do not create manifests from memory. If the required product skill is missing,
 create or update that skill before authoring GitOps.
+
+Use this implementation-source preference order:
+
+1. official Red Hat docs examples for the active baseline
+2. GitHub repositories linked from official Red Hat docs
+3. GitHub repositories linked from Red Hat articles in `rh-brain`
+4. Red Hat CoP or Red Hat team repositories with active, relevant examples
+5. upstream or third-party examples only as explicitly labeled demo exceptions
+
+Reference implementations can inform layout, scripts, example manifests, and
+validation ideas. They do not override official docs for CR fields, support
+posture, operator channels, image provenance, or API tier.
 
 ## Phase 2: Skill Routing
 
@@ -126,6 +144,8 @@ Author manifests from verified sources:
 
 - official Red Hat product docs
 - active product skills
+- locally reviewed GitHub reference implementations from Red Hat teams or
+  Red Hat-linked articles
 - Red Hat CoP catalog patterns only after local curation
 - live schema verification with `oc explain` or CRD inspection when needed
 - explicit demo exceptions documented in README or PLAN

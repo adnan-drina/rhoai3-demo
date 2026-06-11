@@ -10,6 +10,7 @@ grounded in Red Hat source material for the active product baseline.
 | `docs/PLATFORM_BASELINE.md` | Active product versions, version-match rule, RHOAI 3.4 documentation index, and source hierarchy |
 | Official docs at `docs.redhat.com` | Source of truth for supported APIs, CR fields, operator installation, product configuration, and supported/preview status |
 | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` | Read-only Red Hat article/blog knowledge base for concept framing, customer value, code examples, and recommended implementation patterns |
+| Red Hat-linked GitHub repositories | Reference implementations for concrete manifests, scripts, notebooks, pipelines, and validation ideas; never product API or support authority |
 | Existing repo code and READMEs | Current implementation evidence; never product authority by itself |
 | Live cluster schema (`oc explain`, CRDs) | Verification when docs are ambiguous; not a substitute for official docs |
 
@@ -51,6 +52,8 @@ Check that the concept introduction:
 - states the value the concept brings to this demo
 - cites at least one relevant Red Hat article, blog, guide, datasheet, or
   product page found through `rh-brain`
+- prefers Red Hat narrative sources that link to concrete GitHub
+  implementation examples when multiple sources are available
 - does not rely on generic community claims when Red Hat messaging exists
 - labels future, preview, or deferred capabilities clearly
 
@@ -77,6 +80,9 @@ registry component introduced in the step:
 - align preview, technology-preview, deprecated, or unsupported posture with
   the official docs
 - link to rh-brain examples only as supporting implementation examples
+- records any Red Hat-linked GitHub reference implementation that informed the
+  step design, or explicitly notes that no relevant implementation source was
+  found
 - avoid claiming product-native behavior for custom demo code unless the
   boundary is explicit
 - ensure README claims match the GitOps manifests, deploy scripts, and
@@ -120,6 +126,10 @@ For every touched manifest:
 - Are non-Red Hat images explicitly justified as demo-only or external
   dependencies in the README?
 - Are image tags pinned where reproducibility matters?
+- Are GitHub reference implementations locally curated instead of consumed as
+  remote Kustomize bases or unreviewed scripts?
+- Is each GitHub example linked to Red Hat docs, a Red Hat article, a Red Hat
+  organization/team, or explicitly labeled as a demo exception?
 - Are model artifacts from Red Hat validated sources, Model Registry, MinIO
   demo storage, or documented external providers?
 - Are secrets, tokens, and kubeconfigs kept out of GitOps and documented as

@@ -43,8 +43,10 @@ official Red Hat messaging and the implemented demo story.
 3. Confirm whether a companion manifest, script, README, or operations document
    change is required.
 4. For README concept introductions, use Red Hat articles and `rh-brain` to
-   define the concept and European enterprise value. For product configuration,
-   use active-baseline official Red Hat docs first.
+   define the concept and European enterprise value. Prefer articles that link
+   to GitHub reference implementations or code examples when several sources
+   are relevant. For product configuration, use active-baseline official Red
+   Hat docs first.
 5. For step README structure and presentation style, read
    `references/readme-standard.md`.
 6. For continuous documentation and troubleshooting knowledge capture, read
@@ -58,7 +60,8 @@ official Red Hat messaging and the implemented demo story.
 - Step READMEs are concise Why/What documents, not deployment runbooks.
 - Step READMEs should introduce the concept first, explain why a
   European-regulated enterprise should care, and cite Red Hat narrative
-  material from `rh-brain`.
+  material from `rh-brain`; prefer sources that include concrete GitHub
+  projects or code examples when available.
 - Step READMEs should support a future three-slide presentation pattern:
   concept/value, technology enablers, and architecture delta.
 - Operational runbook detail belongs in `docs/OPERATIONS.md`.
