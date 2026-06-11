@@ -1,0 +1,108 @@
+# Stage 110: RHOAI Base Platform
+
+**Theme:** AI Platform Foundation  
+**Concept:** A production-ready, GitOps-managed Private AI platform on OpenShift, with S3-compatible object storage, ready for GenAI and MLOps workloads.
+
+---
+
+## Why This Matters
+
+Enterprise AI has moved past experimentation. Business leaders are no longer asking whether AI can work — they are asking how to scale it safely, control costs, and protect sensitive data. Autonomous agents, model serving, pipelines, and evaluation workflows all require a stable, governed infrastructure beneath them. Without that foundation, AI projects stall at the proof-of-concept stage.
+
+**The infrastructure-first lesson.** Red Hat's own AI journey began with a consolidation of fragmented infrastructure onto a single hybrid cloud platform before a single model was deployed. The lesson: *"You cannot bypass the 'boring' work of standardization if you want to reach the 'exciting' work of AI innovation."* A unified OpenShift foundation — spanning on-premises data centres, cloud regions, and edge sites — eliminated the "it works here but not there" bottleneck that blocks every AI initiative. ([Red Hat, *Our journey to AI-centricity, Part 1*](https://www.redhat.com/en/blog/our-journey-ai-centricity-part-1-building-stable-foundation))
+
+**Hybrid cloud is a business requirement, not a preference.** European enterprises in regulated sectors — banking, telecommunications, healthcare, public sector — face strict data residency, sovereignty, and compliance requirements. Sensitive inference, model fine-tuning, and audit evidence must stay on controlled infrastructure. At the same time, teams need the agility to consume cloud capacity for burst workloads and access cloud-hosted proprietary model endpoints when appropriate. Red Hat AI 3.4 delivers a metal-to-agent platform that runs consistently across bare-metal, private cloud, managed Kubernetes, and edge footprints without re-architecting for each provider. ([Red Hat, *From inference to agents: Scaling AI in the enterprise with Red Hat AI 3.4*](https://www.redhat.com/en/blog/inference-agentic-ai-scaling-enterprise-foundation-red-hat-ai-34))
+
+**Open-source AI plus proprietary models, not either/or.** The open model ecosystem now delivers frontier-quality inference. Open models such as Llama, Qwen, Granite, and DeepSeek already power production customer service, legal document processing, and code assistance at regulated European enterprises — precisely because they run locally, with predictable costs and no API key requirement. The same platform must also integrate governed access to proprietary endpoints (GPT, Gemini, or internal MaaS services) for cases where a validated proprietary model is required. Red Hat OpenShift AI provides both paths on a single governed platform. ([Red Hat Developer, *The state of open source AI models in 2025*](https://developers.redhat.com/articles/2026/01/07/state-open-source-ai-models-2025))
+
+**Object storage is the connective tissue of AI.** Model artifacts, pipeline data, training checkpoints, evaluation evidence, and RAG corpus material all flow through S3-compatible object storage. OpenShift Data Foundation's Multicloud Object Gateway (MCG) provides this capability natively on the cluster — no external MinIO deployment, no cloud bucket dependency, and no credentials leaving the network perimeter. Developers and data scientists consume it through `ObjectBucketClaim` resources, the same pattern used in cloud environments, so code is portable. ([Red Hat Developer, *OpenShift Data Foundation for developers and data scientists*](https://developers.redhat.com/articles/2024/07/31/red-hat-openshift-data-foundation-developers-and-data-scientists))
+
+---
+
+## What Enables It
+
+This stage deploys the three-layer foundation that all subsequent demo stages build on.
+
+### OpenShift GitOps (Argo CD)
+
+Declarative GitOps reconciliation ensures that every platform resource is reproducible from Git and auditable by default. Argo CD applies and continuously reconciles all operator installations, custom resources, and configuration in this repository.
+
+- **Operator:** Red Hat OpenShift GitOps (via OLM)
+- **Engine:** Argo CD (managed ArgoCD instance in `openshift-gitops` namespace)
+- **Tracking:** `resourceTrackingMethod: annotation` (project constraint)
+- **Docs:** [OCP 4.20 GitOps](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/gitops/index)
+
+### OpenShift Data Foundation — Multicloud Object Gateway
+
+MCG-only deployment provides S3-compatible object storage for RHOAI workloads. The full Ceph StorageCluster is deferred until a demo stage explicitly needs ODF block or file storage.
+
+- **Operator:** Red Hat OpenShift Data Foundation (via OLM, `openshift-storage` namespace)
+- **Component:** Standalone Multicloud Object Gateway (NooBaa)
+- **Storage class provisioner:** `openshift-storage.noobaa.io/obc` (for `ObjectBucketClaim`)
+- **Docs:** [ODF 4.20 on AWS](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_using_amazon_web_services/index)
+
+### Red Hat OpenShift AI Self-Managed
+
+The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration. All other RHOAI components (`kserve`, `kueue`, `ray`, `modelregistry`, etc.) are set to `Removed` and added by later demo stages via Kustomize patches to this stage's owned `DataScienceCluster`.
+
+- **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
+- **Channel:** `stable-3.4`
+- **DSCI:** predefined namespaces, monitoring managed
+- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`; all other components `Removed`
+- **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  OpenShift Container Platform 4.20 (AWS)                        │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  OpenShift GitOps (openshift-gitops)                      │  │
+│  │  Argo CD · AppProject: rhoai-demo · tracking: annotation  │  │
+│  └───────────────────┬───────────────────────────────────────┘  │
+│                      │ reconciles                               │
+│         ┌────────────┴────────────┐                            │
+│         ▼                         ▼                            │
+│  ┌─────────────────┐   ┌──────────────────────────────────┐   │
+│  │  ODF MCG        │   │  Red Hat OpenShift AI 3.4        │   │
+│  │  (openshift-    │   │  (redhat-ods-operator)           │   │
+│  │   storage)      │   │                                  │   │
+│  │  NooBaa/S3 ─────┼──▶│  DSCI · DSC                      │   │
+│  │  OBC storage    │   │  Dashboard · Workbenches         │   │
+│  │  class          │   │  (redhat-ods-applications)       │   │
+│  └─────────────────┘   └──────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+New in this stage
+  OpenShift GitOps operator + ArgoCD instance
+  ODF operator + Multicloud Object Gateway (NooBaa)
+  RHOAI operator + DSCInitialization + DataScienceCluster (base)
+
+Managed by Argo CD after bootstrap
+  ODF and RHOAI resources
+  AppProject rhoai-demo
+
+Extended by later stages
+  DataScienceCluster components via Kustomize patches (kserve, kueue, ray …)
+  ObjectBucketClaims per workload namespace
+```
+
+---
+
+## References
+
+| Source | Role |
+|--------|------|
+| [RHOAI 3.4 install guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install) | Operator, DSCI, DSC CR fields |
+| [ODF 4.20 on AWS](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_using_amazon_web_services/index) | MCG standalone deployment |
+| [OCP 4.20 GitOps](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/gitops/index) | OpenShift GitOps operator |
+| [Red Hat AI 3.4 blog](https://www.redhat.com/en/blog/inference-agentic-ai-scaling-enterprise-foundation-red-hat-ai-34) | Enterprise AI value framing |
+| [AI-centricity Part 1](https://www.redhat.com/en/blog/our-journey-ai-centricity-part-1-building-stable-foundation) | Infrastructure-first narrative |
+| [Open-source AI models 2025](https://developers.redhat.com/articles/2026/01/07/state-open-source-ai-models-2025) | Open vs proprietary model flexibility |
+| [ODF for developers](https://developers.redhat.com/articles/2024/07/31/red-hat-openshift-data-foundation-developers-and-data-scientists) | MCG/OBC workflow for data scientists |
+| [github.com/redhat-ai-services/ai-accelerator](https://github.com/redhat-ai-services/ai-accelerator) | Reference implementation (CoP pattern, operator structure) |
+| `docs/PLATFORM_BASELINE.md` | Active product version targets |

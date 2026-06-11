@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stage-110-rhoai-base-platform
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai-demo
+    rhoai-demo/stage: "110"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: rhoai-demo
+  source:
+    # repoURL and targetRevision are set by deploy.sh from .env (GIT_REPO_URL, GIT_REPO_BRANCH)
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/stage-110-rhoai-base-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      - ServerSideApply=true
