@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - odf/aggregate/overlays/demo
   - rhoai/aggregate/overlays/demo
+  - access/base
