@@ -27,6 +27,14 @@ Links to GitHub implementation: yes | no
 Linked implementation URL:
 ```
 
+When two or more articles equally support the concept, choose the one with
+`Links to GitHub implementation: yes`. Articles backed by concrete code provide
+directly usable implementation patterns — Kustomize overlays, operator CRs,
+notebook structures, pipeline definitions, or validation scripts — that
+accelerate the stage GitOps tree. Record the specific file or folder path as
+`Linked implementation URL` and cross-reference it in the GitHub Reference
+Implementations section below.
+
 Narrative sources explain concept and value. They do not define Kubernetes CR
 fields, operator channels, images, or API support posture.
 

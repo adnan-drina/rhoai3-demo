@@ -42,6 +42,30 @@ docs/
 - Prefer `resources:` plus `patches:` with minimal diffs.
 - Use consistent naming and labels so rendered output is easy to inspect.
 
+### Namespace Override Trap
+
+Never set a global `namespace:` field in an overlay kustomization when the
+resource set spans multiple namespaces. A top-level `namespace:` silently
+overrides every resource in the rendered output, including resources that must
+stay in a different namespace.
+
+Common bootstrap case: the GitOps operator `Subscription` must remain in
+`openshift-operators`, while `ArgoCD` and `AppProject` resources belong in
+`openshift-gitops`. Adding `namespace: openshift-gitops` at the kustomization
+root moves the Subscription to the wrong namespace, breaking OLM installation.
+
+Instead, set `namespace:` inline in each manifest:
+
+```yaml
+# Correct — no global namespace override
+resources:
+  - ../../base             # Subscription has namespace: openshift-operators inline
+  - argocd-instance.yaml  # ArgoCD CR has namespace: openshift-gitops inline
+  - argocd-project.yaml   # AppProject has namespace: openshift-gitops inline
+```
+
+Verify the rendered output with `kustomize build <path>` before applying.
+
 ## Shared Platform Resource Ownership
 
 Some platform resources are global for the demo even when later stages depend
@@ -148,6 +172,82 @@ ignoreDifferences:
 The project bootstrap configures Argo CD `resourceTrackingMethod` as
 `annotation`. Keep it as annotation-only to avoid false OutOfSync status from
 operator-generated OpenShift resources.
+
+## Bootstrap Instance CR Pattern
+
+When bootstrapping the ArgoCD instance via Kustomize, include the full `ArgoCD`
+CR as a `resources:` entry — never as a `patches:` target. Kustomize can only
+patch resources that exist in the rendered resource set. The `ArgoCD` CR is
+created by the OpenShift GitOps operator after the operator installs, so it is
+not present in the Kustomize base tree and cannot be patched.
+
+The correct pattern (used by the Red Hat AI Accelerator in `instance/base/`) is
+to provide a complete `ArgoCD` manifest with all required settings inline:
+
+```yaml
+# gitops/bootstrap/overlays/demo/argocd-instance.yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+spec:
+  resourceTrackingMethod: annotation   # project-required
+  rbac:
+    policy: |
+      g, system:cluster-admins, role:admin
+    scopes: '[groups]'
+  server:
+    route:
+      enabled: true
+  sso:
+    dex:
+      openShiftOAuth: true
+    provider: dex
+```
+
+Add it to `resources:` in the kustomization:
+
+```yaml
+resources:
+  - ../../base
+  - argocd-instance.yaml   # full CR, not a patch
+  - argocd-project.yaml
+```
+
+The OpenShift GitOps operator reconciles from the existing `ArgoCD` CR once it
+is present on the cluster.
+
+### Two-Phase Bootstrap Apply
+
+The operator Subscription and the `ArgoCD`/`AppProject` resources cannot be
+applied in one step. Split the bootstrap into two overlays applied in order:
+
+1. `overlays/operator/` — the operator `Subscription` with the baseline-pinned
+   channel (base carries a placeholder channel). Apply this first and wait for
+   the operator CSV to reach `Succeeded`.
+2. `overlays/demo/` — the `ArgoCD` instance config and `AppProject`. These
+   depend on CRDs (`argoproj.io`) that exist only after the operator installs,
+   so apply them only after phase 1 completes.
+
+Applying a single combined overlay deadlocks: the placeholder channel never
+installs the operator, and the `ArgoCD`/`AppProject` resources fail because
+their CRDs do not yet exist. Never apply `bootstrap/base` directly — its channel
+is intentionally a placeholder patched by `overlays/operator`.
+
+## Bootstrap Script Portability
+
+Per-stage `deploy.sh`/`validate.sh` run on operator (macOS) and CI machines.
+Two portability rules learned from stage-110:
+
+- **Export `.env` values.** Source `.env` inside `set -a` / `set +a` so values
+  like `KUBECONFIG` and `RHOAI_EXPECTED_API_SERVER` are exported to `oc` child
+  processes. A plain `source .env` sets shell variables only; `oc` then falls
+  back to the default kubeconfig, which may point at a stale or wrong cluster.
+  The safety guard will (correctly) refuse to run, but the real fix is exporting.
+- **Do not depend on GNU `timeout`.** macOS does not ship `timeout`. Use a
+  portable bash wait loop driven by the `SECONDS` builtin and a deadline check
+  instead of `timeout N bash -c '...'`.
 
 ## References
 
