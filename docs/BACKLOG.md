@@ -2,18 +2,21 @@
 
 Active backlog for the reimplementation.
 
-## Stage 110: Deferred Items
+## Stage 110: Status — COMPLETE
+
+Deployed and validated 2026-06-11 on cluster-klvxt (OCP 4.20.24); `validate.sh` 17/17. User-validated end to end: login as both personas, workbench with RWO PVC, model registry instance with a registered model, S3 from the workbench.
+
+Completed: GitOps bootstrap, ODF MCG (S3 verified), RHOAI 3.4 (dashboard, workbenches, model registry), htpasswd IdP + `ai-admin`/`ai-developer` + groups, `demo-sandbox` project + first OBC + S3 connection, model registry instance (day-2 dashboard).
+
+### Open / deferred from Stage 110
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Live validation of stage-110 end-to-end | high | Cluster cluster-klvxt (OCP 4.20.24): bootstrap + ArgoCD sync done; run `validate.sh` once NooBaa + DSC reach Ready |
-| GPU accelerator foundation | medium | NFD, GPU Operator, AWS GPU MachineSet, RHOAI hardware profile — future `stage-130-gpu-accelerator-foundation` |
-| Identity provider and access groups | medium | RHOAI users/groups/RBAC — future stage in 1xx family |
-| ODF RHOAI data connection (first OBC) | low | First `ObjectBucketClaim` for RHOAI AI Pipelines backend — can be added to stage-110 GitOps or as a dedicated stage-120 item |
-| Repo URL / branch injection in ArgoCD Application | low | `deploy.sh` uses `sed` to inject `GIT_REPO_URL`/`GIT_REPO_BRANCH` from `.env`; consider a Kustomize `configMapGenerator` + `replacements` approach (AI Accelerator pattern) for cleaner handling |
-| ArgoCD RBAC group for `rhoai-demo` AppProject | low | Currently cluster-admin only; add a dedicated `rhoai-demo-admins` group for least-privilege demo access |
-| Least-privilege role for Argo CD application-controller | low | Bootstrap grants `cluster-admin` to `openshift-gitops-argocd-application-controller` (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`); replace with a role scoped to the resource kinds the demo manages |
-| TROUBLESHOOTING.md: common stage-110 failures | low | Bootstrap timeout, GitOps operator CrashLoop, NooBaa stuck Initializing, RHOAI operator pending upgrade |
+| Capture model registry instance in GitOps | low | `default-modelregistry` + registered models are day-2 dashboard-created (runtime, with DB secrets); optional to capture for from-scratch reproducibility |
+| Repo URL / branch injection in ArgoCD Application | low | `deploy.sh` uses `sed` to inject `GIT_REPO_URL`/`GIT_REPO_BRANCH` from `.env`; consider a Kustomize `configMapGenerator` + `replacements` approach (AI Accelerator pattern) |
+| Dedicated `rhoai-demo-admins` group | low | RHOAI admin uses `rhods-admins`; a separate demo-admin group is optional |
+| Least-privilege role for Argo CD application-controller | low | Bootstrap grants `cluster-admin` to `openshift-gitops-argocd-application-controller` (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`); replace with a scoped role |
+| Per-project admin RBAC for future projects | low | `rhods-admins` is bound `admin` per project (currently `demo-sandbox` only); each new project needs its own binding, by design |
 
 ## Candidate Future Stages
 
