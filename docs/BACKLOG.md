@@ -13,6 +13,7 @@ Active backlog for the reimplementation.
 | ODF RHOAI data connection (first OBC) | low | First `ObjectBucketClaim` for RHOAI AI Pipelines backend — can be added to stage-110 GitOps or as a dedicated stage-120 item |
 | Repo URL / branch injection in ArgoCD Application | low | `deploy.sh` uses `sed` to inject `GIT_REPO_URL`/`GIT_REPO_BRANCH` from `.env`; consider a Kustomize `configMapGenerator` + `replacements` approach (AI Accelerator pattern) for cleaner handling |
 | ArgoCD RBAC group for `rhoai-demo` AppProject | low | Currently cluster-admin only; add a dedicated `rhoai-demo-admins` group for least-privilege demo access |
+| Least-privilege role for Argo CD application-controller | low | Bootstrap grants `cluster-admin` to `openshift-gitops-argocd-application-controller` (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`); replace with a role scoped to the resource kinds the demo manages |
 | TROUBLESHOOTING.md: common stage-110 failures | low | Bootstrap timeout, GitOps operator CrashLoop, NooBaa stuck Initializing, RHOAI operator pending upgrade |
 
 ## Candidate Future Stages

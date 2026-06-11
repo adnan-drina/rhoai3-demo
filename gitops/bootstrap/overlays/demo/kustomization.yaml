@@ -9,3 +9,4 @@ kind: Kustomization
 resources:
   - argocd-instance.yaml
   - argocd-project.yaml
+  - argocd-cluster-admin.yaml

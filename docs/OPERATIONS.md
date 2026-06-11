@@ -28,6 +28,17 @@ oc get route openshift-gitops-server -n openshift-gitops \
 
 Log in with OpenShift OAuth (cluster-admin). The `rhoai-demo` AppProject scopes all demo Applications.
 
+#### Argo CD cluster-admin grant (demo posture)
+
+The default `openshift-gitops` ArgoCD instance ships with a scoped ClusterRole that cannot create the cluster-scoped resources, SCCs, and cross-namespace ServiceAccounts the ODF and RHOAI operators require. The bootstrap overlay (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`) grants the `openshift-gitops-argocd-application-controller` service account `cluster-admin` via a ClusterRoleBinding.
+
+This is accepted **for this demo only**, per AGENTS.md. A least-privilege replacement (scoped to the resource kinds the demo actually manages) is tracked in `docs/BACKLOG.md`. Verify the grant with:
+
+```bash
+oc auth can-i create serviceaccounts -n openshift-storage \
+  --as=system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
+```
+
 ### ODF MCG — S3 Endpoint Discovery
 
 After `NooBaa` phase reaches `Ready`:
