@@ -23,19 +23,26 @@ spec:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
 
-    # ---- Deferred to future stages via DSC patches ----
-    aipipelines:
-      managementState: Removed
-    feastoperator:
-      managementState: Removed
+    # ---- Model serving + workload management (enabled by stage-120) ----
     kserve:
-      managementState: Removed
+      # RawDeployment is the only supported mode in RHOAI 3.4 (no Service Mesh /
+      # Serverless dependency). Headed creates routes for model endpoints.
+      managementState: Managed
       rawDeploymentServiceConfig: Headed
       nim:
         managementState: Removed
       modelsAsService:
         managementState: Removed
     kueue:
+      # Unmanaged = integrate with the standalone Red Hat build of Kueue operator
+      # (the embedded Managed mode is deprecated). RHOAI auto-creates the default
+      # Kueue CR. See stage-120-gpu-as-a-service.
+      managementState: Unmanaged
+
+    # ---- Deferred to future stages via DSC patches ----
+    aipipelines:
+      managementState: Removed
+    feastoperator:
       managementState: Removed
     llamastackoperator:
       managementState: Removed

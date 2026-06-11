@@ -13,4 +13,6 @@ kind: Kustomization
 resources:
   - kueue/operator
   - nfd/operator
+  - nfd/instance/base
   - gpu-operator/operator
+  - gpu-operator/instance/base
