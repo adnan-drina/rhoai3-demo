@@ -268,12 +268,12 @@ spec:
           },
           "targets": [
             {
-              "expr": "avg(vllm:kv_cache_usage_perc{model_name=~\"$model\"}) * 100",
-              "legendFormat": "KV cache usage",
+              "expr": "max(max_over_time(vllm:kv_cache_usage_perc{model_name=~\"$model\"}[$__range])) * 100",
+              "legendFormat": "peak KV cache usage",
               "refId": "A"
             }
           ],
-          "title": "KV cache pressure",
+          "title": "Peak KV cache pressure",
           "type": "gauge"
         },
         {
@@ -319,7 +319,7 @@ spec:
           },
           "targets": [
             {
-              "expr": "100 * sum(rate(vllm:prefix_cache_hits_total{model_name=~\"$model\"}[5m])) / clamp_min(sum(rate(vllm:prefix_cache_queries_total{model_name=~\"$model\"}[5m])), 1)",
+              "expr": "100 * sum(increase(vllm:prefix_cache_hits_total{model_name=~\"$model\"}[$__range])) / clamp_min(sum(increase(vllm:prefix_cache_queries_total{model_name=~\"$model\"}[$__range])), 1)",
               "legendFormat": "prefix cache hit ratio",
               "refId": "A"
             }
@@ -370,17 +370,17 @@ spec:
           },
           "targets": [
             {
-              "expr": "avg(DCGM_FI_DEV_GPU_UTIL)",
-              "legendFormat": "GPU utilization",
+              "expr": "max(max_over_time(DCGM_FI_DEV_GPU_UTIL[$__rate_interval]))",
+              "legendFormat": "peak GPU utilization",
               "refId": "A"
             },
             {
-              "expr": "avg(100 * DCGM_FI_DEV_FB_USED / clamp_min(DCGM_FI_DEV_FB_TOTAL, 1))",
-              "legendFormat": "GPU framebuffer used",
+              "expr": "max(max_over_time((100 * DCGM_FI_DEV_FB_USED / clamp_min(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_RESERVED, 1))[$__rate_interval:]))",
+              "legendFormat": "framebuffer used",
               "refId": "B"
             }
           ],
-          "title": "GPU utilization (DCGM)",
+          "title": "GPU utilization and memory (DCGM)",
           "type": "timeseries"
         }
       ],

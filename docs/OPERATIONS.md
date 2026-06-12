@@ -350,6 +350,9 @@ oc auth can-i get services -n rhoai-demo-grafana \
 Stage 210 includes two dashboards with functional names:
 
 - `vLLM Model Serving Baseline` for the demo-specific Nemotron/vLLM view.
+  The pressure panels use peak-over-selected-range queries for KV cache and
+  GPU signals so short GuideLLM bursts remain visible after the request load
+  drains.
 - `LLM Inference Performance` at
   `/d/llm-performance/llm-inference-performance`, adapted from the Red Hat AI
   services llm-d reference. It is the primary dashboard for the GuideLLM
@@ -397,6 +400,12 @@ RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 RHOAI_GUIDELLM_OUTPUTS=bench
 
 Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` to keep the temporary Job, PVC, and
 copy Job for debugging.
+
+For a longer saturation search, use the background-agent prompt at
+`stage-210-model-serving-foundation/prompts/guidellm-saturation-benchmark-agent.md`.
+It tells a cost-efficient sub-agent how to run one GuideLLM concurrency level
+per invocation, collect TTFT/latency/throughput/GPU evidence, stop at the first
+clear saturation point, and report a recommended operating envelope.
 
 Validated 2026-06-12 on cluster-klvxt with:
 

@@ -244,6 +244,53 @@ else
 fi
 check "Grafana Prometheus datasource query succeeds" "$R"
 
+for dashboard_metric_check in \
+  "Grafana vLLM KV cache metric query succeeds|max(max_over_time(vllm:kv_cache_usage_perc[1h])) * 100" \
+  "Grafana DCGM framebuffer metric query succeeds|max(max_over_time((100 * DCGM_FI_DEV_FB_USED / clamp_min(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_RESERVED, 1))[1h:]))"; do
+  IFS="|" read -r metric_label metric_expr <<<"$dashboard_metric_check"
+  GRAFANA_METRIC_QUERY_RESULT=""
+  if [[ -n "$GRAFANA_POD" && -n "$GRAFANA_ADMIN_USER" && -n "$GRAFANA_ADMIN_PASSWORD" ]]; then
+    NOW_MS=$(( $(date +%s) * 1000 ))
+    FROM_MS=$(( NOW_MS - 3600000 ))
+    GRAFANA_METRIC_QUERY_RESULT=$(oc exec -i -n "$GRAFANA_NS" "$GRAFANA_POD" -c grafana \
+      --insecure-skip-tls-verify=true -- \
+      curl -sS -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+        -H "Content-Type: application/json" \
+        -X POST http://localhost:3000/api/ds/query \
+        --data-binary @- <<JSON 2>/dev/null || true
+{
+  "queries": [
+    {
+      "refId": "A",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "expr": "${metric_expr}",
+      "instant": true,
+      "range": false
+    }
+  ],
+  "from": "${FROM_MS}",
+  "to": "${NOW_MS}"
+}
+JSON
+)
+  fi
+  if jq -e '
+      (.results.A.status | tostring | test("^2")) and
+      ((.results.A.error // "") == "") and
+      ((.results.A.frames // []) | length > 0)
+    ' <<<"$GRAFANA_METRIC_QUERY_RESULT" >/dev/null 2>&1; then
+    R="pass"
+  else
+    GRAFANA_METRIC_ERROR=$(jq -r '.results.A.error // .message // "metric query failed"' \
+      <<<"$GRAFANA_METRIC_QUERY_RESULT" 2>/dev/null || echo "metric query failed")
+    R="$GRAFANA_METRIC_ERROR"
+  fi
+  check "$metric_label" "$R"
+done
+
 if resource_exists "grafanadashboard/vllm-model-serving-baseline" "$GRAFANA_NS"; then
   R="pass"
 else
