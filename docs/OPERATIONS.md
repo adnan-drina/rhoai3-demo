@@ -553,8 +553,10 @@ after prerequisites and DSC feature flags are healthy.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
    - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.3` with manual
-     InstallPlan approval. The deployment fails visibly if a different RHCL CSV
-     is already installed.
+     InstallPlan approval. ArgoCD ignores Subscription health for this resource
+     because OLM reports `UpgradePending` while newer RHCL plans remain
+     intentionally unapproved. The deployment fails visibly if a different RHCL
+     CSV is already installed.
    - Applies the Stage 230 Application for LeaderWorkerSet, RHCL, Kuadrant,
      Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
      `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
