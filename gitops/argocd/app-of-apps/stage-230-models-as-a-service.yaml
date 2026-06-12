@@ -54,4 +54,3 @@ spec:
       jsonPointers:
         - /spec/listeners/0/hostname
         - /spec/listeners/1/hostname
-        - /spec/listeners/1/tls/certificateRefs/0/name

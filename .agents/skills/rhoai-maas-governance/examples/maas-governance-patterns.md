@@ -40,6 +40,9 @@ Review points:
   `Gateway` sync wave. Do not point the initial `Gateway` at a placeholder
   certificate Secret and rely on a later patch hook; Argo CD can mark the
   Gateway degraded before the later hook runs.
+- If Argo CD uses `RespectIgnoreDifferences=true`, do not ignore the Gateway
+  certificate reference while trying to repair a bad certificate reference
+  through GitOps. Ignored fields are not applied during sync.
 
 ## Local Model Reference Pattern
 
