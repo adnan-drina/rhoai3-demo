@@ -18,6 +18,7 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
 fi
 
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
+MAAS_DB_NS="${RHOAI_MAAS_DATABASE_NAMESPACE:-models-as-a-service-db}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
 PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.3}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-mini}"
@@ -269,7 +270,7 @@ for crd in \
   check "MaaS CRD present: ${crd}" "$R"
 done
 
-DB_READY=$(jsonpath "statefulset/maas-postgres" "$MAAS_NS" "{.status.readyReplicas}")
+DB_READY=$(jsonpath "statefulset/maas-postgres" "$MAAS_DB_NS" "{.status.readyReplicas}")
 [[ "$DB_READY" == "1" ]] && R="pass" || R="readyReplicas=${DB_READY:-0}"
 check "MaaS PostgreSQL StatefulSet ready" "$R"
 

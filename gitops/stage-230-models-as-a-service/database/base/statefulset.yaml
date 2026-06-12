@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: maas-postgres
-  namespace: models-as-a-service
+  namespace: models-as-a-service-db
   labels:
     app.kubernetes.io/name: maas-postgres
     app.kubernetes.io/component: database

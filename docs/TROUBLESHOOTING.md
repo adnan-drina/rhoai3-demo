@@ -551,6 +551,25 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
   `MaaSSubscription.modelRefs`, and `MaaSAuthPolicy.modelRefs` use the same
   DNS-safe resource alias. Then resync Stage 230 and rerun validation.
 
+### Stage 230 sync fails on immutable Kueue queue label for maas-postgres
+
+- **Symptom:** ArgoCD reports `metadata.labels[kueue.x-k8s.io/queue-name]:
+  Invalid value: "default": field is immutable` while patching the
+  `maas-postgres` StatefulSet.
+- **Likely cause:** the PostgreSQL StatefulSet was created in
+  `models-as-a-service` before that namespace became Kueue-managed. Kueue then
+  tries to inject its default queue label during a later patch, and its webhook
+  rejects the immutable label change.
+- **Current design:** GitOps now creates demo-local PostgreSQL in
+  `models-as-a-service-db`, which is not Kueue-managed. Keep MaaS/model
+  resources in `models-as-a-service`; keep the database StatefulSet in the
+  database namespace.
+- **Cleanup for older clusters:** temporarily remove the
+  `kueue.openshift.io/managed` namespace label from `models-as-a-service`,
+  delete or finalize the old `maas-postgres` StatefulSet in that namespace,
+  and let ArgoCD create the new database StatefulSet in
+  `models-as-a-service-db`.
+
 ### Nemotron still exists as a direct demo-sandbox deployment
 
 - **Symptom:** after deploying Stage 230, `oc get inferenceservice

@@ -537,7 +537,9 @@ after prerequisites and DSC feature flags are healthy.
 3. The script:
    - Verifies the active OpenShift cluster through the guard.
    - Creates or updates local-only `maas-postgres-credentials` in
-     `models-as-a-service`.
+     `models-as-a-service-db`. The demo-local PostgreSQL database is kept
+     outside the Kueue-managed `models-as-a-service` namespace so Kueue
+     admission does not mutate or block the database StatefulSet.
    - Creates or updates `maas-db-config` in `redhat-ods-applications` with the
      PostgreSQL connection URL required by RHOAI MaaS.
    - Creates or updates local-only `openai-provider-api-key` in
@@ -595,7 +597,9 @@ PostgreSQL, `maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant
 readiness. It also checks the OpenAI provider Secret shape, `rhods-admins`
 MaaS namespace administration, absence of direct `ai-developer` namespace
 access, removal of stale direct Nemotron serving resources from
-`demo-sandbox`, the local Nemotron `LLMInferenceService` and `MaaSModelRef`,
+`demo-sandbox`, the demo-local PostgreSQL StatefulSet in
+`models-as-a-service-db`, the local Nemotron `LLMInferenceService` and
+`MaaSModelRef`,
 the external OpenAI `ExternalModel` and `MaaSModelRef`, and the combined
 `MaaSSubscription` and `MaaSAuthPolicy`.
 

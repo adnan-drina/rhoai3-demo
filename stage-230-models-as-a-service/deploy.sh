@@ -53,6 +53,7 @@ require_cmd openssl
 GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
 GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
+MAAS_DB_NS="${RHOAI_MAAS_DATABASE_NAMESPACE:-models-as-a-service-db}"
 MAAS_POSTGRES_SECRET="${RHOAI_MAAS_POSTGRES_SECRET:-maas-postgres-credentials}"
 MAAS_POSTGRES_USER="${RHOAI_MAAS_POSTGRES_USER:-maas}"
 MAAS_POSTGRES_DATABASE="${RHOAI_MAAS_POSTGRES_DATABASE:-maas}"
@@ -208,10 +209,10 @@ ensure_namespace_exists() {
 ensure_maas_secrets() {
   echo "── Ensuring environment-local MaaS database secrets ──"
 
-  ensure_namespace_exists "$MAAS_NS"
+  ensure_namespace_exists "$MAAS_DB_NS"
 
   local password
-  password="$(oc get secret "$MAAS_POSTGRES_SECRET" -n "$MAAS_NS" \
+  password="$(oc get secret "$MAAS_POSTGRES_SECRET" -n "$MAAS_DB_NS" \
     -o jsonpath='{.data.POSTGRESQL_PASSWORD}' --insecure-skip-tls-verify=true 2>/dev/null \
     | base64 --decode 2>/dev/null || true)"
 
@@ -220,7 +221,7 @@ ensure_maas_secrets() {
   fi
 
   oc create secret generic "$MAAS_POSTGRES_SECRET" \
-    -n "$MAAS_NS" \
+    -n "$MAAS_DB_NS" \
     --from-literal=POSTGRESQL_USER="$MAAS_POSTGRES_USER" \
     --from-literal=POSTGRESQL_PASSWORD="$password" \
     --from-literal=POSTGRESQL_DATABASE="$MAAS_POSTGRES_DATABASE" \
@@ -228,7 +229,7 @@ ensure_maas_secrets() {
 
   local encoded_password connection_url
   encoded_password="$(urlencode "$password")"
-  connection_url="postgresql://${MAAS_POSTGRES_USER}:${encoded_password}@maas-postgres.${MAAS_NS}.svc.cluster.local:5432/${MAAS_POSTGRES_DATABASE}?sslmode=disable"
+  connection_url="postgresql://${MAAS_POSTGRES_USER}:${encoded_password}@maas-postgres.${MAAS_DB_NS}.svc.cluster.local:5432/${MAAS_POSTGRES_DATABASE}?sslmode=disable"
 
   oc create secret generic "$MAAS_DB_CONFIG_SECRET" \
     -n redhat-ods-applications \
@@ -357,7 +358,7 @@ wait_for_jsonpath "DataScienceCluster Llama Stack Operator management" \
   "{.spec.components.llamastackoperator.managementState}" "Managed" 60
 
 wait_for_jsonpath "MaaS PostgreSQL StatefulSet availability" \
-  "statefulset/maas-postgres" "$MAAS_NS" \
+  "statefulset/maas-postgres" "$MAAS_DB_NS" \
   "{.status.readyReplicas}" "1" 90
 
 echo "✓ Stage 230 rollout requested"
