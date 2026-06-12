@@ -539,8 +539,10 @@ after prerequisites and DSC feature flags are healthy.
    - Applies the shared Stage 110 Application so the single
      `DataScienceCluster` owner enables `kserve.modelsAsService` and
      `llamastackoperator`.
-   - Applies the Stage 230 Application for cert-manager, RHCL, Kuadrant,
-     Authorino, the MaaS Gateway, PostgreSQL, and the default MaaS tenant.
+   - Verifies cert-manager is already installed and configured as a platform
+     prerequisite.
+   - Applies the Stage 230 Application for RHCL, Kuadrant, Authorino, the MaaS
+     Gateway, PostgreSQL, and the default MaaS tenant.
 
 Secrets are generated in the cluster and are not committed. The demo uses an
 in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.

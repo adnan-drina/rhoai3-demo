@@ -20,9 +20,9 @@
   MaaS Gateway API resources, Authorino TLS setup, PostgreSQL-backed API-key
   storage, `Tenant`, `MaaSModelRef`, `MaaSSubscription`,
   `MaaSAuthPolicy`, `ExternalModel`, and a MaaS-published Nemotron endpoint.
-- Phase-one implementation: GitOps-managed cert-manager prerequisite, RHCL,
-  Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL 16
-  demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
+- Phase-one implementation: cert-manager preflight validation, GitOps-managed
+  RHCL, Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL
+  16 demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
   enablement, and `Tenant`.
 - External model planned: OpenAI `gpt-5.4-nano` registered through the MaaS
   `ExternalModel` path.

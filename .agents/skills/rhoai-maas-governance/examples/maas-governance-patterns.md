@@ -15,7 +15,8 @@ served CRD group/version.
 When MaaS CRDs are not present yet, do not commit all model and policy CRs in
 one pass. Use this sequence:
 
-1. Install or verify cert-manager and Red Hat Connectivity Link.
+1. Verify cert-manager as a platform prerequisite, then install or verify Red
+   Hat Connectivity Link.
 2. Create `Kuadrant`, `Authorino`, the Authorino service certificate
    annotation, and the MaaS Gateway API resources.
 3. Provide `maas-db-config` in `redhat-ods-applications`, backed by a

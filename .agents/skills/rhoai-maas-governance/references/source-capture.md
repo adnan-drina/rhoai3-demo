@@ -81,7 +81,8 @@
   the active deployment's CRD and controller behavior to confirm the correct
   namespace for each resource before implementation.
 - Use a phase-gated implementation when MaaS CRDs are absent: first deploy
-  cert-manager/RHCL/Kuadrant/Authorino/Gateway/PostgreSQL, enable
+  RHCL/Kuadrant/Authorino/Gateway/PostgreSQL, verify cert-manager as a platform
+  prerequisite, enable
   `DataScienceCluster.spec.components.kserve.modelsAsService`, enable the
   required `OdhDashboardConfig` flags, and then rerun CRD/schema checks before
   authoring `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or

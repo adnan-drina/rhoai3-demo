@@ -138,6 +138,16 @@ ensure_maas_secrets() {
   echo "✓ MaaS database credentials and maas-db-config are present"
 }
 
+if ! oc get crd certificates.cert-manager.io --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+  echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 230." >&2
+  exit 1
+fi
+
+if ! oc get certmanager cluster --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+  echo "ERROR: cert-manager cluster resource is missing. Configure the cert-manager operand before Stage 230." >&2
+  exit 1
+fi
+
 ensure_maas_secrets
 
 echo "── Applying shared Stage 110 Argo CD Application ──"

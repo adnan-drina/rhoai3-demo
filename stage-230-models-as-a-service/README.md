@@ -56,7 +56,9 @@ flowchart LR
 
 This stage is implemented in phases:
 
-1. Enable MaaS prerequisites and validate CRD/schema availability.
+1. Enable MaaS prerequisites and validate CRD/schema availability. cert-manager
+   is treated as a required platform prerequisite, not as a Stage 230-owned
+   operator lifecycle resource.
 2. Add schema-validated model publication resources for Nemotron and external
    OpenAI `gpt-5.4-nano`.
 3. Add subscription, authorization, API key, user-access, and GenAI Playground

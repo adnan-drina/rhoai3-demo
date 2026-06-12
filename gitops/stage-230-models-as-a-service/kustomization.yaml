@@ -8,7 +8,6 @@ labels:
       demo.rhoai.io/stage: "230"
 
 resources:
-  - prerequisites/cert-manager/base
   - prerequisites/rhcl/base
   - database/base
   - gateway/base
