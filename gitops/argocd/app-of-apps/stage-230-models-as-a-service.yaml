@@ -47,10 +47,3 @@ spec:
       namespace: redhat-ods-applications
       jsonPointers:
         - /data
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: maas-default-gateway
-      namespace: openshift-ingress
-      jsonPointers:
-        - /spec/listeners/0/hostname
-        - /spec/listeners/1/hostname

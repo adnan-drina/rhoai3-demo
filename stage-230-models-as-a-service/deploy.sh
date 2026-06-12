@@ -82,6 +82,48 @@ wait_for_jsonpath() {
   return 1
 }
 
+patch_stage_230_application() {
+  local domain hostname patch_body patch_json
+
+  domain="$(oc get ingresscontroller default -n openshift-ingress-operator \
+    -o jsonpath='{.status.domain}' --insecure-skip-tls-verify=true)"
+  hostname="maas.${domain}"
+
+  patch_body=$(jq -rn \
+    --arg hostname "$hostname" \
+    '[
+      {"op":"replace","path":"/spec/listeners/0/hostname","value":$hostname},
+      {"op":"replace","path":"/spec/listeners/1/hostname","value":$hostname},
+      {"op":"replace","path":"/spec/listeners/1/tls/certificateRefs/0/name","value":"maas-gateway-tls"}
+    ] | map("- op: \(.op)\n  path: \(.path)\n  value: \(.value)") | join("\n")')
+
+  patch_json=$(jq -n --arg patch_body "$patch_body" '{
+    spec: {
+      source: {
+        kustomize: {
+          patches: [
+            {
+              target: {
+                group: "gateway.networking.k8s.io",
+                version: "v1",
+                kind: "Gateway",
+                name: "maas-default-gateway",
+                namespace: "openshift-ingress"
+              },
+              patch: $patch_body
+            }
+          ]
+        }
+      }
+    }
+  }')
+
+  oc patch application stage-230-models-as-a-service -n openshift-gitops \
+    --type=merge -p "$patch_json" --insecure-skip-tls-verify=true >/dev/null
+
+  echo "✓ Stage 230 Application uses MaaS Gateway hostname=${hostname}, tlsCertificate=maas-gateway-tls"
+}
+
 apply_argocd_application() {
   local app_name="$1"
   local manifest_path="$2"
@@ -97,9 +139,7 @@ apply_argocd_application() {
   oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
 
   if [[ "$app_name" == "stage-230-models-as-a-service" ]]; then
-    oc patch application "$app_name" -n openshift-gitops --type=json \
-      -p '[{"op":"remove","path":"/spec/source/kustomize"}]' \
-      --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+    patch_stage_230_application
     oc patch application "$app_name" -n openshift-gitops --type=merge \
       -p '{"operation":null}' \
       --insecure-skip-tls-verify=true >/dev/null 2>&1 || true

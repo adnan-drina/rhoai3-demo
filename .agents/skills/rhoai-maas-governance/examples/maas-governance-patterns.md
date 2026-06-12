@@ -43,6 +43,9 @@ Review points:
 - If Argo CD uses `RespectIgnoreDifferences=true`, do not ignore the Gateway
   certificate reference while trying to repair a bad certificate reference
   through GitOps. Ignored fields are not applied during sync.
+- Prefer setting environment-specific Gateway hostnames through the Argo CD
+  Application source or a generated overlay before sync. Use post-sync Gateway
+  patch hooks only for fields that cannot block Gateway health.
 
 ## Local Model Reference Pattern
 

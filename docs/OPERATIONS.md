@@ -546,10 +546,10 @@ after prerequisites and DSC feature flags are healthy.
 
 The Stage 230 Application prepares `maas-gateway-tls` in `openshift-ingress`
 from the active OpenShift ingress certificate before applying
-`maas-default-gateway`. This keeps the Gateway from starting with a
-cluster-specific or missing certificate reference. The follow-up Gateway hook
-sets the listener hostname to `maas.<apps-domain>` and keeps the certificate
-reference on `maas-gateway-tls`.
+`maas-default-gateway`. The deploy wrapper also patches the Argo CD
+Application source so the rendered Gateway uses `maas.<apps-domain>` and the
+stable `maas-gateway-tls` certificate reference. This keeps the Gateway from
+starting with a cluster-specific or missing certificate reference.
 
 Secrets are generated in the cluster and are not committed. The demo uses an
 in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.
