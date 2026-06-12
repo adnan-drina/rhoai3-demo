@@ -329,3 +329,12 @@
   validated `oc auth can-i get services -n rhoai-demo-grafana --as ai-admin
   --as-group rhods-admins` and the equivalent `ai-developer` check with
   `rhoai-developers`.
+- Official Grafana Operator validation: PASSED 2026-06-12 -
+  checked the Stage 210 Grafana GitOps setup against the official Grafana
+  Operator docs, Argo CD dashboard guide, Kustomize installation docs, and API
+  reference. Confirmed active OLM package `grafana-operator`, channel `v5`,
+  CSV `grafana-operator.v5.24.0`, `grafana.integreatly.org/v1beta1` CRDs,
+  `GrafanaReady=True`, `DatasourceSynchronized=True`, and
+  `DashboardSynchronized=True` for both Stage 210 dashboards. The install path
+  remains an intentional OpenShift OLM/GitOps adaptation rather than the
+  official Grafana Helm or direct Kustomize install path.

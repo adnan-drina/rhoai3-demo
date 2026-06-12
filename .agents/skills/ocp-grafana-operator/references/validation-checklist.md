@@ -8,8 +8,12 @@ manifests, or live operations.
 - The task references the active OpenShift baseline in
   `docs/PLATFORM_BASELINE.md`.
 - The Red Hat CoP catalog is used only as a local curation pattern.
+- Official Grafana Operator docs and API reference are used for
+  `Grafana`, `GrafanaDatasource`, and `GrafanaDashboard` custom resource
+  behavior.
 - Grafana Operator support posture, package name, channel, install mode, and
-  custom resource fields are verified from the active OLM catalog and CRDs.
+  custom resource fields are verified from the active OLM catalog, official
+  Grafana Operator docs, and CRDs.
 - OCP monitoring concepts are handled by `ocp-observability`.
 - RHOAI model-serving dashboard semantics are handled by
   `rhoai-model-management-monitoring`.
@@ -24,6 +28,13 @@ manifests, or live operations.
   `OperatorGroup`.
 - `Grafana`, `GrafanaDatasource`, and `GrafanaDashboard` resources use verified
   API versions and fields.
+- `GrafanaDatasource.spec.datasource` and `.spec.instanceSelector` are present,
+  and `instanceSelector.matchLabels` matches the target `Grafana` labels.
+- `GrafanaDashboard.spec.instanceSelector` is present, and dashboard source is
+  one of the installed CRD-supported fields such as `json`, `configMapRef`,
+  `grafanaCom`, `url`, `oci`, `gzipJson`, or `jsonnet`.
+- Cross-namespace dashboard or datasource import is disabled by omission unless
+  `allowCrossNamespaceImport` is intentional and documented.
 - Argo CD `SkipDryRunOnMissingResource=true` is used only when CRD ordering
   requires it.
 - Argo CD sync waves separate operator, instance, datasource, and dashboard
@@ -61,6 +72,9 @@ oc get grafanadatasource -A
 oc get grafanadashboard -A
 oc get route -A | grep -Ei 'grafana'
 oc get clusterrolebinding | grep -Ei 'grafana|cluster-monitoring-view'
+oc get grafana grafana -n rhoai-demo-grafana -o jsonpath='{.status.conditions}'
+oc get grafanadatasource prometheus -n rhoai-demo-grafana -o jsonpath='{.status.conditions}'
+oc get grafanadashboard -n rhoai-demo-grafana -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.conditions}{"\n"}{end}'
 ```
 
 For schema verification:

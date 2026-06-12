@@ -27,6 +27,11 @@
 
 | Source | URL | Use |
 |--------|-----|-----|
+| Grafana Operator documentation | https://grafana.com/docs/grafana/latest/as-code/infrastructure-as-code/grafana-operator/ | Official entry point for Grafana Operator behavior and supported resource-management concepts |
+| Grafana Operator resources guide | https://grafana.com/docs/grafana/latest/as-code/infrastructure-as-code/grafana-operator/operator-dashboards-folders-datasources/ | Official examples for `Grafana`, `GrafanaDatasource`, `GrafanaDashboard`, `instanceSelector`, datasource config, dashboard JSON, and folders |
+| Grafana Operator with Argo CD | https://grafana.com/docs/grafana/latest/as-code/infrastructure-as-code/grafana-operator/manage-dashboards-argocd/ | Official Argo CD GitOps workflow for dashboard custom resources |
+| Grafana Operator Kustomize installation | https://grafana.github.io/grafana-operator/docs/installation/kustomize/ | Official Kustomize installation options and install-method caveats |
+| Grafana Operator API reference | https://grafana.github.io/grafana-operator/docs/api/ | Official CRD field reference for `grafana.integreatly.org/v1beta1` |
 | OCP 4.20 Operators - Understanding Operators | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/understanding-operators | OLM concepts, Subscription, InstallPlan, CSV, OperatorGroup, channel, update graph |
 | OCP 4.20 Operators - Administrator tasks | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/administrator-tasks | Operator install, channel, approval, status, and uninstall workflows |
 | OCP 4.20 Monitoring | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/monitoring/index | OpenShift monitoring and user workload monitoring concepts |
@@ -130,8 +135,9 @@ cluster. Patch namespace placeholders and ClusterRoleBinding names before use.
 ## Source Boundaries
 
 - The CoP catalog is not product support authority.
-- Grafana Operator CRDs and fields must be verified with `oc explain`, active
-  CRDs, or the installed package documentation before manifests are committed.
+- Grafana Operator CRDs and fields must be verified with official Grafana
+  Operator docs, the API reference, `oc explain`, active CRDs, or the
+  installed package documentation before manifests are committed.
 - OpenShift monitoring access must be validated against the active cluster's
   user workload monitoring and RBAC configuration.
 - Grafana dashboard content must be grounded in the component skill that owns

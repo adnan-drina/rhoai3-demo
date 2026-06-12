@@ -69,9 +69,10 @@ Review points:
 
 ## Prometheus Datasource Pattern
 
-The CoP `user-app` overlay configures a `GrafanaDatasource` to query the
-OpenShift Thanos Querier with a bearer token provided through an environment
-variable:
+Official Grafana docs require a `GrafanaDatasource` to include
+`spec.datasource` and `spec.instanceSelector`. The CoP `user-app` overlay
+adapts this for OpenShift by querying the OpenShift Thanos Querier with a
+bearer token provided through an environment variable:
 
 ```yaml
 apiVersion: grafana.integreatly.org/v1beta1
@@ -96,6 +97,11 @@ spec:
 
 Review points:
 
+- Verify `grafana.integreatly.org/v1beta1` in the active CRD and confirm
+  `spec.datasource`, `spec.instanceSelector`, and optional `spec.uid` with
+  `oc explain grafanadatasource.spec`.
+- Verify `instanceSelector.matchLabels` matches labels on the target
+  `Grafana` resource.
 - Do not commit generated token data.
 - Prefer the narrowest monitoring RBAC that supports the dashboard use case.
 - Verify user workload monitoring before expecting application or model
@@ -116,6 +122,12 @@ instance/components/
 
 Review points:
 
+- Official Grafana docs support GitOps-managed `GrafanaDashboard` resources
+  with Argo CD; Argo CD syncs the CR and the operator syncs it into Grafana.
+- Verify `spec.instanceSelector` and the selected dashboard source field
+  (`json`, `configMapRef`, `grafanaCom`, `url`, `oci`, `gzipJson`, or
+  `jsonnet`) against the active CRD.
+- For same-namespace dashboards, omit `allowCrossNamespaceImport`.
 - The Grafana skill owns deployment mechanics.
 - The component skill owns metric meaning, dashboard panels, and demo claims.
 - Dashboard resources must not claim unavailable metrics.

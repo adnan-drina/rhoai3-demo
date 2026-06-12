@@ -2,7 +2,7 @@
 name: ocp-grafana-operator
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "ocp"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -13,13 +13,14 @@ description: >
   community operator catalog, Grafana custom resources, OpenShift OAuth proxy
   route posture, service serving certificates, injected CA bundles, session
   secrets, GrafanaDatasource resources, GrafanaDashboard resources,
-  cluster-monitoring-view access to Thanos Querier, Argo CD sync options and
-  waves, namespace and OperatorGroup handling, and Red Hat CoP
-  grafana-operator catalog curation. Do NOT use for RHOAI model monitoring
-  semantics, vLLM/KServe metrics, or dashboard content design; use
-  rhoai-model-management-monitoring. Do NOT treat the CoP catalog or Grafana
-  Operator CRDs as Red Hat product authority; verify fields with official OCP
-  docs, installed OLM package metadata, and active CRDs before implementation.
+  cluster-monitoring-view access to Thanos Querier, Argo CD sync options,
+  namespace and OperatorGroup handling, official Grafana Operator docs, API
+  reference checks, Kustomize installation boundaries, Argo CD dashboard GitOps
+  patterns, and Red Hat CoP grafana-operator catalog curation. Do NOT use for
+  RHOAI model monitoring semantics, vLLM/KServe metrics, or dashboard content
+  design; use rhoai-model-management-monitoring. Do NOT treat the CoP catalog
+  as product authority; verify fields with official Grafana Operator docs,
+  official OCP docs, installed OLM package metadata, and active CRDs.
 ---
 
 # OCP Grafana Operator
@@ -31,11 +32,17 @@ and OpenShift safety model.
 
 ## Source Grounding
 
+Read `references/official-grafana-operator-docs.md` before validating
+Grafana Operator CRs, datasource CRs, dashboard CRs, or Argo CD dashboard
+GitOps behavior. Use it to distinguish official Grafana Operator behavior from
+repo-specific OpenShift/OLM adaptation.
+
 Read `references/source-capture.md` before using product behavior. The CoP
 catalog is a GitOps pattern source, not product support authority. The Grafana
 Operator in the captured catalog is installed from `community-operators`, so
 channel, install mode, custom resource fields, images, and support posture must
-be verified from the active cluster catalog, CRDs, and relevant OpenShift docs.
+be verified from the active cluster catalog, CRDs, official Grafana Operator
+docs, and relevant OpenShift docs.
 
 Read `references/gitops-catalog-grafana-pattern.md` when rebuilding operator,
 instance, OAuth proxy, datasource, dashboard, or aggregate overlays.
@@ -84,9 +91,10 @@ Use the CoP pattern to frame:
 ## Workflow
 
 1. Confirm the active OpenShift baseline in `docs/PLATFORM_BASELINE.md`.
-2. Read `references/source-capture.md`.
-3. Read `references/gitops-catalog-grafana-pattern.md`.
-4. Identify whether the task concerns:
+2. Read `references/official-grafana-operator-docs.md`.
+3. Read `references/source-capture.md`.
+4. Read `references/gitops-catalog-grafana-pattern.md`.
+5. Identify whether the task concerns:
    - Grafana Operator installation or lifecycle
    - namespace and OperatorGroup scope
    - `Grafana` instance configuration
@@ -94,15 +102,16 @@ Use the CoP pattern to frame:
    - datasource access to OpenShift monitoring or user workload monitoring
    - dashboard CRs and dashboard selectors
    - RBAC, service-account tokens, session secrets, or external credentials
-5. Pair with `project-red-hat-operator-gitops` for layout and lifecycle
+6. Pair with `project-red-hat-operator-gitops` for layout and lifecycle
    management, and with `project-gitops-authoring` for repo-specific Argo CD
    Application standards.
-6. Verify all API versions, CR fields, channel values, images, route settings,
-   RBAC, and secret handling against the active cluster schema before
+7. Verify all API versions, CR fields, channel values, images, route settings,
+   RBAC, datasource fields, dashboard fields, and secret handling against the
+   active cluster schema and official Grafana Operator API reference before
    committing manifests.
-7. For live operations, use the repo environment guard and pair this skill with
+8. For live operations, use the repo environment guard and pair this skill with
    `env-troubleshoot`, `env-manage-resources`, or `env-deploy-and-evaluate`.
-8. Validate the output with `references/validation-checklist.md`.
+9. Validate the output with `references/validation-checklist.md`.
 
 ## Related Skills
 
@@ -123,6 +132,7 @@ Use the CoP pattern to frame:
 ## References
 
 - `references/source-capture.md`
+- `references/official-grafana-operator-docs.md`
 - `references/gitops-catalog-grafana-pattern.md`
 - `references/validation-checklist.md`
 - `examples/grafana-review-patterns.md`
