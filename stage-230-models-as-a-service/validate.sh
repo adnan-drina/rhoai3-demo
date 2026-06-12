@@ -459,28 +459,37 @@ else
 fi
 check "demo users have MaaS auth policy for local and external models" "$R"
 
-if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress \
-  --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-  GATEWAY_READY=$(oc get pods -n openshift-ingress \
-    -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
-    -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{" "}{end}' \
-    --insecure-skip-tls-verify=true 2>/dev/null || true)
-  GATEWAY_LOG_ERRORS=$(oc logs -n openshift-ingress \
-    -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
-    --since=10m --tail=500 --insecure-skip-tls-verify=true 2>/dev/null \
-    | grep -E 'allow_on_headers_stop_iteration|Proto constraint validation failed|unknown field|Error adding/updating listener' \
-    || true)
-  if [[ -n "$GATEWAY_LOG_ERRORS" ]]; then
-    R="gateway Envoy log still reports generated WASM/EnvoyFilter rejection"
-  elif ! contains_word "$GATEWAY_READY" "True"; then
-    R="gateway pod Ready conditions=${GATEWAY_READY:-missing}"
-  else
-    R="pass"
-  fi
+GATEWAY_FILTERS=$(oc get envoyfilter -n openshift-ingress -o name \
+  --insecure-skip-tls-verify=true 2>/dev/null || true)
+GATEWAY_READY=$(oc get pods -n openshift-ingress \
+  -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+  -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{" "}{end}' \
+  --insecure-skip-tls-verify=true 2>/dev/null || true)
+GATEWAY_LOG_ERRORS=$(oc logs -n openshift-ingress \
+  -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+  --since=3m --tail=500 --insecure-skip-tls-verify=true 2>/dev/null \
+  | grep -E 'allow_on_headers_stop_iteration|Proto constraint validation failed|unknown field|Error adding/updating listener' \
+  || true)
+OPENAI_AUTH_ENFORCED=$(jsonpath "authpolicy/maas-auth-gpt-5-4-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+NEMOTRON_AUTH_ENFORCED=$(jsonpath "authpolicy/maas-auth-nemotron-3-nano-30b-a3b" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+OPENAI_TRLP_ENFORCED=$(jsonpath "tokenratelimitpolicy/maas-trlp-gpt-5-4-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+NEMOTRON_TRLP_ENFORCED=$(jsonpath "tokenratelimitpolicy/maas-trlp-nemotron-3-nano-30b-a3b" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+if [[ -n "$GATEWAY_LOG_ERRORS" ]]; then
+  R="gateway Envoy log reports recent generated filter rejection"
+elif ! contains_word "$GATEWAY_READY" "True"; then
+  R="gateway pod Ready conditions=${GATEWAY_READY:-missing}"
+elif ! grep -q 'kuadrant-auth-maas-default-gateway' <<<"$GATEWAY_FILTERS" ||
+  ! grep -q 'kuadrant-ratelimiting-maas-default-gateway' <<<"$GATEWAY_FILTERS"; then
+  R="generated Kuadrant auth/rate-limit EnvoyFilters missing"
+elif [[ "$OPENAI_AUTH_ENFORCED" != "True" ||
+  "$NEMOTRON_AUTH_ENFORCED" != "True" ||
+  "$OPENAI_TRLP_ENFORCED" != "True" ||
+  "$NEMOTRON_TRLP_ENFORCED" != "True" ]]; then
+  R="policy enforcement openaiAuth=${OPENAI_AUTH_ENFORCED:-missing},nemotronAuth=${NEMOTRON_AUTH_ENFORCED:-missing},openaiLimit=${OPENAI_TRLP_ENFORCED:-missing},nemotronLimit=${NEMOTRON_TRLP_ENFORCED:-missing}"
 else
-  R="missing"
+  R="pass"
 fi
-check "MaaS Gateway has no active generated WASM/EnvoyFilter rejection" "$R"
+check "MaaS Gateway generated policy filters are healthy" "$R"
 
 if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")

@@ -125,7 +125,8 @@ oc get maasmodelrefs -A
 oc get maassubscriptions -A
 oc get maasauthpolicies -A
 oc get externalmodels.maas.opendatahub.io -A
-oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress -o yaml
+oc get authpolicy,tokenratelimitpolicy -n models-as-a-service
+oc get envoyfilter -n openshift-ingress
 oc logs -n openshift-ingress \
   -l gateway.networking.k8s.io/gateway-name=maas-default-gateway --since=10m
 oc logs -n redhat-ods-applications deploy/maas-api --since=10m

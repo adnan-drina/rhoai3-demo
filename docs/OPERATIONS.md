@@ -610,14 +610,15 @@ and calls the external MaaS API subscription endpoint through the Gateway. A
 deployment is not accepted as complete unless the dashboard/API path can load
 the published model, not just the underlying CRs.
 
-If validation fails on the RHCL pin or on `MaaS Gateway Kuadrant WASM filter is
-accepted by Envoy`, inspect the installed RHCL CSV and gateway logs before
-retrying the dashboard. On the current `cluster-klvxt` environment, RHCL 1.4.0
-generated a `kuadrant-maas-default-gateway` EnvoyFilter with
-`allow_on_headers_stop_iteration`; the OpenShift gateway Envoy rejected that
-field, so the Gateway did not inject the `X-MaaS-Username` and
-`X-MaaS-Group` headers required by `maas-api`. Stage 230 now expects
-`rhcl-operator.v1.3.3`.
+If validation fails on the RHCL pin or on MaaS Gateway generated policy
+filters, inspect the installed RHCL CSV, generated Kuadrant AuthPolicy and
+TokenRateLimitPolicy status, and gateway logs before retrying the dashboard.
+On the current `cluster-klvxt` environment, RHCL 1.4.0 generated a Gateway
+WASM EnvoyFilter with `allow_on_headers_stop_iteration`; the OpenShift gateway
+Envoy rejected that field, so Gateway requests did not reliably inject the
+identity headers required by `maas-api`. Stage 230 now expects
+`rhcl-operator.v1.3.3`, current model policies with `Enforced=True`, and
+functional dashboard/Gateway discovery for the published MaaS models.
 
 Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the
 Stage 230 fix. Treat RHCL version remediation as operator lifecycle work and
