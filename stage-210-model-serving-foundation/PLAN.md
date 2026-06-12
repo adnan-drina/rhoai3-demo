@@ -276,9 +276,10 @@
   `stage-110-rhoai-base-platform` synced revision
   `df241586684739f8d1610e8a43bd875d686db896`.
 - Live validation: PASSED 2026-06-12 -
-  `stage-210-model-serving-foundation/validate.sh` 39/39 after adding the
+  `stage-210-model-serving-foundation/validate.sh` 49/49 after adding the
   llm-d-showroom-style `benchmark-data` PVC, shared-prefix prompt ConfigMap,
-  `llm-performance` Grafana dashboard, and OpenShift ConsoleLink.
+  `llm-performance` Grafana dashboard, OpenShift ConsoleLink, and dashboard
+  metric-alignment checks.
 - Direct inference smoke: PASSED 2026-06-12 -
   `POST /v1/chat/completions` returned assistant content, reasoning metadata,
   and usage tokens from `nvidia-nemotron-3-nano-30b-a3b` after the curated
@@ -300,6 +301,31 @@
   TTFT about 1.63 seconds, p95 ITL about 6.1 ms, p95 end-to-end latency about
   3.0 seconds, and mean output throughput about 126.7 output tokens/second.
   Treat this as harness proof only, not capacity evidence.
+- Serving-context optimization: APPLIED 2026-06-12 -
+  changed the curated Nemotron default from `--max-model-len=131072` to
+  `--max-model-len=8192` for the single-GPU chat/RAG operating envelope. The
+  live `InferenceService` was reconciled through
+  `stage-210-model-serving-foundation/deploy.sh`, and a guarded read-only check
+  confirmed the active vLLM args include `--max-model-len=8192`,
+  `--max-num-batched-tokens=8192`, prefix caching, auto tool choice, the
+  `qwen3_coder` tool parser, and the Nemotron reasoning parser.
+- Policy benchmark data: ADDED 2026-06-12 -
+  `stage-210-model-serving-foundation/prepare-policy-benchmark-data.sh` seeds
+  `/data/policy-chat.csv` and `/data/policy-rag-4k.csv` into the existing
+  `benchmark-data` PVC for repeatable MaaS-policy-oriented GuideLLM runs.
+- GuideLLM policy benchmark: PASSED 2026-06-12 -
+  ran chat concurrency `1,2,4,8,12,16` for 120 seconds per level and
+  4k-context RAG concurrency `1,2,4,8` for 120 seconds per level. Results are
+  stored under gitignored directories
+  `runs/stage-210-guidellm/20260612152549/` and
+  `runs/stage-210-guidellm/20260612153735/`.
+- GuideLLM policy values: short chat stayed usable through `8` concurrent
+  users with p95 TTFT about 4.6 seconds, p95 ITL about 12.6 ms, and p95
+  end-to-end latency about 6.0 seconds. Chat `12-16` concurrent users is a
+  stress lane, not the first public quota. RAG with about 3.6k input tokens and
+  512 output tokens should start at `2` concurrent users; `4` concurrent users
+  showed a p95 TTFT spike around 19.3 seconds and p95 end-to-end latency around
+  22.6 seconds.
 - GuideLLM note: HTML output from `ghcr.io/vllm-project/guidellm:v0.5.0`
   failed on a redirected report-template URL, so the automation defaults to
   JSON and CSV output and smoke tests can override to JSON-only.

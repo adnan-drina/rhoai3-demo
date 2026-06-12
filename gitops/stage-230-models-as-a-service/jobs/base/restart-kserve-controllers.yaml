@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-restart-kserve-controllers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: restart-kserve-controllers
+    app.kubernetes.io/component: maas
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: job-restart-kserve-controllers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: restart-kserve-controllers
+    app.kubernetes.io/component: maas
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: job-restart-kserve-controllers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: restart-kserve-controllers
+    app.kubernetes.io/component: maas
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+subjects:
+  - kind: ServiceAccount
+    name: job-restart-kserve-controllers
+    namespace: redhat-ods-applications
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: job-restart-kserve-controllers
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-restart-kserve-controllers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/name: restart-kserve-controllers
+    app.kubernetes.io/component: maas
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: job-restart-kserve-controllers
+      restartPolicy: Never
+      containers:
+        - name: restart
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              if oc get deployment kserve-controller-manager -n redhat-ods-applications >/dev/null 2>&1; then
+                oc rollout restart deployment/kserve-controller-manager -n redhat-ods-applications
+                oc rollout status deployment/kserve-controller-manager -n redhat-ods-applications --timeout=300s
+              fi
+
+              if oc get deployment llmisvc-controller-manager -n redhat-ods-applications >/dev/null 2>&1; then
+                oc rollout restart deployment/llmisvc-controller-manager -n redhat-ods-applications
+                oc rollout status deployment/llmisvc-controller-manager -n redhat-ods-applications --timeout=300s
+              fi
+
+              echo "KServe controller API discovery refresh completed."

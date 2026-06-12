@@ -16,8 +16,9 @@ The active implementation follows this sequence:
 4. `stage-220-model-performance-baseline` - planned expanded performance
    baseline and operating-envelope evidence when lightweight Stage 210
    benchmark results are not sufficient.
-5. `stage-230-models-as-a-service` - planned governed MaaS access to Nemotron
-   plus external OpenAI `gpt-5.4-nano`.
+5. `stage-230-models-as-a-service` - active phase-one MaaS prerequisite
+   enablement, then governed access to Nemotron plus external OpenAI
+   `gpt-5.4-nano`.
 
 ## Stage 110: RHOAI Base Platform
 
@@ -205,14 +206,39 @@ security groups, IAM profile names, regions, and availability zones.
 Before deploying Stage 120 to a fresh environment:
 
 1. Confirm the cluster is AWS-backed and has quota for `g6e.2xlarge`.
-2. Export a current worker MachineSet from `openshift-machine-api`.
-3. Create a GPU MachineSet by preserving the cluster-specific provider fields
-   and changing only the GPU intent: name, labels, `instanceType:
-   g6e.2xlarge`, GPU node labels, and the `nvidia-gpu-only` taint.
-4. Replace `gitops/stage-120-gpu-as-a-service/machineset/base/machineset-gpu.yaml`
+2. Export or identify a current non-GPU worker MachineSet from
+   `openshift-machine-api`.
+3. Preview a generated GPU MachineSet:
+
+```bash
+./stage-120-gpu-as-a-service/generate-gpu-machineset.sh \
+  --source <worker-machineset>
+```
+
+4. Review the generated providerSpec, especially AMI, subnet, security group,
+   IAM/profile, region, zone, tags, and userDataSecret values.
+5. Replace the committed Stage 120 GPU MachineSet only after review:
+
+```bash
+./stage-120-gpu-as-a-service/generate-gpu-machineset.sh \
+  --source <worker-machineset> \
+  --write
+kustomize build gitops/stage-120-gpu-as-a-service >/tmp/stage120.rendered.yaml
+```
+
+6. Commit the regenerated
+   `gitops/stage-120-gpu-as-a-service/machineset/base/machineset-gpu.yaml`
    before syncing the Stage 120 Application.
 
 Do not reuse the `cluster-klvxt` providerSpec in a different AWS cluster.
+
+The generator keeps the demo defaults unless overridden:
+
+- `RHOAI_GPU_INSTANCE_TYPE=g6e.2xlarge`
+- `RHOAI_GPU_MACHINESET_REPLICAS=1`
+- GPU labels: `cluster-api/accelerator=nvidia-gpu` and
+  `node-role.kubernetes.io/gpu`
+- GPU taint: `nvidia-gpu-only:NoSchedule`
 
 ## Stage 210: Model Serving Foundation
 
@@ -269,7 +295,7 @@ assistant quickstart tested on AWS `g6e.2xlarge`/L40S GPU infrastructure:
   `4` CPU, `24Gi` memory, and one `nvidia.com/gpu`
 - vLLM args: `--enable-force-include-usage`,
   `--disable-uvicorn-access-log`, `--enable-prefix-caching`,
-  `--max-model-len=131072`, `--max-num-batched-tokens=8192`,
+  `--max-model-len=8192`, `--max-num-batched-tokens=8192`,
   `--enable-auto-tool-choice`, `--tool-call-parser=qwen3_coder`,
   `--trust-remote-code`,
   `--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py`, and
@@ -277,6 +303,12 @@ assistant quickstart tested on AWS `g6e.2xlarge`/L40S GPU infrastructure:
 - model source: keep the Red Hat registry modelcar
   `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
   unless a newer official Red Hat artifact is intentionally selected
+
+Stage 210 intentionally uses an `8192` token serving context for the current
+single-GPU chat/RAG baseline. The earlier `131072` token setting remains a
+model capability reference, but it is not the default operating envelope for
+the governed MaaS path because one long request can consume too much of the
+single-GPU serving budget.
 
 ### User-Led Dashboard Path
 
@@ -421,9 +453,127 @@ After the showroom-style prompt dataset was added, the smoke run completed 5
 requests with no errors using `/data/prompts.csv`. Observed values were
 approximately p95 TTFT 1.63 seconds, p95 ITL 6.1 ms, p95 end-to-end request
 latency 3.0 seconds, and mean output throughput 126.7 output tokens/second.
-Treat these as harness and endpoint proof only; run the default `32,64`
-profile before using benchmark results for capacity, quota, or MaaS limit
-decisions.
+Treat these as harness and endpoint proof only; run chat/RAG policy profiles
+before using benchmark results for capacity, quota, or MaaS limit decisions.
+
+For a policy-oriented benchmark that feeds Stage 230 MaaS limits, seed the
+chat/RAG prompt data first:
+
+```bash
+./stage-210-model-serving-foundation/prepare-policy-benchmark-data.sh
+```
+
+Then run the chat profile:
+
+```bash
+RHOAI_GUIDELLM_DATA=/data/policy-chat.csv \
+RHOAI_GUIDELLM_RATE=1,2,4,8,12,16 \
+RHOAI_GUIDELLM_MAX_SECONDS=120 \
+RHOAI_GUIDELLM_TIMEOUT=35m \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+Run the longer-context RAG profile separately:
+
+```bash
+RHOAI_GUIDELLM_DATA=/data/policy-rag-4k.csv \
+RHOAI_GUIDELLM_RATE=1,2,4,8 \
+RHOAI_GUIDELLM_MAX_SECONDS=120 \
+RHOAI_GUIDELLM_TIMEOUT=30m \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+Validated 2026-06-12 on cluster-klvxt after reconciling the live model to
+`--max-model-len=8192`:
+
+| Profile | Concurrent users | Successful requests | p95 TTFT | p95 ITL | p95 end-to-end | Output tokens/sec |
+|---------|------------------|---------------------|----------|---------|----------------|-------------------|
+| Chat, about 148 input / 256 output tokens | 1 | 63/63 | 1.8s | 4.9ms | 1.9s | 134 |
+| Chat, about 148 input / 256 output tokens | 2 | 95/96 | 2.5s | 6.2ms | 2.6s | 203 |
+| Chat, about 148 input / 256 output tokens | 4 | 141/144 | 3.0s | 8.9ms | 3.4s | 301 |
+| Chat, about 148 input / 256 output tokens | 8 | 160/160 | 4.6s | 12.6ms | 6.0s | 423 |
+| Chat, about 148 input / 256 output tokens | 12 | 160/160 | 6.4s | 18.3ms | 6.7s | 459 |
+| Chat, about 148 input / 256 output tokens | 16 | 160/160 | 6.3s | 18.8ms | 6.9s | 586 |
+| RAG, about 3.6k input / 512 output tokens | 1 | 31/31 | 3.1s | 5.6ms | 3.9s | 132 |
+| RAG, about 3.6k input / 512 output tokens | 2 | 47/48 | 4.6s | 7.2ms | 5.2s | 201 |
+| RAG, about 3.6k input / 512 output tokens | 4 | 57/60 | 19.3s | 10.2ms | 22.6s | 243 |
+| RAG, about 3.6k input / 512 output tokens | 8 | 80/80 | 9.9s | 15.0ms | 11.3s | 381 |
+
+Initial policy interpretation for one `g6e.2xlarge` GPU worker:
+
+- Chat assistant lane: start MaaS limits at `8` active concurrent requests per
+  Nemotron replica, with 256 output-token defaults and a hard request context
+  budget within the `8192` serving envelope.
+- Chat burst lane: allow `12` concurrent requests only for trusted/internal
+  users or during demos where p95 TTFT around 6 seconds is acceptable.
+- RAG lane: start at `2` active concurrent requests per Nemotron replica for
+  about 4k-token prompts and 512 output-token responses.
+- RAG burst lane: treat `4` concurrent requests as a breakpoint candidate until
+  more RAG profiles prove the 19-second p95 TTFT spike was not repeatable.
+- Do not expose `131072`-token context through MaaS on this single-GPU profile.
+  Keep larger-context experiments separate from the governed shared service
+  until they have their own benchmark evidence.
+
+## Stage 230: Models-as-a-Service
+
+Stage 230 turns the Stage 210 model-serving foundation into a governed model
+service. The implementation is phase-gated because RHOAI creates MaaS CRDs only
+after prerequisites and DSC feature flags are healthy.
+
+### Phase-One Deploy
+
+1. Ensure `.env` has the correct `RHOAI_EXPECTED_API_SERVER`,
+   `GIT_REPO_URL`, and `GIT_REPO_BRANCH`.
+2. Run:
+
+   ```bash
+   ./stage-230-models-as-a-service/deploy.sh
+   ```
+
+3. The script:
+   - Verifies the active OpenShift cluster through the guard.
+   - Creates or updates local-only `maas-postgres-credentials` in
+     `models-as-a-service`.
+   - Creates or updates `maas-db-config` in `redhat-ods-applications` with the
+     PostgreSQL connection URL required by RHOAI MaaS.
+   - Applies the shared Stage 110 Application so the single
+     `DataScienceCluster` owner enables `kserve.modelsAsService` and
+     `llamastackoperator`.
+   - Applies the Stage 230 Application for cert-manager, RHCL, Kuadrant,
+     Authorino, the MaaS Gateway, PostgreSQL, and the default MaaS tenant.
+
+Secrets are generated in the cluster and are not committed. The demo uses an
+in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.
+This is a demo database posture; production MaaS should use a managed and
+operationally backed PostgreSQL 14+ database.
+
+### Phase-One Validation
+
+Run:
+
+```bash
+./stage-230-models-as-a-service/validate.sh
+```
+
+The validator checks Argo CD app state, DSC fields, dashboard flags,
+cert-manager, RHCL, Gateway API, Kuadrant, Authorino, PostgreSQL,
+`maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant readiness.
+
+Only after the MaaS CRDs are present should the next phase add
+`MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy`
+resources. Use `oc explain` against the installed CRDs before committing those
+manifests because the RHOAI 3.4 documentation examples and CRD verification
+section use different API groups for some MaaS resources.
+
+### Access Posture
+
+- `ai-admin` administers MaaS and can manage the `models-as-a-service`
+  namespace.
+- `ai-developer` should not have direct namespace access to
+  `models-as-a-service`; the intended path is OpenShift AI dashboard assets,
+  Gen AI Playground, and MaaS-issued API keys.
+- External OpenAI `gpt-5.4-nano` access must go through MaaS and must be
+  documented as an external-provider data path where prompts leave the cluster.
 
 ---
 

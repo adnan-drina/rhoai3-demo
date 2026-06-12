@@ -23,6 +23,9 @@
 | Managing OpenShift AI dashboard customization | `OdhDashboardConfig` feature flag context |
 | Managing observability | Platform observability context for MaaS usage metrics |
 | Red Hat OpenShift AI API tiers | Support posture review for MaaS CRDs and preview features |
+| Red Hat Connectivity Link 1.4 installing guide | RHCL installation, supported component prerequisites, and Kuadrant/Authorino context for the active demo cluster package |
+| OpenShift 4.20 cert-manager Operator documentation | cert-manager prerequisite installation and `CertManager` operand behavior |
+| Red Hat Ecosystem Catalog PostgreSQL 16 RHEL 9 image | Demo-local PostgreSQL 16 container image and environment-variable contract for the MaaS API-key database |
 
 ## Supporting Implementation References
 
@@ -55,7 +58,17 @@
 
 ## Unresolved Or Verify Before GitOps
 
+- The official RHOAI 3.4 MaaS guide contains a group-name discrepancy that
+  must be resolved from installed CRDs before authoring GitOps. The YAML
+  examples for `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy` use
+  `apiVersion: models.opendatahub.io/v1alpha1`, while the deployment
+  verification section lists CRDs under `*.maas.opendatahub.io`. Treat both as
+  unverified until the target cluster installs the MaaS CRDs and
+  `oc api-resources` / `oc explain` confirm the served group and version.
 - Verify installed CRD schemas before committing long-lived GitOps manifests:
+  `oc api-resources | grep -i maas`,
+  `oc get crd maasmodelrefs.models.opendatahub.io`,
+  `oc get crd maasmodelrefs.maas.opendatahub.io`,
   `oc explain maasmodelrefs.models.opendatahub.io.spec`,
   `oc explain maassubscriptions.models.opendatahub.io.spec`,
   `oc explain maasauthpolicies.models.opendatahub.io.spec`,
@@ -67,3 +80,9 @@
   `models-as-a-service`, model namespaces, and troubleshooting snippets. Use
   the active deployment's CRD and controller behavior to confirm the correct
   namespace for each resource before implementation.
+- Use a phase-gated implementation when MaaS CRDs are absent: first deploy
+  cert-manager/RHCL/Kuadrant/Authorino/Gateway/PostgreSQL, enable
+  `DataScienceCluster.spec.components.kserve.modelsAsService`, enable the
+  required `OdhDashboardConfig` flags, and then rerun CRD/schema checks before
+  authoring `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or
+  `MaaSAuthPolicy`.

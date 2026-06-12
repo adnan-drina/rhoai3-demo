@@ -29,6 +29,8 @@ Current rule taxonomy:
 | `project.md` | `project-` | Repo structure, GitOps authoring, docs, manifest review, Red Hat source alignment, and shared guidance |
 | `env.md` | `env-` | Live demo environment deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | `rhoai.md` | `rhoai-` | Official-doc-backed RHOAI component behavior and configuration |
+| `ocp.md` | `ocp-` | Official-doc-backed OpenShift infrastructure, networking, auth, monitoring, GitOps, and storage integration |
+| `odf.md` | `odf-` | Official-doc-backed OpenShift Data Foundation storage, object storage, NooBaa, and storage class guidance |
 | `assets.md` | `assets-` | Visual assets, diagrams, decks, and presentation outputs |
 
 Rule frontmatter should stay simple:
@@ -79,6 +81,9 @@ Conventions:
 - Keep `SKILL.md` focused; put deeper detail in `references/`, executable
   helpers in `scripts/`, and reusable examples in `examples/` when needed.
 - Keep tool-specific copies out of the repo.
+- If a canonical repo skill exists on disk but is not listed by the current
+  runtime skill discovery output, treat the on-disk skill as project guidance
+  after reading it fully and note the discovery mismatch for follow-up.
 
 ## Shared Hooks
 
@@ -112,7 +117,7 @@ Run this after major guidance changes:
 
 - [ ] Root `AGENTS.md` is plain Markdown and self-contained enough to orient a
       new agent.
-- [ ] `.agents/rules/` has exactly the four group-level rules unless the skill
+- [ ] `.agents/rules/` has exactly the six group-level rules unless the skill
       taxonomy changes.
 - [ ] Every rule points to the relevant skills instead of duplicating workflows.
 - [ ] Every skill `name` matches its folder.

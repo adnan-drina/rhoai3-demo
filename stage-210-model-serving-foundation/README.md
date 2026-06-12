@@ -62,6 +62,10 @@ one Nemotron endpoint, one GPU, `2` CPU and `16Gi` memory requested, `4` CPU and
 `24Gi` memory limited, and the Nemotron-specific vLLM flags for usage
 reporting, access-log reduction, prefix caching, context length, batched-token
 scheduling, tool calling, trusted remote code, and reasoning parser support.
+After the first saturation run, Stage 210 uses an `8192` token serving context
+as the default chat/RAG operating envelope for one GPU. Larger context windows
+must be justified by RAG-specific benchmark evidence before being exposed
+through MaaS.
 The quickstart's MaaS `LLMInferenceService`, gateway, tier, and RBAC patterns
 remain Stage 230 input.
 
@@ -147,9 +151,10 @@ Validated on `cluster-klvxt` on 2026-06-12:
 
 - `stage-210-model-serving-foundation/deploy.sh` converged Stage 110 and Stage
   210 Argo CD Applications to `Synced/Healthy`.
-- `stage-210-model-serving-foundation/validate.sh` passed 35 checks after
-  reconciling the curated Nemotron vLLM args, resource sizing, and structured
-  tool-call validation.
+- `stage-210-model-serving-foundation/validate.sh` passed 49 checks after
+  reconciling the curated Nemotron vLLM args, resource sizing, structured
+  tool-call validation, Grafana datasource access, and dashboard metric
+  alignment.
 - A direct `/v1/chat/completions` smoke test returned assistant content,
   reasoning metadata, and usage tokens through the vLLM endpoint after the
   curated configuration was applied.
@@ -159,10 +164,16 @@ Validated on `cluster-klvxt` on 2026-06-12:
   completed with 11 successful requests and zero errors. The observed p95 TTFT
   was about 71 ms, p95 ITL about 7.1 ms, p95 end-to-end request latency about
   0.98 seconds, and mean output throughput about 132 output tokens/second.
+- After reducing the default serving context to `8192` tokens, a policy
+  benchmark tested short chat and 4k-context RAG profiles. Short chat remains a
+  good fit for an initial `8` concurrent-user service lane on one GPU. RAG-style
+  requests should start with a stricter `2` concurrent-user lane because the
+  `4` concurrent run showed a p95 latency spike.
 
 These numbers are smoke-test evidence for the harness and endpoint, not a
-production capacity claim. Use longer GuideLLM profiles before setting MaaS
-quotas or public operating limits.
+production capacity claim. Use the recorded chat/RAG policy profiles in
+`docs/OPERATIONS.md` as the first input for Stage 230 MaaS quotas and rerun
+them whenever the model, runtime, GPU shape, or prompt profile changes.
 
 ---
 

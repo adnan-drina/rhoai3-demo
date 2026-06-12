@@ -37,6 +37,13 @@ The guide defines these MaaS custom resource responsibilities:
 Subscriptions control quota. Authorization policies control gateway access.
 Users need both to consume a governed model.
 
+The RHOAI 3.4 guide has an API-group discrepancy that must be resolved through
+the installed CRDs before GitOps authoring. The verification section lists
+CRDs such as `maasmodelrefs.maas.opendatahub.io`, while several YAML examples
+use `apiVersion: models.opendatahub.io/v1alpha1`. Do not treat either group as
+final until `oc api-resources`, `oc get crd`, and `oc explain` confirm the
+served group/version in the target cluster after MaaS is enabled.
+
 ## Prerequisites
 
 Before deploying MaaS, verify:

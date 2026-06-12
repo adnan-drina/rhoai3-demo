@@ -91,7 +91,7 @@ Review the specific field before changing it.
 | `spec.dashboardConfig.observabilityDashboard` | `false` | Technology Preview; shows Observe and monitor -> Dashboard when `true` |
 | `spec.dashboardConfig.promptManagement` | `false` | Technology Preview; enables prompt management in Gen AI Studio Chat Playground |
 | `spec.dashboardConfig.trainingJobs` | `true` | Technology Preview; shows Develop and train -> Training jobs when `true` |
-| `spec.dashboardConfig.vLLMDeploymentOnMaas` | `false` | Technology Preview; enables the new vLLM on MaaS deployment option |
+| `spec.dashboardConfig.vLLMDeploymentOnMaaS` | `false` | Technology Preview; enables the new vLLM on MaaS deployment option |
 
 ## Gen AI Studio Endpoint Settings
 

@@ -1,8 +1,39 @@
 # MaaS Governance Patterns
 
 These snippets are review patterns derived from the official MaaS guide. Before
-committing GitOps, verify exact installed CRD schemas with `oc explain` and
-the OpenShift safety guard in `AGENTS.md`.
+committing GitOps, verify exact installed CRD schemas with `oc api-resources`,
+`oc get crd`, and `oc explain` under the OpenShift safety guard in `AGENTS.md`.
+
+The official RHOAI 3.4 guide shows YAML examples with
+`apiVersion: models.opendatahub.io/v1alpha1`, but its CRD verification section
+lists MaaS CRDs under `*.maas.opendatahub.io`. Treat the API group in these
+snippets as provisional until the target cluster installs MaaS and exposes the
+served CRD group/version.
+
+## Phase-Gated GitOps Pattern
+
+When MaaS CRDs are not present yet, do not commit all model and policy CRs in
+one pass. Use this sequence:
+
+1. Install or verify cert-manager and Red Hat Connectivity Link.
+2. Create `Kuadrant`, `Authorino`, the Authorino service certificate
+   annotation, and the MaaS Gateway API resources.
+3. Provide `maas-db-config` in `redhat-ods-applications`, backed by a
+   PostgreSQL 14+ database. For this demo, an in-cluster PostgreSQL 16 database
+   is acceptable only as demo posture.
+4. Enable `DataScienceCluster.spec.components.kserve.modelsAsService` and the
+   required dashboard flags through the shared DSC/dashboard owner.
+5. Wait for MaaS CRDs, then run `oc api-resources`, `oc get crd`, and
+   `oc explain` before committing `MaaSModelRef`, `ExternalModel`,
+   `MaaSSubscription`, or `MaaSAuthPolicy`.
+
+Review points:
+
+- This pattern avoids guessing resource fields before the installed RHOAI
+  controller exposes its CRDs.
+- Keep provider credentials, database passwords, and API keys outside Git.
+- Use sync waves and `SkipDryRunOnMissingResource=true` only where controller
+  CRDs genuinely appear after prerequisite reconciliation.
 
 ## Local Model Reference Pattern
 

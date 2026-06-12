@@ -91,6 +91,10 @@ product documentation categories and books to flat skills.
 2. Read `references/conventions.md` for detailed patterns
 3. Check for overlaps — does an existing rule/skill already cover this?
 4. Decide the component type using the decision framework above
+5. If `AGENTS.md` or a rule references a canonical repo skill that exists under
+   `.agents/skills/` but is missing from the runtime-discovered skill list,
+   read the on-disk skill as project guidance and record the discovery gap in
+   the work summary or backlog.
 
 ### Creating a Rule
 

@@ -2,7 +2,7 @@
 name: rhoai-maas-governance
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -119,6 +119,7 @@ For this repo:
 2. Read `references/source-capture.md` and
    `references/official-doc-extraction.md`.
 3. Decide whether the task is:
+   - phase-one MaaS prerequisite enablement before MaaS CRDs exist
    - MaaS prerequisite and enablement review
    - Gateway, Kuadrant, Authorino TLS, or PostgreSQL setup
    - dashboard feature flag review
@@ -132,8 +133,13 @@ For this repo:
    - troubleshooting user or admin access errors
 4. Use `examples/maas-governance-patterns.md` for compact manifest and review
    patterns.
-5. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.
-6. Validate with `references/validation-checklist.md`.
+5. For GitOps implementation, gate work in phases:
+   - install/enable prerequisites and DSC/dashboard feature flags
+   - rerun live CRD and `oc explain` checks
+   - only then commit MaaS model, subscription, auth-policy, and external-model
+     resources
+6. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.
+7. Validate with `references/validation-checklist.md`.
 
 ## References
 

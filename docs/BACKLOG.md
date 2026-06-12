@@ -31,7 +31,7 @@ Stage 210 owns that transition.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Fresh-environment MachineSet regeneration | high | Current MachineSet is specific to `cluster-klvxt`; each new AWS demo environment must regenerate the providerSpec from a live worker MachineSet |
+| Fresh-environment MachineSet regeneration | high | Current MachineSet is specific to `cluster-klvxt`; each new AWS demo environment must regenerate the providerSpec from a live worker MachineSet. `stage-120-gpu-as-a-service/generate-gpu-machineset.sh` now previews or writes the replacement from a guarded live worker MachineSet; test it during the next fresh AWS environment redeploy before considering this closed |
 | GPU cost control | high | Use the documented manual scale-to-zero path when the demo is idle |
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
@@ -50,7 +50,8 @@ llm-d-showroom-style `benchmark-data` PVC, shared-prefix `prompts.csv`,
 link to the Grafana dashboard.
 
 Deployed and validated 2026-06-12 on cluster-klvxt; current `validate.sh`
-passes 39/39 after the showroom-style benchmark/dashboard enhancement. A short
+passes 49/49 after the showroom-style benchmark/dashboard enhancement and
+dashboard metric alignment. A short
 GuideLLM smoke run completed successfully against `/data/prompts.csv` and
 wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 
@@ -61,7 +62,8 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
 | Durable curated MaaS deployment | high | Deferred to Stage 230 after Stage 210 establishes basic serving limits and operating envelope |
 | MaaS quickstart pattern adoption | high | Stage 230 should adapt the `rh-ai-quickstart/maas-code-assistant` `LLMInferenceService`, tier, Gateway, RBAC, and Grafana patterns after RHOAI 3.4 CRD/schema checks |
-| Extended operating envelope | medium | Run longer GuideLLM profiles before using the smoke numbers for MaaS quotas or capacity claims |
+| Stage 230 MaaS CRD prerequisites | high | Phase-one GitOps now installs/enables cert-manager, RHCL, Kuadrant, Authorino, the MaaS Gateway, PostgreSQL, and the default Tenant; deploy and validate it, then use live MaaS CRDs to author model, subscription, auth-policy, and external-model manifests |
+| Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
 
 ## Candidate Future Stages
 

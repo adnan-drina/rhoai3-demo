@@ -11,3 +11,4 @@ resources:
 
 patches:
   - path: patch-datasciencecluster-kserve.yaml
+  - path: patch-datasciencecluster-maas.yaml

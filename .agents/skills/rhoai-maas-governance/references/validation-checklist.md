@@ -17,15 +17,21 @@ notes for Models-as-a-Service.
 ## Prerequisites
 
 - OpenShift and RHOAI versions satisfy the active baseline.
+- If MaaS CRDs are absent, the implementation is split into a prerequisite
+  phase before model-publication and policy resources are committed.
 - `DataScienceCluster` has KServe managed and MaaS enabled through the
   documented `modelsAsService` path.
 - User Workload Monitoring is enabled.
+- cert-manager Operator for Red Hat OpenShift is installed and the
+  `CertManager` cluster resource exists when RHCL requires cert-manager.
 - Red Hat Connectivity Link Operator is installed.
 - `Kuadrant` in `kuadrant-system` is ready.
 - The MaaS Gateway API resources and annotations are present.
 - Authorino TLS and service CA trust are configured.
 - `maas-db-config` exists in `redhat-ods-applications` with
   `DB_CONNECTION_URL` stored as a Secret value.
+- Demo-local PostgreSQL is clearly labeled as demo posture. Production guidance
+  should use an operationally managed PostgreSQL 14+ database.
 - Dashboard flags are enabled only for features the demo actually uses.
 
 ## Resource Review
@@ -76,10 +82,19 @@ Run only after the OpenShift safety guard in `AGENTS.md` is satisfied:
 ```bash
 oc get dsc default-dsc -n redhat-ods-operator -o yaml
 oc get odhdashboardconfig -n redhat-ods-applications
+oc get subscription openshift-cert-manager-operator -n cert-manager-operator
+oc get certmanager cluster
+oc get subscription rhcl-operator -n openshift-operators
 oc get kuadrant kuadrant -n kuadrant-system
 oc get gatewayclass
 oc get gateway maas-default-gateway -n openshift-ingress -o yaml
 oc get secret maas-db-config -n redhat-ods-applications
+oc api-resources | grep -i maas
+oc get crd maasauthpolicies.maas.opendatahub.io \
+  maasmodelrefs.maas.opendatahub.io \
+  maassubscriptions.maas.opendatahub.io \
+  externalmodels.maas.opendatahub.io \
+  tenants.maas.opendatahub.io
 oc get tenants.maas.opendatahub.io -n models-as-a-service
 oc get tenants.maas.opendatahub.io default-tenant -n models-as-a-service -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 oc get maasmodelrefs -A
@@ -97,6 +112,11 @@ oc explain maasauthpolicies.models.opendatahub.io.spec
 oc explain externalmodels.maas.opendatahub.io.spec
 oc explain tenants.maas.opendatahub.io.spec
 ```
+
+If `oc api-resources` reports `MaaSModelRef`, `MaaSSubscription`, or
+`MaaSAuthPolicy` under a group other than `models.opendatahub.io`, use the
+installed group/version for schema validation and record the discrepancy in the
+stage `PLAN.md`.
 
 ## Failure Conditions
 

@@ -23,7 +23,7 @@
   - GuideLLM or performance benchmarking; deferred to the Stage 210 serving
     baseline work after endpoint readiness is repeatable
   - Models-as-a-Service governance; deferred to
-    `stage-220-models-as-a-service`
+    `stage-230-models-as-a-service`
   - MIG GPU partitioning
   - multi-GPU or multi-node serving
   - non-NVIDIA accelerators
@@ -42,6 +42,11 @@ environment because MachineSet provider configuration includes cluster ID, AMI,
 subnet, security group, IAM profile, region, and zone values. A fresh demo
 environment must regenerate this manifest from a live worker MachineSet before
 Stage 120 is deployed.
+
+Use `generate-gpu-machineset.sh` to create the replacement manifest from the
+guarded target cluster. The script preserves provider-specific AWS fields from
+an existing worker MachineSet and changes only the reviewed GPU intent:
+instance type, replicas, labels, taint, and MachineSet identity.
 
 ## Queue / Quota / Profile Design
 

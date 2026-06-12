@@ -28,6 +28,7 @@ committing long-lived GitOps.
 | GPU shape | one L40S-class GPU per replica |
 | CPU request/limit | `2` / `4` |
 | Memory request/limit | `16Gi` / `24Gi` |
+| Stage 210 serving context | `8192` tokens by default |
 | Shared memory volume | `emptyDir.medium: Memory`, `sizeLimit: 2Gi`, mounted at `/dev/shm` |
 
 ## Required Tool-Calling Arguments
@@ -87,7 +88,7 @@ spec:
         - --enable-force-include-usage
         - --disable-uvicorn-access-log
         - --enable-prefix-caching
-        - --max-model-len=131072
+        - --max-model-len=8192
         - --max-num-batched-tokens=8192
         - --enable-auto-tool-choice
         - --tool-call-parser=qwen3_coder
@@ -184,7 +185,7 @@ spec:
           - --enable-force-include-usage
           - --disable-uvicorn-access-log
           - --enable-prefix-caching
-          - --max-model-len=131072
+          - --max-model-len=8192
           - --max-num-batched-tokens=8192
           - --enable-auto-tool-choice
           - --tool-call-parser=qwen3_coder
@@ -210,6 +211,8 @@ Review points:
   image digest.
 - Keep the Gateway, scheduler, MaaSModelRef, subscription, and auth-policy
   resources together in the Stage 230 plan.
+- Use the Stage 210 `8192` token default as the initial MaaS serving envelope
+  until RAG-specific benchmarks justify a larger context.
 
 ## Validation
 

@@ -1,0 +1,237 @@
+# Stage 230: Models-as-a-Service Plan
+
+## Intent
+
+- Stage identifier: `230`
+- Stage family: `2xx Production GenAI and Private Data`
+- Stage slug: `stage-230-models-as-a-service`
+- Concept introduced: Governed model access through Red Hat OpenShift AI
+  Models-as-a-Service.
+- Target audience: Platform engineer, solution architect, AI governance owner,
+  and application developer.
+- Enterprise value: Turns validated model endpoints into governed shared
+  services with subscriptions, authorization policies, API keys, quotas, usage
+  tracking, and clear separation between internal GPU-backed models and
+  external provider models.
+- Depends on: `stage-110-rhoai-base-platform`,
+  `stage-120-gpu-as-a-service`, and `stage-210-model-serving-foundation`.
+- New components planned: MaaS enablement on the shared
+  `DataScienceCluster`, Red Hat Connectivity Link and Kuadrant prerequisites,
+  MaaS Gateway API resources, Authorino TLS setup, PostgreSQL-backed API-key
+  storage, `Tenant`, `MaaSModelRef`, `MaaSSubscription`,
+  `MaaSAuthPolicy`, `ExternalModel`, and a MaaS-published Nemotron endpoint.
+- Phase-one implementation: GitOps-managed cert-manager prerequisite, RHCL,
+  Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL 16
+  demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
+  enablement, and `Tenant`.
+- External model planned: OpenAI `gpt-5.4-nano` registered through the MaaS
+  `ExternalModel` path.
+- Validation priority: deterministic API and CLI validation first, with the
+  dashboard and Gen AI studio experience used as the audience-facing proof.
+- User-facing experience: `ai-admin` administers MaaS; `ai-developer` does not
+  get direct access to the `models-as-a-service` project and consumes models
+  through Gen AI studio AI asset endpoints and MaaS API keys.
+- Full experience scope: include MaaS subscriptions, authorization policies,
+  API keys, governed local Nemotron, governed external OpenAI, Gen AI
+  Playground consumption, MaaS observability, and clear Technology Preview
+  labeling for preview features.
+- Existing components reused: Stage 210 Nemotron vLLM configuration,
+  `demo-registry`, Grafana/User Workload Monitoring, `demo-sandbox`, and Stage
+  120 GPU hardware profiles.
+
+## Non-Goals
+
+- Do not replace the Stage 210 direct vLLM endpoint until the MaaS path is
+  proven and accepted.
+- Do not commit OpenAI provider API keys, MaaS API keys, database passwords, or
+  generated tokens.
+- Do not claim billing-grade metering. MaaS usage data is for demo showback and
+  capacity planning.
+- Do not claim llm-d monitoring or MaaS observability as GA. Label Technology
+  Preview and Developer Preview surfaces explicitly.
+- Do not use external OpenAI models for workloads where provider-side
+  processing is not allowed by the demo scenario.
+- Do not hide the external-provider boundary. Prompts, context, and generated
+  content for `gpt-5.4-nano` leave the cluster and must be limited to approved
+  demo workloads.
+- Do not give `ai-developer` administrative access to the MaaS project. The
+  user-facing path is through OpenShift AI dashboard assets and MaaS-governed
+  API consumption, not namespace administration.
+- Do not expose the full Nemotron `131072` context window through the first
+  MaaS policy. Keep large-context RAG as an explicit tuning decision after
+  Stage 210/230 measurements prove the operating envelope.
+
+## Acceptance Criteria
+
+- [ ] README explains MaaS value, subscriptions, quotas, API keys, and
+  internal/external model governance without runbook detail.
+- [ ] Official RHOAI 3.4 MaaS, llm-d, Gateway/API, and dashboard feature-flag
+  sources are captured.
+- [ ] Red Hat quickstart and sibling-demo references are bounded as
+  implementation examples, not product API authority.
+- [ ] Live CRD/schema checks are completed after MaaS prerequisites are
+  installed.
+- [ ] MaaS prerequisites are installed and healthy through GitOps.
+- [ ] The shared Stage 110 `DataScienceCluster` owner remains the only DSC
+  owner; Stage 230 adds a focused MaaS patch through that owner.
+- [ ] Local Nemotron is published through a schema-verified MaaS model
+  reference.
+- [ ] External OpenAI `gpt-5.4-nano` is published through an `ExternalModel`
+  backed by a Kubernetes Secret or approved secret store.
+- [ ] Demo users have both `MaaSSubscription` quota and `MaaSAuthPolicy`
+  gateway authorization before access is claimed.
+- [ ] Validation proves model listing, API-key creation, local Nemotron
+  inference, external OpenAI inference, quota/rate-limit behavior, and
+  forbidden access for an unauthorized subject.
+- [ ] `ai-admin` can administer MaaS resources and policies; `ai-developer`
+  can discover and consume allowed MaaS models without direct access to the
+  MaaS administration namespace.
+- [ ] Gen AI Playground can use the MaaS-published local and external models
+  through AI asset endpoints.
+- [ ] MaaS observability is enabled and validates subscription/request/token
+  signals where the installed Technology Preview components expose them.
+
+## Source Capture
+
+| Purpose | Source | Skill | Notes |
+|---------|--------|-------|-------|
+| Product authority | [RHOAI 3.4 - Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | MaaS prerequisites, `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, `MaaSAuthPolicy`, API keys, observability, external OIDC, and troubleshooting. |
+| Local model backend | [RHOAI 3.4 - Deploy models using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploy_models_using_distributed_inference_with_llm-d/index) | `rhoai-distributed-inference-llmd` | `LLMInferenceService`, Gateway references, Connectivity Link, auth, scheduler, WVA, and flow control. Use only after schema verification. |
+| Serving prerequisite | [RHOAI 3.4 - Configuring your model-serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/configuring_your_model-serving_platform/index) | `rhoai-model-serving-platform` | KServe and vLLM platform context below MaaS. |
+| Stage 210 evidence | `stage-210-model-serving-foundation/README.md` and benchmark results under `runs/stage-210-guidellm/` | `rhoai-model-management-monitoring` | Source for current Nemotron endpoint readiness and operating-envelope evidence. |
+| Red Hat quickstart | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-maas-governance` | Narrative and architecture reference for Nemotron, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S context. |
+| Red Hat Developer article | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/sources/2026-06-12 - Model-as-a-Service How to Run Your Own Private AI API.md` | `project-red-hat-doc-alignment-review`, `project-documentation-authoring` | Narrative source for MaaS as a governed internal private AI API product with developer self-service, monitoring, quota, security, and shadow-AI reduction. |
+| Red Hat implementation reference | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | `rhoai-maas-governance`, `rhoai-distributed-inference-llmd` | Implementation pattern for `LLMInferenceService`, Gateway, tier/RBAC, vLLM args, and Grafana. Must be revalidated against RHOAI 3.4 CRDs. |
+| Sibling demo reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | `rhoai-distributed-inference-llmd`, `rhoai-model-serving-platform` | Concrete Nemotron vLLM/tool-calling configuration to preserve where schema-compatible. |
+| Sibling MaaS reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | `rhoai-maas-governance` | MaaS model-reference pattern; example only until active CRD schema is verified. |
+| API stability | `.agents/skills/rhoai-api-tiers/references/api-tier-map.md` | `rhoai-api-tiers` | `llminferenceservices.serving.kserve.io/v1alpha1` is Tier 2 by exception; other alpha Gateway/preview surfaces must be labeled carefully. |
+| External provider model | [OpenAI API - GPT-5.4 nano model](https://developers.openai.com/api/docs/models/gpt-5.4-nano) | `rhoai-maas-governance` | Official OpenAI source for the selected external model ID, endpoint compatibility, modalities, and feature support. |
+| External provider pricing | [OpenAI API - pricing](https://developers.openai.com/api/docs/pricing) | `rhoai-maas-governance` | Confirms `gpt-5.4-nano` is the cost-optimized GPT-5.4-class model for the external MaaS path at the time of planning. Recheck before demo delivery. |
+
+## Current Schema Findings
+
+Read-only schema discovery on `cluster-klvxt` on 2026-06-12:
+
+| Resource | Current state | Planning impact |
+|----------|---------------|-----------------|
+| `llminferenceservices.serving.kserve.io` | Present; `v1alpha1` and `v1alpha2` served, `v1alpha2` storage. | Stage 230 should target the live storage version after official-doc and schema review. Do not copy older `v1alpha1` examples blindly. |
+| `llminferenceserviceconfigs.serving.kserve.io` | Present as `serving.kserve.io/v1alpha2`. | Review only if Stage 230 needs custom config resources. |
+| Gateway API `GatewayClass`, `Gateway`, `HTTPRoute` | Present as `gateway.networking.k8s.io/v1`. | MaaS and llm-d gateway resources can be planned, but listener and namespace policy must still be verified. |
+| `kuadrants.kuadrant.io` | Missing before phase-one deploy. | Red Hat Connectivity Link / Kuadrant prerequisites are now represented in GitOps and must be deployed before MaaS model/policy CR authoring. |
+| `maasmodelrefs.models.opendatahub.io` and `maasmodelrefs.maas.opendatahub.io` | Missing. | Official RHOAI 3.4 YAML examples use `models.opendatahub.io`, while the official CRD verification output lists `maas.opendatahub.io`. Resolve from installed CRDs before authoring GitOps. |
+| `maassubscriptions.models.opendatahub.io` and `maassubscriptions.maas.opendatahub.io` | Missing. | Subscription schema checks are deferred until MaaS CRDs are present. |
+| `maasauthpolicies.models.opendatahub.io` and `maasauthpolicies.maas.opendatahub.io` | Missing. | Authorization policy schema checks are deferred until MaaS CRDs are present. |
+| `externalmodels.maas.opendatahub.io` | Missing. | External OpenAI model schema checks are deferred until MaaS CRDs are present. |
+| `tenants.maas.opendatahub.io` | Missing. | Tenant schema checks are deferred until MaaS CRDs are present. |
+| `llamastackdistributions.llamastack.io` | Missing. | Gen AI studio user-facing MaaS experience requires enabling the Llama Stack Operator before validating playground workflows. |
+| `OdhDashboardConfig.spec.dashboardConfig.vLLMDeploymentOnMaaS` | Present in live schema; exact casing confirmed. | Use `vLLMDeploymentOnMaaS`, not `vLLMDeploymentOnMaas`. |
+
+Observed `LLMInferenceService` `v1alpha2` fields include
+`spec.model.uri`, `spec.model.name`, `spec.router.gateway.refs[]`,
+`spec.router.route`, `spec.router.scheduler`, `spec.replicas`, `spec.worker`,
+`spec.prefill`, `spec.parallelism`, `spec.scaling`, and
+`spec.storageInitializer`. Use `oc explain` again immediately before writing
+GitOps because the examples and active CRD version differ from some older
+published snippets.
+
+## API Tier And Support Posture
+
+| Area | Current posture | Stage 230 handling |
+|------|-----------------|--------------------|
+| `LLMInferenceService` | Captured API tier table lists `llminferenceservices.serving.kserve.io/v1alpha1` as Tier 2. The live cluster stores `v1alpha2`, which must be rechecked against current RHOAI 3.4 docs and CRD metadata before authoring. | Prefer the live storage version only after official-doc and `oc explain` validation. Record the support posture in the README and manifest comments if the active version is Technology Preview, Beta, Alpha, or unresolved. |
+| MaaS CRDs | MaaS resources are product-documented for RHOAI 3.4, but the CRDs are not present on the current cluster yet. | Install/enable MaaS prerequisites first, then validate `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy` schemas before copying quickstart examples. |
+| Gateway API | Gateway API resources are present as `gateway.networking.k8s.io/v1`. They are OpenShift/Kubernetes gateway resources, not RHOAI API-tier entries. | Validate listener, namespace, hostname, route, and ReferenceGrant behavior with live schema and official OpenShift/RHOAI docs before claiming MaaS access paths. |
+| RBAC and access policy | Stage 230 needs both OpenShift RBAC/group membership and MaaS gateway authorization. | Do not claim access until both `MaaSSubscription` quota and `MaaSAuthPolicy` authorization are present and validated for allowed and denied subjects. |
+| External OpenAI model | `gpt-5.4-nano` is selected from official OpenAI model/pricing docs as the cost-optimized GPT-5.4-class external model at planning time. | Recheck model availability and pricing before demo delivery. Store provider credentials only in local Secret material, and document that prompts leave the cluster for this model. |
+
+## Required Schema Checks Before GitOps
+
+Run only after the OpenShift safety guard confirms the target cluster:
+
+```bash
+oc get crd llminferenceservices.serving.kserve.io \
+  maasmodelrefs.models.opendatahub.io \
+  maasmodelrefs.maas.opendatahub.io \
+  maassubscriptions.models.opendatahub.io \
+  maassubscriptions.maas.opendatahub.io \
+  maasauthpolicies.models.opendatahub.io \
+  maasauthpolicies.maas.opendatahub.io \
+  externalmodels.maas.opendatahub.io \
+  tenants.maas.opendatahub.io
+
+oc explain llminferenceservice.spec --api-version=serving.kserve.io/v1alpha2
+oc explain llminferenceservice.spec.model --api-version=serving.kserve.io/v1alpha2
+oc explain llminferenceservice.spec.router.gateway --api-version=serving.kserve.io/v1alpha2
+
+oc explain maasmodelrefs.models.opendatahub.io.spec
+oc explain maasmodelrefs.maas.opendatahub.io.spec
+oc explain maassubscriptions.models.opendatahub.io.spec
+oc explain maassubscriptions.maas.opendatahub.io.spec
+oc explain maasauthpolicies.models.opendatahub.io.spec
+oc explain maasauthpolicies.maas.opendatahub.io.spec
+oc explain externalmodels.maas.opendatahub.io.spec
+oc explain tenants.maas.opendatahub.io.spec
+```
+
+If any MaaS CRD is still missing, Stage 230 implementation must first reconcile
+the MaaS prerequisites and DSC/dashboard feature flags, then rerun schema
+checks before model, subscription, or auth-policy manifests are authored.
+
+Phase-one deploy and validation commands:
+
+```bash
+./stage-230-models-as-a-service/deploy.sh
+./stage-230-models-as-a-service/validate.sh
+```
+
+## GitOps Ownership Decision
+
+- Shared RHOAI owner: `stage-110-rhoai-base-platform` continues to own the
+  single `DataScienceCluster`.
+- Stage 230 should add focused shared-owner patches for MaaS component
+  enablement and dashboard feature flags.
+- Stage 230 should own its independent prerequisites and policy resources under
+  `gitops/stage-230-models-as-a-service/` unless an operator or global platform
+  component clearly belongs to an existing shared owner.
+- Provider API keys, MaaS PostgreSQL credentials, and user API keys must be
+  created from local `.env` or an approved secret store, never committed.
+- If Stage 230 creates an `LLMInferenceService` for Nemotron, it should use the
+  Stage 210 benchmark result to choose initial concurrency/token limits and
+  should preserve the curated Nemotron vLLM/tool-calling configuration where
+  the `v1alpha2` schema allows it.
+- Stage 230 should avoid running a second GPU-heavy Nemotron backend alongside
+  the Stage 210 direct endpoint on the single default GPU node unless the
+  current environment has spare GPU capacity. Prefer reusing or temporarily
+  switching the backend path, and keep the Stage 210 direct serving path as the
+  fallback if MaaS validation fails.
+- Initial Nemotron policy should use the 2026-06-12 Stage 210 GuideLLM results:
+  start the chat assistant lane at `8` active concurrent requests per replica
+  with 256 output-token defaults; start the RAG lane at `2` active concurrent
+  requests per replica for about 4k-token prompts and 512 output-token
+  responses. Treat chat `12` and RAG `4` as burst or breakpoint candidates, not
+  public default quotas.
+
+## Planned Manifest Areas
+
+| Area | Expected resources | Verification |
+|------|--------------------|--------------|
+| MaaS prerequisites | Connectivity Link Operator, `Kuadrant`, Gateway, Authorino TLS, `maas-db-config` Secret | Package/channel and CRD checks; no secret values in Git |
+| Shared RHOAI patch | `DataScienceCluster` MaaS enablement and dashboard feature flags | Kustomize render and live DSC status |
+| Local model backend | `LLMInferenceService` for Nemotron, or another officially supported MaaS backend if schema requires it | `Ready=True`, authenticated inference, metrics |
+| Local MaaS publication | `MaaSModelRef` for Nemotron | CRD schema and dashboard/API model listing |
+| External provider | `ExternalModel` for `gpt-5.4-nano`, provider Secret supplied locally | OpenAI model availability and Secret reference |
+| Access governance | `MaaSSubscription`, `MaaSAuthPolicy`, group/user mapping, token limits, cost metadata | Allowed and denied inference tests |
+| Observability | Tenant telemetry, MaaS/Kuadrant metrics, dashboard flag | Usage/rate-limit metrics visible; TP label in docs |
+| Gen AI Playground | Dashboard flags, Llama Stack Operator if required, AI asset endpoint visibility | `ai-developer` sees and uses MaaS models from AI asset endpoints/playground without MaaS namespace admin rights |
+
+## Risks And Deferred Decisions
+
+| Item | Type | Resolution |
+|------|------|------------|
+| MaaS CRDs not present today | blocker before manifests | Install/enable MaaS prerequisites, then rerun CRD and `oc explain` checks. |
+| Official docs group discrepancy | blocker before MaaS CR authoring | The official RHOAI 3.4 guide lists `*.maas.opendatahub.io` CRDs but shows `models.opendatahub.io/v1alpha1` YAML for several MaaS resources. Use the installed CRD group/version after MaaS is enabled. |
+| `LLMInferenceService` example version drift | risk | Active cluster stores `v1alpha2`; adapt examples only after schema checks. |
+| External OpenAI provider data path | risk | Document that prompts sent to `gpt-5.4-nano` leave the cluster and are subject to provider policy, region, and account settings. |
+| Provider rate limits | risk | MaaS limits protect users from each other inside the demo, but the shared OpenAI provider key can still hit provider-level aggregate limits. |
+| MaaS observability support posture | risk | Label as Technology Preview and showback-only, not billing-grade metering. |
+| Stage 210 operating envelope changes | dependency | Re-run the chat/RAG GuideLLM policy profiles whenever the Nemotron model, vLLM args, GPU shape, prompt size, or output-token defaults change. |

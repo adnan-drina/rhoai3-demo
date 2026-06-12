@@ -1,0 +1,16 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhcl-operator
+  namespace: openshift-operators
+  labels:
+    app.kubernetes.io/name: rhcl-operator
+    app.kubernetes.io/component: api-gateway-governance
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: rhcl-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
