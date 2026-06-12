@@ -9,7 +9,9 @@ metadata:
     app.kubernetes.io/component: job
     demo.rhoai.io/stage: "210"
   annotations:
-    argocd.argoproj.io/sync-wave: "14"
+    # Same wave as the PVC so WaitForFirstConsumer storage classes can bind
+    # when this hook pod is scheduled.
+    argocd.argoproj.io/sync-wave: "13"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
 spec:
