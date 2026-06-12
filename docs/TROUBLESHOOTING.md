@@ -380,6 +380,26 @@ The `href` should point to
 placeholder host or old dashboard slug, hard-refresh or resync the Stage 210
 Application.
 
+### Grafana dashboards show datasource errors
+
+- **Likely causes:** imported dashboard JSON still contains an unresolved
+  datasource variable such as `${DS_PROMETHEUS}`, the dashboard references a
+  datasource UID that does not exist, or the Prometheus datasource bearer token
+  was not substituted into `secureJsonData`.
+- **Checks:**
+
+```bash
+oc get grafanadatasource prometheus -n rhoai-demo-grafana \
+  -o jsonpath='{.spec.uid}{" "}{.spec.valuesFrom[0].targetPath}{"\n"}'
+oc get grafanadashboard -n rhoai-demo-grafana
+./stage-210-model-serving-foundation/validate.sh
+```
+
+The datasource UID should be `Prometheus`, the datasource should use
+`valuesFrom` for `secureJsonData.httpHeaderValue1`, and validation should pass
+the live Grafana datasource query. If the browser still shows an old
+datasource variable after GitOps sync, hard-refresh the Grafana tab.
+
 ### Stage 210 Application waits on benchmark-data PVC
 
 - **Likely cause:** the storage class uses `WaitForFirstConsumer`, so

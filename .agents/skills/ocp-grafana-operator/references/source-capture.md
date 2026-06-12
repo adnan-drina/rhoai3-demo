@@ -119,9 +119,10 @@ The `user-app` overlay adds:
 - `GrafanaDatasource` named `prometheus`
 - datasource URL pointing to
   `https://thanos-querier.openshift-monitoring.svc.cluster.local:9091`
-- `Authorization` header configured with `Bearer ${GRAFANA_TOKEN}`
-- an environment variable patch that reads `GRAFANA_TOKEN` from
-  `grafana-auth-secret`
+- `Authorization` header configured in `secureJsonData.httpHeaderValue1`
+- `spec.valuesFrom` substitution that reads the `token` key from
+  `grafana-auth-secret` and writes `Bearer ${token}` into
+  `secureJsonData.httpHeaderValue1`
 - a Kubernetes service-account token Secret annotated for `grafana-sa`
 - a `ClusterRoleBinding` to `cluster-monitoring-view`
 - downstream patches that set the namespace and make ClusterRoleBinding names
@@ -131,6 +132,9 @@ Project boundary: never commit generated token data. Validate whether a
 long-lived service-account token Secret is acceptable for the demo, or whether
 a short-lived or operator-supported token mechanism is available in the active
 cluster. Patch namespace placeholders and ClusterRoleBinding names before use.
+Do not assume environment variables injected into the Grafana pod are expanded
+inside `GrafanaDatasource` CR fields; use `valuesFrom` and verify a live
+Grafana datasource query.
 
 ## Source Boundaries
 

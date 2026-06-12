@@ -322,6 +322,8 @@ oc get configmap cluster-monitoring-config -n openshift-monitoring \
   -o jsonpath='{.data.config\.yaml}'
 oc get servicemonitor nvidia-nemotron-3-nano-30b-a3b-metrics -n demo-sandbox
 oc get grafana,grafanadatasource,grafanadashboard -n rhoai-demo-grafana
+oc get grafanadatasource prometheus -n rhoai-demo-grafana \
+  -o jsonpath='{.spec.uid}{" "}{.spec.valuesFrom[0].targetPath}{"\n"}'
 ```
 
 Open Grafana:
@@ -356,6 +358,9 @@ Stage 210 includes two dashboards with functional names:
 
 The OpenShift Console application menu has a `RHOAI Demo Grafana` link that is
 patched at sync time to the cluster-specific `llm-performance` dashboard URL.
+`stage-210-model-serving-foundation/validate.sh` also runs a live Grafana
+datasource query against the `Prometheus` datasource so dashboard-ready status
+includes Prometheus authentication, not only synchronized custom resources.
 
 The Grafana Operator is installed from `community-operators` as a demo
 observability UI. It is not a Red Hat product dependency for RHOAI.

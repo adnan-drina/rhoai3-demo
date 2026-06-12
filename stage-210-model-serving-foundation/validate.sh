@@ -197,6 +197,53 @@ GRAFANA_DATASOURCE_UID=$(oc get grafanadatasource prometheus -n "$GRAFANA_NS" \
 [[ "$GRAFANA_DATASOURCE_UID" == "Prometheus" ]] && R="pass" || R="uid=${GRAFANA_DATASOURCE_UID:-missing}"
 check "Grafana Prometheus datasource UID is stable" "$R"
 
+GRAFANA_POD=$(oc get pod -n "$GRAFANA_NS" -l app=grafana \
+  -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+GRAFANA_ADMIN_USER=$(oc get secret grafana-admin-credentials -n "$GRAFANA_NS" \
+  -o jsonpath='{.data.GF_SECURITY_ADMIN_USER}' --insecure-skip-tls-verify=true 2>/dev/null \
+  | base64 -d 2>/dev/null || true)
+GRAFANA_ADMIN_PASSWORD=$(oc get secret grafana-admin-credentials -n "$GRAFANA_NS" \
+  -o jsonpath='{.data.GF_SECURITY_ADMIN_PASSWORD}' --insecure-skip-tls-verify=true 2>/dev/null \
+  | base64 -d 2>/dev/null || true)
+GRAFANA_DS_QUERY_RESULT=""
+if [[ -n "$GRAFANA_POD" && -n "$GRAFANA_ADMIN_USER" && -n "$GRAFANA_ADMIN_PASSWORD" ]]; then
+  NOW_MS=$(( $(date +%s) * 1000 ))
+  FROM_MS=$(( NOW_MS - 300000 ))
+  GRAFANA_DS_QUERY_RESULT=$(oc exec -i -n "$GRAFANA_NS" "$GRAFANA_POD" -c grafana \
+    --insecure-skip-tls-verify=true -- \
+    curl -sS -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+      -H "Content-Type: application/json" \
+      -X POST http://localhost:3000/api/ds/query \
+      --data-binary @- <<JSON 2>/dev/null || true
+{
+  "queries": [
+    {
+      "refId": "A",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "expr": "up",
+      "instant": true,
+      "range": false
+    }
+  ],
+  "from": "${FROM_MS}",
+  "to": "${NOW_MS}"
+}
+JSON
+)
+fi
+if jq -e '(.results.A.status | tostring | test("^2")) and ((.results.A.error // "") == "")' \
+  <<<"$GRAFANA_DS_QUERY_RESULT" >/dev/null 2>&1; then
+  R="pass"
+else
+  GRAFANA_DS_ERROR=$(jq -r '.results.A.error // .message // "datasource query failed"' \
+    <<<"$GRAFANA_DS_QUERY_RESULT" 2>/dev/null || echo "datasource query failed")
+  R="$GRAFANA_DS_ERROR"
+fi
+check "Grafana Prometheus datasource query succeeds" "$R"
+
 if resource_exists "grafanadashboard/vllm-model-serving-baseline" "$GRAFANA_NS"; then
   R="pass"
 else

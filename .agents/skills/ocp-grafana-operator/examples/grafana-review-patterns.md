@@ -72,7 +72,9 @@ Review points:
 Official Grafana docs require a `GrafanaDatasource` to include
 `spec.datasource` and `spec.instanceSelector`. The CoP `user-app` overlay
 adapts this for OpenShift by querying the OpenShift Thanos Querier with a
-bearer token provided through an environment variable:
+bearer token. In this repo, use the Grafana Operator `valuesFrom` field to
+substitute the service-account token Secret into `secureJsonData`; do not rely
+on Grafana pod environment variables being expanded inside datasource CRs.
 
 ```yaml
 apiVersion: grafana.integreatly.org/v1beta1
@@ -87,9 +89,15 @@ spec:
       httpHeaderName1: Authorization
       tlsSkipVerify: true
     secureJsonData:
-      httpHeaderValue1: Bearer ${GRAFANA_TOKEN}
+      httpHeaderValue1: "Bearer ${token}"
     type: prometheus
     url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+  valuesFrom:
+    - targetPath: secureJsonData.httpHeaderValue1
+      valueFrom:
+        secretKeyRef:
+          name: grafana-auth-secret
+          key: token
   instanceSelector:
     matchLabels:
       instance: grafana
@@ -102,10 +110,14 @@ Review points:
   `oc explain grafanadatasource.spec`.
 - Verify `instanceSelector.matchLabels` matches labels on the target
   `Grafana` resource.
+- Verify `spec.valuesFrom.targetPath` points to the exact datasource field that
+  contains the placeholder and that the referenced Secret key exists.
 - Do not commit generated token data.
 - Prefer the narrowest monitoring RBAC that supports the dashboard use case.
 - Verify user workload monitoring before expecting application or model
   metrics.
+- Verify a live query through Grafana's datasource API; synchronized CR status
+  does not prove Prometheus authentication works.
 - Patch namespace placeholders and ClusterRoleBinding names in downstream
   overlays.
 

@@ -30,6 +30,9 @@ manifests, or live operations.
   API versions and fields.
 - `GrafanaDatasource.spec.datasource` and `.spec.instanceSelector` are present,
   and `instanceSelector.matchLabels` matches the target `Grafana` labels.
+- Datasource bearer tokens, API keys, or other Secret-backed values use
+  `GrafanaDatasource.spec.valuesFrom` with an exact `targetPath` into the
+  datasource field that contains the placeholder.
 - `GrafanaDashboard.spec.instanceSelector` is present, and dashboard source is
   one of the installed CRD-supported fields such as `json`, `configMapRef`,
   `grafanaCom`, `url`, `oci`, `gzipJson`, or `jsonnet`.
@@ -105,6 +108,8 @@ oc auth can-i get --raw=/api --as system:serviceaccount:<grafana_namespace>:graf
   unless the exception is documented.
 - Grafana dashboards are not presented in the demo before metrics and
   datasource checks pass.
+- Datasource checks include a live Grafana datasource API query, not only
+  `DatasourceSynchronized=True`.
 - Community Operator upgrade behavior is understood before using automatic
   approval.
 

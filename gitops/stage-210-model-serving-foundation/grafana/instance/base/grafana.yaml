@@ -43,12 +43,6 @@ spec:
                 name: ocp-injected-certs
           containers:
             - name: grafana
-              env:
-                - name: GRAFANA_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: grafana-auth-secret
-                      key: token
             - args:
                 - -provider=openshift
                 - -pass-basic-auth=false
