@@ -553,8 +553,10 @@ after prerequisites and DSC feature flags are healthy.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
    - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.3` with manual
-     InstallPlan approval. ArgoCD ignores Subscription health for this resource
-     because OLM reports `UpgradePending` while newer RHCL plans remain
+     InstallPlan approval. The bootstrap ArgoCD instance includes a conservative
+     Subscription health customization: a manual pinned Subscription is healthy
+     only when `status.installedCSV == spec.startingCSV`. This allows the RHCL
+     pin to coexist with OLM `UpgradePending` while newer RHCL plans remain
      intentionally unapproved. The deployment fails visibly if a different RHCL
      CSV is already installed.
    - Applies the Stage 230 Application for LeaderWorkerSet, RHCL, Kuadrant,
