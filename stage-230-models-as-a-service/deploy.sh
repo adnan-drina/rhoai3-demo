@@ -100,6 +100,9 @@ apply_argocd_application() {
     oc patch application "$app_name" -n openshift-gitops --type=json \
       -p '[{"op":"remove","path":"/spec/source/kustomize"}]' \
       --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+    oc patch application "$app_name" -n openshift-gitops --type=merge \
+      -p '{"operation":null}' \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
   fi
 
   oc annotate application "$app_name" -n openshift-gitops \
