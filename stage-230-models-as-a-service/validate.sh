@@ -79,7 +79,12 @@ can_i_as() {
   local verb="$2"
   local resource="$3"
   local namespace="$4"
-  oc auth can-i "$verb" "$resource" -n "$namespace" --as="$user" \
+  local group="${5:-}"
+  local group_args=()
+  if [[ -n "$group" ]]; then
+    group_args+=(--as-group="$group")
+  fi
+  oc auth can-i "$verb" "$resource" -n "$namespace" --as="$user" "${group_args[@]}" \
     --insecure-skip-tls-verify=true 2>/dev/null || true
 }
 
@@ -188,11 +193,11 @@ else
 fi
 check "rhods-admins has MaaS namespace admin RoleBinding" "$R"
 
-AI_ADMIN_CAN=$(can_i_as "ai-admin" "get" "pods" "$MAAS_NS")
+AI_ADMIN_CAN=$(can_i_as "ai-admin" "get" "pods" "$MAAS_NS" "rhods-admins")
 [[ "$AI_ADMIN_CAN" == "yes" ]] && R="pass" || R="can-i=${AI_ADMIN_CAN:-unknown}"
 check "ai-admin can administer the MaaS namespace" "$R"
 
-AI_DEVELOPER_CAN=$(can_i_as "ai-developer" "get" "pods" "$MAAS_NS")
+AI_DEVELOPER_CAN=$(can_i_as "ai-developer" "get" "pods" "$MAAS_NS" "rhoai-developers")
 [[ "$AI_DEVELOPER_CAN" == "no" ]] && R="pass" || R="can-i=${AI_DEVELOPER_CAN:-unknown}"
 check "ai-developer has no direct MaaS namespace access" "$R"
 
