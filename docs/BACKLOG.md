@@ -68,15 +68,20 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 Stage 230 GitOps creates the MaaS prerequisite stack, local Nemotron
 `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-nano`
 resources, combined subscription/auth policy, and `rhods-admins` namespace
-administration. The user-facing dashboard/API discovery path is not complete
-until the Gateway header-injection compatibility issue is resolved.
+administration.
+
+Deployed 2026-06-12 on cluster-klvxt after migrating the direct
+`demo-sandbox` Nemotron deployment into `models-as-a-service`. Current
+`validate.sh` result is 47/51: all prerequisites, CRDs, local Nemotron
+readiness, external OpenAI registration, subscription, and auth policy checks
+pass. The four remaining failures are the user-facing dashboard/API discovery
+path, blocked by the Gateway header-injection compatibility issue.
 
 ### Open / deferred from Stage 230
 
 | Item | Priority | Notes |
 |------|----------|-------|
 | RHCL / OpenShift gateway EnvoyFilter compatibility | high | Current `cluster-klvxt` generates `kuadrant-maas-default-gateway` with `allow_on_headers_stop_iteration`, which the gateway Envoy rejects. This prevents `X-MaaS-Username` / `X-MaaS-Group` header injection and makes the dashboard show `Models as a Service could not be loaded`. Resolve through supported RHOAI/RHCL/OpenShift gateway alignment, not GitOps patches to generated AuthPolicy or EnvoyFilter resources. |
-| Local Nemotron MaaS readiness | high | Validate the new `models-as-a-service` `LLMInferenceService` after the Stage 230 Application syncs and the stale direct `demo-sandbox` deployment is removed. |
 | API key and Gen AI Playground validation | high | Must validate through the dashboard and MaaS API, not only through CR readiness. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
