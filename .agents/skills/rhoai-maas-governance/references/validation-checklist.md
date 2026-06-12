@@ -51,6 +51,10 @@ notes for Models-as-a-Service.
 - Each external model has a provider Secret, provider endpoint, target model
   ID, subscription, authorization policy, and explicit Technology Preview
   label.
+- External model resource names are valid DNS-1035 labels because the MaaS
+  controller creates Kubernetes Services from the `ExternalModel` name. Keep
+  provider model IDs containing dots in `spec.targetModel`, not in
+  `metadata.name`.
 - Each subscription includes at least one token rate limit per model ref and a
   supported time window such as seconds, minutes, or hours.
 - Subscription priority is intentional when groups overlap.
@@ -148,7 +152,7 @@ Do not approve a MaaS change when:
 
 - a README claims governed model access but GitOps lacks matching
   subscription and authorization policy
-- the implementation bypasses MaaS for shared OpenAI `gpt-5.4-nano` demo access
+- the implementation bypasses MaaS for shared OpenAI `gpt-5.4-mini` demo access
   without an explicit documented exception
 - provider API keys or MaaS API keys appear in repository files
 - token limits are absent from a model subscription

@@ -10,7 +10,7 @@ models.
 
 Models-as-a-Service (MaaS) adds that product layer. In this demo it turns the
 validated Nemotron endpoint from Stage 210 and an external OpenAI
-`gpt-5.4-nano` provider into managed AI assets that can be discovered,
+`gpt-5.4-mini` provider model into managed AI assets that can be discovered,
 subscribed to, monitored, and consumed through OpenAI-compatible APIs.
 
 ## What Enables It
@@ -31,7 +31,7 @@ subscribed to, monitored, and consumed through OpenAI-compatible APIs.
 ```mermaid
 flowchart LR
   previous["Stage 210: vLLM baseline configuration"] --> maas["RHOAI MaaS"]
-  openai["OpenAI gpt-5.4-nano"] --> maas
+  openai["OpenAI gpt-5.4-mini"] --> maas
   maas --> sub["MaaS subscriptions"]
   maas --> auth["MaaS auth policies"]
   maas --> keys["API keys"]
@@ -52,7 +52,8 @@ flowchart LR
 - [Red Hat Connectivity Link 1.3 - Installing Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.3/html-single/installing_connectivity_link/index)
 - [OpenShift 4.20 - cert-manager Operator for Red Hat OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift)
 - [Red Hat Ecosystem Catalog - PostgreSQL 16 RHEL 9 image](https://catalog.redhat.com/en/software/containers/rhel9/postgresql-16/657b03866783e1b1fb87e142)
-- [OpenAI API - GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano)
+- [Centralized routing for external and self-hosted LLMs on OpenShift AI](https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service)
+- [OpenAI API - GPT-5.4 mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini)
 
 ## Current Scope
 
@@ -61,9 +62,10 @@ This stage is implemented in phases:
 1. Enable MaaS prerequisites and validate CRD/schema availability. cert-manager
    is treated as a required platform prerequisite, not as a Stage 230-owned
    operator lifecycle resource.
-2. Add schema-validated external OpenAI `gpt-5.4-nano` publication resources,
-   developer subscription quota, developer authorization policy, and MaaS
-   namespace admin access for `rhods-admins`.
+2. Add schema-validated external OpenAI `gpt-5.4-mini` publication resources
+   using the DNS-safe MaaS resource alias `gpt-5-4-mini`, developer
+   subscription quota, developer authorization policy, and MaaS namespace admin
+   access for `rhods-admins`.
 3. Migrate the local Nemotron serving path into the MaaS namespace by creating
    a schema-validated `LLMInferenceService`, a MaaS `MaaSModelRef`, and the
    matching subscription/auth policy. The deployment wrapper removes a stale

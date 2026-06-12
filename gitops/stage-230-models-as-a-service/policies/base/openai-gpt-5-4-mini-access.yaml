@@ -1,10 +1,10 @@
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSSubscription
 metadata:
-  name: rhoai-developers-gpt-5-4-nano
+  name: rhoai-developers-gpt-5-4-mini
   namespace: models-as-a-service
   labels:
-    app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
+    app.kubernetes.io/name: rhoai-developers-gpt-5-4-mini
     app.kubernetes.io/component: maas-subscription
     demo.rhoai.io/provider: governed-models
   annotations:
@@ -23,7 +23,7 @@ spec:
       tokenRateLimits:
         - limit: 100000
           window: 1h
-    - name: gpt-5.4-nano
+    - name: gpt-5-4-mini
       namespace: models-as-a-service
       tokenRateLimits:
         - limit: 20000
@@ -35,15 +35,15 @@ spec:
     labels:
       environment: demo
       provider: governed-models
-      modelSet: nemotron-and-gpt-5.4-nano
+      modelSet: nemotron-and-gpt-5.4-mini
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSAuthPolicy
 metadata:
-  name: rhoai-developers-gpt-5-4-nano
+  name: rhoai-developers-gpt-5-4-mini
   namespace: models-as-a-service
   labels:
-    app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
+    app.kubernetes.io/name: rhoai-developers-gpt-5-4-mini
     app.kubernetes.io/component: maas-auth-policy
     demo.rhoai.io/provider: governed-models
   annotations:
@@ -59,7 +59,7 @@ spec:
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
       namespace: models-as-a-service
-    - name: gpt-5.4-nano
+    - name: gpt-5-4-mini
       namespace: models-as-a-service
   meteringMetadata:
     organizationId: rhoai3-demo
@@ -67,4 +67,4 @@ spec:
     labels:
       environment: demo
       provider: governed-models
-      modelSet: nemotron-and-gpt-5.4-nano
+      modelSet: nemotron-and-gpt-5.4-mini

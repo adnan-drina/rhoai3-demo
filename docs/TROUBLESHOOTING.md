@@ -531,6 +531,26 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   dashboard experience is complete until the Gateway can inject MaaS identity
   headers and the dashboard/API checks pass.
 
+### External OpenAI MaaS model stays Pending
+
+- **Symptom:** `ExternalModel` exists, but `MaaSModelRef` is `Pending` and the
+  combined `MaaSSubscription` reports a missing or unavailable external model.
+- **Likely cause:** the `ExternalModel.metadata.name` contains dots. The MaaS
+  controller creates a Kubernetes `Service` from the `ExternalModel` name, and
+  Services require DNS-1035 names. Use `gpt-5-4-mini` as the resource name and
+  keep the real OpenAI model ID in `spec.targetModel: gpt-5.4-mini`.
+- **Confirm:**
+
+```bash
+oc logs deploy/maas-controller -n redhat-ods-applications --since=30m \
+  | grep 'failed to create Service'
+oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
+```
+
+- **Fix:** update GitOps so `ExternalModel`, `MaaSModelRef`,
+  `MaaSSubscription.modelRefs`, and `MaaSAuthPolicy.modelRefs` use the same
+  DNS-safe resource alias. Then resync Stage 230 and rerun validation.
+
 ### Nemotron still exists as a direct demo-sandbox deployment
 
 - **Symptom:** after deploying Stage 230, `oc get inferenceservice

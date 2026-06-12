@@ -106,32 +106,34 @@ Review points:
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: ExternalModel
 metadata:
-  name: gpt-5.4-nano
+  name: gpt-5-4-mini
   namespace: models-as-a-service
 spec:
   provider: openai
   endpoint: api.openai.com
-  targetModel: gpt-5.4-nano
+  targetModel: gpt-5.4-mini
   credentialRef:
     name: openai-provider-api-key
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:
-  name: gpt-5.4-nano
+  name: gpt-5-4-mini
   namespace: models-as-a-service
 spec:
   modelRef:
     kind: ExternalModel
-    name: gpt-5.4-nano
+    name: gpt-5-4-mini
 ```
 
 Review points:
 
 - `openai-provider-api-key` is a Secret, not a committed value
-- for the current RHOAI 3.4 MaaS path, keep the `ExternalModel` and
-  `MaaSModelRef` resource names aligned with the provider `targetModel`
-  string when registering external OpenAI models
+- for the current RHOAI 3.4 MaaS path, use a DNS-1035 resource alias for
+  `ExternalModel` and `MaaSModelRef`; keep the exact provider model ID in
+  `spec.targetModel`
+- the `ExternalModel` controller creates Kubernetes Services from the resource
+  name, so dotted names such as `gpt-5.4-mini` are invalid as resource names
 - external models through MaaS are Technology Preview
 - provider-level rate limits apply across all users sharing the provider key
 - users still need a MaaS API key, subscription, and authorization policy
@@ -154,7 +156,7 @@ spec:
       tokenRateLimits:
         - limit: 100000
           window: "1h"
-    - name: gpt-5.4-nano
+    - name: gpt-5-4-mini
       namespace: models-as-a-service
       tokenRateLimits:
         - limit: 20000
@@ -173,7 +175,7 @@ spec:
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
       namespace: models-as-a-service
-    - name: gpt-5.4-nano
+    - name: gpt-5-4-mini
       namespace: models-as-a-service
   meteringMetadata:
     organizationId: acme-eu

@@ -24,10 +24,11 @@
   RHCL, Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL
   16 demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
   enablement, and `Tenant`.
-- Phase-two implementation: schema-validated external OpenAI `gpt-5.4-nano`
-  `ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, `MaaSAuthPolicy`, and
-  MaaS namespace admin RoleBinding for `rhods-admins`. Live rollout requires a
-  local provider key Secret; do not use placeholders.
+- Phase-two implementation: schema-validated external OpenAI `gpt-5.4-mini`
+  provider routing through DNS-safe `gpt-5-4-mini` `ExternalModel`,
+  `MaaSModelRef`, `MaaSSubscription`, `MaaSAuthPolicy`, and MaaS namespace
+  admin RoleBinding for `rhods-admins`. Live rollout requires a local provider
+  key Secret; do not use placeholders.
 - Local model implementation: schema-validated Nemotron
   `LLMInferenceService` and `MaaSModelRef` in `models-as-a-service`, with a
   MaaS namespace `LocalQueue` and a deploy-time cleanup guard that removes any
@@ -41,8 +42,9 @@
   from the active OpenShift ingress certificate before applying
   `maas-default-gateway`; then patch listener hostnames to
   `maas.<apps-domain>`.
-- External model planned: OpenAI `gpt-5.4-nano` registered through the MaaS
-  `ExternalModel` path.
+- External model planned: OpenAI `gpt-5.4-mini` registered through the MaaS
+  `ExternalModel` path with `gpt-5-4-mini` as the DNS-safe Kubernetes resource
+  alias.
 - Validation priority: deterministic API and CLI validation first, with the
   dashboard and Gen AI studio experience used as the audience-facing proof.
 - User-facing experience: `ai-admin` administers MaaS; `ai-developer` does not
@@ -71,7 +73,7 @@
 - Do not use external OpenAI models for workloads where provider-side
   processing is not allowed by the demo scenario.
 - Do not hide the external-provider boundary. Prompts, context, and generated
-  content for `gpt-5.4-nano` leave the cluster and must be limited to approved
+  content for `gpt-5.4-mini` leave the cluster and must be limited to approved
   demo workloads.
 - Do not give `ai-developer` administrative access to the MaaS project. The
   user-facing path is through OpenShift AI dashboard assets and MaaS-governed
@@ -95,7 +97,7 @@
   owner; Stage 230 adds a focused MaaS patch through that owner.
 - [ ] Local Nemotron is published through a schema-verified MaaS model
   reference.
-- [ ] External OpenAI `gpt-5.4-nano` GitOps resources are published through an
+- [ ] External OpenAI `gpt-5.4-mini` GitOps resources are published through an
   `ExternalModel` backed by a real Kubernetes Secret or approved secret store.
 - [ ] Demo users have both `MaaSSubscription` quota and `MaaSAuthPolicy`
   gateway authorization before access is claimed.
@@ -121,12 +123,13 @@
 | Stage 210 evidence | `stage-210-model-serving-foundation/README.md` and benchmark results under `runs/stage-210-guidellm/` | `rhoai-model-management-monitoring` | Source for current Nemotron endpoint readiness and operating-envelope evidence. |
 | Red Hat quickstart | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-maas-governance` | Narrative and architecture reference for Nemotron, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S context. |
 | Red Hat Developer article | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/sources/2026-06-12 - Model-as-a-Service How to Run Your Own Private AI API.md` | `project-red-hat-doc-alignment-review`, `project-documentation-authoring` | Narrative source for MaaS as a governed internal private AI API product with developer self-service, monitoring, quota, security, and shadow-AI reduction. |
+| Red Hat Developer gateway example | [Centralized routing for external and self-hosted LLMs on OpenShift AI](https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service) | `rhoai-maas-governance`, `project-red-hat-doc-alignment-review` | Supporting example for a unified OpenAI-compatible gateway, external OpenAI `gpt-5.4-mini`, and self-hosted model routing. The article uses LiteLLM; this stage uses the native RHOAI MaaS `ExternalModel` path from official docs. |
 | Red Hat implementation reference | [rh-ai-quickstart/maas-code-assistant `feat/upgrade-to-rhoai-3.4`](https://github.com/rh-ai-quickstart/maas-code-assistant/tree/feat/upgrade-to-rhoai-3.4) | `rhoai-maas-governance`, `rhoai-distributed-inference-llmd` | Implementation pattern for `LLMInferenceService`, Gateway, tier/RBAC, vLLM args, Grafana, and the known-good `rhcl-operator.v1.3.3` pin. Must be revalidated against RHOAI 3.4 CRDs. |
 | Sibling demo reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | `rhoai-distributed-inference-llmd`, `rhoai-model-serving-platform` | Concrete Nemotron vLLM/tool-calling configuration to preserve where schema-compatible. |
 | Sibling MaaS reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | `rhoai-maas-governance` | MaaS model-reference pattern; example only until active CRD schema is verified. |
 | API stability | `.agents/skills/rhoai-api-tiers/references/api-tier-map.md` | `rhoai-api-tiers` | `llminferenceservices.serving.kserve.io/v1alpha1` is Tier 2 by exception; other alpha Gateway/preview surfaces must be labeled carefully. |
-| External provider model | [OpenAI API - GPT-5.4 nano model](https://developers.openai.com/api/docs/models/gpt-5.4-nano) | `rhoai-maas-governance` | Official OpenAI source for the selected external model ID, endpoint compatibility, modalities, and feature support. |
-| External provider pricing | [OpenAI API - pricing](https://developers.openai.com/api/docs/pricing) | `rhoai-maas-governance` | Confirms `gpt-5.4-nano` is the cost-optimized GPT-5.4-class model for the external MaaS path at the time of planning. Recheck before demo delivery. |
+| External provider model | [OpenAI API - GPT-5.4 mini model](https://developers.openai.com/api/docs/models/gpt-5.4-mini) | `rhoai-maas-governance` | Official OpenAI source for the selected external model ID, endpoint compatibility, modalities, and feature support. |
+| External provider pricing | [OpenAI API - pricing](https://developers.openai.com/api/docs/pricing) | `rhoai-maas-governance` | Confirms `gpt-5.4-mini` pricing for the external MaaS path and documents the tradeoff against the cheaper `gpt-5.4-nano`. Recheck before demo delivery. |
 
 ## Current Schema Findings
 
@@ -165,7 +168,7 @@ published snippets.
 | MaaS CRDs | MaaS resources are product-documented for RHOAI 3.4, but the CRDs are not present on the current cluster yet. | Install/enable MaaS prerequisites first, then validate `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy` schemas before copying quickstart examples. |
 | Gateway API | Gateway API resources are present as `gateway.networking.k8s.io/v1`. They are OpenShift/Kubernetes gateway resources, not RHOAI API-tier entries. | Validate listener, namespace, hostname, route, and ReferenceGrant behavior with live schema and official OpenShift/RHOAI docs before claiming MaaS access paths. |
 | RBAC and access policy | Stage 230 needs both OpenShift RBAC/group membership and MaaS gateway authorization. | Do not claim access until both `MaaSSubscription` quota and `MaaSAuthPolicy` authorization are present and validated for allowed and denied subjects. |
-| External OpenAI model | `gpt-5.4-nano` is selected from official OpenAI model/pricing docs as the cost-optimized GPT-5.4-class external model at planning time. | Recheck model availability and pricing before demo delivery. Store provider credentials only in local Secret material, and document that prompts leave the cluster for this model. |
+| External OpenAI model | `gpt-5.4-mini` is selected because it matches the Red Hat Developer gateway example and official OpenAI docs describe it as a stronger mini model for high-volume workloads. | Recheck model availability and pricing before demo delivery. Store provider credentials only in local Secret material, and document that prompts leave the cluster for this model. `gpt-5.4-nano` remains the cheaper alternative if cost becomes the main criterion. |
 
 ## Completed Schema Checks Before MaaS Model GitOps
 
@@ -235,7 +238,7 @@ Phase-one deploy and validation commands:
 | Shared RHOAI patch | `DataScienceCluster` MaaS enablement and dashboard feature flags | Kustomize render and live DSC status |
 | Local model backend | `LLMInferenceService` for Nemotron, or another officially supported MaaS backend if schema requires it | `Ready=True`, authenticated inference, metrics |
 | Local MaaS publication | `MaaSModelRef` for Nemotron | CRD schema and dashboard/API model listing |
-| External provider | `ExternalModel` and `MaaSModelRef` for `gpt-5.4-nano`, provider Secret supplied locally | OpenAI model availability and Secret reference |
+| External provider | `ExternalModel` and `MaaSModelRef` named `gpt-5-4-mini` with `spec.targetModel: gpt-5.4-mini`, provider Secret supplied locally | OpenAI model availability, DNS-1035 resource-name compatibility, and Secret reference |
 | Access governance | `rhods-admins` namespace admin RoleBinding, `MaaSSubscription`, `MaaSAuthPolicy`, group/user mapping, token limits, cost metadata | Allowed and denied inference tests |
 | Observability | Tenant telemetry, MaaS/Kuadrant metrics, dashboard flag | Usage/rate-limit metrics visible; TP label in docs |
 | Gen AI Playground | Dashboard flags, Llama Stack Operator if required, AI asset endpoint visibility | `ai-developer` sees and uses MaaS models from AI asset endpoints/playground without MaaS namespace admin rights |
@@ -246,7 +249,7 @@ Phase-one deploy and validation commands:
 |------|------|------------|
 | Official docs group discrepancy | resolved for current cluster | The official RHOAI 3.4 guide lists `*.maas.opendatahub.io` CRDs but shows `models.opendatahub.io/v1alpha1` YAML for several MaaS resources. The live cluster exposes MaaS resources as `maas.opendatahub.io/v1alpha1`; use that group/version for current GitOps. |
 | `LLMInferenceService` example version drift | risk | Active cluster stores `v1alpha2`; adapt examples only after schema checks. |
-| External OpenAI provider data path | risk | Document that prompts sent to `gpt-5.4-nano` leave the cluster and are subject to provider policy, region, and account settings. |
+| External OpenAI provider data path | risk | Document that prompts sent to `gpt-5.4-mini` leave the cluster and are subject to provider policy, region, and account settings. |
 | Missing provider credential | blocker for live rollout | Do not push external-model GitOps into the Argo CD sync loop unless `openai-provider-api-key` exists in `models-as-a-service` or `OPENAI_API_KEY`/`RHOAI_OPENAI_API_KEY` is provided locally for `deploy.sh`. |
 | Provider rate limits | risk | MaaS limits protect users from each other inside the demo, but the shared OpenAI provider key can still hit provider-level aggregate limits. |
 | RHCL version drift | blocker | If a cluster already installed RHCL 1.4.x, remediate the operator lifecycle back to the pinned `rhcl-operator.v1.3.3` path before claiming MaaS gateway/dashboard readiness. Do not patch generated Kuadrant `AuthPolicy` or `EnvoyFilter` resources. |

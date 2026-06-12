@@ -619,10 +619,14 @@ keep the validation failure visible until the documented product path works end
 to end.
 
 The external model resources use the installed
-`maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. Re-run the
-schema checks after RHOAI or RHCL upgrades before changing `MaaSModelRef`,
-`ExternalModel`, `MaaSSubscription`, or `MaaSAuthPolicy` manifests because the
-RHOAI 3.4 documentation examples and CRD verification section use different
+`maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. External
+OpenAI `gpt-5.4-mini` is represented by the DNS-safe MaaS resource name
+`gpt-5-4-mini` because the ExternalModel controller creates Kubernetes
+Services from the resource name. Keep the exact provider model ID in
+`spec.targetModel`. Re-run the schema checks after RHOAI or RHCL upgrades
+before changing `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or
+`MaaSAuthPolicy` manifests because the RHOAI 3.4 documentation examples and
+CRD verification section use different
 API groups for some MaaS resources.
 
 ### Access Posture
@@ -633,7 +637,7 @@ API groups for some MaaS resources.
 - `ai-developer` should not have direct namespace access to
   `models-as-a-service`; the intended path is OpenShift AI dashboard assets,
   Gen AI Playground, and MaaS-issued API keys.
-- External OpenAI `gpt-5.4-nano` access must go through MaaS and must be
+- External OpenAI `gpt-5.4-mini` access must go through MaaS and must be
   documented as an external-provider data path where prompts leave the cluster.
   Provider credentials stay local and are never committed.
 

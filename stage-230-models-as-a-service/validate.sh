@@ -20,10 +20,10 @@ fi
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
 PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.3}"
-OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
-OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-$OPENAI_MODEL_ID}"
+OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-mini}"
+OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-mini}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
-OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-nano}"
+OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
@@ -460,16 +460,26 @@ check "demo users have MaaS auth policy for local and external models" "$R"
 
 if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress \
   --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-  if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress -o yaml \
-    --insecure-skip-tls-verify=true 2>/dev/null | grep -q 'allow_on_headers_stop_iteration'; then
-    R="unsupported allow_on_headers_stop_iteration present in generated EnvoyFilter"
+  GATEWAY_READY=$(oc get pods -n openshift-ingress \
+    -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+    -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{" "}{end}' \
+    --insecure-skip-tls-verify=true 2>/dev/null || true)
+  GATEWAY_LOG_ERRORS=$(oc logs -n openshift-ingress \
+    -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+    --since=10m --tail=500 --insecure-skip-tls-verify=true 2>/dev/null \
+    | grep -E 'allow_on_headers_stop_iteration|Proto constraint validation failed|unknown field|Error adding/updating listener' \
+    || true)
+  if [[ -n "$GATEWAY_LOG_ERRORS" ]]; then
+    R="gateway Envoy log still reports generated WASM/EnvoyFilter rejection"
+  elif ! contains_word "$GATEWAY_READY" "True"; then
+    R="gateway pod Ready conditions=${GATEWAY_READY:-missing}"
   else
     R="pass"
   fi
 else
   R="missing"
 fi
-check "MaaS Gateway Kuadrant WASM filter is accepted by Envoy" "$R"
+check "MaaS Gateway has no active generated WASM/EnvoyFilter rejection" "$R"
 
 if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")

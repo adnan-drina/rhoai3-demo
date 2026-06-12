@@ -33,6 +33,7 @@
 |--------|------|
 | https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for private code assistant, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S requirements |
 | https://github.com/rh-ai-quickstart/maas-code-assistant/tree/feat/upgrade-to-rhoai-3.4 | Source repository branch for RHOAI 3.4 MaaS implementation evidence, including `LLMInferenceService`, Gateway references, model resource sizing, Grafana examples, and the known-good `rhcl-operator.v1.3.3` pin |
+| https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service | Red Hat Developer example for centralized routing across external and self-hosted LLMs, including `gpt-5.4-mini`; use for narrative and model-choice context, not as CRD authority |
 | `rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | Working local reference for publishing Nemotron through `LLMInferenceService` with Gateway, scheduler pool, tool-calling args, reasoning parser args, prefix caching, resources, and `/dev/shm` |
 | `rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | Working local reference for MaaSModelRef resources that publish local `LLMInferenceService` backends |
 
@@ -41,7 +42,7 @@
 - Product configuration truth: the official RHOAI 3.4 MaaS guide and related
   active-baseline Red Hat product documentation.
 - Demo policy: this skill may state rhoai3-demo preferences such as using
-  MaaS for governed OpenAI `gpt-5.4-nano` access and local Nemotron exposure,
+  MaaS for governed OpenAI `gpt-5.4-mini` access and local Nemotron exposure,
   but CR fields and product behavior still require official docs or schema
   checks.
 - Red Hat articles, blogs, and `rh-brain` are supporting narrative and example
@@ -49,6 +50,9 @@
 - Red Hat quickstarts and `rh-ai-quickstart` repositories are supporting
   implementation evidence only. Do not use them to override RHOAI 3.4 official
   docs or installed CRD schemas.
+- The Red Hat Developer LiteLLM article is supporting narrative and model-choice
+  evidence. It demonstrates an alternate gateway pattern; this demo uses the
+  native RHOAI 3.4 MaaS `ExternalModel` path for external OpenAI governance.
 - `rhoai3-coding-demo` references are sibling-demo implementation evidence
   only. Verify API versions, field names, Gateway, scheduler, and MaaS CRDs in
   the active cluster before committing Stage 230 GitOps.
@@ -65,9 +69,12 @@
 - The active `rhoai3-demo` RHOAI 3.4 cluster exposes `Tenant`,
   `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy` as
   `maas.opendatahub.io/v1alpha1`.
-- Stage 230 uses `ExternalModel.metadata.name: gpt-5.4-nano` and
-  `MaaSModelRef.metadata.name: gpt-5.4-nano` for the external OpenAI model so
-  the MaaS resource name remains aligned with `spec.targetModel`.
+- Stage 230 uses `ExternalModel.metadata.name: gpt-5-4-mini` and
+  `MaaSModelRef.metadata.name: gpt-5-4-mini` for the external OpenAI model,
+  while keeping `ExternalModel.spec.targetModel: gpt-5.4-mini`. This separates
+  the DNS-1035 Kubernetes resource alias from the provider model ID. The live
+  MaaS controller creates a Kubernetes `Service` from the `ExternalModel` name;
+  dotted resource names such as `gpt-5.4-mini` fail Service validation.
 - Continue to verify installed CRD schemas before committing long-lived GitOps
   manifests after any RHOAI or RHCL upgrade:
   `oc api-resources | grep -i maas`,
