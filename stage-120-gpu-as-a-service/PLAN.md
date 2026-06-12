@@ -182,5 +182,8 @@ stage demonstrates governed admission and reservation, not preemption.
 - Source capture: complete
 - Manifest review: pending
 - Red Hat source-alignment review: pending
-- Live deploy: pending after repo changes
-- Live validation: pending after repo changes
+- Live deploy: succeeded on cluster-klvxt 2026-06-12; Argo CD Applications
+  `stage-110-rhoai-base-platform` and `stage-120-gpu-as-a-service` synced and
+  healthy at GitOps revision `d9963b1`.
+- Live validation: PASSED 2026-06-12 — `stage-120-gpu-as-a-service/validate.sh`
+  23/23 after validator fix commit `c1a2a66`.

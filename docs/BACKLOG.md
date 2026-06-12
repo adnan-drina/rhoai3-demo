@@ -18,11 +18,12 @@ Completed: GitOps bootstrap, ODF MCG (S3 verified), RHOAI 3.4 (dashboard, workbe
 | Least-privilege role for Argo CD application-controller | low | Bootstrap grants `cluster-admin` to `openshift-gitops-argocd-application-controller` (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`); replace with a scoped role |
 | Per-project admin RBAC for future projects | low | `rhods-admins` is bound `admin` per project (currently `demo-sandbox` only); each new project needs its own binding, by design |
 
-## Stage 120: Status — IN PROGRESS
+## Stage 120: Status — COMPLETE
 
-Current scope: GPU-as-a-Service. Stage 120 owns the GPU MachineSet, NFD,
-NVIDIA GPU Operator, Kueue operator and quota resources, and RHOAI hardware
-profiles. It does not enable model serving; Stage 220 owns that transition.
+Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 23/23.
+Stage 120 owns the GPU MachineSet, NFD, NVIDIA GPU Operator, Kueue operator and
+quota resources, and RHOAI hardware profiles. It does not enable model serving;
+Stage 220 owns that transition.
 
 ### Open / deferred from Stage 120
 
