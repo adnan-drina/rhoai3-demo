@@ -42,6 +42,9 @@ manifests, or live operations.
   requires it.
 - Argo CD sync waves separate operator, instance, datasource, and dashboard
   resources where ordering matters.
+- Datasource and dashboard `resyncPeriod` values are deliberate. Use a shorter
+  period for live demos where Grafana pod replacement must quickly repopulate
+  its internal database.
 - Route TLS, OAuth redirect annotations, service serving certificate
   annotations, and injected CA bundles are verified.
 - OAuth proxy image and arguments are verified against the active OpenShift

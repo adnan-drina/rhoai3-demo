@@ -361,6 +361,9 @@ patched at sync time to the cluster-specific `llm-performance` dashboard URL.
 `stage-210-model-serving-foundation/validate.sh` also runs a live Grafana
 datasource query against the `Prometheus` datasource so dashboard-ready status
 includes Prometheus authentication, not only synchronized custom resources.
+The Stage 210 Grafana datasource and dashboards use a short operator
+`resyncPeriod` so they are repopulated quickly after Grafana pod replacement
+during demo updates.
 
 The Grafana Operator is installed from `community-operators` as a demo
 observability UI. It is not a Red Hat product dependency for RHOAI.

@@ -398,7 +398,9 @@ oc get grafanadashboard -n rhoai-demo-grafana
 The datasource UID should be `Prometheus`, the datasource should use
 `valuesFrom` for `secureJsonData.httpHeaderValue1`, and validation should pass
 the live Grafana datasource query. If the browser still shows an old
-datasource variable after GitOps sync, hard-refresh the Grafana tab.
+datasource variable after GitOps sync, hard-refresh the Grafana tab. If
+Grafana recently rolled out, allow the operator resync period to repopulate
+datasources and dashboards, then rerun validation.
 
 ### Stage 210 Application waits on benchmark-data PVC
 

@@ -12,6 +12,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "12"
 spec:
   uid: Prometheus
+  resyncPeriod: 30s
   datasource:
     access: proxy
     editable: true

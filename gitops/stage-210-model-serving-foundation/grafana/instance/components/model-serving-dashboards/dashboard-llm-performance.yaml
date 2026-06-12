@@ -16,7 +16,7 @@ spec:
   instanceSelector:
     matchLabels:
       instance: rhoai-demo-grafana
-  resyncPeriod: 10m
+  resyncPeriod: 30s
   json: |
     {
       "annotations": {

@@ -82,8 +82,8 @@ Validated on the active demo cluster on 2026-06-12:
 | Channel | Active channel `v5`; installed CSV `grafana-operator.v5.24.0` is `Succeeded`. |
 | CRD versions | `grafanas`, `grafanadatasources`, and `grafanadashboards` serve and store `v1beta1`. |
 | `Grafana` | `grafana/grafana` status condition `GrafanaReady=True`. |
-| Datasource | `grafanadatasource/prometheus` status condition `DatasourceSynchronized=True`; `uid: Prometheus`; `instanceSelector.matchLabels.instance: rhoai-demo-grafana`; `valuesFrom` substitutes the `grafana-auth-secret` service-account token into `secureJsonData.httpHeaderValue1`. |
-| Dashboards | `vllm-model-serving-baseline` and `llm-performance` status condition `DashboardSynchronized=True`; both select `instance: rhoai-demo-grafana` and use `spec.json`. |
+| Datasource | `grafanadatasource/prometheus` status condition `DatasourceSynchronized=True`; `uid: Prometheus`; `instanceSelector.matchLabels.instance: rhoai-demo-grafana`; `valuesFrom` substitutes the `grafana-auth-secret` service-account token into `secureJsonData.httpHeaderValue1`; `resyncPeriod: 30s` keeps live demos responsive after Grafana pod replacement. |
+| Dashboards | `vllm-model-serving-baseline` and `llm-performance` status condition `DashboardSynchronized=True`; both select `instance: rhoai-demo-grafana`, use `spec.json`, and set `resyncPeriod: 30s`. |
 | Argo CD | `stage-210-model-serving-foundation` uses automated sync, prune, self-heal, Kustomize path `gitops/stage-210-model-serving-foundation`, and `SkipDryRunOnMissingResource=true`. |
 
 ## Required Validation Commands
