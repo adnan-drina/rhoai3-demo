@@ -71,6 +71,9 @@ Use this checklist before declaring a stage ready.
   blocker or accepted deferred item.
 - Operations and troubleshooting docs are updated when reusable knowledge was
   created.
+- Any hard-won implementation lesson, source/schema discrepancy, product
+  compatibility decision, or validated working configuration is captured in the
+  relevant product or project skill before the stage is considered complete.
 
 ## Commit Boundary
 

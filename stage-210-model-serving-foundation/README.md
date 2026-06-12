@@ -25,7 +25,7 @@ Grafana evidence before MaaS governance is introduced.
 The stage does not yet turn the model into a governed shared service. That is
 deliberate. First we prove the platform can host a GPU-backed LLM endpoint;
 then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
-230 publishes validated access through Models-as-a-Service.
+220 publishes validated access through Models-as-a-Service.
 
 ---
 
@@ -48,8 +48,8 @@ then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
 | Red Hat AI MaaS code assistant quickstart | Provides a Red Hat-maintained implementation reference for Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S infrastructure, including vLLM arguments, resource sizing, MaaS `LLMInferenceService`, tiered access, and Grafana usage patterns. | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) |
 
 This stage uses direct model serving, not Models-as-a-Service and not llm-d.
-MaaS governance and external OpenAI `gpt-5.4-nano` registration belong to
-Stage 230. Distributed inference with llm-d remains a later scale-out option.
+MaaS governance and external OpenAI `gpt-5.4-mini` registration belong to
+Stage 220. Distributed inference with llm-d remains a later scale-out option.
 EvalHub, MLflow, LMEval, judge-based evaluation, and risk assessment remain
 deferred to later MLOps/evaluation stages.
 
@@ -67,7 +67,7 @@ as the default chat/RAG operating envelope for one GPU. Larger context windows
 must be justified by RAG-specific benchmark evidence before being exposed
 through MaaS.
 The quickstart's MaaS `LLMInferenceService`, gateway, tier, and RBAC patterns
-remain Stage 230 input.
+remain Stage 220 input.
 
 The quickstart deploys a sample modelcar URI for its scenario. This demo keeps
 the Red Hat registry artifact
@@ -172,7 +172,7 @@ Validated on `cluster-klvxt` on 2026-06-12:
 
 These numbers are smoke-test evidence for the harness and endpoint, not a
 production capacity claim. Use the recorded chat/RAG policy profiles in
-`docs/OPERATIONS.md` as the first input for Stage 230 MaaS quotas and rerun
+`docs/OPERATIONS.md` as the first input for Stage 220 MaaS quotas and rerun
 them whenever the model, runtime, GPU shape, or prompt profile changes.
 
 ---

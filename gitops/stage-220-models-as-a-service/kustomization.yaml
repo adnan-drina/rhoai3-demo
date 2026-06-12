@@ -5,7 +5,7 @@ labels:
   - includeSelectors: false
     pairs:
       app.kubernetes.io/part-of: rhoai3-demo
-      demo.rhoai.io/stage: "230"
+      demo.rhoai.io/stage: "220"
 
 resources:
   - prerequisites/lws/base

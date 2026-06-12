@@ -14,6 +14,8 @@ REGISTRY_NS="${MODEL_REGISTRY_NAMESPACE:-rhoai-model-registries}"
 REGISTRY_NAME="${MODEL_REGISTRY_NAME:-demo-registry}"
 MODEL_NS="${RHOAI_MODEL_NAMESPACE:-demo-sandbox}"
 MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
+MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
+MAAS_NEMOTRON_MODEL_NAME="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-Version 1}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0}"
@@ -38,6 +40,8 @@ REGISTRY_NS="${MODEL_REGISTRY_NAMESPACE:-$REGISTRY_NS}"
 REGISTRY_NAME="${MODEL_REGISTRY_NAME:-$REGISTRY_NAME}"
 MODEL_NS="${RHOAI_MODEL_NAMESPACE:-$MODEL_NS}"
 MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-$MODEL_DEPLOYMENT_NAME}"
+MAAS_NS="${RHOAI_MAAS_NAMESPACE:-$MAAS_NS}"
+MAAS_NEMOTRON_MODEL_NAME="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-$MAAS_NEMOTRON_MODEL_NAME}"
 MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-$MODEL_DISPLAY_NAME}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-$MODEL_VERSION_NAME}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-$MODEL_URI}"
@@ -480,139 +484,209 @@ if [[ -n "$REGISTRY_HOST" ]]; then
   fi
 fi
 
-ISVC_READY=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-[[ "$ISVC_READY" == "True" ]] && R="pass" || R="ready=${ISVC_READY:-not found}"
-check "Nemotron InferenceService Ready" "$R"
+ISVC_JSON=""
+LLMISVC_JSON=""
 
-ISVC_RUNTIME=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o jsonpath='{.spec.predictor.model.runtime}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-[[ -n "$ISVC_RUNTIME" ]] && R="pass" || R="missing"
-check "Nemotron InferenceService runtime selected" "$R"
+if resource_exists "inferenceservice/${MODEL_DEPLOYMENT_NAME}" "$MODEL_NS"; then
+  ISVC_READY=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+  [[ "$ISVC_READY" == "True" ]] && R="pass" || R="ready=${ISVC_READY:-not found}"
+  check "Nemotron direct InferenceService Ready" "$R"
 
-ISVC_URI=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o jsonpath='{.spec.predictor.model.storageUri}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-[[ "$ISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${ISVC_URI:-not found}"
-check "Nemotron InferenceService uses expected OCI model" "$R"
+  ISVC_RUNTIME=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    -o jsonpath='{.spec.predictor.model.runtime}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+  [[ -n "$ISVC_RUNTIME" ]] && R="pass" || R="missing"
+  check "Nemotron direct InferenceService runtime selected" "$R"
 
-ISVC_JSON=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o json --insecure-skip-tls-verify=true 2>/dev/null || echo "{}")
-if jq -e \
-    --arg maxModelLen "$MODEL_MAX_MODEL_LEN" \
-    --arg maxBatchedTokens "$MODEL_MAX_BATCHED_TOKENS" '
-    .spec.predictor.model.args == [
-      "--enable-force-include-usage",
-      "--disable-uvicorn-access-log",
-      "--enable-prefix-caching",
-      ("--max-model-len=" + $maxModelLen),
-      ("--max-num-batched-tokens=" + $maxBatchedTokens),
-      "--enable-auto-tool-choice",
-      "--tool-call-parser=qwen3_coder",
-      "--trust-remote-code",
-      "--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py",
-      "--reasoning-parser=nano_v3"
-    ]
-  ' <<<"$ISVC_JSON" >/dev/null; then
-  R="pass"
-else
-  R="args do not match curated Nemotron vLLM configuration"
-fi
-check "Nemotron InferenceService uses curated vLLM args" "$R"
+  ISVC_URI=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    -o jsonpath='{.spec.predictor.model.storageUri}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+  [[ "$ISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${ISVC_URI:-not found}"
+  check "Nemotron direct InferenceService uses expected OCI model" "$R"
 
-if jq -e \
-    --arg cpuRequest "$MODEL_CPU_REQUEST" \
-    --arg cpuLimit "$MODEL_CPU_LIMIT" \
-    --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
-    --arg memoryLimit "$MODEL_MEMORY_LIMIT" \
-    '
-      .spec.predictor.model.resources.requests.cpu == $cpuRequest and
-      .spec.predictor.model.resources.requests.memory == $memoryRequest and
-      .spec.predictor.model.resources.requests["nvidia.com/gpu"] == "1" and
-      .spec.predictor.model.resources.limits.cpu == $cpuLimit and
-      .spec.predictor.model.resources.limits.memory == $memoryLimit and
-      .spec.predictor.model.resources.limits["nvidia.com/gpu"] == "1"
+  ISVC_JSON=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    -o json --insecure-skip-tls-verify=true 2>/dev/null || echo "{}")
+  if jq -e \
+      --arg maxModelLen "$MODEL_MAX_MODEL_LEN" \
+      --arg maxBatchedTokens "$MODEL_MAX_BATCHED_TOKENS" '
+      .spec.predictor.model.args == [
+        "--enable-force-include-usage",
+        "--disable-uvicorn-access-log",
+        "--enable-prefix-caching",
+        ("--max-model-len=" + $maxModelLen),
+        ("--max-num-batched-tokens=" + $maxBatchedTokens),
+        "--enable-auto-tool-choice",
+        "--tool-call-parser=qwen3_coder",
+        "--trust-remote-code",
+        "--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py",
+        "--reasoning-parser=nano_v3"
+      ]
     ' <<<"$ISVC_JSON" >/dev/null; then
-  R="pass"
-else
-  R="resources do not match ${MODEL_CPU_REQUEST}/${MODEL_CPU_LIMIT} CPU and ${MODEL_MEMORY_REQUEST}/${MODEL_MEMORY_LIMIT} memory"
-fi
-check "Nemotron InferenceService uses curated resource sizing" "$R"
+    R="pass"
+  else
+    R="args do not match curated Nemotron vLLM configuration"
+  fi
+  check "Nemotron direct InferenceService uses curated vLLM args" "$R"
 
-if resource_exists "servicemonitor/${MODEL_DEPLOYMENT_NAME}-metrics" "$MODEL_NS"; then
-  R="pass"
-else
-  R="missing"
-fi
-check "Nemotron ServiceMonitor present" "$R"
+  if jq -e \
+      --arg cpuRequest "$MODEL_CPU_REQUEST" \
+      --arg cpuLimit "$MODEL_CPU_LIMIT" \
+      --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
+      --arg memoryLimit "$MODEL_MEMORY_LIMIT" \
+      '
+        .spec.predictor.model.resources.requests.cpu == $cpuRequest and
+        .spec.predictor.model.resources.requests.memory == $memoryRequest and
+        .spec.predictor.model.resources.requests["nvidia.com/gpu"] == "1" and
+        .spec.predictor.model.resources.limits.cpu == $cpuLimit and
+        .spec.predictor.model.resources.limits.memory == $memoryLimit and
+        .spec.predictor.model.resources.limits["nvidia.com/gpu"] == "1"
+      ' <<<"$ISVC_JSON" >/dev/null; then
+    R="pass"
+  else
+    R="resources do not match ${MODEL_CPU_REQUEST}/${MODEL_CPU_LIMIT} CPU and ${MODEL_MEMORY_REQUEST}/${MODEL_MEMORY_LIMIT} memory"
+  fi
+  check "Nemotron direct InferenceService uses curated resource sizing" "$R"
 
-ISVC_URL=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o jsonpath='{.status.url}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-METRICS_BODY=""
-if [[ -n "$ISVC_URL" ]]; then
-  METRICS_BODY=$(curl -ks --max-time 15 "${ISVC_URL}/metrics" 2>/dev/null || true)
-fi
-if grep -q 'vllm:time_to_first_token_seconds_bucket' <<<"$METRICS_BODY"; then
-  R="pass"
+  if resource_exists "servicemonitor/${MODEL_DEPLOYMENT_NAME}-metrics" "$MODEL_NS"; then
+    R="pass"
+  else
+    R="missing"
+  fi
+  check "Nemotron direct ServiceMonitor present" "$R"
 else
-  R="missing vLLM metrics"
-fi
-check "Nemotron endpoint exposes vLLM metrics" "$R"
+  LLMISVC_JSON=$(oc get llminferenceservice "$MAAS_NEMOTRON_MODEL_NAME" -n "$MAAS_NS" \
+    -o json --insecure-skip-tls-verify=true 2>/dev/null || echo "{}")
 
-TOOL_CALL_BODY=""
-if [[ -n "$ISVC_URL" ]]; then
-  TOOL_CALL_PAYLOAD=$(cat <<'JSON'
+  if jq -e '.status.conditions[]? | select(.type == "Ready" and .status == "True")' \
+    <<<"$LLMISVC_JSON" >/dev/null; then
+    R="pass"
+  else
+    R="direct InferenceService absent and MaaS LLMInferenceService is not Ready"
+  fi
+  check "Nemotron MaaS LLMInferenceService Ready" "$R"
+
+  if jq -e '
+      .spec.template.containers[]? |
+      select(.name == "main") |
+      (.image | contains("registry.redhat.io/rhaii/vllm-cuda-rhel9"))
+    ' <<<"$LLMISVC_JSON" >/dev/null; then
+    R="pass"
+  else
+    R="vLLM image not found on MaaS LLMInferenceService main container"
+  fi
+  check "Nemotron MaaS LLMInferenceService uses vLLM image" "$R"
+
+  LLMISVC_URI=$(jq -r '.spec.model.uri // ""' <<<"$LLMISVC_JSON")
+  [[ "$LLMISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${LLMISVC_URI:-not found}"
+  check "Nemotron MaaS LLMInferenceService uses expected OCI model" "$R"
+
+  if jq -e \
+      --arg maxModelLen "$MODEL_MAX_MODEL_LEN" \
+      --arg maxBatchedTokens "$MODEL_MAX_BATCHED_TOKENS" '
+      .spec.template.containers[]? |
+      select(.name == "main") |
+      .args as $args |
+      all([
+        "--enable-force-include-usage",
+        "--disable-uvicorn-access-log",
+        "--enable-prefix-caching",
+        ("--max-model-len=" + $maxModelLen),
+        ("--max-num-batched-tokens=" + $maxBatchedTokens),
+        "--enable-auto-tool-choice",
+        "--tool-call-parser=qwen3_coder",
+        "--trust-remote-code",
+        "--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py",
+        "--reasoning-parser=nano_v3"
+      ][]; $args | index(.))
+    ' <<<"$LLMISVC_JSON" >/dev/null; then
+    R="pass"
+  else
+    R="args do not include curated Nemotron vLLM configuration"
+  fi
+  check "Nemotron MaaS LLMInferenceService uses curated vLLM args" "$R"
+
+  if jq -e \
+      --arg cpuRequest "$MODEL_CPU_REQUEST" \
+      --arg cpuLimit "$MODEL_CPU_LIMIT" \
+      --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
+      --arg memoryLimit "$MODEL_MEMORY_LIMIT" '
+        .spec.template.containers[]? |
+        select(.name == "main") |
+        .resources.requests.cpu == $cpuRequest and
+        .resources.requests.memory == $memoryRequest and
+        .resources.requests["nvidia.com/gpu"] == "1" and
+        .resources.limits.cpu == $cpuLimit and
+        .resources.limits.memory == $memoryLimit and
+        .resources.limits["nvidia.com/gpu"] == "1"
+      ' <<<"$LLMISVC_JSON" >/dev/null; then
+    R="pass"
+  else
+    R="resources do not match ${MODEL_CPU_REQUEST}/${MODEL_CPU_LIMIT} CPU and ${MODEL_MEMORY_REQUEST}/${MODEL_MEMORY_LIMIT} memory"
+  fi
+  check "Nemotron MaaS LLMInferenceService uses curated resource sizing" "$R"
+
+  if resource_exists "podmonitor/kserve-llm-isvc-vllm-engine" "$MAAS_NS" ||
+    resource_exists "podmonitor/kserve-llm-isvc-vllm-engine-default" "$MAAS_NS"; then
+    R="pass"
+  else
+    R="missing"
+  fi
+  check "Nemotron MaaS vLLM PodMonitor present" "$R"
+fi
+
+if [[ -n "$GRAFANA_POD" && -n "$GRAFANA_ADMIN_USER" && -n "$GRAFANA_ADMIN_PASSWORD" ]]; then
+  NOW_MS=$(( $(date +%s) * 1000 ))
+  FROM_MS=$(( NOW_MS - 3600000 ))
+  VLLM_METRIC_QUERY_RESULT=$(oc exec -i -n "$GRAFANA_NS" "$GRAFANA_POD" -c grafana \
+    --insecure-skip-tls-verify=true -- \
+    curl -sS -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+      -H "Content-Type: application/json" \
+      -X POST http://localhost:3000/api/ds/query \
+      --data-binary @- <<JSON 2>/dev/null || true
 {
-  "model": "nvidia-nemotron-3-nano-30b-a3b",
-  "messages": [
+  "queries": [
     {
-      "role": "user",
-      "content": "Use the available tool to get the weather for Amsterdam."
+      "refId": "A",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "expr": "count(vllm:time_to_first_token_seconds_bucket)",
+      "instant": true,
+      "range": false
     }
   ],
-  "tools": [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get current weather for a city.",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "city": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "city"
-          ]
-        }
-      }
-    }
-  ],
-  "tool_choice": {
-    "type": "function",
-    "function": {
-      "name": "get_weather"
-    }
-  },
-  "max_tokens": 128,
-  "temperature": 0
+  "from": "${FROM_MS}",
+  "to": "${NOW_MS}"
 }
 JSON
 )
-  TOOL_CALL_BODY=$(curl -ks --max-time 90 "${ISVC_URL}/v1/chat/completions" \
-    -H "Content-Type: application/json" \
-    --data-binary "$TOOL_CALL_PAYLOAD" 2>/dev/null || true)
+else
+  VLLM_METRIC_QUERY_RESULT=""
 fi
 if jq -e '
-    .choices[0].message.tool_calls[0].function.name == "get_weather" and
-    (.choices[0].message.tool_calls[0].function.arguments | contains("Amsterdam"))
-  ' <<<"$TOOL_CALL_BODY" >/dev/null 2>&1; then
+    (.results.A.status | tostring | test("^2")) and
+    ((.results.A.error // "") == "") and
+    ((.results.A.frames // []) | length > 0)
+  ' <<<"$VLLM_METRIC_QUERY_RESULT" >/dev/null 2>&1; then
   R="pass"
 else
-  R="tool call response missing get_weather(Amsterdam)"
+  R="missing vLLM metrics in Prometheus"
 fi
-check "Nemotron endpoint returns structured tool call" "$R"
+check "Active Nemotron backend exposes vLLM metrics" "$R"
+
+if [[ -n "$ISVC_JSON" ]] && [[ "$ISVC_JSON" != "{}" ]]; then
+  TOOL_ARGS_SOURCE="$ISVC_JSON"
+  TOOL_ARGS_QUERY='.spec.predictor.model.args as $args | all(["--enable-auto-tool-choice","--tool-call-parser=qwen3_coder","--reasoning-parser=nano_v3"][]; $args | index(.))'
+else
+  TOOL_ARGS_SOURCE="$LLMISVC_JSON"
+  TOOL_ARGS_QUERY='.spec.template.containers[]? | select(.name == "main") | .args as $args | all(["--enable-auto-tool-choice","--tool-call-parser=qwen3_coder","--reasoning-parser=nano_v3"][]; $args | index(.))'
+fi
+if jq -e "$TOOL_ARGS_QUERY" <<<"$TOOL_ARGS_SOURCE" >/dev/null; then
+  R="pass"
+else
+  R="tool-call parser args missing"
+fi
+check "Active Nemotron backend is configured for structured tool calling" "$R"
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

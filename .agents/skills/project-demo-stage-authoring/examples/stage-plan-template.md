@@ -104,4 +104,13 @@ Use this as the starting shape for `stage-YXX-slug/PLAN.md`.
 - Manifest review:
 - Red Hat source-alignment review:
 - Live validation:
+
+## Retrospective And Skill Updates
+
+- Validated working configuration captured:
+- Product docs versus installed schema discrepancies:
+- Compatibility or operator lifecycle decisions:
+- Generated resources observed but not GitOps-owned:
+- Issues that took longest and earliest future detection gate:
+- Skills updated:
 ```

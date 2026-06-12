@@ -34,7 +34,13 @@ notes for Models-as-a-Service.
   OpenShift ingress certificate by a GitOps sync hook.
 - Authorino TLS and service CA trust are configured.
 - `maas-db-config` exists in `redhat-ods-applications` with
-  `DB_CONNECTION_URL` stored as a Secret value.
+  `DB_CONNECTION_URL` stored as a Secret value. In this demo, the URL must
+  resolve to `maas-postgres.models-as-a-service-db.svc.cluster.local` because
+  the database intentionally lives outside the Kueue-managed MaaS model
+  namespace.
+- If `maas-db-config` is changed after MaaS is already `Managed`, restart
+  `deployment/maas-api` in `redhat-ods-applications` as documented by the
+  RHOAI 3.4 MaaS guide before validating API-key workflows.
 - Demo-local PostgreSQL is clearly labeled as demo posture. Production guidance
   should use an operationally managed PostgreSQL 14+ database.
 - Dashboard flags are enabled only for features the demo actually uses.
@@ -55,6 +61,10 @@ notes for Models-as-a-Service.
   controller creates Kubernetes Services from the `ExternalModel` name. Keep
   provider model IDs containing dots in `spec.targetModel`, not in
   `metadata.name`.
+- External provider Secrets use the official MaaS label
+  `inference.networking.k8s.io/bbr-managed=true` and contain the provider token
+  under data key `api-key`; otherwise the external route can be Ready while
+  provider requests fail with `provider '<name>' credentials not found`.
 - Each subscription includes at least one token rate limit per model ref and a
   supported time window such as seconds, minutes, or hours.
 - Subscription priority is intentional when groups overlap.
@@ -80,6 +90,15 @@ notes for Models-as-a-Service.
 - API keys are never committed or embedded in notebooks/manifests.
 - Persistent keys are stored in an approved secret store.
 - API key expiration limits are documented and align with the `Tenant` max.
+- Validation must create a temporary MaaS API key for an allowed demo user,
+  use it against the OpenAI-compatible inference endpoint, verify response
+  token usage, and revoke the key before declaring the MaaS endpoint functional.
+- External OpenAI `gpt-5.4-mini` validation uses `max_completion_tokens` rather
+  than legacy `max_tokens`; provider-specific OpenAI API compatibility errors
+  must be fixed in the client payload, not hidden by MaaS readiness checks.
+- Do not validate `/v1/chat/completions` with raw OpenShift OAuth tokens. The
+  generated AuthPolicy permits Kubernetes tokens for discovery paths such as
+  `/v1/models`; inference requests use `Authorization: Bearer <maas-api-key>`.
 - Group membership changes include API key revocation/recreation guidance when
   immediate access change is required.
 - External OIDC users use MaaS API key management flows rather than dashboard
@@ -94,6 +113,40 @@ notes for Models-as-a-Service.
   invoicing claims.
 - Privacy-sensitive telemetry fields such as user and group capture are
   reviewed before enablement.
+
+## Working Configuration Regression Gates
+
+Use `working-configuration.md` as a mandatory preflight for Stage 220 rebuilds,
+RHOAI upgrades, RHCL upgrades, or MaaS troubleshooting.
+
+- `DataScienceCluster` has KServe and `kserve.modelsAsService` managed.
+- Llama Stack Operator and `genAiStudio` are enabled when Gen AI Studio,
+  Playground, or AI asset endpoints are in scope.
+- MaaS CRDs resolve to the installed API group/version before GitOps changes
+  are made.
+- RHCL installed CSV matches the pinned MaaS-compatible CSV unless a newer CSV
+  has already passed full Gateway, dashboard, API, and model access validation.
+- `models-as-a-service-db` is not Kueue-managed, and the demo-local PostgreSQL
+  StatefulSet runs there instead of the MaaS model namespace.
+- Demo-local PostgreSQL with `sslmode=disable` is documented as a demo
+  exception. Production-like guidance uses a managed PostgreSQL 14+ service and
+  TLS-protected connection such as `sslmode=require`.
+- External model Kubernetes resource names are DNS-safe aliases, with provider
+  IDs kept in `ExternalModel.spec.targetModel`.
+- Generated Kuadrant `AuthPolicy`, `TokenRateLimitPolicy`, and `EnvoyFilter`
+  resources are observed for health but not hand-authored or patched in GitOps.
+- Validation includes real dashboard AI asset endpoint calls and Gateway
+  `/maas-api/v1/subscriptions` calls as allowed demo users.
+- Validation includes real MaaS API key creation, authenticated Nemotron
+  inference through the MaaS Gateway, structured tool-call output, token usage,
+  external OpenAI inference through the same MaaS Gateway, token usage, and key
+  revocation.
+- Validation confirms unauthenticated inference is rejected, so model readiness
+  is not mistaken for public access.
+- Validation checks that generated model auth and rate-limit policies are
+  enforced and that recent Gateway logs do not show generated filter rejection.
+- Stage plans and operations docs are updated from the working configuration
+  when a live issue changes the design.
 
 ## Readonly Verification Commands
 
@@ -113,6 +166,8 @@ oc get gatewayclass
 oc get secret maas-gateway-tls -n openshift-ingress
 oc get gateway maas-default-gateway -n openshift-ingress -o yaml
 oc get secret maas-db-config -n redhat-ods-applications
+oc get secret maas-db-config -n redhat-ods-applications \
+  -o jsonpath='{.data.DB_CONNECTION_URL}' | base64 -d
 oc api-resources | grep -i maas
 oc get crd maasauthpolicies.maas.opendatahub.io \
   maasmodelrefs.maas.opendatahub.io \
@@ -164,5 +219,10 @@ Do not approve a MaaS change when:
 - exact CR fields are copied from memory instead of official docs or installed
   schema
 - dashboard AI asset endpoints cannot load MaaS models for an allowed user
+- API-key creation, inference with `sk-oai-*`, token-usage capture, or API-key
+  revocation fails for an allowed user
 - `maas-api` reports missing `X-MaaS-Username` or `X-MaaS-Group` headers on
   Gateway-routed requests
+- `maas-api` reports `lookup maas-postgres.models-as-a-service.svc.cluster.local`
+  after the database has been moved to `models-as-a-service-db`; update
+  `maas-db-config` and restart `deployment/maas-api`

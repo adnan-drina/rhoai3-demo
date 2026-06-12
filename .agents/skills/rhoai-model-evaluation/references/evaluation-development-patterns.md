@@ -9,8 +9,8 @@ The current reimplementation target is:
 
 - Candidate/private model: `nemotron-3-nano-30b-a3b`.
 - Preferred judge for non-sensitive or synthetic evaluation: approved external
-  OpenAI `gpt-5.4-nano` through MaaS, after MaaS gateway/API compatibility is
-  verified.
+  OpenAI `gpt-5.4-mini` through MaaS using the `gpt-5-4-mini` resource alias,
+  after MaaS gateway/API compatibility is verified.
 - Private-only fallback: an explicitly selected private judge strategy using
   `nemotron-3-nano-30b-a3b`, with the bias risk documented.
 

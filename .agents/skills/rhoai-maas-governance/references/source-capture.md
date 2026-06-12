@@ -23,7 +23,7 @@
 | Managing OpenShift AI dashboard customization | `OdhDashboardConfig` feature flag context |
 | Managing observability | Platform observability context for MaaS usage metrics |
 | Red Hat OpenShift AI API tiers | Support posture review for MaaS CRDs and preview features |
-| Red Hat Connectivity Link 1.3 installing guide | RHCL installation, supported component prerequisites, and Kuadrant/Authorino context for the active demo cluster package while Stage 230 pins `rhcl-operator.v1.3.3` |
+| Red Hat Connectivity Link 1.3 installing guide | RHCL installation, supported component prerequisites, and Kuadrant/Authorino context for the active demo cluster package while Stage 220 pins `rhcl-operator.v1.3.3` |
 | OpenShift 4.20 cert-manager Operator documentation | cert-manager prerequisite installation and `CertManager` operand behavior |
 | Red Hat Ecosystem Catalog PostgreSQL 16 RHEL 9 image | Demo-local PostgreSQL 16 container image and environment-variable contract for the MaaS API-key database |
 
@@ -55,21 +55,23 @@
   native RHOAI 3.4 MaaS `ExternalModel` path for external OpenAI governance.
 - `rhoai3-coding-demo` references are sibling-demo implementation evidence
   only. Verify API versions, field names, Gateway, scheduler, and MaaS CRDs in
-  the active cluster before committing Stage 230 GitOps.
+  the active cluster before committing Stage 220 GitOps.
 - External provider examples such as OpenAI are governed external-access
   patterns. Provider credential scopes, rate limits, and model availability
   must be verified with the provider outside this skill.
-- The active Stage 230 implementation pins Red Hat Connectivity Link to
+- The active Stage 220 implementation pins Red Hat Connectivity Link to
   `rhcl-operator.v1.3.3` with manual InstallPlan approval. Do not relax the pin
   until RHOAI/RHCL/Gateway validation proves the newer operator version works
   end to end without generated-resource patches.
 
 ## Verified For The Active Demo Cluster
 
+- See `working-configuration.md` for the validated Stage 220 design decisions,
+  regression gates, and implementation traps discovered during live rollout.
 - The active `rhoai3-demo` RHOAI 3.4 cluster exposes `Tenant`,
   `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy` as
   `maas.opendatahub.io/v1alpha1`.
-- Stage 230 uses `ExternalModel.metadata.name: gpt-5-4-mini` and
+- Stage 220 uses `ExternalModel.metadata.name: gpt-5-4-mini` and
   `MaaSModelRef.metadata.name: gpt-5-4-mini` for the external OpenAI model,
   while keeping `ExternalModel.spec.targetModel: gpt-5.4-mini`. This separates
   the DNS-1035 Kubernetes resource alias from the provider model ID. The live
@@ -107,7 +109,7 @@
   required `OdhDashboardConfig` flags, and then rerun CRD/schema checks before
   authoring `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or
   `MaaSAuthPolicy`.
-- If the live cluster already installed an RHCL CSV newer than the Stage 230
+- If the live cluster already installed an RHCL CSV newer than the Stage 220
   pin, perform an explicit operator lifecycle remediation. Do not work around
   the resulting Gateway failure by patching generated Kuadrant `AuthPolicy` or
   `EnvoyFilter` resources.

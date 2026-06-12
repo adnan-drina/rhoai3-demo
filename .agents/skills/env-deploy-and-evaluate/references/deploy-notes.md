@@ -49,11 +49,12 @@
   through RHOAI model serving and vLLM. Validation may deploy Nemotron
   temporarily, verify inference, and remove it for fresh-environment smoke
   testing.
-- **Stage 220**: Run GuideLLM-style performance baseline tests and record
-  concurrency, latency, throughput, and GPU-utilization breakpoints.
-- **Stage 230**: Register governed MaaS access for Nemotron and external
-  OpenAI `gpt-5.4-nano` after MaaS gateway/API compatibility is verified.
-- **Stage 230 Gateway TLS**: Prepare a stable `maas-gateway-tls` Secret in
+- **Stage 210 baseline**: Run GuideLLM-style performance baseline tests and
+  record concurrency, latency, throughput, and GPU-utilization breakpoints.
+- **Stage 220**: Register governed MaaS access for Nemotron and external
+  OpenAI `gpt-5.4-mini` through the DNS-safe `gpt-5-4-mini` resource alias
+  after MaaS gateway/API compatibility is verified.
+- **Stage 220 Gateway TLS**: Prepare a stable `maas-gateway-tls` Secret in
   `openshift-ingress` from the active OpenShift ingress certificate before the
   `maas-default-gateway` sync wave. A missing initial certificate reference can
   degrade the Gateway and prevent later patch hooks from running.
@@ -70,10 +71,10 @@
 - **Step 09 — Guardrails validation**: `validate.sh` runs 12 checks including 4 functional detector tests (HAP, prompt injection, PII regex, clean input). Uses orchestrator v2 API on HTTPS port 8032. Detector names in config are `hap`, `prompt_injection`, `regex` (not the ISVC names).
 - **Step 07 — Two LSDs coexist**: `lsd-genai-playground` (Dashboard) and `lsd-rag` (GitOps) in same namespace.
 - **Step 07/08 — llama-stack-client**: Must be `>=0.4,<0.5` for server v0.4.2.1+rhai0.
-- **Stage 220/230 model roles**: Candidate = `nemotron-3-nano-30b-a3b` for
-  private-path performance baselining. External OpenAI `gpt-5.4-nano` belongs
-  behind MaaS governance when policy allows; do not use it to size GPU
-  MachineSets.
+- **Stage 210/220 model roles**: Candidate = `nemotron-3-nano-30b-a3b` for
+  private-path performance baselining. External OpenAI `gpt-5.4-mini` belongs
+  behind MaaS governance using the `gpt-5-4-mini` resource alias when policy
+  allows; do not use it to size GPU MachineSets.
 - **Step 08 — Reports**: `run-eval-report.sh` uploads HTML to `s3://rhoai-storage/eval-results/{run-id}/`.
 - **Step 10 — MCP ConfigMap**: `gen-ai-aa-mcp-servers` in `redhat-ods-applications` managed by ArgoCD. Each JSON entry supports `url`, `description`, and `transport` fields.
 - **Step 10 — MCP transport**: The gen-ai backend defaults to `streamable-http` transport. SSE-only servers (database-mcp, slack-mcp) MUST include `"transport": "sse"` in the ConfigMap JSON or the Dashboard shows "Error". OpenShift-MCP (kubernetes-mcp-server) supports streamable-http on `/mcp`.

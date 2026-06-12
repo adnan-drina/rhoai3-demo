@@ -14,7 +14,7 @@ or verify the active CRD schema before writing GitOps YAML.
 | Default GPU limit | 1 unit unless the verified schema or workload policy uses another shape |
 | Default node type | AWS `g6e.2xlarge` |
 | Default node count | 1 GPU worker |
-| Primary model path | `nemotron-3-nano-30b-a3b` through Stage 210 model serving and Stage 230 MaaS |
+| Primary model path | `nemotron-3-nano-30b-a3b` through Stage 210 model serving and Stage 220 MaaS |
 | Profile ownership | Shared RHOAI platform stage unless a project-specific stage needs a scoped copy |
 
 ## Scheduling Handoff

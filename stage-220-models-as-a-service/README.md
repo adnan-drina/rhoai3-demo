@@ -60,7 +60,7 @@ flowchart LR
 This stage is implemented in phases:
 
 1. Enable MaaS prerequisites and validate CRD/schema availability. cert-manager
-   is treated as a required platform prerequisite, not as a Stage 230-owned
+   is treated as a required platform prerequisite, not as a Stage 220-owned
    operator lifecycle resource.
 2. Add schema-validated external OpenAI `gpt-5.4-mini` publication resources
    using the DNS-safe MaaS resource alias `gpt-5-4-mini`, developer
@@ -71,20 +71,21 @@ This stage is implemented in phases:
    matching subscription/auth policy. The deployment wrapper removes a stale
    dashboard-created direct Nemotron `InferenceService` from `demo-sandbox`
    before the MaaS-owned backend is reconciled.
-4. Add API key, user-access, Gen AI Playground, and observability validation
-   flows.
+4. Validate user access with real demo users, temporary MaaS API keys,
+   Nemotron tool-calling inference, external OpenAI inference, and MaaS
+   observability prerequisites.
 
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
-use schemas observed on the current RHOAI 3.4 cluster. Stage 230 pins Red Hat
+use schemas observed on the current RHOAI 3.4 cluster. Stage 220 pins Red Hat
 Connectivity Link to `rhcl-operator.v1.3.3` with manual InstallPlan approval,
 matching the RHOAI 3.4 MaaS quickstart implementation evidence. This is a
 deliberate compatibility guard because RHCL 1.4.0 was observed on
 `cluster-klvxt` to generate a Kuadrant Gateway WASM EnvoyFilter containing
 `allow_on_headers_stop_iteration`, which the OpenShift gateway Envoy rejected.
-The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230 model
+The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 220 model
 publication and policy resources use that installed schema.
 
-Stage 230 intentionally does not patch generated Kuadrant `AuthPolicy` or
+Stage 220 intentionally does not patch generated Kuadrant `AuthPolicy` or
 EnvoyFilter resources. The implementation follows the documented MaaS/RHCL
 setup and leaves generated gateway behavior to supported RHOAI, RHCL,
 Kuadrant, and OpenShift Service Mesh versions.

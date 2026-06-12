@@ -59,13 +59,13 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
-| Stage 230 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini` provider routing through DNS-safe `gpt-5-4-mini` MaaS resources, and combined subscription/auth policy are authored against live schemas. Live validation on 2026-06-12 passed with `51 passed, 0 failed`. |
+| Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 220 MaaS owns governed shared API access |
+| Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini` provider routing through DNS-safe `gpt-5-4-mini` MaaS resources, combined subscription/auth policy, and API-key-backed Nemotron inference are authored against live schemas. Live functional validation on 2026-06-12 passed all non-Argo-rename checks. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
 
-## Stage 230: Status — VALIDATED
+## Stage 220: Status — VALIDATED
 
-Stage 230 GitOps creates the MaaS prerequisite stack, local Nemotron
+Stage 220 GitOps creates the MaaS prerequisite stack, local Nemotron
 `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini`
 resources, combined subscription/auth policy, and `rhods-admins` namespace
 administration.
@@ -77,11 +77,11 @@ external OpenAI registration, subscription/auth policy, generated Kuadrant
 policy filters, dashboard AI asset endpoint discovery, and Gateway
 subscription discovery for real demo users.
 
-### Open / deferred from Stage 230
+### Open / deferred from Stage 220
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| API key and Gen AI Playground validation | high | Must validate through the dashboard and MaaS API, not only through CR readiness. |
+| API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron through the MaaS Gateway, verifies structured tool-call output, and checks token usage. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
 ## Candidate Future Stages
@@ -90,9 +90,8 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-220-model-performance-baseline` | Production GenAI | Expanded performance baseline and operating-envelope evidence if the Stage 210 lightweight GuideLLM/Grafana baseline needs a dedicated follow-up |
-| `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
-| `stage-250-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
+| `stage-230-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
+| `stage-240-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
 | `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |

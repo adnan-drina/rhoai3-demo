@@ -5,7 +5,7 @@ Before committing GitOps, verify exact installed CRD schemas with `oc explain`
 and the OpenShift safety guard in `AGENTS.md`.
 
 The namespace examples below use `example-model-namespace` as a placeholder.
-For the rhoai3-demo Stage 230 MaaS implementation, the local Nemotron
+For the rhoai3-demo Stage 220 MaaS implementation, the local Nemotron
 `LLMInferenceService` belongs in `models-as-a-service`.
 
 ## Basic LLMInferenceService Pattern

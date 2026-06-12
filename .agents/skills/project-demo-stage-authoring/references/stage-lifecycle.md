@@ -208,3 +208,22 @@ A stage is ready only when:
 - manifest review passes or findings are resolved
 - live validation passes when a live environment is available
 - deferred work is explicit and accepted
+
+## Phase 11: Retrospective And Skill Capture
+
+Before closing a complex stage, capture what the implementation proved:
+
+- validated working configuration and design decisions
+- official documentation versus installed-schema discrepancies
+- Red Hat article or quickstart examples that were useful, and their support
+  boundaries
+- generated resource boundaries that GitOps must observe but not own
+- operator version, channel, or compatibility decisions
+- validation checks that caught real user-visible defects
+- root causes for time-consuming issues and the earliest gate that would have
+  exposed them
+
+Update the relevant `rhoai-*`, `ocp-*`, `odf-*`, or `project-*` skill with the
+reusable lesson. If the lesson is stage-specific, put it in a reference file
+for that product skill and link it from the skill workflow. Do not leave the
+lesson only in a stage `PLAN.md`, terminal transcript, or chat history.

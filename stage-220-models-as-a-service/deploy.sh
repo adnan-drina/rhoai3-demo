@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh - Stage 230: Models-as-a-Service
+# deploy.sh - Stage 220: Models-as-a-Service
 # Enables MaaS prerequisites through GitOps, while generating environment-local
 # secrets that must never be committed.
 set -euo pipefail
@@ -65,7 +65,7 @@ OPENAI_API_KEY_VALUE="${RHOAI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
 DEMO_PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
 DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 MAAS_NEMOTRON_NAME="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
-CLEANUP_DEMO_NEMOTRON="${RHOAI_STAGE230_CLEANUP_DEMO_SANDBOX_NEMOTRON:-true}"
+CLEANUP_DEMO_NEMOTRON="${RHOAI_STAGE220_CLEANUP_DEMO_SANDBOX_NEMOTRON:-true}"
 
 TMP_FILES=()
 cleanup() {
@@ -124,7 +124,7 @@ wait_for_delete() {
   return 1
 }
 
-patch_stage_230_application() {
+patch_stage_220_application() {
   local domain hostname patch_body patch_json
 
   domain="$(oc get ingresscontroller default -n openshift-ingress-operator \
@@ -160,10 +160,10 @@ patch_stage_230_application() {
     }
   }')
 
-  oc patch application stage-230-models-as-a-service -n openshift-gitops \
+  oc patch application stage-220-models-as-a-service -n openshift-gitops \
     --type=merge -p "$patch_json" --insecure-skip-tls-verify=true >/dev/null
 
-  echo "✓ Stage 230 Application uses MaaS Gateway hostname=${hostname}, tlsCertificate=maas-gateway-tls"
+  echo "✓ Stage 220 Application uses MaaS Gateway hostname=${hostname}, tlsCertificate=maas-gateway-tls"
 }
 
 apply_argocd_application() {
@@ -180,8 +180,8 @@ apply_argocd_application() {
 
   oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
 
-  if [[ "$app_name" == "stage-230-models-as-a-service" ]]; then
-    patch_stage_230_application
+  if [[ "$app_name" == "stage-220-models-as-a-service" ]]; then
+    patch_stage_220_application
     oc patch application "$app_name" -n openshift-gitops --type=merge \
       -p '{"operation":null}' \
       --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
@@ -254,8 +254,9 @@ ensure_openai_provider_secret() {
       app.kubernetes.io/name="$OPENAI_PROVIDER_SECRET" \
       app.kubernetes.io/component=external-model-provider \
       app.kubernetes.io/part-of=rhoai3-demo \
-      demo.rhoai.io/stage=230 \
+      demo.rhoai.io/stage=220 \
       demo.rhoai.io/provider=openai \
+      inference.networking.k8s.io/bbr-managed=true \
       --insecure-skip-tls-verify=true >/dev/null
 
     echo "✓ OpenAI provider Secret is present for ${OPENAI_MODEL_ID}"
@@ -264,12 +265,20 @@ ensure_openai_provider_secret() {
 
   if oc get secret "$OPENAI_PROVIDER_SECRET" -n "$MAAS_NS" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    oc label secret "$OPENAI_PROVIDER_SECRET" -n "$MAAS_NS" --overwrite \
+      app.kubernetes.io/name="$OPENAI_PROVIDER_SECRET" \
+      app.kubernetes.io/component=external-model-provider \
+      app.kubernetes.io/part-of=rhoai3-demo \
+      demo.rhoai.io/stage=220 \
+      demo.rhoai.io/provider=openai \
+      inference.networking.k8s.io/bbr-managed=true \
+      --insecure-skip-tls-verify=true >/dev/null
     echo "✓ Existing OpenAI provider Secret found for ${OPENAI_MODEL_ID}"
     return 0
   fi
 
   echo "ERROR: Missing OpenAI provider Secret ${OPENAI_PROVIDER_SECRET} in ${MAAS_NS}." >&2
-  echo "Set OPENAI_API_KEY or RHOAI_OPENAI_API_KEY locally before deploying Stage 230 model publication." >&2
+  echo "Set OPENAI_API_KEY or RHOAI_OPENAI_API_KEY locally before deploying Stage 220 model publication." >&2
   exit 1
 }
 
@@ -285,7 +294,7 @@ cleanup_demo_sandbox_nemotron() {
 
   if oc get inferenceservice "$DIRECT_NEMOTRON_NAME" -n "$DEMO_PROJECT_NS" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-    echo "Deleting direct InferenceService ${DIRECT_NEMOTRON_NAME} from ${DEMO_PROJECT_NS}; Stage 230 will recreate Nemotron through MaaS in ${MAAS_NS}."
+    echo "Deleting direct InferenceService ${DIRECT_NEMOTRON_NAME} from ${DEMO_PROJECT_NS}; Stage 220 will recreate Nemotron through MaaS in ${MAAS_NS}."
     oc delete inferenceservice "$DIRECT_NEMOTRON_NAME" -n "$DEMO_PROJECT_NS" \
       --wait=false --ignore-not-found=true --insecure-skip-tls-verify=true >/dev/null
     wait_for_delete "InferenceService/${DIRECT_NEMOTRON_NAME}" \
@@ -311,12 +320,12 @@ cleanup_demo_sandbox_nemotron() {
 }
 
 if ! oc get crd certificates.cert-manager.io --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-  echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 230." >&2
+  echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 220." >&2
   exit 1
 fi
 
 if ! oc get certmanager cluster --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-  echo "ERROR: cert-manager cluster resource is missing. Configure the cert-manager operand before Stage 230." >&2
+  echo "ERROR: cert-manager cluster resource is missing. Configure the cert-manager operand before Stage 220." >&2
   exit 1
 fi
 
@@ -329,17 +338,17 @@ apply_argocd_application \
   "stage-110-rhoai-base-platform" \
   "$ROOT_DIR/gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml"
 
-echo "── Applying Stage 230 Argo CD Application ──"
+echo "── Applying Stage 220 Argo CD Application ──"
 apply_argocd_application \
-  "stage-230-models-as-a-service" \
-  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-230-models-as-a-service.yaml"
+  "stage-220-models-as-a-service" \
+  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-220-models-as-a-service.yaml"
 
 wait_for_jsonpath "Stage 110 shared owner Application sync" \
   "application/stage-110-rhoai-base-platform" "openshift-gitops" \
   "{.status.sync.status}" "Synced" 90
 
-wait_for_jsonpath "Stage 230 Application sync" \
-  "application/stage-230-models-as-a-service" "openshift-gitops" \
+wait_for_jsonpath "Stage 220 Application sync" \
+  "application/stage-220-models-as-a-service" "openshift-gitops" \
   "{.status.sync.status}" "Synced" 90
 
 wait_for_jsonpath "DataScienceCluster readiness" \
@@ -361,5 +370,14 @@ wait_for_jsonpath "MaaS PostgreSQL StatefulSet availability" \
   "statefulset/maas-postgres" "$MAAS_DB_NS" \
   "{.status.readyReplicas}" "1" 90
 
-echo "✓ Stage 230 rollout requested"
-echo "  Run ./stage-230-models-as-a-service/validate.sh to check MaaS prerequisites, local Nemotron publication, external model publication, and access policy."
+if oc get deployment/maas-api -n redhat-ods-applications \
+  --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+  echo "── Restarting maas-api to pick up maas-db-config ──"
+  oc rollout restart deployment/maas-api -n redhat-ods-applications \
+    --insecure-skip-tls-verify=true >/dev/null
+  oc rollout status deployment/maas-api -n redhat-ods-applications \
+    --timeout=180s --insecure-skip-tls-verify=true
+fi
+
+echo "✓ Stage 220 rollout requested"
+echo "  Run ./stage-220-models-as-a-service/validate.sh to check MaaS prerequisites, local Nemotron publication, external model publication, and access policy."

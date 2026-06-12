@@ -15,8 +15,8 @@ dashboard-created hardware profile and normalize it into GitOps.
 | GPU allocation pattern | one L40S GPU per node, time-sliced to four schedulable `nvidia.com/gpu` units |
 | Primary private model | `nemotron-3-nano-30b-a3b` |
 | Primary model source | `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` |
-| Serving path | Stage 210 RHOAI model serving with vLLM; Stage 230 MaaS |
-| Approved external model | OpenAI `gpt-5.4-nano` through MaaS, after gateway/API compatibility is verified |
+| Serving path | Stage 210 RHOAI model serving with vLLM; Stage 220 MaaS |
+| Approved external model | OpenAI `gpt-5.4-mini` through MaaS using resource alias `gpt-5-4-mini`, after gateway/API compatibility is verified |
 
 Use the active node labels and allocatable `nvidia.com/gpu` values as the
 scheduling authority. The profile names below use NVIDIA L40S naming because
@@ -82,9 +82,10 @@ Review `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, and
 flow-control details with `rhoai-distributed-inference-llmd` before promoting
 the serving manifest.
 
-OpenAI `gpt-5.4-nano` belongs in the approved external MaaS path. It should be
-governed by MaaS subscriptions, auth policy, rate limits, token limits, and
-usage telemetry, but it should not drive GPU MachineSet sizing.
+OpenAI `gpt-5.4-mini` belongs in the approved external MaaS path through the
+DNS-safe `gpt-5-4-mini` resource alias. It should be governed by MaaS
+subscriptions, auth policy, rate limits, token limits, and usage telemetry, but
+it should not drive GPU MachineSet sizing.
 
 ## Manifest Promotion Rule
 

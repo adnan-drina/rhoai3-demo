@@ -84,7 +84,7 @@ stage `PLAN.md` documents a different dependency.
 | Node | GPUs | Active Model | Role |
 |------|------|-------------|------|
 | g6e.2xlarge | 1 L40S node, time-sliced to 4 units | `nemotron-3-nano-30b-a3b` (FP8 modelcar) in later stages | Private GenAI serving and benchmarking |
-| External provider | 0 | OpenAI `gpt-5.4-nano` through MaaS | Cost-optimized approved external model path when policy allows |
+| External provider | 0 | OpenAI `gpt-5.4-mini` through MaaS using resource alias `gpt-5-4-mini` | Approved external model path when policy allows |
 
 ### GitOps Deployment Pattern
 

@@ -68,7 +68,7 @@
 ## Unresolved Or Environment-Specific Items
 
 - Active demo serving API shape for `nemotron-3-nano-30b-a3b`.
-  Current decision: Stage 210 uses direct `InferenceService`; Stage 230 should
+  Current decision: Stage 210 uses direct `InferenceService`; Stage 220 should
   use `LLMInferenceService` for MaaS after RHOAI 3.4 schema verification.
 - Exact Red Hat-supported vLLM image digest for the active baseline and model.
   Verification: use official docs, installed runtime templates, Red Hat

@@ -56,7 +56,7 @@ The demo hardware intent is:
   `nemotron-3-nano-30b-a3b`.
 - Primary model source:
   `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
-- Serving path: Stage 210 validates RHOAI model serving with vLLM; Stage 230
+- Serving path: Stage 210 validates RHOAI model serving with vLLM; Stage 220
   publishes governed model access through the Model-as-a-Service layer.
 - Use `rhoai-distributed-inference-llmd` when reviewing
   `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, or
@@ -64,9 +64,10 @@ The demo hardware intent is:
 - Use `rhoai-model-serving-platform` when reviewing KServe
   `ServingRuntime`, `InferenceService`, vLLM runtime parameters, or model
   serving platform dashboard behavior.
-- Approved external model path: OpenAI `gpt-5.4-nano` registered in MaaS for
-  governed, cost-optimized external use cases where provider-side processing is
-  allowed. External OpenAI models do not consume cluster GPU capacity.
+- Approved external model path: OpenAI `gpt-5.4-mini` registered in MaaS
+  through the DNS-safe `gpt-5-4-mini` resource alias for governed external use
+  cases where provider-side processing is allowed. External OpenAI models do
+  not consume cluster GPU capacity.
 
 Use active node labels and observed GPU resources as the scheduling authority.
 Do not rely on AWS instance-family assumptions alone when naming hardware

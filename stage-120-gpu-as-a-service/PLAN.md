@@ -23,7 +23,7 @@
   - GuideLLM or performance benchmarking; deferred to the Stage 210 serving
     baseline work after endpoint readiness is repeatable
   - Models-as-a-Service governance; deferred to
-    `stage-230-models-as-a-service`
+    `stage-220-models-as-a-service`
   - MIG GPU partitioning
   - multi-GPU or multi-node serving
   - non-NVIDIA accelerators

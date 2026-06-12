@@ -1,21 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: stage-230-models-as-a-service
+  name: stage-220-models-as-a-service
   namespace: openshift-gitops
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
-    demo.rhoai.io/stage: "230"
+    demo.rhoai.io/stage: "220"
   annotations:
     argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/manifest-generate-paths: gitops/stage-230-models-as-a-service
+    argocd.argoproj.io/manifest-generate-paths: gitops/stage-220-models-as-a-service
 spec:
   project: rhoai-demo
   source:
     # repoURL and targetRevision are set by deploy.sh from .env (GIT_REPO_URL, GIT_REPO_BRANCH)
     repoURL: https://github.com/adnan-drina/rhoai3-demo.git
     targetRevision: main
-    path: gitops/stage-230-models-as-a-service
+    path: gitops/stage-220-models-as-a-service
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-gitops

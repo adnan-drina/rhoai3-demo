@@ -178,7 +178,7 @@ Review points:
 - The active demo uses the same modelcar source with prefix caching and an
   8192-token initial serving envelope. Larger context windows need separate
   benchmark evidence before they are exposed through MaaS.
-- Stage 210 uses a direct `InferenceService`; Stage 230 should use the
+- Stage 210 uses a direct `InferenceService`; Stage 220 should use the
   quickstart's `LLMInferenceService`, MaaS tier, Gateway, and RBAC patterns
   only after RHOAI 3.4 schema verification.
 - Keep the Red Hat registry modelcar URI for this project unless a newer

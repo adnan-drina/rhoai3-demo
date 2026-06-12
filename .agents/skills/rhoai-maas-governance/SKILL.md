@@ -2,7 +2,7 @@
 name: rhoai-maas-governance
 metadata:
   author: rhoai3-demo
-  version: 1.1.1
+  version: 1.2.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -32,10 +32,12 @@ Models-as-a-Service on the active product baseline in
 
 ## Source Grounding
 
-Read `references/source-capture.md` before using product behavior details.
-Official Red Hat documentation is product authority. This skill adapts the
-official Models-as-a-Service guide to this repo's GitOps, README, and live-demo
-review model.
+Read `references/source-capture.md`,
+`references/official-doc-extraction.md`, and
+`references/working-configuration.md` before using product behavior details.
+Official Red Hat documentation is product authority. The working configuration
+captures repo-validated design decisions and implementation traps; it does not
+override official docs or installed CRD schema.
 
 ## Scope
 
@@ -121,7 +123,9 @@ For this repo:
 1. Confirm the active baseline in `docs/PLATFORM_BASELINE.md`.
 2. Read `references/source-capture.md` and
    `references/official-doc-extraction.md`.
-3. Decide whether the task is:
+3. Read `references/working-configuration.md` before changing Stage 220,
+   authoring new MaaS manifests, or debugging MaaS rollout behavior.
+4. Decide whether the task is:
    - phase-one MaaS prerequisite enablement before MaaS CRDs exist
    - MaaS prerequisite and enablement review
    - Gateway, Kuadrant, Authorino TLS, or PostgreSQL setup
@@ -134,19 +138,23 @@ For this repo:
    - observability, telemetry, or usage export
    - external OIDC or external provider integration
    - troubleshooting user or admin access errors
-4. Use `examples/maas-governance-patterns.md` for compact manifest and review
+5. Use `examples/maas-governance-patterns.md` for compact manifest and review
    patterns.
-5. For GitOps implementation, gate work in phases:
+6. For GitOps implementation, gate work in phases:
    - install/enable prerequisites and DSC/dashboard feature flags
    - rerun live CRD and `oc explain` checks
    - only then commit MaaS model, subscription, auth-policy, and external-model
      resources
-6. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.
-7. Validate with `references/validation-checklist.md`.
+7. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.
+8. Validate with `references/validation-checklist.md`, including real
+   dashboard and Gateway API checks with demo users.
+9. After a new live failure or design correction, update
+   `references/working-configuration.md` before considering the stage done.
 
 ## References
 
 - `references/source-capture.md`
 - `references/official-doc-extraction.md`
+- `references/working-configuration.md`
 - `references/validation-checklist.md`
 - `examples/maas-governance-patterns.md`

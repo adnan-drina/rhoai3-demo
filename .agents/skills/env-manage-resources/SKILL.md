@@ -35,7 +35,7 @@ material only.
 Stage 120 owns GPU MachineSet scaling guidance. Stage 210 enables the model
 serving platform through the shared Stage 110 RHOAI owner; it does not create a
 separate Argo CD Application. Model endpoint scaling remains planned until
-Stage 230 creates active MaaS/Nemotron resources.
+Stage 220 creates active MaaS/Nemotron resources.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.
@@ -82,7 +82,7 @@ oc patch llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service --ty
 | Model | GPU | Purpose | Safe to stop? |
 |-------|-----|---------|---------------|
 | `nemotron-3-nano-30b-a3b` | 1× `g6e.2xlarge` per replica | Primary private MaaS GenAI model | Private GenAI, RAG, MCP, guardrails, Playground, and private evals stop |
-| OpenAI `gpt-5.4-nano` external MaaS model | 0 cluster GPU | Approved cost-optimized external model path | MaaS external calls fail only if the MaaS model, policy, or provider credentials are removed |
+| OpenAI `gpt-5.4-mini` external MaaS model | 0 cluster GPU | Approved external model path using MaaS resource alias `gpt-5-4-mini` | MaaS external calls fail only if the MaaS model, policy, or provider credentials are removed |
 | `hap-detector` | 0 (CPU) | HAP guardrail | Guardrails degrade |
 | `prompt-injection-detector` | 0 (CPU) | Prompt injection guardrail | Guardrails degrade |
 | `face-recognition` | 0 (CPU) | YOLO face detection | Face recognition stops |

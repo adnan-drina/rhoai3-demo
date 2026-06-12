@@ -120,7 +120,7 @@ Review points:
 
 ## MaaS LLMInferenceService Profile
 
-Stage 230 should use `LLMInferenceService` when publishing Nemotron through
+Stage 220 should use `LLMInferenceService` when publishing Nemotron through
 MaaS. This shape is copied from the working code-assistant deployment and must
 be verified against the installed RHOAI 3.4 CRD before committing.
 
@@ -210,8 +210,8 @@ Review points:
 - Verify the active RHOAI 3.4 vLLM image or installed template before pinning an
   image digest.
 - Keep the Gateway, scheduler, MaaSModelRef, subscription, and auth-policy
-  resources together in the Stage 230 plan.
-- For this repo, Stage 230 owns the local Nemotron backend in
+  resources together in the Stage 220 plan.
+- For this repo, Stage 220 owns the local Nemotron backend in
   `models-as-a-service` and removes stale direct `demo-sandbox` serving
   resources before reconciling the MaaS-owned `LLMInferenceService`.
 - Use the Stage 210 `8192` token default as the initial MaaS serving envelope

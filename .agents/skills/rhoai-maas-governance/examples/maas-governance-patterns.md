@@ -75,7 +75,7 @@ Review points:
 ## Demo Nemotron MaaS Implementation Reference
 
 The Red Hat-maintained `rh-ai-quickstart/maas-code-assistant` chart provides a
-useful Stage 230 reference for publishing Nemotron 3 Nano through MaaS. The
+useful Stage 220 reference for publishing Nemotron 3 Nano through MaaS. The
 working `rhoai3-coding-demo` implementation adds the concrete llm-d scheduler,
 prefix-caching, and tool-calling settings this project should preserve:
 

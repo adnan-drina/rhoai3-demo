@@ -100,6 +100,26 @@ channel overlay and product baseline in Git, sync the operator Application
 first, validate Subscription/InstallPlan/CSV/CRD readiness, and only then
 change operand CR patches that require the new schema.
 
+### Manual Pin Health
+
+When a stage intentionally pins an Operator `Subscription` to a specific CSV
+with `installPlanApproval: Manual`, Argo CD or OLM can report upgrade-related
+conditions when newer InstallPlans exist. Do not treat a newer unapproved plan
+as permission to auto-upgrade a compatibility-sensitive component.
+
+For a manually pinned operator, the meaningful stage gate is:
+
+- `spec.installPlanApproval` is `Manual`
+- `spec.startingCSV` is the expected pinned CSV
+- `status.installedCSV` equals the expected pinned CSV
+- only the intended InstallPlan is approved by GitOps automation
+- CRDs and user-visible functional validation pass after the CSV is installed
+
+If Argo CD needs custom health behavior for the pinned Subscription, document
+the reason and keep validation focused on `installedCSV`, CRD readiness, and
+the user-visible capability. Do not hide an actual CSV mismatch with a custom
+health rule.
+
 ## Naming
 
 - Stage folders: `stage-YXX-descriptive-slug`

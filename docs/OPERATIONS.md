@@ -12,11 +12,8 @@ The active implementation follows this sequence:
    Kueue quotas, and RHOAI hardware profiles.
 3. `stage-210-model-serving-foundation` - enable the standard KServe model
    serving platform, vLLM serving path, `demo-registry`, Nemotron metadata,
-   and Nemotron endpoint readiness.
-4. `stage-220-model-performance-baseline` - planned expanded performance
-   baseline and operating-envelope evidence when lightweight Stage 210
-   benchmark results are not sufficient.
-5. `stage-230-models-as-a-service` - MaaS prerequisite enablement, local
+   Nemotron endpoint readiness, and lightweight GuideLLM/Grafana baseline.
+4. `stage-220-models-as-a-service` - MaaS prerequisite enablement, local
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
 
@@ -119,7 +116,7 @@ For fresh environments, run `stage-210-model-serving-foundation/deploy.sh` after
 Stages 110 and 120 are healthy. It reuses this state when present and creates
 missing registry metadata and the endpoint when absent.
 
-Stage 230 migrates the shared Nemotron serving path into MaaS. Its deploy
+Stage 220 migrates the shared Nemotron serving path into MaaS. Its deploy
 wrapper removes a stale direct Nemotron deployment from `demo-sandbox` before
 the MaaS-owned `LLMInferenceService` is reconciled in `models-as-a-service`.
 
@@ -460,7 +457,7 @@ latency 3.0 seconds, and mean output throughput 126.7 output tokens/second.
 Treat these as harness and endpoint proof only; run chat/RAG policy profiles
 before using benchmark results for capacity, quota, or MaaS limit decisions.
 
-For a policy-oriented benchmark that feeds Stage 230 MaaS limits, seed the
+For a policy-oriented benchmark that feeds Stage 220 MaaS limits, seed the
 chat/RAG prompt data first:
 
 ```bash
@@ -518,9 +515,9 @@ Initial policy interpretation for one `g6e.2xlarge` GPU worker:
   Keep larger-context experiments separate from the governed shared service
   until they have their own benchmark evidence.
 
-## Stage 230: Models-as-a-Service
+## Stage 220: Models-as-a-Service
 
-Stage 230 turns the Stage 210 model-serving foundation into a governed model
+Stage 220 turns the Stage 210 model-serving foundation into a governed model
 service. The implementation is phase-gated because RHOAI creates MaaS CRDs only
 after prerequisites and DSC feature flags are healthy.
 
@@ -531,7 +528,7 @@ after prerequisites and DSC feature flags are healthy.
 2. Run:
 
    ```bash
-   ./stage-230-models-as-a-service/deploy.sh
+   ./stage-220-models-as-a-service/deploy.sh
    ```
 
 3. The script:
@@ -541,11 +538,13 @@ after prerequisites and DSC feature flags are healthy.
      outside the Kueue-managed `models-as-a-service` namespace so Kueue
      admission does not mutate or block the database StatefulSet.
    - Creates or updates `maas-db-config` in `redhat-ods-applications` with the
-     PostgreSQL connection URL required by RHOAI MaaS.
+     PostgreSQL connection URL required by RHOAI MaaS. The URL must point at
+     `maas-postgres.models-as-a-service-db.svc.cluster.local` in this demo.
    - Creates or updates local-only `openai-provider-api-key` in
      `models-as-a-service` from `OPENAI_API_KEY` or `RHOAI_OPENAI_API_KEY`, or
      reuses the Secret if it already exists. The Secret must contain data key
-     `api-key`.
+     `api-key` and label `inference.networking.k8s.io/bbr-managed=true` so the
+     MaaS external-model route can discover provider credentials.
    - Deletes a stale direct Nemotron `InferenceService` or
      `LLMInferenceService` from `demo-sandbox` when present. The MaaS-owned
      backend is recreated by GitOps in `models-as-a-service`.
@@ -561,12 +560,14 @@ after prerequisites and DSC feature flags are healthy.
      pin to coexist with OLM `UpgradePending` while newer RHCL plans remain
      intentionally unapproved. The deployment fails visibly if a different RHCL
      CSV is already installed.
-   - Applies the Stage 230 Application for LeaderWorkerSet, RHCL, Kuadrant,
+   - Applies the Stage 220 Application for LeaderWorkerSet, RHCL, Kuadrant,
      Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
      `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
      tenant.
+   - Restarts `deployment/maas-api` after the database Secret and MaaS component
+     are present so the API-key service reads the current `maas-db-config`.
 
-The Stage 230 Application prepares `maas-gateway-tls` in `openshift-ingress`
+The Stage 220 Application prepares `maas-gateway-tls` in `openshift-ingress`
 from the active OpenShift ingress certificate before applying
 `maas-default-gateway`. The deploy wrapper also patches the Argo CD
 Application source so the rendered Gateway uses `maas.<apps-domain>` and the
@@ -578,7 +579,7 @@ in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.
 This is a demo database posture; production MaaS should use a managed and
 operationally backed PostgreSQL 14+ database.
 
-Stage 230 external-provider rollout is intentionally credential-gated. If
+Stage 220 external-provider rollout is intentionally credential-gated. If
 neither `OPENAI_API_KEY` nor `RHOAI_OPENAI_API_KEY` is set locally and the
 `openai-provider-api-key` Secret is absent, `deploy.sh` exits before Argo CD
 sync so the demo does not publish a broken or placeholder external model.
@@ -588,7 +589,7 @@ sync so the demo does not publish a broken or placeholder external model.
 Run:
 
 ```bash
-./stage-230-models-as-a-service/validate.sh
+./stage-220-models-as-a-service/validate.sh
 ```
 
 The validator checks Argo CD app state, DSC fields, dashboard flags,
@@ -610,18 +611,27 @@ and calls the external MaaS API subscription endpoint through the Gateway. A
 deployment is not accepted as complete unless the dashboard/API path can load
 the published model, not just the underlying CRs.
 
+The validator also creates a temporary MaaS API key as `ai-developer`, calls
+the Nemotron and external OpenAI OpenAI-compatible `/v1/chat/completions`
+endpoints through the MaaS Gateway, verifies structured Nemotron tool-call
+output and token usage, verifies unauthenticated inference is rejected, and
+revokes the temporary key. Do not treat raw
+OpenShift OAuth tokens as the inference credential; the generated MaaS policy
+requires `Authorization: Bearer <maas-api-key>` for chat/completions. External
+OpenAI `gpt-5.4-mini` requests use `max_completion_tokens`, not `max_tokens`.
+
 If validation fails on the RHCL pin or on MaaS Gateway generated policy
 filters, inspect the installed RHCL CSV, generated Kuadrant AuthPolicy and
 TokenRateLimitPolicy status, and gateway logs before retrying the dashboard.
 On the current `cluster-klvxt` environment, RHCL 1.4.0 generated a Gateway
 WASM EnvoyFilter with `allow_on_headers_stop_iteration`; the OpenShift gateway
 Envoy rejected that field, so Gateway requests did not reliably inject the
-identity headers required by `maas-api`. Stage 230 now expects
+identity headers required by `maas-api`. Stage 220 now expects
 `rhcl-operator.v1.3.3`, current model policies with `Enforced=True`, and
 functional dashboard/Gateway discovery for the published MaaS models.
 
 Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the
-Stage 230 fix. Treat RHCL version remediation as operator lifecycle work and
+Stage 220 fix. Treat RHCL version remediation as operator lifecycle work and
 keep the validation failure visible until the documented product path works end
 to end.
 

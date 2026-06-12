@@ -260,8 +260,8 @@ Model Registry REST API when absent.
 - **Likely causes:** the vLLM runtime template is missing, the modelcar pull
   secret is missing or invalid, GPU quota is unavailable, or the model pod is
   still loading the OCI modelcar.
-- **Stage boundary:** after Stage 230 has been deployed, a missing direct
-  `demo-sandbox` `InferenceService` can be expected because Stage 230 migrates
+- **Stage boundary:** after Stage 220 has been deployed, a missing direct
+  `demo-sandbox` `InferenceService` can be expected because Stage 220 migrates
   the shared Nemotron backend into `models-as-a-service` as an
   `LLMInferenceService`.
 - **Checks:**
@@ -479,7 +479,7 @@ RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   ./stage-210-model-serving-foundation/benchmark-guidellm.sh
 ```
 
-## Stage 230: Models-as-a-Service
+## Stage 220: Models-as-a-Service
 
 ### AI asset endpoints show "Models as a Service could not be loaded"
 
@@ -495,7 +495,7 @@ RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
 - **Confirm:**
 
 ```bash
-./stage-230-models-as-a-service/validate.sh
+./stage-220-models-as-a-service/validate.sh
 
 oc logs -n openshift-ingress \
   -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
@@ -525,10 +525,10 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   `kuadrant-wasm-shim` plugin load failures. Do not patch generated Kuadrant
   `AuthPolicy` or EnvoyFilter resources in GitOps unless official Red Hat
   documentation or support guidance requires it.
-- **Current action:** Stage 230 pins Red Hat Connectivity Link to
+- **Current action:** Stage 220 pins Red Hat Connectivity Link to
   `rhcl-operator.v1.3.3` with manual InstallPlan approval. If validation shows
   any other installed CSV, remediate RHCL through operator lifecycle first and
-  then rerun `deploy.sh` and `validate.sh`. Do not claim the Stage 230
+  then rerun `deploy.sh` and `validate.sh`. Do not claim the Stage 220
   dashboard experience is complete until generated model AuthPolicy and
   TokenRateLimitPolicy resources are enforced and the dashboard/API checks
   pass for real demo users.
@@ -551,9 +551,29 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
 
 - **Fix:** update GitOps so `ExternalModel`, `MaaSModelRef`,
   `MaaSSubscription.modelRefs`, and `MaaSAuthPolicy.modelRefs` use the same
-  DNS-safe resource alias. Then resync Stage 230 and rerun validation.
+  DNS-safe resource alias. Then resync Stage 220 and rerun validation.
 
-### Stage 230 sync fails on immutable Kueue queue label for maas-postgres
+### External OpenAI MaaS inference fails after the model appears Ready
+
+- **Symptom:** `ExternalModel` and `MaaSModelRef` are Ready, but inference
+  through the MaaS Gateway returns `provider 'openai' credentials not found`.
+- **Likely cause:** the provider Secret exists but lacks the official MaaS
+  discovery label.
+- **Fix:**
+
+```bash
+oc label secret openai-provider-api-key -n models-as-a-service --overwrite \
+  inference.networking.k8s.io/bbr-managed=true
+./stage-220-models-as-a-service/validate.sh
+```
+
+- **Symptom:** external OpenAI inference returns
+  `Unsupported parameter: 'max_tokens' is not supported with this model`.
+- **Fix:** use `max_completion_tokens` for `gpt-5.4-mini` client requests.
+  The Stage 220 validator uses this payload shape when proving the external MaaS
+  route.
+
+### Stage 220 sync fails on immutable Kueue queue label for maas-postgres
 
 - **Symptom:** ArgoCD reports `metadata.labels[kueue.x-k8s.io/queue-name]:
   Invalid value: "default": field is immutable` while patching the
@@ -566,7 +586,7 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
   `models-as-a-service-db`, which is not Kueue-managed. Keep MaaS/model
   resources in `models-as-a-service`; keep the database StatefulSet in the
   database namespace.
-- **Cleanup for older clusters:** stop the stuck Stage 230 sync, temporarily
+- **Cleanup for older clusters:** stop the stuck Stage 220 sync, temporarily
   remove both `kueue.openshift.io/managed` and legacy `kueue-managed`
   namespace labels from `models-as-a-service`, delete or finalize the old
   `maas-postgres` StatefulSet in that namespace, remove any orphaned
@@ -575,21 +595,50 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
   `kueue.openshift.io/managed` is not enough if `kueue-managed=true` is still
   present, because the managed label can be recreated immediately.
 
+### MaaS API key creation fails with old PostgreSQL hostname
+
+- **Symptom:** Stage 220 model discovery works, MaaS CRs are Ready, but API key
+  creation fails with `Failed to create API key` or `Failed to search API keys`.
+  `maas-api` logs show a lookup for
+  `maas-postgres.models-as-a-service.svc.cluster.local`.
+- **Likely cause:** `maas-db-config` was corrected after MaaS was already
+  running, but `deployment/maas-api` still has the old database configuration in
+  memory. The official RHOAI MaaS guide requires restarting `maas-api` after
+  changing `maas-db-config`.
+- **Confirm:**
+
+```bash
+oc get secret maas-db-config -n redhat-ods-applications \
+  -o jsonpath='{.data.DB_CONNECTION_URL}' | base64 -d
+oc logs -n redhat-ods-applications deploy/maas-api --since=10m \
+  | grep 'maas-postgres.models-as-a-service.svc.cluster.local'
+```
+
+- **Fix:** ensure the secret points at
+  `maas-postgres.models-as-a-service-db.svc.cluster.local`, then restart and
+  validate:
+
+```bash
+oc rollout restart deployment/maas-api -n redhat-ods-applications
+oc rollout status deployment/maas-api -n redhat-ods-applications
+./stage-220-models-as-a-service/validate.sh
+```
+
 ### Nemotron still exists as a direct demo-sandbox deployment
 
-- **Symptom:** after deploying Stage 230, `oc get inferenceservice
+- **Symptom:** after deploying Stage 220, `oc get inferenceservice
   nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox` still returns a resource, or
   the MaaS namespace has no Nemotron `LLMInferenceService`.
-- **Cause:** Stage 230 did not run the cleanup path, `RHOAI_STAGE230_CLEANUP_DEMO_SANDBOX_NEMOTRON`
+- **Cause:** Stage 220 did not run the cleanup path, `RHOAI_STAGE220_CLEANUP_DEMO_SANDBOX_NEMOTRON`
   was set to `false`, or the old direct deployment was recreated outside
   GitOps.
-- **Fix:** run the guarded Stage 230 deployment wrapper. It deletes stale
+- **Fix:** run the guarded Stage 220 deployment wrapper. It deletes stale
   direct Nemotron serving resources from `demo-sandbox` and lets Argo CD create
   the MaaS-owned backend in `models-as-a-service`:
 
 ```bash
-./stage-230-models-as-a-service/deploy.sh
-./stage-230-models-as-a-service/validate.sh
+./stage-220-models-as-a-service/deploy.sh
+./stage-220-models-as-a-service/validate.sh
 ```
 
 Expected MaaS-backed state:

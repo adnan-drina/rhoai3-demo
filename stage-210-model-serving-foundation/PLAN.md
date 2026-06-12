@@ -21,7 +21,7 @@
   profiles.
 - Non-goals:
   - MaaS governance, subscriptions, quotas, external OpenAI model registration,
-    or API-key issuance; deferred to `stage-230-models-as-a-service`.
+    or API-key issuance; deferred to `stage-220-models-as-a-service`.
   - EvalHub, MLflow, LMEval, LLM-as-judge, risk assessment, or formal model
     quality evaluation; deferred to later MLOps/evaluation stages.
   - llm-d distributed inference; later scale-out option only.
@@ -65,7 +65,7 @@
 | Concept/value and validated model context | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/analyses/2026-05-29 - Red Hat AI Validated Models Timeline.md` | `project-documentation-authoring` | Identifies `NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` as a Red Hat AI validated model from the January 2026 batch. |
 | Research finding | `rg -i "nemotron-3-nano|nemotron 3 nano|nvidia-nemotron-3-nano|g6e\\.2xlarge|g6e" /Users/adrina/Sandbox/rh-brain/Red\ Hat\ Brain` | `project-red-hat-doc-alignment-review` | RH Brain did not contain an exact matching article for Nemotron 3 Nano on AWS `g6e.2xlarge`; use the Red Hat-maintained quickstart below as implementation evidence and live GuideLLM/Grafana results for tuning. |
 | Implementation reference | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Documents the private code assistant architecture, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, 48GB VRAM requirement, and testing on two AWS `g6e.2xlarge` L40S instances. |
-| Implementation reference | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Source for the Nemotron vLLM flags, resource requests/limits, `LLMInferenceService` template, MaaS tier annotations, tiered RBAC, and Grafana patterns. Stage 210 adapts the direct serving subset; Stage 230 should reuse the MaaS pattern after RHOAI 3.4 schema checks. |
+| Implementation reference | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Source for the Nemotron vLLM flags, resource requests/limits, `LLMInferenceService` template, MaaS tier annotations, tiered RBAC, and Grafana patterns. Stage 210 adapts the direct serving subset; Stage 220 should reuse the MaaS pattern after RHOAI 3.4 schema checks. |
 | Implementation reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | `rhoai-model-serving-platform`, `rhoai-maas-governance` | Working sibling-demo configuration for the Red Hat registry modelcar, tool-calling args, reasoning parser args, prefix caching, `--max-num-batched-tokens=8192`, resources, probes, scheduler shape, and `/dev/shm` volume. |
 | Benchmark methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/GuideLLM Evaluate LLM deployments for real-world inference.md` | `rhoai-model-management-monitoring` | GuideLLM purpose, workload shaping, TTFT, ITL, throughput, and SLO framing. |
 | Benchmark implementation pattern | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/How to deploy and benchmark vLLM with GuideLLM on Kubernetes.md` | `rhoai-model-management-monitoring` | Kubernetes Job pattern for in-cluster GuideLLM benchmarking against a vLLM endpoint. |
@@ -145,7 +145,7 @@
   - The deploy script may copy the cluster pull-secret into `demo-sandbox` as a
     runtime Kubernetes Secret when the Nemotron modelcar pull secret is absent.
   - Endpoint auth is disabled for the Stage 210 controlled baseline endpoint;
-    MaaS provides governed shared access in Stage 230.
+    MaaS provides governed shared access in Stage 220.
 
 ## Manifest Inventory
 
@@ -260,7 +260,7 @@
 | Grafana Operator support posture | risk | Grafana Operator is from `community-operators`; use only as a demo observability UI and document the support boundary. |
 | OCI modelcar pull permissions | risk | The Red Hat registry modelcar may require entitlement/pull credentials; keep credentials out of Git. |
 | Scarce GPU capacity | risk | Use Recreate strategy and one replica; Stage 120 scale-to-zero remains available. |
-| MaaS and external OpenAI | deferred | Stage 230 owns MaaS, including external `gpt-5.4-nano`. |
+| MaaS and external OpenAI | deferred | Stage 220 owns MaaS, including external `gpt-5.4-mini`. |
 
 ## Review Log
 

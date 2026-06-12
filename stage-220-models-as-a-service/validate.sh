@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# validate.sh - Stage 230: Models-as-a-Service
+# validate.sh - Stage 220: Models-as-a-Service
 # Checks the MaaS prerequisite boundary before model publication/subscription CRs
 # are authored.
 set -euo pipefail
@@ -127,7 +127,7 @@ get_demo_user_token() {
 
   [[ -n "$password" ]] || return 1
 
-  kubeconfig=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-validate.XXXXXX")
+  kubeconfig=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-validate.XXXXXX")
   TMP_FILES+=("$kubeconfig")
 
   if ! oc login "$ACTUAL_SERVER" -u "$user" -p "$password" \
@@ -185,9 +185,9 @@ print(status)
 PY
 }
 
-APP_SYNC=$(jsonpath "application/stage-230-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
+APP_SYNC=$(jsonpath "application/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
 [[ "$APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${APP_SYNC:-not found}"
-check "Stage 230 Application Synced" "$R"
+check "Stage 220 Application Synced" "$R"
 
 STAGE110_SYNC=$(jsonpath "application/stage-110-rhoai-base-platform" "openshift-gitops" "{.status.sync.status}")
 [[ "$STAGE110_SYNC" == "Synced" ]] && R="pass" || R="sync=${STAGE110_SYNC:-not found}"
@@ -275,23 +275,32 @@ DB_READY=$(jsonpath "statefulset/maas-postgres" "$MAAS_DB_NS" "{.status.readyRep
 check "MaaS PostgreSQL StatefulSet ready" "$R"
 
 if resource_exists "secret/${MAAS_DB_CONFIG_SECRET}" "redhat-ods-applications"; then
-  R="pass"
-else
-  R="missing"
-fi
-check "maas-db-config secret present" "$R"
-
-if resource_exists "secret/${OPENAI_PROVIDER_SECRET}" "$MAAS_NS"; then
-  if oc get "secret/${OPENAI_PROVIDER_SECRET}" -n "$MAAS_NS" -o jsonpath='{.data}' \
-    --insecure-skip-tls-verify=true 2>/dev/null | grep -q 'api-key'; then
+  MAAS_DB_URL=$(oc get "secret/${MAAS_DB_CONFIG_SECRET}" -n redhat-ods-applications \
+    -o jsonpath='{.data.DB_CONNECTION_URL}' --insecure-skip-tls-verify=true 2>/dev/null \
+    | base64 --decode 2>/dev/null || true)
+  if [[ "$MAAS_DB_URL" == *"maas-postgres.${MAAS_DB_NS}.svc.cluster.local"* ]]; then
     R="pass"
   else
-    R="missing data key api-key"
+    R="DB_CONNECTION_URL does not point to maas-postgres.${MAAS_DB_NS}.svc.cluster.local"
   fi
 else
   R="missing"
 fi
-check "OpenAI provider Secret present with api-key data key" "$R"
+check "maas-db-config secret points at the MaaS database namespace" "$R"
+
+if resource_exists "secret/${OPENAI_PROVIDER_SECRET}" "$MAAS_NS"; then
+  OPENAI_SECRET_LABEL=$(jsonpath "secret/${OPENAI_PROVIDER_SECRET}" "$MAAS_NS" "{.metadata.labels.inference\\.networking\\.k8s\\.io/bbr-managed}")
+  if oc get "secret/${OPENAI_PROVIDER_SECRET}" -n "$MAAS_NS" -o jsonpath='{.data}' \
+    --insecure-skip-tls-verify=true 2>/dev/null | grep -q 'api-key' &&
+    [[ "$OPENAI_SECRET_LABEL" == "true" ]]; then
+    R="pass"
+  else
+    R="missing data key api-key or inference.networking.k8s.io/bbr-managed=true label"
+  fi
+else
+  R="missing"
+fi
+check "OpenAI provider Secret present with api-key data key and BBR label" "$R"
 
 if resource_exists "rolebinding/rhods-admins-maas-admin" "$MAAS_NS"; then
   R="pass"
@@ -495,7 +504,7 @@ if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")
   AI_DEVELOPER_TOKEN=$(get_demo_user_token "ai-developer" "${AI_DEVELOPER_PASSWORD:-}" || true)
   if [[ -n "$AI_DEVELOPER_TOKEN" ]]; then
-    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard.XXXXXX")
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-dashboard.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${PROJECT_NS}" "$AI_DEVELOPER_TOKEN" "$BODY")
     if [[ "$STATUS" == "200" ]] && body_contains_model "$BODY"; then
@@ -505,7 +514,7 @@ if command -v python3 >/dev/null 2>&1; then
     fi
     check "ai-developer dashboard AI asset endpoints can load MaaS models" "$R"
 
-    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-maas-api.XXXXXX")
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-maas-api.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${GATEWAY_HOST}/maas-api/v1/subscriptions" "$AI_DEVELOPER_TOKEN" "$BODY")
     if [[ "$STATUS" == "200" ]] && grep -q "$OPENAI_ACCESS_RESOURCE" "$BODY"; then
@@ -514,13 +523,154 @@ if command -v python3 >/dev/null 2>&1; then
       R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
     fi
     check "ai-developer MaaS API subscription discovery works through Gateway" "$R"
+
+    if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+      API_KEY_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-api-key.XXXXXX")
+      TMP_FILES+=("$API_KEY_BODY")
+      INFERENCE_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-inference.XXXXXX")
+      TMP_FILES+=("$INFERENCE_BODY")
+
+      API_KEY_STATUS=$(curl -sk --max-time 30 -o "$API_KEY_BODY" -w '%{http_code}' \
+        -H "Authorization: Bearer ${AI_DEVELOPER_TOKEN}" \
+        -H "Content-Type: application/json" \
+        "https://${GATEWAY_HOST}/maas-api/v1/api-keys" \
+        --data-binary "{\"name\":\"stage220-validation\",\"subscriptionName\":\"${OPENAI_ACCESS_RESOURCE}\"}" \
+        2>/dev/null || true)
+      API_KEY_VALUE=$(jq -r '.key // empty' "$API_KEY_BODY" 2>/dev/null || true)
+      API_KEY_ID=$(jq -r '.id // empty' "$API_KEY_BODY" 2>/dev/null || true)
+
+      if [[ "$API_KEY_STATUS" == "201" && "$API_KEY_VALUE" == sk-oai-* && -n "$API_KEY_ID" ]]; then
+        R="pass"
+      else
+        R="status=${API_KEY_STATUS:-missing},body=$(head -c 180 "$API_KEY_BODY" | tr '\n' ' ')"
+      fi
+      check "ai-developer can create a MaaS API key for the demo subscription" "$R"
+
+      if [[ "$API_KEY_VALUE" == sk-oai-* ]]; then
+        INFERENCE_STATUS=$(curl -sk --max-time 120 -o "$INFERENCE_BODY" -w '%{http_code}' \
+          -H "Authorization: Bearer ${API_KEY_VALUE}" \
+          -H "Content-Type: application/json" \
+          "https://${GATEWAY_HOST}/models-as-a-service/${NEMOTRON_MODEL_RESOURCE}/v1/chat/completions" \
+          --data-binary @- <<JSON 2>/dev/null || true
+{
+  "model": "${NEMOTRON_MODEL_RESOURCE}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Use the available tool to get the weather for Amsterdam."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a city.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        }
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "get_weather"
+    }
+  },
+  "max_tokens": 128,
+  "temperature": 0
+}
+JSON
+)
+        if [[ "$INFERENCE_STATUS" == "200" ]] &&
+          jq -e '
+            .choices[0].message.tool_calls[0].function.name == "get_weather" and
+            (.choices[0].message.tool_calls[0].function.arguments | contains("Amsterdam")) and
+            (.usage.total_tokens // 0) > 0
+          ' "$INFERENCE_BODY" >/dev/null 2>&1; then
+          R="pass"
+        else
+          R="status=${INFERENCE_STATUS:-missing},body=$(head -c 180 "$INFERENCE_BODY" | tr '\n' ' ')"
+        fi
+      else
+        R="MaaS API key was not created"
+      fi
+      check "ai-developer can call Nemotron through MaaS with tool calling and token usage" "$R"
+
+      if [[ "$API_KEY_VALUE" == sk-oai-* ]]; then
+        EXTERNAL_INFERENCE_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-openai-inference.XXXXXX")
+        TMP_FILES+=("$EXTERNAL_INFERENCE_BODY")
+        EXTERNAL_INFERENCE_STATUS=$(curl -sk --max-time 120 -o "$EXTERNAL_INFERENCE_BODY" -w '%{http_code}' \
+          -H "Authorization: Bearer ${API_KEY_VALUE}" \
+          -H "Content-Type: application/json" \
+          "https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1/chat/completions" \
+          --data-binary @- <<JSON 2>/dev/null || true
+{
+  "model": "${OPENAI_MODEL_ID}",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Reply with exactly: ok"
+    }
+  ],
+  "max_completion_tokens": 8
+}
+JSON
+)
+        if [[ "$EXTERNAL_INFERENCE_STATUS" == "200" ]] &&
+          jq -e '
+            (.choices[0].message.content // "" | test("ok"; "i")) and
+            (.usage.total_tokens // 0) > 0
+          ' "$EXTERNAL_INFERENCE_BODY" >/dev/null 2>&1; then
+          R="pass"
+        else
+          R="status=${EXTERNAL_INFERENCE_STATUS:-missing},body=$(head -c 180 "$EXTERNAL_INFERENCE_BODY" | tr '\n' ' ')"
+        fi
+      else
+        R="MaaS API key was not created"
+      fi
+      check "ai-developer can call external OpenAI through MaaS with token usage" "$R"
+
+      UNAUTH_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-unauth.XXXXXX")
+      TMP_FILES+=("$UNAUTH_BODY")
+      UNAUTH_STATUS=$(curl -sk --max-time 30 -o "$UNAUTH_BODY" -w '%{http_code}' \
+        -H "Content-Type: application/json" \
+        "https://${GATEWAY_HOST}/models-as-a-service/${NEMOTRON_MODEL_RESOURCE}/v1/chat/completions" \
+        --data-binary "{\"model\":\"${NEMOTRON_MODEL_RESOURCE}\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"max_tokens\":4}" \
+        2>/dev/null || true)
+      [[ "$UNAUTH_STATUS" == "401" ]] && R="pass" || R="status=${UNAUTH_STATUS:-missing}"
+      check "unauthenticated MaaS inference is rejected" "$R"
+
+      if [[ -n "$API_KEY_ID" ]]; then
+        DELETE_STATUS=$(curl -sk --max-time 30 -o /dev/null -w '%{http_code}' \
+          -X DELETE \
+          -H "Authorization: Bearer ${AI_DEVELOPER_TOKEN}" \
+          "https://${GATEWAY_HOST}/maas-api/v1/api-keys/${API_KEY_ID}" \
+          2>/dev/null || true)
+        [[ "$DELETE_STATUS" == "200" ]] && R="pass" || R="status=${DELETE_STATUS:-missing}"
+      else
+        R="API key id missing"
+      fi
+      check "ai-developer validation MaaS API key is revoked" "$R"
+    else
+      check "ai-developer MaaS API key and inference validation can run" "curl or jq missing"
+    fi
   else
     check "ai-developer dashboard/API validation token available" "AI_DEVELOPER_PASSWORD missing or login failed"
   fi
 
   AI_ADMIN_TOKEN=$(get_demo_user_token "ai-admin" "${AI_ADMIN_PASSWORD:-}" || true)
   if [[ -n "$AI_ADMIN_TOKEN" ]]; then
-    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard-admin.XXXXXX")
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-dashboard-admin.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${MAAS_NS}" "$AI_ADMIN_TOKEN" "$BODY")
     if [[ "$STATUS" == "200" ]] && body_contains_model "$BODY"; then
@@ -537,7 +687,7 @@ else
 fi
 
 echo
-echo "Stage 230 validation summary: ${PASS} passed, ${FAIL} failed"
+echo "Stage 220 validation summary: ${PASS} passed, ${FAIL} failed"
 if (( FAIL > 0 )); then
   exit 1
 fi
