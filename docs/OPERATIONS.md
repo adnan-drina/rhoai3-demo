@@ -2,6 +2,22 @@
 
 Active operations guidance for the reimplementation.
 
+## Current Demo Storyline
+
+The active implementation follows this sequence:
+
+1. `stage-110-rhoai-base-platform` - GitOps, ODF MCG, RHOAI base platform,
+   model registry, access personas, and shared DSC ownership.
+2. `stage-120-gpu-as-a-service` - GPU worker capacity, NVIDIA GPU enablement,
+   Kueue quotas, and RHOAI hardware profiles.
+3. `stage-220-model-serving-foundation` - planned next GenAI transition:
+   enable model serving, smoke-test Nemotron, and leave dashboard deployment to
+   the user.
+4. `stage-230-model-performance-baseline` - planned GuideLLM-style performance
+   baseline and breakpoint evidence.
+5. `stage-240-models-as-a-service` - planned governed MaaS access to Nemotron
+   plus external OpenAI `gpt-5.4-nano`.
+
 ## Stage 110: RHOAI Base Platform
 
 ### Bootstrap Sequence
@@ -110,6 +126,70 @@ Using `demo-sandbox`: log in as `ai-developer`, open the project in the RHOAI da
 ### Adding RHOAI Components (Later Stages)
 
 The `DataScienceCluster` at `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` is the single owned copy. Later stages must add components via Kustomize patches or Components targeting this resource, not by creating a second `DataScienceCluster`. See `project-gitops-authoring` and `rhoai-dsci-dsc-configuration`.
+
+## Stage 120: GPU-as-a-Service
+
+### Deploy And Validate
+
+Stage 120 depends on Stage 110. Run Stage 110 validation first.
+
+```bash
+./stage-110-rhoai-base-platform/validate.sh
+./stage-120-gpu-as-a-service/deploy.sh
+./stage-120-gpu-as-a-service/validate.sh
+```
+
+The deploy script applies the Argo CD Application only. Argo CD owns the stage
+resources under `gitops/stage-120-gpu-as-a-service`.
+
+### GPU Cost Control
+
+The default desired state is one `g6e.2xlarge` GPU worker. To stop GPU spend
+between demo sessions:
+
+```bash
+oc scale machineset -n openshift-machine-api \
+  -l cluster-api/accelerator=nvidia-gpu \
+  --replicas=0
+```
+
+To resume:
+
+```bash
+oc scale machineset -n openshift-machine-api \
+  -l cluster-api/accelerator=nvidia-gpu \
+  --replicas=1
+```
+
+The Stage 120 Argo CD Application ignores `MachineSet.spec.replicas` for managed
+MachineSets. This keeps the Git default at one GPU worker for new deployments
+while allowing intentional manual scale-down in the live demo environment.
+
+After scaling up, wait for the node and NVIDIA stack:
+
+```bash
+oc get machineset -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu
+oc get nodes -l nvidia.com/gpu.present=true
+oc get clusterpolicy gpu-cluster-policy -o jsonpath='{.status.state}{"\n"}'
+```
+
+### Fresh AWS Demo Environment
+
+The committed GPU MachineSet is specific to the current AWS demo environment.
+A fresh OpenShift environment has different cluster IDs, AMI IDs, subnet tags,
+security groups, IAM profile names, regions, and availability zones.
+
+Before deploying Stage 120 to a fresh environment:
+
+1. Confirm the cluster is AWS-backed and has quota for `g6e.2xlarge`.
+2. Export a current worker MachineSet from `openshift-machine-api`.
+3. Create a GPU MachineSet by preserving the cluster-specific provider fields
+   and changing only the GPU intent: name, labels, `instanceType:
+   g6e.2xlarge`, GPU node labels, and the `nvidia-gpu-only` taint.
+4. Replace `gitops/stage-120-gpu-as-a-service/machineset/base/machineset-gpu.yaml`
+   before syncing the Stage 120 Application.
+
+Do not reuse the `cluster-klvxt` providerSpec in a different AWS cluster.
 
 ---
 

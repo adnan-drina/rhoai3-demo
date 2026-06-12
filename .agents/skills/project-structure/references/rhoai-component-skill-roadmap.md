@@ -25,7 +25,8 @@ https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/
 | Kueue workload management, namespace queue enforcement, dashboard enablement, queue labels, troubleshooting, and embedded Kueue migration | Administer | Added: `rhoai-kueue-workload-management` |
 | Distributed workload quota resources, NVIDIA Kueue ResourceFlavor/ClusterQueue/LocalQueue examples, RDMA setup, and Ray administrator troubleshooting | Administer | Added: `rhoai-distributed-workload-operations` |
 | Distributed workload user workflows: workbench and training image preparation, Ray/CodeFlare, Training Operator PyTorchJob, Kubeflow Trainer v2 TrainJob, fine-tuning, checkpointing, monitoring, and user troubleshooting | Develop | Added: `rhoai-distributed-workload-workflows` |
-| NVIDIA GPU accelerator enablement, NFD, KMM, NVIDIA GPU Operator, and hardware profiles | Install, Administer | Added: `rhoai-nvidia-gpu-accelerators` |
+| NVIDIA GPU accelerator enablement, NFD, KMM, NVIDIA GPU Operator, and GPU node readiness | Install, Administer | Added: `rhoai-nvidia-gpu-accelerators` |
+| Hardware profiles, resource requests and limits, Kueue local queue handoff, node selectors, tolerations, and recommended accelerator tags | Administer, Working with accelerators | Added: `rhoai-hardware-profiles` |
 | Certificate management, DSCI trusted CA bundle, component CA bundles, Llama Stack TLS trust, and CA removal | Install, Administer | Added: `rhoai-certificate-management` |
 | Observability stack, DSCI monitoring, OpenTelemetry Collector, Prometheus, Alertmanager, Tempo, dashboard menu, user workload scrape labels, exporters, traces, and built-in alerts | Administer | Added: `rhoai-observability` |
 | Operator logger configuration, Operator pod logs, and audit records for DSC/DSCI changes | Administer | Added: `rhoai-logs-and-audit-records` |

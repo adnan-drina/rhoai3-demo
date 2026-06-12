@@ -105,7 +105,6 @@ products:
             topics:
               - accelerators
               - nvidia_gpus
-              - hardware_profiles
             status: active
             skill: rhoai-nvidia-gpu-accelerators
           - book: installing_and_uninstalling_openshift_ai_self-managed
@@ -198,6 +197,12 @@ products:
               - audit_records
             status: active
             skill: rhoai-logs-and-audit-records
+          - book: working_with_accelerators
+            topics:
+              - hardware_profiles
+              - recommended_accelerators
+            status: active
+            skill: rhoai-hardware-profiles
           - book: managing_resources
             topics:
               - admin_groups

@@ -12,23 +12,22 @@ dashboard-created hardware profile and normalize it into GitOps.
 | AWS worker shape | `g6e.2xlarge` |
 | Default GPU MachineSet replicas | `1` |
 | Kubernetes accelerator identifier | `nvidia.com/gpu` |
-| GPU allocation pattern | one GPU per node, one GPU per private model replica |
+| GPU allocation pattern | one L40S GPU per node, time-sliced to four schedulable `nvidia.com/gpu` units |
 | Primary private model | `nemotron-3-nano-30b-a3b` |
 | Primary model source | `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` |
-| Serving path | RHOAI `LLMInferenceService` / vLLM |
-| Approved external model | OpenAI `gpt-5` through MaaS, after gateway/API compatibility is verified |
+| Serving path | Stage 220 RHOAI model serving with vLLM; Stage 240 MaaS |
+| Approved external model | OpenAI `gpt-5.4-nano` through MaaS, after gateway/API compatibility is verified |
 
 Use the active node labels and allocatable `nvidia.com/gpu` values as the
-scheduling authority. The profile names below use NVIDIA L4 naming as a demo
-convention; revalidate the actual GPU product exposed by the active cluster
-before presenting the hardware profile name as physical hardware fact.
+scheduling authority. The profile names below use NVIDIA L40S naming because
+the active `g6e.2xlarge` worker exposes L40S hardware.
 
 ## Direct Profile: NVIDIA 1GPU
 
 | Field | Value |
 |-------|-------|
 | Display name | NVIDIA 1GPU |
-| Suggested resource name | `nvidia-l4-1gpu` unless renamed after live GPU product verification |
+| Suggested resource name | `nvidia-l40s-1gpu` |
 | Purpose | Direct single-GPU scheduling for inference, workbenches, and compatibility paths |
 | Accelerator identifier | `nvidia.com/gpu` |
 | Accelerator resource type | Accelerator |
@@ -53,14 +52,14 @@ toleration:
 | Field | Value |
 |-------|-------|
 | Display name | NVIDIA 1GPU Queued |
-| Suggested resource name | `nvidia-l4-1gpu-queued` unless renamed after live GPU product verification |
+| Suggested resource name | `nvidia-l40s-1gpu-queued` |
 | Purpose | Preferred queue-managed single-GPU profile for private model serving |
 | Accelerator identifier | `nvidia.com/gpu` |
 | Accelerator resource type | Accelerator |
 | GPU default/min/max | `1` / `1` / `1` |
 | Visibility | Visible everywhere unless a future step needs project-scoped profiles |
 | Allocation strategy | Kueue LocalQueue |
-| LocalQueue | `private-model-serving` |
+| LocalQueue | stage-specific LocalQueue such as `lq-gpu-shared` or `lq-gpu-reserved-demo` |
 
 Use this profile when Kueue is configured for the target project and the
 workload should consume GPU quota through the platform queue.
@@ -83,7 +82,7 @@ Review `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, and
 flow-control details with `rhoai-distributed-inference-llmd` before promoting
 the serving manifest.
 
-OpenAI `gpt-5` belongs in the approved external MaaS path. It should be
+OpenAI `gpt-5.4-nano` belongs in the approved external MaaS path. It should be
 governed by MaaS subscriptions, auth policy, rate limits, token limits, and
 usage telemetry, but it should not drive GPU MachineSet sizing.
 

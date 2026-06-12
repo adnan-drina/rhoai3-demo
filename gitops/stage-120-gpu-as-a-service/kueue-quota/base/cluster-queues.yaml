@@ -4,10 +4,10 @@
 # yields the non-preemptive default).
 #
 # GPU quota sums to 4 = the time-sliced capacity (1 physical L40S -> 4 units):
-#   shared 2 + priority 1  (cohort "gpu-pool", borrow idle capacity from each other)
+#   shared 2 + priority 1  (cohort "gpu-pool", grouped for later fair-share work)
 #   reserved 1             (no cohort: isolated, never lent — a true reservation)
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-cpu-default
@@ -26,7 +26,7 @@ spec:
             - name: memory
               nominalQuota: "64Gi"
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-gpu-shared
@@ -35,7 +35,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "4"
 spec:
   namespaceSelector: {}
-  cohort: gpu-pool
+  cohortName: gpu-pool
   resourceGroups:
     - coveredResources: ["cpu", "memory"]
       flavors:
@@ -52,7 +52,7 @@ spec:
             - name: nvidia.com/gpu
               nominalQuota: "2"
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-gpu-priority
@@ -61,7 +61,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "4"
 spec:
   namespaceSelector: {}
-  cohort: gpu-pool
+  cohortName: gpu-pool
   resourceGroups:
     - coveredResources: ["cpu", "memory"]
       flavors:
@@ -78,7 +78,7 @@ spec:
             - name: nvidia.com/gpu
               nominalQuota: "1"
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: cq-gpu-reserved-demo

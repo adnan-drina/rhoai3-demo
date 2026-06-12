@@ -43,13 +43,13 @@ MCG-only deployment provides S3-compatible object storage for RHOAI workloads. T
 
 ### Red Hat OpenShift AI Self-Managed
 
-The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. All other RHOAI components (`kserve`, `kueue`, `ray`, etc.) are set to `Removed` and added by later demo stages via Kustomize patches to this stage's owned `DataScienceCluster`.
+The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. The same Stage 110-owned `DataScienceCluster` is the single shared owner for later RHOAI component state. Stage 120 uses this shared owner for `kueue: Unmanaged`; KServe and other model-serving components remain removed until Stage 220.
 
 - **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
 - **Channel:** `stable-3.4`
 - **API version:** `DataScienceCluster` pinned to `v2` (the served storage version that declares the 3.4 component schema)
 - **DSCI:** predefined namespaces, monitoring managed
-- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`); all other components `Removed`
+- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`), `kueue: Unmanaged` for the standalone Kueue integration used by Stage 120; KServe and other serving/evaluation components `Removed`
 - **Model Registry database:** the registry instance is created day-2 from the dashboard using the default PostgreSQL (non-production); see `docs/OPERATIONS.md`
 - **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)
 
@@ -102,7 +102,7 @@ New in this stage
   OpenShift GitOps operator + ArgoCD instance
   ODF operator + Multicloud Object Gateway (NooBaa)
   RHOAI operator + DSCInitialization + DataScienceCluster (dashboard,
-    workbenches, model registry)
+    workbenches, model registry, shared Kueue integration)
   htpasswd IdP + ai-admin / ai-developer
   demo-sandbox project + S3 connection (OBC-backed)
 
@@ -115,7 +115,7 @@ Created imperatively (secret-bearing)
   demo-sandbox-s3 connection secret (from OBC)
 
 Extended by later stages
-  DataScienceCluster components via Kustomize patches (kserve, kueue, ray …)
+  DataScienceCluster components via the shared Stage 110 owner (kserve, ray ...)
   ObjectBucketClaims per workload namespace
 ```
 

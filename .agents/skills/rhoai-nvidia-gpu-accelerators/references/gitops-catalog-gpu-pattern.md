@@ -87,7 +87,8 @@ Default rhoai3-demo posture:
 
 - instance type: `g6e.2xlarge`
 - default node count: `1`
-- GPU count: one NVIDIA L4 GPU per node
+- GPU count: one NVIDIA L40S GPU per node, time-sliced to four schedulable
+  `nvidia.com/gpu` units for the demo
 - accelerator resource: `nvidia.com/gpu`
 - taint: `nvidia-gpu-only:NoSchedule`
 - autoscaler lower bound: normally `1` for active demo readiness unless the

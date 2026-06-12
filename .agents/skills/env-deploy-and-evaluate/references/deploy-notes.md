@@ -1,4 +1,4 @@
-# Per-Step Deploy Notes
+# Per-Stage Deploy Notes
 
 ## Inputs Required
 
@@ -23,7 +23,7 @@
 6. GPU quota check — current demo intent is a `g6e.2xlarge` GPU worker with
    one `nvidia.com/gpu` per node; default desired count is one node unless the
    active environment plan says otherwise.
-7. Run `./scripts/bootstrap.sh`
+7. Run `./stage-110-rhoai-base-platform/deploy.sh`
 8. Verify ArgoCD configuration:
    ```bash
    # AppProject must exist
@@ -40,11 +40,19 @@
 
 ## Per-Step Notes
 
-- **Step 01**: Create or reconcile GPU MachineSets for `g6e.2xlarge` workers. The current demo default is one replica. GPU nodes should be labeled with `node-role.kubernetes.io/gpu`, tainted with `nvidia.com/gpu=true:NoSchedule`, and expected to advertise one allocatable `nvidia.com/gpu`.
-- **Step 05**: Private model serving should use `nemotron-3-nano-30b-a3b` from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` through RHOAI `LLMInferenceService` and vLLM. Approved external OpenAI `gpt-5` should be registered behind MaaS only after MaaS gateway/API compatibility is verified.
-- **Step 05 → Playground**: Create Playground LSD via Dashboard UI (not GitOps-managed). Only register RUNNING models.
-- **Model metrics stage**: Run benchmarks through the active metrics stage
-  script once recreated, for example `./stage-440-observability-and-governance/run-benchmark.sh`.
+- **Stage 120**: Create or reconcile GPU MachineSets for `g6e.2xlarge`
+  workers. The current demo default is one replica. GPU nodes should be labeled
+  for GPU infrastructure, tainted `nvidia-gpu-only:NoSchedule`, and expected to
+  advertise four time-sliced `nvidia.com/gpu` units.
+- **Stage 220**: Private model serving should use `nemotron-3-nano-30b-a3b`
+  from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
+  through RHOAI model serving and vLLM. Validation may deploy Nemotron
+  temporarily, verify inference, and remove it for fresh-environment smoke
+  testing.
+- **Stage 230**: Run GuideLLM-style performance baseline tests and record
+  concurrency, latency, throughput, and GPU-utilization breakpoints.
+- **Stage 240**: Register governed MaaS access for Nemotron and external
+  OpenAI `gpt-5.4-nano` after MaaS gateway/API compatibility is verified.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
@@ -58,7 +66,10 @@
 - **Step 09 — Guardrails validation**: `validate.sh` runs 12 checks including 4 functional detector tests (HAP, prompt injection, PII regex, clean input). Uses orchestrator v2 API on HTTPS port 8032. Detector names in config are `hap`, `prompt_injection`, `regex` (not the ISVC names).
 - **Step 07 — Two LSDs coexist**: `lsd-genai-playground` (Dashboard) and `lsd-rag` (GitOps) in same namespace.
 - **Step 07/08 — llama-stack-client**: Must be `>=0.4,<0.5` for server v0.4.2.1+rhai0.
-- **Step 08 — Model roles**: Candidate = `nemotron-3-nano-30b-a3b` for private-path evaluation. Judge = approved external OpenAI `gpt-5` through MaaS when policy allows; otherwise use an explicitly selected private judge strategy and document the bias risk.
+- **Stage 230/240 model roles**: Candidate = `nemotron-3-nano-30b-a3b` for
+  private-path performance baselining. External OpenAI `gpt-5.4-nano` belongs
+  behind MaaS governance when policy allows; do not use it to size GPU
+  MachineSets.
 - **Step 08 — Reports**: `run-eval-report.sh` uploads HTML to `s3://rhoai-storage/eval-results/{run-id}/`.
 - **Step 10 — MCP ConfigMap**: `gen-ai-aa-mcp-servers` in `redhat-ods-applications` managed by ArgoCD. Each JSON entry supports `url`, `description`, and `transport` fields.
 - **Step 10 — MCP transport**: The gen-ai backend defaults to `streamable-http` transport. SSE-only servers (database-mcp, slack-mcp) MUST include `"transport": "sse"` in the ConfigMap JSON or the Dashboard shows "Error". OpenShift-MCP (kubernetes-mcp-server) supports streamable-http on `/mcp`.

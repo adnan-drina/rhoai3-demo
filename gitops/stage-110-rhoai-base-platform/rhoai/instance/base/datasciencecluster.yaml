@@ -1,12 +1,12 @@
 # v2 is the current served+storage version in RHOAI 3.4. The component schema
 # (e.g. spec.components.aipipelines) exists only in v2; v1 is retained for
-# compatibility but rejects v2-only fields under ServerSideApply.
+# compatibility but rejects v2-only fields when a v1 manifest is submitted.
 # Verified live: oc get crd datascienceclusters.datasciencecluster.opendatahub.io
 apiVersion: datasciencecluster.opendatahub.io/v2
 kind: DataScienceCluster
 metadata:
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "3"
   labels:
     app.kubernetes.io/name: datasciencecluster
@@ -23,16 +23,7 @@ spec:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
 
-    # ---- Model serving + workload management (enabled by stage-120) ----
-    kserve:
-      # RawDeployment is the only supported mode in RHOAI 3.4 (no Service Mesh /
-      # Serverless dependency). Headed creates routes for model endpoints.
-      managementState: Managed
-      rawDeploymentServiceConfig: Headed
-      nim:
-        managementState: Removed
-      modelsAsService:
-        managementState: Removed
+    # ---- Shared workload management integration (used by stage-120) ----
     kueue:
       # Unmanaged = integrate with the standalone Red Hat build of Kueue operator
       # (the embedded Managed mode is deprecated). RHOAI auto-creates the default
@@ -43,6 +34,8 @@ spec:
     aipipelines:
       managementState: Removed
     feastoperator:
+      managementState: Removed
+    kserve:
       managementState: Removed
     llamastackoperator:
       managementState: Removed

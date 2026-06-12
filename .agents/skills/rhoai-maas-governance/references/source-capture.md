@@ -29,8 +29,9 @@
 - Product configuration truth: the official RHOAI 3.4 MaaS guide and related
   active-baseline Red Hat product documentation.
 - Demo policy: this skill may state rhoai3-demo preferences such as using
-  MaaS for governed OpenAI `gpt-5` access and local Nemotron exposure, but CR
-  fields and product behavior still require official docs or schema checks.
+  MaaS for governed OpenAI `gpt-5.4-nano` access and local Nemotron exposure,
+  but CR fields and product behavior still require official docs or schema
+  checks.
 - Red Hat articles, blogs, and `rh-brain` are supporting narrative and example
   sources only. Do not use them to override official product docs.
 - External provider examples such as OpenAI are governed external-access

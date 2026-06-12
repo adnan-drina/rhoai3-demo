@@ -68,8 +68,10 @@ Use other skills for adjacent work:
 
 - `rhoai-self-managed-installation` for installing KServe and OpenShift AI
   components through DSC/DSCI
-- `rhoai-nvidia-gpu-accelerators` for GPU Operators, hardware profiles,
-  accelerator identifiers, and NVIDIA-only demo policy
+- `rhoai-nvidia-gpu-accelerators` for GPU Operators, accelerator readiness,
+  and NVIDIA-only demo policy
+- `rhoai-hardware-profiles` for accelerator identifiers, hardware profile
+  lifecycle, and recommended serving runtime accelerator tags
 - `rhoai-project-scoped-resources` for project-scoped serving runtime templates
 - `rhoai-project-workflows` for project connections and connection API
   annotations used by `InferenceService` or `LLMInferenceService`

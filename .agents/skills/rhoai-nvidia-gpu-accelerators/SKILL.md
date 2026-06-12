@@ -12,11 +12,13 @@ description: >
   accelerator support for the rhoai3-demo OpenShift AI environment: accelerator
   prerequisites, Node Feature Discovery, Kernel Module Management, NVIDIA GPU
   Operator, NVIDIA ClusterPolicy, GPU detection through nvidia.com/gpu, NVIDIA
-  RDMA support boundaries, AWS demo.redhat.com GPU MachineSet curation,
-  OpenShift AI dashboard restart requirements, and RHOAI hardware profiles for
-  NVIDIA GPU-backed workbenches, pipelines, and model serving. Do NOT use for
-  AMD, Intel Gaudi, IBM Spyre, generic RHOAI installation, queue design, or
-  live troubleshooting; use the relevant rhoai-* or env-* skill instead.
+  RDMA support boundaries, AWS demo.redhat.com GPU MachineSet curation, and
+  OpenShift AI dashboard restart requirements. Pair with
+  rhoai-hardware-profiles for HardwareProfile lifecycle, profile schema,
+  recommended accelerator tags, Kueue local queue handoff, and GitOps
+  promotion. Do NOT use for AMD, Intel Gaudi, IBM Spyre, generic RHOAI
+  installation, queue design, or live troubleshooting; use the relevant
+  rhoai-* or env-* skill instead.
 ---
 
 # RHOAI NVIDIA GPU Accelerators
@@ -39,8 +41,9 @@ or IBM Spyre accelerator paths unless the project baseline changes.
 The demo hardware intent is:
 
 - AWS GPU instance type: `g6e.2xlarge`.
-- GPU capacity pattern: one NVIDIA GPU per node, exposed to Kubernetes as
-  `nvidia.com/gpu`.
+- GPU capacity pattern: one NVIDIA L40S GPU per node, exposed to Kubernetes as
+  `nvidia.com/gpu`; Stage 120 time-slices one physical GPU into four
+  schedulable `nvidia.com/gpu` units for demo density.
 - Default node count: one GPU worker node unless an environment-specific
   resource plan says otherwise.
 - Default AWS environment source: demo.redhat.com OpenShift on AWS.
@@ -53,17 +56,17 @@ The demo hardware intent is:
   `nemotron-3-nano-30b-a3b`.
 - Primary model source:
   `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
-- Serving path: RHOAI `LLMInferenceService` with vLLM, published through the
-  Model-as-a-Service layer.
+- Serving path: Stage 220 validates RHOAI model serving with vLLM; Stage 240
+  publishes governed model access through the Model-as-a-Service layer.
 - Use `rhoai-distributed-inference-llmd` when reviewing
   `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, or
   flow-control details for the private model serving path.
 - Use `rhoai-model-serving-platform` when reviewing KServe
   `ServingRuntime`, `InferenceService`, vLLM runtime parameters, or model
   serving platform dashboard behavior.
-- Approved external model path: OpenAI `gpt-5` registered in MaaS for governed
-  use cases where provider-side processing is allowed. External OpenAI models
-  do not consume cluster GPU capacity.
+- Approved external model path: OpenAI `gpt-5.4-nano` registered in MaaS for
+  governed, cost-optimized external use cases where provider-side processing is
+  allowed. External OpenAI models do not consume cluster GPU capacity.
 
 Use active node labels and observed GPU resources as the scheduling authority.
 Do not rely on AWS instance-family assumptions alone when naming hardware
@@ -103,13 +106,11 @@ For this repo:
 - Derive AWS GPU MachineSet provider details from an existing worker MachineSet
   in the target cluster, then change only reviewed fields such as instance
   type, replicas, labels, taints, and autoscaler bounds.
-- Create hardware profiles only after the GPU Operator and NFD have reconciled
-  and nodes report `nvidia.com/gpu` capacity and allocatable values.
-- When converting dashboard-created hardware profiles to GitOps, first verify
-  the active CRD schema with `oc explain hardwareprofile.spec` or export an
-  existing dashboard-created `HardwareProfile`.
-- Do not handwrite unverified `HardwareProfile`, `NodeFeatureDiscovery`, or
-  NVIDIA `ClusterPolicy` fields from memory.
+- Hand hardware profile design, schema verification, and GitOps promotion to
+  `rhoai-hardware-profiles` after the GPU Operator and NFD have reconciled and
+  nodes report `nvidia.com/gpu` capacity and allocatable values.
+- Do not handwrite unverified `NodeFeatureDiscovery`, NVIDIA `ClusterPolicy`,
+  or `HardwareProfile` fields from memory.
 
 ## Workflow
 
@@ -124,8 +125,8 @@ For this repo:
    the NVIDIA GPU enablement procedure.
 8. Restart the OpenShift AI dashboard deployment after NVIDIA GPU enablement.
 9. Validate GPU capacity and allocatable values on GPU worker nodes.
-10. Create or review NVIDIA hardware profiles using
-   `examples/demo-nvidia-l4-hardware-profile-contract.md`.
+10. Create or review NVIDIA hardware profiles with
+   `rhoai-hardware-profiles`.
 11. Validate with `references/validation-checklist.md`.
 
 ## Related Skills
@@ -135,6 +136,9 @@ For this repo:
   updater behavior.
 - Use `ocp-machine-management` for AWS GPU worker MachineSets and node count.
 - Use `ocp-nodes` for scheduling mechanics after GPU and NFD labels exist.
+- Use `rhoai-hardware-profiles` for RHOAI `HardwareProfile` lifecycle,
+  profile schema verification, recommended accelerator tags, and GitOps
+  promotion.
 
 ## References
 
@@ -142,5 +146,5 @@ For this repo:
 - `references/official-doc-extraction.md`
 - `references/gitops-catalog-gpu-pattern.md`
 - `references/validation-checklist.md`
-- `examples/demo-nvidia-l4-hardware-profile-contract.md`
+- `examples/demo-nvidia-l40s-hardware-profile-contract.md`
 - `examples/aws-gpu-machineset-gitops-pattern.md`

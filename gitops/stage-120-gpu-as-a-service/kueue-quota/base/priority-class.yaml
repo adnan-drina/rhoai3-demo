@@ -2,7 +2,7 @@
 # add the label kueue.x-k8s.io/priority-class: gpu-high-priority. Workbenches are
 # non-preemptive, so the GPU-priority profile demonstrates dedicated + borrowable
 # quota; this class lets suspendable jobs jump the admission order.
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass
 metadata:
   name: gpu-high-priority

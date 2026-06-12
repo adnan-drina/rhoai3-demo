@@ -99,8 +99,8 @@ For this repo:
 - Expose the primary local model `nemotron-3-nano-30b-a3b` through MaaS only
   after the underlying serving endpoint and Gateway/API compatibility are
   verified.
-- Register external OpenAI `gpt-5` through the MaaS `ExternalModel` path when
-  external provider access is required. Do not bypass MaaS for shared demo
+- Register external OpenAI `gpt-5.4-nano` through the MaaS `ExternalModel` path
+  when external provider access is required. Do not bypass MaaS for shared demo
   access to external OpenAI models unless the project explicitly documents a
   different governance decision.
 - Store MaaS PostgreSQL credentials, provider API keys, API keys, and endpoint

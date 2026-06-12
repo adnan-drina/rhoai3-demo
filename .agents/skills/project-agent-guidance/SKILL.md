@@ -48,7 +48,7 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 | Type | Count | Location |
 |------|-------|----------|
 | Shared rules | 6 | `.agents/rules/*.md` |
-| Shared skills | 98 | `.agents/skills/*/SKILL.md` |
+| Shared skills | 99 | `.agents/skills/*/SKILL.md` |
 | Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
@@ -176,7 +176,7 @@ are authored, keep the product-documentation loop current:
 3. For scoped follow-up, use:
 
    ```bash
-   ./scripts/audit-doc-alignment.sh --component stage-220-private-model-serving
+   ./scripts/audit-doc-alignment.sh --component stage-220-model-serving-foundation
    ```
 
 4. If the active audit script has not been recreated yet, document the missing

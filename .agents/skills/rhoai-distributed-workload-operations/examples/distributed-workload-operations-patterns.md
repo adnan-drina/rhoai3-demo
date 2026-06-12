@@ -9,10 +9,10 @@ them in active manifests.
 Verify the node label key and value before replacing the placeholders:
 
 ```yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
-  name: nvidia-l4
+  name: nvidia-l40s
 spec:
   nodeLabels:
     <verified-node-label-key>: <verified-node-label-value>
@@ -34,7 +34,7 @@ oc get nodes --show-labels
 Set quotas to match real node capacity and intended workload concurrency:
 
 ```yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata:
   name: rhoai-demo-nvidia
@@ -46,7 +46,7 @@ spec:
         - memory
         - nvidia.com/gpu
       flavors:
-        - name: nvidia-l4
+        - name: nvidia-l40s
           resources:
             - name: cpu
               nominalQuota: 8
@@ -62,7 +62,7 @@ Review rule: if users can request a resource, include it in both
 ## Project LocalQueue
 
 ```yaml
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: rhoai-demo-nvidia

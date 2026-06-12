@@ -30,6 +30,7 @@ configuration, pipelines, chatbot behavior, and evaluation workflows:
 - `.agents/skills/rhoai-distributed-workload-workflows/SKILL.md`
 - `.agents/skills/rhoai-kubeflow-spark-operator/SKILL.md`
 - `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md`
+- `.agents/skills/rhoai-hardware-profiles/SKILL.md`
 - `.agents/skills/rhoai-certificate-management/SKILL.md`
 - `.agents/skills/rhoai-observability/SKILL.md`
 - `.agents/skills/rhoai-logs-and-audit-records/SKILL.md`

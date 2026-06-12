@@ -5,19 +5,19 @@
 - Stage identifier: `110`
 - Stage family: `1xx AI Platform Foundation`
 - Stage slug: `stage-110-rhoai-base-platform`
-- Concept introduced: End-to-end AI platform foundation — GitOps reconciliation, S3-compatible object storage (ODF MCG), and the RHOAI Operator with a minimal `DataScienceCluster` (Dashboard + Workbenches). All subsequent demo stages build on top of this base.
+- Concept introduced: End-to-end AI platform foundation — GitOps reconciliation, S3-compatible object storage (ODF MCG), and the RHOAI Operator with a minimal shared `DataScienceCluster` (Dashboard + Workbenches + Model Registry + standalone Kueue integration point). All subsequent demo stages build on top of this base.
 - Target audience: Platform engineer, solution architect
 - Enterprise value: Control, governance, portability, compliance, cost (on-premises object storage replaces cloud dependency)
 - Depends on: None (first stage)
 - New components: OpenShift GitOps, ODF MCG, RHOAI Operator, DSCInitialization, DataScienceCluster
 - Existing components reused: Underlying OCP 4.20 cluster on AWS
 - Non-goals:
-  - GPU/accelerator setup (deferred to a future `stage-130-gpu-accelerator-foundation`)
+  - GPU/accelerator setup (implemented separately by `stage-120-gpu-as-a-service`)
   - Full ODF StorageCluster/Ceph block and file storage
-  - RHOAI model serving, Kueue, Ray, pipelines, TrustyAI (all deferred)
+  - RHOAI model serving, Ray, pipelines, TrustyAI (all deferred)
 - Included access layer (added after initial deploy): htpasswd IdP (`ai-admin`, `ai-developer`), `demo-sandbox` data science project, Contributor RBAC, and an OBC-backed S3 connection. Model registry is enabled in the base DSC.
 
-**Scope note:** The stage taxonomy lists stages 110–140 as separate foundation slices. This stage deliberately compresses that range into a single deployable unit following the Red Hat AI Accelerator reference pattern. The rationale: a standalone GitOps bootstrap with no AI platform has no demo value. The minimum demonstrable foundation is GitOps + object storage + RHOAI base. Stages 120+ in the taxonomy are superseded by this stage's implementation scope.
+**Scope note:** Stage 110 owns shared platform resources that later stages depend on, including the single rendered `DataScienceCluster`. Later stages must not render competing copies of shared platform resources.
 
 ## Acceptance Criteria
 
@@ -95,7 +95,7 @@
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/operator-group.yaml` | OperatorGroup | RHOAI 3.4 install guide | `oc get operatorgroup -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/subscription.yaml` | Subscription (rhods-operator) | RHOAI 3.4 install guide | `oc get csv -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/dsc-init.yaml` | DSCInitialization | RHOAI 3.4 Managing RHOAI docs | `oc get dscinitialization default-dsci` |
-| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed) | RHOAI 3.4 Managing RHOAI + Model registry docs | `oc get datasciencecluster default-dsc` |
+| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed, kueue Unmanaged, kserve Removed) | RHOAI 3.4 Managing RHOAI + Model registry + Kueue docs | `oc get datasciencecluster default-dsc` |
 | `gitops/stage-110-rhoai-base-platform/access/base/namespace-demo-sandbox.yaml` | Namespace (DS project) | rhoai-project-workflows | `oc get ns demo-sandbox -o jsonpath='{.metadata.labels}'` |
 | `gitops/stage-110-rhoai-base-platform/access/base/group-rhoai-developers.yaml` | Group | rhoai-users-groups-access | `oc get group rhoai-developers` |
 | `gitops/stage-110-rhoai-base-platform/access/base/rolebinding-developer-edit.yaml` | RoleBinding (edit) | rhoai-project-workflows | `oc get rolebinding rhoai-developers-edit -n demo-sandbox` |
@@ -144,7 +144,7 @@
 |------|------|------------|
 | OpenShift GitOps channel for OCP 4.20 | resolved | Verified live on cluster-klvxt (OCP 4.20.24): pinned to `gitops-1.20`; operator v1.20.4 installed |
 | ODF StorageSystem MCG-only CR fields | resolved | ODF 4.20 removed the `odf.openshift.io` StorageSystem CRD; replaced with `StorageCluster` (`ocs.openshift.io/v1`) + `multiCloudGateway.reconcileStrategy: standalone`, verified against live CRD |
-| GPU accelerator foundation | deferred | Future stage `stage-130-gpu-accelerator-foundation` (NFD + GPU Operator + AWS GPU MachineSet) |
+| GPU-as-a-Service | implemented separately | Stage `stage-120-gpu-as-a-service` (NFD + GPU Operator + AWS GPU MachineSet + Kueue queues + hardware profiles) |
 | Identity provider / access groups | deferred | Future stage in 1xx family |
 | RHOAI component enablement (kserve, kueue, ray, etc.) | deferred | Each component added by its dedicated 2xx/4xx stage via DSC patch |
 | ODF full StorageCluster | deferred | Added only if a future stage needs block/file storage |

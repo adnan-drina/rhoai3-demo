@@ -31,8 +31,7 @@ still hit.
   `odf.openshift.io` StorageSystem API. The MCG-only path is a `StorageCluster`
   with `multiCloudGateway.reconcileStrategy: standalone`.
 - **`field not declared in schema` on DataScienceCluster** — the manifest must
-  use `datasciencecluster.opendatahub.io/v2`; v1 lacks the 3.4 component fields
-  and fails under ServerSideApply.
+  use `datasciencecluster.opendatahub.io/v2`; v1 lacks the 3.4 component fields.
 - **A single resource is permanently OutOfSync (e.g. `OCSInitialization`)** — it
   is operator-owned. Do not manage it in GitOps. If it was previously committed,
   clear the orphaned tracking once:
@@ -75,6 +74,95 @@ oc get application stage-110-rhoai-base-platform -n openshift-gitops \
 - **Not a failure.** A stopped workbench carries
   `metadata.annotations.kubeflow-resource-stopped` with a timestamp; its RWO PVC
   persists. Start it again from the dashboard.
+
+## Stage 120: GPU-as-a-Service
+
+### Stage 120 Application is OutOfSync
+
+- **MachineSet replica drift after scale-down is expected.** The Application
+  ignores `MachineSet.spec.replicas`, so intentional manual scale-down should
+  not be self-healed. If other MachineSet fields drift, inspect the sync error
+  before changing live resources.
+- **CRD not found for Kueue or hardware profiles** usually means the operator
+  has not finished installing. The Application has retry/backoff and
+  `SkipDryRunOnMissingResource=true`; wait for CSVs before assuming the
+  manifest is wrong.
+
+```bash
+oc get application stage-120-gpu-as-a-service -n openshift-gitops \
+  -o jsonpath='{.status.operationState.message}{"\n"}'
+```
+
+### GPU MachineSet has no ready worker
+
+- **Likely causes:** AWS quota for `g6e.2xlarge`, wrong availability zone,
+  stale AMI/providerSpec from another cluster, or insufficient cloud capacity.
+- **Checks:** inspect Machine and MachineSet events:
+
+```bash
+oc get machineset -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu
+oc get machine -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu
+oc describe machineset -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu
+```
+
+Do not reuse the committed `cluster-klvxt` MachineSet in a fresh environment
+without regenerating provider fields from that environment.
+
+### NVIDIA ClusterPolicy is not ready
+
+- **Likely causes:** GPU node not ready, driver daemonset cannot tolerate the
+  GPU taint, entitlement/pull-secret issue, or incompatible node/kernel state.
+- **Checks:**
+
+```bash
+oc get clusterpolicy gpu-cluster-policy -o jsonpath='{.status.state}{"\n"}'
+oc get pods -n nvidia-gpu-operator -o wide
+oc get nodes -l nvidia.com/gpu.present=true
+```
+
+The expected ready state is `ready`.
+
+### GPU allocatable count is not four
+
+- **Expected:** one L40S node advertises four `nvidia.com/gpu` units because
+  Stage 120 configures NVIDIA device-plugin time-slicing.
+- **Checks:**
+
+```bash
+oc get nodes -l nvidia.com/gpu.present=true \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.allocatable.nvidia\.com/gpu}{"\n"}{end}'
+oc get configmap time-slicing-config -n nvidia-gpu-operator -o yaml
+```
+
+If the node advertises one GPU, confirm the `ClusterPolicy` references the
+`time-slicing-config` ConfigMap and wait for the device-plugin pods to roll.
+
+### Kueue queues are not Active
+
+- **Likely causes:** Kueue operator still installing, invalid ResourceFlavor
+  reference, or namespace not labeled for Kueue-managed workloads.
+- **Checks:**
+
+```bash
+oc get clusterqueue
+oc get localqueue -n demo-sandbox
+oc get namespace demo-sandbox -o jsonpath='{.metadata.labels.kueue\.openshift\.io/managed}{"\n"}'
+```
+
+ClusterQueues and LocalQueues should report condition `Active=True`.
+
+### Hardware profiles are missing in the dashboard
+
+- **Checks:** confirm the HardwareProfile objects exist in
+  `redhat-ods-applications` and that the RHOAI dashboard is healthy:
+
+```bash
+oc get hardwareprofile -n redhat-ods-applications
+oc get route rhods-dashboard -n redhat-ods-applications
+```
+
+If the objects exist but the UI is stale, refresh the dashboard session or log
+out and back in.
 
 ---
 

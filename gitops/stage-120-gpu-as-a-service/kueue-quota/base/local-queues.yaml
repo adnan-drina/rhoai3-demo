@@ -3,7 +3,7 @@
 # applies the kueue.x-k8s.io/queue-name label to workloads that select the
 # profile. The namespace must be labeled kueue.openshift.io/managed=true.
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: lq-cpu-default
@@ -14,7 +14,7 @@ metadata:
 spec:
   clusterQueue: cq-cpu-default
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: lq-gpu-shared
@@ -25,7 +25,7 @@ metadata:
 spec:
   clusterQueue: cq-gpu-shared
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: lq-gpu-priority
@@ -36,7 +36,7 @@ metadata:
 spec:
   clusterQueue: cq-gpu-priority
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
 metadata:
   name: lq-gpu-reserved-demo

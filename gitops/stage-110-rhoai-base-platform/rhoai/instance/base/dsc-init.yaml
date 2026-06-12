@@ -2,7 +2,7 @@ apiVersion: dscinitialization.opendatahub.io/v1
 kind: DSCInitialization
 metadata:
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "2"
   name: default-dsci
 spec:

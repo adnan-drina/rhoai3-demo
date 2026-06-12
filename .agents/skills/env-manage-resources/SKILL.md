@@ -32,10 +32,9 @@ material only.
 
 ## Reimplementation Status
 
-The active implementation is being rewritten. No active resource-management
-scripts or current GitOps Applications exist yet. Treat the resource inventory,
-stage names, and legacy command references in this skill as reference material
-for rebuilding the workflow, not as active-project instructions.
+The active implementation is being rewritten. Stage 120 currently owns GPU
+MachineSet scaling guidance. Model-serving resource management remains planned
+until Stage 220 and Stage 240 create active model-serving and MaaS resources.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.
@@ -59,7 +58,7 @@ oc get isvc -n maas
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
 
 # ArgoCD sync status
-for app in stage-130-gpu-accelerator-foundation stage-220-private-model-serving; do
+for app in stage-120-gpu-as-a-service stage-220-model-serving-foundation; do
   echo "$app: $(oc get application $app -n openshift-gitops -o jsonpath='{.status.sync.status}/{.status.health.status}')"
 done
 ```
@@ -82,7 +81,7 @@ oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
 | Model | GPU | Purpose | Safe to stop? |
 |-------|-----|---------|---------------|
 | `nemotron-3-nano-30b-a3b` | 1× `g6e.2xlarge` per replica | Primary private MaaS GenAI model | Private GenAI, RAG, MCP, guardrails, Playground, and private evals stop |
-| OpenAI `gpt-5` external MaaS model | 0 cluster GPU | Approved external model path | MaaS external calls fail only if the MaaS model, policy, or provider credentials are removed |
+| OpenAI `gpt-5.4-nano` external MaaS model | 0 cluster GPU | Approved cost-optimized external model path | MaaS external calls fail only if the MaaS model, policy, or provider credentials are removed |
 | `hap-detector` | 0 (CPU) | HAP guardrail | Guardrails degrade |
 | `prompt-injection-detector` | 0 (CPU) | Prompt injection guardrail | Guardrails degrade |
 | `face-recognition` | 0 (CPU) | YOLO face detection | Face recognition stops |
@@ -109,7 +108,7 @@ oc get nodes -l node-role.kubernetes.io/gpu --watch
 ```bash
 oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge -p '{"spec":{"replicas":0}}'
 sleep 60
-oc scale machineset $(oc get machineset -n openshift-machine-api --no-headers | grep g6e | awk '{print $1}') -n openshift-machine-api --replicas=0
+oc scale machineset -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu --replicas=0
 ```
 
 ## Scale Back Up
@@ -134,7 +133,7 @@ automatically unless `RHOAI_SKIP_GPU_SCALE=true` was set. Recreate that behavior
 before relying on this command path:
 
 ```bash
-./stage-220-private-model-serving/deploy.sh
+./stage-220-model-serving-foundation/deploy.sh
 ```
 
 ## Restore Full Git State
@@ -143,11 +142,11 @@ To bring everything back to the Git-declared state, sync via ArgoCD:
 
 ```bash
 # Sync a specific app
-oc patch application stage-220-private-model-serving -n openshift-gitops \
+oc patch application stage-220-model-serving-foundation -n openshift-gitops \
   --type merge -p '{"operation":{"sync":{}}}'
 
 # Or sync both
-for app in stage-130-gpu-accelerator-foundation stage-220-private-model-serving; do
+for app in stage-120-gpu-as-a-service stage-220-model-serving-foundation; do
   oc patch application "$app" -n openshift-gitops --type merge -p '{"operation":{"sync":{}}}'
 done
 ```
@@ -160,7 +159,7 @@ After any scaling operation, verify the state:
 
 ```bash
 # Check ArgoCD shows expected status
-oc get application stage-130-gpu-accelerator-foundation stage-220-private-model-serving -n openshift-gitops \
+oc get application stage-120-gpu-as-a-service stage-220-model-serving-foundation -n openshift-gitops \
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness
@@ -176,6 +175,6 @@ oc get nodes -l node-role.kubernetes.io/gpu
 | Action | ArgoCD Status | Auto-heal? |
 |--------|---------------|------------|
 | Manual scale down model | OutOfSync | No (selfHeal=false) |
-| Manual scale down MachineSet | OutOfSync | No (selfHeal=false) |
+| Manual scale down MachineSet | Synced or ignored diff | No; Stage 120 ignores `MachineSet.spec.replicas` |
 | Push Git change to GPU or model-serving stage | Auto-syncs | Yes (automated=true) |
 | Click Sync in ArgoCD UI | Synced | Restores Git state |

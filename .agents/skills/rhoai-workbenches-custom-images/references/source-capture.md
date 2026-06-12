@@ -27,7 +27,8 @@ Product baseline: `docs/PLATFORM_BASELINE.md`.
 | `docs/PLATFORM_BASELINE.md` | Active RHOAI/OCP baseline and source hierarchy |
 | `AGENTS.md` | OpenShift safety guard and GitOps operating constraints |
 | `.agents/skills/rhoai-certificate-management/SKILL.md` | Custom CA bundle behavior for workbenches |
-| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | Optional NVIDIA GPU hardware profile and accelerator context |
+| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | Optional NVIDIA GPU accelerator readiness context |
+| `.agents/skills/rhoai-hardware-profiles/SKILL.md` | Optional hardware profile and recommended accelerator context |
 | `.agents/skills/rhoai-distributed-workloads/SKILL.md` | Optional Kueue queueing context |
 
 ## Source Boundaries

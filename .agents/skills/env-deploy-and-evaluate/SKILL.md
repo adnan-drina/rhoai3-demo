@@ -27,10 +27,9 @@ active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 ## Reimplementation Status
 
-The active implementation is being rewritten. No active bootstrap, deploy,
-validate, or demo-flow scripts exist yet. Treat the deployment sequence and
-legacy command references in this skill as reference material for rebuilding
-the workflow, not as runnable active-project instructions.
+The active implementation is being rewritten. Stage 110 and Stage 120 have
+active deploy and validate wrappers. Later stages remain planned until their
+root-level stage folders and Argo CD Applications are created.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.
@@ -84,8 +83,8 @@ stage `PLAN.md` documents a different dependency.
 
 | Node | GPUs | Active Model | Role |
 |------|------|-------------|------|
-| g6e.2xlarge | 1 per node | `nemotron-3-nano-30b-a3b` (FP8 modelcar) | Private GenAI, RAG, MCP, guardrails, Playground |
-| External provider | 0 | OpenAI `gpt-5` through MaaS | Approved external reasoning/judge path when policy allows |
+| g6e.2xlarge | 1 L40S node, time-sliced to 4 units | `nemotron-3-nano-30b-a3b` (FP8 modelcar) in later stages | Private GenAI serving and benchmarking |
+| External provider | 0 | OpenAI `gpt-5.4-nano` through MaaS | Cost-optimized approved external model path when policy allows |
 
 ### GitOps Deployment Pattern
 
@@ -111,7 +110,8 @@ After the demo-flow script has been recreated and all stages pass:
 
 | Stage | Name | Status | Duration |
 |------|------|--------|----------|
-| 110 | GitOps Foundation | PASS | Xm |
+| 110 | RHOAI Base Platform | PASS | Xm |
+| 120 | GPU-as-a-Service | PASS | Xm |
 | ... | ... | ... | ... |
 | E2E | Demo Flow | PASS | Xm |
 ```

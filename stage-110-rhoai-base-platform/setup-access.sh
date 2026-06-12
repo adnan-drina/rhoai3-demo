@@ -68,10 +68,13 @@ IDP_JSON='{"name":"demo-htpasswd","mappingMethod":"claim","type":"HTPasswd","htp
 if oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}' 2>/dev/null | grep -qw demo-htpasswd; then
   echo "✓ demo-htpasswd identity provider already present"
 else
-  # No identity providers exist on this demo cluster, so set the array. kubeadmin
-  # remains as the cluster-admin recovery path.
-  oc patch oauth cluster --type=merge \
-    -p "{\"spec\":{\"identityProviders\":[${IDP_JSON}]}}"
+  if [[ -z "$(oc get oauth cluster -o jsonpath='{.spec.identityProviders}' 2>/dev/null || true)" ]]; then
+    oc patch oauth cluster --type=json \
+      -p "[{\"op\":\"add\",\"path\":\"/spec/identityProviders\",\"value\":[${IDP_JSON}]}]"
+  else
+    oc patch oauth cluster --type=json \
+      -p "[{\"op\":\"add\",\"path\":\"/spec/identityProviders/-\",\"value\":${IDP_JSON}}]"
+  fi
   echo "✓ demo-htpasswd identity provider added (kubeadmin retained)"
 fi
 
@@ -114,7 +117,6 @@ metadata:
   namespace: demo-sandbox
   labels:
     opendatahub.io/dashboard: "true"
-    opendatahub.io/managed: "true"
   annotations:
     opendatahub.io/connection-type-ref: s3
     openshift.io/display-name: "demo-sandbox object storage"

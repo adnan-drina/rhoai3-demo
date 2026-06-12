@@ -1,84 +1,123 @@
 # Stage 120: GPU-as-a-Service
 
 **Theme:** AI Platform Foundation
-**Concept:** Turn scarce, expensive GPU hardware into governed, self-service capacity — data scientists request GPUs through simple hardware profiles, and Kueue handles admission, quota, fair-share, and priority underneath.
+**Concept:** Make scarce GPU capacity available as a governed, self-service
+platform capability.
 
 ---
 
 ## Why This Matters
 
-**GPUs are the scarcest, most expensive resource in any AI platform.** A single accelerator node costs more per hour than a rack of CPU workers, and demand always exceeds supply. The naive answers — first-come-first-served, manual booking spreadsheets, or static per-team reservations — either leave expensive silicon idle or block the work that matters most. Enterprises need GPUs to behave like a *managed shared service*: every team gets fair access, critical jobs can jump the queue, and reserved capacity is honored without a human in the loop.
+Before teams can build or serve AI models, the platform must make scarce GPU
+capacity available in a controlled way. A GPU worker costs materially more than
+a CPU worker, and demand will always exceed supply once multiple teams start
+building AI workloads.
 
-**Self-service without governance is chaos; governance without self-service is a ticket queue.** The platform has to give data scientists a one-click "give me a GPU" experience while the platform team retains control over *who* gets *how much*, *when*, and *at what priority*. That is exactly the gap Kueue fills: it is a Kubernetes-native job queueing and quota system that admits workloads against declared quotas, lends idle capacity between teams, and preempts lower-priority work when a high-priority job arrives.
+The enterprise problem is not just "add a GPU node." Platform teams need to
+decide who can use GPUs, how much capacity each team can consume, which work
+gets admitted first, and how to shut capacity down when the demo or project is
+idle. Data scientists should not have to understand node taints, tolerations,
+device-plugin labels, or queue objects to get started.
 
-**Red Hat OpenShift AI makes this consumable.** Raw Kueue queues and GPU resource accounting are powerful but low-level. RHOAI **hardware profiles** wrap a queue and a resource shape into a named choice a user simply selects when creating a workbench or deploying a model — "GPU Shared," "GPU Priority," "GPU Reserved." The complexity (ResourceFlavors, ClusterQueues, cohorts, priorities, node placement, tolerations) stays with the platform team, expressed as GitOps.
+This stage turns the GPU into a platform service. OpenShift and the NVIDIA GPU
+Operator expose the hardware. Red Hat build of Kueue turns that hardware into
+quota-controlled capacity. Red Hat OpenShift AI hardware profiles present that
+capacity as simple dashboard choices: CPU Default, GPU Shared, GPU Priority, and
+GPU Reserved.
 
 ---
 
 ## What Enables It
 
-This stage builds the GPU-as-a-Service stack on top of the stage-110 base platform.
+This stage builds the GPU-as-a-Service layer on top of the Stage 110 base
+platform.
 
-### GPU capacity (NFD + NVIDIA GPU Operator)
+### GPU Worker Capacity
 
-- **Node Feature Discovery (NFD)** labels nodes with their hardware features so the GPU operator knows where GPUs live.
-- **NVIDIA GPU Operator** installs drivers, the container toolkit, and the device plugin that exposes GPUs to Kubernetes as the `nvidia.com/gpu` resource, governed by an NVIDIA `ClusterPolicy`.
-- **GPU node:** an AWS `g6e.2xlarge` worker (1× NVIDIA **L40S**, 48 GB), provisioned by a Git-tracked MachineSet derived from a live worker MachineSet.
+The demo uses one AWS `g6e.2xlarge` GPU worker by default. This instance type
+provides one NVIDIA L40S GPU with 48 GB of GPU memory. The MachineSet is tracked
+in GitOps so a fresh environment can create the GPU worker consistently.
 
-### GPU time-slicing — sharing one card across many users
+Default node count is one GPU worker. Operators can manually scale the GPU
+MachineSet to zero between sessions to control cost; the Argo CD Application
+ignores `MachineSet.spec.replicas` drift so intentional scale-down is not
+self-healed back to one.
 
-A single physical GPU can only be allocated to one pod at a time by default. **Time-slicing** tells the NVIDIA device plugin to advertise each physical GPU as several *schedulable replicas* — here, **1 L40S → 4 `nvidia.com/gpu` units**. The GPU's compute is then interleaved (time-shared) across the pods that land on those replicas.
+### NVIDIA GPU Enablement
 
-This is what makes the four-queue demo possible on one card: the four queues draw from a pool of 4 GPU units instead of fighting over 1. Time-slicing trades isolation for density — it shares compute without memory partitioning — which is ideal for demos, development, and bursty inference, and is the documented entry point before MIG-based hardware partitioning.
+Node Feature Discovery labels nodes with hardware features. The NVIDIA GPU
+Operator installs the driver stack, container toolkit, GPU feature discovery,
+DCGM exporter, and device plugin. The stage configures GPU time-slicing so one
+physical L40S is advertised as four schedulable `nvidia.com/gpu` units.
 
-- NVIDIA GPU Operator — GPU sharing / time-slicing: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html
-- Red Hat OpenShift AI 3.4 — working with accelerators: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_accelerators/
+Time-slicing is a demo and development density mechanism. It shares compute
+without memory isolation. It is useful for showing multiple self-service
+profiles on a single card, but it is not presented as strict production
+isolation.
 
-### Workload management (Red Hat build of Kueue)
+### Queue-Based GPU Governance
 
-- **Red Hat build of Kueue** (a standalone operator; cert-manager is a prerequisite) provides admission, quota, borrowing, and priority. RHOAI integrates with it by setting the `DataScienceCluster` `kueue` component to **`Unmanaged`** (the embedded `Managed` Kueue is deprecated).
-- **Quota objects:** one CPU and one GPU `ResourceFlavor`, four `ClusterQueue`s, four `LocalQueue`s, and a `WorkloadPriorityClass`. The GPU node placement (node label + taint toleration) lives in the GPU ResourceFlavor — Kueue-enabled hardware profiles intentionally carry no node selectors.
-- Docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_resources/
+Red Hat build of Kueue provides admission control and quota. RHOAI integrates
+with the standalone Kueue operator through the Stage 110-owned
+`DataScienceCluster` by setting `kueue.managementState: Unmanaged`.
 
-### The four queue experiences
+This stage creates:
 
-| Hardware profile | Queue | GPU quota | Behavior |
-|---|---|---|---|
-| **CPU Default** | `cq-cpu-default` | none | Everyone can start CPU-only workbenches |
-| **GPU Shared – 1× NVIDIA** | `cq-gpu-shared` | 2 (low priority, borrowable) | Request a GPU when shared capacity is free |
-| **GPU Priority – 1× NVIDIA** | `cq-gpu-priority` | 1 (high priority, preempts) | Critical jobs jump the queue |
-| **GPU Reserved – Demo Team** | `cq-gpu-reserved-demo` | 1 (no lending) | Reserved team quota, no booking app |
+- one CPU `ResourceFlavor`
+- one GPU `ResourceFlavor` targeting GPU-labeled nodes and tolerating the GPU
+  taint
+- four `ClusterQueue` objects
+- four `LocalQueue` objects in `demo-sandbox`
+- one Kueue `WorkloadPriorityClass` for future priority experiments
 
-Shared and Priority share a cohort, so they can borrow idle capacity from each other and Priority can preempt Shared; Reserved is isolated to simulate a true reservation. Quotas sum to the 4 time-sliced units.
+The initial queue design is intentionally non-preemptive because RHOAI
+workbenches are not suspendable. The "GPU Priority" profile is a dedicated
+quota lane, not a preemption demonstration.
 
-### Model serving (KServe)
+### RHOAI Hardware Profiles
 
-- **KServe** is enabled on the stage-110 `DataScienceCluster` (`kserve: Managed`) in **RawDeployment** mode — the only supported mode in RHOAI 3.4, so no Service Mesh or Serverless dependency. The **vLLM NVIDIA GPU runtime** serves the model.
-- **Outcome:** a user selects the NVIDIA **Nemotron** model (`nemotron-3-nano-30b-a3b`, served from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`) and deploys it onto a GPU hardware profile.
-- Docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/serving_models/
+Hardware profiles turn queue and resource choices into dashboard-friendly
+options. Users select a profile; RHOAI adds the queue binding to the workload.
+The low-level scheduling authority remains in Kueue `ResourceFlavor` and
+`LocalQueue` resources.
+
+| Hardware profile | Backing queue | GPU quota | User-facing intent |
+|---|---|---:|---|
+| CPU Default | `lq-cpu-default` | 0 | CPU-only workbench or small job |
+| GPU Shared - 1x NVIDIA | `lq-gpu-shared` | 2 | Shared GPU capacity when available |
+| GPU Priority - 1x NVIDIA | `lq-gpu-priority` | 1 | Dedicated higher-importance lane |
+| GPU Reserved - Demo Team | `lq-gpu-reserved-demo` | 1 | Reserved demo-team capacity |
 
 ---
 
 ## Architecture
 
+```text
+AWS GPU MachineSet (g6e.2xlarge, 1x L40S, default replicas=1)
+   |
+   v
+NFD Operator -> node hardware labels
+   |
+   v
+NVIDIA GPU Operator -> driver, toolkit, GFD, DCGM, device plugin
+   |
+   v
+time-slicing: 1 physical GPU -> 4 schedulable nvidia.com/gpu units
+   |
+   v
+Red Hat build of Kueue -> ResourceFlavor -> ClusterQueue -> LocalQueue
+   |
+   v
+RHOAI Hardware Profiles -> CPU Default / GPU Shared / GPU Priority / GPU Reserved
+   |
+   v
+Data scientist selects governed capacity from the RHOAI dashboard
 ```
-GPU Nodes (g6e.2xlarge, 1× L40S)
-   │  labeled by
-   ▼
-NFD Operator ──▶ NVIDIA GPU Operator ──▶ ClusterPolicy + device-plugin time-slicing (1 GPU → 4×)
-                                              │ exposes nvidia.com/gpu (×4)
-                                              ▼
-Red Hat build of Kueue (+ cert-manager) ── DSC kueue: Unmanaged
-   │
-   ▼
-ResourceFlavor (gpu-l40s) ──▶ 4× ClusterQueue ──▶ 4× LocalQueue
-                                              │  bound by scheduling.kueue.localQueueName
-                                              ▼
-4× RHOAI Hardware Profile (default, gpu-shared, gpu-priority, gpu-reserved-demo)
-   │  selected in the dashboard
-   ▼
-Workbench   |   Model deployment (KServe RawDeployment + vLLM) → Nemotron from registry
-```
+
+Stage 220 uses this capacity to prove model serving with a temporary Nemotron
+smoke test and a user-led dashboard deployment. Stage 230 measures the model
+performance baseline. Stage 240 exposes validated model access through
+Models-as-a-Service.
 
 ---
 
@@ -86,9 +125,11 @@ Workbench   |   Model deployment (KServe RawDeployment + vLLM) → Nemotron from
 
 | Source | Role |
 |---|---|
-| [RHOAI 3.4 — Working with accelerators](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_accelerators/) | NFD, GPU operator, hardware profiles |
-| [RHOAI 3.4 — Managing resources (Kueue)](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_resources/) | Kueue integration, quota, queues |
-| [RHOAI 3.4 — Serving models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/serving_models/) | KServe RawDeployment, vLLM runtime |
-| [NVIDIA GPU Operator — GPU sharing / time-slicing](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html) | Time-slicing mechanism |
-| [redhat-cop/gitops-catalog — gpu-operator-certified](https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified) | GitOps reference implementation |
+| [RHOAI 3.4 - Working with accelerators](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index) | NVIDIA GPU enablement and hardware profiles |
+| [RHOAI 3.4 - Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) | Kueue integration posture |
+| [RHOAI 3.4 - Managing distributed workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-distributed-workloads_managing-rhoai) | ResourceFlavor, ClusterQueue, LocalQueue concepts |
+| [OCP 4.20 - Machine management](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/machine_management/index) | AWS MachineSet management |
+| [OCP 4.20 - Node Feature Discovery](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/specialized_hardware_and_driver_enablement/index#psap-node-feature-discovery-operator) | NFD operator |
+| [redhat-cop/gitops-catalog - gpu-operator-certified](https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified) | GitOps operator/instance reference pattern |
+| [redhat-cop/gitops-catalog - nfd](https://github.com/redhat-cop/gitops-catalog/tree/main/nfd) | GitOps NFD reference pattern |
 | `docs/PLATFORM_BASELINE.md` | Active product version targets |

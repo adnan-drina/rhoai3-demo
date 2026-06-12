@@ -61,14 +61,15 @@ Review points:
 
 ```text
 Accelerator identifier: nvidia.com/gpu
-Recommended hardware profile: NVIDIA L4 single GPU
+Recommended hardware profile: NVIDIA L40S queue-backed GPU profile
 ```
 
 Review points:
 
 - Use accelerator metadata only after GPU support is enabled.
 - Match the identifier to the active cluster.
-- Pair hardware profile details with `rhoai-nvidia-gpu-accelerators`.
+- Pair hardware profile details with `rhoai-hardware-profiles`; use
+  `rhoai-nvidia-gpu-accelerators` only for GPU readiness.
 
 ## Smoke-Test Acceptance
 

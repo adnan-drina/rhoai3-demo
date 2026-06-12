@@ -92,10 +92,10 @@ Review that each profile:
 - `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, and
   flow-control details are reviewed with `rhoai-distributed-inference-llmd`.
 - The private model requests one `nvidia.com/gpu` per replica.
-- OpenAI `gpt-5` is treated as an approved external MaaS model and does not
+- OpenAI `gpt-5.4-nano` is treated as an approved external MaaS model and does not
   influence GPU node sizing.
-- Before implementing GPT-5 in MaaS, verify the active MaaS gateway supports
-  the OpenAI API surface required by GPT-5.
+- Before implementing it in MaaS, verify the active MaaS gateway supports the
+  OpenAI API surface required by the selected model.
 
 ## Serving Runtime Review
 

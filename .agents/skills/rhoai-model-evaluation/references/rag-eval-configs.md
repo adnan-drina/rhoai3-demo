@@ -69,7 +69,7 @@ improvement is due to RAG, not different questions.
 
 | Field | Value |
 |-------|-------|
-| Model | OpenAI `gpt-5` through MaaS, when approved external processing is allowed |
+| Model | OpenAI `gpt-5.4-nano` through MaaS, when approved external processing is allowed |
 | Endpoint | MaaS OpenAI-compatible endpoint for the approved external model |
 | Transport | MaaS, with centralized credentials, subscription policy, rate limits, token limits, and telemetry |
 

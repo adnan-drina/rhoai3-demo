@@ -31,7 +31,8 @@
 | `docs/PLATFORM_BASELINE.md` | Active RHOAI/OCP baseline and source hierarchy |
 | `AGENTS.md` | OpenShift safety guard and GitOps operating constraints |
 | `.agents/skills/rhoai-self-managed-installation/SKILL.md` | KServe and model serving component install boundary |
-| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | NVIDIA-only accelerator and hardware profile policy |
+| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | NVIDIA-only accelerator readiness policy |
+| `.agents/skills/rhoai-hardware-profiles/SKILL.md` | Hardware profile and recommended accelerator tag policy |
 | `.agents/skills/rhoai-project-scoped-resources/SKILL.md` | Project-scoped serving runtime template boundary |
 | `.agents/skills/rhoai-dashboard-customization/SKILL.md` | Dashboard feature visibility flags |
 | `.agents/skills/project-gitops-authoring/SKILL.md` | GitOps authoring conventions for manifests |

@@ -104,7 +104,7 @@ Do not approve a MaaS change when:
 
 - a README claims governed model access but GitOps lacks matching
   subscription and authorization policy
-- the implementation bypasses MaaS for shared OpenAI `gpt-5` demo access
+- the implementation bypasses MaaS for shared OpenAI `gpt-5.4-nano` demo access
   without an explicit documented exception
 - provider API keys or MaaS API keys appear in repository files
 - token limits are absent from a model subscription

@@ -2,19 +2,16 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Stage 120: GPU-as-a-Service.
-# Phase A — operator layer (this list). Phase B resources (NFD instance, GPU
-# ClusterPolicy + time-slicing, DSC patch, Kueue quota, hardware profiles, vLLM
-# serving) are added after the operators install and their CRD schemas are
-# verified live, per the GPU/Kueue skills.
 # cert-manager is a prerequisite for the Red Hat build of Kueue operator. It is
-# already present on this cluster (RHOAI/Service Mesh dependency) and OLM installs
-# it automatically as a Kueue dependency, so stage-120 verifies it rather than
-# installing it (avoids a duplicate OperatorGroup conflict).
+# already present on this cluster and OLM installs it automatically as a Kueue
+# dependency, so stage-120 verifies it rather than declaring a duplicate
+# OperatorGroup.
 resources:
   - kueue/operator
   - nfd/operator
   - nfd/instance/base
   - gpu-operator/operator
   - gpu-operator/instance/base
+  - machineset/base
   - kueue-quota/base
   - hardware-profiles/base

@@ -18,17 +18,31 @@ Completed: GitOps bootstrap, ODF MCG (S3 verified), RHOAI 3.4 (dashboard, workbe
 | Least-privilege role for Argo CD application-controller | low | Bootstrap grants `cluster-admin` to `openshift-gitops-argocd-application-controller` (`gitops/bootstrap/overlays/demo/argocd-cluster-admin.yaml`); replace with a scoped role |
 | Per-project admin RBAC for future projects | low | `rhods-admins` is bound `admin` per project (currently `demo-sandbox` only); each new project needs its own binding, by design |
 
+## Stage 120: Status — IN PROGRESS
+
+Current scope: GPU-as-a-Service. Stage 120 owns the GPU MachineSet, NFD,
+NVIDIA GPU Operator, Kueue operator and quota resources, and RHOAI hardware
+profiles. It does not enable model serving; Stage 220 owns that transition.
+
+### Open / deferred from Stage 120
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Fresh-environment MachineSet regeneration | high | Current MachineSet is specific to `cluster-klvxt`; each new AWS demo environment must regenerate the providerSpec from a live worker MachineSet |
+| GPU cost control | high | Use the documented manual scale-to-zero path when the demo is idle |
+| Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
+| MIG partitioning | low | Time-slicing is sufficient for this demo stage |
+
 ## Candidate Future Stages
 
 These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-authoring/references/stage-taxonomy.md`.
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-130-gpu-accelerator-foundation` | AI Platform Foundation | NFD + GPU Operator + AWS GPU MachineSet + RHOAI hardware profile |
-| `stage-210-model-catalog-and-registry` | Production GenAI | Model catalog, registry, Red Hat validated models |
-| `stage-220-private-model-serving` | Production GenAI | vLLM model serving via RHOAI model-serving platform |
-| `stage-230-models-as-a-service` | Production GenAI | MaaS governed access to internal and external model endpoints |
-| `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
+| `stage-220-model-serving-foundation` | Production GenAI | Enable model serving, run temporary Nemotron smoke validation, and support user-led dashboard deployment |
+| `stage-230-model-performance-baseline` | Production GenAI | GuideLLM-style model performance baseline and breakpoint evidence |
+| `stage-240-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
+| `stage-250-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
 | `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |

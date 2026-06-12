@@ -46,7 +46,9 @@ component owner skill and active CRD/schema verification for detailed fields:
   user-facing project-scoped resource handoff workflow
 - `rhoai-workbenches-custom-images` for workbench image content and dashboard
   discovery
-- `rhoai-nvidia-gpu-accelerators` for hardware profile and accelerator intent
+- `rhoai-hardware-profiles` for hardware profile schema, lifecycle, and
+  recommended accelerator tags
+- `rhoai-nvidia-gpu-accelerators` for accelerator infrastructure intent
 - `rhoai-model-serving-platform` for KServe `ServingRuntime` details and
   model-serving platform behavior
 

@@ -20,7 +20,7 @@
 | Deploying models | Standard model deployment workflow boundary before choosing llm-d |
 | Govern LLM access with Models-as-a-Service | MaaS governance layer for llm-d endpoints |
 | Managing resources: dashboard customization | Dashboard feature flags related to llm-d, Gateway discovery, and YAML preview |
-| Working with accelerators | NVIDIA GPU and hardware profile prerequisite context |
+| Working with accelerators | NVIDIA GPU and hardware profile prerequisite context; route profile lifecycle details to `rhoai-hardware-profiles` |
 | Red Hat OpenShift AI API tiers | API stability review for alpha APIs and preview features |
 
 ## Source Boundaries

@@ -4,10 +4,11 @@ metadata:
   name: stage-110-rhoai-base-platform
   namespace: openshift-gitops
   labels:
-    app.kubernetes.io/part-of: rhoai-demo
-    rhoai-demo/stage: "110"
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/stage: "110"
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/manifest-generate-paths: gitops/stage-110-rhoai-base-platform
 spec:
   project: rhoai-demo
   source:
@@ -20,9 +21,16 @@ spec:
     namespace: openshift-gitops
   syncPolicy:
     automated:
-      prune: false
+      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - SkipDryRunOnMissingResource=true
-      - ServerSideApply=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

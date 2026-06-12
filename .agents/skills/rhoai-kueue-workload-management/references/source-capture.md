@@ -28,7 +28,8 @@
 | `docs/PLATFORM_BASELINE.md` | Active RHOAI/OCP baseline and source hierarchy |
 | `AGENTS.md` | OpenShift safety guard and GitOps operating constraints |
 | `.agents/skills/rhoai-distributed-workloads/SKILL.md` | Distributed workloads installation prerequisites |
-| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | NVIDIA GPU and hardware profile context |
+| `.agents/skills/rhoai-nvidia-gpu-accelerators/SKILL.md` | NVIDIA GPU readiness context |
+| `.agents/skills/rhoai-hardware-profiles/SKILL.md` | Hardware profile lifecycle and Kueue local queue handoff |
 | `.agents/skills/project-gitops-authoring/SKILL.md` | GitOps authoring and ArgoCD review |
 | `.agents/skills/env-troubleshoot/SKILL.md` | Live troubleshooting boundary |
 

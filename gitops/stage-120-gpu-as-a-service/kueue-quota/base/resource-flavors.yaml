@@ -4,7 +4,7 @@
 # nvidia.com/gpu.present=true. Verified live: MachineSet template labels
 # (cluster-api/accelerator, node-role.kubernetes.io/gpu) do NOT propagate to the
 # node; the taint does, and NFD/GFD labels are the reliable scheduling authority.
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
   name: default-flavor
@@ -13,7 +13,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "4"
 # No nodeLabels: matches any node (used for CPU/memory quota).
 ---
-apiVersion: kueue.x-k8s.io/v1beta1
+apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
 metadata:
   name: gpu-l40s
