@@ -64,5 +64,6 @@ This stage is implemented in phases:
 3. Add subscription, authorization, API key, user-access, and GenAI Playground
    validation flows.
 
-The first phase is active. Model publication and policy resources are added
-only after the MaaS CRDs are present and verified on the live RHOAI 3.4 cluster.
+The first phase is active and validates cleanly on the current RHOAI 3.4
+cluster. The live MaaS API group is `maas.opendatahub.io/v1alpha1`; model
+publication and policy resources should use that schema in the next phase.

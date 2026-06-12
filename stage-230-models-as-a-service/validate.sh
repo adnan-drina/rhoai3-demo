@@ -96,10 +96,6 @@ for flag in modelAsService vLLMDeploymentOnMaaS genAiStudio maasAuthPolicies obs
   check "Dashboard flag enabled: ${flag}" "$R"
 done
 
-CERT_CSV=$(jsonpath "subscription/openshift-cert-manager-operator" "cert-manager-operator" "{.status.installedCSV}")
-[[ "$CERT_CSV" == cert-manager-operator.* ]] && R="pass" || R="installedCSV=${CERT_CSV:-missing}"
-check "cert-manager Operator subscription installed" "$R"
-
 if resource_exists "certmanager/cluster" ""; then
   R="pass"
 else
@@ -107,13 +103,23 @@ else
 fi
 check "cert-manager cluster resource present" "$R"
 
+CERT_READY=0
+for deploy in cert-manager cert-manager-cainjector cert-manager-webhook; do
+  ready=$(jsonpath "deployment/${deploy}" "cert-manager" "{.status.readyReplicas}")
+  if [[ "${ready:-0}" == "1" ]]; then
+    (( CERT_READY++ )) || true
+  fi
+done
+[[ "$CERT_READY" == "3" ]] && R="pass" || R="readyDeployments=${CERT_READY}/3"
+check "cert-manager deployments available" "$R"
+
 RHCL_CSV=$(jsonpath "subscription/rhcl-operator" "openshift-operators" "{.status.installedCSV}")
 [[ "$RHCL_CSV" == rhcl-operator.* ]] && R="pass" || R="installedCSV=${RHCL_CSV:-missing}"
 check "Red Hat Connectivity Link Operator subscription installed" "$R"
 
 for crd in \
   kuadrants.kuadrant.io \
-  authorinoes.operator.authorino.kuadrant.io \
+  authorinos.operator.authorino.kuadrant.io \
   gateways.gateway.networking.k8s.io \
   httproutes.gateway.networking.k8s.io \
   llamastackdistributions.llamastack.io; do
@@ -170,7 +176,7 @@ else
 fi
 check "Kuadrant Ready" "$R"
 
-if crd_exists authorinoes.operator.authorino.kuadrant.io; then
+if crd_exists authorinos.operator.authorino.kuadrant.io; then
   AUTHORINO_TLS=$(jsonpath "authorino/authorino" "kuadrant-system" "{.spec.listener.tls.enabled}")
   [[ "$AUTHORINO_TLS" == "true" ]] && R="pass" || R="tls=${AUTHORINO_TLS:-missing}"
 else

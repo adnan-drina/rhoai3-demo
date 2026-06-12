@@ -86,10 +86,11 @@ Run only after the OpenShift safety guard in `AGENTS.md` is satisfied:
 ```bash
 oc get dsc default-dsc -n redhat-ods-operator -o yaml
 oc get odhdashboardconfig -n redhat-ods-applications
-oc get subscription openshift-cert-manager-operator -n cert-manager-operator
 oc get certmanager cluster
+oc get deployment cert-manager cert-manager-cainjector cert-manager-webhook -n cert-manager
 oc get subscription rhcl-operator -n openshift-operators
 oc get kuadrant kuadrant -n kuadrant-system
+oc get authorino authorino -n kuadrant-system
 oc get gatewayclass
 oc get secret maas-gateway-tls -n openshift-ingress
 oc get gateway maas-default-gateway -n openshift-ingress -o yaml

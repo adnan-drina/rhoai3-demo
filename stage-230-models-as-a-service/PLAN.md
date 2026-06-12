@@ -120,14 +120,15 @@ Read-only schema discovery on `cluster-klvxt` on 2026-06-12:
 |----------|---------------|-----------------|
 | `llminferenceservices.serving.kserve.io` | Present; `v1alpha1` and `v1alpha2` served, `v1alpha2` storage. | Stage 230 should target the live storage version after official-doc and schema review. Do not copy older `v1alpha1` examples blindly. |
 | `llminferenceserviceconfigs.serving.kserve.io` | Present as `serving.kserve.io/v1alpha2`. | Review only if Stage 230 needs custom config resources. |
-| Gateway API `GatewayClass`, `Gateway`, `HTTPRoute` | Present as `gateway.networking.k8s.io/v1`. | MaaS and llm-d gateway resources can be planned, but listener and namespace policy must still be verified. |
-| `kuadrants.kuadrant.io` | Missing before phase-one deploy. | Red Hat Connectivity Link / Kuadrant prerequisites are now represented in GitOps and must be deployed before MaaS model/policy CR authoring. |
-| `maasmodelrefs.models.opendatahub.io` and `maasmodelrefs.maas.opendatahub.io` | Missing. | Official RHOAI 3.4 YAML examples use `models.opendatahub.io`, while the official CRD verification output lists `maas.opendatahub.io`. Resolve from installed CRDs before authoring GitOps. |
-| `maassubscriptions.models.opendatahub.io` and `maassubscriptions.maas.opendatahub.io` | Missing. | Subscription schema checks are deferred until MaaS CRDs are present. |
-| `maasauthpolicies.models.opendatahub.io` and `maasauthpolicies.maas.opendatahub.io` | Missing. | Authorization policy schema checks are deferred until MaaS CRDs are present. |
-| `externalmodels.maas.opendatahub.io` | Missing. | External OpenAI model schema checks are deferred until MaaS CRDs are present. |
-| `tenants.maas.opendatahub.io` | Missing. | Tenant schema checks are deferred until MaaS CRDs are present. |
-| `llamastackdistributions.llamastack.io` | Missing. | Gen AI studio user-facing MaaS experience requires enabling the Llama Stack Operator before validating playground workflows. |
+| Gateway API `GatewayClass`, `Gateway`, `HTTPRoute` | Present as `gateway.networking.k8s.io/v1`; `maas-default-gateway` is live with `maas-gateway-tls` and `maas.apps.cluster-klvxt.klvxt.sandbox279.opentlc.com`. | Use the deploy wrapper to inject the environment hostname into the Argo CD Application before sync. Do not hide Gateway listener fields with `RespectIgnoreDifferences` when they must be repaired through GitOps. |
+| `kuadrants.kuadrant.io` and `authorinos.operator.authorino.kuadrant.io` | Present; `Kuadrant` and `Authorino` are Ready. | Gateway policy prerequisites are healthy for model publication and subscription work. |
+| MaaS CRDs | `Tenant`, `MaaSModelRef`, `MaaSSubscription`, `MaaSAuthPolicy`, and `ExternalModel` are present as `maas.opendatahub.io/v1alpha1` with `v1alpha1` as storage. | Use `maas.opendatahub.io/v1alpha1`; do not use `models.opendatahub.io` examples from documentation or quickstarts without conversion. |
+| `MaaSModelRef.spec.modelRef` | Requires `kind` enum `LLMInferenceService` or `ExternalModel`, and `name`. | Create one model ref for the local Nemotron `LLMInferenceService` and one for the external OpenAI `ExternalModel` after backend resources are ready. |
+| `ExternalModel.spec` | Requires `provider`, `endpoint`, `targetModel`, and `credentialRef.name`; the referenced Secret must contain data key `api-key`. | OpenAI provider credentials remain local Secret material; GitOps may reference the Secret name but must not commit the key. |
+| `MaaSSubscription.spec` | Requires `owner`, `modelRefs[]`, and per-model `tokenRateLimits[]`; groups are objects with `name`; windows support `s`, `m`, and `h`; `priority` and `tokenMetadata` are available. | Initial policies should encode Stage 210 chat/RAG limits and showback metadata with `organizationId`, `costCenter`, and labels. |
+| `MaaSAuthPolicy.spec` | Requires `subjects` and `modelRefs[]`; `meteringMetadata` supports `organizationId`, `costCenter`, and labels. | Access claims require both subscription quota and auth-policy authorization. |
+| `Tenant.spec` | Supports `apiKeys.maxExpirationDays`, `gatewayRef`, `externalOIDC`, and telemetry with `captureModelUsage`, `captureOrganization`, `captureGroup`, and `captureUser`. | Keep `captureUser` a deliberate privacy decision; enable model-usage telemetry for demo showback, not billing-grade invoicing. |
+| `llamastackdistributions.llamastack.io` | Present after MaaS/Llama Stack Operator enablement. | Gen AI Studio and Playground flows can be validated in the next phase. |
 | `OdhDashboardConfig.spec.dashboardConfig.vLLMDeploymentOnMaaS` | Present in live schema; exact casing confirmed. | Use `vLLMDeploymentOnMaaS`, not `vLLMDeploymentOnMaas`. |
 
 Observed `LLMInferenceService` `v1alpha2` fields include
@@ -148,17 +149,15 @@ published snippets.
 | RBAC and access policy | Stage 230 needs both OpenShift RBAC/group membership and MaaS gateway authorization. | Do not claim access until both `MaaSSubscription` quota and `MaaSAuthPolicy` authorization are present and validated for allowed and denied subjects. |
 | External OpenAI model | `gpt-5.4-nano` is selected from official OpenAI model/pricing docs as the cost-optimized GPT-5.4-class external model at planning time. | Recheck model availability and pricing before demo delivery. Store provider credentials only in local Secret material, and document that prompts leave the cluster for this model. |
 
-## Required Schema Checks Before GitOps
+## Completed Schema Checks Before MaaS Model GitOps
 
-Run only after the OpenShift safety guard confirms the target cluster:
+Completed against `cluster-klvxt` on 2026-06-12 after the OpenShift safety
+guard confirmed the target cluster:
 
 ```bash
 oc get crd llminferenceservices.serving.kserve.io \
-  maasmodelrefs.models.opendatahub.io \
   maasmodelrefs.maas.opendatahub.io \
-  maassubscriptions.models.opendatahub.io \
   maassubscriptions.maas.opendatahub.io \
-  maasauthpolicies.models.opendatahub.io \
   maasauthpolicies.maas.opendatahub.io \
   externalmodels.maas.opendatahub.io \
   tenants.maas.opendatahub.io
@@ -167,19 +166,15 @@ oc explain llminferenceservice.spec --api-version=serving.kserve.io/v1alpha2
 oc explain llminferenceservice.spec.model --api-version=serving.kserve.io/v1alpha2
 oc explain llminferenceservice.spec.router.gateway --api-version=serving.kserve.io/v1alpha2
 
-oc explain maasmodelrefs.models.opendatahub.io.spec
 oc explain maasmodelrefs.maas.opendatahub.io.spec
-oc explain maassubscriptions.models.opendatahub.io.spec
 oc explain maassubscriptions.maas.opendatahub.io.spec
-oc explain maasauthpolicies.models.opendatahub.io.spec
 oc explain maasauthpolicies.maas.opendatahub.io.spec
 oc explain externalmodels.maas.opendatahub.io.spec
 oc explain tenants.maas.opendatahub.io.spec
 ```
 
-If any MaaS CRD is still missing, Stage 230 implementation must first reconcile
-the MaaS prerequisites and DSC/dashboard feature flags, then rerun schema
-checks before model, subscription, or auth-policy manifests are authored.
+Rerun these checks after any RHOAI, RHCL, or OpenShift upgrade before changing
+model, subscription, or auth-policy manifests.
 
 Phase-one deploy and validation commands:
 
@@ -232,8 +227,7 @@ Phase-one deploy and validation commands:
 
 | Item | Type | Resolution |
 |------|------|------------|
-| MaaS CRDs not present today | blocker before manifests | Install/enable MaaS prerequisites, then rerun CRD and `oc explain` checks. |
-| Official docs group discrepancy | blocker before MaaS CR authoring | The official RHOAI 3.4 guide lists `*.maas.opendatahub.io` CRDs but shows `models.opendatahub.io/v1alpha1` YAML for several MaaS resources. Use the installed CRD group/version after MaaS is enabled. |
+| Official docs group discrepancy | resolved for current cluster | The official RHOAI 3.4 guide lists `*.maas.opendatahub.io` CRDs but shows `models.opendatahub.io/v1alpha1` YAML for several MaaS resources. The live cluster exposes MaaS resources as `maas.opendatahub.io/v1alpha1`; use that group/version for current GitOps. |
 | `LLMInferenceService` example version drift | risk | Active cluster stores `v1alpha2`; adapt examples only after schema checks. |
 | External OpenAI provider data path | risk | Document that prompts sent to `gpt-5.4-nano` leave the cluster and are subject to provider policy, region, and account settings. |
 | Provider rate limits | risk | MaaS limits protect users from each other inside the demo, but the shared OpenAI provider key can still hit provider-level aggregate limits. |
