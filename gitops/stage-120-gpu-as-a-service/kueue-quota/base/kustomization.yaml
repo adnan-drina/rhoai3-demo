@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Kueue quota objects require the kueue.x-k8s.io CRDs, which exist after RHOAI
+# reconciles kueue: Unmanaged. SkipDryRunOnMissingResource handles first-sync timing.
+resources:
+  - resource-flavors.yaml
+  - cluster-queues.yaml
+  - local-queues.yaml
+  - priority-class.yaml
