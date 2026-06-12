@@ -110,7 +110,9 @@ spec:
     auth.anonymous:
       enabled: "false"
     auth.basic:
-      enabled: "false"
+      # The operator uses Grafana's internal API during reconciliation.
+      # Browser access remains protected by the OpenShift OAuth proxy route.
+      enabled: "true"
     auth.proxy:
       enabled: "true"
       enable_login_token: "true"
