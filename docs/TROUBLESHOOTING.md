@@ -164,6 +164,63 @@ oc get route rhods-dashboard -n redhat-ods-applications
 If the objects exist but the UI is stale, refresh the dashboard session or log
 out and back in.
 
+## Stage 210: Model Serving Foundation
+
+### Stage 210 deploy runs but KServe remains Removed
+
+- **Likely causes:** the `stage-110-rhoai-base-platform` Argo CD Application is
+  still pointed at an older Git revision, the branch with the Stage 210 patch
+  was not pushed, or Argo CD has not refreshed the shared owner.
+- **Checks:**
+
+```bash
+oc get application stage-110-rhoai-base-platform -n openshift-gitops \
+  -o jsonpath='{.spec.source.targetRevision}{" "}{.status.sync.revision}{" "}{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+oc get datasciencecluster default-dsc \
+  -o jsonpath='{.spec.components.kserve.managementState}{" "}{.status.phase}{"\n"}'
+```
+
+The expected Stage 210 state is `kserve.managementState=Managed` and
+`DataScienceCluster` phase `Ready`.
+
+### Stage 110 Application is OutOfSync after enabling KServe
+
+- **Likely causes:** a KServe-related CRD or webhook is still being installed,
+  the RHOAI operator is reconciling component state, or Argo CD hit a dry-run
+  race while CRDs appeared.
+- **Checks:**
+
+```bash
+oc get application stage-110-rhoai-base-platform -n openshift-gitops \
+  -o jsonpath='{.status.operationState.message}{"\n"}'
+oc get pods -n redhat-ods-applications | grep -Ei 'kserve|model'
+oc get crd inferenceservices.serving.kserve.io servingruntimes.serving.kserve.io
+```
+
+Wait for the RHOAI operator reconciliation before changing manifests. If Argo
+CD reports a schema error, verify the field with:
+
+```bash
+oc explain datasciencecluster.spec.components.kserve \
+  --api-version=datasciencecluster.opendatahub.io/v2
+```
+
+### vLLM runtime is not discoverable
+
+- **Likely causes:** the serving platform is still reconciling, preinstalled
+  runtime templates are disabled, or the dashboard/runtime configuration has
+  not completed.
+- **Checks:**
+
+```bash
+oc get servingruntime -A
+oc get datasciencecluster default-dsc \
+  -o jsonpath='{.status.installedComponents}{"\n"}'
+```
+
+Do not hard-code a runtime name in GitOps until the active runtime template has
+been verified from the live cluster or official documentation.
+
 ---
 
 Legacy troubleshooting content is backed up at:

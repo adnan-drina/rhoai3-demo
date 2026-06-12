@@ -10,9 +10,9 @@ The active implementation follows this sequence:
    model registry, access personas, and shared DSC ownership.
 2. `stage-120-gpu-as-a-service` - GPU worker capacity, NVIDIA GPU enablement,
    Kueue quotas, and RHOAI hardware profiles.
-3. `stage-210-model-serving-foundation` - planned next GenAI transition:
-   enable model serving, smoke-test Nemotron, and leave dashboard deployment to
-   the user.
+3. `stage-210-model-serving-foundation` - enable the standard KServe model
+   serving platform through the shared Stage 110 RHOAI owner and leave the
+   first Nemotron endpoint deployment to the dashboard/user-led flow.
 4. `stage-220-model-performance-baseline` - planned GuideLLM-style performance
    baseline and breakpoint evidence.
 5. `stage-230-models-as-a-service` - planned governed MaaS access to Nemotron
@@ -190,6 +190,45 @@ Before deploying Stage 120 to a fresh environment:
    before syncing the Stage 120 Application.
 
 Do not reuse the `cluster-klvxt` providerSpec in a different AWS cluster.
+
+## Stage 210: Model Serving Foundation
+
+### Deploy And Validate
+
+Stage 210 depends on Stage 110 and Stage 120. Run the earlier validations first
+so model serving is enabled only after the base platform and GPU layer are
+healthy.
+
+```bash
+./stage-110-rhoai-base-platform/validate.sh
+./stage-120-gpu-as-a-service/validate.sh
+./stage-210-model-serving-foundation/deploy.sh
+./stage-210-model-serving-foundation/validate.sh
+```
+
+Stage 210 does not have a separate Argo CD Application. It patches the Stage
+110-owned `DataScienceCluster` through the Stage 110 RHOAI aggregate overlay.
+The deploy script applies and refreshes the shared
+`stage-110-rhoai-base-platform` Application so Argo CD reconciles the KServe
+component.
+
+### User-Led Nemotron Deployment
+
+After Stage 210 validates, the dashboard should expose the standard model
+serving path. The intended first user workflow is:
+
+1. Log in to the RHOAI Dashboard as a demo user with access to `demo-sandbox`.
+2. Open `demo-sandbox` and use **Deploy model**.
+3. Select a generative model deployment using the vLLM NVIDIA GPU runtime.
+4. Use a Stage 120 GPU hardware profile such as `GPU Reserved - Demo Team`.
+5. Use the Nemotron model source:
+   `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
+6. Use token authentication for external/shared endpoint access.
+7. Test with the vLLM `/v1/chat/completions` path.
+
+The temporary automated Nemotron smoke test is intentionally tracked in
+`docs/BACKLOG.md` until the active runtime template, deployment API, registry
+pull behavior, endpoint auth, and cleanup path are verified.
 
 ---
 

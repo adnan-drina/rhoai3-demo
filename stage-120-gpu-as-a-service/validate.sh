@@ -118,8 +118,12 @@ DSC_KSERVE=$(oc get datasciencecluster default-dsc \
   -o jsonpath='{.spec.components.kserve.managementState}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DSC_KUEUE" == "Unmanaged" ]] && R="pass" || R="kueue=${DSC_KUEUE:-not found}"
 check "DataScienceCluster Kueue integration is Unmanaged" "$R"
-[[ "$DSC_KSERVE" == "Removed" ]] && R="pass" || R="kserve=${DSC_KSERVE:-not found}"
-check "DataScienceCluster KServe remains deferred" "$R"
+if [[ "$DSC_KSERVE" == "Removed" || "$DSC_KSERVE" == "Managed" ]]; then
+  R="pass"
+else
+  R="kserve=${DSC_KSERVE:-not found}"
+fi
+check "DataScienceCluster KServe state is valid for current stage progression" "$R"
 
 for cq in cq-cpu-default cq-gpu-shared cq-gpu-priority cq-gpu-reserved-demo; do
   ACTIVE=$(condition_status clusterqueue "$cq" Active)

@@ -34,13 +34,27 @@ Stage 210 owns that transition.
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
 
+## Stage 210: Status — IN PROGRESS
+
+Stage 210 enables the RHOAI KServe model serving platform through the shared
+Stage 110 `DataScienceCluster` owner. It creates the user-facing stage README,
+PLAN, deploy wrapper, validation wrapper, and the focused KServe DSC patch.
+
+### Open / deferred from Stage 210
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Temporary Nemotron smoke test | high | Implement after the active vLLM runtime template, `InferenceService` or `LLMInferenceService` path, registry pull behavior, endpoint auth, and cleanup flow are verified |
+| Durable curated Nemotron deployment | high | Deferred to Stage 230 after Stage 220 establishes performance limits and operating envelope |
+| vLLM runtime template name | medium | Validation discovers the runtime instead of hard-coding a name until the live platform state is confirmed |
+| Model-serving metrics baseline | medium | Stage 220 owns GuideLLM-style baseline evidence and metrics correlation |
+
 ## Candidate Future Stages
 
 These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-authoring/references/stage-taxonomy.md`.
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-210-model-serving-foundation` | Production GenAI | Enable model serving, run temporary Nemotron smoke validation, and support user-led dashboard deployment |
 | `stage-220-model-performance-baseline` | Production GenAI | GuideLLM-style model performance baseline and breakpoint evidence |
 | `stage-230-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
 | `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |

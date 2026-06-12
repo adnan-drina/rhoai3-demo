@@ -72,8 +72,8 @@ stage demonstrates governed admission and reservation, not preemption.
 - [ ] GPU node reports at least four allocatable `nvidia.com/gpu` units.
 - [ ] NFD, NVIDIA GPU Operator, and Kueue operator CSVs are `Succeeded`.
 - [ ] NVIDIA `ClusterPolicy` reports `ready`.
-- [ ] Stage 110-owned `DataScienceCluster` has `kueue: Unmanaged` and keeps
-  `kserve: Removed`.
+- [ ] Stage 110-owned `DataScienceCluster` has `kueue: Unmanaged`; `kserve`
+  is `Removed` before Stage 210 and may become `Managed` after Stage 210.
 - [ ] Four ClusterQueues and four LocalQueues are `Active`.
 - [ ] Four RHOAI hardware profiles exist and are visible to users.
 - [ ] Deploy and validate scripts pass against the guarded cluster.
@@ -156,7 +156,8 @@ stage demonstrates governed admission and reservation, not preemption.
 - checks operator CSV readiness
 - checks NFD and NVIDIA ClusterPolicy readiness
 - checks GPU MachineSet readiness and GPU allocatable count
-- checks DSC Kueue/KServe component states
+- checks DSC Kueue state and accepts either pre-Stage-210 or post-Stage-210
+  KServe state
 - checks ClusterQueue and LocalQueue Active conditions
 - checks hardware profile presence
 

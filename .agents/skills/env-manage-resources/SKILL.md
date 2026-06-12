@@ -32,9 +32,10 @@ material only.
 
 ## Reimplementation Status
 
-The active implementation is being rewritten. Stage 120 currently owns GPU
-MachineSet scaling guidance. Model-serving resource management remains planned
-until Stage 210 and Stage 230 create active model-serving and MaaS resources.
+Stage 120 owns GPU MachineSet scaling guidance. Stage 210 enables the model
+serving platform through the shared Stage 110 RHOAI owner; it does not create a
+separate Argo CD Application. Model endpoint scaling remains planned until
+Stage 230 creates active MaaS/Nemotron resources.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.
@@ -42,8 +43,8 @@ user explicitly asks to restore or inspect the legacy implementation.
 ## Prerequisites
 
 - Logged in with `oc` (cluster-admin)
-- ArgoCD Applications for the GPU infrastructure and private model-serving
-  stages have documented `selfHeal` behavior for intentional scale operations
+- ArgoCD Applications for the GPU infrastructure and shared RHOAI owner have
+  documented `selfHeal` behavior for intentional scale operations
 
 ## Resource Inventory
 
@@ -58,7 +59,7 @@ oc get isvc -n maas
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
 
 # ArgoCD sync status
-for app in stage-120-gpu-as-a-service stage-210-model-serving-foundation; do
+for app in stage-110-rhoai-base-platform stage-120-gpu-as-a-service; do
   echo "$app: $(oc get application $app -n openshift-gitops -o jsonpath='{.status.sync.status}/{.status.health.status}')"
 done
 ```
@@ -127,10 +128,9 @@ oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
   -p '{"spec":{"replicas":1}}'
 ```
 
-In the legacy implementation, the model-serving step also performed this
-scale-up guard
-automatically unless `RHOAI_SKIP_GPU_SCALE=true` was set. Recreate that behavior
-before relying on this command path:
+Stage 210 only enables the model-serving platform. Later model-serving and MaaS
+stages must document their own model scale-up guard before this command path is
+treated as active:
 
 ```bash
 ./stage-210-model-serving-foundation/deploy.sh
@@ -141,12 +141,12 @@ before relying on this command path:
 To bring everything back to the Git-declared state, sync via ArgoCD:
 
 ```bash
-# Sync a specific app
-oc patch application stage-210-model-serving-foundation -n openshift-gitops \
+# Sync the shared RHOAI owner after Stage 210 platform changes
+oc patch application stage-110-rhoai-base-platform -n openshift-gitops \
   --type merge -p '{"operation":{"sync":{}}}'
 
 # Or sync both
-for app in stage-120-gpu-as-a-service stage-210-model-serving-foundation; do
+for app in stage-110-rhoai-base-platform stage-120-gpu-as-a-service; do
   oc patch application "$app" -n openshift-gitops --type merge -p '{"operation":{"sync":{}}}'
 done
 ```
@@ -159,7 +159,7 @@ After any scaling operation, verify the state:
 
 ```bash
 # Check ArgoCD shows expected status
-oc get application stage-120-gpu-as-a-service stage-210-model-serving-foundation -n openshift-gitops \
+oc get application stage-110-rhoai-base-platform stage-120-gpu-as-a-service -n openshift-gitops \
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness
@@ -176,5 +176,5 @@ oc get nodes -l node-role.kubernetes.io/gpu
 |--------|---------------|------------|
 | Manual scale down model | OutOfSync | No (selfHeal=false) |
 | Manual scale down MachineSet | Synced or ignored diff | No; Stage 120 ignores `MachineSet.spec.replicas` |
-| Push Git change to GPU or model-serving stage | Auto-syncs | Yes (automated=true) |
+| Push Git change to GPU stage or shared RHOAI owner | Auto-syncs | Yes (automated=true) |
 | Click Sync in ArgoCD UI | Synced | Restores Git state |

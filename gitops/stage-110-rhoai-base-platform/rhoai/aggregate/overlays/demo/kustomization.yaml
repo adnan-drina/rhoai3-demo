@@ -7,3 +7,6 @@ commonAnnotations:
 resources:
   - ../../../operator/overlays/stable-3.4
   - ../../../instance/base
+
+patches:
+  - path: patch-datasciencecluster-kserve.yaml
