@@ -402,6 +402,11 @@ datasource variable after GitOps sync, hard-refresh the Grafana tab. If
 Grafana recently rolled out, allow the operator resync period to repopulate
 datasources and dashboards, then rerun validation.
 
+For the `LLM Inference Performance` dashboard specifically, vLLM panels should
+use the live `namespace` label, the `vllm:inter_token_latency_seconds_bucket`
+metric, and the active `:8080` scrape target labels. The llm-d EPP panels are
+expected to show no data in Stage 210 because llm-d/EPP is not deployed yet.
+
 ### Stage 210 Application waits on benchmark-data PVC
 
 - **Likely cause:** the storage class uses `WaitForFirstConsumer`, so

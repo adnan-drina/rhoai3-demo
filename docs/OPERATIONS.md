@@ -357,7 +357,10 @@ Stage 210 includes two dashboards with functional names:
   `/d/llm-performance/llm-inference-performance`, adapted from the Red Hat AI
   services llm-d reference. It is the primary dashboard for the GuideLLM
   showroom-style benchmark and includes vLLM latency, request queue, token
-  throughput, KV cache, prefix cache, and later llm-d EPP panels.
+  throughput, KV cache, prefix cache, and later llm-d EPP panels. The vLLM
+  panels are aligned with the same metric names and label model as
+  `vLLM Model Serving Baseline`; the llm-d EPP panels are expected to remain
+  empty until a later stage deploys llm-d/EPP.
 
 The OpenShift Console application menu has a `RHOAI Demo Grafana` link that is
 patched at sync time to the cluster-specific `llm-performance` dashboard URL.

@@ -314,6 +314,61 @@ else
 fi
 check "Grafana llm-performance dashboard uses concrete datasource UID" "$R"
 
+if grep -Eq 'kubernetes_namespace|time_per_output_token_seconds_bucket|8000|GPU Cache Usage' \
+  <<<"$LLM_DASHBOARD_JSON"; then
+  R="contains stale imported vLLM query assumptions"
+else
+  R="pass"
+fi
+check "Grafana llm-performance dashboard uses live vLLM label and metric names" "$R"
+
+for llm_dashboard_metric_check in \
+  "Grafana llm-performance inter-token metric exists|count(vllm:inter_token_latency_seconds_bucket)" \
+  "Grafana llm-performance prefix-cache metric exists|count(vllm:prefix_cache_queries_total)"; do
+  IFS="|" read -r metric_label metric_expr <<<"$llm_dashboard_metric_check"
+  GRAFANA_METRIC_QUERY_RESULT=""
+  if [[ -n "$GRAFANA_POD" && -n "$GRAFANA_ADMIN_USER" && -n "$GRAFANA_ADMIN_PASSWORD" ]]; then
+    NOW_MS=$(( $(date +%s) * 1000 ))
+    FROM_MS=$(( NOW_MS - 3600000 ))
+    GRAFANA_METRIC_QUERY_RESULT=$(oc exec -i -n "$GRAFANA_NS" "$GRAFANA_POD" -c grafana \
+      --insecure-skip-tls-verify=true -- \
+      curl -sS -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+        -H "Content-Type: application/json" \
+        -X POST http://localhost:3000/api/ds/query \
+        --data-binary @- <<JSON 2>/dev/null || true
+{
+  "queries": [
+    {
+      "refId": "A",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "expr": "${metric_expr}",
+      "instant": true,
+      "range": false
+    }
+  ],
+  "from": "${FROM_MS}",
+  "to": "${NOW_MS}"
+}
+JSON
+)
+  fi
+  if jq -e '
+      (.results.A.status | tostring | test("^2")) and
+      ((.results.A.error // "") == "") and
+      ((.results.A.frames // []) | length > 0)
+    ' <<<"$GRAFANA_METRIC_QUERY_RESULT" >/dev/null 2>&1; then
+    R="pass"
+  else
+    GRAFANA_METRIC_ERROR=$(jq -r '.results.A.error // .message // "metric query failed"' \
+      <<<"$GRAFANA_METRIC_QUERY_RESULT" 2>/dev/null || echo "metric query failed")
+    R="$GRAFANA_METRIC_ERROR"
+  fi
+  check "$metric_label" "$R"
+done
+
 if resource_exists "route/grafana-route" "$GRAFANA_NS"; then
   R="pass"
 else

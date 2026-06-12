@@ -137,7 +137,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.50, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P50 TTFT",
               "refId": "A"
@@ -147,7 +147,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.95, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P95 TTFT",
               "refId": "B"
@@ -157,7 +157,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.99, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P99 TTFT",
               "refId": "C"
@@ -263,7 +263,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.50, rate(vllm:time_per_output_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(vllm:inter_token_latency_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P50 Inter-Token",
               "refId": "A"
@@ -273,7 +273,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.95, rate(vllm:time_per_output_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(vllm:inter_token_latency_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P95 Inter-Token",
               "refId": "B"
@@ -347,7 +347,7 @@ spec:
                 "uid": "Prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(vllm:prefix_cache_hits_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"}) / sum(vllm:prefix_cache_queries_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"})",
+              "expr": "sum(increase(vllm:prefix_cache_hits_total{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])) / clamp_min(sum(increase(vllm:prefix_cache_queries_total{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])), 1)",
               "interval": "",
               "legendFormat": "Overall Cache Hit Rate",
               "range": true,
@@ -431,7 +431,7 @@ spec:
                 "uid": "Prometheus"
               },
               "editorMode": "code",
-              "expr": "vllm:prefix_cache_hits_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"} / vllm:prefix_cache_queries_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"} \n",
+              "expr": "sum by (pod) (increase(vllm:prefix_cache_hits_total{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])) / clamp_min(sum by (pod) (increase(vllm:prefix_cache_queries_total{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])), 1)",
               "interval": "",
               "legendFormat": "Pod {{pod}}",
               "range": true,
@@ -504,13 +504,13 @@ spec:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "vllm:kv_cache_usage_perc{instance=~\".*:8000\"} * 100",
-              "legendFormat": "Cache Usage %",
+              "expr": "max(max_over_time(vllm:kv_cache_usage_perc{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])) * 100",
+              "legendFormat": "Peak Cache Usage %",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "GPU Cache Usage %",
+          "title": "KV Cache Usage %",
           "type": "stat"
         },
         {
@@ -582,14 +582,14 @@ spec:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "vllm:kv_cache_usage_perc{instance=~\".*:8000\"} * 100",
+              "expr": "max by (pod) (max_over_time(vllm:kv_cache_usage_perc{model_name=~\"$model\", namespace=~\"$namespace\"}[$__range])) * 100",
               "instant": false,
               "legendFormat": "Pod {{pod}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Per-Pod GPU Cache Usage",
+          "title": "Per-Pod KV Cache Usage",
           "type": "bargauge"
         },
         {
@@ -681,7 +681,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "rate(vllm:request_success_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
+              "expr": "sum(rate(vllm:request_success_total{model_name=~\"$model\", namespace=~\"$namespace\"}[5m]))",
               "interval": "",
               "legendFormat": "Success Rate",
               "refId": "A"
@@ -691,7 +691,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "rate(vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
+              "expr": "sum(rate(vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", namespace=~\"$namespace\"}[5m]))",
               "interval": "",
               "legendFormat": "Total Rate",
               "refId": "B"
@@ -808,7 +808,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "vllm:num_requests_running{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
+              "expr": "sum(vllm:num_requests_running{model_name=~\"$model\", namespace=~\"$namespace\"})",
               "interval": "",
               "legendFormat": "Requests Running",
               "refId": "A"
@@ -818,7 +818,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "vllm:num_requests_waiting{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
+              "expr": "sum(vllm:num_requests_waiting{model_name=~\"$model\", namespace=~\"$namespace\"})",
               "interval": "",
               "legendFormat": "Requests Waiting",
               "refId": "B"
@@ -916,7 +916,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "rate(vllm:prompt_tokens_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
+              "expr": "sum(rate(vllm:prompt_tokens_total{model_name=~\"$model\", namespace=~\"$namespace\"}[5m]))",
               "interval": "",
               "legendFormat": "Prompt Tokens/sec",
               "refId": "A"
@@ -926,7 +926,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "rate(vllm:generation_tokens_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
+              "expr": "sum(rate(vllm:generation_tokens_total{model_name=~\"$model\", namespace=~\"$namespace\"}[5m]))",
               "interval": "",
               "legendFormat": "Generated Tokens/sec",
               "refId": "B"
@@ -1032,7 +1032,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.50, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P50 E2E",
               "refId": "A"
@@ -1042,7 +1042,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.95, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P95 E2E",
               "refId": "B"
@@ -1052,7 +1052,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "histogram_quantile(0.99, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])))",
               "interval": "",
               "legendFormat": "P99 E2E",
               "refId": "C"
@@ -1062,7 +1062,7 @@ spec:
                 "type": "prometheus",
                 "uid": "Prometheus"
               },
-              "expr": "vllm:e2e_request_latency_seconds_sum{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"} / vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
+              "expr": "sum(rate(vllm:e2e_request_latency_seconds_sum{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])) / clamp_min(sum(rate(vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", namespace=~\"$namespace\"}[5m])), 0.001)",
               "interval": "",
               "legendFormat": "Average E2E",
               "refId": "D"
@@ -1382,13 +1382,13 @@ spec:
               "type": "prometheus",
               "uid": "Prometheus"
             },
-            "definition": "label_values(vllm:num_requests_running,kubernetes_namespace)",
+            "definition": "label_values(vllm:num_requests_running, namespace)",
             "includeAll": true,
             "name": "namespace",
             "options": [],
             "query": {
               "qryType": 1,
-              "query": "label_values(vllm:num_requests_running,kubernetes_namespace)",
+              "query": "label_values(vllm:num_requests_running, namespace)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 1,
