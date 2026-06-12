@@ -41,10 +41,12 @@ Stage 210 owns that transition.
 Stage 210 enables the RHOAI KServe model serving platform through the shared
 Stage 110 `DataScienceCluster` owner and handles fresh-environment convergence
 for `demo-registry`, Nemotron registry metadata, and the Nemotron vLLM
-`InferenceService`. It also adds user workload monitoring, a GitOps-managed
-Grafana model-serving dashboard, and an on-demand GuideLLM benchmark runner.
+`InferenceService` using the curated Nemotron vLLM configuration adapted from
+the Red Hat AI MaaS code assistant quickstart. It also adds user workload
+monitoring, a GitOps-managed Grafana model-serving dashboard, and an on-demand
+GuideLLM benchmark runner.
 
-Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 32/32. A
+Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 34/34. A
 short GuideLLM smoke run completed successfully and wrote JSON results under
 gitignored `runs/stage-210-guidellm/`.
 
@@ -54,6 +56,7 @@ gitignored `runs/stage-210-guidellm/`.
 |------|----------|-------|
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
 | Durable curated MaaS deployment | high | Deferred to Stage 230 after Stage 210 establishes basic serving limits and operating envelope |
+| MaaS quickstart pattern adoption | high | Stage 230 should adapt the `rh-ai-quickstart/maas-code-assistant` `LLMInferenceService`, tier, Gateway, RBAC, and Grafana patterns after RHOAI 3.4 CRD/schema checks |
 | Extended operating envelope | medium | Run longer GuideLLM profiles before using the smoke numbers for MaaS quotas or capacity claims |
 
 ## Candidate Future Stages

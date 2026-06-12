@@ -37,6 +37,13 @@
 | `.agents/skills/rhoai-dashboard-customization/SKILL.md` | Dashboard feature visibility flags |
 | `.agents/skills/project-gitops-authoring/SKILL.md` | GitOps authoring conventions for manifests |
 
+## Supporting Implementation References
+
+| Source | Role |
+|--------|------|
+| https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S testing context |
+| https://github.com/rh-ai-quickstart/maas-code-assistant | Source repository for model-specific Nemotron vLLM args, resource sizing, `LLMInferenceService`, MaaS tier, RBAC, and Grafana examples |
+
 ## Source Boundaries
 
 - Product authority: the official Red Hat OpenShift AI 3.4 model-serving
@@ -57,9 +64,8 @@
 ## Unresolved Or Environment-Specific Items
 
 - Active demo serving API shape for `nemotron-3-nano-30b-a3b`.
-  Verification: confirm whether the active implementation uses
-  `InferenceService`, `LLMInferenceService`, or another official deploy API
-  before writing GitOps.
+  Current decision: Stage 210 uses direct `InferenceService`; Stage 230 should
+  use `LLMInferenceService` for MaaS after RHOAI 3.4 schema verification.
 - Exact Red Hat-supported vLLM image digest for the active baseline and model.
   Verification: use official docs, installed runtime templates, Red Hat
   registry metadata, or active cluster resources before pinning an image.

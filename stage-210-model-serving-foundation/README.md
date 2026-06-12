@@ -25,7 +25,7 @@ Grafana evidence before MaaS governance is introduced.
 The stage does not yet turn the model into a governed shared service. That is
 deliberate. First we prove the platform can host a GPU-backed LLM endpoint;
 then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
-220 publishes validated access through Models-as-a-Service.
+230 publishes validated access through Models-as-a-Service.
 
 ---
 
@@ -43,6 +43,7 @@ then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
 | OpenShift user workload monitoring | Scrapes model-serving metrics exposed through the RHOAI/KServe-generated `ServiceMonitor`. | [OCP 4.20 - Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index) |
 | Grafana Operator | Provides a demo dashboard for vLLM latency, queue, throughput, KV cache, and GPU signals. This is a community-operator demo exception, not a Red Hat product dependency. | [Grafana Operator API reference](https://grafana.github.io/grafana-operator/docs/api/) |
 | GuideLLM | Runs an on-demand synthetic workload benchmark against the internal vLLM endpoint to establish a serving baseline. | [Red Hat Developer - GuideLLM: Evaluate LLM deployments](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference) |
+| Red Hat AI MaaS code assistant quickstart | Provides a Red Hat-maintained implementation reference for Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S infrastructure, including vLLM arguments, resource sizing, MaaS `LLMInferenceService`, tiered access, and Grafana usage patterns. | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) |
 
 This stage uses direct model serving, not Models-as-a-Service and not llm-d.
 MaaS governance and external OpenAI `gpt-5.4-nano` registration belong to
@@ -51,12 +52,21 @@ EvalHub, MLflow, LMEval, judge-based evaluation, and risk assessment remain
 deferred to later MLOps/evaluation stages.
 
 The RH Brain search found Red Hat source material for Nemotron 3 Nano as a
-validated model and strong GuideLLM/vLLM/llm-d baseline guidance. It did not
-find an exact article that pairs `NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` with the
-demo's `g6e.2xlarge` AWS instance type. The current deployment therefore keeps
-the conservative, verified one-GPU RHOAI configuration and uses live vLLM
-metrics plus GuideLLM results to tune from evidence rather than importing a
-non-matching configuration.
+validated model and strong GuideLLM/vLLM/llm-d baseline guidance. The
+Red Hat-maintained MaaS code assistant quickstart adds a concrete
+implementation reference that was tested with L40S GPUs on AWS `g6e.2xlarge`
+instances. Stage 210 adapts the direct serving subset of that configuration:
+one Nemotron endpoint, one GPU, `2` CPU and `16Gi` memory requested, `4` CPU and
+`24Gi` memory limited, and the Nemotron-specific vLLM flags for usage
+reporting, context length, tool calling, trusted remote code, and reasoning
+parser support. The quickstart's MaaS `LLMInferenceService`, gateway, tier, and
+RBAC patterns remain Stage 230 input.
+
+The quickstart deploys a sample modelcar URI for its scenario. This demo keeps
+the Red Hat registry artifact
+`oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
+as the preferred model source and uses live vLLM metrics plus GuideLLM results
+to tune from evidence.
 
 For GuideLLM token accounting, the benchmark script uses the public Hugging
 Face processor ID `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`, while the served
@@ -120,6 +130,8 @@ discover-or-create flow:
 3. Use the existing Nemotron `InferenceService` when present; otherwise create
    the vLLM runtime and endpoint from the active RHOAI template and OCI
    modelcar source.
+4. Reconcile the existing or newly created endpoint to the curated Nemotron
+   vLLM argument and resource profile.
 
 ## Validation Evidence
 
@@ -127,7 +139,11 @@ Validated on `cluster-klvxt` on 2026-06-12:
 
 - `stage-210-model-serving-foundation/deploy.sh` converged Stage 110 and Stage
   210 Argo CD Applications to `Synced/Healthy`.
-- `stage-210-model-serving-foundation/validate.sh` passed 32 checks.
+- `stage-210-model-serving-foundation/validate.sh` passed 34 checks after
+  reconciling the curated Nemotron vLLM args and resource sizing.
+- A direct `/v1/chat/completions` smoke test returned assistant content,
+  reasoning metadata, and usage tokens through the vLLM endpoint after the
+  curated configuration was applied.
 - A short GuideLLM smoke run with one concurrent request and a 10-second window
   completed with 11 successful requests and zero errors. The observed p95 TTFT
   was about 71 ms, p95 ITL about 7.1 ms, p95 end-to-end request latency about
@@ -152,6 +168,8 @@ quotas or public operating limits.
 | [Red Hat - Redefining LLM observability with llm-d](https://www.redhat.com/en/blog/tokens-caches-how-llm-d-improves-llm-observability-red-hat-openshift-ai-3.0) | Grafana and Prometheus observability narrative for vLLM/llm-d metrics |
 | [Red Hat - Predictable AI validated model batches](https://www.redhat.com/en/blog/predictable-ai-announcing-january-and-february-validated-model-batches) | Nemotron 3 Nano validated model context |
 | [Red Hat - Using containers to bring software engineering rigor to AI workloads](https://www.redhat.com/en/blog/using-containers-bring-software-engineering-rigor-ai-workloads) | ModelCar/OCI artifact governance narrative |
+| [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S implementation reference and MaaS architecture narrative |
+| [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | Source repository for Nemotron vLLM args, resource sizing, `LLMInferenceService`, MaaS tier, RBAC, and Grafana examples |
 | [RHOAI 3.4 - Configuring your model-serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/configuring_your_model-serving_platform/index) | Product authority for KServe, ServingRuntime, and platform enablement |
 | [RHOAI 3.4 - Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index) | Product authority for model deployment workflows and inference requests |
 | [RHOAI 3.4 - Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index) | Product authority for registry provisioning and access |

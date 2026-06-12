@@ -24,6 +24,28 @@ Review points:
 - namespace must match the model-serving namespace
 - vLLM with MaaS is Technology Preview if this backend uses vLLM
 
+## Demo Nemotron MaaS Implementation Reference
+
+The Red Hat-maintained `rh-ai-quickstart/maas-code-assistant` chart provides a
+useful Stage 230 reference for publishing Nemotron 3 Nano through MaaS:
+
+- `LLMInferenceService` with `alpha.maas.opendatahub.io/tiers`
+- Gateway reference to `maas-default-gateway` in `openshift-ingress`
+- vLLM command and TLS args for OpenAI-compatible serving
+- model-specific Nemotron vLLM args for usage reporting, context length, tool
+  calling, trusted remote code, and reasoning parser support
+- per-tier RBAC allowing `system:serviceaccounts:maas-default-gateway-tier-*`
+  groups to read the model resource
+
+Review points:
+
+- Use the quickstart as implementation evidence, not as product API authority.
+- Verify RHOAI 3.4 CRD schemas before committing `LLMInferenceService`, MaaS
+  tiers, Gateway, or RBAC resources.
+- The quickstart uses a sample modelcar URI for its scenario; this demo should
+  keep the Red Hat registry Nemotron modelcar unless the model source decision
+  changes explicitly.
+
 ## External OpenAI Model Pattern
 
 ```yaml

@@ -18,6 +18,11 @@ MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-NVIDIA-Nemotron-3-Nano-30B-A3
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-Version 1}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0}"
 GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-rhoai-demo-grafana}"
+MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-2}"
+MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-4}"
+MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-16Gi}"
+MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-24Gi}"
+MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-131072}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -34,6 +39,11 @@ MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-$MODEL_DISPLAY_NAME}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-$MODEL_VERSION_NAME}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-$MODEL_URI}"
 GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-$GRAFANA_NS}"
+MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-$MODEL_CPU_REQUEST}"
+MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-$MODEL_CPU_LIMIT}"
+MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-$MODEL_MEMORY_REQUEST}"
+MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-$MODEL_MEMORY_LIMIT}"
+MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-$MODEL_MAX_MODEL_LEN}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set. Set it in .env." >&2
@@ -269,6 +279,44 @@ ISVC_URI=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
   -o jsonpath='{.spec.predictor.model.storageUri}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$ISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${ISVC_URI:-not found}"
 check "Nemotron InferenceService uses expected OCI model" "$R"
+
+ISVC_JSON=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+  -o json --insecure-skip-tls-verify=true 2>/dev/null || echo "{}")
+if jq -e --arg maxModelLen "$MODEL_MAX_MODEL_LEN" '
+    .spec.predictor.model.args == [
+      "--enable-force-include-usage",
+      ("--max-model-len=" + $maxModelLen),
+      "--enable-auto-tool-choice",
+      "--tool-call-parser=qwen3_coder",
+      "--trust-remote-code",
+      "--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py",
+      "--reasoning-parser=nano_v3"
+    ]
+  ' <<<"$ISVC_JSON" >/dev/null; then
+  R="pass"
+else
+  R="args do not match curated Nemotron vLLM configuration"
+fi
+check "Nemotron InferenceService uses curated vLLM args" "$R"
+
+if jq -e \
+    --arg cpuRequest "$MODEL_CPU_REQUEST" \
+    --arg cpuLimit "$MODEL_CPU_LIMIT" \
+    --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
+    --arg memoryLimit "$MODEL_MEMORY_LIMIT" \
+    '
+      .spec.predictor.model.resources.requests.cpu == $cpuRequest and
+      .spec.predictor.model.resources.requests.memory == $memoryRequest and
+      .spec.predictor.model.resources.requests["nvidia.com/gpu"] == "1" and
+      .spec.predictor.model.resources.limits.cpu == $cpuLimit and
+      .spec.predictor.model.resources.limits.memory == $memoryLimit and
+      .spec.predictor.model.resources.limits["nvidia.com/gpu"] == "1"
+    ' <<<"$ISVC_JSON" >/dev/null; then
+  R="pass"
+else
+  R="resources do not match ${MODEL_CPU_REQUEST}/${MODEL_CPU_LIMIT} CPU and ${MODEL_MEMORY_REQUEST}/${MODEL_MEMORY_LIMIT} memory"
+fi
+check "Nemotron InferenceService uses curated resource sizing" "$R"
 
 if resource_exists "servicemonitor/${MODEL_DEPLOYMENT_NAME}-metrics" "$MODEL_NS"; then
   R="pass"

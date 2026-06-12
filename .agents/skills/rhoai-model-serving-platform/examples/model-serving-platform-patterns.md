@@ -144,6 +144,40 @@ Review points:
 - Keep model-specific values tied to source documentation for that model.
 - Do not overwrite required port or runtime arguments.
 
+## Demo Nemotron 3 Nano vLLM Profile
+
+The rhoai3-demo Stage 210 direct-serving baseline adapts the Nemotron-specific
+runtime configuration from the Red Hat-maintained
+`rh-ai-quickstart/maas-code-assistant` implementation. Treat this as a
+model-specific implementation reference, not as generic vLLM guidance.
+
+```text
+resources.requests.cpu: "2"
+resources.requests.memory: 16Gi
+resources.requests.nvidia.com/gpu: "1"
+resources.limits.cpu: "4"
+resources.limits.memory: 24Gi
+resources.limits.nvidia.com/gpu: "1"
+
+--enable-force-include-usage
+--max-model-len=131072
+--enable-auto-tool-choice
+--tool-call-parser=qwen3_coder
+--trust-remote-code
+--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py
+--reasoning-parser=nano_v3
+```
+
+Review points:
+
+- The quickstart was tested on AWS `g6e.2xlarge` L40S GPU instances with at
+  least 48GB GPU VRAM.
+- Stage 210 uses a direct `InferenceService`; Stage 230 should use the
+  quickstart's `LLMInferenceService`, MaaS tier, Gateway, and RBAC patterns
+  only after RHOAI 3.4 schema verification.
+- Keep the Red Hat registry modelcar URI for this project unless a newer
+  official Red Hat artifact is selected and documented.
+
 ## vLLM KV Cache Environment Variable
 
 ```text

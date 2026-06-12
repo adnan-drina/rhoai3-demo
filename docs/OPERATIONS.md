@@ -253,12 +253,28 @@ dashboard validation or in a fresh environment. It follows this order:
 4. Create missing Nemotron registered model, version, and OCI artifact metadata
    through the Model Registry REST API.
 5. Reuse an existing Nemotron `InferenceService` when present.
-6. Create the vLLM runtime from the active RHOAI template and deploy Nemotron
+6. Reconcile the endpoint to the curated Nemotron vLLM argument and resource
+   profile.
+7. Create the vLLM runtime from the active RHOAI template and deploy Nemotron
    when the endpoint is absent.
 
 The script may copy the cluster pull-secret into `demo-sandbox` as a runtime
 Kubernetes Secret named `nemotron-3-nano-30b` when the modelcar pull secret is
 missing. The secret value is never printed or committed.
+
+The curated Stage 210 Nemotron profile is adapted from the Red Hat AI MaaS code
+assistant quickstart tested on AWS `g6e.2xlarge`/L40S GPU infrastructure:
+
+- resources: request `2` CPU, `16Gi` memory, and one `nvidia.com/gpu`; limit
+  `4` CPU, `24Gi` memory, and one `nvidia.com/gpu`
+- vLLM args: `--enable-force-include-usage`, `--max-model-len=131072`,
+  `--enable-auto-tool-choice`, `--tool-call-parser=qwen3_coder`,
+  `--trust-remote-code`,
+  `--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py`, and
+  `--reasoning-parser=nano_v3`
+- model source: keep the Red Hat registry modelcar
+  `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
+  unless a newer official Red Hat artifact is intentionally selected
 
 ### User-Led Dashboard Path
 
@@ -270,9 +286,11 @@ The dashboard path remains useful for the live demo and day-2 operations:
 4. Use a Stage 120 GPU hardware profile such as `GPU Reserved - Demo Team`.
 5. Use the Nemotron model source:
    `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
-6. Use token authentication for external/shared endpoint access unless running
+6. Add the curated vLLM configuration parameters listed above when the
+   dashboard exposes runtime parameter customization.
+7. Use token authentication for external/shared endpoint access unless running
    the controlled Stage 210 baseline endpoint.
-7. Test with the vLLM `/v1/chat/completions` path.
+8. Test with the vLLM `/v1/chat/completions` path.
 
 Current cluster-klvxt manual validation state:
 

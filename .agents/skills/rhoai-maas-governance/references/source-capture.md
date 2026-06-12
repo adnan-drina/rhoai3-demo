@@ -24,6 +24,13 @@
 | Managing observability | Platform observability context for MaaS usage metrics |
 | Red Hat OpenShift AI API tiers | Support posture review for MaaS CRDs and preview features |
 
+## Supporting Implementation References
+
+| Source | Role |
+|--------|------|
+| https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for private code assistant, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S requirements |
+| https://github.com/rh-ai-quickstart/maas-code-assistant | Source repository for `LLMInferenceService`, MaaS tier annotations, tiered RBAC, Gateway references, model resource sizing, and Grafana examples |
+
 ## Source Boundaries
 
 - Product configuration truth: the official RHOAI 3.4 MaaS guide and related
@@ -34,6 +41,9 @@
   checks.
 - Red Hat articles, blogs, and `rh-brain` are supporting narrative and example
   sources only. Do not use them to override official product docs.
+- Red Hat quickstarts and `rh-ai-quickstart` repositories are supporting
+  implementation evidence only. Do not use them to override RHOAI 3.4 official
+  docs or installed CRD schemas.
 - External provider examples such as OpenAI are governed external-access
   patterns. Provider credential scopes, rate limits, and model availability
   must be verified with the provider outside this skill.

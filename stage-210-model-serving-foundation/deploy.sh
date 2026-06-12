@@ -19,6 +19,11 @@ MODEL_PULL_SECRET="${RHOAI_NEMOTRON_PULL_SECRET:-nemotron-3-nano-30b}"
 MODEL_RUNTIME_NAME="${RHOAI_NEMOTRON_RUNTIME_NAME:-vllm-cuda-runtime}"
 MODEL_QUEUE_NAME="${RHOAI_NEMOTRON_QUEUE_NAME:-lq-gpu-reserved-demo}"
 MODEL_HARDWARE_PROFILE="${RHOAI_NEMOTRON_HARDWARE_PROFILE:-gpu-reserved-demo}"
+MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-2}"
+MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-4}"
+MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-16Gi}"
+MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-24Gi}"
+MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-131072}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -39,6 +44,11 @@ MODEL_PULL_SECRET="${RHOAI_NEMOTRON_PULL_SECRET:-$MODEL_PULL_SECRET}"
 MODEL_RUNTIME_NAME="${RHOAI_NEMOTRON_RUNTIME_NAME:-$MODEL_RUNTIME_NAME}"
 MODEL_QUEUE_NAME="${RHOAI_NEMOTRON_QUEUE_NAME:-$MODEL_QUEUE_NAME}"
 MODEL_HARDWARE_PROFILE="${RHOAI_NEMOTRON_HARDWARE_PROFILE:-$MODEL_HARDWARE_PROFILE}"
+MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-$MODEL_CPU_REQUEST}"
+MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-$MODEL_CPU_LIMIT}"
+MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-$MODEL_MEMORY_REQUEST}"
+MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-$MODEL_MEMORY_LIMIT}"
+MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-$MODEL_MAX_MODEL_LEN}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -381,9 +391,89 @@ ensure_serving_runtime() {
   exit 1
 }
 
+desired_model_args_json() {
+  jq -n --arg maxModelLen "$MODEL_MAX_MODEL_LEN" '[
+    "--enable-force-include-usage",
+    ("--max-model-len=" + $maxModelLen),
+    "--enable-auto-tool-choice",
+    "--tool-call-parser=qwen3_coder",
+    "--trust-remote-code",
+    "--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py",
+    "--reasoning-parser=nano_v3"
+  ]'
+}
+
+desired_model_patch_json() {
+  jq -n \
+    --argjson args "$(desired_model_args_json)" \
+    --arg cpuRequest "$MODEL_CPU_REQUEST" \
+    --arg cpuLimit "$MODEL_CPU_LIMIT" \
+    --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
+    --arg memoryLimit "$MODEL_MEMORY_LIMIT" \
+    '{
+      spec: {
+        predictor: {
+          model: {
+            args: $args,
+            resources: {
+              requests: {
+                cpu: $cpuRequest,
+                memory: $memoryRequest,
+                "nvidia.com/gpu": "1"
+              },
+              limits: {
+                cpu: $cpuLimit,
+                memory: $memoryLimit,
+                "nvidia.com/gpu": "1"
+              }
+            }
+          }
+        }
+      }
+    }'
+}
+
+inference_service_matches_desired_config() {
+  local resource_json="$1"
+  jq -e \
+    --argjson args "$(desired_model_args_json)" \
+    --arg cpuRequest "$MODEL_CPU_REQUEST" \
+    --arg cpuLimit "$MODEL_CPU_LIMIT" \
+    --arg memoryRequest "$MODEL_MEMORY_REQUEST" \
+    --arg memoryLimit "$MODEL_MEMORY_LIMIT" \
+    '
+      .spec.predictor.model.args == $args and
+      .spec.predictor.model.resources.requests.cpu == $cpuRequest and
+      .spec.predictor.model.resources.requests.memory == $memoryRequest and
+      .spec.predictor.model.resources.requests["nvidia.com/gpu"] == "1" and
+      .spec.predictor.model.resources.limits.cpu == $cpuLimit and
+      .spec.predictor.model.resources.limits.memory == $memoryLimit and
+      .spec.predictor.model.resources.limits["nvidia.com/gpu"] == "1"
+    ' <<<"$resource_json" >/dev/null
+}
+
+ensure_inference_service_config() {
+  local resource_json
+  resource_json=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    -o json --insecure-skip-tls-verify=true)
+
+  if inference_service_matches_desired_config "$resource_json"; then
+    echo "✓ InferenceService already uses the curated Nemotron vLLM configuration"
+    return 0
+  fi
+
+  echo "── Reconciling Nemotron InferenceService to curated vLLM configuration ──"
+  oc patch inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+    --type=merge \
+    -p "$(desired_model_patch_json)" \
+    --insecure-skip-tls-verify=true >/dev/null
+  echo "✓ InferenceService configuration updated: ${MODEL_NS}/${MODEL_DEPLOYMENT_NAME}"
+}
+
 ensure_inference_service() {
   if oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" --insecure-skip-tls-verify=true >/dev/null 2>&1; then
     echo "✓ InferenceService already present: ${MODEL_NS}/${MODEL_DEPLOYMENT_NAME}"
+    ensure_inference_service_config
     return 0
   fi
 
@@ -422,17 +512,23 @@ spec:
     maxReplicas: 1
     model:
       args:
+        - --enable-force-include-usage
+        - --max-model-len=${MODEL_MAX_MODEL_LEN}
+        - --enable-auto-tool-choice
+        - --tool-call-parser=qwen3_coder
         - --trust-remote-code
+        - --reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py
+        - --reasoning-parser=nano_v3
       modelFormat:
         name: vLLM
       resources:
         requests:
-          cpu: "2"
-          memory: 8Gi
+          cpu: "${MODEL_CPU_REQUEST}"
+          memory: ${MODEL_MEMORY_REQUEST}
           nvidia.com/gpu: "1"
         limits:
-          cpu: "2"
-          memory: 8Gi
+          cpu: "${MODEL_CPU_LIMIT}"
+          memory: ${MODEL_MEMORY_LIMIT}
           nvidia.com/gpu: "1"
       runtime: ${runtime_name}
       storageUri: ${MODEL_URI}

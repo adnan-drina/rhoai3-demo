@@ -271,7 +271,22 @@ oc get pods -n demo-sandbox | grep -Ei 'nemotron|vllm|predictor'
 
 The expected Stage 210 state is a ready
 `demo-sandbox/nvidia-nemotron-3-nano-30b-a3b` `InferenceService` using the
-Nemotron OCI modelcar source.
+Nemotron OCI modelcar source, the curated vLLM args, and the L40S-sized
+resource profile.
+
+Verify the active serving configuration:
+
+```bash
+oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox \
+  -o json | jq '.spec.predictor.model | {args, resources}'
+```
+
+Expected resources are one `nvidia.com/gpu`, `2` CPU and `16Gi` memory
+requested, and `4` CPU and `24Gi` memory limited. Expected args include
+`--max-model-len=131072`, `--enable-auto-tool-choice`,
+`--tool-call-parser=qwen3_coder`, and `--reasoning-parser=nano_v3`. If the
+spec drifts, rerun `./stage-210-model-serving-foundation/deploy.sh` and then
+`./stage-210-model-serving-foundation/validate.sh`.
 
 ### Stage 210 observability Application is missing or unhealthy
 

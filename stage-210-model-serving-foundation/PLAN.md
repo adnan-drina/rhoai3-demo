@@ -45,7 +45,8 @@
   reconciliation.
 - [x] Validate script proves the model serving platform is enabled, vLLM is
   available, `demo-registry` is available, Nemotron metadata exists, and the
-  Nemotron `InferenceService` is ready.
+  Nemotron `InferenceService` is ready with the curated vLLM argument and
+  resource profile.
 - [x] Fresh-environment deploy path discovers existing manual/dashboard state
   and creates missing registry metadata and endpoint resources when absent.
 - [x] Lightweight GuideLLM benchmark script is added for baseline throughput
@@ -62,7 +63,9 @@
 | Concept/value | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/sources/2025-10-30 - Why vLLM Is the Best Choice for AI Inference Today.md` | `project-documentation-authoring` | Supports vLLM as the private LLM inference runtime narrative. |
 | Concept/value and artifact governance | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Using containers to bring software engineering rigor to AI workloads.md` | `project-documentation-authoring` | Supports ModelCar/OCI model artifact governance. |
 | Concept/value and validated model context | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/analyses/2026-05-29 - Red Hat AI Validated Models Timeline.md` | `project-documentation-authoring` | Identifies `NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` as a Red Hat AI validated model from the January 2026 batch. |
-| Research finding | `rg -i "nemotron-3-nano|nemotron 3 nano|nvidia-nemotron-3-nano|g6e\\.2xlarge|g6e" /Users/adrina/Sandbox/rh-brain/Red\ Hat\ Brain` | `project-red-hat-doc-alignment-review` | No exact RH Brain article was found that pairs Nemotron 3 Nano with AWS `g6e.2xlarge`; use live metrics and GuideLLM evidence for tuning. |
+| Research finding | `rg -i "nemotron-3-nano|nemotron 3 nano|nvidia-nemotron-3-nano|g6e\\.2xlarge|g6e" /Users/adrina/Sandbox/rh-brain/Red\ Hat\ Brain` | `project-red-hat-doc-alignment-review` | RH Brain did not contain an exact matching article for Nemotron 3 Nano on AWS `g6e.2xlarge`; use the Red Hat-maintained quickstart below as implementation evidence and live GuideLLM/Grafana results for tuning. |
+| Implementation reference | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Documents the private code assistant architecture, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, 48GB VRAM requirement, and testing on two AWS `g6e.2xlarge` L40S instances. |
+| Implementation reference | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Source for the Nemotron vLLM flags, resource requests/limits, `LLMInferenceService` template, MaaS tier annotations, tiered RBAC, and Grafana patterns. Stage 210 adapts the direct serving subset; Stage 230 should reuse the MaaS pattern after RHOAI 3.4 schema checks. |
 | Benchmark methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/GuideLLM Evaluate LLM deployments for real-world inference.md` | `rhoai-model-management-monitoring` | GuideLLM purpose, workload shaping, TTFT, ITL, throughput, and SLO framing. |
 | Benchmark implementation pattern | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/How to deploy and benchmark vLLM with GuideLLM on Kubernetes.md` | `rhoai-model-management-monitoring` | Kubernetes Job pattern for in-cluster GuideLLM benchmarking against a vLLM endpoint. |
 | Observability methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/vLLM Performance Triage Baseline.md` | `rhoai-model-management-monitoring` | vLLM baseline workflow: TTFT, ITL, request queue, KV cache, prefix cache, sequence length, and topology checks. |
@@ -173,6 +176,8 @@
   - creates missing Nemotron metadata through the Model Registry REST API
 - Endpoint behavior:
   - uses an existing Nemotron `InferenceService` when present
+  - reconciles the Nemotron `InferenceService` to the curated quickstart-backed
+    vLLM argument and resource profile
   - creates the vLLM `ServingRuntime` from the active RHOAI template when
     absent
   - creates the Nemotron `InferenceService` when absent
@@ -215,6 +220,8 @@
   - Nemotron registered model, version, and OCI artifact metadata exist.
   - Nemotron `InferenceService` is `Ready`, has a runtime, and uses the
     expected OCI modelcar source.
+  - Nemotron `InferenceService` uses the curated quickstart-backed vLLM
+    arguments and resource sizing.
   - Stage 210 observability Application is `Synced` and `Healthy`.
   - User workload monitoring is enabled.
   - Grafana Operator, Grafana instance, Prometheus datasource, dashboard, and
@@ -236,7 +243,8 @@
 | Item | Type | Resolution |
 |------|------|------------|
 | Runtime template name and enabled state | risk | Verify after KServe is managed; do not hard-code a runtime name before validation. |
-| Exact Nemotron 3 Nano on AWS g6e.2xlarge article | source gap | RH Brain did not contain an exact matching article. Use validated model context, live vLLM metrics, and GuideLLM evidence rather than copying a non-matching tuning profile. |
+| Quickstart version boundary | risk | The MaaS code assistant quickstart is a Red Hat-maintained implementation reference, but it cites an RHOAI 3.3 advanced path. Keep RHOAI 3.4 official docs and live CRD schema as product authority. |
+| Quickstart modelcar URI | source boundary | The quickstart uses a sample modelcar URI for its scenario. This demo keeps the Red Hat registry modelcar URI unless a newer official Red Hat artifact is selected and documented. |
 | GuideLLM benchmark image | risk | `ghcr.io/vllm-project/guidellm:v0.5.0` is an upstream image used by the Red Hat article pattern, not a Red Hat product image. Keep it on-demand and documented as a benchmark tool. |
 | Grafana Operator support posture | risk | Grafana Operator is from `community-operators`; use only as a demo observability UI and document the support boundary. |
 | OCI modelcar pull permissions | risk | The Red Hat registry modelcar may require entitlement/pull credentials; keep credentials out of Git. |
@@ -257,8 +265,14 @@
   `stage-110-rhoai-base-platform` synced revision
   `df241586684739f8d1610e8a43bd875d686db896`.
 - Live validation: PASSED 2026-06-12 -
-  `stage-210-model-serving-foundation/validate.sh` 32/32 after the Stage 210
-  observability Application reached `Synced/Healthy`.
+  `stage-210-model-serving-foundation/validate.sh` 34/34 after the Stage 210
+  observability Application reached `Synced/Healthy` and the Nemotron endpoint
+  was reconciled to the curated quickstart-backed vLLM argument and resource
+  profile.
+- Direct inference smoke: PASSED 2026-06-12 -
+  `POST /v1/chat/completions` returned assistant content, reasoning metadata,
+  and usage tokens from `nvidia-nemotron-3-nano-30b-a3b` after the curated
+  configuration was applied.
 - GuideLLM smoke: PASSED 2026-06-12 -
   ran `./stage-210-model-serving-foundation/benchmark-guidellm.sh` with
   `RHOAI_GUIDELLM_RATE=1` and `RHOAI_GUIDELLM_MAX_SECONDS=10`; results stored
