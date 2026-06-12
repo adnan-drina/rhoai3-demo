@@ -609,11 +609,14 @@ JSON
       if [[ "$API_KEY_VALUE" == sk-oai-* ]]; then
         EXTERNAL_INFERENCE_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-openai-inference.XXXXXX")
         TMP_FILES+=("$EXTERNAL_INFERENCE_BODY")
-        EXTERNAL_INFERENCE_STATUS=$(curl -sk --max-time 120 -o "$EXTERNAL_INFERENCE_BODY" -w '%{http_code}' \
-          -H "Authorization: Bearer ${API_KEY_VALUE}" \
-          -H "Content-Type: application/json" \
-          "https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1/chat/completions" \
-          --data-binary @- <<JSON 2>/dev/null || true
+        EXTERNAL_INFERENCE_STATUS=""
+        for attempt in 1 2 3; do
+          : > "$EXTERNAL_INFERENCE_BODY"
+          EXTERNAL_INFERENCE_STATUS=$(curl -sk --max-time 120 -o "$EXTERNAL_INFERENCE_BODY" -w '%{http_code}' \
+            -H "Authorization: Bearer ${API_KEY_VALUE}" \
+            -H "Content-Type: application/json" \
+            "https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1/chat/completions" \
+            --data-binary @- <<JSON 2>/dev/null || true
 {
   "model": "${OPENAI_MODEL_ID}",
   "messages": [
@@ -626,6 +629,11 @@ JSON
 }
 JSON
 )
+          if [[ "$EXTERNAL_INFERENCE_STATUS" == "200" ]]; then
+            break
+          fi
+          sleep 3
+        done
         if [[ "$EXTERNAL_INFERENCE_STATUS" == "200" ]] &&
           jq -e '
             (.choices[0].message.content // "" | test("ok"; "i")) and
