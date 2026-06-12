@@ -13,7 +13,10 @@ The active implementation follows this sequence:
 3. `stage-210-model-serving-foundation` - enable the standard KServe model
    serving platform, vLLM serving path, `demo-registry`, Nemotron metadata,
    and Nemotron endpoint readiness.
-4. `stage-220-models-as-a-service` - planned governed MaaS access to Nemotron
+4. `stage-220-model-performance-baseline` - planned expanded performance
+   baseline and operating-envelope evidence when lightweight Stage 210
+   benchmark results are not sufficient.
+5. `stage-230-models-as-a-service` - planned governed MaaS access to Nemotron
    plus external OpenAI `gpt-5.4-nano`.
 
 ## Stage 110: RHOAI Base Platform
@@ -226,12 +229,18 @@ healthy.
 ./stage-210-model-serving-foundation/validate.sh
 ```
 
-Stage 210 does not have a separate Argo CD Application. It patches the Stage
-110-owned `DataScienceCluster` through the Stage 110 RHOAI aggregate overlay.
-The same Stage 110 Application also owns the `demo-registry` `ModelRegistry`
-instance and registry access bindings. In the Argo CD console, confirm Stage
-210 by opening `stage-110-rhoai-base-platform`; there is intentionally no
-`stage-210-model-serving-foundation` Application tile.
+Stage 210 has two GitOps ownership surfaces:
+
+- `stage-110-rhoai-base-platform` owns the single RHOAI
+  `DataScienceCluster`, including the KServe model-serving patch, and the
+  GitOps-managed `demo-registry`.
+- `stage-210-model-serving-foundation` owns observability resources:
+  OpenShift user workload monitoring configuration, Grafana Operator, Grafana
+  instance, Prometheus datasource, and the vLLM model-serving dashboard.
+
+Do not create a second `DataScienceCluster` for Stage 210. In Argo CD, inspect
+the Stage 110 Application for KServe/DSC state and the Stage 210 Application
+for observability state.
 
 ### Idempotent Nemotron Deployment
 
@@ -279,6 +288,63 @@ Current cluster-klvxt manual validation state:
 This confirms that the dashboard path works in the active environment. The
 deploy and validation scripts now treat that state as reusable input rather
 than requiring the same manual actions in every fresh environment.
+
+### Grafana And Metrics
+
+Stage 210 enables OpenShift user workload monitoring so the RHOAI/KServe
+generated `ServiceMonitor` for the Nemotron endpoint can be scraped. It also
+installs a demo Grafana instance through the community Grafana Operator.
+
+Verify the monitoring path:
+
+```bash
+oc get configmap cluster-monitoring-config -n openshift-monitoring \
+  -o jsonpath='{.data.config\.yaml}'
+oc get servicemonitor nvidia-nemotron-3-nano-30b-a3b-metrics -n demo-sandbox
+oc get grafana,grafanadatasource,grafanadashboard -n rhoai-demo-grafana
+```
+
+Open Grafana:
+
+```bash
+oc get route grafana-route -n rhoai-demo-grafana -o jsonpath='{.spec.host}'
+```
+
+Use OpenShift OAuth. The included dashboard is
+`RHOAI Stage 210 - vLLM Model Serving Baseline`. It focuses on vLLM latency,
+request pressure, token throughput, KV cache pressure, prefix cache behavior,
+and common DCGM GPU metrics.
+
+The Grafana Operator is installed from `community-operators` as a demo
+observability UI. It is not a Red Hat product dependency for RHOAI.
+
+### GuideLLM Baseline
+
+Run a short benchmark after the endpoint is ready:
+
+```bash
+./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+Defaults:
+
+- Image: `ghcr.io/vllm-project/guidellm:v0.5.0`
+- Target: the internal KServe URL from
+  `InferenceService.status.address.url`
+- Model: `nvidia-nemotron-3-nano-30b-a3b`
+- Data profile: `{"prompt_tokens":512,"output_tokens":128}`
+- Rate profile: concurrent rates `1,2,4`, 120 seconds per rate
+- Results: `runs/stage-210-guidellm/<timestamp>/`
+
+For a quick smoke test:
+
+```bash
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` to keep the temporary Job, PVC, and
+copy Pod for debugging.
 
 ---
 

@@ -17,6 +17,7 @@ MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-
 MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-Version 1}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0}"
+GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-rhoai-demo-grafana}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -32,6 +33,7 @@ MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-$MODEL_DEPLOYMENT_NAME}
 MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-$MODEL_DISPLAY_NAME}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-$MODEL_VERSION_NAME}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-$MODEL_URI}"
+GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-$GRAFANA_NS}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set. Set it in .env." >&2
@@ -70,6 +72,16 @@ crd_exists() {
   oc get crd "$name" --insecure-skip-tls-verify=true >/dev/null 2>&1
 }
 
+resource_exists() {
+  local resource="$1"
+  local namespace="$2"
+  if [[ -n "$namespace" ]]; then
+    oc get "$resource" -n "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1
+  else
+    oc get "$resource" --insecure-skip-tls-verify=true >/dev/null 2>&1
+  fi
+}
+
 require_cmd curl
 require_cmd jq
 
@@ -82,6 +94,15 @@ check "Stage 110 shared owner Application Synced" "$R"
 [[ "$APP_HEALTH" == "Healthy" ]] && R="pass" || R="health=${APP_HEALTH:-not found}"
 check "Stage 110 shared owner Application Healthy" "$R"
 
+OBS_APP_SYNC=$(oc get application stage-210-model-serving-foundation -n openshift-gitops \
+  -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_APP_HEALTH=$(oc get application stage-210-model-serving-foundation -n openshift-gitops \
+  -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${OBS_APP_SYNC:-not found}"
+check "Stage 210 observability Application Synced" "$R"
+[[ "$OBS_APP_HEALTH" == "Healthy" ]] && R="pass" || R="health=${OBS_APP_HEALTH:-not found}"
+check "Stage 210 observability Application Healthy" "$R"
+
 DSC_PHASE=$(oc get datasciencecluster default-dsc \
   -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DSC_PHASE" == "Ready" ]] && R="pass" || R="phase=${DSC_PHASE:-not found}"
@@ -91,6 +112,19 @@ DSC_KSERVE=$(oc get datasciencecluster default-dsc \
   -o jsonpath='{.spec.components.kserve.managementState}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DSC_KSERVE" == "Managed" ]] && R="pass" || R="kserve=${DSC_KSERVE:-not found}"
 check "DataScienceCluster KServe is Managed" "$R"
+
+UWM_ENABLED=$(oc get configmap cluster-monitoring-config -n openshift-monitoring \
+  -o jsonpath='{.data.config\.yaml}' --insecure-skip-tls-verify=true 2>/dev/null \
+  | grep -E 'enableUserWorkload:[[:space:]]*true' || true)
+[[ -n "$UWM_ENABLED" ]] && R="pass" || R="missing enableUserWorkload: true"
+check "OpenShift user workload monitoring enabled" "$R"
+
+if resource_exists "configmap/user-workload-monitoring-config" "openshift-user-workload-monitoring"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "User workload monitoring config present" "$R"
 
 if crd_exists inferenceservices.serving.kserve.io; then
   R="pass"
@@ -105,6 +139,56 @@ else
   R="missing"
 fi
 check "ServingRuntime CRD present" "$R"
+
+for crd in grafanas.grafana.integreatly.org grafanadatasources.grafana.integreatly.org grafanadashboards.grafana.integreatly.org; do
+  if crd_exists "$crd"; then
+    R="pass"
+  else
+    R="missing"
+  fi
+  check "Grafana CRD present: ${crd}" "$R"
+done
+
+if resource_exists "subscription/grafana" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana Operator subscription present" "$R"
+
+GRAFANA_CSV_PHASE=$(oc get csv -n "$GRAFANA_NS" --no-headers \
+  --insecure-skip-tls-verify=true 2>/dev/null \
+  | awk '$1 ~ /^grafana-operator/ {print $NF; exit}')
+[[ "$GRAFANA_CSV_PHASE" == "Succeeded" ]] && R="pass" || R="phase=${GRAFANA_CSV_PHASE:-not found}"
+check "Grafana Operator CSV Succeeded" "$R"
+
+if resource_exists "grafana/grafana" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana instance present" "$R"
+
+if resource_exists "grafanadatasource/prometheus" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana Prometheus datasource present" "$R"
+
+if resource_exists "grafanadashboard/vllm-model-serving-baseline" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana vLLM baseline dashboard present" "$R"
+
+if resource_exists "route/grafana-route" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana OAuth route present" "$R"
 
 VLLM_RUNTIME=$(oc get servingruntime -A \
   -o jsonpath='{range .items[*]}{.metadata.namespace}{"/"}{.metadata.name}{" "}{.metadata.annotations.openshift\.io/display-name}{"\n"}{end}' \
@@ -185,6 +269,23 @@ ISVC_URI=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
   -o jsonpath='{.spec.predictor.model.storageUri}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$ISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${ISVC_URI:-not found}"
 check "Nemotron InferenceService uses expected OCI model" "$R"
+
+if resource_exists "servicemonitor/${MODEL_DEPLOYMENT_NAME}-metrics" "$MODEL_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Nemotron ServiceMonitor present" "$R"
+
+ISVC_URL=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+  -o jsonpath='{.status.url}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+if [[ -n "$ISVC_URL" ]] && curl -ks --max-time 15 "${ISVC_URL}/metrics" \
+  | grep -q 'vllm:time_to_first_token_seconds_bucket'; then
+  R="pass"
+else
+  R="missing vLLM metrics"
+fi
+check "Nemotron endpoint exposes vLLM metrics" "$R"
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

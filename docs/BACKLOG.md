@@ -36,22 +36,24 @@ Stage 210 owns that transition.
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
 
-## Stage 210: Status — MODEL SERVING BASELINE IN PROGRESS
+## Stage 210: Status — MODEL SERVING BASELINE OBSERVABILITY ADDED
 
 Stage 210 enables the RHOAI KServe model serving platform through the shared
 Stage 110 `DataScienceCluster` owner and handles fresh-environment convergence
 for `demo-registry`, Nemotron registry metadata, and the Nemotron vLLM
-`InferenceService`. The stage remains open for lightweight GuideLLM benchmark
-and Grafana metrics work.
+`InferenceService`. It also adds user workload monitoring, a GitOps-managed
+Grafana model-serving dashboard, and an on-demand GuideLLM benchmark runner.
+Final status depends on live validation of the new observability Application
+and at least one GuideLLM smoke run.
 
 ### Open / deferred from Stage 210
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| GuideLLM benchmark script | high | Add a lightweight benchmark runner against the vLLM endpoint; no EvalHub or MLflow in this stage |
-| Grafana metrics dashboard | high | Add GitOps-managed Grafana resources for vLLM, KServe, and GPU metrics |
-| Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 220 MaaS owns governed shared API access |
-| Durable curated MaaS deployment | high | Deferred to Stage 220 after Stage 210 establishes basic serving limits and operating envelope |
+| Live observability validation | high | Confirm the Stage 210 Argo CD Application is Synced/Healthy and Grafana resources reconcile in cluster-klvxt |
+| GuideLLM smoke run | high | Run a short `RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30` baseline and keep results in gitignored `runs/` |
+| Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
+| Durable curated MaaS deployment | high | Deferred to Stage 230 after Stage 210 establishes basic serving limits and operating envelope |
 
 ## Candidate Future Stages
 
@@ -59,9 +61,10 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-220-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
-| `stage-230-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
-| `stage-240-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
+| `stage-220-model-performance-baseline` | Production GenAI | Expanded performance baseline and operating-envelope evidence if the Stage 210 lightweight GuideLLM/Grafana baseline needs a dedicated follow-up |
+| `stage-230-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
+| `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
+| `stage-250-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
 | `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |

@@ -96,26 +96,35 @@ wait_for_jsonpath() {
 GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
 GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
 
-APP_MANIFEST=$(mktemp)
-TMP_FILES=("$APP_MANIFEST")
+TMP_FILES=()
 cleanup() {
   rm -f "${TMP_FILES[@]}"
 }
 trap cleanup EXIT
 
-sed \
-  -e "s|repoURL: .*|repoURL: ${GIT_REPO_URL}|" \
-  -e "s|targetRevision: .*|targetRevision: ${GIT_REPO_BRANCH}|" \
-  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml" \
-  > "$APP_MANIFEST"
+apply_argocd_application() {
+  local app_name="$1"
+  local manifest_path="$2"
+  local app_manifest
+  app_manifest=$(mktemp)
+  TMP_FILES+=("$app_manifest")
+
+  sed \
+    -e "s|repoURL: .*|repoURL: ${GIT_REPO_URL}|" \
+    -e "s|targetRevision: .*|targetRevision: ${GIT_REPO_BRANCH}|" \
+    "$manifest_path" > "$app_manifest"
+
+  oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
+
+  oc annotate application "$app_name" -n openshift-gitops \
+    argocd.argoproj.io/refresh=hard --overwrite \
+    --insecure-skip-tls-verify=true >/dev/null
+}
 
 echo "── Applying shared Stage 110 Argo CD Application ──"
-oc apply -f "$APP_MANIFEST" --insecure-skip-tls-verify=true
-
-echo "── Requesting Argo CD refresh for shared RHOAI owner ──"
-oc annotate application stage-110-rhoai-base-platform -n openshift-gitops \
-  argocd.argoproj.io/refresh=hard --overwrite \
-  --insecure-skip-tls-verify=true >/dev/null
+apply_argocd_application \
+  "stage-110-rhoai-base-platform" \
+  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml"
 
 echo "✓ Application stage-110-rhoai-base-platform applied"
 echo "  Argo CD will reconcile the Stage 210 KServe patch through the shared DSC owner."
@@ -439,6 +448,19 @@ ensure_inference_service "$runtime_name"
 wait_for_jsonpath "Nemotron InferenceService readiness" \
   "inferenceservice/${MODEL_DEPLOYMENT_NAME}" "$MODEL_NS" \
   "{.status.conditions[?(@.type==\"Ready\")].status}" "True"
+
+echo "── Applying Stage 210 observability Argo CD Application ──"
+apply_argocd_application \
+  "stage-210-model-serving-foundation" \
+  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-210-model-serving-foundation.yaml"
+
+wait_for_jsonpath "Stage 210 observability Application sync" \
+  "application/stage-210-model-serving-foundation" "openshift-gitops" \
+  "{.status.sync.status}" "Synced"
+
+wait_for_jsonpath "Stage 210 observability Application health" \
+  "application/stage-210-model-serving-foundation" "openshift-gitops" \
+  "{.status.health.status}" "Healthy"
 
 echo "✓ Stage 210 deployment baseline is ready"
 echo "  Run ./stage-210-model-serving-foundation/validate.sh to confirm readiness."

@@ -273,6 +273,93 @@ The expected Stage 210 state is a ready
 `demo-sandbox/nvidia-nemotron-3-nano-30b-a3b` `InferenceService` using the
 Nemotron OCI modelcar source.
 
+### Stage 210 observability Application is missing or unhealthy
+
+- **Likely causes:** the branch with the Stage 210 observability GitOps path
+  was not pushed, Argo CD is still installing Grafana Operator CRDs, or the
+  Grafana community Operator catalog is temporarily unavailable.
+- **Checks:**
+
+```bash
+oc get application stage-210-model-serving-foundation -n openshift-gitops \
+  -o jsonpath='{.spec.source.targetRevision}{" "}{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+oc get subscription,csv -n rhoai-demo-grafana
+oc get crd grafanas.grafana.integreatly.org grafanadatasources.grafana.integreatly.org grafanadashboards.grafana.integreatly.org
+```
+
+If the Application reports a schema or dry-run error, wait for the Grafana
+Operator CSV to reach `Succeeded`, then hard-refresh the Application:
+
+```bash
+oc annotate application stage-210-model-serving-foundation -n openshift-gitops \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+### vLLM metrics are exposed but not visible in Grafana
+
+- **Likely causes:** user workload monitoring is not enabled yet, the
+  generated ServiceMonitor is missing, Grafana datasource token substitution
+  failed, or Prometheus has not scraped a fresh sample.
+- **Checks:**
+
+```bash
+oc get configmap cluster-monitoring-config -n openshift-monitoring \
+  -o jsonpath='{.data.config\.yaml}'
+oc get pods -n openshift-user-workload-monitoring
+oc get servicemonitor nvidia-nemotron-3-nano-30b-a3b-metrics -n demo-sandbox
+oc get grafanadatasource prometheus -n rhoai-demo-grafana -o yaml
+```
+
+The endpoint itself should expose vLLM metrics:
+
+```bash
+MODEL_URL=$(oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b \
+  -n demo-sandbox -o jsonpath='{.status.url}')
+curl -ks "${MODEL_URL}/metrics" | grep 'vllm:time_to_first_token_seconds_bucket'
+```
+
+If the endpoint has metrics but Prometheus does not, wait a few minutes after
+enabling user workload monitoring and then re-run validation.
+
+### Grafana route returns an authorization error
+
+- **Likely causes:** the logged-in OpenShift user cannot satisfy the OAuth
+  proxy SAR, the Grafana service account OAuth redirect annotation is not
+  reconciled, or the route/service serving certificate has not settled.
+- **Checks:**
+
+```bash
+oc get route grafana-route -n rhoai-demo-grafana -o yaml
+oc get serviceaccount grafana-sa -n rhoai-demo-grafana -o yaml
+oc get pod -n rhoai-demo-grafana -l app.kubernetes.io/name=grafana -o wide
+```
+
+Use a cluster-admin or a user with namespace read permission for the demo
+Grafana namespace.
+
+### GuideLLM benchmark job fails
+
+- **Likely causes:** the upstream GuideLLM image cannot be pulled, the
+  endpoint is not reachable from inside the cluster, the selected rate profile
+  overwhelms the one-GPU endpoint, or the PVC cannot bind.
+- **Checks:**
+
+```bash
+oc get job,pod,pvc -n demo-sandbox | grep guidellm
+oc logs -n demo-sandbox job/<guidellm-job-name>
+oc describe job -n demo-sandbox <guidellm-job-name>
+```
+
+Use a smaller smoke-test profile first:
+
+```bash
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` when you need the temporary Job, PVC,
+or copy Pod to remain for inspection.
+
 ---
 
 Legacy troubleshooting content is backed up at:
