@@ -160,7 +160,10 @@ resources.limits.memory: 24Gi
 resources.limits.nvidia.com/gpu: "1"
 
 --enable-force-include-usage
+--disable-uvicorn-access-log
+--enable-prefix-caching
 --max-model-len=131072
+--max-num-batched-tokens=8192
 --enable-auto-tool-choice
 --tool-call-parser=qwen3_coder
 --trust-remote-code
@@ -172,11 +175,15 @@ Review points:
 
 - The quickstart was tested on AWS `g6e.2xlarge` L40S GPU instances with at
   least 48GB GPU VRAM.
+- The coding-demo deployment uses the same modelcar source with prefix caching
+  and an 8192-token batched scheduling budget for long developer prompts.
 - Stage 210 uses a direct `InferenceService`; Stage 230 should use the
   quickstart's `LLMInferenceService`, MaaS tier, Gateway, and RBAC patterns
   only after RHOAI 3.4 schema verification.
 - Keep the Red Hat registry modelcar URI for this project unless a newer
   official Red Hat artifact is selected and documented.
+- For full direct-serving and MaaS examples, use
+  `examples/nemotron-vllm-configurations.md`.
 
 ## vLLM KV Cache Environment Variable
 

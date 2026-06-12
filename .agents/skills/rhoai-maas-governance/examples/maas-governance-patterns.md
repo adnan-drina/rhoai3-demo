@@ -27,15 +27,19 @@ Review points:
 ## Demo Nemotron MaaS Implementation Reference
 
 The Red Hat-maintained `rh-ai-quickstart/maas-code-assistant` chart provides a
-useful Stage 230 reference for publishing Nemotron 3 Nano through MaaS:
+useful Stage 230 reference for publishing Nemotron 3 Nano through MaaS. The
+working `rhoai3-coding-demo` implementation adds the concrete llm-d scheduler,
+prefix-caching, and tool-calling settings this project should preserve:
 
 - `LLMInferenceService` with `alpha.maas.opendatahub.io/tiers`
 - Gateway reference to `maas-default-gateway` in `openshift-ingress`
 - vLLM command and TLS args for OpenAI-compatible serving
 - model-specific Nemotron vLLM args for usage reporting, context length, tool
-  calling, trusted remote code, and reasoning parser support
+  calling, trusted remote code, prefix caching, batched-token scheduling, and
+  reasoning parser support
 - per-tier RBAC allowing `system:serviceaccounts:maas-default-gateway-tier-*`
   groups to read the model resource
+- llm-d single-GPU-per-replica labels and scheduler pool shape
 
 Review points:
 
@@ -45,6 +49,8 @@ Review points:
 - The quickstart uses a sample modelcar URI for its scenario; this demo should
   keep the Red Hat registry Nemotron modelcar unless the model source decision
   changes explicitly.
+- For the full reusable Nemotron direct-serving and MaaS examples, use
+  `../../rhoai-model-serving-platform/examples/nemotron-vllm-configurations.md`.
 
 ## External OpenAI Model Pattern
 

@@ -43,6 +43,7 @@
 |--------|------|
 | https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S testing context |
 | https://github.com/rh-ai-quickstart/maas-code-assistant | Source repository for model-specific Nemotron vLLM args, resource sizing, `LLMInferenceService`, MaaS tier, RBAC, and Grafana examples |
+| `rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | Working local reference for the demo Nemotron modelcar source, vLLM image, tool-calling args, reasoning parser args, prefix caching, batched-token budget, scheduler shape, probes, resources, and `/dev/shm` volume |
 
 ## Source Boundaries
 
@@ -56,6 +57,9 @@
   endpoints, or creating a MaaS offering.
 - It summarizes official example manifests. Do not copy long upstream examples
   into GitOps without checking the active CRD schema and image provenance.
+- `rhoai3-coding-demo` references are sibling-demo implementation evidence
+  only. Use them to preserve working demo intent, then verify against current
+  official docs and installed CRDs.
 - Verification: dashboard enablement, runtime enabled state, `ServingRuntime`
   and `InferenceService` YAML, deployment status, runtime arguments in
   `spec.predictor.model.args`, environment variables in

@@ -46,7 +46,7 @@ the Red Hat AI MaaS code assistant quickstart. It also adds user workload
 monitoring, a GitOps-managed Grafana model-serving dashboard, and an on-demand
 GuideLLM benchmark runner.
 
-Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 34/34. A
+Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 35/35. A
 short GuideLLM smoke run completed successfully and wrote JSON results under
 gitignored `runs/stage-210-guidellm/`.
 

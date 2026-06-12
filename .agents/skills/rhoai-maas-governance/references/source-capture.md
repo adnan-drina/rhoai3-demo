@@ -30,6 +30,8 @@
 |--------|------|
 | https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for private code assistant, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S requirements |
 | https://github.com/rh-ai-quickstart/maas-code-assistant | Source repository for `LLMInferenceService`, MaaS tier annotations, tiered RBAC, Gateway references, model resource sizing, and Grafana examples |
+| `rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | Working local reference for publishing Nemotron through `LLMInferenceService` with Gateway, scheduler pool, tool-calling args, reasoning parser args, prefix caching, resources, and `/dev/shm` |
+| `rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | Working local reference for MaaSModelRef resources that publish local `LLMInferenceService` backends |
 
 ## Source Boundaries
 
@@ -44,6 +46,9 @@
 - Red Hat quickstarts and `rh-ai-quickstart` repositories are supporting
   implementation evidence only. Do not use them to override RHOAI 3.4 official
   docs or installed CRD schemas.
+- `rhoai3-coding-demo` references are sibling-demo implementation evidence
+  only. Verify API versions, field names, Gateway, scheduler, and MaaS CRDs in
+  the active cluster before committing Stage 230 GitOps.
 - External provider examples such as OpenAI are governed external-access
   patterns. Provider credential scopes, rate limits, and model availability
   must be verified with the provider outside this skill.

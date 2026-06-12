@@ -283,9 +283,10 @@ oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox \
 
 Expected resources are one `nvidia.com/gpu`, `2` CPU and `16Gi` memory
 requested, and `4` CPU and `24Gi` memory limited. Expected args include
-`--max-model-len=131072`, `--enable-auto-tool-choice`,
-`--tool-call-parser=qwen3_coder`, and `--reasoning-parser=nano_v3`. If the
-spec drifts, rerun `./stage-210-model-serving-foundation/deploy.sh` and then
+`--enable-prefix-caching`, `--max-model-len=131072`,
+`--max-num-batched-tokens=8192`, `--enable-auto-tool-choice`,
+`--tool-call-parser=qwen3_coder`, and `--reasoning-parser=nano_v3`. If the spec
+drifts, rerun `./stage-210-model-serving-foundation/deploy.sh` and then
 `./stage-210-model-serving-foundation/validate.sh`.
 
 ### Stage 210 observability Application is missing or unhealthy

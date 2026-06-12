@@ -23,6 +23,7 @@ MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-4}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-16Gi}"
 MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-24Gi}"
 MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-131072}"
+MODEL_MAX_BATCHED_TOKENS="${RHOAI_NEMOTRON_MAX_BATCHED_TOKENS:-8192}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -44,6 +45,7 @@ MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-$MODEL_CPU_LIMIT}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-$MODEL_MEMORY_REQUEST}"
 MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-$MODEL_MEMORY_LIMIT}"
 MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-$MODEL_MAX_MODEL_LEN}"
+MODEL_MAX_BATCHED_TOKENS="${RHOAI_NEMOTRON_MAX_BATCHED_TOKENS:-$MODEL_MAX_BATCHED_TOKENS}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set. Set it in .env." >&2
@@ -282,10 +284,15 @@ check "Nemotron InferenceService uses expected OCI model" "$R"
 
 ISVC_JSON=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
   -o json --insecure-skip-tls-verify=true 2>/dev/null || echo "{}")
-if jq -e --arg maxModelLen "$MODEL_MAX_MODEL_LEN" '
+if jq -e \
+    --arg maxModelLen "$MODEL_MAX_MODEL_LEN" \
+    --arg maxBatchedTokens "$MODEL_MAX_BATCHED_TOKENS" '
     .spec.predictor.model.args == [
       "--enable-force-include-usage",
+      "--disable-uvicorn-access-log",
+      "--enable-prefix-caching",
       ("--max-model-len=" + $maxModelLen),
+      ("--max-num-batched-tokens=" + $maxBatchedTokens),
       "--enable-auto-tool-choice",
       "--tool-call-parser=qwen3_coder",
       "--trust-remote-code",
@@ -337,6 +344,62 @@ else
   R="missing vLLM metrics"
 fi
 check "Nemotron endpoint exposes vLLM metrics" "$R"
+
+TOOL_CALL_BODY=""
+if [[ -n "$ISVC_URL" ]]; then
+  TOOL_CALL_PAYLOAD=$(cat <<'JSON'
+{
+  "model": "nvidia-nemotron-3-nano-30b-a3b",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Use the available tool to get the weather for Amsterdam."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a city.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        }
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "get_weather"
+    }
+  },
+  "max_tokens": 128,
+  "temperature": 0
+}
+JSON
+)
+  TOOL_CALL_BODY=$(curl -ks --max-time 90 "${ISVC_URL}/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    --data-binary "$TOOL_CALL_PAYLOAD" 2>/dev/null || true)
+fi
+if jq -e '
+    .choices[0].message.tool_calls[0].function.name == "get_weather" and
+    (.choices[0].message.tool_calls[0].function.arguments | contains("Amsterdam"))
+  ' <<<"$TOOL_CALL_BODY" >/dev/null 2>&1; then
+  R="pass"
+else
+  R="tool call response missing get_weather(Amsterdam)"
+fi
+check "Nemotron endpoint returns structured tool call" "$R"
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

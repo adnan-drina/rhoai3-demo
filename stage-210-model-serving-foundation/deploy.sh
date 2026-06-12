@@ -24,6 +24,7 @@ MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-4}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-16Gi}"
 MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-24Gi}"
 MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-131072}"
+MODEL_MAX_BATCHED_TOKENS="${RHOAI_NEMOTRON_MAX_BATCHED_TOKENS:-8192}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -49,6 +50,7 @@ MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-$MODEL_CPU_LIMIT}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-$MODEL_MEMORY_REQUEST}"
 MODEL_MEMORY_LIMIT="${RHOAI_NEMOTRON_MEMORY_LIMIT:-$MODEL_MEMORY_LIMIT}"
 MODEL_MAX_MODEL_LEN="${RHOAI_NEMOTRON_MAX_MODEL_LEN:-$MODEL_MAX_MODEL_LEN}"
+MODEL_MAX_BATCHED_TOKENS="${RHOAI_NEMOTRON_MAX_BATCHED_TOKENS:-$MODEL_MAX_BATCHED_TOKENS}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -392,9 +394,14 @@ ensure_serving_runtime() {
 }
 
 desired_model_args_json() {
-  jq -n --arg maxModelLen "$MODEL_MAX_MODEL_LEN" '[
+  jq -n \
+    --arg maxModelLen "$MODEL_MAX_MODEL_LEN" \
+    --arg maxBatchedTokens "$MODEL_MAX_BATCHED_TOKENS" '[
     "--enable-force-include-usage",
+    "--disable-uvicorn-access-log",
+    "--enable-prefix-caching",
     ("--max-model-len=" + $maxModelLen),
+    ("--max-num-batched-tokens=" + $maxBatchedTokens),
     "--enable-auto-tool-choice",
     "--tool-call-parser=qwen3_coder",
     "--trust-remote-code",
@@ -513,7 +520,10 @@ spec:
     model:
       args:
         - --enable-force-include-usage
+        - --disable-uvicorn-access-log
+        - --enable-prefix-caching
         - --max-model-len=${MODEL_MAX_MODEL_LEN}
+        - --max-num-batched-tokens=${MODEL_MAX_BATCHED_TOKENS}
         - --enable-auto-tool-choice
         - --tool-call-parser=qwen3_coder
         - --trust-remote-code

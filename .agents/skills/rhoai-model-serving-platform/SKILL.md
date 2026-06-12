@@ -141,6 +141,9 @@ For this repo:
    - setting the cluster default deployment strategy
    - reviewing `ServingRuntime` or `InferenceService` manifests
 4. Use `examples/model-serving-platform-patterns.md` for review patterns.
+   For Nemotron 3 Nano, use
+   `examples/nemotron-vllm-configurations.md` before changing model args,
+   resources, or MaaS serving shape.
 5. Validate with `references/validation-checklist.md`.
 
 ## References
@@ -149,3 +152,4 @@ For this repo:
 - `references/official-doc-extraction.md`
 - `references/validation-checklist.md`
 - `examples/model-serving-platform-patterns.md`
+- `examples/nemotron-vllm-configurations.md`

@@ -267,7 +267,9 @@ assistant quickstart tested on AWS `g6e.2xlarge`/L40S GPU infrastructure:
 
 - resources: request `2` CPU, `16Gi` memory, and one `nvidia.com/gpu`; limit
   `4` CPU, `24Gi` memory, and one `nvidia.com/gpu`
-- vLLM args: `--enable-force-include-usage`, `--max-model-len=131072`,
+- vLLM args: `--enable-force-include-usage`,
+  `--disable-uvicorn-access-log`, `--enable-prefix-caching`,
+  `--max-model-len=131072`, `--max-num-batched-tokens=8192`,
   `--enable-auto-tool-choice`, `--tool-call-parser=qwen3_coder`,
   `--trust-remote-code`,
   `--reasoning-parser-plugin=/mnt/models/nano_v3_reasoning_parser.py`, and

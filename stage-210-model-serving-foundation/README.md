@@ -58,9 +58,10 @@ implementation reference that was tested with L40S GPUs on AWS `g6e.2xlarge`
 instances. Stage 210 adapts the direct serving subset of that configuration:
 one Nemotron endpoint, one GPU, `2` CPU and `16Gi` memory requested, `4` CPU and
 `24Gi` memory limited, and the Nemotron-specific vLLM flags for usage
-reporting, context length, tool calling, trusted remote code, and reasoning
-parser support. The quickstart's MaaS `LLMInferenceService`, gateway, tier, and
-RBAC patterns remain Stage 230 input.
+reporting, access-log reduction, prefix caching, context length, batched-token
+scheduling, tool calling, trusted remote code, and reasoning parser support.
+The quickstart's MaaS `LLMInferenceService`, gateway, tier, and RBAC patterns
+remain Stage 230 input.
 
 The quickstart deploys a sample modelcar URI for its scenario. This demo keeps
 the Red Hat registry artifact
@@ -139,11 +140,14 @@ Validated on `cluster-klvxt` on 2026-06-12:
 
 - `stage-210-model-serving-foundation/deploy.sh` converged Stage 110 and Stage
   210 Argo CD Applications to `Synced/Healthy`.
-- `stage-210-model-serving-foundation/validate.sh` passed 34 checks after
-  reconciling the curated Nemotron vLLM args and resource sizing.
+- `stage-210-model-serving-foundation/validate.sh` passed 35 checks after
+  reconciling the curated Nemotron vLLM args, resource sizing, and structured
+  tool-call validation.
 - A direct `/v1/chat/completions` smoke test returned assistant content,
   reasoning metadata, and usage tokens through the vLLM endpoint after the
   curated configuration was applied.
+- A forced tool-call smoke test returned a structured `get_weather` tool call
+  with `city: Amsterdam`, confirming the Nemotron tool-calling parser path.
 - A short GuideLLM smoke run with one concurrent request and a 10-second window
   completed with 11 successful requests and zero errors. The observed p95 TTFT
   was about 71 ms, p95 ITL about 7.1 ms, p95 end-to-end request latency about

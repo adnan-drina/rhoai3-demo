@@ -66,6 +66,7 @@
 | Research finding | `rg -i "nemotron-3-nano|nemotron 3 nano|nvidia-nemotron-3-nano|g6e\\.2xlarge|g6e" /Users/adrina/Sandbox/rh-brain/Red\ Hat\ Brain` | `project-red-hat-doc-alignment-review` | RH Brain did not contain an exact matching article for Nemotron 3 Nano on AWS `g6e.2xlarge`; use the Red Hat-maintained quickstart below as implementation evidence and live GuideLLM/Grafana results for tuning. |
 | Implementation reference | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Documents the private code assistant architecture, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, 48GB VRAM requirement, and testing on two AWS `g6e.2xlarge` L40S instances. |
 | Implementation reference | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-model-serving-platform`, `rhoai-maas-governance` | Source for the Nemotron vLLM flags, resource requests/limits, `LLMInferenceService` template, MaaS tier annotations, tiered RBAC, and Grafana patterns. Stage 210 adapts the direct serving subset; Stage 230 should reuse the MaaS pattern after RHOAI 3.4 schema checks. |
+| Implementation reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | `rhoai-model-serving-platform`, `rhoai-maas-governance` | Working sibling-demo configuration for the Red Hat registry modelcar, tool-calling args, reasoning parser args, prefix caching, `--max-num-batched-tokens=8192`, resources, probes, scheduler shape, and `/dev/shm` volume. |
 | Benchmark methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/GuideLLM Evaluate LLM deployments for real-world inference.md` | `rhoai-model-management-monitoring` | GuideLLM purpose, workload shaping, TTFT, ITL, throughput, and SLO framing. |
 | Benchmark implementation pattern | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/How to deploy and benchmark vLLM with GuideLLM on Kubernetes.md` | `rhoai-model-management-monitoring` | Kubernetes Job pattern for in-cluster GuideLLM benchmarking against a vLLM endpoint. |
 | Observability methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/vLLM Performance Triage Baseline.md` | `rhoai-model-management-monitoring` | vLLM baseline workflow: TTFT, ITL, request queue, KV cache, prefix cache, sequence length, and topology checks. |
@@ -176,8 +177,8 @@
   - creates missing Nemotron metadata through the Model Registry REST API
 - Endpoint behavior:
   - uses an existing Nemotron `InferenceService` when present
-  - reconciles the Nemotron `InferenceService` to the curated quickstart-backed
-    vLLM argument and resource profile
+  - reconciles the Nemotron `InferenceService` to the curated
+    quickstart/coding-demo-backed vLLM argument and resource profile
   - creates the vLLM `ServingRuntime` from the active RHOAI template when
     absent
   - creates the Nemotron `InferenceService` when absent
@@ -220,7 +221,7 @@
   - Nemotron registered model, version, and OCI artifact metadata exist.
   - Nemotron `InferenceService` is `Ready`, has a runtime, and uses the
     expected OCI modelcar source.
-  - Nemotron `InferenceService` uses the curated quickstart-backed vLLM
+  - Nemotron `InferenceService` uses the curated quickstart/coding-demo-backed vLLM
     arguments and resource sizing.
   - Stage 210 observability Application is `Synced` and `Healthy`.
   - User workload monitoring is enabled.
@@ -265,14 +266,19 @@
   `stage-110-rhoai-base-platform` synced revision
   `df241586684739f8d1610e8a43bd875d686db896`.
 - Live validation: PASSED 2026-06-12 -
-  `stage-210-model-serving-foundation/validate.sh` 34/34 after the Stage 210
+  `stage-210-model-serving-foundation/validate.sh` 35/35 after the Stage 210
   observability Application reached `Synced/Healthy` and the Nemotron endpoint
-  was reconciled to the curated quickstart-backed vLLM argument and resource
-  profile.
+  was reconciled to the curated quickstart/coding-demo-backed vLLM argument and
+  resource profile, including structured tool-call validation.
 - Direct inference smoke: PASSED 2026-06-12 -
   `POST /v1/chat/completions` returned assistant content, reasoning metadata,
   and usage tokens from `nvidia-nemotron-3-nano-30b-a3b` after the curated
   configuration was applied.
+- Tool-calling smoke: PASSED 2026-06-12 -
+  forced `tool_choice` returned a structured `get_weather` tool call with
+  `{"city":"Amsterdam"}`, confirming
+  `--enable-auto-tool-choice`, `--tool-call-parser=qwen3_coder`, and the
+  Nemotron reasoning parser path are active.
 - GuideLLM smoke: PASSED 2026-06-12 -
   ran `./stage-210-model-serving-foundation/benchmark-guidellm.sh` with
   `RHOAI_GUIDELLM_RATE=1` and `RHOAI_GUIDELLM_MAX_SECONDS=10`; results stored
