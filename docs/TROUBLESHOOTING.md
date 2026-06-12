@@ -564,11 +564,14 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
   `models-as-a-service-db`, which is not Kueue-managed. Keep MaaS/model
   resources in `models-as-a-service`; keep the database StatefulSet in the
   database namespace.
-- **Cleanup for older clusters:** temporarily remove the
-  `kueue.openshift.io/managed` namespace label from `models-as-a-service`,
-  delete or finalize the old `maas-postgres` StatefulSet in that namespace,
-  and let ArgoCD create the new database StatefulSet in
-  `models-as-a-service-db`.
+- **Cleanup for older clusters:** stop the stuck Stage 230 sync, temporarily
+  remove both `kueue.openshift.io/managed` and legacy `kueue-managed`
+  namespace labels from `models-as-a-service`, delete or finalize the old
+  `maas-postgres` StatefulSet in that namespace, remove any orphaned
+  `maas-postgres` Service/Pod/PVC/Secret, and let ArgoCD create the new
+  database StatefulSet in `models-as-a-service-db`. Removing only
+  `kueue.openshift.io/managed` is not enough if `kueue-managed=true` is still
+  present, because the managed label can be recreated immediately.
 
 ### Nemotron still exists as a direct demo-sandbox deployment
 

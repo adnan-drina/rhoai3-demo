@@ -12,4 +12,4 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
     openshift.io/display-name: Models-as-a-Service
-    openshift.io/description: MaaS tenant, API key database, and governance resources for the RHOAI demo.
+    openshift.io/description: MaaS tenant, model backends, and governance resources for the RHOAI demo.
