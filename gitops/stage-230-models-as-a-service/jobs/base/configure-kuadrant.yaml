@@ -26,13 +26,6 @@ rules:
     verbs:
       - get
       - patch
-  - apiGroups:
-      - kuadrant.io
-    resources:
-      - authpolicies
-    verbs:
-      - get
-      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -92,26 +85,4 @@ spec:
                 SSL_CERT_FILE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt \
                 REQUESTS_CA_BUNDLE=/etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt
 
-              for i in $(seq 1 60); do
-                if oc get authpolicy gateway-default-auth -n openshift-ingress >/dev/null 2>&1; then
-                  oc patch authpolicy gateway-default-auth -n openshift-ingress --type=merge \
-                    -p '{"spec":{"defaults":{"rules":{"authentication":{"user-tokens":{"kubernetesTokenReview":{"audiences":["https://kubernetes.default.svc"]},"metrics":false,"priority":1,"defaults":{"userid":{"expression":"auth.identity.user.username"}}}}}}}}'
-                  echo "gateway-default-auth accepts OpenShift OAuth user tokens."
-                  break
-                fi
-                echo "Waiting for gateway-default-auth... ($i/60)"
-                sleep 10
-              done
-
-              for i in $(seq 1 60); do
-                if oc get authpolicy maas-api-auth-policy -n redhat-ods-applications >/dev/null 2>&1; then
-                  oc patch authpolicy maas-api-auth-policy -n redhat-ods-applications \
-                    --type=json -p '[{"op":"replace","path":"/spec/rules/authorization","value":{}}]'
-                  echo "maas-api-auth-policy authorization override is configured."
-                  exit 0
-                fi
-                echo "Waiting for maas-api-auth-policy... ($i/60)"
-                sleep 10
-              done
-
-              echo "maas-api-auth-policy was not created in time; validation will report whether a follow-up sync is needed."
+              echo "Authorino service CA trust configuration is present."

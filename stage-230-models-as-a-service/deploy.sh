@@ -60,6 +60,10 @@ MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
 OPENAI_API_KEY_VALUE="${RHOAI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
+DEMO_PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
+MAAS_NEMOTRON_NAME="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+CLEANUP_DEMO_NEMOTRON="${RHOAI_STAGE230_CLEANUP_DEMO_SANDBOX_NEMOTRON:-true}"
 
 TMP_FILES=()
 cleanup() {
@@ -95,6 +99,26 @@ wait_for_jsonpath() {
   done
 
   echo "ERROR: ${label} did not reach ${expected} (last value: ${value:-missing})." >&2
+  return 1
+}
+
+wait_for_delete() {
+  local label="$1"
+  local resource="$2"
+  local namespace="$3"
+  local attempts="${4:-90}"
+
+  echo "── Waiting for ${label} to be removed ──"
+  for _ in $(seq 1 "$attempts"); do
+    if ! oc get "$resource" -n "$namespace" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      echo "✓ ${label} removed"
+      return 0
+    fi
+    sleep 10
+  done
+
+  echo "ERROR: ${label} still exists in ${namespace}." >&2
   return 1
 }
 
@@ -239,6 +263,43 @@ ensure_openai_provider_secret() {
   exit 1
 }
 
+cleanup_demo_sandbox_nemotron() {
+  local deleted="false"
+
+  if [[ "$CLEANUP_DEMO_NEMOTRON" != "true" ]]; then
+    echo "── Skipping demo-sandbox Nemotron cleanup by configuration ──"
+    return 0
+  fi
+
+  echo "── Checking for stale direct Nemotron deployments in ${DEMO_PROJECT_NS} ──"
+
+  if oc get inferenceservice "$DIRECT_NEMOTRON_NAME" -n "$DEMO_PROJECT_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "Deleting direct InferenceService ${DIRECT_NEMOTRON_NAME} from ${DEMO_PROJECT_NS}; Stage 230 will recreate Nemotron through MaaS in ${MAAS_NS}."
+    oc delete inferenceservice "$DIRECT_NEMOTRON_NAME" -n "$DEMO_PROJECT_NS" \
+      --wait=false --ignore-not-found=true --insecure-skip-tls-verify=true >/dev/null
+    wait_for_delete "InferenceService/${DIRECT_NEMOTRON_NAME}" \
+      "inferenceservice/${DIRECT_NEMOTRON_NAME}" "$DEMO_PROJECT_NS"
+    deleted="true"
+  fi
+
+  for stale_llmis_name in "$MAAS_NEMOTRON_NAME" "$DIRECT_NEMOTRON_NAME"; do
+    if oc get llminferenceservice "$stale_llmis_name" -n "$DEMO_PROJECT_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      echo "Deleting stale LLMInferenceService ${stale_llmis_name} from ${DEMO_PROJECT_NS}; MaaS-owned Nemotron belongs in ${MAAS_NS}."
+      oc delete llminferenceservice "$stale_llmis_name" -n "$DEMO_PROJECT_NS" \
+        --wait=false --ignore-not-found=true --insecure-skip-tls-verify=true >/dev/null
+      wait_for_delete "LLMInferenceService/${stale_llmis_name}" \
+        "llminferenceservice/${stale_llmis_name}" "$DEMO_PROJECT_NS"
+      deleted="true"
+    fi
+  done
+
+  if [[ "$deleted" == "false" ]]; then
+    echo "✓ No stale direct Nemotron deployment found in ${DEMO_PROJECT_NS}"
+  fi
+}
+
 if ! oc get crd certificates.cert-manager.io --insecure-skip-tls-verify=true >/dev/null 2>&1; then
   echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 230." >&2
   exit 1
@@ -251,6 +312,7 @@ fi
 
 ensure_maas_secrets
 ensure_openai_provider_secret
+cleanup_demo_sandbox_nemotron
 
 echo "── Applying shared Stage 110 Argo CD Application ──"
 apply_argocd_application \
@@ -282,4 +344,4 @@ wait_for_jsonpath "MaaS PostgreSQL StatefulSet availability" \
   "{.status.readyReplicas}" "1" 90
 
 echo "✓ Stage 230 rollout requested"
-echo "  Run ./stage-230-models-as-a-service/validate.sh to check MaaS prerequisites, external model publication, and access policy."
+echo "  Run ./stage-230-models-as-a-service/validate.sh to check MaaS prerequisites, local Nemotron publication, external model publication, and access policy."

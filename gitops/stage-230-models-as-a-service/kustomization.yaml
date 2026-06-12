@@ -8,11 +8,13 @@ labels:
       demo.rhoai.io/stage: "230"
 
 resources:
+  - prerequisites/lws/base
   - prerequisites/rhcl/base
   - database/base
   - access/base
   - gateway/base
   - governance/base
+  - local-models/base
   - tenant/base
   - external-models/base
   - policies/base

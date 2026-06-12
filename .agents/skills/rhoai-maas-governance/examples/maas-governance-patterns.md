@@ -46,6 +46,10 @@ Review points:
 - Prefer setting environment-specific Gateway hostnames through the Argo CD
   Application source or a generated overlay before sync. Use post-sync Gateway
   patch hooks only for fields that cannot block Gateway health.
+- Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources from
+  GitOps to force MaaS header injection. If generated gateway policy fails,
+  validate the supported RHOAI, RHCL, Kuadrant, and OpenShift Service Mesh
+  version path instead.
 
 ## Local Model Reference Pattern
 
@@ -54,7 +58,7 @@ apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:
   name: nemotron-3-nano-30b-a3b
-  namespace: model-serving
+  namespace: models-as-a-service
 spec:
   modelRef:
     kind: LLMInferenceService
@@ -64,7 +68,8 @@ spec:
 Review points:
 
 - underlying `LLMInferenceService` must be ready before MaaS exposure
-- namespace must match the model-serving namespace
+- namespace must match the namespace that contains the model-serving backend;
+  this repo uses `models-as-a-service` for the MaaS-owned Nemotron backend
 - vLLM with MaaS is Technology Preview if this backend uses vLLM
 
 ## Demo Nemotron MaaS Implementation Reference
@@ -142,7 +147,7 @@ spec:
       - name: enterprise-ai-builders
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
-      namespace: model-serving
+      namespace: models-as-a-service
       tokenRateLimits:
         - limit: 100000
           window: "1h"
@@ -164,7 +169,7 @@ spec:
       - name: enterprise-ai-builders
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
-      namespace: model-serving
+      namespace: models-as-a-service
     - name: gpt-5-4-nano
       namespace: models-as-a-service
   meteringMetadata:

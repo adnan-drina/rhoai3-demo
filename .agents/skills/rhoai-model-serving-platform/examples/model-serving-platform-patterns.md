@@ -162,7 +162,7 @@ resources.limits.nvidia.com/gpu: "1"
 --enable-force-include-usage
 --disable-uvicorn-access-log
 --enable-prefix-caching
---max-model-len=131072
+--max-model-len=8192
 --max-num-batched-tokens=8192
 --enable-auto-tool-choice
 --tool-call-parser=qwen3_coder
@@ -175,8 +175,9 @@ Review points:
 
 - The quickstart was tested on AWS `g6e.2xlarge` L40S GPU instances with at
   least 48GB GPU VRAM.
-- The coding-demo deployment uses the same modelcar source with prefix caching
-  and an 8192-token batched scheduling budget for long developer prompts.
+- The active demo uses the same modelcar source with prefix caching and an
+  8192-token initial serving envelope. Larger context windows need separate
+  benchmark evidence before they are exposed through MaaS.
 - Stage 210 uses a direct `InferenceService`; Stage 230 should use the
   quickstart's `LLMInferenceService`, MaaS tier, Gateway, and RBAC patterns
   only after RHOAI 3.4 schema verification.

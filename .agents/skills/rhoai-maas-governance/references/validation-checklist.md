@@ -69,7 +69,9 @@ notes for Models-as-a-Service.
 - The Gateway/AuthPolicy path injects `X-MaaS-Username` and `X-MaaS-Group` into
   `maas-api` requests. If `maas-api` logs `Missing or empty username header`,
   investigate Kuadrant/AuthPolicy/EnvoyFilter behavior before changing MaaS
-  model or subscription CRs.
+  model or subscription CRs. Do not codify patches against generated Kuadrant
+  `AuthPolicy` or EnvoyFilter resources unless official Red Hat documentation
+  or support guidance requires that exact change.
 - API keys are never committed or embedded in notebooks/manifests.
 - Persistent keys are stored in an approved secret store.
 - API key expiration limits are documented and align with the `Tenant` max.

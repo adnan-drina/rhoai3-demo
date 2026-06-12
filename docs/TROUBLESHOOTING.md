@@ -260,6 +260,10 @@ Model Registry REST API when absent.
 - **Likely causes:** the vLLM runtime template is missing, the modelcar pull
   secret is missing or invalid, GPU quota is unavailable, or the model pod is
   still loading the OCI modelcar.
+- **Stage boundary:** after Stage 230 has been deployed, a missing direct
+  `demo-sandbox` `InferenceService` can be expected because Stage 230 migrates
+  the shared Nemotron backend into `models-as-a-service` as an
+  `LLMInferenceService`.
 - **Checks:**
 
 ```bash
@@ -283,7 +287,7 @@ oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox \
 
 Expected resources are one `nvidia.com/gpu`, `2` CPU and `16Gi` memory
 requested, and `4` CPU and `24Gi` memory limited. Expected args include
-`--enable-prefix-caching`, `--max-model-len=131072`,
+`--enable-prefix-caching`, `--max-model-len=8192`,
 `--max-num-batched-tokens=8192`, `--enable-auto-tool-choice`,
 `--tool-call-parser=qwen3_coder`, and `--reasoning-parser=nano_v3`. If the spec
 drifts, rerun `./stage-210-model-serving-foundation/deploy.sh` and then
@@ -517,12 +521,44 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
 - **Do not use these as durable fixes:** scaling the RHCL/Kuadrant operator to
   zero breaks the `kuadrant-operator-wasm` service that serves the WASM plugin;
   adding a second compatibility EnvoyFilter can cause duplicate
-  `kuadrant-wasm-shim` plugin load failures.
+  `kuadrant-wasm-shim` plugin load failures. Do not patch generated Kuadrant
+  `AuthPolicy` or EnvoyFilter resources in GitOps unless official Red Hat
+  documentation or support guidance requires it.
 - **Current action:** treat this as an RHCL/OpenShift Service Mesh compatibility
   blocker for Stage 230. Keep the validation failure visible, check Red Hat
   errata or supported RHCL/OSSM version guidance, and do not claim the Stage
   230 dashboard experience is complete until the Gateway can inject MaaS
   identity headers.
+
+### Nemotron still exists as a direct demo-sandbox deployment
+
+- **Symptom:** after deploying Stage 230, `oc get inferenceservice
+  nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox` still returns a resource, or
+  the MaaS namespace has no Nemotron `LLMInferenceService`.
+- **Cause:** Stage 230 did not run the cleanup path, `RHOAI_STAGE230_CLEANUP_DEMO_SANDBOX_NEMOTRON`
+  was set to `false`, or the old direct deployment was recreated outside
+  GitOps.
+- **Fix:** run the guarded Stage 230 deployment wrapper. It deletes stale
+  direct Nemotron serving resources from `demo-sandbox` and lets Argo CD create
+  the MaaS-owned backend in `models-as-a-service`:
+
+```bash
+./stage-230-models-as-a-service/deploy.sh
+./stage-230-models-as-a-service/validate.sh
+```
+
+Expected MaaS-backed state:
+
+```bash
+oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox
+oc get llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service
+oc get maasmodelref nemotron-3-nano-30b-a3b -n models-as-a-service
+```
+
+The direct `InferenceService` should be absent. The MaaS
+`LLMInferenceService` and `MaaSModelRef` should exist, and the
+`LLMInferenceService` should eventually report `Ready=True` after the model
+pull and startup complete.
 
 ### models-as-a-service project is not visible in the OpenShift AI dashboard
 

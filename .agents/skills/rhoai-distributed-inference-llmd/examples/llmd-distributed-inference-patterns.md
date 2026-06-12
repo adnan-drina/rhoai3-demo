@@ -4,6 +4,10 @@ These snippets are review patterns derived from the official llm-d guide.
 Before committing GitOps, verify exact installed CRD schemas with `oc explain`
 and the OpenShift safety guard in `AGENTS.md`.
 
+The namespace examples below use `example-model-namespace` as a placeholder.
+For the rhoai3-demo Stage 230 MaaS implementation, the local Nemotron
+`LLMInferenceService` belongs in `models-as-a-service`.
+
 ## Basic LLMInferenceService Pattern
 
 ```yaml
@@ -11,7 +15,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
   name: nemotron-llmd
-  namespace: model-serving
+  namespace: example-model-namespace
   annotations:
     security.opendatahub.io/enable-auth: "true"
 spec:
@@ -51,7 +55,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
   name: nemotron-llmd
-  namespace: model-serving
+  namespace: example-model-namespace
 spec:
   modelSource:
     storageUri: oci://registry.example.com/org/modelcar:tag
@@ -79,13 +83,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: llm-user
-  namespace: model-serving
+  namespace: example-model-namespace
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: llm-inference-viewer
-  namespace: model-serving
+  namespace: example-model-namespace
 rules:
   - apiGroups:
       - serving.kserve.io
@@ -100,7 +104,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: llm-user-binding
-  namespace: model-serving
+  namespace: example-model-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -108,11 +112,11 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: llm-user
-    namespace: model-serving
+    namespace: example-model-namespace
 ```
 
 ```bash
-TOKEN=$(oc create token llm-user -n model-serving --duration=1h)
+TOKEN=$(oc create token llm-user -n example-model-namespace --duration=1h)
 curl -k -X POST "https://<inference-endpoint-url>/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -174,7 +178,7 @@ apiVersion: inference.networking.x-k8s.io/v1alpha2
 kind: InferenceObjective
 metadata:
   name: premium-users
-  namespace: model-serving
+  namespace: example-model-namespace
 spec:
   priority: 100
   poolRef:

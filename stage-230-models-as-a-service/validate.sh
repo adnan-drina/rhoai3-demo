@@ -23,6 +23,8 @@ OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
 OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-nano}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
 OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-nano}"
+NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
 
 TMP_FILES=()
@@ -220,6 +222,8 @@ for crd in \
   authorinos.operator.authorino.kuadrant.io \
   gateways.gateway.networking.k8s.io \
   httproutes.gateway.networking.k8s.io \
+  leaderworkersetoperators.operator.openshift.io \
+  leaderworkersets.leaderworkerset.x-k8s.io \
   llamastackdistributions.llamastack.io; do
   if crd_exists "$crd"; then
     R="pass"
@@ -277,6 +281,10 @@ MAAS_PROJECT_LABEL=$(jsonpath "namespace/${MAAS_NS}" "" "{.metadata.labels.opend
 [[ "$MAAS_PROJECT_LABEL" == "true" ]] && R="pass" || R="opendatahub.io/dashboard=${MAAS_PROJECT_LABEL:-missing}"
 check "MaaS namespace is visible as an OpenShift AI project" "$R"
 
+MAAS_KUEUE_LABEL=$(jsonpath "namespace/${MAAS_NS}" "" "{.metadata.labels.kueue\\.openshift\\.io/managed}")
+[[ "$MAAS_KUEUE_LABEL" == "true" ]] && R="pass" || R="kueue.openshift.io/managed=${MAAS_KUEUE_LABEL:-missing}"
+check "MaaS namespace is managed by Kueue" "$R"
+
 AI_ADMIN_CAN=$(can_i_as "ai-admin" "get" "pods" "$MAAS_NS" "rhods-admins")
 [[ "$AI_ADMIN_CAN" == "yes" ]] && R="pass" || R="can-i=${AI_ADMIN_CAN:-unknown}"
 check "ai-admin can administer the MaaS namespace" "$R"
@@ -321,6 +329,57 @@ else
 fi
 check "MaaS Tenant Ready" "$R"
 
+if resource_exists "inferenceservice/${DIRECT_NEMOTRON_NAME}" "$PROJECT_NS"; then
+  R="direct InferenceService still exists in ${PROJECT_NS}"
+else
+  R="pass"
+fi
+check "direct demo-sandbox Nemotron deployment has been removed" "$R"
+
+STALE_LLMIS=""
+for stale_llmis_name in "$NEMOTRON_MODEL_RESOURCE" "$DIRECT_NEMOTRON_NAME"; do
+  if resource_exists "llminferenceservice/${stale_llmis_name}" "$PROJECT_NS"; then
+    STALE_LLMIS="${STALE_LLMIS} ${stale_llmis_name}"
+  fi
+done
+if [[ -z "$STALE_LLMIS" ]]; then
+  R="pass"
+else
+  R="stale LLMInferenceService still exists in ${PROJECT_NS}:${STALE_LLMIS}"
+fi
+check "no stale demo-sandbox Nemotron LLMInferenceService remains" "$R"
+
+if resource_exists "localqueue/lq-gpu-reserved-demo" "$MAAS_NS"; then
+  LQ_CLUSTER_QUEUE=$(jsonpath "localqueue/lq-gpu-reserved-demo" "$MAAS_NS" "{.spec.clusterQueue}")
+  [[ "$LQ_CLUSTER_QUEUE" == "cq-gpu-reserved-demo" ]] && R="pass" || R="clusterQueue=${LQ_CLUSTER_QUEUE:-missing}"
+else
+  R="missing"
+fi
+check "MaaS namespace has the GPU reserved LocalQueue" "$R"
+
+if resource_exists "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS"; then
+  NEMOTRON_URI=$(jsonpath "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.model.uri}")
+  NEMOTRON_READY=$(jsonpath "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.conditions[?(@.type==\"Ready\")].status}")
+  if [[ "$NEMOTRON_URI" == "oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0" &&
+    "$NEMOTRON_READY" == "True" ]]; then
+    R="pass"
+  else
+    R="uri=${NEMOTRON_URI:-missing},ready=${NEMOTRON_READY:-missing}"
+  fi
+else
+  R="missing"
+fi
+check "local Nemotron LLMInferenceService is ready in MaaS namespace" "$R"
+
+NEMOTRON_MODELREF_KIND=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.modelRef.kind}")
+NEMOTRON_MODELREF_NAME=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.modelRef.name}")
+if [[ "$NEMOTRON_MODELREF_KIND" == "LLMInferenceService" && "$NEMOTRON_MODELREF_NAME" == "$NEMOTRON_MODEL_RESOURCE" ]]; then
+  R="pass"
+else
+  R="kind=${NEMOTRON_MODELREF_KIND:-missing},name=${NEMOTRON_MODELREF_NAME:-missing}"
+fi
+check "MaaSModelRef points to the local Nemotron LLMInferenceService" "$R"
+
 EXTERNAL_PROVIDER=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.provider}")
 EXTERNAL_ENDPOINT=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.endpoint}")
 EXTERNAL_TARGET=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.targetModel}")
@@ -343,32 +402,39 @@ check "MaaSModelRef points to the external OpenAI model" "$R"
 
 SUB_OWNER_GROUPS=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.groups[*].name}")
 SUB_OWNER_USERS=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.users[*]}")
-SUB_MODEL=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
-SUB_LIMIT=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].limit}")
-SUB_WINDOW=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].window}")
+SUB_MODELS=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[*].name}")
+SUB_OPENAI_LIMIT=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[?(@.name==\"${OPENAI_MODEL_RESOURCE}\")].tokenRateLimits[0].limit}")
+SUB_OPENAI_WINDOW=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[?(@.name==\"${OPENAI_MODEL_RESOURCE}\")].tokenRateLimits[0].window}")
+SUB_NEMOTRON_LIMIT=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[?(@.name==\"${NEMOTRON_MODEL_RESOURCE}\")].tokenRateLimits[0].limit}")
+SUB_NEMOTRON_WINDOW=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[?(@.name==\"${NEMOTRON_MODEL_RESOURCE}\")].tokenRateLimits[0].window}")
 if contains_word "$SUB_OWNER_GROUPS" "rhoai-developers" &&
   contains_word "$SUB_OWNER_GROUPS" "rhods-admins" &&
   contains_word "$SUB_OWNER_USERS" "kube:admin" &&
-  [[ "$SUB_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$SUB_LIMIT" == "20000" && "$SUB_WINDOW" == "1h" ]]; then
+  contains_word "$SUB_MODELS" "$OPENAI_MODEL_RESOURCE" &&
+  contains_word "$SUB_MODELS" "$NEMOTRON_MODEL_RESOURCE" &&
+  [[ "$SUB_OPENAI_LIMIT" == "20000" && "$SUB_OPENAI_WINDOW" == "1h" &&
+    "$SUB_NEMOTRON_LIMIT" == "100000" && "$SUB_NEMOTRON_WINDOW" == "1h" ]]; then
   R="pass"
 else
-  R="groups=${SUB_OWNER_GROUPS:-missing},users=${SUB_OWNER_USERS:-missing},model=${SUB_MODEL:-missing},limit=${SUB_LIMIT:-missing},window=${SUB_WINDOW:-missing}"
+  R="groups=${SUB_OWNER_GROUPS:-missing},users=${SUB_OWNER_USERS:-missing},models=${SUB_MODELS:-missing},openaiLimit=${SUB_OPENAI_LIMIT:-missing}/${SUB_OPENAI_WINDOW:-missing},nemotronLimit=${SUB_NEMOTRON_LIMIT:-missing}/${SUB_NEMOTRON_WINDOW:-missing}"
 fi
-check "demo users have OpenAI MaaS subscription quota" "$R"
+check "demo users have MaaS subscription quota for local and external models" "$R"
 
 AUTH_SUBJECT_GROUPS=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.groups[*].name}")
 AUTH_SUBJECT_USERS=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.users[*]}")
-AUTH_MODEL=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
+AUTH_MODELS=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[*].name}")
 AUTH_ORG=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.meteringMetadata.organizationId}")
 if contains_word "$AUTH_SUBJECT_GROUPS" "rhoai-developers" &&
   contains_word "$AUTH_SUBJECT_GROUPS" "rhods-admins" &&
   contains_word "$AUTH_SUBJECT_USERS" "kube:admin" &&
-  [[ "$AUTH_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$AUTH_ORG" == "rhoai3-demo" ]]; then
+  contains_word "$AUTH_MODELS" "$OPENAI_MODEL_RESOURCE" &&
+  contains_word "$AUTH_MODELS" "$NEMOTRON_MODEL_RESOURCE" &&
+  [[ "$AUTH_ORG" == "rhoai3-demo" ]]; then
   R="pass"
 else
-  R="groups=${AUTH_SUBJECT_GROUPS:-missing},users=${AUTH_SUBJECT_USERS:-missing},model=${AUTH_MODEL:-missing},org=${AUTH_ORG:-missing}"
+  R="groups=${AUTH_SUBJECT_GROUPS:-missing},users=${AUTH_SUBJECT_USERS:-missing},models=${AUTH_MODELS:-missing},org=${AUTH_ORG:-missing}"
 fi
-check "demo users have OpenAI MaaS auth policy" "$R"
+check "demo users have MaaS auth policy for local and external models" "$R"
 
 if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress \
   --insecure-skip-tls-verify=true >/dev/null 2>&1; then
@@ -390,7 +456,7 @@ if command -v python3 >/dev/null 2>&1; then
     BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${PROJECT_NS}" "$AI_DEVELOPER_TOKEN" "$BODY")
-    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}" "$BODY"; then
+    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}|${NEMOTRON_MODEL_RESOURCE}" "$BODY"; then
       R="pass"
     else
       R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
@@ -415,7 +481,7 @@ if command -v python3 >/dev/null 2>&1; then
     BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard-admin.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${MAAS_NS}" "$AI_ADMIN_TOKEN" "$BODY")
-    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}" "$BODY"; then
+    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}|${NEMOTRON_MODEL_RESOURCE}" "$BODY"; then
       R="pass"
     else
       R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"

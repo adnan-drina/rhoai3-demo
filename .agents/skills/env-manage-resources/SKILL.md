@@ -52,8 +52,8 @@ Discover the current state before making changes:
 
 ```bash
 # Models
-oc get llminferenceservice -n maas
-oc get isvc -n maas
+oc get llminferenceservice -n models-as-a-service
+oc get isvc -n models-as-a-service
 
 # GPU MachineSets
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
@@ -73,7 +73,7 @@ field or through GitOps.
 
 ```bash
 oc explain llminferenceservice.spec.replicas
-oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service --type merge \
   -p '{"spec":{"replicas":0}}'
 ```
 
@@ -107,7 +107,7 @@ oc get nodes -l node-role.kubernetes.io/gpu --watch
 
 **Scale-down sequence for the private Nemotron GPU path:**
 ```bash
-oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge -p '{"spec":{"replicas":0}}'
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service --type merge -p '{"spec":{"replicas":0}}'
 sleep 60
 oc scale machineset -n openshift-machine-api -l cluster-api/accelerator=nvidia-gpu --replicas=0
 ```
@@ -124,7 +124,7 @@ oc scale machineset <MACHINESET_NAME> -n openshift-machine-api --replicas=1
 oc get nodes -l node-role.kubernetes.io/gpu --watch
 
 # 3. Restore model
-oc patch llminferenceservice nemotron-3-nano-30b-a3b -n maas --type merge \
+oc patch llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service --type merge \
   -p '{"spec":{"replicas":1}}'
 ```
 
@@ -163,8 +163,8 @@ oc get application stage-110-rhoai-base-platform stage-120-gpu-as-a-service -n o
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness
-oc get llminferenceservice -n maas
-oc get isvc -n maas
+oc get llminferenceservice -n models-as-a-service
+oc get isvc -n models-as-a-service
 
 # Check node availability
 oc get nodes -l node-role.kubernetes.io/gpu

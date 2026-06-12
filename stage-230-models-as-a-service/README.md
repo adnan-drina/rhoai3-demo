@@ -19,6 +19,7 @@ subscribed to, monitored, and consumed through OpenAI-compatible APIs.
 |-----------|------|
 | RHOAI MaaS | Subscription-based governance, API keys, model publication, authorization policies, and usage telemetry. |
 | KServe and vLLM | Local model-serving foundation for Nemotron. vLLM with MaaS is Technology Preview in RHOAI 3.4. |
+| Leader Worker Set Operator | Required distributed-inference prerequisite for the RHOAI `LLMInferenceService` path. |
 | Red Hat Connectivity Link and Kuadrant | Gateway policy, authorization integration, rate-limit enforcement, and observability substrate. |
 | Gateway API | Cluster ingress path for MaaS model and API traffic. |
 | Authorino | Authentication and authorization service used by the gateway policy chain. |
@@ -29,7 +30,7 @@ subscribed to, monitored, and consumed through OpenAI-compatible APIs.
 
 ```mermaid
 flowchart LR
-  previous["Stage 210: vLLM Nemotron endpoint"] --> maas["RHOAI MaaS"]
+  previous["Stage 210: vLLM baseline configuration"] --> maas["RHOAI MaaS"]
   openai["OpenAI gpt-5.4-nano"] --> maas
   maas --> sub["MaaS subscriptions"]
   maas --> auth["MaaS auth policies"]
@@ -47,6 +48,7 @@ flowchart LR
 
 - [RHOAI 3.4 - Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index)
 - [RHOAI 3.4 - Configuring authentication for llm-d using Red Hat Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploy_models_using_distributed_inference_with_llm-d/configuring-authentication-for-llmd_distributed-inference)
+- [OpenShift 4.20 - Leader Worker Set Operator](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/leader-worker-set-operator)
 - [Red Hat Connectivity Link 1.4 - Installing Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.4/html-single/installing_connectivity_link/index)
 - [OpenShift 4.20 - cert-manager Operator for Red Hat OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift)
 - [Red Hat Ecosystem Catalog - PostgreSQL 16 RHEL 9 image](https://catalog.redhat.com/en/software/containers/rhel9/postgresql-16/657b03866783e1b1fb87e142)
@@ -62,20 +64,27 @@ This stage is implemented in phases:
 2. Add schema-validated external OpenAI `gpt-5.4-nano` publication resources,
    developer subscription quota, developer authorization policy, and MaaS
    namespace admin access for `rhods-admins`.
-3. Add the local Nemotron MaaS publication path after the direct Stage 210
-   `InferenceService` is migrated or paired with a schema-validated
-   `LLMInferenceService` backend.
+3. Migrate the local Nemotron serving path into the MaaS namespace by creating
+   a schema-validated `LLMInferenceService`, a MaaS `MaaSModelRef`, and the
+   matching subscription/auth policy. The deployment wrapper removes a stale
+   dashboard-created direct Nemotron `InferenceService` from `demo-sandbox`
+   before the MaaS-owned backend is reconciled.
 4. Add API key, user-access, Gen AI Playground, and observability validation
    flows.
 
-The prerequisite and model-policy resources reconcile on the current RHOAI 3.4
-cluster, but dashboard and MaaS API discovery are not yet accepted as healthy.
-Current validation shows the generated Kuadrant Gateway WASM EnvoyFilter
-contains an `allow_on_headers_stop_iteration` field rejected by the OpenShift
-gateway Envoy. Until that compatibility issue is resolved, the dashboard can
-show `Models as a Service could not be loaded` even though the MaaS CRs are
-Ready. The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230
-model publication and policy resources use that installed schema.
+The prerequisite, local Nemotron, external OpenAI, and model-policy resources
+use schemas observed on the current RHOAI 3.4 cluster. Current validation shows
+the generated Kuadrant Gateway WASM EnvoyFilter contains an
+`allow_on_headers_stop_iteration` field rejected by the OpenShift gateway
+Envoy. Until that compatibility issue is resolved, the dashboard can show
+`Models as a Service could not be loaded` even though the MaaS CRs are Ready.
+The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230 model
+publication and policy resources use that installed schema.
+
+Stage 230 intentionally does not patch generated Kuadrant `AuthPolicy` or
+EnvoyFilter resources. The implementation follows the documented MaaS/RHCL
+setup and leaves generated gateway behavior to supported RHOAI, RHCL,
+Kuadrant, and OpenShift Service Mesh versions.
 
 The external OpenAI path is credential-gated. `deploy.sh` creates
 `openai-provider-api-key` in `models-as-a-service` from local

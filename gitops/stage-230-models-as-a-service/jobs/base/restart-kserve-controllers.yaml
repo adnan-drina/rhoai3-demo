@@ -21,14 +21,14 @@ metadata:
     argocd.argoproj.io/sync-wave: "13"
 rules:
   - apiGroups:
-      - apps
+      - ""
     resources:
-      - deployments
+      - pods
     verbs:
       - get
       - list
-      - patch
       - watch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -77,14 +77,20 @@ spec:
             - |
               set -euo pipefail
 
-              if oc get deployment kserve-controller-manager -n redhat-ods-applications >/dev/null 2>&1; then
-                oc rollout restart deployment/kserve-controller-manager -n redhat-ods-applications
-                oc rollout status deployment/kserve-controller-manager -n redhat-ods-applications --timeout=300s
-              fi
+              restart_controller() {
+                local label_selector="$1"
+                local description="$2"
 
-              if oc get deployment llmisvc-controller-manager -n redhat-ods-applications >/dev/null 2>&1; then
-                oc rollout restart deployment/llmisvc-controller-manager -n redhat-ods-applications
-                oc rollout status deployment/llmisvc-controller-manager -n redhat-ods-applications --timeout=300s
-              fi
+                if oc get pod -n redhat-ods-applications -l "$label_selector" --no-headers 2>/dev/null | grep -q .; then
+                  oc delete pod -n redhat-ods-applications -l "$label_selector"
+                  oc wait --for=condition=Ready pod -n redhat-ods-applications -l "$label_selector" --timeout=300s
+                  echo "${description} restarted."
+                else
+                  echo "${description} pods not found; skipping restart."
+                fi
+              }
 
-              echo "KServe controller API discovery refresh completed."
+              restart_controller "app=odh-model-controller" "ODH model controller"
+              restart_controller "control-plane=kserve-controller-manager" "KServe controller manager"
+
+              echo "Documented RHOAI controller refresh completed."

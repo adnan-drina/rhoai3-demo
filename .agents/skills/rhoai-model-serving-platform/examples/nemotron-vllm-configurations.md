@@ -129,14 +129,14 @@ apiVersion: serving.kserve.io/v1alpha2
 kind: LLMInferenceService
 metadata:
   name: nemotron-3-nano-30b-a3b
-  namespace: maas
+  namespace: models-as-a-service
   annotations:
     openshift.io/display-name: NVIDIA Nemotron 3 Nano 30B A3B FP8
     opendatahub.io/model-type: generative
     security.opendatahub.io/enable-auth: "true"
   labels:
-    inference.optimization/acceleratorName: L4
-    kueue.x-k8s.io/queue-name: private-model-serving
+    inference.optimization/acceleratorName: L40S
+    kueue.x-k8s.io/queue-name: lq-gpu-reserved-demo
     llm-d.ai/deployment-mode: single-gpu-per-replica
     opendatahub.io/dashboard: "true"
     opendatahub.io/genai-asset: "true"
@@ -211,6 +211,9 @@ Review points:
   image digest.
 - Keep the Gateway, scheduler, MaaSModelRef, subscription, and auth-policy
   resources together in the Stage 230 plan.
+- For this repo, Stage 230 owns the local Nemotron backend in
+  `models-as-a-service` and removes stale direct `demo-sandbox` serving
+  resources before reconciling the MaaS-owned `LLMInferenceService`.
 - Use the Stage 210 `8192` token default as the initial MaaS serving envelope
   until RAG-specific benchmarks justify a larger context.
 

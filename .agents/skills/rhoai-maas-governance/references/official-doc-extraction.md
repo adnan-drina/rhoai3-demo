@@ -100,6 +100,11 @@ Authorino TLS setup includes:
 Use the official guide for exact commands, and verify installed resource names
 before converting them into GitOps.
 
+The official setup path does not direct the demo to mutate generated Kuadrant
+`AuthPolicy` or EnvoyFilter resources. Treat generated gateway-policy failures
+as product compatibility or support-version issues unless Red Hat documentation
+or support guidance provides a specific corrective change.
+
 ## MaaS Enablement And Dashboard Flags
 
 Enable MaaS through `DataScienceCluster`:

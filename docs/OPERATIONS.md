@@ -16,10 +16,9 @@ The active implementation follows this sequence:
 4. `stage-220-model-performance-baseline` - planned expanded performance
    baseline and operating-envelope evidence when lightweight Stage 210
    benchmark results are not sufficient.
-5. `stage-230-models-as-a-service` - MaaS prerequisite enablement, external
-   OpenAI model publication, and governed access to `gpt-5.4-nano`; local
-   Nemotron MaaS publication remains a follow-up after the
-   `LLMInferenceService` backend path is finalized.
+5. `stage-230-models-as-a-service` - MaaS prerequisite enablement, local
+   Nemotron `LLMInferenceService` publication in `models-as-a-service`,
+   external OpenAI model publication, and governed access to both models.
 
 ## Stage 110: RHOAI Base Platform
 
@@ -119,6 +118,10 @@ dashboard and now handled by Stage 210 scripts when absent:
 For fresh environments, run `stage-210-model-serving-foundation/deploy.sh` after
 Stages 110 and 120 are healthy. It reuses this state when present and creates
 missing registry metadata and the endpoint when absent.
+
+Stage 230 migrates the shared Nemotron serving path into MaaS. Its deploy
+wrapper removes a stale direct Nemotron deployment from `demo-sandbox` before
+the MaaS-owned `LLMInferenceService` is reconciled in `models-as-a-service`.
 
 ### Platform Access (Users, Project, Connection)
 
@@ -541,13 +544,18 @@ after prerequisites and DSC feature flags are healthy.
      `models-as-a-service` from `OPENAI_API_KEY` or `RHOAI_OPENAI_API_KEY`, or
      reuses the Secret if it already exists. The Secret must contain data key
      `api-key`.
+   - Deletes a stale direct Nemotron `InferenceService` or
+     `LLMInferenceService` from `demo-sandbox` when present. The MaaS-owned
+     backend is recreated by GitOps in `models-as-a-service`.
    - Applies the shared Stage 110 Application so the single
      `DataScienceCluster` owner enables `kserve.modelsAsService` and
      `llamastackoperator`.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
-   - Applies the Stage 230 Application for RHCL, Kuadrant, Authorino, the MaaS
-     Gateway, PostgreSQL, and the default MaaS tenant.
+   - Applies the Stage 230 Application for LeaderWorkerSet, RHCL, Kuadrant,
+     Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
+     `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
+     tenant.
 
 The Stage 230 Application prepares `maas-gateway-tls` in `openshift-ingress`
 from the active OpenShift ingress certificate before applying
@@ -579,8 +587,10 @@ cert-manager, RHCL, Gateway API, `maas-gateway-tls`, Kuadrant, Authorino,
 PostgreSQL, `maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant
 readiness. It also checks the OpenAI provider Secret shape, `rhods-admins`
 MaaS namespace administration, absence of direct `ai-developer` namespace
-access, the external OpenAI `ExternalModel`, `MaaSModelRef`,
-`MaaSSubscription`, and `MaaSAuthPolicy`.
+access, removal of stale direct Nemotron serving resources from
+`demo-sandbox`, the local Nemotron `LLMInferenceService` and `MaaSModelRef`,
+the external OpenAI `ExternalModel` and `MaaSModelRef`, and the combined
+`MaaSSubscription` and `MaaSAuthPolicy`.
 
 The validator now also checks the user-facing MaaS discovery path. When
 `AI_DEVELOPER_PASSWORD` and `AI_ADMIN_PASSWORD` are available in `.env`, it
@@ -596,6 +606,11 @@ dashboard. On the current `cluster-klvxt` environment, RHCL 1.4.0 generates a
 `allow_on_headers_stop_iteration`; the OpenShift gateway Envoy rejects that
 field, so the Gateway does not inject the `X-MaaS-Username` and
 `X-MaaS-Group` headers required by `maas-api`.
+
+Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the
+Stage 230 fix. Treat this as a supported-version compatibility issue in the
+RHOAI/RHCL/OpenShift gateway path and keep the validation failure visible until
+the documented product path works end to end.
 
 The external model resources use the installed
 `maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. Re-run the

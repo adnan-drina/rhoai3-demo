@@ -28,6 +28,15 @@
   `ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, `MaaSAuthPolicy`, and
   MaaS namespace admin RoleBinding for `rhods-admins`. Live rollout requires a
   local provider key Secret; do not use placeholders.
+- Local model implementation: schema-validated Nemotron
+  `LLMInferenceService` and `MaaSModelRef` in `models-as-a-service`, with a
+  MaaS namespace `LocalQueue` and a deploy-time cleanup guard that removes any
+  stale direct Nemotron deployment from `demo-sandbox`.
+- Namespace decision: MaaS model references must point at the namespace that
+  contains the underlying backend. For the governed private model path, this
+  project intentionally makes `models-as-a-service` the backend namespace for
+  Nemotron rather than keeping the shared backend in the user-facing
+  `demo-sandbox` project.
 - Gateway TLS pattern: create stable `maas-gateway-tls` in `openshift-ingress`
   from the active OpenShift ingress certificate before applying
   `maas-default-gateway`; then patch listener hostnames to
@@ -44,13 +53,15 @@
   Playground consumption, MaaS observability, and clear Technology Preview
   labeling for preview features.
 - Existing components reused: Stage 210 Nemotron vLLM configuration,
-  `demo-registry`, Grafana/User Workload Monitoring, `demo-sandbox`, and Stage
-  120 GPU hardware profiles.
+  Grafana/User Workload Monitoring, `demo-sandbox` as the consumer project,
+  and Stage 120 GPU hardware profiles.
 
 ## Non-Goals
 
-- Do not replace the Stage 210 direct vLLM endpoint until the MaaS path is
-  proven and accepted.
+- Do not run a second GPU-heavy Nemotron backend alongside the direct Stage
+  210 endpoint on the single default GPU node. Stage 230 must remove stale
+  direct dashboard-created Nemotron serving resources from `demo-sandbox`
+  before reconciling the MaaS-owned `LLMInferenceService`.
 - Do not commit OpenAI provider API keys, MaaS API keys, database passwords, or
   generated tokens.
 - Do not claim billing-grade metering. MaaS usage data is for demo showback and
@@ -105,6 +116,7 @@
 |---------|--------|-------|-------|
 | Product authority | [RHOAI 3.4 - Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | MaaS prerequisites, `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, `MaaSAuthPolicy`, API keys, observability, external OIDC, and troubleshooting. |
 | Local model backend | [RHOAI 3.4 - Deploy models using Distributed Inference with llm-d](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploy_models_using_distributed_inference_with_llm-d/index) | `rhoai-distributed-inference-llmd` | `LLMInferenceService`, Gateway references, Connectivity Link, auth, scheduler, WVA, and flow control. Use only after schema verification. |
+| Distributed-inference prerequisite | [OpenShift 4.20 - Leader Worker Set Operator](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/leader-worker-set-operator) | `ocp-ai-workloads`, `rhoai-distributed-inference-llmd` | Required prerequisite for the RHOAI `LLMInferenceService` path. Official docs set channel `stable-v1.0`, installation namespace `openshift-lws-operator`, and cert-manager prerequisite. |
 | Serving prerequisite | [RHOAI 3.4 - Configuring your model-serving platform](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/configuring_your_model-serving_platform/index) | `rhoai-model-serving-platform` | KServe and vLLM platform context below MaaS. |
 | Stage 210 evidence | `stage-210-model-serving-foundation/README.md` and benchmark results under `runs/stage-210-guidellm/` | `rhoai-model-management-monitoring` | Source for current Nemotron endpoint readiness and operating-envelope evidence. |
 | Red Hat quickstart | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-maas-governance` | Narrative and architecture reference for Nemotron, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S context. |
@@ -122,7 +134,8 @@ Read-only schema discovery on `cluster-klvxt` on 2026-06-12:
 
 | Resource | Current state | Planning impact |
 |----------|---------------|-----------------|
-| `llminferenceservices.serving.kserve.io` | Present; `v1alpha1` and `v1alpha2` served, `v1alpha2` storage. | Stage 230 should target the live storage version after official-doc and schema review. Do not copy older `v1alpha1` examples blindly. |
+| `llminferenceservices.serving.kserve.io` | Present; `v1alpha1` and `v1alpha2` served, `v1alpha2` storage. | Stage 230 targets the live storage version after official-doc and schema review. Do not copy older `v1alpha1` examples blindly. |
+| `leaderworkersets.leaderworkerset.x-k8s.io` | Required by the RHOAI llm-d/`LLMInferenceService` prerequisite path. | Stage 230 installs the LeaderWorkerSet Operator through GitOps before creating the Nemotron `LLMInferenceService`. |
 | `llminferenceserviceconfigs.serving.kserve.io` | Present as `serving.kserve.io/v1alpha2`. | Review only if Stage 230 needs custom config resources. |
 | Gateway API `GatewayClass`, `Gateway`, `HTTPRoute` | Present as `gateway.networking.k8s.io/v1`; `maas-default-gateway` is live with `maas-gateway-tls` and `maas.apps.cluster-klvxt.klvxt.sandbox279.opentlc.com`. | Use the deploy wrapper to inject the environment hostname into the Argo CD Application before sync. Do not hide Gateway listener fields with `RespectIgnoreDifferences` when they must be repaired through GitOps. |
 | `kuadrants.kuadrant.io` and `authorinos.operator.authorino.kuadrant.io` | Present; `Kuadrant` and `Authorino` are Ready. | Gateway policy prerequisites are healthy for model publication and subscription work. |
@@ -198,15 +211,14 @@ Phase-one deploy and validation commands:
   component clearly belongs to an existing shared owner.
 - Provider API keys, MaaS PostgreSQL credentials, and user API keys must be
   created from local `.env` or an approved secret store, never committed.
-- If Stage 230 creates an `LLMInferenceService` for Nemotron, it should use the
-  Stage 210 benchmark result to choose initial concurrency/token limits and
-  should preserve the curated Nemotron vLLM/tool-calling configuration where
-  the `v1alpha2` schema allows it.
-- Stage 230 should avoid running a second GPU-heavy Nemotron backend alongside
-  the Stage 210 direct endpoint on the single default GPU node unless the
-  current environment has spare GPU capacity. Prefer reusing or temporarily
-  switching the backend path, and keep the Stage 210 direct serving path as the
-  fallback if MaaS validation fails.
+- Stage 230 creates an `LLMInferenceService` for Nemotron in
+  `models-as-a-service`, uses the Stage 210 benchmark result to choose initial
+  concurrency/token limits, and preserves the curated Nemotron vLLM/tool-calling
+  configuration where the `v1alpha2` schema allows it.
+- Stage 230 avoids running a second GPU-heavy Nemotron backend alongside the
+  direct Stage 210 endpoint on the single default GPU node. The deploy wrapper
+  deletes stale direct `demo-sandbox` Nemotron serving resources first, then
+  lets Argo CD reconcile the MaaS-owned backend.
 - Initial Nemotron policy should use the 2026-06-12 Stage 210 GuideLLM results:
   start the chat assistant lane at `8` active concurrent requests per replica
   with 256 output-token defaults; start the RAG lane at `2` active concurrent

@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
     app.kubernetes.io/component: maas-subscription
-    demo.rhoai.io/provider: openai
+    demo.rhoai.io/provider: governed-models
   annotations:
     argocd.argoproj.io/sync-wave: "18"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -18,6 +18,11 @@ spec:
     users:
       - kube:admin
   modelRefs:
+    - name: nemotron-3-nano-30b-a3b
+      namespace: models-as-a-service
+      tokenRateLimits:
+        - limit: 100000
+          window: 1h
     - name: gpt-5-4-nano
       namespace: models-as-a-service
       tokenRateLimits:
@@ -29,8 +34,8 @@ spec:
     costCenter: ai-platform
     labels:
       environment: demo
-      provider: openai
-      model: gpt-5.4-nano
+      provider: governed-models
+      modelSet: nemotron-and-gpt-5-4-nano
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSAuthPolicy
@@ -40,7 +45,7 @@ metadata:
   labels:
     app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
     app.kubernetes.io/component: maas-auth-policy
-    demo.rhoai.io/provider: openai
+    demo.rhoai.io/provider: governed-models
   annotations:
     argocd.argoproj.io/sync-wave: "18"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -52,6 +57,8 @@ spec:
     users:
       - kube:admin
   modelRefs:
+    - name: nemotron-3-nano-30b-a3b
+      namespace: models-as-a-service
     - name: gpt-5-4-nano
       namespace: models-as-a-service
   meteringMetadata:
@@ -59,5 +66,5 @@ spec:
     costCenter: ai-platform
     labels:
       environment: demo
-      provider: openai
-      model: gpt-5.4-nano
+      provider: governed-models
+      modelSet: nemotron-and-gpt-5-4-nano
