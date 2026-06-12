@@ -34,11 +34,12 @@ Stage 210 owns that transition.
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
 
-## Stage 210: Status — IN PROGRESS
+## Stage 210: Status — PLATFORM ENABLEMENT COMPLETE
 
 Stage 210 enables the RHOAI KServe model serving platform through the shared
 Stage 110 `DataScienceCluster` owner. It creates the user-facing stage README,
 PLAN, deploy wrapper, validation wrapper, and the focused KServe DSC patch.
+Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 9/9.
 
 ### Open / deferred from Stage 210
 

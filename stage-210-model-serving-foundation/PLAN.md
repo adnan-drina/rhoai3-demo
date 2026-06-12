@@ -30,23 +30,24 @@
 
 ## Acceptance Criteria
 
-- [ ] README explains Why and What without runbook detail.
-- [ ] Why and business value are grounded in Red Hat narrative sources from
+- [x] README explains Why and What without runbook detail.
+- [x] Why and business value are grounded in Red Hat narrative sources from
   `rh-brain/`.
-- [ ] KServe/model serving enablement is grounded in active-baseline RHOAI
+- [x] KServe/model serving enablement is grounded in active-baseline RHOAI
   official docs and verified live schema.
-- [ ] Red Hat-linked GitHub reference implementations are captured as patterns,
+- [x] Red Hat-linked GitHub reference implementations are captured as patterns,
   not API authority.
-- [ ] GitOps ownership model is explicit: Stage 110 remains the sole
+- [x] GitOps ownership model is explicit: Stage 110 remains the sole
   `DataScienceCluster` owner.
-- [ ] The Stage 110 RHOAI overlay renders with a focused Stage 210 KServe patch.
-- [ ] Deploy script applies the shared owner Application and triggers Argo CD
+- [x] The Stage 110 RHOAI overlay renders with a focused Stage 210 KServe patch.
+- [x] Deploy script applies the shared owner Application and triggers Argo CD
   reconciliation.
-- [ ] Validate script proves the model serving platform is enabled and a vLLM
+- [x] Validate script proves the model serving platform is enabled and a vLLM
   serving runtime is discoverable.
-- [ ] Temporary Nemotron smoke test path is planned and bounded, or implemented
+- [x] Temporary Nemotron smoke test path is planned and bounded, or implemented
   after runtime/API verification.
-- [ ] Manifest and Red Hat source-alignment reviews pass.
+- [x] Manifest and Red Hat source-alignment reviews pass for the KServe enablement
+  slice.
 
 ## Source Capture
 
@@ -161,6 +162,19 @@
 
 ## Review Log
 
-- Manifest review: pending.
-- Red Hat source-alignment review: pending.
-- Live validation: pending.
+- Local render: passed 2026-06-12.
+  `kustomize build gitops/stage-110-rhoai-base-platform`
+  rendered `kserve.managementState: Managed`.
+- Script syntax: passed 2026-06-12.
+  `bash -n stage-210-model-serving-foundation/deploy.sh stage-210-model-serving-foundation/validate.sh`.
+- Red Hat source-alignment review: passed for KServe enablement scope; product
+  fields are from RHOAI 3.4 docs plus live
+  `oc explain datasciencecluster.spec.components.kserve`.
+- Live deploy: succeeded on cluster-klvxt 2026-06-12; Argo CD Application
+  `stage-110-rhoai-base-platform` synced revision
+  `df241586684739f8d1610e8a43bd875d686db896`.
+- Live validation: PASSED 2026-06-12 -
+  `stage-210-model-serving-foundation/validate.sh` 9/9.
+- Regression validation: PASSED 2026-06-12 -
+  Stage 110 `validate.sh` 17/17 and Stage 120 `validate.sh` 23/23 after KServe
+  became `Managed`.

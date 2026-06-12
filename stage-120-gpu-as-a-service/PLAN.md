@@ -188,3 +188,6 @@ stage demonstrates governed admission and reservation, not preemption.
   healthy at GitOps revision `d9963b1`.
 - Live validation: PASSED 2026-06-12 — `stage-120-gpu-as-a-service/validate.sh`
   23/23 after validator fix commit `c1a2a66`.
+- Regression validation: PASSED 2026-06-12 — `validate.sh` 23/23 after
+  Stage 210 changed KServe from `Removed` to `Managed` through the shared
+  Stage 110 `DataScienceCluster` owner.
