@@ -213,6 +213,16 @@ else
 fi
 check "Grafana OAuth route present" "$R"
 
+for demo_user in ai-admin ai-developer; do
+  if oc auth can-i get services -n "$GRAFANA_NS" --as "$demo_user" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    R="pass"
+  else
+    R="missing namespace-scoped Grafana viewer RBAC"
+  fi
+  check "Grafana OAuth SAR passes for ${demo_user}" "$R"
+done
+
 CONSOLELINK_HREF=$(oc get consolelink rhoai-demo-grafana \
   -o jsonpath='{.spec.href}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 if [[ "$CONSOLELINK_HREF" == https://*"/d/llm-performance/"* ]]; then

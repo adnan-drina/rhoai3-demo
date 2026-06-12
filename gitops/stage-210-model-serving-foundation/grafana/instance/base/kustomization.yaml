@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - grafana-proxy-rbac.yaml
+  - grafana-viewer-rbac.yaml
   - grafana.yaml
   - injected-certs-cm.yaml
   - session-secret.yaml

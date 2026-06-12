@@ -347,11 +347,17 @@ enabling user workload monitoring and then re-run validation.
 ```bash
 oc get route grafana-route -n rhoai-demo-grafana -o yaml
 oc get serviceaccount grafana-sa -n rhoai-demo-grafana -o yaml
+oc auth can-i get services -n rhoai-demo-grafana --as ai-admin
+oc auth can-i get services -n rhoai-demo-grafana --as ai-developer
+oc get rolebinding grafana-viewer-demo-users -n rhoai-demo-grafana -o yaml
 oc get pod -n rhoai-demo-grafana -l app.kubernetes.io/name=grafana -o wide
 ```
 
-Use a cluster-admin or a user with namespace read permission for the demo
-Grafana namespace.
+The demo `ai-admin` and `ai-developer` users should return `yes` for the
+`oc auth can-i` checks. If they return `no`, resync
+`stage-210-model-serving-foundation` and confirm the
+`grafana-viewer-demo-users` RoleBinding contains the `rhods-admins` and
+`rhoai-developers` groups.
 
 ### OpenShift ConsoleLink does not open Grafana
 

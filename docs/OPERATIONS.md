@@ -330,7 +330,20 @@ Open Grafana:
 oc get route grafana-route -n rhoai-demo-grafana -o jsonpath='{.spec.host}'
 ```
 
-Use OpenShift OAuth. Stage 210 includes two dashboards:
+Use OpenShift OAuth. The demo `ai-admin` and `ai-developer` users are allowed
+through the OAuth proxy by a namespace-scoped `grafana-viewer-demo-users`
+RoleBinding in `rhoai-demo-grafana`. The proxy checks only `get services` in
+that namespace; the Grafana service account remains responsible for reading
+OpenShift monitoring data.
+
+Validate demo-user access:
+
+```bash
+oc auth can-i get services -n rhoai-demo-grafana --as ai-admin
+oc auth can-i get services -n rhoai-demo-grafana --as ai-developer
+```
+
+Stage 210 includes two dashboards:
 
 - `RHOAI Stage 210 - vLLM Model Serving Baseline` for the demo-specific
   Nemotron/vLLM view.
