@@ -23,6 +23,15 @@ OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
 OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-nano}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
 OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-nano}"
+PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+
+TMP_FILES=()
+cleanup() {
+  if ((${#TMP_FILES[@]} > 0)); then
+    rm -f "${TMP_FILES[@]}"
+  fi
+}
+trap cleanup EXIT
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -74,6 +83,12 @@ jsonpath() {
   fi
 }
 
+contains_word() {
+  local list="$1"
+  local item="$2"
+  [[ " ${list} " == *" ${item} "* ]]
+}
+
 can_i_as() {
   local user="$1"
   local verb="$2"
@@ -86,6 +101,71 @@ can_i_as() {
   fi
   oc auth can-i "$verb" "$resource" -n "$namespace" --as="$user" "${group_args[@]}" \
     --insecure-skip-tls-verify=true 2>/dev/null || true
+}
+
+get_demo_user_token() {
+  local user="$1"
+  local password="$2"
+  local kubeconfig token
+
+  [[ -n "$password" ]] || return 1
+
+  kubeconfig=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-validate.XXXXXX")
+  TMP_FILES+=("$kubeconfig")
+
+  if ! oc login "$ACTUAL_SERVER" -u "$user" -p "$password" \
+    --kubeconfig "$kubeconfig" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    return 1
+  fi
+
+  token=$(oc --kubeconfig "$kubeconfig" whoami -t \
+    --insecure-skip-tls-verify=true 2>/dev/null || true)
+  [[ -n "$token" ]] || return 1
+  printf '%s' "$token"
+}
+
+http_get() {
+  local url="$1"
+  local token="$2"
+  local body_file="$3"
+
+  URL="$url" TOKEN="$token" BODY_FILE="$body_file" python3 - <<'PY'
+import os
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+url = os.environ["URL"]
+token = os.environ["TOKEN"]
+body_file = os.environ["BODY_FILE"]
+
+ctx = ssl._create_unverified_context()
+req = urllib.request.Request(
+    url,
+    headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    },
+)
+
+try:
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+        status = resp.getcode()
+        body = resp.read()
+except urllib.error.HTTPError as exc:
+    status = exc.code
+    body = exc.read()
+except Exception as exc:
+    status = "000"
+    body = str(exc).encode()
+
+with open(body_file, "wb") as handle:
+    handle.write(body)
+
+print(status)
+PY
 }
 
 APP_SYNC=$(jsonpath "application/stage-230-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
@@ -193,6 +273,10 @@ else
 fi
 check "rhods-admins has MaaS namespace admin RoleBinding" "$R"
 
+MAAS_PROJECT_LABEL=$(jsonpath "namespace/${MAAS_NS}" "" "{.metadata.labels.opendatahub\\.io/dashboard}")
+[[ "$MAAS_PROJECT_LABEL" == "true" ]] && R="pass" || R="opendatahub.io/dashboard=${MAAS_PROJECT_LABEL:-missing}"
+check "MaaS namespace is visible as an OpenShift AI project" "$R"
+
 AI_ADMIN_CAN=$(can_i_as "ai-admin" "get" "pods" "$MAAS_NS" "rhods-admins")
 [[ "$AI_ADMIN_CAN" == "yes" ]] && R="pass" || R="can-i=${AI_ADMIN_CAN:-unknown}"
 check "ai-admin can administer the MaaS namespace" "$R"
@@ -257,26 +341,92 @@ else
 fi
 check "MaaSModelRef points to the external OpenAI model" "$R"
 
-SUB_OWNER=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.groups[0].name}")
+SUB_OWNER_GROUPS=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.groups[*].name}")
+SUB_OWNER_USERS=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.users[*]}")
 SUB_MODEL=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
 SUB_LIMIT=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].limit}")
 SUB_WINDOW=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].window}")
-if [[ "$SUB_OWNER" == "rhoai-developers" && "$SUB_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$SUB_LIMIT" == "20000" && "$SUB_WINDOW" == "1h" ]]; then
+if contains_word "$SUB_OWNER_GROUPS" "rhoai-developers" &&
+  contains_word "$SUB_OWNER_GROUPS" "rhods-admins" &&
+  contains_word "$SUB_OWNER_USERS" "kube:admin" &&
+  [[ "$SUB_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$SUB_LIMIT" == "20000" && "$SUB_WINDOW" == "1h" ]]; then
   R="pass"
 else
-  R="owner=${SUB_OWNER:-missing},model=${SUB_MODEL:-missing},limit=${SUB_LIMIT:-missing},window=${SUB_WINDOW:-missing}"
+  R="groups=${SUB_OWNER_GROUPS:-missing},users=${SUB_OWNER_USERS:-missing},model=${SUB_MODEL:-missing},limit=${SUB_LIMIT:-missing},window=${SUB_WINDOW:-missing}"
 fi
-check "rhoai-developers has OpenAI MaaS subscription quota" "$R"
+check "demo users have OpenAI MaaS subscription quota" "$R"
 
-AUTH_SUBJECT=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.groups[0].name}")
+AUTH_SUBJECT_GROUPS=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.groups[*].name}")
+AUTH_SUBJECT_USERS=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.users[*]}")
 AUTH_MODEL=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
 AUTH_ORG=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.meteringMetadata.organizationId}")
-if [[ "$AUTH_SUBJECT" == "rhoai-developers" && "$AUTH_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$AUTH_ORG" == "rhoai3-demo" ]]; then
+if contains_word "$AUTH_SUBJECT_GROUPS" "rhoai-developers" &&
+  contains_word "$AUTH_SUBJECT_GROUPS" "rhods-admins" &&
+  contains_word "$AUTH_SUBJECT_USERS" "kube:admin" &&
+  [[ "$AUTH_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$AUTH_ORG" == "rhoai3-demo" ]]; then
   R="pass"
 else
-  R="subject=${AUTH_SUBJECT:-missing},model=${AUTH_MODEL:-missing},org=${AUTH_ORG:-missing}"
+  R="groups=${AUTH_SUBJECT_GROUPS:-missing},users=${AUTH_SUBJECT_USERS:-missing},model=${AUTH_MODEL:-missing},org=${AUTH_ORG:-missing}"
 fi
-check "rhoai-developers has OpenAI MaaS auth policy" "$R"
+check "demo users have OpenAI MaaS auth policy" "$R"
+
+if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress \
+  --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+  if oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress -o yaml \
+    --insecure-skip-tls-verify=true 2>/dev/null | grep -q 'allow_on_headers_stop_iteration'; then
+    R="unsupported allow_on_headers_stop_iteration present in generated EnvoyFilter"
+  else
+    R="pass"
+  fi
+else
+  R="missing"
+fi
+check "MaaS Gateway Kuadrant WASM filter is accepted by Envoy" "$R"
+
+if command -v python3 >/dev/null 2>&1; then
+  DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")
+  AI_DEVELOPER_TOKEN=$(get_demo_user_token "ai-developer" "${AI_DEVELOPER_PASSWORD:-}" || true)
+  if [[ -n "$AI_DEVELOPER_TOKEN" ]]; then
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard.XXXXXX")
+    TMP_FILES+=("$BODY")
+    STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${PROJECT_NS}" "$AI_DEVELOPER_TOKEN" "$BODY")
+    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}" "$BODY"; then
+      R="pass"
+    else
+      R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
+    fi
+    check "ai-developer dashboard AI asset endpoints can load MaaS models" "$R"
+
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-maas-api.XXXXXX")
+    TMP_FILES+=("$BODY")
+    STATUS=$(http_get "https://${GATEWAY_HOST}/maas-api/v1/subscriptions" "$AI_DEVELOPER_TOKEN" "$BODY")
+    if [[ "$STATUS" == "200" ]] && grep -q "$OPENAI_ACCESS_RESOURCE" "$BODY"; then
+      R="pass"
+    else
+      R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
+    fi
+    check "ai-developer MaaS API subscription discovery works through Gateway" "$R"
+  else
+    check "ai-developer dashboard/API validation token available" "AI_DEVELOPER_PASSWORD missing or login failed"
+  fi
+
+  AI_ADMIN_TOKEN=$(get_demo_user_token "ai-admin" "${AI_ADMIN_PASSWORD:-}" || true)
+  if [[ -n "$AI_ADMIN_TOKEN" ]]; then
+    BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard-admin.XXXXXX")
+    TMP_FILES+=("$BODY")
+    STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${MAAS_NS}" "$AI_ADMIN_TOKEN" "$BODY")
+    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}" "$BODY"; then
+      R="pass"
+    else
+      R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
+    fi
+    check "ai-admin dashboard can load MaaS models from the MaaS project" "$R"
+  else
+    check "ai-admin dashboard validation token available" "AI_ADMIN_PASSWORD missing or login failed"
+  fi
+else
+  check "Dashboard and MaaS API HTTP validation can run" "python3 missing"
+fi
 
 echo
 echo "Stage 230 validation summary: ${PASS} passed, ${FAIL} failed"

@@ -5,6 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: models-as-a-service
     app.kubernetes.io/component: maas
+    opendatahub.io/dashboard: "true"
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
   annotations:

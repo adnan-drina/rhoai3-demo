@@ -61,6 +61,15 @@ notes for Models-as-a-Service.
 
 - Users have both subscription quota and gateway authorization before access is
   claimed.
+- Dashboard and Gateway discovery are validated with real demo user tokens, not
+  inferred from MaaS CR readiness. The RHOAI dashboard
+  `/gen-ai/api/v1/maas/models` path and the Gateway
+  `/maas-api/v1/subscriptions` path must return usable model/subscription data
+  for an allowed user before claiming the AI asset endpoints experience.
+- The Gateway/AuthPolicy path injects `X-MaaS-Username` and `X-MaaS-Group` into
+  `maas-api` requests. If `maas-api` logs `Missing or empty username header`,
+  investigate Kuadrant/AuthPolicy/EnvoyFilter behavior before changing MaaS
+  model or subscription CRs.
 - API keys are never committed or embedded in notebooks/manifests.
 - Persistent keys are stored in an approved secret store.
 - API key expiration limits are documented and align with the `Tenant` max.
@@ -107,6 +116,10 @@ oc get maasmodelrefs -A
 oc get maassubscriptions -A
 oc get maasauthpolicies -A
 oc get externalmodels.maas.opendatahub.io -A
+oc get envoyfilter kuadrant-maas-default-gateway -n openshift-ingress -o yaml
+oc logs -n openshift-ingress \
+  -l gateway.networking.k8s.io/gateway-name=maas-default-gateway --since=10m
+oc logs -n redhat-ods-applications deploy/maas-api --since=10m
 ```
 
 Use schema checks before durable GitOps authoring:
@@ -140,3 +153,6 @@ Do not approve a MaaS change when:
   required
 - exact CR fields are copied from memory instead of official docs or installed
   schema
+- dashboard AI asset endpoints cannot load MaaS models for an allowed user
+- `maas-api` reports missing `X-MaaS-Username` or `X-MaaS-Group` headers on
+  Gateway-routed requests

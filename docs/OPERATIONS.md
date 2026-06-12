@@ -582,6 +582,21 @@ MaaS namespace administration, absence of direct `ai-developer` namespace
 access, the external OpenAI `ExternalModel`, `MaaSModelRef`,
 `MaaSSubscription`, and `MaaSAuthPolicy`.
 
+The validator now also checks the user-facing MaaS discovery path. When
+`AI_DEVELOPER_PASSWORD` and `AI_ADMIN_PASSWORD` are available in `.env`, it
+logs in as the demo users, calls the RHOAI dashboard Gen AI MaaS models API,
+and calls the external MaaS API subscription endpoint through the Gateway. A
+deployment is not accepted as complete unless the dashboard/API path can load
+the published model, not just the underlying CRs.
+
+If validation fails on `MaaS Gateway Kuadrant WASM filter is accepted by
+Envoy`, inspect the generated EnvoyFilter and gateway logs before retrying the
+dashboard. On the current `cluster-klvxt` environment, RHCL 1.4.0 generates a
+`kuadrant-maas-default-gateway` EnvoyFilter with
+`allow_on_headers_stop_iteration`; the OpenShift gateway Envoy rejects that
+field, so the Gateway does not inject the `X-MaaS-Username` and
+`X-MaaS-Group` headers required by `maas-api`.
+
 The external model resources use the installed
 `maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. Re-run the
 schema checks after RHOAI or RHCL upgrades before changing `MaaSModelRef`,
@@ -592,7 +607,8 @@ API groups for some MaaS resources.
 ### Access Posture
 
 - `ai-admin` administers MaaS and can manage the `models-as-a-service`
-  namespace.
+  namespace. The namespace is labeled `opendatahub.io/dashboard: "true"` so it
+  can appear as an OpenShift AI project for users with access.
 - `ai-developer` should not have direct namespace access to
   `models-as-a-service`; the intended path is OpenShift AI dashboard assets,
   Gen AI Playground, and MaaS-issued API keys.

@@ -475,6 +475,74 @@ RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   ./stage-210-model-serving-foundation/benchmark-guidellm.sh
 ```
 
+## Stage 230: Models-as-a-Service
+
+### AI asset endpoints show "Models as a Service could not be loaded"
+
+- **Symptom:** OpenShift AI dashboard → Gen AI Studio → AI asset endpoints
+  shows `Some model sources could not be loaded` or
+  `Models as a Service could not be loaded`. The MaaS CRs may still show
+  `Ready=True`.
+- **Cause observed on cluster-klvxt:** the generated
+  `kuadrant-maas-default-gateway` EnvoyFilter contains
+  `allow_on_headers_stop_iteration`, but the OpenShift gateway Envoy rejects
+  that WASM field. The Kuadrant WASM filter does not load, so Gateway requests
+  reach `maas-api` without the required `X-MaaS-Username` and `X-MaaS-Group`
+  headers.
+- **Confirm:**
+
+```bash
+./stage-230-models-as-a-service/validate.sh
+
+oc logs -n openshift-ingress \
+  -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+  --since=10m --tail=200 | grep allow_on_headers_stop_iteration
+
+oc logs -n redhat-ods-applications deploy/maas-api --since=10m \
+  | grep 'Missing or empty username header'
+```
+
+The dashboard backend failure presents as:
+
+```text
+GET /gen-ai/api/v1/maas/models?namespace=<project> -> 503
+GET /maas/api/v1/models -> 500
+GET /maas/api/v1/subscriptions -> 500
+```
+
+Direct `maas-api` calls with explicit `X-MaaS-Username` and `X-MaaS-Group`
+headers can still return subscriptions. That proves the MaaS subscription data
+exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
+
+- **Do not use these as durable fixes:** scaling the RHCL/Kuadrant operator to
+  zero breaks the `kuadrant-operator-wasm` service that serves the WASM plugin;
+  adding a second compatibility EnvoyFilter can cause duplicate
+  `kuadrant-wasm-shim` plugin load failures.
+- **Current action:** treat this as an RHCL/OpenShift Service Mesh compatibility
+  blocker for Stage 230. Keep the validation failure visible, check Red Hat
+  errata or supported RHCL/OSSM version guidance, and do not claim the Stage
+  230 dashboard experience is complete until the Gateway can inject MaaS
+  identity headers.
+
+### models-as-a-service project is not visible in the OpenShift AI dashboard
+
+- **Likely cause:** the namespace lacks `opendatahub.io/dashboard: "true"` or
+  the user does not have project RBAC.
+- **Checks:**
+
+```bash
+oc get namespace models-as-a-service \
+  -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}{"\n"}'
+oc auth can-i get pods -n models-as-a-service \
+  --as ai-admin --as-group rhods-admins
+oc auth can-i get pods -n models-as-a-service \
+  --as ai-developer --as-group rhoai-developers
+```
+
+Expected demo posture: `ai-admin` can administer the namespace;
+`ai-developer` cannot. Developers consume MaaS models through AI asset
+endpoints and API keys, not direct namespace access.
+
 ---
 
 Legacy troubleshooting content is backed up at:

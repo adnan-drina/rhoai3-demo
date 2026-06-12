@@ -62,8 +62,24 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
 | Durable curated MaaS deployment | high | Deferred to Stage 230 after Stage 210 establishes basic serving limits and operating envelope |
 | MaaS quickstart pattern adoption | high | Stage 230 should adapt the `rh-ai-quickstart/maas-code-assistant` `LLMInferenceService`, tier, Gateway, RBAC, and Grafana patterns after RHOAI 3.4 CRD/schema checks |
-| Stage 230 model publication and policy | high | Phase-one MaaS prerequisites validate cleanly; live schemas confirm `maas.opendatahub.io/v1alpha1` for `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy`. External OpenAI `gpt-5.4-nano` GitOps resources and developer policy are authored, with live rollout gated on a real provider Secret. Next: local Nemotron `LLMInferenceService`/MaaS publication, API-key flows, and Playground validation |
+| Stage 230 model publication and policy | high | MaaS prerequisites and external OpenAI `gpt-5.4-nano` resources reconcile, and live schemas confirm `maas.opendatahub.io/v1alpha1` for `Tenant`, `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy`. Dashboard/API discovery is blocked by the Gateway header-injection issue tracked in the Stage 230 section below. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
+
+## Stage 230: Status — BLOCKED ON GATEWAY HEADER INJECTION
+
+Stage 230 GitOps creates the MaaS prerequisite stack, external OpenAI
+`gpt-5.4-nano` resources, subscription, authorization policy, and
+`rhods-admins` namespace administration. The resources reconcile, but the
+user-facing dashboard/API discovery path is not complete.
+
+### Open / deferred from Stage 230
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| RHCL / OpenShift gateway EnvoyFilter compatibility | high | Current `cluster-klvxt` generates `kuadrant-maas-default-gateway` with `allow_on_headers_stop_iteration`, which the gateway Envoy rejects. This prevents `X-MaaS-Username` / `X-MaaS-Group` header injection and makes the dashboard show `Models as a Service could not be loaded`. |
+| Local Nemotron MaaS publication | high | Deferred until the Gateway/AuthPolicy path is healthy; otherwise local publication would still be invisible from AI asset endpoints. |
+| API key and Gen AI Playground validation | high | Must validate through the dashboard and MaaS API, not only through CR readiness. |
+| MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
 ## Candidate Future Stages
 
@@ -72,7 +88,6 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
 | `stage-220-model-performance-baseline` | Production GenAI | Expanded performance baseline and operating-envelope evidence if the Stage 210 lightweight GuideLLM/Grafana baseline needs a dedicated follow-up |
-| `stage-230-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
 | `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
 | `stage-250-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |

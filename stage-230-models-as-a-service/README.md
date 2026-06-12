@@ -68,9 +68,14 @@ This stage is implemented in phases:
 4. Add API key, user-access, Gen AI Playground, and observability validation
    flows.
 
-The prerequisite phase validates cleanly on the current RHOAI 3.4 cluster. The
-live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230 model
-publication and policy resources use that installed schema.
+The prerequisite and model-policy resources reconcile on the current RHOAI 3.4
+cluster, but dashboard and MaaS API discovery are not yet accepted as healthy.
+Current validation shows the generated Kuadrant Gateway WASM EnvoyFilter
+contains an `allow_on_headers_stop_iteration` field rejected by the OpenShift
+gateway Envoy. Until that compatibility issue is resolved, the dashboard can
+show `Models as a Service could not be loaded` even though the MaaS CRs are
+Ready. The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230
+model publication and policy resources use that installed schema.
 
 The external OpenAI path is credential-gated. `deploy.sh` creates
 `openai-provider-api-key` in `models-as-a-service` from local
