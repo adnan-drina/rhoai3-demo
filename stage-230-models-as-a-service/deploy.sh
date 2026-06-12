@@ -195,11 +195,20 @@ urlencode() {
   jq -rn --arg v "$1" '$v|@uri'
 }
 
+ensure_namespace_exists() {
+  local namespace="$1"
+
+  if oc get namespace "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    return 0
+  fi
+
+  oc create namespace "$namespace" --insecure-skip-tls-verify=true >/dev/null
+}
+
 ensure_maas_secrets() {
   echo "── Ensuring environment-local MaaS database secrets ──"
 
-  oc create namespace "$MAAS_NS" \
-    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+  ensure_namespace_exists "$MAAS_NS"
 
   local password
   password="$(oc get secret "$MAAS_POSTGRES_SECRET" -n "$MAAS_NS" \
@@ -232,8 +241,7 @@ ensure_maas_secrets() {
 ensure_openai_provider_secret() {
   echo "── Ensuring environment-local OpenAI provider Secret ──"
 
-  oc create namespace "$MAAS_NS" \
-    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+  ensure_namespace_exists "$MAAS_NS"
 
   if [[ -n "$OPENAI_API_KEY_VALUE" ]]; then
     oc create secret generic "$OPENAI_PROVIDER_SECRET" \
