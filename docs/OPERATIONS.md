@@ -544,6 +544,13 @@ after prerequisites and DSC feature flags are healthy.
    - Applies the Stage 230 Application for RHCL, Kuadrant, Authorino, the MaaS
      Gateway, PostgreSQL, and the default MaaS tenant.
 
+The Stage 230 Application prepares `maas-gateway-tls` in `openshift-ingress`
+from the active OpenShift ingress certificate before applying
+`maas-default-gateway`. This keeps the Gateway from starting with a
+cluster-specific or missing certificate reference. The follow-up Gateway hook
+sets the listener hostname to `maas.<apps-domain>` and keeps the certificate
+reference on `maas-gateway-tls`.
+
 Secrets are generated in the cluster and are not committed. The demo uses an
 in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.
 This is a demo database posture; production MaaS should use a managed and
@@ -558,8 +565,9 @@ Run:
 ```
 
 The validator checks Argo CD app state, DSC fields, dashboard flags,
-cert-manager, RHCL, Gateway API, Kuadrant, Authorino, PostgreSQL,
-`maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant readiness.
+cert-manager, RHCL, Gateway API, `maas-gateway-tls`, Kuadrant, Authorino,
+PostgreSQL, `maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant
+readiness.
 
 Only after the MaaS CRDs are present should the next phase add
 `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy`

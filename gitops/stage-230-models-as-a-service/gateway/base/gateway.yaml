@@ -33,4 +33,4 @@ spec:
         certificateRefs:
           - group: ""
             kind: Secret
-            name: router-certs-default
+            name: maas-gateway-tls

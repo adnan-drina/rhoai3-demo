@@ -35,6 +35,11 @@ Review points:
 - Keep provider credentials, database passwords, and API keys outside Git.
 - Use sync waves and `SkipDryRunOnMissingResource=true` only where controller
   CRDs genuinely appear after prerequisite reconciliation.
+- If a MaaS `Gateway` terminates TLS with the OpenShift ingress certificate,
+  create a stable same-namespace Secret such as `maas-gateway-tls` before the
+  `Gateway` sync wave. Do not point the initial `Gateway` at a placeholder
+  certificate Secret and rely on a later patch hook; Argo CD can mark the
+  Gateway degraded before the later hook runs.
 
 ## Local Model Reference Pattern
 

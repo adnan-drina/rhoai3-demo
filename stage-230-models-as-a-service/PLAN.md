@@ -24,6 +24,10 @@
   RHCL, Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL
   16 demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
   enablement, and `Tenant`.
+- Gateway TLS pattern: create stable `maas-gateway-tls` in `openshift-ingress`
+  from the active OpenShift ingress certificate before applying
+  `maas-default-gateway`; then patch listener hostnames to
+  `maas.<apps-domain>`.
 - External model planned: OpenAI `gpt-5.4-nano` registered through the MaaS
   `ExternalModel` path.
 - Validation priority: deterministic API and CLI validation first, with the
@@ -215,7 +219,7 @@ Phase-one deploy and validation commands:
 
 | Area | Expected resources | Verification |
 |------|--------------------|--------------|
-| MaaS prerequisites | Connectivity Link Operator, `Kuadrant`, Gateway, Authorino TLS, `maas-db-config` Secret | Package/channel and CRD checks; no secret values in Git |
+| MaaS prerequisites | Connectivity Link Operator, `Kuadrant`, Gateway, `maas-gateway-tls`, Authorino TLS, `maas-db-config` Secret | Package/channel and CRD checks; no secret values in Git |
 | Shared RHOAI patch | `DataScienceCluster` MaaS enablement and dashboard feature flags | Kustomize render and live DSC status |
 | Local model backend | `LLMInferenceService` for Nemotron, or another officially supported MaaS backend if schema requires it | `Ready=True`, authenticated inference, metrics |
 | Local MaaS publication | `MaaSModelRef` for Nemotron | CRD schema and dashboard/API model listing |

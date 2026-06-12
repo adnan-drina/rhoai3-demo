@@ -2,7 +2,7 @@
 name: rhoai-maas-governance
 metadata:
   author: rhoai3-demo
-  version: 1.1.0
+  version: 1.1.1
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"

@@ -95,6 +95,13 @@ apply_argocd_application() {
     "$manifest_path" > "$app_manifest"
 
   oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
+
+  if [[ "$app_name" == "stage-230-models-as-a-service" ]]; then
+    oc patch application "$app_name" -n openshift-gitops --type=json \
+      -p '[{"op":"remove","path":"/spec/source/kustomize"}]' \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+  fi
+
   oc annotate application "$app_name" -n openshift-gitops \
     argocd.argoproj.io/refresh=hard --overwrite \
     --insecure-skip-tls-verify=true >/dev/null

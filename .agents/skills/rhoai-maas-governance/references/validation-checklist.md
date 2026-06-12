@@ -27,6 +27,10 @@ notes for Models-as-a-Service.
 - Red Hat Connectivity Link Operator is installed.
 - `Kuadrant` in `kuadrant-system` is ready.
 - The MaaS Gateway API resources and annotations are present.
+- The MaaS Gateway TLS Secret exists in the same namespace as the Gateway
+  before the Gateway resource is applied; for this demo the stable Secret name
+  is `maas-gateway-tls` in `openshift-ingress`, generated from the active
+  OpenShift ingress certificate by a GitOps sync hook.
 - Authorino TLS and service CA trust are configured.
 - `maas-db-config` exists in `redhat-ods-applications` with
   `DB_CONNECTION_URL` stored as a Secret value.
@@ -87,6 +91,7 @@ oc get certmanager cluster
 oc get subscription rhcl-operator -n openshift-operators
 oc get kuadrant kuadrant -n kuadrant-system
 oc get gatewayclass
+oc get secret maas-gateway-tls -n openshift-ingress
 oc get gateway maas-default-gateway -n openshift-ingress -o yaml
 oc get secret maas-db-config -n redhat-ods-applications
 oc api-resources | grep -i maas

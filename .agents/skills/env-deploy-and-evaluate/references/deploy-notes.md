@@ -53,6 +53,10 @@
   concurrency, latency, throughput, and GPU-utilization breakpoints.
 - **Stage 230**: Register governed MaaS access for Nemotron and external
   OpenAI `gpt-5.4-nano` after MaaS gateway/API compatibility is verified.
+- **Stage 230 Gateway TLS**: Prepare a stable `maas-gateway-tls` Secret in
+  `openshift-ingress` from the active OpenShift ingress certificate before the
+  `maas-default-gateway` sync wave. A missing initial certificate reference can
+  degrade the Gateway and prevent later patch hooks from running.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
