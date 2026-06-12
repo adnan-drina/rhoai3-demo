@@ -487,7 +487,7 @@ RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   shows `Some model sources could not be loaded` or
   `Models as a Service could not be loaded`. The MaaS CRs may still show
   `Ready=True`.
-- **Cause observed on cluster-klvxt:** the generated
+- **Cause observed on cluster-klvxt before the RHCL pin:** the generated
   `kuadrant-maas-default-gateway` EnvoyFilter contains
   `allow_on_headers_stop_iteration`, but the OpenShift gateway Envoy rejects
   that WASM field. The Kuadrant WASM filter does not load, so Gateway requests
@@ -524,11 +524,12 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   `kuadrant-wasm-shim` plugin load failures. Do not patch generated Kuadrant
   `AuthPolicy` or EnvoyFilter resources in GitOps unless official Red Hat
   documentation or support guidance requires it.
-- **Current action:** treat this as an RHCL/OpenShift Service Mesh compatibility
-  blocker for Stage 230. Keep the validation failure visible, check Red Hat
-  errata or supported RHCL/OSSM version guidance, and do not claim the Stage
-  230 dashboard experience is complete until the Gateway can inject MaaS
-  identity headers.
+- **Current action:** Stage 230 pins Red Hat Connectivity Link to
+  `rhcl-operator.v1.3.3` with manual InstallPlan approval. If validation shows
+  any other installed CSV, remediate RHCL through operator lifecycle first and
+  then rerun `deploy.sh` and `validate.sh`. Do not claim the Stage 230
+  dashboard experience is complete until the Gateway can inject MaaS identity
+  headers and the dashboard/API checks pass.
 
 ### Nemotron still exists as a direct demo-sandbox deployment
 

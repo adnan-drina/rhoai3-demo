@@ -24,7 +24,8 @@ notes for Models-as-a-Service.
 - User Workload Monitoring is enabled.
 - cert-manager Operator for Red Hat OpenShift is installed and the
   `CertManager` cluster resource exists when RHCL requires cert-manager.
-- Red Hat Connectivity Link Operator is installed.
+- Red Hat Connectivity Link Operator is installed at the pinned MaaS-compatible
+  CSV for the active demo baseline.
 - `Kuadrant` in `kuadrant-system` is ready.
 - The MaaS Gateway API resources and annotations are present.
 - The MaaS Gateway TLS Secret exists in the same namespace as the Gateway
@@ -100,6 +101,8 @@ oc get odhdashboardconfig -n redhat-ods-applications
 oc get certmanager cluster
 oc get deployment cert-manager cert-manager-cainjector cert-manager-webhook -n cert-manager
 oc get subscription rhcl-operator -n openshift-operators
+oc get subscription rhcl-operator -n openshift-operators \
+  -o jsonpath='{.spec.installPlanApproval}{" "}{.spec.startingCSV}{" "}{.status.installedCSV}{"\n"}'
 oc get kuadrant kuadrant -n kuadrant-system
 oc get authorino authorino -n kuadrant-system
 oc get gatewayclass

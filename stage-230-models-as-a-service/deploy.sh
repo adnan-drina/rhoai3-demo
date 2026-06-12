@@ -57,6 +57,7 @@ MAAS_POSTGRES_SECRET="${RHOAI_MAAS_POSTGRES_SECRET:-maas-postgres-credentials}"
 MAAS_POSTGRES_USER="${RHOAI_MAAS_POSTGRES_USER:-maas}"
 MAAS_POSTGRES_DATABASE="${RHOAI_MAAS_POSTGRES_DATABASE:-maas}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
+PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.3}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
 OPENAI_API_KEY_VALUE="${RHOAI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
@@ -328,8 +329,16 @@ wait_for_jsonpath "Stage 110 shared owner Application sync" \
   "application/stage-110-rhoai-base-platform" "openshift-gitops" \
   "{.status.sync.status}" "Synced" 90
 
+wait_for_jsonpath "Stage 230 Application sync" \
+  "application/stage-230-models-as-a-service" "openshift-gitops" \
+  "{.status.sync.status}" "Synced" 90
+
 wait_for_jsonpath "DataScienceCluster readiness" \
   "datasciencecluster/default-dsc" "" "{.status.phase}" "Ready" 90
+
+wait_for_jsonpath "Red Hat Connectivity Link pinned CSV" \
+  "subscription/rhcl-operator" "openshift-operators" \
+  "{.status.installedCSV}" "$PINNED_RHCL_CSV" 90
 
 wait_for_jsonpath "DataScienceCluster MaaS management" \
   "datasciencecluster/default-dsc" "" \

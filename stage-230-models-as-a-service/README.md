@@ -49,7 +49,7 @@ flowchart LR
 - [RHOAI 3.4 - Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index)
 - [RHOAI 3.4 - Configuring authentication for llm-d using Red Hat Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/deploy_models_using_distributed_inference_with_llm-d/configuring-authentication-for-llmd_distributed-inference)
 - [OpenShift 4.20 - Leader Worker Set Operator](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/leader-worker-set-operator)
-- [Red Hat Connectivity Link 1.4 - Installing Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.4/html-single/installing_connectivity_link/index)
+- [Red Hat Connectivity Link 1.3 - Installing Connectivity Link](https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.3/html-single/installing_connectivity_link/index)
 - [OpenShift 4.20 - cert-manager Operator for Red Hat OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/security_and_compliance/cert-manager-operator-for-red-hat-openshift)
 - [Red Hat Ecosystem Catalog - PostgreSQL 16 RHEL 9 image](https://catalog.redhat.com/en/software/containers/rhel9/postgresql-16/657b03866783e1b1fb87e142)
 - [OpenAI API - GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano)
@@ -73,11 +73,12 @@ This stage is implemented in phases:
    flows.
 
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
-use schemas observed on the current RHOAI 3.4 cluster. Current validation shows
-the generated Kuadrant Gateway WASM EnvoyFilter contains an
-`allow_on_headers_stop_iteration` field rejected by the OpenShift gateway
-Envoy. Until that compatibility issue is resolved, the dashboard can show
-`Models as a Service could not be loaded` even though the MaaS CRs are Ready.
+use schemas observed on the current RHOAI 3.4 cluster. Stage 230 pins Red Hat
+Connectivity Link to `rhcl-operator.v1.3.3` with manual InstallPlan approval,
+matching the RHOAI 3.4 MaaS quickstart implementation evidence. This is a
+deliberate compatibility guard because RHCL 1.4.0 was observed on
+`cluster-klvxt` to generate a Kuadrant Gateway WASM EnvoyFilter containing
+`allow_on_headers_stop_iteration`, which the OpenShift gateway Envoy rejected.
 The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230 model
 publication and policy resources use that installed schema.
 

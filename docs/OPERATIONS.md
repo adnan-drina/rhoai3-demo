@@ -552,6 +552,9 @@ after prerequisites and DSC feature flags are healthy.
      `llamastackoperator`.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
+   - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.3` with manual
+     InstallPlan approval. The deployment fails visibly if a different RHCL CSV
+     is already installed.
    - Applies the Stage 230 Application for LeaderWorkerSet, RHCL, Kuadrant,
      Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
      `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
@@ -599,18 +602,19 @@ and calls the external MaaS API subscription endpoint through the Gateway. A
 deployment is not accepted as complete unless the dashboard/API path can load
 the published model, not just the underlying CRs.
 
-If validation fails on `MaaS Gateway Kuadrant WASM filter is accepted by
-Envoy`, inspect the generated EnvoyFilter and gateway logs before retrying the
-dashboard. On the current `cluster-klvxt` environment, RHCL 1.4.0 generates a
-`kuadrant-maas-default-gateway` EnvoyFilter with
-`allow_on_headers_stop_iteration`; the OpenShift gateway Envoy rejects that
-field, so the Gateway does not inject the `X-MaaS-Username` and
-`X-MaaS-Group` headers required by `maas-api`.
+If validation fails on the RHCL pin or on `MaaS Gateway Kuadrant WASM filter is
+accepted by Envoy`, inspect the installed RHCL CSV and gateway logs before
+retrying the dashboard. On the current `cluster-klvxt` environment, RHCL 1.4.0
+generated a `kuadrant-maas-default-gateway` EnvoyFilter with
+`allow_on_headers_stop_iteration`; the OpenShift gateway Envoy rejected that
+field, so the Gateway did not inject the `X-MaaS-Username` and
+`X-MaaS-Group` headers required by `maas-api`. Stage 230 now expects
+`rhcl-operator.v1.3.3`.
 
 Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the
-Stage 230 fix. Treat this as a supported-version compatibility issue in the
-RHOAI/RHCL/OpenShift gateway path and keep the validation failure visible until
-the documented product path works end to end.
+Stage 230 fix. Treat RHCL version remediation as operator lifecycle work and
+keep the validation failure visible until the documented product path works end
+to end.
 
 The external model resources use the installed
 `maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. Re-run the

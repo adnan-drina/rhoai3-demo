@@ -19,8 +19,9 @@ fi
 
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
+PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.3}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
-OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-nano}"
+OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-$OPENAI_MODEL_ID}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
 OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-nano}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -89,6 +90,19 @@ contains_word() {
   local list="$1"
   local item="$2"
   [[ " ${list} " == *" ${item} "* ]]
+}
+
+body_contains_model() {
+  local body_file="$1"
+  local model
+
+  for model in "$OPENAI_MODEL_RESOURCE" "$OPENAI_MODEL_ID" "$NEMOTRON_MODEL_RESOURCE"; do
+    if grep -Fq "$model" "$body_file"; then
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 can_i_as() {
@@ -214,8 +228,16 @@ done
 check "cert-manager deployments available" "$R"
 
 RHCL_CSV=$(jsonpath "subscription/rhcl-operator" "openshift-operators" "{.status.installedCSV}")
-[[ "$RHCL_CSV" == rhcl-operator.* ]] && R="pass" || R="installedCSV=${RHCL_CSV:-missing}"
-check "Red Hat Connectivity Link Operator subscription installed" "$R"
+RHCL_APPROVAL=$(jsonpath "subscription/rhcl-operator" "openshift-operators" "{.spec.installPlanApproval}")
+RHCL_STARTING_CSV=$(jsonpath "subscription/rhcl-operator" "openshift-operators" "{.spec.startingCSV}")
+if [[ "$RHCL_CSV" == "$PINNED_RHCL_CSV" &&
+  "$RHCL_APPROVAL" == "Manual" &&
+  "$RHCL_STARTING_CSV" == "$PINNED_RHCL_CSV" ]]; then
+  R="pass"
+else
+  R="installedCSV=${RHCL_CSV:-missing},approval=${RHCL_APPROVAL:-missing},startingCSV=${RHCL_STARTING_CSV:-missing},expected=${PINNED_RHCL_CSV}"
+fi
+check "Red Hat Connectivity Link Operator is pinned to the MaaS-compatible CSV" "$R"
 
 for crd in \
   kuadrants.kuadrant.io \
@@ -456,7 +478,7 @@ if command -v python3 >/dev/null 2>&1; then
     BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${PROJECT_NS}" "$AI_DEVELOPER_TOKEN" "$BODY")
-    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}|${NEMOTRON_MODEL_RESOURCE}" "$BODY"; then
+    if [[ "$STATUS" == "200" ]] && body_contains_model "$BODY"; then
       R="pass"
     else
       R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"
@@ -481,7 +503,7 @@ if command -v python3 >/dev/null 2>&1; then
     BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-dashboard-admin.XXXXXX")
     TMP_FILES+=("$BODY")
     STATUS=$(http_get "https://${DASHBOARD_HOST}/gen-ai/api/v1/maas/models?namespace=${MAAS_NS}" "$AI_ADMIN_TOKEN" "$BODY")
-    if [[ "$STATUS" == "200" ]] && grep -Eq "${OPENAI_MODEL_RESOURCE}|${OPENAI_MODEL_ID}|${NEMOTRON_MODEL_RESOURCE}" "$BODY"; then
+    if [[ "$STATUS" == "200" ]] && body_contains_model "$BODY"; then
       R="pass"
     else
       R="status=${STATUS},body=$(head -c 180 "$BODY" | tr '\n' ' ')"

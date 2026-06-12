@@ -60,10 +60,10 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 | Item | Priority | Notes |
 |------|----------|-------|
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
-| Stage 230 model publication and policy | high | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-nano` resources, and combined subscription/auth policy are now authored against live schemas. Dashboard/API discovery remains blocked by the Gateway header-injection issue tracked in the Stage 230 section below. |
+| Stage 230 model publication and policy | high | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-nano` resources, and combined subscription/auth policy are authored against live schemas. RHCL is now pinned to `rhcl-operator.v1.3.3`; rerun live rollout/validation to confirm the dashboard/API path. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
 
-## Stage 230: Status — BLOCKED ON GATEWAY HEADER INJECTION
+## Stage 230: Status — PENDING RHCL PIN VALIDATION
 
 Stage 230 GitOps creates the MaaS prerequisite stack, local Nemotron
 `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-nano`
@@ -71,17 +71,19 @@ resources, combined subscription/auth policy, and `rhods-admins` namespace
 administration.
 
 Deployed 2026-06-12 on cluster-klvxt after migrating the direct
-`demo-sandbox` Nemotron deployment into `models-as-a-service`. Current
-`validate.sh` result is 47/51: all prerequisites, CRDs, local Nemotron
+`demo-sandbox` Nemotron deployment into `models-as-a-service`. Previous
+validation reached 47/51 with all prerequisites, CRDs, local Nemotron
 readiness, external OpenAI registration, subscription, and auth policy checks
-pass. The four remaining failures are the user-facing dashboard/API discovery
-path, blocked by the Gateway header-injection compatibility issue.
+passing, but user-facing dashboard/API discovery was blocked by an RHCL 1.4.0
+Gateway header-injection compatibility issue. GitOps now pins RHCL to
+`rhcl-operator.v1.3.3`; rerun live remediation, deploy, and validation before
+marking Stage 230 complete.
 
 ### Open / deferred from Stage 230
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| RHCL / OpenShift gateway EnvoyFilter compatibility | high | Current `cluster-klvxt` generates `kuadrant-maas-default-gateway` with `allow_on_headers_stop_iteration`, which the gateway Envoy rejects. This prevents `X-MaaS-Username` / `X-MaaS-Group` header injection and makes the dashboard show `Models as a Service could not be loaded`. Resolve through supported RHOAI/RHCL/OpenShift gateway alignment, not GitOps patches to generated AuthPolicy or EnvoyFilter resources. |
+| RHCL pin rollout and validation | high | Confirm the cluster runs `rhcl-operator.v1.3.3`, not RHCL 1.4.x. Then rerun Stage 230 deploy/validate and confirm Gateway header injection, AI asset endpoints, and MaaS API discovery. Resolve through supported operator lifecycle alignment, not GitOps patches to generated AuthPolicy or EnvoyFilter resources. |
 | API key and Gen AI Playground validation | high | Must validate through the dashboard and MaaS API, not only through CR readiness. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
