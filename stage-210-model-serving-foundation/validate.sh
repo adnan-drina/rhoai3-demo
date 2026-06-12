@@ -213,8 +213,14 @@ else
 fi
 check "Grafana OAuth route present" "$R"
 
+declare -A GRAFANA_DEMO_GROUPS=(
+  [ai-admin]=rhods-admins
+  [ai-developer]=rhoai-developers
+)
+
 for demo_user in ai-admin ai-developer; do
-  if oc auth can-i get services -n "$GRAFANA_NS" --as "$demo_user" \
+  if oc auth can-i get services -n "$GRAFANA_NS" \
+    --as "$demo_user" --as-group "${GRAFANA_DEMO_GROUPS[$demo_user]}" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then
     R="pass"
   else

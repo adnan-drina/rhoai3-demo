@@ -162,7 +162,7 @@
 | `gitops/stage-210-model-serving-foundation/benchmark-data/base/seed-benchmark-data-job.yaml` | `Job` hook | llm-d showroom pre-provisioned PVC pattern | Argo CD hook succeeds; `benchmark-guidellm.sh` can mount `/data/prompts.csv` |
 | `gitops/stage-210-model-serving-foundation/grafana/operator/**` | `Namespace`, `OperatorGroup`, `Subscription` | Grafana Operator package metadata plus CoP pattern | `oc get subscription,csv -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/base/grafana.yaml` | `Grafana` | Grafana Operator API plus OpenShift OAuth proxy pattern | `oc get grafana grafana -n rhoai-demo-grafana` |
-| `gitops/stage-210-model-serving-foundation/grafana/instance/base/grafana-viewer-rbac.yaml` | `Role`, `RoleBinding` | OCP RBAC docs plus OpenShift OAuth proxy SAR pattern | `oc auth can-i get services -n rhoai-demo-grafana --as ai-admin` |
+| `gitops/stage-210-model-serving-foundation/grafana/instance/base/grafana-viewer-rbac.yaml` | `Role`, `RoleBinding` | OCP RBAC docs plus OpenShift OAuth proxy SAR pattern | `oc auth can-i get services -n rhoai-demo-grafana --as ai-admin --as-group rhods-admins` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/components/openshift-monitoring-datasource/grafana-datasource.yaml` | `GrafanaDatasource` | Grafana Operator API plus OpenShift monitoring datasource pattern | `oc get grafanadatasource prometheus -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/components/model-serving-dashboards/dashboard-vllm-kserve-gpu.yaml` | `GrafanaDashboard` | Grafana Operator API plus vLLM metric source findings | `oc get grafanadashboard vllm-model-serving-baseline -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/components/model-serving-dashboards/dashboard-llm-performance.yaml` | `GrafanaDashboard` | `rh-aiservices-bu/rhaoi3-llm-d` dashboard JSON adapted to local datasource UID | `oc get grafanadashboard llm-performance -n rhoai-demo-grafana` |
@@ -326,5 +326,6 @@
   replaced the cluster-scoped `get namespaces` OAuth proxy SAR with a
   namespace-scoped `get services` SAR in `rhoai-demo-grafana`, added
   `grafana-viewer-demo-users` for `rhods-admins` and `rhoai-developers`, and
-  validated `oc auth can-i get services -n rhoai-demo-grafana --as ai-admin`
-  and `--as ai-developer`.
+  validated `oc auth can-i get services -n rhoai-demo-grafana --as ai-admin
+  --as-group rhods-admins` and the equivalent `ai-developer` check with
+  `rhoai-developers`.

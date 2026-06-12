@@ -339,8 +339,10 @@ OpenShift monitoring data.
 Validate demo-user access:
 
 ```bash
-oc auth can-i get services -n rhoai-demo-grafana --as ai-admin
-oc auth can-i get services -n rhoai-demo-grafana --as ai-developer
+oc auth can-i get services -n rhoai-demo-grafana \
+  --as ai-admin --as-group rhods-admins
+oc auth can-i get services -n rhoai-demo-grafana \
+  --as ai-developer --as-group rhoai-developers
 ```
 
 Stage 210 includes two dashboards:
