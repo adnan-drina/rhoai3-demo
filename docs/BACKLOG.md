@@ -36,24 +36,25 @@ Stage 210 owns that transition.
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
 
-## Stage 210: Status — MODEL SERVING BASELINE OBSERVABILITY ADDED
+## Stage 210: Status — COMPLETE
 
 Stage 210 enables the RHOAI KServe model serving platform through the shared
 Stage 110 `DataScienceCluster` owner and handles fresh-environment convergence
 for `demo-registry`, Nemotron registry metadata, and the Nemotron vLLM
 `InferenceService`. It also adds user workload monitoring, a GitOps-managed
 Grafana model-serving dashboard, and an on-demand GuideLLM benchmark runner.
-Final status depends on live validation of the new observability Application
-and at least one GuideLLM smoke run.
+
+Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 32/32. A
+short GuideLLM smoke run completed successfully and wrote JSON results under
+gitignored `runs/stage-210-guidellm/`.
 
 ### Open / deferred from Stage 210
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Live observability validation | high | Confirm the Stage 210 Argo CD Application is Synced/Healthy and Grafana resources reconcile in cluster-klvxt |
-| GuideLLM smoke run | high | Run a short `RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30` baseline and keep results in gitignored `runs/` |
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 230 MaaS owns governed shared API access |
 | Durable curated MaaS deployment | high | Deferred to Stage 230 after Stage 210 establishes basic serving limits and operating envelope |
+| Extended operating envelope | medium | Run longer GuideLLM profiles before using the smoke numbers for MaaS quotas or capacity claims |
 
 ## Candidate Future Stages
 

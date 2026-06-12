@@ -192,11 +192,14 @@
     `InferenceService.status.address.url`
   - runs `ghcr.io/vllm-project/guidellm:v0.5.0` as a Kubernetes Job in
     `demo-sandbox`
+  - uses `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` as the GuideLLM processor
+    for token accounting and synthetic data generation
   - defaults to a short synthetic profile:
     `{"prompt_tokens":512,"output_tokens":128}`, concurrent rates `1,2,4`,
     and 120 seconds per rate
-  - copies JSON/HTML results to `runs/stage-210-guidellm/<timestamp>/`
-  - deletes temporary Job/PVC/copy Pod unless
+  - writes JSON results to `runs/stage-210-guidellm/<timestamp>/`
+  - uses a Kueue-admitted copy Job to read results from the benchmark PVC
+  - deletes temporary benchmark Job, copy Job, and PVC unless
     `RHOAI_GUIDELLM_KEEP_RESOURCES=true`
 
 ### `validate.sh`
@@ -254,7 +257,15 @@
   `stage-110-rhoai-base-platform` synced revision
   `df241586684739f8d1610e8a43bd875d686db896`.
 - Live validation: PASSED 2026-06-12 -
-  `stage-210-model-serving-foundation/validate.sh` 9/9.
+  `stage-210-model-serving-foundation/validate.sh` 32/32 after the Stage 210
+  observability Application reached `Synced/Healthy`.
+- GuideLLM smoke: PASSED 2026-06-12 -
+  ran `./stage-210-model-serving-foundation/benchmark-guidellm.sh` with
+  `RHOAI_GUIDELLM_RATE=1` and `RHOAI_GUIDELLM_MAX_SECONDS=10`; results stored
+  under gitignored `runs/stage-210-guidellm/20260612120834/`.
+- GuideLLM note: HTML output from `ghcr.io/vllm-project/guidellm:v0.5.0`
+  failed on a redirected report-template URL, so the automation defaults to
+  JSON output only.
 - Regression validation: PASSED 2026-06-12 -
   Stage 110 `validate.sh` 17/17 and Stage 120 `validate.sh` 23/23 after KServe
   became `Managed`.

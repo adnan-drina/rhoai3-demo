@@ -58,6 +58,11 @@ the conservative, verified one-GPU RHOAI configuration and uses live vLLM
 metrics plus GuideLLM results to tune from evidence rather than importing a
 non-matching configuration.
 
+For GuideLLM token accounting, the benchmark script uses the public Hugging
+Face processor ID `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`, while the served
+model ID remains the RHOAI deployment name
+`nvidia-nemotron-3-nano-30b-a3b`.
+
 ---
 
 ## Architecture
@@ -115,6 +120,22 @@ discover-or-create flow:
 3. Use the existing Nemotron `InferenceService` when present; otherwise create
    the vLLM runtime and endpoint from the active RHOAI template and OCI
    modelcar source.
+
+## Validation Evidence
+
+Validated on `cluster-klvxt` on 2026-06-12:
+
+- `stage-210-model-serving-foundation/deploy.sh` converged Stage 110 and Stage
+  210 Argo CD Applications to `Synced/Healthy`.
+- `stage-210-model-serving-foundation/validate.sh` passed 32 checks.
+- A short GuideLLM smoke run with one concurrent request and a 10-second window
+  completed with 11 successful requests and zero errors. The observed p95 TTFT
+  was about 71 ms, p95 ITL about 7.1 ms, p95 end-to-end request latency about
+  0.98 seconds, and mean output throughput about 132 output tokens/second.
+
+These numbers are smoke-test evidence for the harness and endpoint, not a
+production capacity claim. Use longer GuideLLM profiles before setting MaaS
+quotas or public operating limits.
 
 ---
 

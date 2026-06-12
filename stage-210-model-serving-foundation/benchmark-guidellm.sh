@@ -10,12 +10,13 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODEL_NS="${RHOAI_MODEL_NAMESPACE:-demo-sandbox}"
 MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_DEPLOYMENT_NAME}"
+GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
 GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-ghcr.io/vllm-project/guidellm:v0.5.0}"
 GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-concurrent}"
 GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-1,2,4}"
 GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-120}"
 GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-{\"prompt_tokens\":512,\"output_tokens\":128}}"
-GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json,benchmark-results.html}"
+GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json}"
 GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-20m}"
 KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-false}"
 
@@ -29,6 +30,7 @@ fi
 MODEL_NS="${RHOAI_MODEL_NAMESPACE:-$MODEL_NS}"
 MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-$MODEL_DEPLOYMENT_NAME}"
 MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_ID}"
+GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-$GUIDELLM_PROCESSOR}"
 GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-$GUIDELLM_IMAGE}"
 GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-$GUIDELLM_RATE_TYPE}"
 GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-$GUIDELLM_RATE}"
@@ -76,7 +78,7 @@ fi
 RUN_ID="$(date -u +%Y%m%d%H%M%S)"
 JOB_NAME="guidellm-stage210-${RUN_ID}"
 PVC_NAME="guidellm-results-${RUN_ID}"
-COPY_POD="guidellm-copy-${RUN_ID}"
+COPY_JOB="guidellm-copy-${RUN_ID}"
 RESULTS_DIR="${ROOT_DIR}/runs/stage-210-guidellm/${RUN_ID}"
 
 mkdir -p "$RESULTS_DIR"
@@ -124,25 +126,32 @@ spec:
         - name: guidellm
           image: ${GUIDELLM_IMAGE}
           imagePullPolicy: IfNotPresent
+          env:
+            - name: HOME
+              value: /results
+            - name: HF_HOME
+              value: /results/.cache/huggingface
           args:
             - benchmark
             - run
             - --target
-            - ${TARGET_URL}
+            - "${TARGET_URL}"
             - --model
-            - ${MODEL_ID}
+            - "${MODEL_ID}"
+            - --processor
+            - "${GUIDELLM_PROCESSOR}"
             - --data
             - '${GUIDELLM_DATA}'
             - --rate-type
-            - ${GUIDELLM_RATE_TYPE}
+            - "${GUIDELLM_RATE_TYPE}"
             - --rate
-            - ${GUIDELLM_RATE}
+            - "${GUIDELLM_RATE}"
             - --max-seconds
             - "${GUIDELLM_MAX_SECONDS}"
             - --output-dir
             - /results
             - --outputs
-            - ${GUIDELLM_OUTPUTS}
+            - "${GUIDELLM_OUTPUTS}"
           volumeMounts:
             - name: results
               mountPath: /results
@@ -164,48 +173,75 @@ oc logs -n "$MODEL_NS" "job/${JOB_NAME}" --insecure-skip-tls-verify=true || true
 
 echo "── Copying GuideLLM results to ${RESULTS_DIR} ──"
 oc apply -f - --insecure-skip-tls-verify=true <<EOF
-apiVersion: v1
-kind: Pod
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: ${COPY_POD}
+  name: ${COPY_JOB}
   namespace: ${MODEL_NS}
   labels:
     app.kubernetes.io/part-of: rhoai3-demo
     app.kubernetes.io/name: guidellm-copy
     demo.rhoai.io/stage: "210"
 spec:
-  restartPolicy: Never
-  containers:
-    - name: copy
-      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-      command:
-        - /bin/sh
-        - -c
-        - sleep 3600
-      volumeMounts:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: guidellm-copy
+        demo.rhoai.io/stage: "210"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: copy
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - /bin/sh
+            - -c
+            - sleep 3600
+          volumeMounts:
+            - name: results
+              mountPath: /results
+      volumes:
         - name: results
-          mountPath: /results
-  volumes:
-    - name: results
-      persistentVolumeClaim:
-        claimName: ${PVC_NAME}
+          persistentVolumeClaim:
+            claimName: ${PVC_NAME}
 EOF
 
-oc wait -n "$MODEL_NS" --for=condition=Ready "pod/${COPY_POD}" \
-  --timeout=2m --insecure-skip-tls-verify=true >/dev/null
-oc cp "${MODEL_NS}/${COPY_POD}:/results/." "$RESULTS_DIR" \
-  -c copy --insecure-skip-tls-verify=true >/dev/null
+COPY_POD=""
+for _ in $(seq 1 60); do
+  COPY_POD=$(oc get pod -n "$MODEL_NS" -l "batch.kubernetes.io/job-name=${COPY_JOB}" \
+    -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  if [[ -n "$COPY_POD" ]]; then
+    COPY_READY=$(oc get pod "$COPY_POD" -n "$MODEL_NS" \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+      --insecure-skip-tls-verify=true 2>/dev/null || true)
+    [[ "$COPY_READY" == "True" ]] && break
+  fi
+  sleep 2
+done
+if [[ -z "$COPY_POD" || "${COPY_READY:-}" != "True" ]]; then
+  echo "ERROR: copy job pod did not become Ready." >&2
+  exit 1
+fi
+
+IFS=',' read -r -a OUTPUT_FILES <<<"$GUIDELLM_OUTPUTS"
+for output_file in "${OUTPUT_FILES[@]}"; do
+  output_file="${output_file#"${output_file%%[![:space:]]*}"}"
+  output_file="${output_file%"${output_file##*[![:space:]]}"}"
+  oc exec -n "$MODEL_NS" "$COPY_POD" -c copy --insecure-skip-tls-verify=true \
+    -- cat "/results/${output_file}" >"${RESULTS_DIR}/${output_file}"
+done
 
 if [[ "$KEEP_RESOURCES" != "true" ]]; then
   echo "── Cleaning temporary GuideLLM resources ──"
-  oc delete pod "$COPY_POD" -n "$MODEL_NS" --ignore-not-found \
+  oc delete job "$COPY_JOB" -n "$MODEL_NS" --ignore-not-found \
     --insecure-skip-tls-verify=true >/dev/null
   oc delete job "$JOB_NAME" -n "$MODEL_NS" --ignore-not-found \
     --insecure-skip-tls-verify=true >/dev/null
   oc delete pvc "$PVC_NAME" -n "$MODEL_NS" --ignore-not-found \
     --insecure-skip-tls-verify=true >/dev/null
 else
-  echo "✓ Temporary resources retained: job/${JOB_NAME}, pvc/${PVC_NAME}, pod/${COPY_POD}"
+  echo "✓ Temporary resources retained: job/${JOB_NAME}, job/${COPY_JOB}, pvc/${PVC_NAME}"
 fi
 
 echo "✓ GuideLLM benchmark complete"

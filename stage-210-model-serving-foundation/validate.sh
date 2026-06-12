@@ -279,8 +279,11 @@ check "Nemotron ServiceMonitor present" "$R"
 
 ISVC_URL=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
   -o jsonpath='{.status.url}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-if [[ -n "$ISVC_URL" ]] && curl -ks --max-time 15 "${ISVC_URL}/metrics" \
-  | grep -q 'vllm:time_to_first_token_seconds_bucket'; then
+METRICS_BODY=""
+if [[ -n "$ISVC_URL" ]]; then
+  METRICS_BODY=$(curl -ks --max-time 15 "${ISVC_URL}/metrics" 2>/dev/null || true)
+fi
+if grep -q 'vllm:time_to_first_token_seconds_bucket' <<<"$METRICS_BODY"; then
   R="pass"
 else
   R="missing vLLM metrics"

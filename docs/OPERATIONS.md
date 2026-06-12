@@ -332,9 +332,10 @@ Defaults:
 - Target: the internal KServe URL from
   `InferenceService.status.address.url`
 - Model: `nvidia-nemotron-3-nano-30b-a3b`
+- Processor: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`
 - Data profile: `{"prompt_tokens":512,"output_tokens":128}`
 - Rate profile: concurrent rates `1,2,4`, 120 seconds per rate
-- Results: `runs/stage-210-guidellm/<timestamp>/`
+- Results: JSON under `runs/stage-210-guidellm/<timestamp>/`
 
 For a quick smoke test:
 
@@ -344,7 +345,20 @@ RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
 ```
 
 Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` to keep the temporary Job, PVC, and
-copy Pod for debugging.
+copy Job for debugging.
+
+Validated 2026-06-12 on cluster-klvxt with:
+
+```bash
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=10 \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
+
+The smoke run completed 11 successful requests with no errors. Observed values
+were approximately p95 TTFT 71 ms, p95 ITL 7.1 ms, p95 end-to-end request
+latency 0.98 seconds, and mean output throughput 132 output tokens/second.
+Treat these as harness and endpoint proof only; run longer profiles before
+setting MaaS limits.
 
 ---
 

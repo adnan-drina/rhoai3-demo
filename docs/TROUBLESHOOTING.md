@@ -341,7 +341,8 @@ Grafana namespace.
 
 - **Likely causes:** the upstream GuideLLM image cannot be pulled, the
   endpoint is not reachable from inside the cluster, the selected rate profile
-  overwhelms the one-GPU endpoint, or the PVC cannot bind.
+  overwhelms the one-GPU endpoint, the processor cannot be resolved, or the PVC
+  cannot bind.
 - **Checks:**
 
 ```bash
@@ -358,7 +359,23 @@ RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
 ```
 
 Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` when you need the temporary Job, PVC,
-or copy Pod to remain for inspection.
+or copy Job to remain for inspection.
+
+If GuideLLM fails while deserializing `{"prompt_tokens":512,"output_tokens":128}`,
+confirm the script is passing an explicit processor. Stage 210 defaults to:
+
+```bash
+RHOAI_NEMOTRON_GUIDELLM_PROCESSOR=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8
+```
+
+If GuideLLM completes the benchmark but fails while writing
+`benchmark-results.html` with an HTTP 301 from the old report-template URL, use
+the default JSON-only output:
+
+```bash
+RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
+  ./stage-210-model-serving-foundation/benchmark-guidellm.sh
+```
 
 ---
 
