@@ -15,7 +15,7 @@ dashboard-created hardware profile and normalize it into GitOps.
 | GPU allocation pattern | one L40S GPU per node, time-sliced to four schedulable `nvidia.com/gpu` units |
 | Primary private model | `nemotron-3-nano-30b-a3b` |
 | Primary model source | `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0` |
-| Serving path | Stage 220 RHOAI model serving with vLLM; Stage 240 MaaS |
+| Serving path | Stage 210 RHOAI model serving with vLLM; Stage 230 MaaS |
 | Approved external model | OpenAI `gpt-5.4-nano` through MaaS, after gateway/API compatibility is verified |
 
 Use the active node labels and allocatable `nvidia.com/gpu` values as the

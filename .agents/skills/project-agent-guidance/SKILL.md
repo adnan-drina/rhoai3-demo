@@ -176,7 +176,7 @@ are authored, keep the product-documentation loop current:
 3. For scoped follow-up, use:
 
    ```bash
-   ./scripts/audit-doc-alignment.sh --component stage-220-model-serving-foundation
+   ./scripts/audit-doc-alignment.sh --component stage-210-model-serving-foundation
    ```
 
 4. If the active audit script has not been recreated yet, document the missing

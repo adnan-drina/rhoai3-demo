@@ -19,10 +19,12 @@ gets admitted first, and how to shut capacity down when the demo or project is
 idle. Data scientists should not have to understand node taints, tolerations,
 device-plugin labels, or queue objects to get started.
 
-This stage turns the GPU into a platform service. OpenShift and the NVIDIA GPU
-Operator expose the hardware. Red Hat build of Kueue turns that hardware into
-quota-controlled capacity. Red Hat OpenShift AI hardware profiles present that
-capacity as simple dashboard choices: CPU Default, GPU Shared, GPU Priority, and
+This stage turns the GPU into a platform service. OpenShift Machine API creates
+the worker capacity. Node Feature Discovery publishes hardware facts about the
+nodes. The NVIDIA GPU Operator installs the NVIDIA runtime stack and exposes
+GPU capacity to Kubernetes. Red Hat build of Kueue turns that capacity into
+quota-controlled queues. Red Hat OpenShift AI hardware profiles present those
+queues as simple dashboard choices: CPU Default, GPU Shared, GPU Priority, and
 GPU Reserved.
 
 ---
@@ -43,12 +45,25 @@ MachineSet to zero between sessions to control cost; the Argo CD Application
 ignores `MachineSet.spec.replicas` drift so intentional scale-down is not
 self-healed back to one.
 
+### Hardware Discovery (NFD Operator)
+
+The Node Feature Discovery Operator installs the OpenShift hardware-discovery
+layer. Its `NodeFeatureDiscovery` instance publishes node feature labels from
+hardware sources such as PCI devices. In this stage, NFD is the discovery
+prerequisite that lets accelerator-aware operators and scheduling policy rely
+on verified node metadata instead of hand-maintained labels.
+
+NFD does not provide GPU capacity by itself. It hands discovered hardware
+context to the accelerator stack; the NVIDIA GPU Operator and its GPU Feature
+Discovery/device-plugin components expose the `nvidia.com/gpu` scheduling
+resource and NVIDIA-specific GPU labels used by Kueue placement.
+
 ### NVIDIA GPU Enablement
 
-Node Feature Discovery labels nodes with hardware features. The NVIDIA GPU
-Operator installs the driver stack, container toolkit, GPU feature discovery,
-DCGM exporter, and device plugin. The stage configures GPU time-slicing so one
-physical L40S is advertised as four schedulable `nvidia.com/gpu` units.
+The NVIDIA GPU Operator installs the driver stack, container toolkit, GPU
+feature discovery, DCGM exporter, and device plugin. The stage configures GPU
+time-slicing so one physical L40S is advertised as four schedulable
+`nvidia.com/gpu` units.
 
 Time-slicing is a demo and development density mechanism. It shares compute
 without memory isolation. It is useful for showing multiple self-service
@@ -59,7 +74,9 @@ isolation.
 
 Red Hat build of Kueue provides admission control and quota. RHOAI integrates
 with the standalone Kueue operator through the Stage 110-owned
-`DataScienceCluster` by setting `kueue.managementState: Unmanaged`.
+`DataScienceCluster` by setting `kueue.managementState: Unmanaged`. The GPU
+`ResourceFlavor` uses the verified GPU node label and GPU-only taint, so users
+do not need to know node placement details.
 
 This stage creates:
 
@@ -96,7 +113,7 @@ The low-level scheduling authority remains in Kueue `ResourceFlavor` and
 AWS GPU MachineSet (g6e.2xlarge, 1x L40S, default replicas=1)
    |
    v
-NFD Operator -> node hardware labels
+NFD Operator -> NodeFeatureDiscovery -> node hardware feature labels
    |
    v
 NVIDIA GPU Operator -> driver, toolkit, GFD, DCGM, device plugin
@@ -114,9 +131,9 @@ RHOAI Hardware Profiles -> CPU Default / GPU Shared / GPU Priority / GPU Reserve
 Data scientist selects governed capacity from the RHOAI dashboard
 ```
 
-Stage 220 uses this capacity to prove model serving with a temporary Nemotron
-smoke test and a user-led dashboard deployment. Stage 230 measures the model
-performance baseline. Stage 240 exposes validated model access through
+Stage 210 uses this capacity to prove model serving with a temporary Nemotron
+smoke test and a user-led dashboard deployment. Stage 220 measures the model
+performance baseline. Stage 230 exposes validated model access through
 Models-as-a-Service.
 
 ---
@@ -129,7 +146,7 @@ Models-as-a-Service.
 | [RHOAI 3.4 - Managing workloads with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) | Kueue integration posture |
 | [RHOAI 3.4 - Managing distributed workloads](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-distributed-workloads_managing-rhoai) | ResourceFlavor, ClusterQueue, LocalQueue concepts |
 | [OCP 4.20 - Machine management](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/machine_management/index) | AWS MachineSet management |
-| [OCP 4.20 - Node Feature Discovery](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/specialized_hardware_and_driver_enablement/index#psap-node-feature-discovery-operator) | NFD operator |
+| [OCP 4.20 - Node Feature Discovery](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/specialized_hardware_and_driver_enablement/index#psap-node-feature-discovery-operator) | NFD Operator, `NodeFeatureDiscovery`, and hardware feature labels |
 | [redhat-cop/gitops-catalog - gpu-operator-certified](https://github.com/redhat-cop/gitops-catalog/tree/main/gpu-operator-certified) | GitOps operator/instance reference pattern |
 | [redhat-cop/gitops-catalog - nfd](https://github.com/redhat-cop/gitops-catalog/tree/main/nfd) | GitOps NFD reference pattern |
 | `docs/PLATFORM_BASELINE.md` | Active product version targets |

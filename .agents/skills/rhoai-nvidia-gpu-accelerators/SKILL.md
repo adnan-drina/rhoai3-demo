@@ -56,7 +56,7 @@ The demo hardware intent is:
   `nemotron-3-nano-30b-a3b`.
 - Primary model source:
   `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
-- Serving path: Stage 220 validates RHOAI model serving with vLLM; Stage 240
+- Serving path: Stage 210 validates RHOAI model serving with vLLM; Stage 230
   publishes governed model access through the Model-as-a-Service layer.
 - Use `rhoai-distributed-inference-llmd` when reviewing
   `LLMInferenceService`, Gateway, scheduler, autoscaling, auth, or

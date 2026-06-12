@@ -43,7 +43,7 @@ MCG-only deployment provides S3-compatible object storage for RHOAI workloads. T
 
 ### Red Hat OpenShift AI Self-Managed
 
-The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. The same Stage 110-owned `DataScienceCluster` is the single shared owner for later RHOAI component state. Stage 120 uses this shared owner for `kueue: Unmanaged`; KServe and other model-serving components remain removed until Stage 220.
+The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. The same Stage 110-owned `DataScienceCluster` is the single shared owner for later RHOAI component state. Stage 120 uses this shared owner for `kueue: Unmanaged`; KServe and other model-serving components remain removed until Stage 210.
 
 - **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
 - **Channel:** `stable-3.4`

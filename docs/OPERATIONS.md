@@ -10,12 +10,12 @@ The active implementation follows this sequence:
    model registry, access personas, and shared DSC ownership.
 2. `stage-120-gpu-as-a-service` - GPU worker capacity, NVIDIA GPU enablement,
    Kueue quotas, and RHOAI hardware profiles.
-3. `stage-220-model-serving-foundation` - planned next GenAI transition:
+3. `stage-210-model-serving-foundation` - planned next GenAI transition:
    enable model serving, smoke-test Nemotron, and leave dashboard deployment to
    the user.
-4. `stage-230-model-performance-baseline` - planned GuideLLM-style performance
+4. `stage-220-model-performance-baseline` - planned GuideLLM-style performance
    baseline and breakpoint evidence.
-5. `stage-240-models-as-a-service` - planned governed MaaS access to Nemotron
+5. `stage-230-models-as-a-service` - planned governed MaaS access to Nemotron
    plus external OpenAI `gpt-5.4-nano`.
 
 ## Stage 110: RHOAI Base Platform

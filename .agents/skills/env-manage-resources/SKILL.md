@@ -34,7 +34,7 @@ material only.
 
 The active implementation is being rewritten. Stage 120 currently owns GPU
 MachineSet scaling guidance. Model-serving resource management remains planned
-until Stage 220 and Stage 240 create active model-serving and MaaS resources.
+until Stage 210 and Stage 230 create active model-serving and MaaS resources.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.
@@ -58,7 +58,7 @@ oc get isvc -n maas
 oc get machineset -n openshift-machine-api -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas'
 
 # ArgoCD sync status
-for app in stage-120-gpu-as-a-service stage-220-model-serving-foundation; do
+for app in stage-120-gpu-as-a-service stage-210-model-serving-foundation; do
   echo "$app: $(oc get application $app -n openshift-gitops -o jsonpath='{.status.sync.status}/{.status.health.status}')"
 done
 ```
@@ -133,7 +133,7 @@ automatically unless `RHOAI_SKIP_GPU_SCALE=true` was set. Recreate that behavior
 before relying on this command path:
 
 ```bash
-./stage-220-model-serving-foundation/deploy.sh
+./stage-210-model-serving-foundation/deploy.sh
 ```
 
 ## Restore Full Git State
@@ -142,11 +142,11 @@ To bring everything back to the Git-declared state, sync via ArgoCD:
 
 ```bash
 # Sync a specific app
-oc patch application stage-220-model-serving-foundation -n openshift-gitops \
+oc patch application stage-210-model-serving-foundation -n openshift-gitops \
   --type merge -p '{"operation":{"sync":{}}}'
 
 # Or sync both
-for app in stage-120-gpu-as-a-service stage-220-model-serving-foundation; do
+for app in stage-120-gpu-as-a-service stage-210-model-serving-foundation; do
   oc patch application "$app" -n openshift-gitops --type merge -p '{"operation":{"sync":{}}}'
 done
 ```
@@ -159,7 +159,7 @@ After any scaling operation, verify the state:
 
 ```bash
 # Check ArgoCD shows expected status
-oc get application stage-120-gpu-as-a-service stage-220-model-serving-foundation -n openshift-gitops \
+oc get application stage-120-gpu-as-a-service stage-210-model-serving-foundation -n openshift-gitops \
   -o custom-columns='APP:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status'
 
 # Check model readiness

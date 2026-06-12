@@ -23,7 +23,7 @@ Completed: GitOps bootstrap, ODF MCG (S3 verified), RHOAI 3.4 (dashboard, workbe
 Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 23/23.
 Stage 120 owns the GPU MachineSet, NFD, NVIDIA GPU Operator, Kueue operator and
 quota resources, and RHOAI hardware profiles. It does not enable model serving;
-Stage 220 owns that transition.
+Stage 210 owns that transition.
 
 ### Open / deferred from Stage 120
 
@@ -40,10 +40,11 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-220-model-serving-foundation` | Production GenAI | Enable model serving, run temporary Nemotron smoke validation, and support user-led dashboard deployment |
-| `stage-230-model-performance-baseline` | Production GenAI | GuideLLM-style model performance baseline and breakpoint evidence |
-| `stage-240-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
-| `stage-250-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
+| `stage-210-model-serving-foundation` | Production GenAI | Enable model serving, run temporary Nemotron smoke validation, and support user-led dashboard deployment |
+| `stage-220-model-performance-baseline` | Production GenAI | GuideLLM-style model performance baseline and breakpoint evidence |
+| `stage-230-models-as-a-service` | Production GenAI | MaaS governed access to Nemotron and external OpenAI `gpt-5.4-nano` |
+| `stage-240-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
+| `stage-250-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
 | `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |

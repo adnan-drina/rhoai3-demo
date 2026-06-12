@@ -44,14 +44,14 @@
   workers. The current demo default is one replica. GPU nodes should be labeled
   for GPU infrastructure, tainted `nvidia-gpu-only:NoSchedule`, and expected to
   advertise four time-sliced `nvidia.com/gpu` units.
-- **Stage 220**: Private model serving should use `nemotron-3-nano-30b-a3b`
+- **Stage 210**: Private model serving should use `nemotron-3-nano-30b-a3b`
   from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
   through RHOAI model serving and vLLM. Validation may deploy Nemotron
   temporarily, verify inference, and remove it for fresh-environment smoke
   testing.
-- **Stage 230**: Run GuideLLM-style performance baseline tests and record
+- **Stage 220**: Run GuideLLM-style performance baseline tests and record
   concurrency, latency, throughput, and GPU-utilization breakpoints.
-- **Stage 240**: Register governed MaaS access for Nemotron and external
+- **Stage 230**: Register governed MaaS access for Nemotron and external
   OpenAI `gpt-5.4-nano` after MaaS gateway/API compatibility is verified.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
@@ -66,7 +66,7 @@
 - **Step 09 — Guardrails validation**: `validate.sh` runs 12 checks including 4 functional detector tests (HAP, prompt injection, PII regex, clean input). Uses orchestrator v2 API on HTTPS port 8032. Detector names in config are `hap`, `prompt_injection`, `regex` (not the ISVC names).
 - **Step 07 — Two LSDs coexist**: `lsd-genai-playground` (Dashboard) and `lsd-rag` (GitOps) in same namespace.
 - **Step 07/08 — llama-stack-client**: Must be `>=0.4,<0.5` for server v0.4.2.1+rhai0.
-- **Stage 230/240 model roles**: Candidate = `nemotron-3-nano-30b-a3b` for
+- **Stage 220/230 model roles**: Candidate = `nemotron-3-nano-30b-a3b` for
   private-path performance baselining. External OpenAI `gpt-5.4-nano` belongs
   behind MaaS governance when policy allows; do not use it to size GPU
   MachineSets.

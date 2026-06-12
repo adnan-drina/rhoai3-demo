@@ -30,7 +30,7 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | llama-stack-client HTTP 426 | Client/server version mismatch | Pin `llama-stack-client>=0.4,<0.5` |
 | Docling KFP component 404 | Old v1alpha API path | Change to `/v1/convert/file` |
 | Tool-call parser errors | vLLM/model parser mismatch | Verify the active `LLMInferenceService` tool-call and reasoning parser arguments for the served model |
-| Responses API file_search empty | pgvector vector store has no data | Re-ingest with the active RAG stage script once recreated, for example `./stage-250-private-data-rag/run-batch-ingestion.sh` |
+| Responses API file_search empty | pgvector vector store has no data | Re-ingest with the active RAG stage script once recreated, for example `./stage-240-private-data-rag/run-batch-ingestion.sh` |
 | Vector store data missing after restart | pgvector extension not enabled | Check: `oc exec deploy/llamastack-postgres -- psql -c "SELECT extname FROM pg_extension WHERE extname='vector';"` |
 | Eval pipeline scoring 404 | DNS resolution in short-lived executor pods | Use `llama_stack_client` SDK with retry logic |
 | `llm-as-judge::base` scoring 500 | `prompt_template` is null | Provide prompt with `{input_query}`, `{generated_answer}`, `{expected_answer}` placeholders |
