@@ -345,13 +345,12 @@ oc auth can-i get services -n rhoai-demo-grafana \
   --as ai-developer --as-group rhoai-developers
 ```
 
-Stage 210 includes two dashboards:
+Stage 210 includes two dashboards with functional names:
 
-- `RHOAI Stage 210 - vLLM Model Serving Baseline` for the demo-specific
-  Nemotron/vLLM view.
-- `LLM-D Performance Dashboard` at
-  `/d/llm-performance/llm-d-performance-dashboard`, adapted from the Red Hat
-  AI services llm-d reference. It is the primary dashboard for the GuideLLM
+- `vLLM Model Serving Baseline` for the demo-specific Nemotron/vLLM view.
+- `LLM Inference Performance` at
+  `/d/llm-performance/llm-inference-performance`, adapted from the Red Hat AI
+  services llm-d reference. It is the primary dashboard for the GuideLLM
   showroom-style benchmark and includes vLLM latency, request queue, token
   throughput, KV cache, prefix cache, and later llm-d EPP panels.
 

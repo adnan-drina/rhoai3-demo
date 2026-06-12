@@ -376,8 +376,9 @@ oc get application stage-210-model-serving-foundation -n openshift-gitops \
 ```
 
 The `href` should point to
-`/d/llm-performance/llm-d-performance-dashboard`. If it still contains the
-placeholder host, hard-refresh or resync the Stage 210 Application.
+`/d/llm-performance/llm-inference-performance`. If it still contains the
+placeholder host or old dashboard slug, hard-refresh or resync the Stage 210
+Application.
 
 ### Stage 210 Application waits on benchmark-data PVC
 

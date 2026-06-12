@@ -421,7 +421,7 @@ spec:
       },
       "timepicker": {},
       "timezone": "browser",
-      "title": "RHOAI Stage 210 - vLLM Model Serving Baseline",
+      "title": "vLLM Model Serving Baseline",
       "uid": "rhoai-stage-210-vllm-baseline",
       "version": 1
     }

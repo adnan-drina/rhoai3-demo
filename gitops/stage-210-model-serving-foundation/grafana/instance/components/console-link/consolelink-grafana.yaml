@@ -10,7 +10,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "14"
 spec:
-  href: https://grafana.placeholder.example.com/d/llm-performance/llm-d-performance-dashboard
+  href: https://grafana.placeholder.example.com/d/llm-performance/llm-inference-performance
   location: ApplicationMenu
   text: RHOAI Demo Grafana
   applicationMenu:

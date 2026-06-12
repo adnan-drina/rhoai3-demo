@@ -144,7 +144,7 @@ spec:
               fi
 
               grafana_url="https://${route_host}"
-              dashboard_url="${grafana_url}/d/llm-performance/llm-d-performance-dashboard?orgId=1"
+              dashboard_url="${grafana_url}/d/llm-performance/llm-inference-performance?orgId=1"
               icon_url="${grafana_url}/public/img/grafana_icon.svg"
 
               oc patch consolelink rhoai-demo-grafana --type=merge \

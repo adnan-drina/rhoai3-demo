@@ -43,7 +43,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Time to First Token (TTFT)** measures the critical latency from when a request is received until the first token is generated. This is the most important user-facing latency metric as it determines how quickly users see the initial response. Lower values indicate better user experience.\n\n\u2022 **P50**: 50% of requests complete faster than this time\n\u2022 **P95**: 95% of requests complete faster than this time (SLA threshold)\n\u2022 **P99**: 99% of requests complete faster than this time (tail latency)",
           "fieldConfig": {
@@ -135,7 +135,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.50, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -145,7 +145,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.95, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -155,7 +155,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.99, rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -169,7 +169,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Inter-Token Latency** measures the time between generating successive tokens during the decode phase. This metric indicates the generation speed and consistency of the model. Lower latencies mean faster text generation.\n\n\u2022 **P50**: Median token generation speed\n\u2022 **P95**: 95th percentile generation speed (detect slowdowns)",
           "fieldConfig": {
@@ -261,7 +261,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.50, rate(vllm:time_per_output_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -271,7 +271,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.95, rate(vllm:time_per_output_token_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -285,7 +285,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**KV Cache Hit Rate** measures the effectiveness of the prefix cache in reusing previously computed attention keys and values. Higher hit rates (>60%) indicate better cache efficiency and reduced computation overhead.\n\n\u2022 **Red (0-30%)**: Poor cache efficiency\n\u2022 **Yellow (30-60%)**: Moderate efficiency\n\u2022 **Green (60%+)**: Good cache efficiency",
           "fieldConfig": {
@@ -344,7 +344,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "editorMode": "code",
               "expr": "sum(vllm:prefix_cache_hits_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"}) / sum(vllm:prefix_cache_queries_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"})",
@@ -360,7 +360,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Per-Pod Cache Metrics** shows cache performance for each individual decode pod. This helps identify which pods are receiving traffic and their cache efficiency. Useful for troubleshooting cache-aware routing.\n\n\u2022 **Green bars**: Pods with good cache hit rates\n\u2022 **Red/Yellow bars**: Pods with poor cache efficiency\n\u2022 **Missing bars**: Pods with no recent activity",
           "fieldConfig": {
@@ -428,7 +428,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "editorMode": "code",
               "expr": "vllm:prefix_cache_hits_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"} / vllm:prefix_cache_queries_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\", instance=~\".*:8000\"} \n",
@@ -595,7 +595,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Request Throughput** measures the rate of successful request completion versus total requests received. This indicates system capacity and health.\n\n\u2022 **Success Rate**: Completed requests per second\n\u2022 **Total Rate**: All requests received per second\n\nGaps between these lines indicate request failures or timeouts.",
           "fieldConfig": {
@@ -679,7 +679,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "rate(vllm:request_success_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
               "interval": "",
@@ -689,7 +689,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "rate(vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
               "interval": "",
@@ -703,7 +703,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Request Queue Status** shows the current system load by tracking requests in different states. This helps identify bottlenecks and capacity issues.\n\n\u2022 **Running**: Requests currently being processed by the GPU\n\u2022 **Waiting**: Requests queued for processing\n\nHigh waiting counts indicate system overload.",
           "fieldConfig": {
@@ -806,7 +806,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "vllm:num_requests_running{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
               "interval": "",
@@ -816,7 +816,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "vllm:num_requests_waiting{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
               "interval": "",
@@ -830,7 +830,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**Token Processing Rate** shows the speed at which the system processes input and generates output tokens. This directly correlates to system capacity and efficiency.\n\n\u2022 **Prompt Tokens/sec**: Rate of processing input tokens (prefill phase)\n\u2022 **Generated Tokens/sec**: Rate of producing output tokens (decode phase)\n\nHigher rates indicate better throughput performance.",
           "fieldConfig": {
@@ -914,7 +914,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "rate(vllm:prompt_tokens_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
               "interval": "",
@@ -924,7 +924,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "rate(vllm:generation_tokens_total{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m])",
               "interval": "",
@@ -938,7 +938,7 @@ spec:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "Prometheus"
           },
           "description": "**End-to-End Request Latency** tracks the complete request lifecycle from receipt to final response. This comprehensive metric includes all processing phases: queuing, prefill, decode, and response transmission.\n\n\u2022 **P50**: Median request completion time\n\u2022 **P95**: 95th percentile (SLA monitoring)\n\u2022 **P99**: 99th percentile (tail latency)\n\u2022 **Average**: Mean completion time\n\nUse this for overall system performance assessment.",
           "fieldConfig": {
@@ -1030,7 +1030,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.50, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -1040,7 +1040,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.95, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -1050,7 +1050,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "histogram_quantile(0.99, rate(vllm:e2e_request_latency_seconds_bucket{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}[5m]))",
               "interval": "",
@@ -1060,7 +1060,7 @@ spec:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "Prometheus"
               },
               "expr": "vllm:e2e_request_latency_seconds_sum{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"} / vllm:e2e_request_latency_seconds_count{model_name=~\"$model\", kubernetes_namespace=~\"$namespace\"}",
               "interval": "",
@@ -1348,24 +1348,10 @@ spec:
         "llm-d",
         "performance",
         "rhoai3-demo",
-        "stage-210",
         "vllm"
       ],
       "templating": {
         "list": [
-          {
-            "current": {
-              "text": "Prometheus",
-              "value": "Prometheus"
-            },
-            "label": "datasource",
-            "name": "DS_PROMETHEUS",
-            "options": [],
-            "query": "prometheus",
-            "refresh": 1,
-            "regex": "",
-            "type": "datasource"
-          },
           {
             "current": {
               "text": "All",
@@ -1373,7 +1359,7 @@ spec:
             },
             "datasource": {
               "type": "prometheus",
-              "uid": "${DS_PROMETHEUS}"
+              "uid": "Prometheus"
             },
             "definition": "label_values(vllm:num_requests_running, model_name)",
             "includeAll": true,
@@ -1394,7 +1380,7 @@ spec:
             },
             "datasource": {
               "type": "prometheus",
-              "uid": "${DS_PROMETHEUS}"
+              "uid": "Prometheus"
             },
             "definition": "label_values(vllm:num_requests_running,kubernetes_namespace)",
             "includeAll": true,
@@ -1417,7 +1403,7 @@ spec:
       },
       "timepicker": {},
       "timezone": "",
-      "title": "LLM-D Performance Dashboard",
+      "title": "LLM Inference Performance",
       "uid": "llm-performance",
       "version": 1
     }

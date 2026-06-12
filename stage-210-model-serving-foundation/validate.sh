@@ -192,6 +192,11 @@ else
 fi
 check "Grafana Prometheus datasource present" "$R"
 
+GRAFANA_DATASOURCE_UID=$(oc get grafanadatasource prometheus -n "$GRAFANA_NS" \
+  -o jsonpath='{.spec.uid}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$GRAFANA_DATASOURCE_UID" == "Prometheus" ]] && R="pass" || R="uid=${GRAFANA_DATASOURCE_UID:-missing}"
+check "Grafana Prometheus datasource UID is stable" "$R"
+
 if resource_exists "grafanadashboard/vllm-model-serving-baseline" "$GRAFANA_NS"; then
   R="pass"
 else
@@ -205,6 +210,15 @@ else
   R="missing"
 fi
 check "Grafana llm-performance workshop dashboard present" "$R"
+
+LLM_DASHBOARD_JSON=$(oc get grafanadashboard llm-performance -n "$GRAFANA_NS" \
+  -o jsonpath='{.spec.json}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+if [[ "$LLM_DASHBOARD_JSON" == *'${DS_PROMETHEUS}'* ]]; then
+  R="contains unresolved datasource placeholder"
+else
+  R="pass"
+fi
+check "Grafana llm-performance dashboard uses concrete datasource UID" "$R"
 
 if resource_exists "route/grafana-route" "$GRAFANA_NS"; then
   R="pass"

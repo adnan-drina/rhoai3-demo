@@ -338,3 +338,8 @@
   `DashboardSynchronized=True` for both Stage 210 dashboards. The install path
   remains an intentional OpenShift OLM/GitOps adaptation rather than the
   official Grafana Helm or direct Kustomize install path.
+- Grafana dashboard datasource fix: PASSED 2026-06-12 -
+  confirmed the live Grafana datasource name and UID are `Prometheus`, replaced
+  unresolved `${DS_PROMETHEUS}` imports in the performance dashboard with that
+  concrete UID, and renamed dashboard titles to the functional names
+  `vLLM Model Serving Baseline` and `LLM Inference Performance`.
