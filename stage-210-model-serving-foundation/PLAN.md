@@ -275,10 +275,9 @@
   `stage-110-rhoai-base-platform` synced revision
   `df241586684739f8d1610e8a43bd875d686db896`.
 - Live validation: PASSED 2026-06-12 -
-  `stage-210-model-serving-foundation/validate.sh` 35/35 after the Stage 210
-  observability Application reached `Synced/Healthy` and the Nemotron endpoint
-  was reconciled to the curated quickstart/coding-demo-backed vLLM argument and
-  resource profile, including structured tool-call validation.
+  `stage-210-model-serving-foundation/validate.sh` 39/39 after adding the
+  llm-d-showroom-style `benchmark-data` PVC, shared-prefix prompt ConfigMap,
+  `llm-performance` Grafana dashboard, and OpenShift ConsoleLink.
 - Direct inference smoke: PASSED 2026-06-12 -
   `POST /v1/chat/completions` returned assistant content, reasoning metadata,
   and usage tokens from `nvidia-nemotron-3-nano-30b-a3b` after the curated
@@ -290,11 +289,19 @@
   Nemotron reasoning parser path are active.
 - GuideLLM smoke: PASSED 2026-06-12 -
   ran `./stage-210-model-serving-foundation/benchmark-guidellm.sh` with
-  `RHOAI_GUIDELLM_RATE=1` and `RHOAI_GUIDELLM_MAX_SECONDS=10`; results stored
-  under gitignored `runs/stage-210-guidellm/20260612120834/`.
+  `RHOAI_GUIDELLM_RATE=1`,
+  `RHOAI_GUIDELLM_MAX_SECONDS=10`, and
+  `RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json`; the job targeted the
+  internal `/v1` endpoint and read `/data/prompts.csv` from `benchmark-data`.
+  Results stored under gitignored
+  `runs/stage-210-guidellm/20260612131009/`.
+- GuideLLM smoke values: completed 5 requests with no errors; observed p95
+  TTFT about 1.63 seconds, p95 ITL about 6.1 ms, p95 end-to-end latency about
+  3.0 seconds, and mean output throughput about 126.7 output tokens/second.
+  Treat this as harness proof only, not capacity evidence.
 - GuideLLM note: HTML output from `ghcr.io/vllm-project/guidellm:v0.5.0`
   failed on a redirected report-template URL, so the automation defaults to
-  JSON output only.
+  JSON and CSV output and smoke tests can override to JSON-only.
 - Regression validation: PASSED 2026-06-12 -
   Stage 110 `validate.sh` 17/17 and Stage 120 `validate.sh` 23/23 after KServe
   became `Managed`.

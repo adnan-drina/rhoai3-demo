@@ -49,10 +49,10 @@ llm-d-showroom-style `benchmark-data` PVC, shared-prefix `prompts.csv`,
 `llm-performance` Grafana dashboard, and OpenShift Console application-menu
 link to the Grafana dashboard.
 
-Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 35/35. A
-short GuideLLM smoke run completed successfully and wrote JSON results under
-gitignored `runs/stage-210-guidellm/`. Revalidate after syncing the latest
-showroom-style benchmark/dashboard enhancement.
+Deployed and validated 2026-06-12 on cluster-klvxt; current `validate.sh`
+passes 39/39 after the showroom-style benchmark/dashboard enhancement. A short
+GuideLLM smoke run completed successfully against `/data/prompts.csv` and
+wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 
 ### Open / deferred from Stage 210
 

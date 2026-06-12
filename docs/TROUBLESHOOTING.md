@@ -371,6 +371,26 @@ The `href` should point to
 `/d/llm-performance/llm-d-performance-dashboard`. If it still contains the
 placeholder host, hard-refresh or resync the Stage 210 Application.
 
+### Stage 210 Application waits on benchmark-data PVC
+
+- **Likely cause:** the storage class uses `WaitForFirstConsumer`, so
+  `benchmark-data` remains `Pending` until a pod mounts it. Stage 210 solves
+  this with the normal `seed-stage210-benchmark-data` Job in the same sync wave
+  as the PVC.
+- **Checks:**
+
+```bash
+oc get pvc benchmark-data -n demo-sandbox
+oc get job seed-stage210-benchmark-data -n demo-sandbox
+oc get application stage-210-model-serving-foundation -n openshift-gitops \
+  -o jsonpath='{.status.operationState.message}{"\n"}'
+```
+
+If an older sync operation is stuck waiting for PVC health before the seed Job
+exists, confirm the Application has no finalizers, delete only the Stage 210
+Application, and rerun `./stage-210-model-serving-foundation/deploy.sh`. The
+Application is recreated and re-adopts the existing resources.
+
 ### GuideLLM benchmark job fails
 
 - **Likely causes:** the upstream GuideLLM image cannot be pulled, the

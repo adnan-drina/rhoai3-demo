@@ -379,15 +379,17 @@ copy Job for debugging.
 Validated 2026-06-12 on cluster-klvxt with:
 
 ```bash
-RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=10 \
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=10 RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   ./stage-210-model-serving-foundation/benchmark-guidellm.sh
 ```
 
-The smoke run completed 11 successful requests with no errors. Observed values
-were approximately p95 TTFT 71 ms, p95 ITL 7.1 ms, p95 end-to-end request
-latency 0.98 seconds, and mean output throughput 132 output tokens/second.
-Treat these as harness and endpoint proof only; run longer profiles before
-using benchmark results for capacity, quota, or MaaS limit decisions.
+After the showroom-style prompt dataset was added, the smoke run completed 5
+requests with no errors using `/data/prompts.csv`. Observed values were
+approximately p95 TTFT 1.63 seconds, p95 ITL 6.1 ms, p95 end-to-end request
+latency 3.0 seconds, and mean output throughput 126.7 output tokens/second.
+Treat these as harness and endpoint proof only; run the default `32,64`
+profile before using benchmark results for capacity, quota, or MaaS limit
+decisions.
 
 ---
 
