@@ -72,6 +72,8 @@
 | Observability methodology | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/configurations/vLLM Performance Triage Baseline.md` | `rhoai-model-management-monitoring` | vLLM baseline workflow: TTFT, ITL, request queue, KV cache, prefix cache, sequence length, and topology checks. |
 | Observability implementation pattern | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/Autoscaling vLLM with OpenShift AI model serving Performance validation.md` | `rhoai-model-management-monitoring` | OpenShift AI vLLM performance validation with Prometheus/Grafana signals. |
 | Observability triage | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/raw/5 steps to triage vLLM performance.md` | `rhoai-model-management-monitoring` | PromQL-style triage flow and vLLM signal selection. |
+| Benchmark workshop pattern | [llm-d showroom Module 2](https://rhpds.github.io/llm-d-showroom/modules/workshop/llm-d/04-module-02.html) | `rhoai-model-management-monitoring`, `project-demo-stage-authoring` | Source for the Stage 210 single-GPU vLLM baseline pattern: vLLM metrics, `benchmark-data` PVC, `prompts.csv`, GuideLLM concurrent `32,64`, and `llm-performance` dashboard URL. |
+| Benchmark implementation reference | [rh-aiservices-bu/rhaoi3-llm-d](https://github.com/rh-aiservices-bu/rhaoi3-llm-d) | `rhoai-model-management-monitoring`, `ocp-grafana-operator` | Concrete shared-prefix prompt dataset and `grafana-dashboard-llm-performance.json` adapted locally for Stage 210. Product fields still come from official RHOAI/OCP docs and active CRDs. |
 | Grafana pattern | [redhat-cop/gitops-catalog/grafana-operator](https://github.com/redhat-cop/gitops-catalog/tree/main/grafana-operator) | `ocp-grafana-operator`, `project-red-hat-operator-gitops` | Local-curated Operator/instance/datasource/dashboard layout pattern; community operator exception. |
 | Grafana CR API | [Grafana Operator API reference](https://grafana.github.io/grafana-operator/docs/api/) | `ocp-grafana-operator` | `Grafana`, `GrafanaDatasource`, and `GrafanaDashboard` v1beta1 schema references. |
 | OCP monitoring | [OCP 4.20 - Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index) | `ocp-observability` | User workload monitoring enablement and Prometheus/Thanos access context. |
@@ -155,10 +157,15 @@
 | `gitops/stage-110-rhoai-base-platform/rhoai/aggregate/overlays/demo/kustomization.yaml` | Kustomize overlay | Project shared-owner pattern | `kustomize build gitops/stage-110-rhoai-base-platform/rhoai/aggregate/overlays/demo` |
 | `gitops/argocd/app-of-apps/stage-210-model-serving-foundation.yaml` | `Application` | Project Argo CD standards | `oc get application stage-210-model-serving-foundation -n openshift-gitops` |
 | `gitops/stage-210-model-serving-foundation/monitoring/base/cluster-monitoring-config.yaml` | `ConfigMap` | OCP monitoring docs | `oc get configmap cluster-monitoring-config -n openshift-monitoring` |
+| `gitops/stage-210-model-serving-foundation/benchmark-data/base/benchmark-data-pvc.yaml` | `PersistentVolumeClaim` | llm-d showroom pattern plus OCP storage docs | `oc get pvc benchmark-data -n demo-sandbox` |
+| `gitops/stage-210-model-serving-foundation/benchmark-data/base/benchmark-prompts-configmap.yaml` | `ConfigMap` | `rh-aiservices-bu/rhaoi3-llm-d` prompt dataset | `oc get configmap stage210-guidellm-prompts -n demo-sandbox` |
+| `gitops/stage-210-model-serving-foundation/benchmark-data/base/seed-benchmark-data-job.yaml` | `Job` hook | llm-d showroom pre-provisioned PVC pattern | Argo CD hook succeeds; `benchmark-guidellm.sh` can mount `/data/prompts.csv` |
 | `gitops/stage-210-model-serving-foundation/grafana/operator/**` | `Namespace`, `OperatorGroup`, `Subscription` | Grafana Operator package metadata plus CoP pattern | `oc get subscription,csv -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/base/grafana.yaml` | `Grafana` | Grafana Operator API plus OpenShift OAuth proxy pattern | `oc get grafana grafana -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/components/openshift-monitoring-datasource/grafana-datasource.yaml` | `GrafanaDatasource` | Grafana Operator API plus OpenShift monitoring datasource pattern | `oc get grafanadatasource prometheus -n rhoai-demo-grafana` |
 | `gitops/stage-210-model-serving-foundation/grafana/instance/components/model-serving-dashboards/dashboard-vllm-kserve-gpu.yaml` | `GrafanaDashboard` | Grafana Operator API plus vLLM metric source findings | `oc get grafanadashboard vllm-model-serving-baseline -n rhoai-demo-grafana` |
+| `gitops/stage-210-model-serving-foundation/grafana/instance/components/model-serving-dashboards/dashboard-llm-performance.yaml` | `GrafanaDashboard` | `rh-aiservices-bu/rhaoi3-llm-d` dashboard JSON adapted to local datasource UID | `oc get grafanadashboard llm-performance -n rhoai-demo-grafana` |
+| `gitops/stage-210-model-serving-foundation/grafana/instance/components/console-link/**` | `ConsoleLink`, RBAC, `Job` hook | OCP ConsoleLink docs plus sibling-demo patch pattern | `oc get consolelink rhoai-demo-grafana -o jsonpath='{.spec.href}'` |
 
 ## Script Plan
 
@@ -199,12 +206,12 @@
   - runs `ghcr.io/vllm-project/guidellm:v0.5.0` as a Kubernetes Job in
     `demo-sandbox`
   - uses `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` as the GuideLLM processor
-    for token accounting and synthetic data generation
-  - defaults to a short synthetic profile:
-    `{"prompt_tokens":512,"output_tokens":128}`, concurrent rates `1,2,4`,
-    and 120 seconds per rate
-  - writes JSON results to `runs/stage-210-guidellm/<timestamp>/`
-  - uses a Kueue-admitted copy Job to read results from the benchmark PVC
+    for token accounting
+  - defaults to the llm-d showroom-style profile:
+    `/data/prompts.csv` from the `benchmark-data` PVC, concurrent rates
+    `32,64`, and 30 seconds per rate
+  - writes JSON and CSV results to `runs/stage-210-guidellm/<timestamp>/`
+  - uses a temporary copy Job to read results from the benchmark PVC
   - deletes temporary benchmark Job, copy Job, and PVC unless
     `RHOAI_GUIDELLM_KEEP_RESOURCES=true`
 
@@ -225,8 +232,10 @@
     arguments and resource sizing.
   - Stage 210 observability Application is `Synced` and `Healthy`.
   - User workload monitoring is enabled.
-  - Grafana Operator, Grafana instance, Prometheus datasource, dashboard, and
+  - Grafana Operator, Grafana instance, Prometheus datasource, dashboards, and
     route are present.
+  - OpenShift ConsoleLink points to the `llm-performance` Grafana dashboard.
+  - GuideLLM `benchmark-data` PVC is bound and prompt ConfigMap is present.
   - The Nemotron ServiceMonitor exists and the endpoint exposes vLLM metrics.
 - Expected success output: all readiness checks print success and exit 0.
 

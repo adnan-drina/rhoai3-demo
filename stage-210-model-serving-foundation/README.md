@@ -41,8 +41,10 @@ then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
 | Model Registry | Stores the governed model metadata record, model version, and OCI model artifact pointer used by the demo deployment path. | [RHOAI 3.4 - Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index) |
 | Stage 120 GPU profiles | Provide the governed `nvidia.com/gpu` capacity that the model deployment consumes. | [RHOAI 3.4 - Working with accelerators](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index) |
 | OpenShift user workload monitoring | Scrapes model-serving metrics exposed through the RHOAI/KServe-generated `ServiceMonitor`. | [OCP 4.20 - Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index) |
-| Grafana Operator | Provides a demo dashboard for vLLM latency, queue, throughput, KV cache, and GPU signals. This is a community-operator demo exception, not a Red Hat product dependency. | [Grafana Operator API reference](https://grafana.github.io/grafana-operator/docs/api/) |
-| GuideLLM | Runs an on-demand synthetic workload benchmark against the internal vLLM endpoint to establish a serving baseline. | [Red Hat Developer - GuideLLM: Evaluate LLM deployments](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference) |
+| Grafana Operator | Provides demo dashboards for vLLM latency, queue, throughput, KV cache, and GPU signals. This is a community-operator demo exception, not a Red Hat product dependency. | [Grafana Operator API reference](https://grafana.github.io/grafana-operator/docs/api/) |
+| GuideLLM | Runs an on-demand shared-prefix workload benchmark against the internal vLLM `/v1` endpoint to observe queue saturation and establish a serving baseline. | [Red Hat Developer - GuideLLM: Evaluate LLM deployments](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference) |
+| llm-d showroom Module 2 | Provides the benchmark pattern this stage partially replicates: `benchmark-data` PVC, `prompts.csv`, GuideLLM concurrent `32,64` profile, and `llm-performance` Grafana dashboard. | [llm-d showroom - Observe Single-GPU Behaviour](https://rhpds.github.io/llm-d-showroom/modules/workshop/llm-d/04-module-02.html) |
+| Red Hat AI services llm-d reference | Provides the concrete shared-prefix prompt data and Grafana dashboard JSON adapted into this stage. | [rh-aiservices-bu/rhaoi3-llm-d](https://github.com/rh-aiservices-bu/rhaoi3-llm-d) |
 | Red Hat AI MaaS code assistant quickstart | Provides a Red Hat-maintained implementation reference for Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S infrastructure, including vLLM arguments, resource sizing, MaaS `LLMInferenceService`, tiered access, and Grafana usage patterns. | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) |
 
 This stage uses direct model serving, not Models-as-a-Service and not llm-d.
@@ -72,7 +74,9 @@ to tune from evidence.
 For GuideLLM token accounting, the benchmark script uses the public Hugging
 Face processor ID `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`, while the served
 model ID remains the RHOAI deployment name
-`nvidia-nemotron-3-nano-30b-a3b`.
+`nvidia-nemotron-3-nano-30b-a3b`. The benchmark data is a GitOps-managed
+`benchmark-data` PVC populated with a `prompts.csv` file adapted from the Red
+Hat AI services llm-d reference implementation.
 
 ---
 
@@ -106,6 +110,9 @@ ServiceMonitor + user workload monitoring
         |
         v
 GuideLLM benchmark script + Grafana baseline dashboard
+        |
+        v
+OpenShift Console application menu link to the llm-performance dashboard
 ```
 
 - New in this stage: KServe model serving platform enablement and the
@@ -170,6 +177,8 @@ quotas or public operating limits.
 | [Red Hat Developer - Autoscaling vLLM with OpenShift AI model serving](https://developers.redhat.com/articles/2025/11/26/autoscaling-vllm-openshift-ai-model-serving) | vLLM model-serving performance validation and Grafana/Prometheus signal selection |
 | [Red Hat Developer - 5 steps to triage vLLM performance](https://developers.redhat.com/articles/2026/03/09/5-steps-triage-vllm-performance) | vLLM triage signals: TTFT, ITL, queue depth, KV cache, prefix cache, and sequence lengths |
 | [Red Hat - Redefining LLM observability with llm-d](https://www.redhat.com/en/blog/tokens-caches-how-llm-d-improves-llm-observability-red-hat-openshift-ai-3.0) | Grafana and Prometheus observability narrative for vLLM/llm-d metrics |
+| [llm-d showroom Module 2](https://rhpds.github.io/llm-d-showroom/modules/workshop/llm-d/04-module-02.html) | Benchmark workflow partially replicated in Stage 210: vLLM metrics, Grafana, `benchmark-data`, and GuideLLM concurrent load |
+| [rh-aiservices-bu/rhaoi3-llm-d](https://github.com/rh-aiservices-bu/rhaoi3-llm-d) | Concrete `llm-performance` Grafana dashboard JSON and shared-prefix GuideLLM prompt dataset adapted into Stage 210 |
 | [Red Hat - Predictable AI validated model batches](https://www.redhat.com/en/blog/predictable-ai-announcing-january-and-february-validated-model-batches) | Nemotron 3 Nano validated model context |
 | [Red Hat - Using containers to bring software engineering rigor to AI workloads](https://www.redhat.com/en/blog/using-containers-bring-software-engineering-rigor-ai-workloads) | ModelCar/OCI artifact governance narrative |
 | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S implementation reference and MaaS architecture narrative |

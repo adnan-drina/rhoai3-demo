@@ -330,10 +330,18 @@ Open Grafana:
 oc get route grafana-route -n rhoai-demo-grafana -o jsonpath='{.spec.host}'
 ```
 
-Use OpenShift OAuth. The included dashboard is
-`RHOAI Stage 210 - vLLM Model Serving Baseline`. It focuses on vLLM latency,
-request pressure, token throughput, KV cache pressure, prefix cache behavior,
-and common DCGM GPU metrics.
+Use OpenShift OAuth. Stage 210 includes two dashboards:
+
+- `RHOAI Stage 210 - vLLM Model Serving Baseline` for the demo-specific
+  Nemotron/vLLM view.
+- `LLM-D Performance Dashboard` at
+  `/d/llm-performance/llm-d-performance-dashboard`, adapted from the Red Hat
+  AI services llm-d reference. It is the primary dashboard for the GuideLLM
+  showroom-style benchmark and includes vLLM latency, request queue, token
+  throughput, KV cache, prefix cache, and later llm-d EPP panels.
+
+The OpenShift Console application menu has a `RHOAI Demo Grafana` link that is
+patched at sync time to the cluster-specific `llm-performance` dashboard URL.
 
 The Grafana Operator is installed from `community-operators` as a demo
 observability UI. It is not a Red Hat product dependency for RHOAI.
@@ -350,17 +358,18 @@ Defaults:
 
 - Image: `ghcr.io/vllm-project/guidellm:v0.5.0`
 - Target: the internal KServe URL from
-  `InferenceService.status.address.url`
+  `InferenceService.status.address.url`, with `/v1` appended
 - Model: `nvidia-nemotron-3-nano-30b-a3b`
 - Processor: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`
-- Data profile: `{"prompt_tokens":512,"output_tokens":128}`
-- Rate profile: concurrent rates `1,2,4`, 120 seconds per rate
-- Results: JSON under `runs/stage-210-guidellm/<timestamp>/`
+- Data: `/data/prompts.csv` mounted from the GitOps-managed `benchmark-data`
+  PVC in `demo-sandbox`
+- Rate profile: concurrent rates `32,64`, 30 seconds per rate
+- Results: JSON and CSV under `runs/stage-210-guidellm/<timestamp>/`
 
 For a quick smoke test:
 
 ```bash
-RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   ./stage-210-model-serving-foundation/benchmark-guidellm.sh
 ```
 
@@ -378,7 +387,7 @@ The smoke run completed 11 successful requests with no errors. Observed values
 were approximately p95 TTFT 71 ms, p95 ITL 7.1 ms, p95 end-to-end request
 latency 0.98 seconds, and mean output throughput 132 output tokens/second.
 Treat these as harness and endpoint proof only; run longer profiles before
-setting MaaS limits.
+using benchmark results for capacity, quota, or MaaS limit decisions.
 
 ---
 

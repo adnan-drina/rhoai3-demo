@@ -44,11 +44,15 @@ for `demo-registry`, Nemotron registry metadata, and the Nemotron vLLM
 `InferenceService` using the curated Nemotron vLLM configuration adapted from
 the Red Hat AI MaaS code assistant quickstart. It also adds user workload
 monitoring, a GitOps-managed Grafana model-serving dashboard, and an on-demand
-GuideLLM benchmark runner.
+GuideLLM benchmark runner. The benchmark layer now also includes the
+llm-d-showroom-style `benchmark-data` PVC, shared-prefix `prompts.csv`,
+`llm-performance` Grafana dashboard, and OpenShift Console application-menu
+link to the Grafana dashboard.
 
 Deployed and validated 2026-06-12 on cluster-klvxt; `validate.sh` 35/35. A
 short GuideLLM smoke run completed successfully and wrote JSON results under
-gitignored `runs/stage-210-guidellm/`.
+gitignored `runs/stage-210-guidellm/`. Revalidate after syncing the latest
+showroom-style benchmark/dashboard enhancement.
 
 ### Open / deferred from Stage 210
 

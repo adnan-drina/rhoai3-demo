@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# benchmark-guidellm.sh - Stage 210 lightweight vLLM serving baseline
-# Runs GuideLLM in-cluster against the Nemotron endpoint and copies results to
-# gitignored runs/ for review. This is intentionally not part of every deploy.
+# benchmark-guidellm.sh - Stage 210 vLLM serving baseline
+# Runs GuideLLM in-cluster against the Nemotron endpoint using the llm-d
+# showroom-style prompt PVC and copies results to gitignored runs/ for review.
+# This is intentionally not part of every deploy.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,10 +14,12 @@ MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_DEPLOYMENT_NAME}"
 GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
 GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-ghcr.io/vllm-project/guidellm:v0.5.0}"
 GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-concurrent}"
-GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-1,2,4}"
-GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-120}"
-GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-{\"prompt_tokens\":512,\"output_tokens\":128}}"
-GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json}"
+GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-32,64}"
+GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-30}"
+GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-/data/prompts.csv}"
+GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json,benchmark-results.csv}"
+GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-benchmark-data}"
+GUIDELLM_TARGET_SUFFIX="${RHOAI_GUIDELLM_TARGET_SUFFIX:-/v1}"
 GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-20m}"
 KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-false}"
 
@@ -37,6 +40,8 @@ GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-$GUIDELLM_RATE}"
 GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-$GUIDELLM_MAX_SECONDS}"
 GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-$GUIDELLM_DATA}"
 GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-$GUIDELLM_OUTPUTS}"
+GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-$GUIDELLM_DATA_PVC}"
+GUIDELLM_TARGET_SUFFIX="${RHOAI_GUIDELLM_TARGET_SUFFIX:-$GUIDELLM_TARGET_SUFFIX}"
 GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-$GUIDELLM_TIMEOUT}"
 KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-$KEEP_RESOURCES}"
 
@@ -75,6 +80,20 @@ if [[ -z "$TARGET_URL" ]]; then
   exit 1
 fi
 
+if [[ "$GUIDELLM_TARGET_SUFFIX" == "none" ]]; then
+  BENCHMARK_TARGET="$TARGET_URL"
+else
+  BENCHMARK_TARGET="${TARGET_URL%/}${GUIDELLM_TARGET_SUFFIX}"
+fi
+
+if [[ "$GUIDELLM_DATA" == /data/* ]]; then
+  if ! oc get pvc "$GUIDELLM_DATA_PVC" -n "$MODEL_NS" --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "ERROR: expected benchmark data PVC ${MODEL_NS}/${GUIDELLM_DATA_PVC} is missing." >&2
+    echo "       Reconcile stage-210-model-serving-foundation before running the workshop benchmark." >&2
+    exit 1
+  fi
+fi
+
 RUN_ID="$(date -u +%Y%m%d%H%M%S)"
 JOB_NAME="guidellm-stage210-${RUN_ID}"
 PVC_NAME="guidellm-results-${RUN_ID}"
@@ -103,6 +122,9 @@ spec:
 EOF
 
 echo "── Running GuideLLM benchmark job ──"
+echo "  Target: ${BENCHMARK_TARGET}"
+echo "  Data: ${GUIDELLM_DATA}"
+echo "  Profile: ${GUIDELLM_RATE_TYPE} ${GUIDELLM_RATE} for ${GUIDELLM_MAX_SECONDS}s per level"
 oc apply -f - --insecure-skip-tls-verify=true <<EOF
 apiVersion: batch/v1
 kind: Job
@@ -130,12 +152,16 @@ spec:
             - name: HOME
               value: /results
             - name: HF_HOME
-              value: /results/.cache/huggingface
+              value: /tmp/hf-cache
+            - name: TRANSFORMERS_CACHE
+              value: /tmp/hf-cache
+            - name: XDG_CACHE_HOME
+              value: /tmp
           args:
             - benchmark
             - run
             - --target
-            - "${TARGET_URL}"
+            - "${BENCHMARK_TARGET}"
             - --model
             - "${MODEL_ID}"
             - --processor
@@ -153,12 +179,22 @@ spec:
             - --outputs
             - "${GUIDELLM_OUTPUTS}"
           volumeMounts:
+            - name: cache
+              mountPath: /tmp/hf-cache
             - name: results
               mountPath: /results
+            - name: data
+              mountPath: /data
+              readOnly: true
       volumes:
+        - name: cache
+          emptyDir: {}
         - name: results
           persistentVolumeClaim:
             claimName: ${PVC_NAME}
+        - name: data
+          persistentVolumeClaim:
+            claimName: ${GUIDELLM_DATA_PVC}
 EOF
 
 if ! oc wait -n "$MODEL_NS" --for=condition=complete "job/${JOB_NAME}" \

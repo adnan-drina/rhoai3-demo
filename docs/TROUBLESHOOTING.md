@@ -353,15 +353,36 @@ oc get pod -n rhoai-demo-grafana -l app.kubernetes.io/name=grafana -o wide
 Use a cluster-admin or a user with namespace read permission for the demo
 Grafana namespace.
 
+### OpenShift ConsoleLink does not open Grafana
+
+- **Likely causes:** the Grafana route was not ready when the sync hook ran,
+  the `patch-grafana-consolelink` hook failed, or Argo CD has not reconciled
+  the latest Stage 210 manifests.
+- **Checks:**
+
+```bash
+oc get consolelink rhoai-demo-grafana -o jsonpath='{.spec.href}{"\n"}'
+oc get route grafana-route -n rhoai-demo-grafana -o jsonpath='{.spec.host}{"\n"}'
+oc get application stage-210-model-serving-foundation -n openshift-gitops \
+  -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+```
+
+The `href` should point to
+`/d/llm-performance/llm-d-performance-dashboard`. If it still contains the
+placeholder host, hard-refresh or resync the Stage 210 Application.
+
 ### GuideLLM benchmark job fails
 
 - **Likely causes:** the upstream GuideLLM image cannot be pulled, the
   endpoint is not reachable from inside the cluster, the selected rate profile
-  overwhelms the one-GPU endpoint, the processor cannot be resolved, or the PVC
-  cannot bind.
+  overwhelms the one-GPU endpoint, the processor cannot be resolved, the
+  `benchmark-data` PVC is missing, or the PVC cannot bind.
 - **Checks:**
 
 ```bash
+oc get pvc benchmark-data -n demo-sandbox
+oc get configmap stage210-guidellm-prompts -n demo-sandbox \
+  -o jsonpath='{.data.prompts\.csv}' | head -1
 oc get job,pod,pvc -n demo-sandbox | grep guidellm
 oc logs -n demo-sandbox job/<guidellm-job-name>
 oc describe job -n demo-sandbox <guidellm-job-name>
@@ -370,23 +391,28 @@ oc describe job -n demo-sandbox <guidellm-job-name>
 Use a smaller smoke-test profile first:
 
 ```bash
-RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 \
+RHOAI_GUIDELLM_RATE=1 RHOAI_GUIDELLM_MAX_SECONDS=30 RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \
   ./stage-210-model-serving-foundation/benchmark-guidellm.sh
 ```
 
 Set `RHOAI_GUIDELLM_KEEP_RESOURCES=true` when you need the temporary Job, PVC,
 or copy Job to remain for inspection.
 
-If GuideLLM fails while deserializing `{"prompt_tokens":512,"output_tokens":128}`,
-confirm the script is passing an explicit processor. Stage 210 defaults to:
+If GuideLLM fails while reading `/data/prompts.csv`, confirm the Stage 210
+Application synced the `benchmark-data` PVC and prompt ConfigMap, then resync
+the Application so the seed hook copies the CSV into the PVC.
+
+If GuideLLM fails while tokenizing the prompt file, confirm the script is
+passing an explicit processor. Stage 210 defaults to:
 
 ```bash
 RHOAI_NEMOTRON_GUIDELLM_PROCESSOR=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8
 ```
 
 If GuideLLM completes the benchmark but fails while writing
-`benchmark-results.html` with an HTTP 301 from the old report-template URL, use
-the default JSON-only output:
+`benchmark-results.html` with an HTTP 301 from the old report-template URL,
+avoid HTML output. Stage 210 defaults to JSON and CSV; use JSON-only when you
+want the smallest smoke output:
 
 ```bash
 RHOAI_GUIDELLM_OUTPUTS=benchmark-results.json \

@@ -18,6 +18,8 @@ MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-NVIDIA-Nemotron-3-Nano-30B-A3
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-Version 1}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0}"
 GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-rhoai-demo-grafana}"
+GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-benchmark-data}"
+GUIDELLM_PROMPTS_CONFIGMAP="${RHOAI_GUIDELLM_PROMPTS_CONFIGMAP:-stage210-guidellm-prompts}"
 MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-2}"
 MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-4}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-16Gi}"
@@ -40,6 +42,8 @@ MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-$MODEL_DISPLAY_NAME}"
 MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-$MODEL_VERSION_NAME}"
 MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-$MODEL_URI}"
 GRAFANA_NS="${RHOAI_GRAFANA_NAMESPACE:-$GRAFANA_NS}"
+GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-$GUIDELLM_DATA_PVC}"
+GUIDELLM_PROMPTS_CONFIGMAP="${RHOAI_GUIDELLM_PROMPTS_CONFIGMAP:-$GUIDELLM_PROMPTS_CONFIGMAP}"
 MODEL_CPU_REQUEST="${RHOAI_NEMOTRON_CPU_REQUEST:-$MODEL_CPU_REQUEST}"
 MODEL_CPU_LIMIT="${RHOAI_NEMOTRON_CPU_LIMIT:-$MODEL_CPU_LIMIT}"
 MODEL_MEMORY_REQUEST="${RHOAI_NEMOTRON_MEMORY_REQUEST:-$MODEL_MEMORY_REQUEST}"
@@ -195,12 +199,39 @@ else
 fi
 check "Grafana vLLM baseline dashboard present" "$R"
 
+if resource_exists "grafanadashboard/llm-performance" "$GRAFANA_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Grafana llm-performance workshop dashboard present" "$R"
+
 if resource_exists "route/grafana-route" "$GRAFANA_NS"; then
   R="pass"
 else
   R="missing"
 fi
 check "Grafana OAuth route present" "$R"
+
+CONSOLELINK_HREF=$(oc get consolelink rhoai-demo-grafana \
+  -o jsonpath='{.spec.href}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+if [[ "$CONSOLELINK_HREF" == https://*"/d/llm-performance/"* ]]; then
+  R="pass"
+else
+  R="href=${CONSOLELINK_HREF:-missing}"
+fi
+check "OpenShift ConsoleLink points to Grafana llm-performance dashboard" "$R"
+
+PVC_PHASE=$(oc get pvc "$GUIDELLM_DATA_PVC" -n "$MODEL_NS" \
+  -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$PVC_PHASE" == "Bound" ]] && R="pass" || R="phase=${PVC_PHASE:-missing}"
+check "GuideLLM benchmark-data PVC Bound" "$R"
+
+PROMPTS_HEADER=$(oc get configmap "$GUIDELLM_PROMPTS_CONFIGMAP" -n "$MODEL_NS" \
+  -o jsonpath='{.data.prompts\.csv}' --insecure-skip-tls-verify=true 2>/dev/null \
+  | head -1 || true)
+[[ "$PROMPTS_HEADER" == "prompt,output_tokens_count" ]] && R="pass" || R="missing prompts.csv header"
+check "GuideLLM prompts ConfigMap present" "$R"
 
 VLLM_RUNTIME=$(oc get servingruntime -A \
   -o jsonpath='{range .items[*]}{.metadata.namespace}{"/"}{.metadata.name}{" "}{.metadata.annotations.openshift\.io/display-name}{"\n"}{end}' \

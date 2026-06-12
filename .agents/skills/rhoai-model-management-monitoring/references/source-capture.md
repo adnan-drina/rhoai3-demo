@@ -22,6 +22,14 @@
 | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring | User Workload Monitoring context |
 | https://access.redhat.com/support/offerings/techpreview | Technology Preview support scope |
 
+## Supporting Implementation Sources
+
+| Source | Role |
+|--------|------|
+| https://rhpds.github.io/llm-d-showroom/modules/workshop/llm-d/04-module-02.html | Workshop pattern for observing single-GPU vLLM behavior with metrics, Grafana, a pre-provisioned `benchmark-data` PVC, `prompts.csv`, and a short GuideLLM concurrent benchmark. |
+| https://github.com/rhpds/llm-d-showroom | Workshop source repository for llm-d showroom exercises, images, and notebooks. |
+| https://github.com/rh-aiservices-bu/rhaoi3-llm-d | Red Hat AI services reference repository containing shared-prefix GuideLLM prompt data and `grafana-dashboard-llm-performance.json`. Treat as an implementation pattern, not product API authority. |
+
 ## Supporting Project Sources
 
 | Source | Role |
@@ -49,6 +57,10 @@
   `ScaledObject`, User Workload Monitoring ConfigMaps, `ServiceMonitor`,
   `PodMonitor`, GrafanaDashboard resources, NIM `Account` CRs, and runtime
   endpoint smoke tests.
+- The llm-d showroom and Red Hat AI services repositories are source-grounded
+  implementation patterns for benchmarks and dashboards. They do not override
+  official RHOAI/OCP docs for CR fields, supported features, API tiers, or
+  operator support posture.
 
 ## Unresolved Or Environment-Specific Items
 

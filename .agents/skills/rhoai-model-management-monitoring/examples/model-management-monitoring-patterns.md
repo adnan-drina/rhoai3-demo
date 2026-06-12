@@ -134,6 +134,63 @@ Review points:
 - NVIDIA GPU metrics require the NVIDIA GPU monitoring dashboard.
 - vLLM dashboards require the deployed runtime to expose vLLM metrics.
 
+## GuideLLM Single-GPU Baseline Pattern
+
+Use the llm-d showroom Module 2 pattern when a stage needs to observe
+single-GPU vLLM saturation before introducing llm-d or MaaS governance.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guidellm-vllm-single
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: guidellm
+          image: ghcr.io/vllm-project/guidellm:latest
+          env:
+            - name: GUIDELLM_TARGET
+              value: "http://<vllm-service>:8000/v1"
+            - name: GUIDELLM_PROFILE
+              value: concurrent
+            - name: GUIDELLM_RATE
+              value: "32,64"
+            - name: GUIDELLM_OUTPUTS
+              value: json,csv
+            - name: GUIDELLM_MAX_SECONDS
+              value: "30"
+            - name: GUIDELLM_DATA
+              value: /data/prompts.csv
+            - name: GUIDELLM_PROCESSOR
+              value: "<tokenizer-or-processor-id>"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: benchmark-data
+```
+
+Review points:
+
+- Use representative prompt data when possible; the Red Hat AI services
+  llm-d reference has a shared-prefix data set used with the showroom pattern.
+- Mount `benchmark-data` as input and keep results in a separate temporary
+  PVC or `emptyDir` depending on whether results must be copied out.
+- For this repo, prefer the tested `guidellm benchmark run` CLI form and
+  explicit output filenames when using the pinned `v0.5.0` image.
+- Treat short 30-second runs as observation only, not statistically meaningful
+  capacity evidence.
+- Watch TTFT p95/p99, request queue depth, KV cache usage, prefix-cache hit
+  rate, token throughput, and GPU utilization while the job runs.
+
 ## NIM Model Selection ConfigMap
 
 ```yaml
