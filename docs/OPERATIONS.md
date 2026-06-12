@@ -11,11 +11,9 @@ The active implementation follows this sequence:
 2. `stage-120-gpu-as-a-service` - GPU worker capacity, NVIDIA GPU enablement,
    Kueue quotas, and RHOAI hardware profiles.
 3. `stage-210-model-serving-foundation` - enable the standard KServe model
-   serving platform through the shared Stage 110 RHOAI owner and leave the
-   first Nemotron endpoint deployment to the dashboard/user-led flow.
-4. `stage-220-model-performance-baseline` - planned GuideLLM-style performance
-   baseline and breakpoint evidence.
-5. `stage-230-models-as-a-service` - planned governed MaaS access to Nemotron
+   serving platform, vLLM serving path, `demo-registry`, Nemotron metadata,
+   and Nemotron endpoint readiness.
+4. `stage-220-models-as-a-service` - planned governed MaaS access to Nemotron
    plus external OpenAI `gpt-5.4-nano`.
 
 ## Stage 110: RHOAI Base Platform
@@ -73,27 +71,49 @@ oc get route rhods-dashboard -n redhat-ods-applications \
   -o jsonpath='{.spec.host}'
 ```
 
-### Model Registry — Creating The First Registry
+### Model Registry
 
-The `modelregistry` DSC component provisions the operator and the `rhoai-model-registries` namespace. The actual registry instance is created through the RHOAI Dashboard (day-2 operation, not a committed GitOps manifest):
+The `modelregistry` DSC component provisions the operator and the
+`rhoai-model-registries` namespace. The demo registry instance is now
+GitOps-managed as `demo-registry` in the Stage 110 RHOAI registry base.
+
+Verify the registry stack:
+
+```bash
+oc get deployment model-registry-operator-controller-manager \
+  -n redhat-ods-applications
+oc get modelregistries.modelregistry.opendatahub.io demo-registry \
+  -n rhoai-model-registries
+```
+
+The registry uses the default generated PostgreSQL database. This is sufficient
+for the demo and for fresh-environment reproducibility, but it is not the
+production registry posture. For production, use an external PostgreSQL 16.x or
+MySQL 9.x database and configure host, port, credentials, and CA certificate
+settings.
+
+Dashboard day-2 creation remains a useful manual workflow reference:
 
 1. Open the RHOAI Dashboard → **Settings → Model resources and operations → Model registry settings**.
 2. Click **Create model registry**.
-3. Set a name (e.g., `rhoai-demo-registry`). The resource name cannot be changed after creation.
+3. Set a name (for the current demo environment, `demo-registry`). The resource
+   name cannot be changed after creation.
 4. For **database**, select **Default database** (PostgreSQL provisioned automatically by RHOAI — non-production only, sufficient for this demo).
 5. Save. RHOAI creates the registry service and generates a `<name>-users` group and RBAC role in `rhoai-model-registries`.
 
 To grant access, go to **Settings → AI registry settings**, select the registry, and add the relevant OpenShift group or user.
 
-Verify the operator is running before creating a registry:
+Current cluster-klvxt validation state originally created manually from the
+dashboard and now handled by Stage 210 scripts when absent:
 
-```bash
-oc get deployment model-registry-operator-controller-manager \
-  -n redhat-ods-applications
-oc get namespace rhoai-model-registries
-```
+- Model registry resource: `demo-registry` in `rhoai-model-registries`.
+- Nemotron 3 was manually registered in `demo-registry`.
+- The registry entry was used to manually deploy the first Nemotron endpoint in
+  `demo-sandbox`.
 
-For a production registry, use an external PostgreSQL 16.x or MySQL 9.x database and configure the host, port, credentials, and CA certificate during registry creation.
+For fresh environments, run `stage-210-model-serving-foundation/deploy.sh` after
+Stages 110 and 120 are healthy. It reuses this state when present and creates
+missing registry metadata and the endpoint when absent.
 
 ### Platform Access (Users, Project, Connection)
 
@@ -208,14 +228,32 @@ healthy.
 
 Stage 210 does not have a separate Argo CD Application. It patches the Stage
 110-owned `DataScienceCluster` through the Stage 110 RHOAI aggregate overlay.
-The deploy script applies and refreshes the shared
-`stage-110-rhoai-base-platform` Application so Argo CD reconciles the KServe
-component.
+The same Stage 110 Application also owns the `demo-registry` `ModelRegistry`
+instance and registry access bindings. In the Argo CD console, confirm Stage
+210 by opening `stage-110-rhoai-base-platform`; there is intentionally no
+`stage-210-model-serving-foundation` Application tile.
 
-### User-Led Nemotron Deployment
+### Idempotent Nemotron Deployment
 
-After Stage 210 validates, the dashboard should expose the standard model
-serving path. The intended first user workflow is:
+`stage-210-model-serving-foundation/deploy.sh` is safe to run after manual
+dashboard validation or in a fresh environment. It follows this order:
+
+1. Apply and refresh the shared Stage 110 Application.
+2. Wait for KServe and `demo-registry`.
+3. Reuse existing Nemotron registry metadata when present.
+4. Create missing Nemotron registered model, version, and OCI artifact metadata
+   through the Model Registry REST API.
+5. Reuse an existing Nemotron `InferenceService` when present.
+6. Create the vLLM runtime from the active RHOAI template and deploy Nemotron
+   when the endpoint is absent.
+
+The script may copy the cluster pull-secret into `demo-sandbox` as a runtime
+Kubernetes Secret named `nemotron-3-nano-30b` when the modelcar pull secret is
+missing. The secret value is never printed or committed.
+
+### User-Led Dashboard Path
+
+The dashboard path remains useful for the live demo and day-2 operations:
 
 1. Log in to the RHOAI Dashboard as a demo user with access to `demo-sandbox`.
 2. Open `demo-sandbox` and use **Deploy model**.
@@ -223,12 +261,24 @@ serving path. The intended first user workflow is:
 4. Use a Stage 120 GPU hardware profile such as `GPU Reserved - Demo Team`.
 5. Use the Nemotron model source:
    `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
-6. Use token authentication for external/shared endpoint access.
+6. Use token authentication for external/shared endpoint access unless running
+   the controlled Stage 210 baseline endpoint.
 7. Test with the vLLM `/v1/chat/completions` path.
 
-The temporary automated Nemotron smoke test is intentionally tracked in
-`docs/BACKLOG.md` until the active runtime template, deployment API, registry
-pull behavior, endpoint auth, and cleanup path are verified.
+Current cluster-klvxt manual validation state:
+
+- Registry: `demo-registry` in `rhoai-model-registries`.
+- ServingRuntime: `nvidia-nemotron-3-nano-30b-a3b` in `demo-sandbox`.
+- InferenceService: `nvidia-nemotron-3-nano-30b-a3b` in `demo-sandbox`,
+  `Ready=True`.
+- API: `serving.kserve.io/v1beta1` `InferenceService`.
+- Model format: `vLLM`.
+- Model source:
+  `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`.
+
+This confirms that the dashboard path works in the active environment. The
+deploy and validation scripts now treat that state as reusable input rather
+than requiring the same manual actions in every fresh environment.
 
 ---
 

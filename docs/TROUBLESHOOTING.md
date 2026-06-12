@@ -221,6 +221,58 @@ oc get datasciencecluster default-dsc \
 Do not hard-code a runtime name in GitOps until the active runtime template has
 been verified from the live cluster or official documentation.
 
+### demo-registry is missing or not Available
+
+- **Likely causes:** the Stage 110 Application has not reconciled the registry
+  base, the model registry operator is still starting, or the generated default
+  PostgreSQL deployment is not available.
+- **Checks:**
+
+```bash
+oc get application stage-110-rhoai-base-platform -n openshift-gitops \
+  -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+oc get modelregistries.modelregistry.opendatahub.io demo-registry \
+  -n rhoai-model-registries -o yaml
+oc get pods,deploy,route -n rhoai-model-registries
+```
+
+The expected demo state is `Available=True` on
+`modelregistries.modelregistry.opendatahub.io/demo-registry`.
+
+### Nemotron registry metadata is missing
+
+- **Likely causes:** `stage-210-model-serving-foundation/deploy.sh` has not run
+  after the registry became available, the current user cannot access the model
+  registry route, or the registry REST API returned an error.
+- **Checks:**
+
+```bash
+./stage-210-model-serving-foundation/deploy.sh
+./stage-210-model-serving-foundation/validate.sh
+```
+
+The deploy script is idempotent. It reuses existing registered model, version,
+and artifact metadata when present, and creates missing metadata through the
+Model Registry REST API when absent.
+
+### Nemotron InferenceService is missing or not Ready
+
+- **Likely causes:** the vLLM runtime template is missing, the modelcar pull
+  secret is missing or invalid, GPU quota is unavailable, or the model pod is
+  still loading the OCI modelcar.
+- **Checks:**
+
+```bash
+oc get template vllm-cuda-runtime-template -n redhat-ods-applications
+oc get secret nemotron-3-nano-30b -n demo-sandbox
+oc get inferenceservice nvidia-nemotron-3-nano-30b-a3b -n demo-sandbox -o yaml
+oc get pods -n demo-sandbox | grep -Ei 'nemotron|vllm|predictor'
+```
+
+The expected Stage 210 state is a ready
+`demo-sandbox/nvidia-nemotron-3-nano-30b-a3b` `InferenceService` using the
+Nemotron OCI modelcar source.
+
 ---
 
 Legacy troubleshooting content is backed up at:

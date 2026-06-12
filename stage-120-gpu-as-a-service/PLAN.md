@@ -20,10 +20,10 @@
 - Non-goals:
   - model serving or KServe enablement; deferred to
     `stage-210-model-serving-foundation`
-  - GuideLLM or performance benchmarking; deferred to
-    `stage-220-model-performance-baseline`
+  - GuideLLM or performance benchmarking; deferred to the Stage 210 serving
+    baseline work after endpoint readiness is repeatable
   - Models-as-a-Service governance; deferred to
-    `stage-230-models-as-a-service`
+    `stage-220-models-as-a-service`
   - MIG GPU partitioning
   - multi-GPU or multi-node serving
   - non-NVIDIA accelerators
@@ -176,7 +176,7 @@ stage demonstrates governed admission and reservation, not preemption.
 | GPU cost | risk | One `g6e.2xlarge` runs continuously unless manually scaled to zero |
 | MachineSet portability | expected | Regenerate from a live worker MachineSet in each fresh environment |
 | Kueue preemption | deferred | Stage 120 is non-preemptive; later stages can test suspendable jobs |
-| model serving | deferred | Stage 210 will enable KServe/vLLM and run a temporary Nemotron smoke test |
+| model serving | deferred | Stage 210 will enable KServe/vLLM and ensure the Nemotron endpoint is ready |
 
 ## Review Log
 

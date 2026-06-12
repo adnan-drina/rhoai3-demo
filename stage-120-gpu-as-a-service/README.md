@@ -131,10 +131,9 @@ RHOAI Hardware Profiles -> CPU Default / GPU Shared / GPU Priority / GPU Reserve
 Data scientist selects governed capacity from the RHOAI dashboard
 ```
 
-Stage 210 uses this capacity to prove model serving with a temporary Nemotron
-smoke test and a user-led dashboard deployment. Stage 220 measures the model
-performance baseline. Stage 230 exposes validated model access through
-Models-as-a-Service.
+Stage 210 uses this capacity to prove vLLM model serving with Nemotron and
+capture a lightweight serving baseline. Stage 220 exposes validated model
+access through Models-as-a-Service.
 
 ---
 

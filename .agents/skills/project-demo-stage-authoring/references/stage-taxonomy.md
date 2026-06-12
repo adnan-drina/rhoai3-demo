@@ -60,11 +60,10 @@ numbers can change before a stage is created.
 |-----------|-------|-------------------|
 | `stage-110-rhoai-base-platform` | AI Platform Foundation | GitOps bootstrap, ODF MCG object storage, RHOAI Self-Managed base install, model registry, access personas, and the shared DSC owner. |
 | `stage-120-gpu-as-a-service` | AI Platform Foundation | NFD, NVIDIA GPU Operator, AWS GPU MachineSet, Kueue quota, and RHOAI hardware profiles. |
-| `stage-210-model-serving-foundation` | Production GenAI & Private Data | Enable model serving, run a temporary Nemotron smoke test, and leave a user-led dashboard deployment path. |
-| `stage-220-model-performance-baseline` | Production GenAI & Private Data | Establish GuideLLM-style performance baselines and breakpoint evidence for the served model. |
-| `stage-230-models-as-a-service` | Production GenAI & Private Data | Govern internal Nemotron access and register external OpenAI `gpt-5.4-nano` as a cost-optimized MaaS model. |
-| `stage-240-private-data-rag` | Production GenAI & Private Data | Private data ingestion, retrieval, and RAG application path. |
-| `stage-250-guardrails-and-safety` | Production GenAI & Private Data | AI safety, guardrails, and policy controls around GenAI workloads. |
+| `stage-210-model-serving-foundation` | Production GenAI & Private Data | Enable model serving, ensure Nemotron vLLM endpoint readiness, and establish a lightweight GuideLLM/Grafana serving baseline. |
+| `stage-220-models-as-a-service` | Production GenAI & Private Data | Govern internal Nemotron access and register external OpenAI `gpt-5.4-nano` as a cost-optimized MaaS model. |
+| `stage-230-private-data-rag` | Production GenAI & Private Data | Private data ingestion, retrieval, and RAG application path. |
+| `stage-240-guardrails-and-safety` | Production GenAI & Private Data | AI safety, guardrails, and policy controls around GenAI workloads. |
 | `stage-310-gen-ai-studio` | Agentic AI & Enterprise Integration | Gen AI Studio or playground-based workflow design and testing. |
 | `stage-320-llama-stack-runtime` | Agentic AI & Enterprise Integration | Llama Stack runtime and API integration. |
 | `stage-330-mcp-enterprise-tools` | Agentic AI & Enterprise Integration | MCP-based connection to enterprise tools and services. |

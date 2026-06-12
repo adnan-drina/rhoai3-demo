@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # validate.sh - Stage 210: Model Serving Foundation
-# Proves the KServe model serving platform is enabled through the shared DSC.
+# Proves KServe, vLLM, the demo registry metadata, and the Nemotron endpoint are
+# ready for model-serving baseline work.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,12 +10,28 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PASS=0
 FAIL=0
 
+REGISTRY_NS="${MODEL_REGISTRY_NAMESPACE:-rhoai-model-registries}"
+REGISTRY_NAME="${MODEL_REGISTRY_NAME:-demo-registry}"
+MODEL_NS="${RHOAI_MODEL_NAMESPACE:-demo-sandbox}"
+MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
+MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
+MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-Version 1}"
+MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0}"
+
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
   # shellcheck source=/dev/null
   source "$ROOT_DIR/.env"
   set +a
 fi
+
+REGISTRY_NS="${MODEL_REGISTRY_NAMESPACE:-$REGISTRY_NS}"
+REGISTRY_NAME="${MODEL_REGISTRY_NAME:-$REGISTRY_NAME}"
+MODEL_NS="${RHOAI_MODEL_NAMESPACE:-$MODEL_NS}"
+MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-$MODEL_DEPLOYMENT_NAME}"
+MODEL_DISPLAY_NAME="${RHOAI_NEMOTRON_DISPLAY_NAME:-$MODEL_DISPLAY_NAME}"
+MODEL_VERSION_NAME="${RHOAI_NEMOTRON_VERSION_NAME:-$MODEL_VERSION_NAME}"
+MODEL_URI="${RHOAI_NEMOTRON_MODEL_URI:-$MODEL_URI}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set. Set it in .env." >&2
@@ -39,10 +56,22 @@ check() {
   fi
 }
 
+require_cmd() {
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "ERROR: required command not found: $cmd" >&2
+  exit 1
+}
+
 crd_exists() {
   local name="$1"
   oc get crd "$name" --insecure-skip-tls-verify=true >/dev/null 2>&1
 }
+
+require_cmd curl
+require_cmd jq
 
 APP_SYNC=$(oc get application stage-110-rhoai-base-platform -n openshift-gitops \
   -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
@@ -93,6 +122,69 @@ GPU_ALLOCATABLE=$(oc get node -l nvidia.com/gpu.present=true \
   --insecure-skip-tls-verify=true 2>/dev/null | awk '{sum += $1} END {print sum + 0}')
 [[ "$GPU_ALLOCATABLE" -ge 4 ]] && R="pass" || R="allocatable=${GPU_ALLOCATABLE:-0}"
 check "GPU node advertises at least 4 time-sliced GPU units" "$R"
+
+REGISTRY_AVAILABLE=$(oc get modelregistries.modelregistry.opendatahub.io "$REGISTRY_NAME" -n "$REGISTRY_NS" \
+  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$REGISTRY_AVAILABLE" == "True" ]] && R="pass" || R="available=${REGISTRY_AVAILABLE:-not found}"
+check "demo-registry Available" "$R"
+
+REGISTRY_HOST=$(oc get modelregistries.modelregistry.opendatahub.io "$REGISTRY_NAME" -n "$REGISTRY_NS" \
+  -o jsonpath='{.status.hosts[0]}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+if [[ -n "$REGISTRY_HOST" ]]; then
+  R="pass"
+else
+  R="missing route host"
+fi
+check "demo-registry route host present" "$R"
+
+if [[ -n "$REGISTRY_HOST" ]]; then
+  MR_BASE_URL="https://${REGISTRY_HOST}/api/model_registry/v1alpha3"
+  MR_TOKEN=$(oc whoami -t)
+  MR_MODELS=$(curl -sk -H "Authorization: Bearer ${MR_TOKEN}" \
+    "${MR_BASE_URL}/registered_models" 2>/dev/null || echo "{}")
+  MODEL_ID=$(jq -r --arg name "$MODEL_DISPLAY_NAME" \
+    '.items[]? | select(.name == $name and (.state // "LIVE") != "ARCHIVED") | .id' <<<"$MR_MODELS" | head -1)
+  [[ -n "$MODEL_ID" ]] && R="pass" || R="missing"
+  check "Nemotron registered model metadata present" "$R"
+
+  if [[ -n "$MODEL_ID" ]]; then
+    MR_VERSIONS=$(curl -sk -H "Authorization: Bearer ${MR_TOKEN}" \
+      "${MR_BASE_URL}/registered_models/${MODEL_ID}/versions" 2>/dev/null || echo "{}")
+    MODEL_VERSION_ID=$(jq -r --arg name "$MODEL_VERSION_NAME" \
+      '.items[]? | select(.name == $name and (.state // "LIVE") != "ARCHIVED") | .id' <<<"$MR_VERSIONS" | head -1)
+    [[ -n "$MODEL_VERSION_ID" ]] && R="pass" || R="missing"
+    check "Nemotron model version metadata present" "$R"
+  else
+    MODEL_VERSION_ID=""
+    check "Nemotron model version metadata present" "registered model missing"
+  fi
+
+  if [[ -n "$MODEL_VERSION_ID" ]]; then
+    MR_ARTIFACTS=$(curl -sk -H "Authorization: Bearer ${MR_TOKEN}" \
+      "${MR_BASE_URL}/model_versions/${MODEL_VERSION_ID}/artifacts" 2>/dev/null || echo "{}")
+    MODEL_ARTIFACT_ID=$(jq -r --arg uri "$MODEL_URI" \
+      '.items[]? | select(.uri == $uri and (.state // "LIVE") != "DELETED") | .id' <<<"$MR_ARTIFACTS" | head -1)
+    [[ -n "$MODEL_ARTIFACT_ID" ]] && R="pass" || R="missing"
+    check "Nemotron OCI model artifact metadata present" "$R"
+  else
+    check "Nemotron OCI model artifact metadata present" "model version missing"
+  fi
+fi
+
+ISVC_READY=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$ISVC_READY" == "True" ]] && R="pass" || R="ready=${ISVC_READY:-not found}"
+check "Nemotron InferenceService Ready" "$R"
+
+ISVC_RUNTIME=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+  -o jsonpath='{.spec.predictor.model.runtime}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ -n "$ISVC_RUNTIME" ]] && R="pass" || R="missing"
+check "Nemotron InferenceService runtime selected" "$R"
+
+ISVC_URI=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+  -o jsonpath='{.spec.predictor.model.storageUri}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$ISVC_URI" == "$MODEL_URI" ]] && R="pass" || R="uri=${ISVC_URI:-not found}"
+check "Nemotron InferenceService uses expected OCI model" "$R"
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
