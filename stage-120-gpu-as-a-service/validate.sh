@@ -85,7 +85,7 @@ KUEUE_CSV=$(csv_phase openshift-kueue-operator "Red Hat build of Kueue")
 [[ "$KUEUE_CSV" == "Succeeded" ]] && R="pass" || R="phase=${KUEUE_CSV:-not found}"
 check "Kueue operator CSV Succeeded" "$R"
 
-NFD_AVAILABLE=$(condition_status nodefeaturediscovery nfd-master Available openshift-nfd)
+NFD_AVAILABLE=$(condition_status nodefeaturediscovery nfd-instance Available openshift-nfd)
 [[ "$NFD_AVAILABLE" == "True" ]] && R="pass" || R="available=${NFD_AVAILABLE:-not found}"
 check "NodeFeatureDiscovery Available" "$R"
 
