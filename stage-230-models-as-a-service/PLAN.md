@@ -24,6 +24,10 @@
   RHCL, Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL
   16 demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
   enablement, and `Tenant`.
+- Phase-two implementation: schema-validated external OpenAI `gpt-5.4-nano`
+  `ExternalModel`, `MaaSModelRef`, `MaaSSubscription`, `MaaSAuthPolicy`, and
+  MaaS namespace admin RoleBinding for `rhods-admins`. Live rollout requires a
+  local provider key Secret; do not use placeholders.
 - Gateway TLS pattern: create stable `maas-gateway-tls` in `openshift-ingress`
   from the active OpenShift ingress certificate before applying
   `maas-default-gateway`; then patch listener hostnames to
@@ -80,8 +84,8 @@
   owner; Stage 230 adds a focused MaaS patch through that owner.
 - [ ] Local Nemotron is published through a schema-verified MaaS model
   reference.
-- [ ] External OpenAI `gpt-5.4-nano` is published through an `ExternalModel`
-  backed by a Kubernetes Secret or approved secret store.
+- [ ] External OpenAI `gpt-5.4-nano` GitOps resources are published through an
+  `ExternalModel` backed by a real Kubernetes Secret or approved secret store.
 - [ ] Demo users have both `MaaSSubscription` quota and `MaaSAuthPolicy`
   gateway authorization before access is claimed.
 - [ ] Validation proves model listing, API-key creation, local Nemotron
@@ -218,8 +222,8 @@ Phase-one deploy and validation commands:
 | Shared RHOAI patch | `DataScienceCluster` MaaS enablement and dashboard feature flags | Kustomize render and live DSC status |
 | Local model backend | `LLMInferenceService` for Nemotron, or another officially supported MaaS backend if schema requires it | `Ready=True`, authenticated inference, metrics |
 | Local MaaS publication | `MaaSModelRef` for Nemotron | CRD schema and dashboard/API model listing |
-| External provider | `ExternalModel` for `gpt-5.4-nano`, provider Secret supplied locally | OpenAI model availability and Secret reference |
-| Access governance | `MaaSSubscription`, `MaaSAuthPolicy`, group/user mapping, token limits, cost metadata | Allowed and denied inference tests |
+| External provider | `ExternalModel` and `MaaSModelRef` for `gpt-5.4-nano`, provider Secret supplied locally | OpenAI model availability and Secret reference |
+| Access governance | `rhods-admins` namespace admin RoleBinding, `MaaSSubscription`, `MaaSAuthPolicy`, group/user mapping, token limits, cost metadata | Allowed and denied inference tests |
 | Observability | Tenant telemetry, MaaS/Kuadrant metrics, dashboard flag | Usage/rate-limit metrics visible; TP label in docs |
 | Gen AI Playground | Dashboard flags, Llama Stack Operator if required, AI asset endpoint visibility | `ai-developer` sees and uses MaaS models from AI asset endpoints/playground without MaaS namespace admin rights |
 
@@ -230,6 +234,7 @@ Phase-one deploy and validation commands:
 | Official docs group discrepancy | resolved for current cluster | The official RHOAI 3.4 guide lists `*.maas.opendatahub.io` CRDs but shows `models.opendatahub.io/v1alpha1` YAML for several MaaS resources. The live cluster exposes MaaS resources as `maas.opendatahub.io/v1alpha1`; use that group/version for current GitOps. |
 | `LLMInferenceService` example version drift | risk | Active cluster stores `v1alpha2`; adapt examples only after schema checks. |
 | External OpenAI provider data path | risk | Document that prompts sent to `gpt-5.4-nano` leave the cluster and are subject to provider policy, region, and account settings. |
+| Missing provider credential | blocker for live rollout | Do not push external-model GitOps into the Argo CD sync loop unless `openai-provider-api-key` exists in `models-as-a-service` or `OPENAI_API_KEY`/`RHOAI_OPENAI_API_KEY` is provided locally for `deploy.sh`. |
 | Provider rate limits | risk | MaaS limits protect users from each other inside the demo, but the shared OpenAI provider key can still hit provider-level aggregate limits. |
 | MaaS observability support posture | risk | Label as Technology Preview and showback-only, not billing-grade metering. |
 | Stage 210 operating envelope changes | dependency | Re-run the chat/RAG GuideLLM policy profiles whenever the Nemotron model, vLLM args, GPU shape, prompt size, or output-token defaults change. |

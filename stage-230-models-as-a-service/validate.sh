@@ -19,6 +19,10 @@ fi
 
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
+OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
+OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-nano}"
+OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
+OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-nano}"
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -68,6 +72,15 @@ jsonpath() {
     oc get "$resource" -o jsonpath="$path" \
       --insecure-skip-tls-verify=true 2>/dev/null || true
   fi
+}
+
+can_i_as() {
+  local user="$1"
+  local verb="$2"
+  local resource="$3"
+  local namespace="$4"
+  oc auth can-i "$verb" "$resource" -n "$namespace" --as="$user" \
+    --insecure-skip-tls-verify=true 2>/dev/null || true
 }
 
 APP_SYNC=$(jsonpath "application/stage-230-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
@@ -156,6 +169,33 @@ else
 fi
 check "maas-db-config secret present" "$R"
 
+if resource_exists "secret/${OPENAI_PROVIDER_SECRET}" "$MAAS_NS"; then
+  if oc get "secret/${OPENAI_PROVIDER_SECRET}" -n "$MAAS_NS" -o jsonpath='{.data}' \
+    --insecure-skip-tls-verify=true 2>/dev/null | grep -q 'api-key'; then
+    R="pass"
+  else
+    R="missing data key api-key"
+  fi
+else
+  R="missing"
+fi
+check "OpenAI provider Secret present with api-key data key" "$R"
+
+if resource_exists "rolebinding/rhods-admins-maas-admin" "$MAAS_NS"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "rhods-admins has MaaS namespace admin RoleBinding" "$R"
+
+AI_ADMIN_CAN=$(can_i_as "ai-admin" "get" "pods" "$MAAS_NS")
+[[ "$AI_ADMIN_CAN" == "yes" ]] && R="pass" || R="can-i=${AI_ADMIN_CAN:-unknown}"
+check "ai-admin can administer the MaaS namespace" "$R"
+
+AI_DEVELOPER_CAN=$(can_i_as "ai-developer" "get" "pods" "$MAAS_NS")
+[[ "$AI_DEVELOPER_CAN" == "no" ]] && R="pass" || R="can-i=${AI_DEVELOPER_CAN:-unknown}"
+check "ai-developer has no direct MaaS namespace access" "$R"
+
 GATEWAY_HOST=$(jsonpath "gateway/maas-default-gateway" "openshift-ingress" "{.spec.listeners[0].hostname}")
 if [[ "$GATEWAY_HOST" == maas.* && "$GATEWAY_HOST" != "maas.placeholder.example.com" ]]; then
   R="pass"
@@ -191,6 +231,47 @@ else
   R="missing"
 fi
 check "MaaS Tenant Ready" "$R"
+
+EXTERNAL_PROVIDER=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.provider}")
+EXTERNAL_ENDPOINT=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.endpoint}")
+EXTERNAL_TARGET=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.targetModel}")
+EXTERNAL_SECRET=$(jsonpath "externalmodels.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.credentialRef.name}")
+if [[ "$EXTERNAL_PROVIDER" == "openai" && "$EXTERNAL_ENDPOINT" == "api.openai.com" && "$EXTERNAL_TARGET" == "$OPENAI_MODEL_ID" && "$EXTERNAL_SECRET" == "$OPENAI_PROVIDER_SECRET" ]]; then
+  R="pass"
+else
+  R="provider=${EXTERNAL_PROVIDER:-missing},endpoint=${EXTERNAL_ENDPOINT:-missing},target=${EXTERNAL_TARGET:-missing},secret=${EXTERNAL_SECRET:-missing}"
+fi
+check "External OpenAI model is registered through MaaS schema" "$R"
+
+MODELREF_KIND=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.modelRef.kind}")
+MODELREF_NAME=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${OPENAI_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.modelRef.name}")
+if [[ "$MODELREF_KIND" == "ExternalModel" && "$MODELREF_NAME" == "$OPENAI_MODEL_RESOURCE" ]]; then
+  R="pass"
+else
+  R="kind=${MODELREF_KIND:-missing},name=${MODELREF_NAME:-missing}"
+fi
+check "MaaSModelRef points to the external OpenAI model" "$R"
+
+SUB_OWNER=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.owner.groups[0].name}")
+SUB_MODEL=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
+SUB_LIMIT=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].limit}")
+SUB_WINDOW=$(jsonpath "maassubscriptions.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].tokenRateLimits[0].window}")
+if [[ "$SUB_OWNER" == "rhoai-developers" && "$SUB_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$SUB_LIMIT" == "20000" && "$SUB_WINDOW" == "1h" ]]; then
+  R="pass"
+else
+  R="owner=${SUB_OWNER:-missing},model=${SUB_MODEL:-missing},limit=${SUB_LIMIT:-missing},window=${SUB_WINDOW:-missing}"
+fi
+check "rhoai-developers has OpenAI MaaS subscription quota" "$R"
+
+AUTH_SUBJECT=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.subjects.groups[0].name}")
+AUTH_MODEL=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.modelRefs[0].name}")
+AUTH_ORG=$(jsonpath "maasauthpolicies.maas.opendatahub.io/${OPENAI_ACCESS_RESOURCE}" "$MAAS_NS" "{.spec.meteringMetadata.organizationId}")
+if [[ "$AUTH_SUBJECT" == "rhoai-developers" && "$AUTH_MODEL" == "$OPENAI_MODEL_RESOURCE" && "$AUTH_ORG" == "rhoai3-demo" ]]; then
+  R="pass"
+else
+  R="subject=${AUTH_SUBJECT:-missing},model=${AUTH_MODEL:-missing},org=${AUTH_ORG:-missing}"
+fi
+check "rhoai-developers has OpenAI MaaS auth policy" "$R"
 
 echo
 echo "Stage 230 validation summary: ${PASS} passed, ${FAIL} failed"

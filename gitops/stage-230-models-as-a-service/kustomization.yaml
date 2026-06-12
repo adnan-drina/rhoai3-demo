@@ -10,7 +10,10 @@ labels:
 resources:
   - prerequisites/rhcl/base
   - database/base
+  - access/base
   - gateway/base
   - governance/base
   - tenant/base
+  - external-models/base
+  - policies/base
   - jobs/base

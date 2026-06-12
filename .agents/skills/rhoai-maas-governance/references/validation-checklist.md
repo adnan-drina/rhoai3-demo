@@ -112,15 +112,15 @@ oc get externalmodels.maas.opendatahub.io -A
 Use schema checks before durable GitOps authoring:
 
 ```bash
-oc explain maasmodelrefs.models.opendatahub.io.spec
-oc explain maassubscriptions.models.opendatahub.io.spec
-oc explain maasauthpolicies.models.opendatahub.io.spec
+oc explain maasmodelrefs.maas.opendatahub.io.spec
+oc explain maassubscriptions.maas.opendatahub.io.spec
+oc explain maasauthpolicies.maas.opendatahub.io.spec
 oc explain externalmodels.maas.opendatahub.io.spec
 oc explain tenants.maas.opendatahub.io.spec
 ```
 
 If `oc api-resources` reports `MaaSModelRef`, `MaaSSubscription`, or
-`MaaSAuthPolicy` under a group other than `models.opendatahub.io`, use the
+`MaaSAuthPolicy` under a group other than `maas.opendatahub.io`, use the
 installed group/version for schema validation and record the discrepancy in the
 stage `PLAN.md`.
 

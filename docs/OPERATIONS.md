@@ -16,9 +16,10 @@ The active implementation follows this sequence:
 4. `stage-220-model-performance-baseline` - planned expanded performance
    baseline and operating-envelope evidence when lightweight Stage 210
    benchmark results are not sufficient.
-5. `stage-230-models-as-a-service` - active phase-one MaaS prerequisite
-   enablement, then governed access to Nemotron plus external OpenAI
-   `gpt-5.4-nano`.
+5. `stage-230-models-as-a-service` - MaaS prerequisite enablement, external
+   OpenAI model publication, and governed access to `gpt-5.4-nano`; local
+   Nemotron MaaS publication remains a follow-up after the
+   `LLMInferenceService` backend path is finalized.
 
 ## Stage 110: RHOAI Base Platform
 
@@ -536,6 +537,10 @@ after prerequisites and DSC feature flags are healthy.
      `models-as-a-service`.
    - Creates or updates `maas-db-config` in `redhat-ods-applications` with the
      PostgreSQL connection URL required by RHOAI MaaS.
+   - Creates or updates local-only `openai-provider-api-key` in
+     `models-as-a-service` from `OPENAI_API_KEY` or `RHOAI_OPENAI_API_KEY`, or
+     reuses the Secret if it already exists. The Secret must contain data key
+     `api-key`.
    - Applies the shared Stage 110 Application so the single
      `DataScienceCluster` owner enables `kserve.modelsAsService` and
      `llamastackoperator`.
@@ -556,6 +561,11 @@ in-cluster PostgreSQL 16 database backed by the Red Hat RHEL 9 PostgreSQL image.
 This is a demo database posture; production MaaS should use a managed and
 operationally backed PostgreSQL 14+ database.
 
+Stage 230 external-provider rollout is intentionally credential-gated. If
+neither `OPENAI_API_KEY` nor `RHOAI_OPENAI_API_KEY` is set locally and the
+`openai-provider-api-key` Secret is absent, `deploy.sh` exits before Argo CD
+sync so the demo does not publish a broken or placeholder external model.
+
 ### Phase-One Validation
 
 Run:
@@ -567,13 +577,17 @@ Run:
 The validator checks Argo CD app state, DSC fields, dashboard flags,
 cert-manager, RHCL, Gateway API, `maas-gateway-tls`, Kuadrant, Authorino,
 PostgreSQL, `maas-db-config`, Llama Stack CRDs, MaaS CRDs, and Tenant
-readiness.
+readiness. It also checks the OpenAI provider Secret shape, `rhods-admins`
+MaaS namespace administration, absence of direct `ai-developer` namespace
+access, the external OpenAI `ExternalModel`, `MaaSModelRef`,
+`MaaSSubscription`, and `MaaSAuthPolicy`.
 
-Only after the MaaS CRDs are present should the next phase add
-`MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy`
-resources. Use `oc explain` against the installed CRDs before committing those
-manifests because the RHOAI 3.4 documentation examples and CRD verification
-section use different API groups for some MaaS resources.
+The external model resources use the installed
+`maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. Re-run the
+schema checks after RHOAI or RHCL upgrades before changing `MaaSModelRef`,
+`ExternalModel`, `MaaSSubscription`, or `MaaSAuthPolicy` manifests because the
+RHOAI 3.4 documentation examples and CRD verification section use different
+API groups for some MaaS resources.
 
 ### Access Posture
 
@@ -584,6 +598,7 @@ section use different API groups for some MaaS resources.
   Gen AI Playground, and MaaS-issued API keys.
 - External OpenAI `gpt-5.4-nano` access must go through MaaS and must be
   documented as an external-provider data path where prompts leave the cluster.
+  Provider credentials stay local and are never committed.
 
 ---
 

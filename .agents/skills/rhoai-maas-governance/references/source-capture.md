@@ -56,24 +56,30 @@
   patterns. Provider credential scopes, rate limits, and model availability
   must be verified with the provider outside this skill.
 
+## Verified For The Active Demo Cluster
+
+- The active `rhoai3-demo` RHOAI 3.4 cluster exposes `Tenant`,
+  `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, and `MaaSAuthPolicy` as
+  `maas.opendatahub.io/v1alpha1`.
+- Continue to verify installed CRD schemas before committing long-lived GitOps
+  manifests after any RHOAI or RHCL upgrade:
+  `oc api-resources | grep -i maas`,
+  `oc get crd maasmodelrefs.maas.opendatahub.io`,
+  `oc explain maasmodelrefs.maas.opendatahub.io.spec`,
+  `oc explain maassubscriptions.maas.opendatahub.io.spec`,
+  `oc explain maasauthpolicies.maas.opendatahub.io.spec`,
+  `oc explain externalmodels.maas.opendatahub.io.spec`, and
+  `oc explain tenants.maas.opendatahub.io.spec`.
+
 ## Unresolved Or Verify Before GitOps
 
 - The official RHOAI 3.4 MaaS guide contains a group-name discrepancy that
   must be resolved from installed CRDs before authoring GitOps. The YAML
   examples for `MaaSModelRef`, `MaaSSubscription`, and `MaaSAuthPolicy` use
   `apiVersion: models.opendatahub.io/v1alpha1`, while the deployment
-  verification section lists CRDs under `*.maas.opendatahub.io`. Treat both as
-  unverified until the target cluster installs the MaaS CRDs and
-  `oc api-resources` / `oc explain` confirm the served group and version.
-- Verify installed CRD schemas before committing long-lived GitOps manifests:
-  `oc api-resources | grep -i maas`,
-  `oc get crd maasmodelrefs.models.opendatahub.io`,
-  `oc get crd maasmodelrefs.maas.opendatahub.io`,
-  `oc explain maasmodelrefs.models.opendatahub.io.spec`,
-  `oc explain maassubscriptions.models.opendatahub.io.spec`,
-  `oc explain maasauthpolicies.models.opendatahub.io.spec`,
-  `oc explain externalmodels.maas.opendatahub.io.spec`, and
-  `oc explain tenants.maas.opendatahub.io.spec`.
+  verification section lists CRDs under `*.maas.opendatahub.io`. Treat the
+  docs examples as schema examples that must be converted to the installed
+  group/version for the target cluster.
 - Verify the active `OdhDashboardConfig` field casing for vLLM MaaS enablement
   in the installed schema before authoring GitOps.
 - The official guide shows MaaS resources in examples across

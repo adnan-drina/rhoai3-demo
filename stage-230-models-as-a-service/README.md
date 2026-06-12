@@ -59,11 +59,20 @@ This stage is implemented in phases:
 1. Enable MaaS prerequisites and validate CRD/schema availability. cert-manager
    is treated as a required platform prerequisite, not as a Stage 230-owned
    operator lifecycle resource.
-2. Add schema-validated model publication resources for Nemotron and external
-   OpenAI `gpt-5.4-nano`.
-3. Add subscription, authorization, API key, user-access, and GenAI Playground
-   validation flows.
+2. Add schema-validated external OpenAI `gpt-5.4-nano` publication resources,
+   developer subscription quota, developer authorization policy, and MaaS
+   namespace admin access for `rhods-admins`.
+3. Add the local Nemotron MaaS publication path after the direct Stage 210
+   `InferenceService` is migrated or paired with a schema-validated
+   `LLMInferenceService` backend.
+4. Add API key, user-access, Gen AI Playground, and observability validation
+   flows.
 
-The first phase is active and validates cleanly on the current RHOAI 3.4
-cluster. The live MaaS API group is `maas.opendatahub.io/v1alpha1`; model
-publication and policy resources should use that schema in the next phase.
+The prerequisite phase validates cleanly on the current RHOAI 3.4 cluster. The
+live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 230 model
+publication and policy resources use that installed schema.
+
+The external OpenAI path is credential-gated. `deploy.sh` creates
+`openai-provider-api-key` in `models-as-a-service` from local
+`OPENAI_API_KEY` or `RHOAI_OPENAI_API_KEY`, or reuses the Secret if it already
+exists. The provider key is never committed.

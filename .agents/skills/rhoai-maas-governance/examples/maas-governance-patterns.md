@@ -4,11 +4,11 @@ These snippets are review patterns derived from the official MaaS guide. Before
 committing GitOps, verify exact installed CRD schemas with `oc api-resources`,
 `oc get crd`, and `oc explain` under the OpenShift safety guard in `AGENTS.md`.
 
-The official RHOAI 3.4 guide shows YAML examples with
+The official RHOAI 3.4 guide shows some YAML examples with
 `apiVersion: models.opendatahub.io/v1alpha1`, but its CRD verification section
-lists MaaS CRDs under `*.maas.opendatahub.io`. Treat the API group in these
-snippets as provisional until the target cluster installs MaaS and exposes the
-served CRD group/version.
+lists MaaS CRDs under `*.maas.opendatahub.io`. The active `rhoai3-demo`
+cluster exposes MaaS resources as `maas.opendatahub.io/v1alpha1`; use that
+group/version after confirming it with `oc api-resources`.
 
 ## Phase-Gated GitOps Pattern
 
@@ -50,7 +50,7 @@ Review points:
 ## Local Model Reference Pattern
 
 ```yaml
-apiVersion: models.opendatahub.io/v1alpha1
+apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:
   name: nemotron-3-nano-30b-a3b
@@ -101,24 +101,24 @@ Review points:
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: ExternalModel
 metadata:
-  name: gpt-5
-  namespace: external-models
+  name: gpt-5-4-nano
+  namespace: models-as-a-service
 spec:
   provider: openai
   endpoint: api.openai.com
-  targetModel: gpt-5
+  targetModel: gpt-5.4-nano
   credentialRef:
     name: openai-provider-api-key
 ---
-apiVersion: models.opendatahub.io/v1alpha1
+apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:
-  name: gpt-5
-  namespace: external-models
+  name: gpt-5-4-nano
+  namespace: models-as-a-service
 spec:
   modelRef:
     kind: ExternalModel
-    name: gpt-5
+    name: gpt-5-4-nano
 ```
 
 Review points:
@@ -131,7 +131,7 @@ Review points:
 ## Subscription And Auth Policy Pattern
 
 ```yaml
-apiVersion: models.opendatahub.io/v1alpha1
+apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSSubscription
 metadata:
   name: enterprise-ai-builders
@@ -139,22 +139,21 @@ metadata:
 spec:
   owner:
     groups:
-      - kind: Group
-        name: enterprise-ai-builders
+      - name: enterprise-ai-builders
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
       namespace: model-serving
       tokenRateLimits:
         - limit: 100000
           window: "1h"
-    - name: gpt-5
-      namespace: external-models
+    - name: gpt-5-4-nano
+      namespace: models-as-a-service
       tokenRateLimits:
         - limit: 20000
           window: "1h"
   priority: 100
 ---
-apiVersion: models.opendatahub.io/v1alpha1
+apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSAuthPolicy
 metadata:
   name: enterprise-ai-builders
@@ -166,8 +165,8 @@ spec:
   modelRefs:
     - name: nemotron-3-nano-30b-a3b
       namespace: model-serving
-    - name: gpt-5
-      namespace: external-models
+    - name: gpt-5-4-nano
+      namespace: models-as-a-service
   meteringMetadata:
     organizationId: acme-eu
     costCenter: ai-platform

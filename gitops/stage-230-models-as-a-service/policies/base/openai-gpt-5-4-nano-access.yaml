@@ -1,0 +1,57 @@
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: rhoai-developers-gpt-5-4-nano
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
+    app.kubernetes.io/component: maas-subscription
+    demo.rhoai.io/provider: openai
+  annotations:
+    argocd.argoproj.io/sync-wave: "18"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  owner:
+    groups:
+      - name: rhoai-developers
+  modelRefs:
+    - name: gpt-5-4-nano
+      namespace: models-as-a-service
+      tokenRateLimits:
+        - limit: 20000
+          window: 1h
+  priority: 100
+  tokenMetadata:
+    organizationId: rhoai3-demo
+    costCenter: ai-platform
+    labels:
+      environment: demo
+      provider: openai
+      model: gpt-5.4-nano
+---
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: rhoai-developers-gpt-5-4-nano
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/name: rhoai-developers-gpt-5-4-nano
+    app.kubernetes.io/component: maas-auth-policy
+    demo.rhoai.io/provider: openai
+  annotations:
+    argocd.argoproj.io/sync-wave: "18"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  subjects:
+    groups:
+      - name: rhoai-developers
+  modelRefs:
+    - name: gpt-5-4-nano
+      namespace: models-as-a-service
+  meteringMetadata:
+    organizationId: rhoai3-demo
+    costCenter: ai-platform
+    labels:
+      environment: demo
+      provider: openai
+      model: gpt-5.4-nano

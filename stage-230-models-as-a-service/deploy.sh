@@ -14,6 +14,17 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
   set +a
 fi
 
+if [[ -n "${RHOAI_OPENAI_ENV_FILE:-}" ]]; then
+  if [[ ! -f "$RHOAI_OPENAI_ENV_FILE" ]]; then
+    echo "ERROR: RHOAI_OPENAI_ENV_FILE points to a missing file." >&2
+    exit 1
+  fi
+  set -a
+  # shellcheck source=/dev/null
+  source "$RHOAI_OPENAI_ENV_FILE"
+  set +a
+fi
+
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
   exit 1
@@ -46,10 +57,15 @@ MAAS_POSTGRES_SECRET="${RHOAI_MAAS_POSTGRES_SECRET:-maas-postgres-credentials}"
 MAAS_POSTGRES_USER="${RHOAI_MAAS_POSTGRES_USER:-maas}"
 MAAS_POSTGRES_DATABASE="${RHOAI_MAAS_POSTGRES_DATABASE:-maas}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
+OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-nano}"
+OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
+OPENAI_API_KEY_VALUE="${RHOAI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
 
 TMP_FILES=()
 cleanup() {
-  rm -f "${TMP_FILES[@]}"
+  if ((${#TMP_FILES[@]} > 0)); then
+    rm -f "${TMP_FILES[@]}"
+  fi
 }
 trap cleanup EXIT
 
@@ -188,6 +204,41 @@ ensure_maas_secrets() {
   echo "✓ MaaS database credentials and maas-db-config are present"
 }
 
+ensure_openai_provider_secret() {
+  echo "── Ensuring environment-local OpenAI provider Secret ──"
+
+  oc create namespace "$MAAS_NS" \
+    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+
+  if [[ -n "$OPENAI_API_KEY_VALUE" ]]; then
+    oc create secret generic "$OPENAI_PROVIDER_SECRET" \
+      -n "$MAAS_NS" \
+      --from-literal=api-key="$OPENAI_API_KEY_VALUE" \
+      --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+
+    oc label secret "$OPENAI_PROVIDER_SECRET" -n "$MAAS_NS" --overwrite \
+      app.kubernetes.io/name="$OPENAI_PROVIDER_SECRET" \
+      app.kubernetes.io/component=external-model-provider \
+      app.kubernetes.io/part-of=rhoai3-demo \
+      demo.rhoai.io/stage=230 \
+      demo.rhoai.io/provider=openai \
+      --insecure-skip-tls-verify=true >/dev/null
+
+    echo "✓ OpenAI provider Secret is present for ${OPENAI_MODEL_ID}"
+    return 0
+  fi
+
+  if oc get secret "$OPENAI_PROVIDER_SECRET" -n "$MAAS_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "✓ Existing OpenAI provider Secret found for ${OPENAI_MODEL_ID}"
+    return 0
+  fi
+
+  echo "ERROR: Missing OpenAI provider Secret ${OPENAI_PROVIDER_SECRET} in ${MAAS_NS}." >&2
+  echo "Set OPENAI_API_KEY or RHOAI_OPENAI_API_KEY locally before deploying Stage 230 model publication." >&2
+  exit 1
+}
+
 if ! oc get crd certificates.cert-manager.io --insecure-skip-tls-verify=true >/dev/null 2>&1; then
   echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 230." >&2
   exit 1
@@ -199,6 +250,7 @@ if ! oc get certmanager cluster --insecure-skip-tls-verify=true >/dev/null 2>&1;
 fi
 
 ensure_maas_secrets
+ensure_openai_provider_secret
 
 echo "── Applying shared Stage 110 Argo CD Application ──"
 apply_argocd_application \
@@ -229,5 +281,5 @@ wait_for_jsonpath "MaaS PostgreSQL StatefulSet availability" \
   "statefulset/maas-postgres" "$MAAS_NS" \
   "{.status.readyReplicas}" "1" 90
 
-echo "✓ Stage 230 prerequisite rollout requested"
-echo "  Run ./stage-230-models-as-a-service/validate.sh to check CRD readiness before authoring model subscriptions."
+echo "✓ Stage 230 rollout requested"
+echo "  Run ./stage-230-models-as-a-service/validate.sh to check MaaS prerequisites, external model publication, and access policy."
