@@ -28,6 +28,11 @@ OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+PLAYGROUND_LSD_NAME="${RHOAI_PLAYGROUND_LSD_NAME:-lsd-genai-playground}"
+PLAYGROUND_CONFIGMAP="${RHOAI_PLAYGROUND_CONFIGMAP:-llama-stack-config}"
+PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas-api-key}"
+PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-openai-inference-1}"
+PLAYGROUND_NEMOTRON_PROVIDER="${RHOAI_PLAYGROUND_NEMOTRON_PROVIDER_ID:-maas-vllm-inference-2}"
 
 TMP_FILES=()
 cleanup() {
@@ -183,6 +188,148 @@ with open(body_file, "wb") as handle:
 
 print(status)
 PY
+}
+
+validate_playground_if_present() {
+  local data_key data_token data_subscription result token_index
+  local lsd_secret lsd_key lsd_value deploy_secret deploy_key deploy_value
+  local config_file output models_output
+
+  if ! resource_exists "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
+    check "Gen AI Playground LlamaStackDistribution is not present yet" "pass"
+    return
+  fi
+
+  if resource_exists "secret/${PLAYGROUND_SECRET}" "$PROJECT_NS"; then
+    data_token=$(jsonpath "secret/${PLAYGROUND_SECRET}" "$PROJECT_NS" "{.data.VLLM_API_TOKEN}")
+    data_key=$(jsonpath "secret/${PLAYGROUND_SECRET}" "$PROJECT_NS" "{.data.MAAS_API_KEY_ID}")
+    data_subscription=$(jsonpath "secret/${PLAYGROUND_SECRET}" "$PROJECT_NS" "{.data.MAAS_SUBSCRIPTION}")
+    if [[ -n "$data_token" && -n "$data_key" && -n "$data_subscription" ]]; then
+      result="pass"
+    else
+      result="missing VLLM_API_TOKEN, MAAS_API_KEY_ID, or MAAS_SUBSCRIPTION data"
+    fi
+  else
+    result="missing"
+  fi
+  check "Gen AI Playground MaaS API key Secret exists" "$result"
+
+  result="pass"
+  for token_index in 1 2; do
+    lsd_secret=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.name}")
+    lsd_key=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.key}")
+    lsd_value=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].value}")
+    if [[ "$lsd_secret" != "$PLAYGROUND_SECRET" || "$lsd_key" != "VLLM_API_TOKEN" || -n "$lsd_value" ]]; then
+      result="VLLM_API_TOKEN_${token_index} is not Secret-backed"
+    fi
+  done
+  check "Gen AI Playground LlamaStackDistribution uses Secret-backed MaaS tokens" "$result"
+
+  if resource_exists "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
+    result="pass"
+    for token_index in 1 2; do
+      deploy_secret=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.name}")
+      deploy_key=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.key}")
+      deploy_value=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].value}")
+      if [[ "$deploy_secret" != "$PLAYGROUND_SECRET" || "$deploy_key" != "VLLM_API_TOKEN" || -n "$deploy_value" ]]; then
+        result="deployment VLLM_API_TOKEN_${token_index} is not Secret-backed"
+      fi
+    done
+  else
+    result="deployment missing"
+  fi
+  check "Gen AI Playground deployment uses Secret-backed MaaS tokens" "$result"
+
+  if resource_exists "configmap/${PLAYGROUND_CONFIGMAP}" "$PROJECT_NS"; then
+    config_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-playground-config.XXXXXX")
+    TMP_FILES+=("$config_file")
+    oc get configmap "$PLAYGROUND_CONFIGMAP" -n "$PROJECT_NS" \
+      -o jsonpath='{.data.config\.yaml}' \
+      --insecure-skip-tls-verify=true > "$config_file"
+    if grep -q "provider_id: ${PLAYGROUND_GPT_PROVIDER}" "$config_file" &&
+      grep -q "provider_type: remote::openai" "$config_file" &&
+      grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1" "$config_file" &&
+      grep -q "provider_model_id: ${OPENAI_MODEL_ID}" "$config_file" &&
+      grep -q "provider_id: ${PLAYGROUND_NEMOTRON_PROVIDER}" "$config_file" &&
+      grep -q "provider_type: remote::vllm" "$config_file" &&
+      grep -q "provider_model_id: ${NEMOTRON_MODEL_RESOURCE}" "$config_file"; then
+      result="pass"
+    else
+      result="missing MaaS provider type, base URL, or provider_model_id mapping"
+    fi
+  else
+    result="missing"
+  fi
+  check "Gen AI Playground Llama Stack config maps MaaS models correctly" "$result"
+
+  if resource_exists "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
+    models_output=$(oc exec "deployment/${PLAYGROUND_LSD_NAME}" -n "$PROJECT_NS" -- python3 -c "
+import json
+import urllib.request
+
+with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
+    data = json.loads(resp.read())
+ids = {item.get('identifier') or item.get('id') for item in data.get('data', [])}
+required = {
+    '${PLAYGROUND_NEMOTRON_PROVIDER}/${NEMOTRON_MODEL_RESOURCE}',
+    '${PLAYGROUND_GPT_PROVIDER}/${OPENAI_MODEL_ID}',
+}
+missing = sorted(required - ids)
+print('OK models' if not missing else 'MISSING ' + ','.join(missing))
+" 2>&1 || true)
+    if grep -q "OK models" <<<"$models_output"; then
+      result="pass"
+    else
+      result="models=${models_output//$'\n'/ }"
+    fi
+  else
+    result="deployment missing"
+  fi
+  check "Gen AI Playground Llama Stack model discovery lists MaaS models" "$result"
+
+  if resource_exists "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
+    output=$(oc exec "deployment/${PLAYGROUND_LSD_NAME}" -n "$PROJECT_NS" -- python3 -c "
+import json
+import urllib.error
+import urllib.request
+
+models = [
+    ('nemotron', '${PLAYGROUND_NEMOTRON_PROVIDER}/${NEMOTRON_MODEL_RESOURCE}'),
+    ('openai', '${PLAYGROUND_GPT_PROVIDER}/${OPENAI_MODEL_ID}'),
+]
+
+for label, model in models:
+    payload = json.dumps({
+        'model': model,
+        'input': 'You are concise. Reply with exactly: playground-ok',
+        'max_output_tokens': 128,
+        'temperature': 0,
+    }).encode()
+    req = urllib.request.Request(
+        'http://127.0.0.1:8321/v1/responses',
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            body = resp.read().decode('utf-8', 'replace')
+            print(f'OK {label}' if resp.status == 200 and 'playground-ok' in body else f'FAIL {label}: status={resp.status} body={body[:160]}')
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode('utf-8', 'replace')
+        print(f'FAIL {label}: status={exc.code} body={body[:160]}')
+    except Exception as exc:
+        print(f'FAIL {label}: {exc!r}')
+" 2>&1 || true)
+    if grep -q "OK nemotron" <<<"$output" && grep -q "OK openai" <<<"$output"; then
+      result="pass"
+    else
+      result="responses=${output//$'\n'/ }"
+    fi
+  else
+    result="deployment missing"
+  fi
+  check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "$result"
 }
 
 APP_SYNC=$(jsonpath "application/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
@@ -693,6 +840,8 @@ JSON
 else
   check "Dashboard and MaaS API HTTP validation can run" "python3 missing"
 fi
+
+validate_playground_if_present
 
 echo
 echo "Stage 220 validation summary: ${PASS} passed, ${FAIL} failed"

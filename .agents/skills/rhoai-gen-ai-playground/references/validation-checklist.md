@@ -54,6 +54,28 @@ runbooks, GitOps changes, or demo scripts.
   committed.
 - Verify model is used when creating custom endpoints.
 
+## MaaS-Backed Playground Review
+
+- MaaS-backed playground use is paired with `rhoai-maas-governance` and
+  validates subscription, authorization policy, API key, and Gateway behavior.
+- A dashboard-created project `LlamaStackDistribution` does not rely on
+  placeholder endpoint tokens. Token environment variables are backed by a
+  project Secret, and the Secret value is not committed.
+- The generated Llama Stack deployment reflects the Secret-backed token env.
+  If the operator fails to merge `valueFrom` over literal placeholder values,
+  recreate the generated deployment and let the operator render it again.
+- The Llama Stack config maps the local MaaS-published Nemotron model through
+  the MaaS vLLM provider.
+- External OpenAI `gpt-5.4-mini` published through MaaS uses a
+  `remote::openai` provider pointed at the MaaS Gateway base URL, not a vLLM
+  provider that sends `max_tokens`.
+- Registered model entries use `provider_model_id` for the provider target
+  model ID. Do not use unverified field names copied from memory.
+- Playground validation uses the model IDs returned by Llama Stack
+  `/v1/models`, which can be provider-qualified.
+- Validation sends real `/v1/responses` requests from inside the Llama Stack
+  pod for each MaaS-backed model before claiming the playground works.
+
 ## Playground Workflow Review
 
 - Dashboard path is Gen AI studio -> Playground or Gen AI studio -> AI asset
@@ -135,6 +157,10 @@ Stop and correct the work if any of these are true:
 - External provider endpoints are enabled without documenting that user input,
   RAG context, and MCP tool results can leave the cluster.
 - Provider tokens or API keys are committed.
+- A MaaS-backed playground still uses literal placeholder tokens such as
+  `fake`.
+- A MaaS-backed external OpenAI playground route uses a vLLM provider and fails
+  on `max_tokens` instead of using an OpenAI-compatible provider through MaaS.
 - The playground RAG upload path is described as using an external or remote
   vector database.
 - RAG or MCP behavior is promised without checking model tool-calling support

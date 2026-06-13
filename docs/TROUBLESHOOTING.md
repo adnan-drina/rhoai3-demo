@@ -533,6 +533,55 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   TokenRateLimitPolicy resources are enforced and the dashboard/API checks
   pass for real demo users.
 
+### Gen AI Playground accepts prompts but models do not reply
+
+- **Symptom:** `ai-developer` creates a Gen AI Playground in `demo-sandbox`,
+  selects the MaaS Nemotron or external GPT model, submits a prompt, and the UI
+  does not return a response.
+- **Likely cause:** the dashboard-created `LlamaStackDistribution` was created
+  with placeholder MaaS endpoint tokens such as `fake`. MaaS model discovery
+  can still appear in the UI, but inference from the Llama Stack pod receives
+  `401 Unauthorized` from the MaaS Gateway.
+- **Confirm:**
+
+```bash
+oc get llamastackdistribution lsd-genai-playground -n demo-sandbox -o yaml
+oc get deployment lsd-genai-playground -n demo-sandbox -o yaml
+oc logs deployment/lsd-genai-playground -n demo-sandbox --since=10m \
+  | grep -E '401|Unauthorized|fake'
+```
+
+- **Fix:** bind the Playground to a real MaaS API key and validate the
+  Llama Stack Responses API:
+
+```bash
+./stage-220-models-as-a-service/configure-genai-playground.sh
+./stage-220-models-as-a-service/validate.sh
+```
+
+The helper stores the API key in
+`demo-sandbox/genai-playground-maas-api-key`, patches `VLLM_API_TOKEN_1` and
+`VLLM_API_TOKEN_2` to read from that Secret, and recreates the generated
+deployment if the operator cannot merge Secret refs over literal placeholder
+values.
+
+- **External GPT-specific symptom:** the Playground returns a provider error
+  that `max_tokens` is not supported.
+- **Fix:** use the Llama Stack `remote::openai` provider for
+  `gpt-5.4-mini` while still routing through the MaaS Gateway. Keep Nemotron on
+  the MaaS vLLM provider. The Stage 220 helper patches `llama-stack-config`
+  accordingly.
+
+Expected model IDs inside Llama Stack are provider-qualified:
+
+```text
+maas-vllm-inference-2/nemotron-3-nano-30b-a3b
+maas-openai-inference-1/gpt-5.4-mini
+```
+
+Short model IDs can fail through the Llama Stack API even when they work at the
+raw MaaS Gateway layer.
+
 ### External OpenAI MaaS model stays Pending
 
 - **Symptom:** `ExternalModel` exists, but `MaaSModelRef` is `Pending` and the

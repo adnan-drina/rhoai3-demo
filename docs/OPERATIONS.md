@@ -620,6 +620,12 @@ OpenShift OAuth tokens as the inference credential; the generated MaaS policy
 requires `Authorization: Bearer <maas-api-key>` for chat/completions. External
 OpenAI `gpt-5.4-mini` requests use `max_completion_tokens`, not `max_tokens`.
 
+If a Gen AI Playground already exists in `demo-sandbox`, the validator also
+checks that the generated `LlamaStackDistribution` and deployment use a
+Secret-backed MaaS API key instead of the dashboard-created placeholder token.
+It validates the Llama Stack model list and `/v1/responses` path for both
+Nemotron and external GPT through MaaS.
+
 If validation fails on the RHCL pin or on MaaS Gateway generated policy
 filters, inspect the installed RHCL CSV, generated Kuadrant AuthPolicy and
 TokenRateLimitPolicy status, and gateway logs before retrying the dashboard.
@@ -645,6 +651,49 @@ before changing `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or
 `MaaSAuthPolicy` manifests because the RHOAI 3.4 documentation examples and
 CRD verification section use different
 API groups for some MaaS resources.
+
+### Gen AI Playground Configuration
+
+The RHOAI dashboard creates the project `LlamaStackDistribution` when
+`ai-developer` creates a Gen AI Playground in `demo-sandbox`. That
+dashboard-created resource can contain placeholder MaaS tokens until it is
+bound to a real MaaS API key.
+
+After creating the Playground from the dashboard, run:
+
+```bash
+./stage-220-models-as-a-service/configure-genai-playground.sh
+./stage-220-models-as-a-service/validate.sh
+```
+
+The helper:
+
+- logs in as `ai-developer` using `.env` credentials and creates a MaaS API key
+  for `rhoai-developers-gpt-5-4-mini`
+- stores the key in the project Secret
+  `demo-sandbox/genai-playground-maas-api-key`
+- patches the `LlamaStackDistribution` token environment variables to read
+  from that Secret
+- patches `llama-stack-config` so Nemotron uses the MaaS vLLM route and
+  `gpt-5.4-mini` uses the OpenAI-compatible provider route through MaaS
+- recreates the generated Llama Stack deployment when needed, because the
+  operator can fail to merge `valueFrom` Secret refs over literal placeholder
+  token values
+- validates `/v1/responses` from inside the Llama Stack pod for both models
+
+Use the model IDs reported by the Llama Stack `/v1/models` API. In the current
+demo they are provider-qualified:
+
+```text
+maas-vllm-inference-2/nemotron-3-nano-30b-a3b
+maas-openai-inference-1/gpt-5.4-mini
+```
+
+The external GPT route intentionally uses the Llama Stack `remote::openai`
+provider with the MaaS Gateway base URL. The `remote::vllm` provider sends
+`max_tokens`, while OpenAI `gpt-5.4-mini` requires `max_completion_tokens`.
+Keeping GPT on the OpenAI-compatible provider preserves MaaS governance while
+matching the provider API shape.
 
 ### Access Posture
 

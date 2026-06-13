@@ -120,6 +120,36 @@ MCP server assets come from the platform-level MCP server `ConfigMap`.
 Users can start playground testing from the AI asset endpoints page by adding a
 model to a playground or trying a model in the playground.
 
+## MaaS-Backed Playground Notes For This Demo
+
+When the RHOAI dashboard creates a project playground, it creates a project
+`LlamaStackDistribution` and a generated deployment. For MaaS-backed AI asset
+endpoints, verify that the generated Llama Stack server has a real MaaS API key
+available through a project Secret. Placeholder token values such as `fake`
+can let the playground UI load while inference calls fail with `401`
+responses from the MaaS Gateway.
+
+For this demo, store the MaaS API key in a project Secret and wire the
+`LlamaStackDistribution` environment variables to `valueFrom.secretKeyRef`.
+Do not commit the API key. If the generated deployment keeps the old literal
+placeholder values, recreate the generated deployment and let the operator
+render it from the corrected `LlamaStackDistribution`.
+
+For the local Nemotron model, keep the Llama Stack provider on the MaaS vLLM
+route. For the external OpenAI `gpt-5.4-mini` model published through MaaS,
+use the Llama Stack `remote::openai` provider with the MaaS Gateway base URL.
+The Llama Stack vLLM provider sends `max_tokens`, while `gpt-5.4-mini` expects
+`max_completion_tokens`; using `remote::openai` preserves MaaS governance while
+matching the external provider API shape.
+
+Use the model IDs returned by Llama Stack `/v1/models`. In the validated demo
+configuration they are provider-qualified IDs, for example:
+
+```text
+maas-vllm-inference-2/nemotron-3-nano-30b-a3b
+maas-openai-inference-1/gpt-5.4-mini
+```
+
 ## Configure A Playground
 
 Dashboard paths:

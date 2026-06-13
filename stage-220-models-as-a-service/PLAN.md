@@ -107,7 +107,7 @@
 - [x] `ai-admin` can administer MaaS resources and policies; `ai-developer`
   can discover and consume allowed MaaS models without direct access to the
   MaaS administration namespace.
-- [ ] Gen AI Playground can use the MaaS-published local and external models
+- [x] Gen AI Playground can use the MaaS-published local and external models
   through AI asset endpoints.
 - [ ] MaaS observability is enabled and validates subscription/request/token
   signals where the installed Technology Preview components expose them.

@@ -104,6 +104,25 @@ notes for Models-as-a-Service.
 - External OIDC users use MaaS API key management flows rather than dashboard
   flows.
 
+## Gen AI Playground Access Review
+
+- If the stage claims the Gen AI Playground experience, validate the existing
+  project `LlamaStackDistribution` and generated deployment in addition to MaaS
+  CR readiness.
+- Dashboard-created placeholder MaaS endpoint tokens are replaced by
+  Secret-backed MaaS API key references before model prompts are tested.
+- Old persistent Playground API keys are revoked or rotated when the Secret is
+  recreated.
+- The Playground Llama Stack config maps the local Nemotron model to the MaaS
+  vLLM provider and maps external OpenAI `gpt-5.4-mini` to a
+  `remote::openai` provider pointed at the MaaS Gateway base URL.
+- Registered Llama Stack model entries use the validated field
+  `provider_model_id` to preserve the external provider ID, especially when the
+  Kubernetes-safe MaaS resource alias differs from the provider model ID.
+- Validation checks Llama Stack `/v1/models` and sends `/v1/responses`
+  requests for both MaaS-backed models. Dashboard model listing alone is not
+  enough.
+
 ## Observability Review
 
 - Kuadrant observability is enabled before claiming rate-limit metrics.
@@ -141,6 +160,8 @@ RHOAI upgrades, RHCL upgrades, or MaaS troubleshooting.
   inference through the MaaS Gateway, structured tool-call output, token usage,
   external OpenAI inference through the same MaaS Gateway, token usage, and key
   revocation.
+- Validation includes the Gen AI Playground/Llama Stack response path when a
+  playground exists in the demo project.
 - Validation confirms unauthenticated inference is rejected, so model readiness
   is not mistaken for public access.
 - Validation checks that generated model auth and rate-limit policies are
@@ -211,6 +232,8 @@ Do not approve a MaaS change when:
 - the implementation bypasses MaaS for shared OpenAI `gpt-5.4-mini` demo access
   without an explicit documented exception
 - provider API keys or MaaS API keys appear in repository files
+- a claimed MaaS-backed Gen AI Playground still uses placeholder endpoint
+  tokens, stale API keys, or unvalidated Llama Stack provider mappings
 - token limits are absent from a model subscription
 - preview features are described as generally available
 - external provider limits are ignored in capacity planning

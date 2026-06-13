@@ -60,7 +60,7 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 | Item | Priority | Notes |
 |------|----------|-------|
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 220 MaaS owns governed shared API access |
-| Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini` provider routing through DNS-safe `gpt-5-4-mini` MaaS resources, combined subscription/auth policy, and API-key-backed Nemotron inference are authored against live schemas. Live functional validation on 2026-06-12 passed all non-Argo-rename checks. |
+| Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini` provider routing through DNS-safe `gpt-5-4-mini` MaaS resources, combined subscription/auth policy, API-key-backed inference, and Gen AI Playground MaaS consumption are authored against live schemas. Full validation on 2026-06-13 passed 62/62 checks on cluster-klvxt. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
 
 ## Stage 220: Status — VALIDATED
@@ -70,18 +70,19 @@ Stage 220 GitOps creates the MaaS prerequisite stack, local Nemotron
 resources, combined subscription/auth policy, and `rhods-admins` namespace
 administration.
 
-Deployed and validated 2026-06-12 on cluster-klvxt after migrating the direct
+Deployed and validated 2026-06-13 on cluster-klvxt after migrating the direct
 `demo-sandbox` Nemotron deployment into `models-as-a-service`. Validation
 confirmed `rhcl-operator.v1.3.3`, MaaS CRDs, local Nemotron readiness,
 external OpenAI registration, subscription/auth policy, generated Kuadrant
-policy filters, dashboard AI asset endpoint discovery, and Gateway
-subscription discovery for real demo users.
+policy filters, dashboard AI asset endpoint discovery, Gateway subscription
+discovery for real demo users, MaaS API key lifecycle, Nemotron and external
+OpenAI inference, and Gen AI Playground responses for both models.
 
 ### Open / deferred from Stage 220
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron through the MaaS Gateway, verifies structured tool-call output, and checks token usage. |
+| API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output where applicable, checks token usage, and validates Gen AI Playground responses. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
 ## Candidate Future Stages

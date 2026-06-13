@@ -28,6 +28,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
 | Access policy | Users need both `MaaSSubscription` quota and `MaaSAuthPolicy` gateway authorization before model access is claimed |
 | Developer access | `ai-developer` does not get direct namespace access to `models-as-a-service`; the user path is AI asset endpoints, MaaS API keys, and OpenAI-compatible MaaS endpoints |
 | Admin access | `ai-admin` maps to `rhods-admins` and can administer the MaaS namespace and MaaS dashboard policy surfaces |
+| Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`, Secret-backed MaaS API key, Nemotron through `remote::vllm`, external `gpt-5.4-mini` through `remote::openai` pointed at the MaaS Gateway |
 
 ## Design Decisions
 
@@ -58,6 +59,10 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
   not patch generated `AuthPolicy`, `TokenRateLimitPolicy`, or `EnvoyFilter`
   resources unless official Red Hat documentation or support guidance requires
   that exact change.
+- Treat dashboard-created Gen AI Playground resources as product-generated
+  project resources that still need validation. MaaS CR readiness, dashboard
+  model listing, and direct MaaS inference do not prove the Llama Stack
+  playground can use the models.
 - Pin RHCL until the end-to-end RHOAI/RHCL/Gateway path is validated on a
   newer CSV. Automatic operator upgrades are normal for many demo components,
   but MaaS Gateway policy generation is a compatibility boundary.
@@ -87,6 +92,28 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
 - Raw OpenShift OAuth tokens are not the inference credential. They can be valid
   for discovery paths such as `/v1/models`, but `/v1/chat/completions` must use
   a MaaS API key for this demo policy.
+- Dashboard-created Gen AI Playground Llama Stack deployments can contain
+  placeholder MaaS tokens such as `fake`. That can make the UI load while model
+  prompts receive `401 Unauthorized` from the MaaS Gateway. Bind the
+  `LlamaStackDistribution` token env vars to a project Secret that contains a
+  real MaaS API key, then validate `/v1/responses` from inside the Llama Stack
+  pod.
+- The Llama Stack operator can fail to merge `valueFrom` Secret refs over
+  existing literal placeholder env values in the generated deployment. If the
+  `LlamaStackDistribution` is correct but the deployment still has literal
+  token values, delete the generated deployment and let the operator recreate
+  it from the corrected spec.
+- Llama Stack registered model entries use `provider_model_id` for the provider
+  target model ID in the validated RHOAI 3.4 demo environment. Do not use
+  guessed fields such as `provider_resource_id` without checking the installed
+  schema or product code path.
+- For external `gpt-5.4-mini` through MaaS, the Llama Stack `remote::vllm`
+  provider sends `max_tokens` and fails against the OpenAI provider. Use
+  `remote::openai` with the MaaS Gateway base URL so governance remains MaaS
+  controlled while the client payload matches OpenAI's expected shape.
+- Llama Stack `/v1/models` can expose provider-qualified model IDs such as
+  `maas-openai-inference-1/gpt-5.4-mini`; use those IDs in Playground
+  `/v1/responses` checks.
 - External OpenAI requests for `gpt-5.4-mini` must use
   `max_completion_tokens`; `max_tokens` produces an OpenAI provider error even
   when MaaS routing, credential lookup, and policy enforcement are healthy.
@@ -170,6 +197,9 @@ Before declaring MaaS ready in a new or upgraded environment:
      `sk-oai-*` key, including structured tool-call output and token usage.
    - External OpenAI `/v1/chat/completions` through the MaaS Gateway with the
      same temporary `sk-oai-*` key, `max_completion_tokens`, and token usage.
+   - If a Gen AI Playground exists, Secret-backed Llama Stack MaaS tokens,
+     provider/model mapping for Nemotron and external GPT, Llama Stack
+     `/v1/models` discovery, and `/v1/responses` completions for both models.
    - Unauthenticated Nemotron inference returns `401`.
    - Temporary MaaS API key revocation.
    - An unauthorized subject receives a controlled denial.
