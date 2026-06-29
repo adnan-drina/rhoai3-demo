@@ -21,7 +21,7 @@ Enterprise AI has moved past experimentation. Business leaders are no longer ask
 
 ## What Enables It
 
-This stage deploys the three-layer foundation that all subsequent demo stages build on.
+This stage deploys the platform foundation that all subsequent demo stages build on.
 
 ### OpenShift GitOps (Argo CD)
 
@@ -41,14 +41,25 @@ MCG-only deployment provides S3-compatible object storage for RHOAI workloads. T
 - **Storage class provisioner:** `openshift-storage.noobaa.io/obc` (for `ObjectBucketClaim`)
 - **Docs:** [ODF 4.20 on AWS](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_using_amazon_web_services/index)
 
+### OpenShift Observability Prerequisites
+
+The RHOAI observability dashboard is a Technology Preview capability. The RHOAI documentation enables it in two steps: first install the required OpenShift observability operators and enable `DSCInitialization.spec.monitoring`, then expose the dashboard menu through `OdhDashboardConfig`. Stage 110 installs the prerequisite operators so the dashboard is backed by real monitoring services instead of a visible but unavailable menu.
+
+- **Operator:** Cluster Observability Operator (`openshift-cluster-observability-operator`)
+- **Operator:** Red Hat build of OpenTelemetry (`openshift-opentelemetry-operator`)
+- **Operator:** Red Hat OpenShift distributed tracing platform / Tempo Operator (`openshift-tempo-operator`)
+- **Channel:** `stable` for all three prerequisite operators
+- **RHOAI stack namespace:** `redhat-ods-monitoring`
+- **Docs:** [RHOAI 3.4 Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai)
+
 ### Red Hat OpenShift AI Self-Managed
 
-The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and monitoring. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. Stage 110 creates the shared `DataScienceCluster` in a base-ready state. Later stages enable their own RHOAI component deltas through GitOps hook jobs so a fresh environment can validate one stage at a time.
+The RHOAI operator installs the AI platform control plane. `DSCInitialization` configures shared namespaces and the observability stack after the prerequisite observability operators are present. `DataScienceCluster` enables the Dashboard and Workbenches for interactive exploration, plus the Model Registry as the governed metadata store between experimentation and serving. Stage 110 creates the shared `DataScienceCluster` in a base-ready state. Later stages enable their own RHOAI component deltas through GitOps hook jobs so a fresh environment can validate one stage at a time.
 
 - **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
 - **Channel:** `stable-3.4`
 - **API version:** `DataScienceCluster` pinned to `v2` (the served storage version that declares the 3.4 component schema)
-- **DSCI:** predefined namespaces, monitoring managed
+- **DSCI:** predefined namespaces, monitoring managed in `redhat-ods-monitoring`
 - **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`). Kueue, KServe, MaaS, and Llama Stack are removed until their dedicated stages enable them.
 - **Model Registry database:** the registry instance is created day-2 from the dashboard using the default PostgreSQL (non-production); see `docs/OPERATIONS.md`
 - **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)
@@ -101,8 +112,9 @@ The base platform ships ready for a user to log in and start working. An htpassw
 New in this stage
   OpenShift GitOps operator + ArgoCD instance
   ODF operator + Multicloud Object Gateway (NooBaa)
+  OpenShift observability prerequisite operators
   RHOAI operator + DSCInitialization + DataScienceCluster (dashboard,
-    workbenches, model registry, shared Kueue integration)
+    workbenches, model registry, observability, shared Kueue integration)
   htpasswd IdP + ai-admin / ai-developer
   demo-sandbox project + S3 connection (OBC-backed)
 
@@ -127,6 +139,10 @@ Extended by later stages
 |--------|------|
 | [RHOAI 3.4 install guide](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install) | Operator, DSCI, DSC CR fields |
 | [ODF 4.20 on AWS](https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/html-single/deploying_openshift_data_foundation_using_amazon_web_services/index) | MCG standalone deployment |
+| [RHOAI 3.4 Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai) | Observability stack prerequisites, DSCI monitoring, dashboard flag |
+| [OCP 4.20 Observability](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/observability_overview/index) | OpenShift observability component boundary |
+| [Red Hat build of OpenTelemetry 3.9](https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9) | OpenTelemetry Operator prerequisite |
+| [Red Hat OpenShift distributed tracing platform 3.9](https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9) | Tempo Operator prerequisite |
 | [OCP 4.20 GitOps](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/gitops/index) | OpenShift GitOps operator |
 | [Red Hat AI 3.4 blog](https://www.redhat.com/en/blog/inference-agentic-ai-scaling-enterprise-foundation-red-hat-ai-34) | Enterprise AI value framing |
 | [AI-centricity Part 1](https://www.redhat.com/en/blog/our-journey-ai-centricity-part-1-building-stable-foundation) | Infrastructure-first narrative |

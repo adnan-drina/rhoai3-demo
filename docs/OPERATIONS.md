@@ -7,7 +7,8 @@ Active operations guidance for the reimplementation.
 The active implementation follows this sequence:
 
 1. `stage-110-rhoai-base-platform` - GitOps, ODF MCG, RHOAI base platform,
-   model registry, access personas, and shared DSC ownership.
+   RHOAI observability prerequisites, model registry, access personas, and
+   shared DSC ownership.
 2. `stage-120-gpu-as-a-service` - GPU worker capacity, NVIDIA GPU enablement,
    Kueue quotas, and RHOAI hardware profiles.
 3. `stage-210-model-serving-foundation` - enable the standard KServe model
@@ -31,13 +32,25 @@ The active implementation follows this sequence:
    - Applies `gitops/bootstrap/overlays/operator` to install the OpenShift GitOps operator on the baseline-pinned channel (`gitops-1.20`). Do not apply `gitops/bootstrap/base` directly — its channel is a placeholder patched by the overlay.
    - Waits for the `openshift-gitops-operator` CSV to reach `Succeeded` and for the ArgoCD instance to become Available.
    - Applies `gitops/bootstrap/overlays/demo` (ArgoCD instance config for annotation resource tracking + the `rhoai-demo` AppProject), which depend on CRDs the operator installs.
-   - Creates the `stage-110-rhoai-base-platform` Argo CD Application, which then reconciles ODF and RHOAI.
+   - Creates the `stage-110-rhoai-base-platform` Argo CD Application, which then reconciles ODF, OpenShift observability prerequisite operators, and RHOAI.
 3. Run `stage-110-rhoai-base-platform/validate.sh` to confirm all components are healthy.
 4. Run `stage-110-rhoai-base-platform/setup-access.sh` to configure platform access (htpasswd users, RHOAI admin, and the `demo-sandbox` S3 connection). This is a separate script because it modifies cluster authentication and depends on the GitOps-provisioned `ObjectBucketClaim`. See **Platform Access** below.
 
 ### Channel Verification
 
 GitOps operator channel is pinned to `gitops-1.20` in `gitops/bootstrap/overlays/operator/patch-channel.yaml`. Verified 2026-06-11 against OCP 4.20.24 on cluster-klvxt — no change needed before deploy.
+
+Stage 110 also installs the RHOAI observability prerequisite operators from
+`redhat-operators` on the `stable` channel:
+
+- `cluster-observability-operator` in `openshift-cluster-observability-operator`
+- `opentelemetry-product` in `openshift-opentelemetry-operator`
+- `tempo-product` in `openshift-tempo-operator`
+
+The package/channel selection was verified from the active cluster catalog on
+the OCP 4.20 / RHOAI 3.4 baseline. These operators must be available before
+the RHOAI `DSCInitialization.spec.monitoring` stack can create the backing
+services for **Observe & monitor -> Dashboard**.
 
 ### Accessing Argo CD
 
@@ -74,6 +87,31 @@ The NooBaa admin credentials are in the `noobaa-admin` secret in `openshift-stor
 ```bash
 oc get route rhods-dashboard -n redhat-ods-applications \
   -o jsonpath='{.spec.host}'
+```
+
+### RHOAI Observability Dashboard
+
+RHOAI 3.4 treats the Observability dashboard as Technology Preview. Stage 110
+enables the documented sequence:
+
+1. Install Cluster Observability Operator, Red Hat build of OpenTelemetry, and
+   Tempo Operator.
+2. Configure `DSCInitialization.spec.monitoring.managementState=Managed` and
+   `spec.monitoring.namespace=redhat-ods-monitoring`.
+3. Set
+   `OdhDashboardConfig.spec.dashboardConfig.observabilityDashboard=true`.
+
+Validate the backing stack before relying on the UI:
+
+```bash
+oc get subscription -n openshift-cluster-observability-operator cluster-observability-operator
+oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
+oc get subscription -n openshift-tempo-operator tempo-product
+oc get pods -n redhat-ods-monitoring
+oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{"\n"}'
+oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+  -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
 ```
 
 ### Model Registry

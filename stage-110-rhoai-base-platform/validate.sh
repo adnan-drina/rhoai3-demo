@@ -42,6 +42,19 @@ check() {
   fi
 }
 
+csv_phase_from_subscription() {
+  local namespace="$1" subscription="$2"
+  local installed_csv
+  installed_csv=$(oc get subscription "$subscription" -n "$namespace" \
+    -o jsonpath='{.status.installedCSV}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+  if [[ -z "$installed_csv" ]]; then
+    echo ""
+    return
+  fi
+  oc get csv "$installed_csv" -n "$namespace" \
+    -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo ""
+}
+
 # ── 1. OpenShift GitOps operator ─────────────────────────────────────────────
 GITOPS_CSV=$(oc get csv -n openshift-operators \
   -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift GitOps")].status.phase}' \
@@ -85,26 +98,60 @@ RHOAI_CSV=$(oc get csv -n redhat-ods-operator \
 [[ "$RHOAI_CSV" == "Succeeded" ]] && R="pass" || R="phase=${RHOAI_CSV:-not found}"
 check "RHOAI operator CSV Succeeded" "$R"
 
-# ── 7. DSCInitialization Ready ────────────────────────────────────────────────
+# ── 7. RHOAI observability prerequisite operators ────────────────────────────
+COO_CSV=$(csv_phase_from_subscription openshift-cluster-observability-operator cluster-observability-operator)
+[[ "$COO_CSV" == "Succeeded" ]] && R="pass" || R="phase=${COO_CSV:-not found}"
+check "Cluster Observability Operator CSV Succeeded" "$R"
+
+OTEL_CSV=$(csv_phase_from_subscription openshift-opentelemetry-operator opentelemetry-product)
+[[ "$OTEL_CSV" == "Succeeded" ]] && R="pass" || R="phase=${OTEL_CSV:-not found}"
+check "Red Hat build of OpenTelemetry Operator CSV Succeeded" "$R"
+
+TEMPO_CSV=$(csv_phase_from_subscription openshift-tempo-operator tempo-product)
+[[ "$TEMPO_CSV" == "Succeeded" ]] && R="pass" || R="phase=${TEMPO_CSV:-not found}"
+check "Tempo Operator CSV Succeeded" "$R"
+
+# ── 8. DSCInitialization Ready ────────────────────────────────────────────────
 DSCI_PHASE=$(oc get dscinitialization default-dsci \
   -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DSCI_PHASE" == "Ready" ]] && R="pass" || R="phase=${DSCI_PHASE:-not found}"
 check "DSCInitialization phase Ready" "$R"
 
-# ── 8. DataScienceCluster Ready ───────────────────────────────────────────────
+# ── 9. RHOAI observability stack and dashboard flag ──────────────────────────
+OBS_MGMT=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.managementState}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_NS=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.namespace}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_MGMT" == "Managed" && "$OBS_NS" == "redhat-ods-monitoring" ]] \
+  && R="pass" || R="managementState=${OBS_MGMT:-missing} namespace=${OBS_NS:-missing}"
+check "RHOAI observability stack configured in DSCInitialization" "$R"
+
+OBS_DASHBOARD=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+  -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_DASHBOARD" == "true" ]] && R="pass" || R="observabilityDashboard=${OBS_DASHBOARD:-missing}"
+check "RHOAI Observability dashboard menu enabled" "$R"
+
+OBS_PODS=$(oc get pods -n redhat-ods-monitoring --no-headers \
+  --insecure-skip-tls-verify=true 2>/dev/null \
+  | grep -E 'alertmanager-data-science-monitoringstack|data-science-collector|prometheus-data-science-monitoringstack|tempo-data-science|thanos-querier-data-science' \
+  | wc -l | tr -d ' ')
+[[ "${OBS_PODS:-0}" -ge 3 ]] && R="pass" || R="matchingPods=${OBS_PODS:-0}"
+check "RHOAI observability stack pods present" "$R"
+
+# ── 10. DataScienceCluster Ready ──────────────────────────────────────────────
 DSC_PHASE=$(oc get datasciencecluster default-dsc \
   -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DSC_PHASE" == "Ready" ]] && R="pass" || R="phase=${DSC_PHASE:-not found}"
 check "DataScienceCluster phase Ready" "$R"
 
-# ── 9. Model Registry operator running ───────────────────────────────────────
+# ── 11. Model Registry operator running ──────────────────────────────────────
 MR_READY=$(oc get deployment model-registry-operator-controller-manager \
   -n redhat-ods-applications \
   -o jsonpath='{.status.readyReplicas}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "${MR_READY:-0}" -ge 1 ]] && R="pass" || R="readyReplicas=${MR_READY:-0}"
 check "Model Registry operator running" "$R"
 
-# ── 10. RHOAI Dashboard route responds ───────────────────────────────────────
+# ── 12. RHOAI Dashboard route responds ───────────────────────────────────────
 DASHBOARD_HOST=$(oc get route rhods-dashboard -n redhat-ods-applications \
   -o jsonpath='{.spec.host}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 if [[ -n "$DASHBOARD_HOST" ]]; then
@@ -115,37 +162,37 @@ else
   check "RHOAI Dashboard route reachable" "route not found"
 fi
 
-# ── 11. htpasswd identity provider configured ────────────────────────────────
+# ── 13. htpasswd identity provider configured ────────────────────────────────
 IDP=$(oc get oauth cluster \
   -o jsonpath='{.spec.identityProviders[*].name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$IDP" == *"demo-htpasswd"* ]] && R="pass" || R="idps=${IDP:-none}"
 check "htpasswd identity provider configured" "$R"
 
-# ── 12. ai-admin is a RHOAI administrator ────────────────────────────────────
+# ── 14. ai-admin is a RHOAI administrator ────────────────────────────────────
 ADMINS=$(oc get group rhods-admins \
   -o jsonpath='{.users}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$ADMINS" == *"ai-admin"* ]] && R="pass" || R="rhods-admins=${ADMINS:-empty}"
 check "ai-admin in rhods-admins (RHOAI admin)" "$R"
 
-# ── 13. demo-sandbox data science project exists ─────────────────────────────
+# ── 15. demo-sandbox data science project exists ─────────────────────────────
 DS_LABEL=$(oc get namespace demo-sandbox \
   -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$DS_LABEL" == "true" ]] && R="pass" || R="dashboard-label=${DS_LABEL:-missing}"
 check "demo-sandbox data science project present" "$R"
 
-# ── 14. demo-sandbox object bucket bound ─────────────────────────────────────
+# ── 16. demo-sandbox object bucket bound ─────────────────────────────────────
 OBC_PHASE=$(oc get obc demo-sandbox-bucket -n demo-sandbox \
   -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$OBC_PHASE" == "Bound" ]] && R="pass" || R="phase=${OBC_PHASE:-not found}"
 check "demo-sandbox ObjectBucketClaim Bound" "$R"
 
-# ── 15. demo-sandbox S3 connection present ───────────────────────────────────
+# ── 17. demo-sandbox S3 connection present ───────────────────────────────────
 CONN_LABEL=$(oc get secret demo-sandbox-s3 -n demo-sandbox \
   -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$CONN_LABEL" == "true" ]] && R="pass" || R="connection=${CONN_LABEL:-missing}"
 check "demo-sandbox S3 connection present" "$R"
 
-# ── 16. RHOAI admins can manage demo-sandbox ─────────────────────────────────
+# ── 18. RHOAI admins can manage demo-sandbox ─────────────────────────────────
 ADMIN_RB=$(oc get rolebinding rhods-admins-admin -n demo-sandbox \
   -o jsonpath='{.roleRef.name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$ADMIN_RB" == "admin" ]] && R="pass" || R="rolebinding=${ADMIN_RB:-missing}"

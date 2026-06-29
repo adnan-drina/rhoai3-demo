@@ -75,6 +75,32 @@ oc get application stage-110-rhoai-base-platform -n openshift-gitops \
   `metadata.annotations.kubeflow-resource-stopped` with a timestamp; its RWO PVC
   persists. Start it again from the dashboard.
 
+### Observability dashboard shows Service Unavailable
+
+- **Symptom:** the RHOAI dashboard shows **Observe & monitor -> Dashboard**, but
+  the page reports `Error loading components` or `Service Unavailable`.
+- **Likely cause:** `OdhDashboardConfig.spec.dashboardConfig.observabilityDashboard`
+  is enabled but the backing RHOAI observability stack in
+  `redhat-ods-monitoring` did not deploy. On RHOAI 3.4, the documented
+  prerequisites are Cluster Observability Operator, Red Hat build of
+  OpenTelemetry, and Tempo Operator.
+- **Checks:**
+
+```bash
+oc get subscription -n openshift-cluster-observability-operator cluster-observability-operator
+oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
+oc get subscription -n openshift-tempo-operator tempo-product
+oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.status.phase}{"\n"}'
+oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
+  -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
+oc get pods,svc,route -n redhat-ods-monitoring
+```
+
+- **Fix:** reconcile Stage 110 from current Git. Stage 110 owns the three
+  prerequisite operator Subscriptions, `DSCInitialization.spec.monitoring`, and
+  the dashboard flag. Do not enable the dashboard flag by itself.
+
 ## Stage 120: GPU-as-a-Service
 
 ### Stage 120 Application is OutOfSync
