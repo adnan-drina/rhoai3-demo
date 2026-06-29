@@ -93,8 +93,8 @@
 - [x] Live CRD/schema checks are completed after MaaS prerequisites are
   installed.
 - [x] MaaS prerequisites are installed and healthy through GitOps.
-- [x] The shared Stage 110 `DataScienceCluster` owner remains the only DSC
-  owner; Stage 220 adds a focused MaaS patch through that owner.
+- [x] Stage 110 remains the base `DataScienceCluster` owner; Stage 220 patches
+  only the MaaS and Llama Stack component fields through a GitOps hook.
 - [x] Local Nemotron is published through a schema-verified MaaS model
   reference.
 - [x] External OpenAI `gpt-5.4-mini` GitOps resources are published through an
@@ -208,8 +208,8 @@ Phase-one deploy and validation commands:
 
 - Shared RHOAI owner: `stage-110-rhoai-base-platform` continues to own the
   single `DataScienceCluster`.
-- Stage 220 should add focused shared-owner patches for MaaS component
-  enablement and dashboard feature flags.
+- Stage 220 should add a focused GitOps hook for MaaS component enablement
+  instead of rendering a second `DataScienceCluster`.
 - Stage 220 should own its independent prerequisites and policy resources under
   `gitops/stage-220-models-as-a-service/` unless an operator or global platform
   component clearly belongs to an existing shared owner.

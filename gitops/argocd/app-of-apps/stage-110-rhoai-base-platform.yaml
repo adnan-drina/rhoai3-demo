@@ -34,3 +34,14 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+    # Stage 110 creates the shared DSC. Later stages enable these component
+    # fields with GitOps hook jobs so the base platform can validate cleanly
+    # before GPU, model serving, and MaaS stages are deployed.
+    - group: datasciencecluster.opendatahub.io
+      kind: DataScienceCluster
+      name: default-dsc
+      jsonPointers:
+        - /spec/components/kueue
+        - /spec/components/kserve
+        - /spec/components/llamastackoperator

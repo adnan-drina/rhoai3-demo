@@ -95,7 +95,7 @@
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/operator-group.yaml` | OperatorGroup | RHOAI 3.4 install guide | `oc get operatorgroup -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/subscription.yaml` | Subscription (rhods-operator) | RHOAI 3.4 install guide | `oc get csv -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/dsc-init.yaml` | DSCInitialization | RHOAI 3.4 Managing RHOAI docs | `oc get dscinitialization default-dsci` |
-| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed, kueue Unmanaged, kserve Removed) | RHOAI 3.4 Managing RHOAI + Model registry + Kueue docs | `oc get datasciencecluster default-dsc` |
+| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed; later-stage components Removed) | RHOAI 3.4 Managing RHOAI + Model registry docs | `oc get datasciencecluster default-dsc` |
 | `gitops/stage-110-rhoai-base-platform/access/base/namespace-demo-sandbox.yaml` | Namespace (DS project) | rhoai-project-workflows | `oc get ns demo-sandbox -o jsonpath='{.metadata.labels}'` |
 | `gitops/stage-110-rhoai-base-platform/access/base/group-rhoai-developers.yaml` | Group | rhoai-users-groups-access | `oc get group rhoai-developers` |
 | `gitops/stage-110-rhoai-base-platform/access/base/rolebinding-developer-edit.yaml` | RoleBinding (edit) | rhoai-project-workflows | `oc get rolebinding rhoai-developers-edit -n demo-sandbox` |
@@ -146,7 +146,7 @@
 | ODF StorageSystem MCG-only CR fields | resolved | ODF 4.20 removed the `odf.openshift.io` StorageSystem CRD; replaced with `StorageCluster` (`ocs.openshift.io/v1`) + `multiCloudGateway.reconcileStrategy: standalone`, verified against live CRD |
 | GPU-as-a-Service | implemented separately | Stage `stage-120-gpu-as-a-service` (NFD + GPU Operator + AWS GPU MachineSet + Kueue queues + hardware profiles) |
 | Identity provider / access groups | deferred | Future stage in 1xx family |
-| RHOAI component enablement (kserve, kueue, ray, etc.) | deferred | Each component added by its dedicated 2xx/4xx stage via DSC patch |
+| RHOAI component enablement (kueue, kserve, MaaS, ray, etc.) | deferred | Each component added by its dedicated stage through a GitOps hook patch; Stage 110 ignores those DSC component fields to avoid self-healing later-stage state |
 | ODF full StorageCluster | deferred | Added only if a future stage needs block/file storage |
 
 ## Review Log

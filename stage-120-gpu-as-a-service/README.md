@@ -72,9 +72,9 @@ isolation.
 
 ### Queue-Based GPU Governance
 
-Red Hat build of Kueue provides admission control and quota. RHOAI integrates
-with the standalone Kueue operator through the Stage 110-owned
-`DataScienceCluster` by setting `kueue.managementState: Unmanaged`. The GPU
+Red Hat build of Kueue provides admission control and quota. This stage enables
+RHOAI integration with the standalone Kueue operator by patching the shared
+`DataScienceCluster` to `kueue.managementState: Unmanaged`. The GPU
 `ResourceFlavor` uses the verified GPU node label and GPU-only taint, so users
 do not need to know node placement details.
 

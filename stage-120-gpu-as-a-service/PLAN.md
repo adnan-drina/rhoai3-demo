@@ -14,9 +14,9 @@
 - Depends on: `stage-110-rhoai-base-platform`
 - New components: Red Hat build of Kueue operator, NFD operator, NVIDIA GPU
   Operator, AWS GPU MachineSet, Kueue quota objects, RHOAI hardware profiles.
-- Existing shared components touched: the Stage 110-owned `DataScienceCluster`
-  keeps `kueue.managementState: Unmanaged` so RHOAI integrates with the
-  standalone Kueue operator.
+- Existing shared components touched: Stage 120 patches the shared
+  `DataScienceCluster` to `kueue.managementState: Unmanaged` so RHOAI
+  integrates with the standalone Kueue operator.
 - Non-goals:
   - model serving or KServe enablement; deferred to
     `stage-210-model-serving-foundation`
@@ -77,7 +77,7 @@ stage demonstrates governed admission and reservation, not preemption.
 - [ ] GPU node reports at least four allocatable `nvidia.com/gpu` units.
 - [ ] NFD, NVIDIA GPU Operator, and Kueue operator CSVs are `Succeeded`.
 - [ ] NVIDIA `ClusterPolicy` reports `ready`.
-- [ ] Stage 110-owned `DataScienceCluster` has `kueue: Unmanaged`; `kserve`
+- [ ] Shared `DataScienceCluster` has `kueue: Unmanaged`; `kserve`
   is `Removed` before Stage 210 and may become `Managed` after Stage 210.
 - [ ] Four ClusterQueues and four LocalQueues are `Active`.
 - [ ] Four RHOAI hardware profiles exist and are visible to users.
@@ -124,9 +124,9 @@ stage demonstrates governed admission and reservation, not preemption.
   - Kueue ResourceFlavor, ClusterQueue, LocalQueue, WorkloadPriorityClass
   - RHOAI HardwareProfile resources
 - Shared resources:
-  - Stage 110 owns the single rendered `DataScienceCluster`; Stage 120 depends
-    on its `kueue: Unmanaged` configuration and does not render a competing
-    DSC.
+  - Stage 110 creates the single `DataScienceCluster`; Stage 120 patches only
+    the Kueue component field through a GitOps hook and does not render a
+    competing DSC.
 - Intentional drift:
   - The Argo CD Application ignores MachineSet `/spec/replicas` so operators can
     manually scale GPU nodes down to zero.

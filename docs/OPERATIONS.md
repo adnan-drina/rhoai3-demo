@@ -150,7 +150,7 @@ Using `demo-sandbox`: log in as `ai-developer`, open the project in the RHOAI da
 
 ### Adding RHOAI Components (Later Stages)
 
-The `DataScienceCluster` at `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` is the single owned copy. Later stages must add components via Kustomize patches or Components targeting this resource, not by creating a second `DataScienceCluster`. See `project-gitops-authoring` and `rhoai-dsci-dsc-configuration`.
+The `DataScienceCluster` at `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` is the base shared copy. Later stages must not render a second `DataScienceCluster`; they enable only their component deltas through GitOps hook jobs that patch the shared DSC. The Stage 110 Argo CD Application ignores those component fields so it does not self-heal later-stage state back to the base. See `project-gitops-authoring` and `rhoai-dsci-dsc-configuration`.
 
 ## Stage 120: GPU-as-a-Service
 
@@ -258,24 +258,25 @@ healthy.
 
 Stage 210 has two GitOps ownership surfaces:
 
-- `stage-110-rhoai-base-platform` owns the single RHOAI
-  `DataScienceCluster`, including the KServe model-serving patch, and the
-  GitOps-managed `demo-registry`.
+- `stage-110-rhoai-base-platform` owns the base RHOAI `DataScienceCluster` and
+  the GitOps-managed `demo-registry`.
+- `stage-210-model-serving-foundation` patches the shared `DataScienceCluster`
+  KServe component through a GitOps hook.
 - `stage-210-model-serving-foundation` owns observability resources:
   OpenShift user workload monitoring configuration, Grafana Operator, Grafana
   instance, Prometheus datasource, and the vLLM model-serving dashboard.
 
 Do not create a second `DataScienceCluster` for Stage 210. In Argo CD, inspect
-the Stage 110 Application for KServe/DSC state and the Stage 210 Application
-for observability state.
+the Stage 210 Application hook for KServe enablement and the Stage 110
+Application for base DSC ownership.
 
 ### Idempotent Nemotron Deployment
 
 `stage-210-model-serving-foundation/deploy.sh` is safe to run after manual
 dashboard validation or in a fresh environment. It follows this order:
 
-1. Apply and refresh the shared Stage 110 Application.
-2. Wait for KServe and `demo-registry`.
+1. Apply and refresh the Stage 210 Application.
+2. Wait for its DSC KServe hook, KServe, and `demo-registry`.
 3. Reuse existing Nemotron registry metadata when present.
 4. Create missing Nemotron registered model, version, and OCI artifact metadata
    through the Model Registry REST API.
@@ -548,9 +549,9 @@ after prerequisites and DSC feature flags are healthy.
    - Deletes a stale direct Nemotron `InferenceService` or
      `LLMInferenceService` from `demo-sandbox` when present. The MaaS-owned
      backend is recreated by GitOps in `models-as-a-service`.
-   - Applies the shared Stage 110 Application so the single
-     `DataScienceCluster` owner enables `kserve.modelsAsService` and
-     `llamastackoperator`.
+   - Applies the Stage 220 Application so its GitOps hook enables
+     `kserve.modelsAsService` and `llamastackoperator` on the shared
+     `DataScienceCluster`.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
    - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.3` with manual

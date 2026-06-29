@@ -44,6 +44,13 @@
   workers. The current demo default is one replica. GPU nodes should be labeled
   for GPU infrastructure, tainted `nvidia-gpu-only:NoSchedule`, and expected to
   advertise four time-sliced `nvidia.com/gpu` units.
+- **Shared DSC stage boundaries**: Stage 110 creates the base
+  `DataScienceCluster` only. Later stages enable their component deltas with
+  GitOps hook jobs: Stage 120 patches `kueue: Unmanaged`, Stage 210 patches
+  `kserve: Managed`, and Stage 220 patches `kserve.modelsAsService` plus
+  `llamastackoperator`. Do not add future-stage DSC patches directly to the
+  Stage 110 Kustomize overlay; a fresh environment will fail Stage 110
+  readiness before the later-stage prerequisites exist.
 - **Stage 210**: Private model serving should use `nemotron-3-nano-30b-a3b`
   from `oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0`
   through RHOAI model serving and vLLM. Validation may deploy Nemotron
@@ -123,6 +130,11 @@ The canonical ArgoCD Application standards (syncPolicy, ignoreDifferences, AppPr
 14. **S3 upload must complete before ISVC creation** — KServe's `storage-initializer` lists S3 once at pod startup. If the upload job is still running, it gets a partial file list and vLLM crashes with "Invalid repository ID." deploy.sh (step-05) now runs the upload job and waits for completion before applying the ArgoCD Application.
 15. **Step 11 face-recognition artifact rollback** — Model Registry versions currently point at the same mutable serving URI (`s3://models/face-recognition/`). If the latest promoted model regresses, verify the served object SHA in MinIO and restore a retained KFP training artifact by hash instead of assuming registry version metadata is an immutable artifact pointer.
 16. **KServe webhook availability during registry outages** — If `oc patch` or pod admission fails with `no endpoints available for service "kserve-webhook-server-service"`, check `kserve-controller-manager` in `redhat-ods-applications`. During registry.redhat.io 502/504 incidents, pinning the controller to a node with the cached image, and using `imagePullPolicy: IfNotPresent` where the operator does not immediately reconcile it, can restore the webhook. Make the final fix through GitOps/operator state once the registry is healthy.
+17. **Fresh Stage 110 DSC readiness leak** — If Stage 110 `validate.sh` fails
+with `DataScienceCluster phase Ready (phase=Not Ready)` and DSC conditions name
+later-stage components such as `kueue` or `modelsasservice`, Stage 110 is
+rendering later-stage component state too early. Move that component enablement
+to the owning stage's GitOps hook and keep Stage 110 base-ready.
 
 ## Vector Store Persistence (pgvector)
 

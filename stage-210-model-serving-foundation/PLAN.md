@@ -40,7 +40,8 @@
   not API authority.
 - [x] GitOps ownership model is explicit: Stage 110 remains the sole
   `DataScienceCluster` owner.
-- [x] The Stage 110 RHOAI overlay renders with a focused Stage 210 KServe patch.
+- [x] Stage 210 carries a focused GitOps hook that patches the shared DSC
+  KServe component.
 - [x] Deploy script applies the shared owner Application and triggers Argo CD
   reconciliation.
 - [x] Validate script proves the model serving platform is enabled, vLLM is
@@ -132,8 +133,9 @@
 - Argo CD sync or ordering requirements:
   - Stage 110 must be installed and healthy first.
   - Stage 120 should be healthy before deploying a GPU model.
-  - Stage 210 patches the Stage 110 RHOAI aggregate overlay; no separate
-    Argo CD Application owns the DSC.
+  - Stage 210 patches only the KServe component on the shared
+    `DataScienceCluster` through a GitOps hook; no separate Argo CD
+    Application owns the DSC.
   - Stage 210 also applies its own Argo CD Application for user workload
     monitoring, Grafana, datasource, and dashboards.
   - Argo CD console visibility is split: KServe/DSC in
@@ -151,7 +153,7 @@
 
 | File | Kind | Source authority | Validation |
 |------|------|------------------|------------|
-| `gitops/stage-110-rhoai-base-platform/rhoai/aggregate/overlays/demo/patch-datasciencecluster-kserve.yaml` | `DataScienceCluster` patch | RHOAI 3.4 docs plus live `oc explain` for v2 schema | `kustomize build gitops/stage-110-rhoai-base-platform`; `oc get datasciencecluster default-dsc` after sync |
+| `gitops/stage-210-model-serving-foundation/rhoai-dsc/base/patch-dsc-kserve.yaml` | GitOps hook that patches `DataScienceCluster` KServe state | RHOAI 3.4 docs plus live `oc explain` for v2 schema | `kustomize build gitops/stage-210-model-serving-foundation`; `oc get datasciencecluster default-dsc` after sync |
 | `gitops/stage-110-rhoai-base-platform/rhoai/registry/base/modelregistry-demo.yaml` | `ModelRegistry` | RHOAI 3.4 managing model registries plus live `oc explain modelregistries.modelregistry.opendatahub.io` | `kustomize build gitops/stage-110-rhoai-base-platform`; `oc get modelregistries.modelregistry.opendatahub.io demo-registry -n rhoai-model-registries` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/registry/base/rolebinding-demo-registry-*.yaml` | `RoleBinding` | RHOAI generated registry RBAC model | `oc get role registry-user-demo-registry -n rhoai-model-registries`; user dashboard access |
 | `gitops/stage-110-rhoai-base-platform/rhoai/aggregate/overlays/demo/kustomization.yaml` | Kustomize overlay | Project shared-owner pattern | `kustomize build gitops/stage-110-rhoai-base-platform/rhoai/aggregate/overlays/demo` |
