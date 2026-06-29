@@ -13,18 +13,42 @@ metadata:
     openshift.io/display-name: Private RAG Ingestion Pipelines
 spec:
   apiServer:
+    artifactSignedURLExpirySeconds: 60
+    caBundleFileMountPath: ""
+    caBundleFileName: ""
     cacheEnabled: false
+    deploy: true
+    enableOauth: true
     enableSamplePipeline: false
-    resourceTTL: 24h
+    pipelineStore: database
+    resourceTTL: 24h0m0s
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  dspVersion: v2
   objectStorage:
+    disableHealthCheck: false
+    enableExternalRoute: false
     externalStorage:
       bucket: enterprise-rag-pipelines
       basePath: artifacts
       host: s3.openshift-storage.svc
       port: "80"
+      region: ""
       scheme: http
       secure: false
       s3CredentialsSecret:
         secretName: private-rag-pipelines-bucket
         accessKey: AWS_ACCESS_KEY_ID
         secretKey: AWS_SECRET_ACCESS_KEY
+  persistenceAgent:
+    deploy: true
+    numWorkers: 2
+  podToPodTLS: true
+  scheduledWorkflow:
+    cronScheduleTimezone: UTC
+    deploy: true

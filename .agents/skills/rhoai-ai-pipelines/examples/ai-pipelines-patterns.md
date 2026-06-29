@@ -146,31 +146,57 @@ apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
   name: private-rag-pipelines-bucket
-  namespace: demo-sandbox
+  namespace: enterprise-rag
 spec:
-  bucketName: private-rag-pipelines
+  bucketName: enterprise-rag-pipelines
   storageClassName: openshift-storage.noobaa.io
 ---
 apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:
   name: private-rag-pipelines
-  namespace: demo-sandbox
+  namespace: enterprise-rag
 spec:
   apiServer:
+    artifactSignedURLExpirySeconds: 60
+    caBundleFileMountPath: ""
+    caBundleFileName: ""
     cacheEnabled: false
+    deploy: true
+    enableOauth: true
+    enableSamplePipeline: false
+    pipelineStore: database
+    resourceTTL: 24h0m0s
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  dspVersion: v2
   objectStorage:
+    disableHealthCheck: false
+    enableExternalRoute: false
     externalStorage:
-      bucket: private-rag-pipelines
+      bucket: enterprise-rag-pipelines
       basePath: artifacts
       host: s3.openshift-storage.svc
       port: "80"
+      region: ""
       scheme: http
       secure: false
       s3CredentialsSecret:
         secretName: private-rag-pipelines-bucket
         accessKey: AWS_ACCESS_KEY_ID
         secretKey: AWS_SECRET_ACCESS_KEY
+  persistenceAgent:
+    deploy: true
+    numWorkers: 2
+  podToPodTLS: true
+  scheduledWorkflow:
+    cronScheduleTimezone: UTC
+    deploy: true
 ```
 
 Review points:
@@ -182,6 +208,10 @@ Review points:
   trust through DSPA `apiServer.cABundle`; otherwise use the cluster-internal
   HTTP service only when the demo posture allows it.
 - Do not commit generated OBC credentials.
+- RHOAI defaults several DSPA spec fields after creation. For GitOps-managed
+  DSPA resources, verify these fields with the active CRD or a live reconciled
+  object and declare stable defaults in Git rather than leaving Argo CD
+  permanently `OutOfSync`.
 
 ## Workspace Pattern
 

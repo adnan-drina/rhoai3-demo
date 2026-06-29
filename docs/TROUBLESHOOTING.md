@@ -785,6 +785,25 @@ oc get route ds-pipeline-private-rag-pipelines -n enterprise-rag
   manifests. The stage patch job enables AI Pipelines and waits for the DSPA
   CRD before the pipeline server resources reconcile.
 
+### Stage 230 Argo CD Application is Healthy but OutOfSync on the DSPA
+
+- **Likely cause:** RHOAI defaulted `DataSciencePipelinesApplication.spec`
+  fields after creation. GitOps should declare stable CRD-backed DSPA defaults
+  instead of leaving the Application permanently OutOfSync.
+- **Confirm:**
+
+```bash
+oc get dspa private-rag-pipelines -n enterprise-rag -o yaml
+oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
+  -o jsonpath='{range .status.resources[*]}{.kind}{"/"}{.name}{"\t"}{.namespace}{"\t"}{.status}{"\n"}{end}'
+```
+
+- **Fix:** compare the live DSPA spec to
+  `gitops/stage-230-private-data-rag/pipelines/base/dspa-private-rag.yaml`,
+  verify fields against the active CRD schema, and commit the stable defaults
+  to GitOps. Use a narrow ignore only for fields that are operator-owned and
+  not safe to declare.
+
 ### Stage 230 Argo CD Application stays Progressing on a pipeline workspace PVC
 
 - **Likely cause:** an old GitOps-managed `private-rag-pipeline-workspace` PVC

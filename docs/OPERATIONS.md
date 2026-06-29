@@ -794,6 +794,10 @@ answer.
   `DataSciencePipelinesApplication` object-storage spec needs a stable bucket
   name. The KFP source-document steps read from the stage-owned generated
   `enterprise-rag-bucket`.
+- The DSPA manifest declares the stable RHOAI-defaulted spec fields observed
+  from the active CRD and reconciled object. Keeping these defaults in GitOps
+  prevents a Healthy-but-OutOfSync Argo CD state after the operator fills in
+  omitted fields.
 - KFP task-to-task file exchange uses the AI Pipelines per-run workspace
   configured in `dsl.PipelineConfig(workspace=...)` with an explicit
   Kubernetes PVC `accessModes: [ReadWriteOnce]` patch. Do not pre-create a

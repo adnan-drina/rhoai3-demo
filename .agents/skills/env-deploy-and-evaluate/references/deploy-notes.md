@@ -118,6 +118,12 @@ environment:
   workspace from `dsl.PipelineConfig(workspace=...)` with an explicit
   Kubernetes PVC patch containing `accessModes: [ReadWriteOnce]`, and validate
   the pipeline run evidence instead of a static PVC.
+- **Stage 230 DSPA GitOps drift**: RHOAI defaults several
+  `DataSciencePipelinesApplication.spec` fields after creation. Keep stable
+  defaults such as `dspVersion`, database, API server, object storage,
+  persistence agent, scheduled workflow, and `podToPodTLS` explicit in GitOps
+  after verifying the active CRD or a live reconciled DSPA. Do not leave the
+  stage permanently `OutOfSync` on operator-defaulted spec.
 - **Stage 230 project boundary**: Private RAG runs in the dedicated
   `enterprise-rag` OpenShift AI project. MaaS stays in `models-as-a-service`;
   Stage 230 consumes Nemotron through MaaS and does not deploy private RAG
