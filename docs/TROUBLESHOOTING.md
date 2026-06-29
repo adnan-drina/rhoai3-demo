@@ -842,8 +842,26 @@ oc get statefulset private-rag-postgres -n enterprise-rag \
   `default` local queue and keep narrow Argo CD `ignoreDifferences` entries
   only for Kueue-injected bookkeeping fields. Do not patch an admitted
   controller from `default` to `lq-cpu-default`; the Kueue webhook rejects that
-  immutable queue-label change. Use the custom `lq-*` queues for RHOAI
-  hardware-profile workloads and explicitly authored short-lived jobs.
+  immutable queue-label change. Use custom `lq-*` queues only when the target
+  namespace has a matching LocalQueue.
+
+### Stage 230 helper job stays SchedulingGated
+
+- **Likely cause:** the helper job requested a LocalQueue that does not exist
+  in `enterprise-rag`. Fresh deployments create the RHOAI-managed `default`
+  LocalQueue in the project, but do not create `lq-cpu-default`.
+- **Confirm:**
+
+```bash
+oc get localqueue -n enterprise-rag
+oc get workload -n enterprise-rag
+oc get pod -n enterprise-rag | grep SchedulingGated
+```
+
+- **Fix:** generated Stage 230 helper jobs must use
+  `kueue.x-k8s.io/queue-name: default` unless the stage also creates and
+  validates another LocalQueue in `enterprise-rag`. Delete the stuck job and
+  rerun `stage-230-private-data-rag/deploy.sh` after the script fix is pushed.
 
 ### Whoami ingestion pipeline fails
 

@@ -130,8 +130,10 @@ environment:
   runtime resources into `demo-sandbox`.
 - **Stage 230 Kueue controller labels**: Long-running runtime controllers in
   the Kueue-managed `enterprise-rag` namespace, such as Docling and pgvector, use
-  the RHOAI-created `default` local queue. Kueue queue labels on admitted
-  controllers are immutable, and Kueue injects bookkeeping labels/annotations.
+  the RHOAI-created `default` local queue. Stage helper jobs should also use
+  `default` unless a matching LocalQueue is GitOps-managed in `enterprise-rag`.
+  Kueue queue labels on admitted controllers and jobs are immutable, and Kueue
+  injects bookkeeping labels/annotations.
   Keep narrow Argo CD `ignoreDifferences` entries for the injected fields
   instead of patching live controllers to custom `lq-*` queues after admission.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.

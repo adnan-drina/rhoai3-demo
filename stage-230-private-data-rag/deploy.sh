@@ -511,7 +511,7 @@ metadata:
     app.kubernetes.io/component: private-rag-documents
     app.kubernetes.io/part-of: rhoai3-demo
     demo.rhoai.io/stage: "230"
-    kueue.x-k8s.io/queue-name: lq-cpu-default
+    kueue.x-k8s.io/queue-name: default
 spec:
   backoffLimit: 1
   activeDeadlineSeconds: 600
@@ -519,7 +519,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: private-rag-s3-seed
-        kueue.x-k8s.io/queue-name: lq-cpu-default
+        kueue.x-k8s.io/queue-name: default
     spec:
       restartPolicy: Never
       containers:

@@ -806,6 +806,9 @@ answer.
 - The DSPA uses the in-cluster NooBaa `s3.openshift-storage.svc:80` HTTP
   service for pipeline artifacts. This avoids self-signed TLS trust issues
   inside DSPA while keeping traffic within the cluster network for the demo.
+- Because `enterprise-rag` is Kueue-managed, long-running runtime controllers
+  and generated helper jobs use the RHOAI-created `default` LocalQueue unless
+  the stage explicitly creates another LocalQueue in that namespace.
 - `quay.io/docling-project/docling-serve:latest` remains a demo/reference
   dependency from the previous implementation and quickstart pattern. Pin or
   replace it before making production-support claims.
