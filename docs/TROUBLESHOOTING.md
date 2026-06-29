@@ -766,6 +766,24 @@ oc get route ds-pipeline-private-rag-pipelines -n demo-sandbox
   manifests. The stage patch job enables AI Pipelines and waits for the DSPA
   CRD before the pipeline server resources reconcile.
 
+### Stage 230 Argo CD Application stays Progressing on the pipeline workspace PVC
+
+- **Likely cause:** `private-rag-pipeline-workspace` uses the default AWS EBS
+  `WaitForFirstConsumer` binding mode. It remains Pending until the first KFP
+  task pod mounts it. This is expected before the ingestion pipeline run.
+- **Confirm:**
+
+```bash
+oc get pvc private-rag-pipeline-workspace -n demo-sandbox
+oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
+  -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{"\n"}'
+```
+
+- **Fix:** do not wait for whole-Application `Healthy` before starting the KFP
+  run. Stage 230 deploy waits for the Application to become `Synced`, then
+  waits for concrete runtime resources and submits the pipeline. The PVC should
+  become Bound when the pipeline task is scheduled.
+
 ### Whoami ingestion pipeline fails
 
 - **Likely causes:** DSPA route authentication failed, the KFP package could

@@ -337,20 +337,26 @@ wait_for_application() {
   local app_name="stage-230-private-data-rag"
   local sync health
 
-  echo "-- Waiting for ${app_name} to become Synced/Healthy --"
+  echo "-- Waiting for ${app_name} to become Synced --"
   for _ in $(seq 1 90); do
     sync=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops \
       -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || true)
     health=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops \
       -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || true)
-    if [[ "$sync" == "Synced" && "$health" == "Healthy" ]]; then
+    if [[ "$sync" == "Synced" && ( "$health" == "Healthy" || "$health" == "Progressing" ) ]]; then
       echo "[OK] ${app_name}: ${sync}/${health}"
       return 0
+    fi
+    if [[ "$health" == "Degraded" ]]; then
+      echo "ERROR: ${app_name} is Degraded." >&2
+      oc get applications.argoproj.io "$app_name" -n openshift-gitops -o yaml \
+        --insecure-skip-tls-verify=true | sed -n '/status:/,$p' >&2 || true
+      return 1
     fi
     sleep 10
   done
 
-  echo "ERROR: ${app_name} did not become Synced/Healthy." >&2
+  echo "ERROR: ${app_name} did not become Synced." >&2
   oc get applications.argoproj.io "$app_name" -n openshift-gitops -o yaml \
     --insecure-skip-tls-verify=true | sed -n '/status:/,$p' >&2 || true
   return 1

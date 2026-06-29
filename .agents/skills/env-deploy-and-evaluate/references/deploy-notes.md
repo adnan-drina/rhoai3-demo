@@ -112,6 +112,12 @@ environment:
   healthy before the generated Nemotron `LLMInferenceService` reaches
   `Ready=True`. Validate local MaaS inference only after the
   `LLMInferenceService` readiness condition is true.
+- **Stage 230 DSPA workspace PVC**: `private-rag-pipeline-workspace` uses EBS
+  `WaitForFirstConsumer`, so the Stage 230 Application can remain
+  `Progressing` until the first KFP task pod mounts the PVC. Stage 230 deploy
+  should wait for Application `Synced`, then wait for concrete resources and
+  submit the pipeline; do not block the pipeline run on whole-Application
+  `Healthy`.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
