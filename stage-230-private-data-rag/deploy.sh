@@ -327,7 +327,7 @@ apply_argocd_application() {
     "$manifest_path" > "$app_manifest"
 
   oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
-  oc annotate application "$app_name" -n openshift-gitops \
+  oc annotate applications.argoproj.io "$app_name" -n openshift-gitops \
     argocd.argoproj.io/refresh=hard --overwrite \
     --insecure-skip-tls-verify=true >/dev/null
   echo "[OK] Applied Argo CD Application ${app_name}"
@@ -339,9 +339,9 @@ wait_for_application() {
 
   echo "-- Waiting for ${app_name} to become Synced/Healthy --"
   for _ in $(seq 1 90); do
-    sync=$(oc get application "$app_name" -n openshift-gitops \
+    sync=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops \
       -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || true)
-    health=$(oc get application "$app_name" -n openshift-gitops \
+    health=$(oc get applications.argoproj.io "$app_name" -n openshift-gitops \
       -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || true)
     if [[ "$sync" == "Synced" && "$health" == "Healthy" ]]; then
       echo "[OK] ${app_name}: ${sync}/${health}"
@@ -351,7 +351,7 @@ wait_for_application() {
   done
 
   echo "ERROR: ${app_name} did not become Synced/Healthy." >&2
-  oc get application "$app_name" -n openshift-gitops -o yaml \
+  oc get applications.argoproj.io "$app_name" -n openshift-gitops -o yaml \
     --insecure-skip-tls-verify=true | sed -n '/status:/,$p' >&2 || true
   return 1
 }

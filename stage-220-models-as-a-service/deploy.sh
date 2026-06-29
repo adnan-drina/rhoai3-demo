@@ -160,7 +160,7 @@ patch_stage_220_application() {
     }
   }')
 
-  oc patch application stage-220-models-as-a-service -n openshift-gitops \
+  oc patch applications.argoproj.io stage-220-models-as-a-service -n openshift-gitops \
     --type=merge -p "$patch_json" --insecure-skip-tls-verify=true >/dev/null
 
   echo "✓ Stage 220 Application uses MaaS Gateway hostname=${hostname}, tlsCertificate=maas-gateway-tls"
@@ -182,12 +182,12 @@ apply_argocd_application() {
 
   if [[ "$app_name" == "stage-220-models-as-a-service" ]]; then
     patch_stage_220_application
-    oc patch application "$app_name" -n openshift-gitops --type=merge \
+    oc patch applications.argoproj.io "$app_name" -n openshift-gitops --type=merge \
       -p '{"operation":null}' \
       --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
   fi
 
-  oc annotate application "$app_name" -n openshift-gitops \
+  oc annotate applications.argoproj.io "$app_name" -n openshift-gitops \
     argocd.argoproj.io/refresh=hard --overwrite \
     --insecure-skip-tls-verify=true >/dev/null
 }
@@ -344,11 +344,11 @@ apply_argocd_application \
   "$ROOT_DIR/gitops/argocd/app-of-apps/stage-220-models-as-a-service.yaml"
 
 wait_for_jsonpath "Stage 110 shared owner Application sync" \
-  "application/stage-110-rhoai-base-platform" "openshift-gitops" \
+  "applications.argoproj.io/stage-110-rhoai-base-platform" "openshift-gitops" \
   "{.status.sync.status}" "Synced" 90
 
 wait_for_jsonpath "Stage 220 Application sync" \
-  "application/stage-220-models-as-a-service" "openshift-gitops" \
+  "applications.argoproj.io/stage-220-models-as-a-service" "openshift-gitops" \
   "{.status.sync.status}" "Synced" 90
 
 wait_for_jsonpath "DataScienceCluster readiness" \

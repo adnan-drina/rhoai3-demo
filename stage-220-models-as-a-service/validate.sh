@@ -332,11 +332,11 @@ for label, model in models:
   check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "$result"
 }
 
-APP_SYNC=$(jsonpath "application/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
+APP_SYNC=$(jsonpath "applications.argoproj.io/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
 [[ "$APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${APP_SYNC:-not found}"
 check "Stage 220 Application Synced" "$R"
 
-STAGE110_SYNC=$(jsonpath "application/stage-110-rhoai-base-platform" "openshift-gitops" "{.status.sync.status}")
+STAGE110_SYNC=$(jsonpath "applications.argoproj.io/stage-110-rhoai-base-platform" "openshift-gitops" "{.status.sync.status}")
 [[ "$STAGE110_SYNC" == "Synced" ]] && R="pass" || R="sync=${STAGE110_SYNC:-not found}"
 check "Stage 110 shared owner Application Synced" "$R"
 

@@ -64,9 +64,9 @@ condition_status() {
   fi
 }
 
-APP_SYNC=$(oc get application stage-120-gpu-as-a-service -n openshift-gitops \
+APP_SYNC=$(oc get applications.argoproj.io stage-120-gpu-as-a-service -n openshift-gitops \
   -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-APP_HEALTH=$(oc get application stage-120-gpu-as-a-service -n openshift-gitops \
+APP_HEALTH=$(oc get applications.argoproj.io stage-120-gpu-as-a-service -n openshift-gitops \
   -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${APP_SYNC:-not found}"
 check "Argo CD Application Synced" "$R"

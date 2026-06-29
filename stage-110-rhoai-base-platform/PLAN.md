@@ -102,7 +102,7 @@
 | `gitops/stage-110-rhoai-base-platform/access/base/rolebinding-admins-admin.yaml` | RoleBinding (admin) | rhoai-users-groups-access | `oc get rolebinding rhods-admins-admin -n demo-sandbox` |
 | `gitops/stage-110-rhoai-base-platform/access/base/obc-demo-sandbox.yaml` | ObjectBucketClaim | odf-object-bucket-claims | `oc get obc demo-sandbox-bucket -n demo-sandbox` |
 | `setup-access.sh` (imperative) | htpasswd IdP, rhods-admins membership, `demo-sandbox-s3` connection | ocp-authentication-identity-providers, rhoai-users-groups-access, rhoai-s3-object-storage-data | `oc get oauth cluster`; `oc get secret demo-sandbox-s3 -n demo-sandbox` |
-| `gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml` | Application | project-gitops-authoring | `oc get application stage-110-rhoai-base-platform -n openshift-gitops` |
+| `gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml` | Application | project-gitops-authoring | `oc get applications.argoproj.io stage-110-rhoai-base-platform -n openshift-gitops` |
 
 ## Script Plan
 

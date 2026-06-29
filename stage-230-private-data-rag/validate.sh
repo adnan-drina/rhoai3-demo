@@ -66,8 +66,8 @@ jsonpath() {
     --insecure-skip-tls-verify=true 2>/dev/null || true
 }
 
-app_sync=$(jsonpath "application/stage-230-private-data-rag" "openshift-gitops" '{.status.sync.status}')
-app_health=$(jsonpath "application/stage-230-private-data-rag" "openshift-gitops" '{.status.health.status}')
+app_sync=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" '{.status.sync.status}')
+app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" '{.status.health.status}')
 [[ "$app_sync" == "Synced" && "$app_health" == "Healthy" ]] && R=pass || R="${app_sync:-missing}/${app_health:-missing}"
 check "Stage 230 Argo CD Application is Synced/Healthy" "$R"
 

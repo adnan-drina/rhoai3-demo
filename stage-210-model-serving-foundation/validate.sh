@@ -105,18 +105,18 @@ resource_exists() {
 require_cmd curl
 require_cmd jq
 
-APP_SYNC=$(oc get application stage-110-rhoai-base-platform -n openshift-gitops \
+APP_SYNC=$(oc get applications.argoproj.io stage-110-rhoai-base-platform -n openshift-gitops \
   -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-APP_HEALTH=$(oc get application stage-110-rhoai-base-platform -n openshift-gitops \
+APP_HEALTH=$(oc get applications.argoproj.io stage-110-rhoai-base-platform -n openshift-gitops \
   -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${APP_SYNC:-not found}"
 check "Stage 110 shared owner Application Synced" "$R"
 [[ "$APP_HEALTH" == "Healthy" ]] && R="pass" || R="health=${APP_HEALTH:-not found}"
 check "Stage 110 shared owner Application Healthy" "$R"
 
-OBS_APP_SYNC=$(oc get application stage-210-model-serving-foundation -n openshift-gitops \
+OBS_APP_SYNC=$(oc get applications.argoproj.io stage-210-model-serving-foundation -n openshift-gitops \
   -o jsonpath='{.status.sync.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-OBS_APP_HEALTH=$(oc get application stage-210-model-serving-foundation -n openshift-gitops \
+OBS_APP_HEALTH=$(oc get applications.argoproj.io stage-210-model-serving-foundation -n openshift-gitops \
   -o jsonpath='{.status.health.status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$OBS_APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${OBS_APP_SYNC:-not found}"
 check "Stage 210 observability Application Synced" "$R"

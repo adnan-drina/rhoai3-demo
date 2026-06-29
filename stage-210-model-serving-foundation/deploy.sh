@@ -130,7 +130,7 @@ apply_argocd_application() {
 
   oc apply -f "$app_manifest" --insecure-skip-tls-verify=true
 
-  oc annotate application "$app_name" -n openshift-gitops \
+  oc annotate applications.argoproj.io "$app_name" -n openshift-gitops \
     argocd.argoproj.io/refresh=hard --overwrite \
     --insecure-skip-tls-verify=true >/dev/null
 }
@@ -144,11 +144,11 @@ echo "✓ Application stage-110-rhoai-base-platform applied"
 echo "  Argo CD will reconcile the base shared DSC owner."
 
 wait_for_jsonpath "Stage 110 shared owner Application sync" \
-  "application/stage-110-rhoai-base-platform" "openshift-gitops" \
+  "applications.argoproj.io/stage-110-rhoai-base-platform" "openshift-gitops" \
   "{.status.sync.status}" "Synced"
 
 wait_for_jsonpath "Stage 110 shared owner Application health" \
-  "application/stage-110-rhoai-base-platform" "openshift-gitops" \
+  "applications.argoproj.io/stage-110-rhoai-base-platform" "openshift-gitops" \
   "{.status.health.status}" "Healthy"
 
 echo "── Applying Stage 210 Argo CD Application ──"
@@ -157,11 +157,11 @@ apply_argocd_application \
   "$ROOT_DIR/gitops/argocd/app-of-apps/stage-210-model-serving-foundation.yaml"
 
 wait_for_jsonpath "Stage 210 Application sync" \
-  "application/stage-210-model-serving-foundation" "openshift-gitops" \
+  "applications.argoproj.io/stage-210-model-serving-foundation" "openshift-gitops" \
   "{.status.sync.status}" "Synced"
 
 wait_for_jsonpath "Stage 210 Application health" \
-  "application/stage-210-model-serving-foundation" "openshift-gitops" \
+  "applications.argoproj.io/stage-210-model-serving-foundation" "openshift-gitops" \
   "{.status.health.status}" "Healthy"
 
 wait_for_jsonpath "DataScienceCluster readiness" \
