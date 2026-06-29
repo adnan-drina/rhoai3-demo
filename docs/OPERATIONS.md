@@ -848,6 +848,10 @@ connector discovery state, tools, shields, and guardrails status.
 - Because `enterprise-rag` is Kueue-managed, long-running runtime controllers
   and generated helper jobs use the RHOAI-created `default` LocalQueue unless
   the stage explicitly creates another LocalQueue in that namespace.
+- OpenShift Build pods for `private-rag-chatbot` are not Kueue-managed. The
+  BuildConfig intentionally does not carry `kueue.x-k8s.io/queue-name` because
+  build pods can remain `SchedulingGated` after Kueue admission in this demo
+  environment.
 - `quay.io/docling-project/docling-serve:latest` remains a demo/reference
   dependency from the previous implementation and quickstart pattern. Pin or
   replace it before making production-support claims.

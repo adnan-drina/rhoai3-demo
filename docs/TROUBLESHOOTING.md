@@ -1017,6 +1017,25 @@ oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
   that is expected for Stage 230; those features must remain disabled until the
   later product-backed stages deploy and validate their resources.
 
+### Private RAG chatbot build remains Pending or SchedulingGated
+
+- **Likely cause:** the OpenShift Build pod was accidentally Kueue-managed.
+  Build pods should not carry `kueue.x-k8s.io/queue-name` in Stage 230; keep
+  Kueue labels on long-running runtime pods and generated helper jobs instead.
+- **Confirm:**
+
+```bash
+oc get build -n enterprise-rag -l buildconfig=private-rag-chatbot
+oc get pod -n enterprise-rag -l openshift.io/build.name=<build-name> -o yaml \
+  | grep -A3 schedulingGates
+oc get buildconfig private-rag-chatbot -n enterprise-rag \
+  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{"\n"}'
+```
+
+- **Fix:** rerun Stage 230 deploy after the latest GitOps revision has synced.
+  The deploy script cancels stale incomplete chatbot builds before starting a
+  fresh binary build.
+
 ### Llama Stack RAG answer gets 401 from MaaS
 
 - **Likely cause:** the stored MaaS API key expired, was revoked, or the Llama

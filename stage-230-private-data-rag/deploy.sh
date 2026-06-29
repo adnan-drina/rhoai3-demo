@@ -332,12 +332,12 @@ build_chatbot_image() {
     return 1
   fi
 
-  local queue_label
+  local queue_label stale_builds build_name
   for _ in $(seq 1 60); do
     queue_label=$(oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
       -o json --insecure-skip-tls-verify=true 2>/dev/null |
       jq -r '.metadata.labels["kueue.x-k8s.io/queue-name"] // empty' 2>/dev/null || true)
-    if [[ "$queue_label" == "default" ]]; then
+    if [[ -z "$queue_label" ]]; then
       break
     fi
     sleep 5
@@ -346,10 +346,23 @@ build_chatbot_image() {
   queue_label=$(oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
     -o json --insecure-skip-tls-verify=true 2>/dev/null |
     jq -r '.metadata.labels["kueue.x-k8s.io/queue-name"] // empty' 2>/dev/null || true)
-  if [[ "$queue_label" != "default" ]]; then
-    echo "ERROR: BuildConfig ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG} was not reconciled with the Kueue queue label." >&2
+  if [[ -n "$queue_label" ]]; then
+    echo "ERROR: BuildConfig ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG} still has Kueue queue label ${queue_label}." >&2
+    echo "Wait for the Stage 230 Argo CD Application to sync the latest Git revision and rerun deploy." >&2
     return 1
   fi
+
+  stale_builds=$(oc get build -n "$PROJECT_NS" \
+    -l "buildconfig=${RAG_CHATBOT_BUILD_CONFIG}" \
+    -o json --insecure-skip-tls-verify=true 2>/dev/null |
+    jq -r '.items[]? | select(.status.phase == "New" or .status.phase == "Pending" or .status.phase == "Running") | .metadata.name' \
+    2>/dev/null || true)
+  while IFS= read -r build_name; do
+    [[ -n "$build_name" ]] || continue
+    oc cancel-build "$build_name" -n "$PROJECT_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+    echo "[OK] Cancelled stale chatbot build ${build_name}"
+  done <<<"$stale_builds"
 
   oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
     --from-dir="$source_dir" \
