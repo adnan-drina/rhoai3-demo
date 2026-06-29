@@ -70,6 +70,10 @@ RAG_CHUNK_SIZE="${RHOAI_STAGE230_CHUNK_SIZE:-512}"
 RAG_MAX_TOKENS="${RHOAI_STAGE230_VLLM_MAX_TOKENS:-4096}"
 RAG_API_KEY_NAME="${RHOAI_STAGE230_API_KEY_NAME:-private-rag-${PROJECT_NS}}"
 OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
+RAG_ROTATED_MAAS_TOKEN=""
+RAG_ROTATED_MAAS_GATEWAY_HOST=""
+RAG_OLD_MAAS_API_KEY_ID=""
+RAG_NEW_MAAS_API_KEY_ID=""
 
 TMP_FILES=()
 TMP_DIRS=()
@@ -307,13 +311,24 @@ ensure_runtime_secrets() {
     demo.rhoai.io/stage=230 \
     --insecure-skip-tls-verify=true >/dev/null
 
-  if [[ -n "$old_key_id" && "$old_key_id" != "$new_key_id" ]]; then
-    revoke_maas_api_key "$user_token" "$host" "$old_key_id" || true
-  fi
-  cleanup_duplicate_maas_api_keys "$user_token" "$host" "$new_key_id"
+  RAG_ROTATED_MAAS_TOKEN="$user_token"
+  RAG_ROTATED_MAAS_GATEWAY_HOST="$host"
+  RAG_OLD_MAAS_API_KEY_ID="$old_key_id"
+  RAG_NEW_MAAS_API_KEY_ID="$new_key_id"
 
   encoded_password=$(urlencode "$postgres_password")
   echo "[OK] Runtime secrets ready (pgvector URI password encoded length=${#encoded_password}, MaaS key id=${new_key_id})"
+}
+
+cleanup_rotated_maas_api_keys() {
+  if [[ -z "$RAG_ROTATED_MAAS_TOKEN" || -z "$RAG_ROTATED_MAAS_GATEWAY_HOST" || -z "$RAG_NEW_MAAS_API_KEY_ID" ]]; then
+    return 0
+  fi
+
+  if [[ -n "$RAG_OLD_MAAS_API_KEY_ID" && "$RAG_OLD_MAAS_API_KEY_ID" != "$RAG_NEW_MAAS_API_KEY_ID" ]]; then
+    revoke_maas_api_key "$RAG_ROTATED_MAAS_TOKEN" "$RAG_ROTATED_MAAS_GATEWAY_HOST" "$RAG_OLD_MAAS_API_KEY_ID" || true
+  fi
+  cleanup_duplicate_maas_api_keys "$RAG_ROTATED_MAAS_TOKEN" "$RAG_ROTATED_MAAS_GATEWAY_HOST" "$RAG_NEW_MAAS_API_KEY_ID"
 }
 
 grant_pgvector_scc() {
@@ -1042,6 +1057,7 @@ build_chatbot_image
 wait_for_application
 refresh_llamastack_runtime
 wait_for_runtime
+cleanup_rotated_maas_api_keys
 wait_for_pipeline_server
 ensure_document_configmap
 seed_object_bucket
