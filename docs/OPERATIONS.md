@@ -761,6 +761,7 @@ The deploy script:
   `default-dsc` patch pattern
 - waits for `private-rag-postgres` and `lsd-private-rag`
 - waits for `private-rag-docling`
+- waits for the `private-rag-chatbot` Streamlit UI
 - waits for the `private-rag-pipelines` DSPA route and Ready condition
 - uploads the whoami PDF corpus to the ODF/NooBaa bucket under
   `private-rag/whoami/`
@@ -771,8 +772,18 @@ The deploy script:
 The validator checks Argo CD state, object bucket readiness, MaaS readiness,
 AI Pipelines and DSPA readiness, runtime secrets, pgvector readiness, Docling
 readiness, Llama Stack readiness, object storage upload, latest pipeline run
-success, vector store presence, whoami RAG retrieval, and a Nemotron-backed
-answer.
+success, vector store presence, whoami RAG retrieval, a Nemotron-backed
+answer, and the Streamlit chatbot route.
+
+Get the chatbot URL:
+
+```bash
+oc get route private-rag-chatbot -n enterprise-rag -o jsonpath='https://{.spec.host}{"\n"}'
+```
+
+Use the Chat page in Direct mode, select the `whoami` document collection, and
+ask one of the suggested questions. Direct mode searches the Llama Stack vector
+store and sends retrieved context to the MaaS-backed Nemotron model.
 
 ### Design Notes
 
@@ -792,6 +803,9 @@ answer.
   recommend PostgreSQL with pgvector for durable vector storage, but the active
   RHOAI baseline does not provide a product image containing the pgvector
   extension.
+- `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` is reused from the
+  Red Hat Enterprise RAG quickstart as a demo UI. It is not a RHOAI product
+  image; rebuild or replace it for production-positioned delivery.
 - The previous implementation's MinIO server is not reused. Stage 230 uses the
   stage-owned ODF/NooBaa `enterprise-rag-bucket` ObjectBucketClaim. The old
   whoami PDF and Docling conversion boundary are reused because they still

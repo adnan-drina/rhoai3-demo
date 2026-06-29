@@ -51,6 +51,7 @@ RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotro
 RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
 RAG_DOCLING_SERVICE="${RHOAI_STAGE230_DOCLING_SERVICE:-private-rag-docling}"
+RAG_CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 RAG_DOCLING_LOCAL_PORT="${RHOAI_STAGE230_DOCLING_LOCAL_PORT:-15001}"
 RAG_DOCLING_TIMEOUT="${RHOAI_STAGE230_DOCLING_TIMEOUT:-600}"
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
@@ -449,7 +450,9 @@ wait_for_runtime() {
     --timeout=15m --insecure-skip-tls-verify=true
   oc rollout status "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
     --timeout=10m --insecure-skip-tls-verify=true
-  echo "[OK] pgvector, Docling, and Llama Stack are ready"
+  oc rollout status "deployment/${RAG_CHATBOT_DEPLOYMENT}" -n "$PROJECT_NS" \
+    --timeout=10m --insecure-skip-tls-verify=true
+  echo "[OK] pgvector, Docling, Llama Stack, and Streamlit chatbot are ready"
 }
 
 wait_for_pipeline_server() {

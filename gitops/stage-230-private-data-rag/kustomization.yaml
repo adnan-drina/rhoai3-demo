@@ -12,3 +12,4 @@ resources:
   - rhoai-dsc/base
   - pipelines/base
   - runtime/base
+  - app/base

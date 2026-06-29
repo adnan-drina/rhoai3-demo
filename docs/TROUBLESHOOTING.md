@@ -986,6 +986,28 @@ oc logs job/private-rag-s3-seed -n enterprise-rag
   database, and re-ingests the converted Markdown so the demo corpus is
   deterministic.
 
+### Private RAG chatbot route is unavailable or shows connection errors
+
+- **Likely causes:** the Streamlit deployment is not ready, the quickstart UI
+  image cannot be pulled, or the `LLAMA_STACK_ENDPOINT` environment variable
+  does not point at the Stage 230 Llama Stack service.
+- **Confirm:**
+
+```bash
+oc get deployment,svc,route private-rag-chatbot -n enterprise-rag
+oc logs deployment/private-rag-chatbot -n enterprise-rag --tail=120
+oc get deployment private-rag-chatbot -n enterprise-rag \
+  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="LLAMA_STACK_ENDPOINT")].value}{"\n"}'
+oc get svc lsd-private-rag-service -n enterprise-rag
+```
+
+- **Fix:** rerun Stage 230 deploy after Argo CD has synced the latest GitOps
+  revision. The deployment should use
+  `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` and
+  `LLAMA_STACK_ENDPOINT=http://lsd-private-rag-service.enterprise-rag.svc.cluster.local:8321`.
+  If the app starts but no document collection appears, rerun the ingestion
+  pipeline so the `whoami` vector store exists.
+
 ### Llama Stack RAG answer gets 401 from MaaS
 
 - **Likely cause:** the stored MaaS API key expired, was revoked, or the Llama

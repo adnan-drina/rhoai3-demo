@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: private-rag-chatbot-config
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: frontend
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+data:
+  RAG_QUESTION_SUGGESTIONS: |
+    {
+      "whoami": [
+        "Who is Adnan Drina and what is his current role?",
+        "What Red Hat and OpenShift AI experience is described in the document?",
+        "Which skills or areas of expertise are relevant for enterprise AI demos?"
+      ]
+    }

@@ -19,6 +19,7 @@ NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a
 RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotron-3-nano-30b-a3b}"
 RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
+RAG_CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
 RAG_DSPA_OBC_NAME="${RHOAI_STAGE230_DSPA_OBC_NAME:-private-rag-pipelines-bucket}"
 RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
@@ -137,6 +138,31 @@ else
   R=missing
 fi
 check "Private RAG Llama Stack deployment is ready" "$R"
+
+if resource_exists "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS"; then
+  ready=$(jsonpath "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.status.readyReplicas}')
+  [[ "$ready" == "1" ]] && R=pass || R="readyReplicas=${ready:-0}"
+else
+  R=missing
+fi
+check "Private RAG Streamlit chatbot deployment is ready" "$R"
+
+chatbot_route=$(jsonpath "route/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.spec.host}')
+[[ -n "$chatbot_route" ]] && R=pass || R=missing
+check "Private RAG Streamlit chatbot route exists" "$R"
+
+if [[ -n "$chatbot_route" ]]; then
+  chatbot_status=$(curl -sk --max-time 20 -o /tmp/rhoai-stage230-chatbot.html -w '%{http_code}' "https://${chatbot_route}/" 2>/dev/null || true)
+  if [[ "$chatbot_status" == "200" ]] && grep -qi "streamlit" /tmp/rhoai-stage230-chatbot.html; then
+    R=pass
+  else
+    R="status=${chatbot_status:-missing}"
+  fi
+  rm -f /tmp/rhoai-stage230-chatbot.html
+else
+  R=missing
+fi
+check "Private RAG Streamlit chatbot route responds" "$R"
 
 resource_exists "configmap/${RAG_DOC_CONFIGMAP}" "$PROJECT_NS" && R=pass || R=missing
 check "Private demo document ConfigMap exists" "$R"

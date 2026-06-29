@@ -33,6 +33,7 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
+| RAG application | Streamlit chatbot reused from the Red Hat AI Enterprise RAG quickstart and pointed at the stage-owned Llama Stack service |
 | Embeddings | Llama Stack inline `sentence-transformers` provider using 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` embeddings |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
 | Generation model | Stage 220 Nemotron model consumed through the MaaS gateway |
@@ -43,7 +44,9 @@ external search tools. That keeps the stage aligned with the private enterprise
 story. Guardrails, agentic retrieval, and AutoRAG can build on this foundation
 in later stages. The whoami ingestion path intentionally runs through DSPA/KFP
 so the demo has a visible, repeatable RHOAI pipeline server workflow instead of
-only a deploy-time script.
+only a deploy-time script. The Streamlit chatbot gives the stage an
+audience-facing test surface for selecting the `whoami` vector store, asking a
+question, and seeing retrieved context before the model answer.
 
 ## Architecture Delta
 
@@ -56,10 +59,12 @@ flowchart LR
   docling["Docling"]
   pg["PostgreSQL + pgvector"]
   stack["Llama Stack"]
+  app["Streamlit RAG chatbot"]
   maas["MaaS Gateway"]
   model["Nemotron"]
 
-  user --> stack
+  user --> app
+  app --> stack
   docs --> bucket
   bucket --> dspa
   dspa --> docling
@@ -77,6 +82,12 @@ flowchart LR
 - [RHOAI 3.4: Working with AI pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index)
 - [RHOAI 3.4: Working with data in an S3-compatible object store](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_data_in_an_s3-compatible_object_store/index)
 - [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index)
+- Red Hat quickstart reference implementation: [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG), `frontend/` Streamlit UI, main commit `d1f0847ae92a9c17e827a854334e035e2750a660`
 - Previous main-branch implementation: `steps/step-07-rag/scenario-docs/whoami/adnan_drina_cv.pdf` and `steps/step-07-rag/kfp/`
 - rh-brain: `2026-01-29 - Deploy an Enterprise RAG Chatbot with Red Hat OpenShift AI`
 - rh-brain: `Enterprise RAG on OpenShift AI`
+
+The chatbot image is `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45`.
+It is used as a Red Hat quickstart/demo reference image, not as a RHOAI product
+image. Production-positioned demos should replace it with an internally built
+and scanned image.

@@ -65,6 +65,13 @@ spec:
         - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
         - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
     - group: apps
+      kind: Deployment
+      name: private-rag-chatbot
+      namespace: enterprise-rag
+      jsonPointers:
+        - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
+        - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
+    - group: apps
       kind: StatefulSet
       name: private-rag-postgres
       namespace: enterprise-rag

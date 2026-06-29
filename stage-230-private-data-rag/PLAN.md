@@ -18,6 +18,8 @@ In scope:
   connection for private RAG documents
 - deploy a stage-owned PostgreSQL with pgvector runtime service
 - deploy a stage-owned `LlamaStackDistribution` named `lsd-private-rag`
+- deploy a stage-owned Streamlit RAG chatbot named `private-rag-chatbot`
+  reused from the Red Hat AI Enterprise RAG quickstart UI
 - deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
   artifact bucket
 - create environment-local secrets for pgvector and MaaS access
@@ -26,13 +28,13 @@ In scope:
   a KFP v2 pipeline
 - register and populate a Llama Stack vector database
 - validate retrieval and Nemotron answer generation through Llama Stack
+- validate that the chatbot route serves the RAG UI
 
 Out of scope for this first RAG stage:
 
 - external web search
 - AutoRAG/Milvus optimization workflow
 - guardrails and safety shields
-- custom chatbot UI
 - production database HA
 
 ## Source Capture
@@ -43,7 +45,8 @@ Out of scope for this first RAG stage:
 | RHOAI 3.4 Working with data in S3-compatible object store | project object storage and connection posture |
 | RHOAI 3.4 MaaS docs | governed Nemotron endpoint, subscription, API-key use |
 | Previous main-branch Step 07 RAG implementation | whoami scenario, Docling conversion boundary, and repeatable ingestion pipeline pattern |
-| Red Hat AI Enterprise RAG quickstart | reference architecture: Llama Stack, PGVector, S3 source, ingestion, chatbot path |
+| Red Hat AI Enterprise RAG quickstart | reference architecture and reusable Streamlit chatbot path |
+| rh-ai-quickstart/RAG main commit `d1f0847ae92a9c17e827a854334e035e2750a660` | Streamlit frontend image and UI behavior |
 | rh-brain Enterprise RAG notes | Why/What narrative for private enterprise knowledge grounding |
 
 ## Implementation Decisions
@@ -71,6 +74,9 @@ Out of scope for this first RAG stage:
   carried forward from the previous implementation and Red Hat RAG quickstart
   pattern. Treat it as an external dependency to pin or replace before making
   production-support claims.
+- `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` provides the Streamlit
+  chatbot reused from the Red Hat quickstart implementation. It is a demo
+  reference image, not a RHOAI product image.
 - External search is intentionally excluded for the private enterprise baseline.
 
 ## Acceptance Criteria
@@ -86,10 +92,12 @@ Out of scope for this first RAG stage:
 - The `whoami` vector database exists.
 - A whoami RAG query retrieves relevant identity context and produces a
   Nemotron-backed answer.
+- The `private-rag-chatbot` deployment is ready, the route responds, and the UI
+  can be used to select the `whoami` vector store for demo questions.
 
 ## Follow-Up Candidates
 
-- add a dedicated RAG UI or extend Gen AI Playground workflow
+- extend Gen AI Playground workflow with the same `whoami` vector-store use case
 - move the Docling ingestion flow into a Kubeflow Pipelines/DSPA pipeline
 - add guardrails/safety as `stage-240-guardrails-and-safety`
 - compare AutoRAG with the manual pgvector baseline
