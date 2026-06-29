@@ -1,0 +1,449 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the terms described in the LICENSE file in
+# the root directory of this source tree.
+
+"""
+Agent mode implementation for chat with automatic tool calling.
+"""
+
+import logging
+import re
+
+import streamlit as st
+
+from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
+from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name
+
+
+logger = logging.getLogger(__name__)
+
+
+def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client):
+    """
+    Convert toolgroup selections to LlamaStack Responses API compatible tool format.
+
+    Args:
+        toolgroup_selection: List of selected toolgroup IDs
+        selected_vector_dbs: List of selected vector database names
+        top_k: Maximum file search results per query
+        client: LlamaStack client instance
+
+    Returns:
+        List of tools in Responses API format (works for both Agent and Direct modes)
+    """
+    agent_tools = []
+
+    for toolgroup_name in toolgroup_selection:
+        if toolgroup_name == "builtin::rag":
+            if len(selected_vector_dbs) > 0:
+                vector_dbs = client.vector_stores.list() or []
+                vector_db_ids = [
+                    vector_db.id for vector_db in vector_dbs
+                    if get_vector_db_name(vector_db) in selected_vector_dbs
+                ]
+                # Use file_search tool format
+                agent_tools.append({
+                    "type": "file_search",
+                    "max_num_results": top_k,
+                    "vector_store_ids": list(vector_db_ids),
+                })
+        elif "web_search" in toolgroup_name or "search" in toolgroup_name.lower():
+            # Convert search tools to web_search format
+            agent_tools.append({"type": "web_search"})
+        elif toolgroup_name.startswith("mcp::"):
+            connector_id = toolgroup_name.removeprefix("mcp::")
+            connectors = llama_stack_api.list_connectors()
+            connector = next(
+                (
+                    candidate for candidate in connectors
+                    if isinstance(candidate, dict)
+                    and candidate.get("connector_id") == connector_id
+                ),
+                None,
+            )
+            if connector and connector.get("url"):
+                agent_tools.append({
+                    "type": "mcp",
+                    "server_label": connector.get("server_label") or connector_id,
+                    "server_url": connector["url"],
+                    "require_approval": "never",
+                })
+            else:
+                logger.debug("Selected MCP connector %s is not registered", connector_id)
+        else:
+            logger.debug("Skipping unsupported tool selection %s", toolgroup_name)
+
+    return agent_tools
+
+
+# ============================================================================
+# Agent Mode - Chunk Handlers
+# ============================================================================
+
+def handle_agent_file_search_chunk(state, selected_vector_dbs):
+    """Handle file_search tool chunk in agent mode."""
+    if state.tool_used:
+        return
+
+    # Show tool status message in persistent container
+    if selected_vector_dbs:
+        db_label = "vector store" if len(selected_vector_dbs) == 1 else "vector stores"
+        status_msg = (
+            f"🛠 :grey[_Using file_search tool with {db_label}: "
+            f"{', '.join(selected_vector_dbs)}_]"
+        )
+    else:
+        status_msg = "🛠 :grey[_Using file_search tool..._]"
+
+    state.tool_status = status_msg
+    with state.containers.tool_status:
+        st.markdown(status_msg)
+
+
+def handle_agent_web_search_chunk(state):
+    """Handle web_search tool chunk in agent mode."""
+    if state.tool_used:
+        return
+
+    status_msg = "🛠 :grey[_Using web_search tool..._]"
+    state.tool_status = status_msg
+    with state.containers.tool_status:
+        st.markdown(status_msg)
+
+
+def handle_agent_output_item_done(chunk, state):
+    """Handle response.output_item.done - tool execution completion with results."""
+    if not hasattr(chunk, 'item'):
+        return
+
+    item = chunk.item
+    item_type = getattr(item, 'type', None)
+
+    if item_type == "file_search_call":
+        # File search results
+        if hasattr(item, 'results') and item.results:
+            # Build citation map: document_id → human-readable source name
+            for r in item.results:
+                attrs = getattr(r, 'attributes', {})
+                doc_id = attrs.get('document_id', '')
+                source = attrs.get('source') or attrs.get('filename') or getattr(r, 'filename', '')
+                if doc_id and source:
+                    state.file_id_map[doc_id] = source
+
+            display_results = []
+            for r in item.results:
+                text = getattr(r, 'text', '')
+                attrs = getattr(r, 'attributes', {})
+                source = attrs.get('source') or getattr(r, 'filename', 'unknown')
+                display_results.append({"source": source, "text": clean_text(text)})
+            state.tool_results.append({
+                'title': '📄 File Search Results',
+                'type': 'json',
+                'content': display_results
+            })
+            with state.containers.tool_results:
+                with st.expander("📄 File Search Results", expanded=False):
+                    st.json(display_results)
+
+    elif item_type == "web_search_call":
+        # Web search - API doesn't expose raw results, just status
+        pass
+
+    elif item_type == "function_call":
+        # Function call output
+        if hasattr(item, 'output') and item.output:
+            tool_name = getattr(item, 'name', 'function')
+            state.tool_results.append({
+                'title': f'🔧 Tool Output: {tool_name}',
+                'type': 'code',
+                'content': str(item.output)
+            })
+            with state.containers.tool_results:
+                with st.expander(f"🔧 Tool Output: {tool_name}", expanded=False):
+                    st.code(str(item.output))
+
+    elif item_type == "mcp_call":
+        # MCP call output
+        if hasattr(item, 'output') and item.output:
+            tool_name = getattr(item, 'name', 'mcp')
+            state.tool_results.append({
+                'title': f'🔧 MCP Tool Output: {tool_name}',
+                'type': 'code',
+                'content': str(item.output)
+            })
+            with state.containers.tool_results:
+                with st.expander(f"🔧 MCP Tool Output: {tool_name}", expanded=False):
+                    st.code(str(item.output))
+
+    elif item_type and item_type.endswith("_call"):
+        # Generic handler for any other tool call types
+        if hasattr(item, 'results') and item.results:
+            formatted_name = item_type.replace("_", " ").title()
+            state.tool_results.append({
+                'title': f'🔧 {formatted_name} Results',
+                'type': 'json',
+                'content': item.results
+            })
+            with state.containers.tool_results:
+                with st.expander(f"🔧 {formatted_name} Results", expanded=False):
+                    st.json(item.results)
+        elif hasattr(item, 'output') and item.output:
+            formatted_name = item_type.replace("_", " ").title()
+            state.tool_results.append({
+                'title': f'🔧 {formatted_name} Output',
+                'type': 'json',
+                'content': item.output
+            })
+            with state.containers.tool_results:
+                with st.expander(f"🔧 {formatted_name} Output", expanded=False):
+                    st.json(item.output)
+
+
+def handle_chunk_error(chunk):
+    """Handle error chunk and return whether to stop streaming."""
+    error_msg = "Unknown error"
+    error_code = None
+
+    # Try to get error from chunk.error first
+    if hasattr(chunk, 'error') and chunk.error:
+        if hasattr(chunk.error, 'message'):
+            error_msg = chunk.error.message
+        if hasattr(chunk.error, 'code'):
+            error_code = chunk.error.code
+    # Fallback to chunk attributes
+    elif hasattr(chunk, 'error_message'):
+        error_msg = chunk.error_message
+
+    error_display = f"❌ Error: {error_msg}"
+    if error_code:
+        error_display += f" (Code: {error_code})"
+
+    st.error(error_display)
+    logger.debug("Response failed: %s", error_msg)
+    return True  # Stop streaming
+
+
+def handle_chunk_completed(chunk):
+    """Handle completed chunk."""
+    logger.debug("Response completed successfully")
+    if hasattr(chunk, 'stop_reason'):
+        logger.debug("Stop reason: %s", chunk.stop_reason)
+
+
+def _resolve_file_citations(text, file_id_map):
+    """Replace <|file-xxx|> markers with human-readable [source_name] citations."""
+    if not file_id_map:
+        return text
+
+    def _replace(match):
+        file_id = match.group(1)
+        name = file_id_map.get(file_id, file_id)
+        return f"[{name}]"
+
+    return re.sub(r'<\|([^|]+)\|>', _replace, text)
+
+
+def handle_chunk_done(chunk, state):
+    """Handle done chunk and finalize response."""
+    has_output = (
+        hasattr(chunk, 'response') and
+        hasattr(chunk.response, 'output_text') and
+        chunk.response.output_text
+    )
+    if has_output:
+        state.full_response = chunk.response.output_text
+
+
+def process_chunk_by_type(chunk, state, selected_vector_dbs):
+    """Process a single chunk based on its type. Returns True to stop streaming."""
+    chunk_type = chunk.type
+
+    # Handle file_search tool
+    if chunk_type == "response.file_search_call.in_progress":
+        handle_agent_file_search_chunk(state, selected_vector_dbs)
+
+    # Handle web_search tool
+    elif chunk_type == "response.web_search_call.in_progress":
+        handle_agent_web_search_chunk(state)
+
+    elif chunk_type in ("response.web_search_call.searching",
+                         "response.web_search_call.completed"):
+        pass  # Just for event tracking
+
+    # Handle tool results
+    elif chunk_type == "response.output_item.done":
+        handle_agent_output_item_done(chunk, state)
+
+    # Handle reasoning
+    elif chunk_type == "response.reasoning_text.delta":
+        if hasattr(chunk, 'delta') and chunk.delta:
+            state.update_reasoning(chunk.delta)
+
+    # Handle message content
+    elif chunk_type == "response.output_text.delta":
+        if hasattr(chunk, 'delta') and chunk.delta:
+            state.update_message(chunk.delta)
+
+    # Handle errors
+    elif chunk_type == "response.failed":
+        return handle_chunk_error(chunk)
+
+    # Handle completion
+    elif chunk_type == "response.completed":
+        handle_chunk_completed(chunk)
+
+    # Handle done
+    elif chunk_type == "response.done":
+        handle_chunk_done(chunk, state)
+
+    return False  # Continue streaming
+
+
+# ============================================================================
+# Agent Mode - Main Functions
+# ============================================================================
+
+def stream_agent_response(response, state, selected_vector_dbs):
+    """
+    Stream and process chunks from Responses API.
+    Updates state containers as chunks arrive.
+    """
+    chunk_count = 0
+
+    for chunk in response:
+        chunk_count += 1
+        logger.debug("Chunk #%s: type=%s", chunk_count, getattr(chunk, 'type', 'NO_TYPE'))
+        logger.debug("  -> Full chunk: %s", chunk)
+
+        # Some server failures arrive as an error payload with type=None.
+        if hasattr(chunk, 'error') and chunk.error:
+            if isinstance(chunk.error, dict):
+                error_msg = chunk.error.get("message", "Unknown error")
+            else:
+                error_msg = str(chunk.error)
+            st.error(
+                f"❌ Error: {error_msg}"
+            )
+            logger.debug("Response stream error: %s", error_msg)
+            break
+
+        if hasattr(chunk, 'type'):
+            should_stop = process_chunk_by_type(chunk, state, selected_vector_dbs)
+            if should_stop:
+                break
+
+
+def save_agent_response_to_session(state):
+    """Save agent response to session state."""
+    state.finalize_reasoning()
+    state.finalize_message()
+
+    response_dict = {
+        "role": "assistant",
+        "content": state.full_response,
+        "stop_reason": "end_of_message"
+    }
+
+    if state.reasoning_text:
+        response_dict["reasoning"] = state.reasoning_text
+    if state.tool_status:
+        response_dict["tool_status"] = state.tool_status
+    if state.tool_results:
+        response_dict["tool_results"] = state.tool_results
+
+    st.session_state.messages.append(response_dict)
+
+
+def agent_process_prompt(prompt, state, config):
+    """Agent-based mode: Use Responses API with automatic tool calling and NeMo guardrails."""
+    from llama_stack_ui.distribution.ui.modules import guardrails
+
+    shields_on = config.shields_enabled
+    if shields_on:
+        with st.status("🛡️ Checking input safety...", expanded=False) as shield_status:
+            violation = guardrails.check_input(prompt)
+            if violation:
+                shield_status.update(label="🛡️ Input blocked", state="error")
+                detector = violation['detector']
+                score = violation['score']
+                message = violation.get('message') or "Please rephrase your message."
+                st.error(
+                    f"🛡️ **Safety Shield Activated** — Your message was blocked by the "
+                    f"**{detector}** detector (confidence: {score:.2f}).\n\n"
+                    f"{message}"
+                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"🛡️ Input blocked by {detector} shield (score: {score:.2f}). {message}",
+                })
+                return
+            shield_status.update(label="🛡️ Input safe", state="complete")
+
+    # Build tools list from selected toolgroups
+    tools = build_response_tools(
+        config.toolgroup_selection,
+        config.selected_vector_dbs,
+        config.sampling.top_k,
+        llama_stack_api.client,
+    ) if config.toolgroup_selection else None
+
+    # Build request for Responses API
+    request_kwargs = {
+        "model": config.model,
+        "instructions": config.system_prompt,
+        "input": prompt,
+        "conversation": config.conversation_id,
+        "temperature": config.sampling.temperature,
+        "max_infer_iters": config.sampling.max_infer_iters,
+        "max_output_tokens": config.sampling.max_tokens,
+        "stream": True,
+    }
+
+    if tools:
+        request_kwargs["tools"] = tools
+        request_kwargs["tool_choice"] = "required"
+
+    logger.debug("Request: %s", request_kwargs)
+    try:
+        response = llama_stack_api.client.responses.create(**request_kwargs)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        st.error(f"❌ Error: {str(e)}")
+        logger.error("Agent mode create() error: %s", e)
+        return
+
+    # Stream response and update UI
+    stream_agent_response(response, state, config.selected_vector_dbs)
+
+    # --- Output guardrails (NeMo output rails) ---
+    if shields_on and state.full_response:
+        violations = guardrails.check_output(state.full_response)
+        if violations:
+            redacted = state.full_response
+            details = []
+            replacement = next((v.get('message') for v in violations if v.get('message')), None)
+            for v in violations:
+                matched = v.get('text', '')
+                if matched and matched in redacted:
+                    redacted = redacted.replace(matched, '█' * min(len(matched), 12))
+                details.append(f"  • {v['detector']}: policy response (score: {v['score']:.2f})")
+
+            if replacement:
+                redacted = replacement
+
+            state.full_response = redacted
+            state.containers.message.markdown(redacted)
+
+            st.warning(
+                f"🛡️ **Output filtered** — {len(violations)} detection(s) redacted:\n\n"
+                + "\n".join(details)
+            )
+            state.tool_results.append({
+                'title': f'🛡️ Output Shield: {len(violations)} redaction(s)',
+                'type': 'code',
+                'content': "\n".join(details),
+            })
+
+    # Save response to session
+    save_agent_response_to_session(state)

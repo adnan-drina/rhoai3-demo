@@ -41,15 +41,19 @@ Use `rhoai-guardrails-safety` for official NeMo Guardrails, FMS Guardrails,
 TrustyAI guardrails CRs, detector services, and guardrails endpoints. This
 skill only covers how the custom chatbot UI calls or presents those controls.
 
-## Reimplementation Status
+## Active Implementation Status
 
-The active implementation is being rewritten. No active chatbot code, Step 07
-GitOps content, or Step 07 README exists yet. Treat the file paths and command
-examples in this skill as legacy reference material for rebuilding the chatbot,
-not as active-project instructions.
+The active chatbot implementation lives in Stage 230:
 
-Do not run or modify scripts from `backup/legacy-implementation-2026-06-09/`
-unless the user explicitly asks to restore or inspect the legacy implementation.
+- source: `stage-230-private-data-rag/chatbot/`
+- build resources: `gitops/stage-230-private-data-rag/app/build/`
+- deployment resources: `gitops/stage-230-private-data-rag/app/base/`
+- validation: `stage-230-private-data-rag/validate.sh`
+
+Legacy Step 07 chatbot paths under
+`backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/` remain
+reference material only. Do not run or modify backup scripts unless the user
+explicitly asks to restore or inspect the legacy implementation.
 
 ## Architecture at a Glance
 
@@ -86,21 +90,27 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 | File | What to edit |
 |------|-------------|
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/chat.py` | System prompts, sidebar config, suggested questions display, mode switching |
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/agent.py` | tool_choice, guardrails integration, Responses API streaming |
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/direct.py` | Direct mode RAG, completions API |
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/guardrails.py` | Input/output safety checks |
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/llama_stack_ui/distribution/ui/modules/utils.py` | Question suggestions parsing, vector DB helpers |
-| `backup/legacy-implementation-2026-06-09/gitops/step-07-rag/base/chatbot/chatbot.yaml` | Env vars: LLAMA_STACK_URL, INFERENCE_MODEL, RAG_QUESTION_SUGGESTIONS |
-| `backup/legacy-implementation-2026-06-09/steps/step-07-rag/README.md` | Design decisions (must update with code changes) |
+| `stage-230-private-data-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/chat.py` | System prompts, sidebar config, suggested questions display, mode switching |
+| `stage-230-private-data-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/agent.py` | tool_choice, guardrails integration, Responses API streaming |
+| `stage-230-private-data-rag/chatbot/llama_stack_ui/distribution/ui/page/playground/direct.py` | Direct mode RAG, completions API |
+| `stage-230-private-data-rag/chatbot/llama_stack_ui/distribution/ui/modules/guardrails.py` | Input/output safety checks |
+| `stage-230-private-data-rag/chatbot/llama_stack_ui/distribution/ui/modules/utils.py` | Question suggestions parsing, vector DB helpers |
+| `stage-230-private-data-rag/chatbot/pyproject.toml` | Llama Stack client dependency pin; must stay compatible with the deployed RHOAI Llama Stack server |
+| `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml` | Env vars such as `RAG_QUESTION_SUGGESTIONS` |
+| `gitops/stage-230-private-data-rag/app/base/deployment-chatbot.yaml` | Env vars such as `LLAMA_STACK_ENDPOINT`, image reference, probes, resources |
+| `stage-230-private-data-rag/README.md` | Design decisions (must update with code changes) |
 
 ## Instructions
 
 ### Read Before You Write
 
-1. Read `backup/legacy-implementation-2026-06-09/steps/step-07-rag/README.md` — design decisions section
+1. Read `stage-230-private-data-rag/README.md` and
+   `stage-230-private-data-rag/PLAN.md`.
 2. If doing prompt engineering, also read `references/prompt-engineering.md`
 3. If touching the architecture, also read `references/chatbot-architecture.md`
+4. If changing `llama-stack-client`, verify the deployed Llama Stack server
+   version and run the Stage 230 validator. A stale client fails with HTTP 426
+   `Client version ... is not compatible with server version ...`.
 
 ### Common Workflows
 
@@ -120,10 +130,11 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
 
 #### Change Suggested Questions
 
-1. Edit `RAG_QUESTION_SUGGESTIONS` in `backup/legacy-implementation-2026-06-09/gitops/step-07-rag/base/chatbot/chatbot.yaml`
+1. Edit `RAG_QUESTION_SUGGESTIONS` in
+   `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml`
 2. Format: JSON object keyed by vector store name (`whoami`, `acme_corporate`)
 3. ArgoCD sync applies the change
-4. Restart deployment: `oc rollout restart deployment/rag-chatbot -n private-ai`
+4. Restart deployment: `oc rollout restart deployment/private-rag-chatbot -n enterprise-rag`
 5. No rebuild needed — env-var-only change
 
 #### Adjust Agent Parameters
@@ -152,15 +163,25 @@ Guardrails are only available in Agent mode (not Direct mode).
 For rebuild/restart guidance, container image standards, and "do not change
 without full testing" constraints, read
 `references/development-constraints.md`. Key distinction: code changes require
-`oc start-build` + `oc rollout restart`; env-only changes need only `oc rollout restart`.
+`stage-230-private-data-rag/deploy.sh` to run the OpenShift binary build from
+`stage-230-private-data-rag/chatbot/` and roll the deployment; env-only changes
+need only `oc rollout restart`.
+
+Do not switch the active RHOAI 3.4 demo back to
+`quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` without retesting client
+compatibility. That image pins `llama-stack-client==0.6.0`; the Stage 230
+server has been observed at `llama-stack=0.7.1+rhaiv.1` and rejects the 0.6
+client with HTTP 426.
 
 ### Validation
 
 After any change:
-1. Open the chatbot route: `oc get route rag-chatbot -n private-ai -o jsonpath='{.spec.host}'`
+1. Open the chatbot route: `oc get route private-rag-chatbot -n enterprise-rag -o jsonpath='{.spec.host}'`
 2. Test in both Direct and Agent modes
 3. Verify suggested questions appear for each vector store
 4. If guardrails changed, test with PII content
+5. Run `./stage-230-private-data-rag/validate.sh` and confirm the chatbot
+   Llama Stack client compatibility check passes.
 
 For detailed architecture, component map, and prompt engineering patterns, read the references:
 - `references/chatbot-architecture.md`

@@ -103,7 +103,7 @@ fresh-environment deployment through
 | Fresh-environment rollout | high | Static render and server-side dry-run passed on cluster-xgg8t; run the full Stage 230 deploy after the branch is pushed so Argo CD can fetch the new GitOps path. |
 | Production embedding posture | medium | First implementation uses the quickstart `sentence-transformers/all-MiniLM-L6-v2` inline sentence-transformers provider; consider a separately served embedding model for a more production-like enterprise RAG stage. |
 | Docling image posture | medium | Stage 230 uses `quay.io/docling-project/docling-serve:latest` as a demo/reference dependency inherited from the previous implementation and quickstart pattern; pin or replace before production-positioned delivery. |
-| Streamlit app image posture | medium | Stage 230 uses `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` from `rh-ai-quickstart/RAG` as a demo UI; rebuild, scan, or replace before production-positioned delivery. |
+| Streamlit app image posture | medium | Stage 230 now builds a repo-owned chatbot image from `stage-230-private-data-rag/chatbot/` with `llama-stack-client==0.7.2`; scan, pin the base image digest, and publish through a controlled registry before production-positioned delivery. |
 | Pipeline hardening | medium | DSPA/KFP ingestion is now active; hardening work remains around pipeline image pinning, artifact retention policy, run cleanup, and richer dashboard evidence. |
 | AutoRAG comparison | low | Keep AutoRAG as a later optimization path because it is Technology Preview and Milvus-oriented in the current skill baseline. |
 | Guardrails | high | Safety shields and prompt-injection controls belong in the next GenAI stage after the private RAG baseline is validated. |

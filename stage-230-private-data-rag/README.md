@@ -33,7 +33,7 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
-| RAG application | Streamlit chatbot reused from the Red Hat AI Enterprise RAG quickstart and pointed at the stage-owned Llama Stack service |
+| RAG application | Repo-owned Streamlit chatbot adapted from the Red Hat AI Enterprise RAG quickstart, built in OpenShift with a RHOAI 3.4-compatible Llama Stack client, and pointed at the stage-owned Llama Stack service |
 | Demo shortcut | OpenShift console application-menu `ConsoleLink` named `Private RAG Chatbot`, patched at sync time to the generated chatbot route |
 | Embeddings | Llama Stack inline `sentence-transformers` provider using 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` embeddings |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
@@ -89,7 +89,10 @@ flowchart LR
 - rh-brain: `2026-01-29 - Deploy an Enterprise RAG Chatbot with Red Hat OpenShift AI`
 - rh-brain: `Enterprise RAG on OpenShift AI`
 
-The chatbot image is `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45`.
-It is used as a Red Hat quickstart/demo reference image, not as a RHOAI product
-image. Production-positioned demos should replace it with an internally built
-and scanned image.
+The chatbot source lives in `stage-230-private-data-rag/chatbot/` and is built
+into the namespace-local `private-rag-chatbot:latest` image by OpenShift
+Builds. It is adapted from the Red Hat quickstart UI, but is not the published
+quickstart image: the quickstart `0.2.45` image pins `llama-stack-client==0.6.0`,
+which is incompatible with the RHOAI 3.4 Llama Stack server used here. The
+repo-owned build pins `llama-stack-client==0.7.2` and the validator confirms
+that the app can call `client.models.list()` against `lsd-private-rag`.

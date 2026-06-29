@@ -172,6 +172,33 @@ else
 fi
 check "Private RAG Streamlit chatbot route responds" "$R"
 
+if resource_exists "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS"; then
+  output=$(oc exec "deployment/${RAG_CHATBOT_DEPLOYMENT}" -n "$PROJECT_NS" \
+    --insecure-skip-tls-verify=true \
+    -- python -c '
+import importlib.metadata as md
+from llama_stack_client import LlamaStackClient
+
+version = md.version("llama-stack-client")
+if not version.startswith("0.7."):
+    raise SystemExit(f"incompatible llama-stack-client version: {version}")
+
+client = LlamaStackClient(base_url="http://lsd-private-rag-service.enterprise-rag.svc.cluster.local:8321")
+models = client.models.list()
+if not models:
+    raise SystemExit("Llama Stack returned no models")
+print(f"CHATBOT_LLAMA_STACK_CLIENT_OK {version}")
+' 2>&1 || true)
+  if grep -q "CHATBOT_LLAMA_STACK_CLIENT_OK" <<<"$output"; then
+    R=pass
+  else
+    R="$output"
+  fi
+else
+  R=missing
+fi
+check "Private RAG chatbot Llama Stack client is compatible" "$R"
+
 if [[ -n "$chatbot_route" ]]; then
   console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
   console_text=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.text}')

@@ -1,0 +1,10 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: private-rag-chatbot
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: frontend
+  annotations:
+    argocd.argoproj.io/sync-wave: "28"

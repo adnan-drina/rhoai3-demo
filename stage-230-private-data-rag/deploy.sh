@@ -52,6 +52,7 @@ RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
 RAG_DOCLING_SERVICE="${RHOAI_STAGE230_DOCLING_SERVICE:-private-rag-docling}"
 RAG_CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
+RAG_CHATBOT_BUILD_CONFIG="${RHOAI_STAGE230_CHATBOT_BUILD_CONFIG:-private-rag-chatbot}"
 RAG_DOCLING_LOCAL_PORT="${RHOAI_STAGE230_DOCLING_LOCAL_PORT:-15001}"
 RAG_DOCLING_TIMEOUT="${RHOAI_STAGE230_DOCLING_TIMEOUT:-600}"
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
@@ -320,6 +321,44 @@ grant_pgvector_scc() {
   oc adm policy add-scc-to-user anyuid -z private-rag-postgres -n "$PROJECT_NS" \
     --insecure-skip-tls-verify=true >/dev/null
   echo "[OK] anyuid SCC granted to ${PROJECT_NS}/private-rag-postgres"
+}
+
+build_chatbot_image() {
+  echo "-- Building Stage 230 RAG chatbot image --"
+
+  local source_dir="$SCRIPT_DIR/chatbot"
+  if [[ ! -f "$source_dir/Containerfile" || ! -f "$source_dir/pyproject.toml" ]]; then
+    echo "ERROR: chatbot build source is incomplete at ${source_dir}." >&2
+    return 1
+  fi
+
+  for _ in $(seq 1 60); do
+    if oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      break
+    fi
+    sleep 5
+  done
+
+  if ! oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "ERROR: BuildConfig ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG} was not created by GitOps." >&2
+    return 1
+  fi
+
+  oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+    --from-dir="$source_dir" \
+    --follow \
+    --wait \
+    --insecure-skip-tls-verify=true
+
+  if oc get deployment "$RAG_CHATBOT_DEPLOYMENT" -n "$PROJECT_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    oc rollout restart "deployment/${RAG_CHATBOT_DEPLOYMENT}" -n "$PROJECT_NS" \
+      --insecure-skip-tls-verify=true >/dev/null
+  fi
+
+  echo "[OK] Stage 230 RAG chatbot image is built"
 }
 
 apply_argocd_application() {
@@ -941,6 +980,7 @@ wait_for_project_bootstrap
 ensure_runtime_secrets
 ensure_project_s3_connection
 grant_pgvector_scc
+build_chatbot_image
 wait_for_application
 refresh_llamastack_runtime
 wait_for_runtime

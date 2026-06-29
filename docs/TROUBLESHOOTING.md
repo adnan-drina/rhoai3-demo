@@ -988,9 +988,10 @@ oc logs job/private-rag-s3-seed -n enterprise-rag
 
 ### Private RAG chatbot route is unavailable or shows connection errors
 
-- **Likely causes:** the Streamlit deployment is not ready, the quickstart UI
-  image cannot be pulled, or the `LLAMA_STACK_ENDPOINT` environment variable
-  does not point at the Stage 230 Llama Stack service.
+- **Likely causes:** the Streamlit deployment is not ready, the repo-owned
+  chatbot image was not built, the `LLAMA_STACK_ENDPOINT` environment variable
+  does not point at the Stage 230 Llama Stack service, or the chatbot
+  `llama-stack-client` version does not match the deployed Llama Stack server.
 - **Confirm:**
 
 ```bash
@@ -999,14 +1000,17 @@ oc logs deployment/private-rag-chatbot -n enterprise-rag --tail=120
 oc get deployment private-rag-chatbot -n enterprise-rag \
   -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="LLAMA_STACK_ENDPOINT")].value}{"\n"}'
 oc get svc lsd-private-rag-service -n enterprise-rag
+oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
+  python -c 'import importlib.metadata as md; print(md.version("llama-stack-client"))'
 ```
 
 - **Fix:** rerun Stage 230 deploy after Argo CD has synced the latest GitOps
-  revision. The deployment should use
-  `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` and
-  `LLAMA_STACK_ENDPOINT=http://lsd-private-rag-service.enterprise-rag.svc.cluster.local:8321`.
-  If the app starts but no document collection appears, rerun the ingestion
-  pipeline so the `whoami` vector store exists.
+  revision. The deploy script starts an OpenShift binary build from
+  `stage-230-private-data-rag/chatbot/` and the deployment should use
+  `image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest`.
+  The chatbot must report a `0.7.x` `llama-stack-client` for the RHOAI 3.4
+  Llama Stack server. If the app starts but no document collection appears,
+  rerun the ingestion pipeline so the `whoami` vector store exists.
 
 ### Llama Stack RAG answer gets 401 from MaaS
 

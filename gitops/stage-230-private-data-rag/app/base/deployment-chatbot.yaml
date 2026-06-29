@@ -28,8 +28,8 @@ spec:
       serviceAccountName: private-rag-chatbot
       containers:
         - name: streamlit
-          image: quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45
-          imagePullPolicy: IfNotPresent
+          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8501

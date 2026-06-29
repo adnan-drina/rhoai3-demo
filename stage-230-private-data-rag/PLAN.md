@@ -19,7 +19,8 @@ In scope:
 - deploy a stage-owned PostgreSQL with pgvector runtime service
 - deploy a stage-owned `LlamaStackDistribution` named `lsd-private-rag`
 - deploy a stage-owned Streamlit RAG chatbot named `private-rag-chatbot`
-  reused from the Red Hat AI Enterprise RAG quickstart UI
+  adapted from the Red Hat AI Enterprise RAG quickstart UI and built in the
+  `enterprise-rag` namespace
 - expose the chatbot from the console application menu with a `Private RAG
   Chatbot` `ConsoleLink`
 - deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
@@ -76,9 +77,12 @@ Out of scope for this first RAG stage:
   carried forward from the previous implementation and Red Hat RAG quickstart
   pattern. Treat it as an external dependency to pin or replace before making
   production-support claims.
-- `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` provides the Streamlit
-  chatbot reused from the Red Hat quickstart implementation. It is a demo
-  reference image, not a RHOAI product image.
+- The Streamlit chatbot source is copied into this repo from the Red Hat
+  quickstart-inspired legacy implementation and built with OpenShift Builds.
+  The quickstart image `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45`
+  pins `llama-stack-client==0.6.0`, which is not compatible with the RHOAI 3.4
+  Llama Stack server version deployed by this stage. The repo-owned build pins
+  `llama-stack-client==0.7.2`, matching the active server client line.
 - External search is intentionally excluded for the private enterprise baseline.
 
 ## Acceptance Criteria
@@ -96,6 +100,8 @@ Out of scope for this first RAG stage:
   Nemotron-backed answer.
 - The `private-rag-chatbot` deployment is ready, the route responds, and the UI
   can be used to select the `whoami` vector store for demo questions.
+- The `private-rag-chatbot` container can call `client.models.list()` against
+  `lsd-private-rag` with a RHOAI 3.4-compatible `llama-stack-client`.
 - The `rhoai-demo-rag-chatbot` `ConsoleLink` points to the generated
   `private-rag-chatbot` route under the `RHOAI Demo` application-menu section.
 

@@ -761,6 +761,8 @@ The deploy script:
   `default-dsc` patch pattern
 - waits for `private-rag-postgres` and `lsd-private-rag`
 - waits for `private-rag-docling`
+- builds the repo-owned `private-rag-chatbot` image from
+  `stage-230-private-data-rag/chatbot/` with OpenShift Builds
 - waits for the `private-rag-chatbot` Streamlit UI
 - waits for the `private-rag-pipelines` DSPA route and Ready condition
 - uploads the whoami PDF corpus to the ODF/NooBaa bucket under
@@ -809,9 +811,11 @@ store and sends retrieved context to the MaaS-backed Nemotron model.
   recommend PostgreSQL with pgvector for durable vector storage, but the active
   RHOAI baseline does not provide a product image containing the pgvector
   extension.
-- `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` is reused from the
-  Red Hat Enterprise RAG quickstart as a demo UI. It is not a RHOAI product
-  image; rebuild or replace it for production-positioned delivery.
+- The Streamlit chatbot source is adapted from the Red Hat Enterprise RAG
+  quickstart and built as a namespace-local image with OpenShift Builds. Do not
+  switch back to `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` for the
+  RHOAI 3.4 baseline; that image carries `llama-stack-client==0.6.0`, while the
+  deployed Llama Stack server requires the `0.7.x` client line.
 - The previous implementation's MinIO server is not reused. Stage 230 uses the
   stage-owned ODF/NooBaa `enterprise-rag-bucket` ObjectBucketClaim. The old
   whoami PDF and Docling conversion boundary are reused because they still

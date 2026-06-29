@@ -148,6 +148,9 @@ LlamaStackClient: <llama-stack-url>
 
 Check:
 
+- Python applications using `llama_stack_client` have a client version
+  compatible with the deployed server. A mismatched client returns HTTP 426
+  before normal API handling.
 - `/v1/models` returns expected models
 - `/v1/responses` works for RAG and tool workflows
 - file citation annotations appear when `file_search` is used
