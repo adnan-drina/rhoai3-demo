@@ -117,6 +117,10 @@ Review points:
   Governed shared access belongs behind MaaS.
 - Recreate strategy avoids two large model replicas competing for one GPU
   during config changes.
+- On a fresh cluster, the first rollout can take substantially longer than
+  steady state while the modelcar and vLLM image are pulled. Use configurable
+  readiness loops and inspect events before treating transient
+  `ImagePullBackOff` as a configuration error.
 
 ## MaaS LLMInferenceService Profile
 
@@ -216,6 +220,10 @@ Review points:
   resources before reconciling the MaaS-owned `LLMInferenceService`.
 - Use the Stage 210 `8192` token default as the initial MaaS serving envelope
   until RAG-specific benchmarks justify a larger context.
+- Wait for `LLMInferenceService` `Ready=True` before claiming MaaS local-model
+  readiness. Gateway, subscription, and auth-policy resources can become
+  healthy while the generated router/scheduler and model workload are still
+  pulling images.
 
 ## Validation
 
@@ -232,3 +240,13 @@ The response must include `--enable-auto-tool-choice`,
 For endpoint smoke testing, use a chat completion request that asks for a tool
 call and includes a tool schema. A compliant response should include
 `choices[0].message.tool_calls` rather than plain text only.
+
+For MaaS handoff, verify:
+
+```bash
+oc get llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+```
+
+Do not proceed to MaaS API-key or Playground validation until the readiness
+condition is `True`.

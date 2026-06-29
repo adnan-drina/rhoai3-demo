@@ -9,11 +9,16 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | Pod not starting | Resource limits, image pull, taint | `oc describe pod`, `oc get events` |
 | Argo CD not syncing | Resource conflict, RBAC | `oc get application <name> -n openshift-gitops -o yaml` |
 | Argo CD ComparisonError | CRD schema not resolvable | Add `ServerSideDiff=true` to syncOptions |
+| Manual `oc` command shows old cluster state | `.env` values were sourced without export or the default kubeconfig is stale | `set -a; source .env; set +a; oc whoami --show-server` |
 | Argo CD sync stuck on hooks | Upload jobs re-running | Wait — check `oc get jobs -n minio-storage` |
+| Argo CD sync stuck before workload wave | A Service in an earlier wave has no endpoints because the first endpoint-producing workload is in a later wave | Compare Service and workload sync waves; move the Service into the same wave as its initial workload |
+| Argo CD Application remains stuck after a fix | Stale operation state or incompatible local `argocd` CLI against OpenShift GitOps | Inspect `oc get application <app> -n openshift-gitops -o yaml`; use OpenShift GitOps-compatible refresh/operation cleanup |
 | InferenceService not ready | GPU scheduling, model storage | `oc get pods`, `oc describe isvc`, `oc get workload` |
 | Predictor pod in Init:0/1 | Storage-initializer downloading model | Wait — check init logs |
+| Fresh vLLM or LLMInferenceService pod in ImagePullBackOff | Large modelcar/runtime/scheduler/tokenizer images are pulling or retrying on a fresh cluster | Inspect pod events and image pull progress before editing manifests; extend readiness waits if pulls are progressing |
+| Grafana datasource token Secret not created | Token Secret was applied before the referenced service account existed | GitOps-manage the `ServiceAccount` before the token Secret; do not rely on `Grafana.spec.serviceAccount` timing |
 | LlamaStack CrashLoop | Config error, missing model | `oc logs deploy/<lsd-name>` |
-| LlamaStack "Provider not found" | Custom config bypasses rh-dev template | Remove userConfig, use env vars only. Set `EMBEDDING_PROVIDER=sentence-transformers` |
+| LlamaStack "Provider not found" | Custom config bypasses rh-dev template, or RHOAI 3.4 inline embeddings were not explicitly enabled | Remove userConfig, use env vars only. Set `ENABLE_SENTENCE_TRANSFORMERS=true` and `EMBEDDING_PROVIDER=sentence-transformers` |
 | Playground RAG ignores documents | Model doesn't invoke knowledge_search | Set System instructions: "You MUST use the knowledge_search tool" (GenAI Playground only) |
 | Chatbot shows `<\|file-xxx\|>` citation markers | LlamaStack `annotation_instruction_template` tells model to cite with `<\|file-id\|>` format | Override template in `lsd-rag-config` ConfigMap: "Never include any citation that is in the form file-id." See Lightspeed approach. |
 | llamastack-postgres CrashLoop: "data directory has wrong ownership" | pgvector image needs root; restricted SCC blocks chown | Grant anyuid to `llamastack-postgres` SA (NOT default SA): `oc adm policy add-scc-to-user anyuid -z llamastack-postgres -n private-ai` |
@@ -27,11 +32,12 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | Dashboard MCP servers show "Error" | Transport mismatch: gen-ai backend defaults to `streamable-http` but server only supports SSE | Add `"transport": "sse"` to ConfigMap JSON. Check: `curl /gen-ai/api/v1/mcp/status?server_url=<url>` |
 | Dashboard MCP shows "Token Required" | `streamable-http` POST to `/sse` returns 400 (needs SSE session) | Change URL to `/mcp` (if server supports streamable-http) or add `"transport": "sse"` |
 | Model scaling overwritten | Used `oc scale` (imperative) | Use `oc patch inferenceservice` (declarative) |
-| llama-stack-client HTTP 426 | Client/server version mismatch | Pin `llama-stack-client>=0.4,<0.5` |
+| llama-stack-client HTTP 426 | Client/server version mismatch | Pin the client to the active RHOAI 3.4 Llama Stack server line; the prior Step 07 implementation used `llama-stack-client>=0.7,<0.8` after 0.4 clients failed |
 | Docling KFP component 404 | Old v1alpha API path | Change to `/v1/convert/file` |
+| Stage 230 whoami ingestion fails during Docling conversion | `private-rag-docling` is not ready, the port-forward failed, or the source PDF is missing | `oc logs deployment/private-rag-docling -n demo-sandbox --since=20m`; verify `stage-230-private-data-rag/documents/adnan_drina_cv.pdf` |
 | Tool-call parser errors | vLLM/model parser mismatch | Verify the active `LLMInferenceService` tool-call and reasoning parser arguments for the served model |
-| Responses API file_search empty | pgvector vector store has no data | Re-ingest with the active RAG stage script once recreated, for example `./stage-230-private-data-rag/run-batch-ingestion.sh` |
-| Vector store data missing after restart | pgvector extension not enabled | Check: `oc exec deploy/llamastack-postgres -- psql -c "SELECT extname FROM pg_extension WHERE extname='vector';"` |
+| Responses API file_search empty | pgvector vector store has no data | Re-ingest with the active RAG stage script, for example `./stage-230-private-data-rag/deploy.sh`, then validate with `./stage-230-private-data-rag/validate.sh` |
+| Vector store data missing after restart | pgvector extension not enabled or active stage ingested into the wrong vector DB | Check: `oc exec statefulset/private-rag-postgres -n demo-sandbox -- psql -U rag -d rag -c "SELECT extname FROM pg_extension WHERE extname='vector';"` and rerun `./stage-230-private-data-rag/deploy.sh` |
 | Eval pipeline scoring 404 | DNS resolution in short-lived executor pods | Use `llama_stack_client` SDK with retry logic |
 | `llm-as-judge::base` scoring 500 | `prompt_template` is null | Provide prompt with `{input_query}`, `{generated_answer}`, `{expected_answer}` placeholders |
 | Chat completions model not found | Model ID must be provider-prefixed or routed through MaaS | Resolve the active Llama Stack provider/MaaS model ID before testing |
@@ -39,3 +45,6 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | ArgoCD Application uses `project: default` | Bootstrap didn't run or Applications weren't updated after bootstrap | Verify `oc get appproject rhoai-demo -n openshift-gitops`; update Application to `project: rhoai-demo` |
 | ArgoCD shows false Out-of-Sync on operator resources | Label tracking instead of annotation tracking | Verify: `oc get argocd openshift-gitops -n openshift-gitops -o jsonpath='{.spec.resourceTrackingMethod}'` must be `annotation` |
 | ArgoCD reconciles all stages on unrelated commit | Missing `manifest-generate-paths` annotation on Applications | Add `argocd.argoproj.io/manifest-generate-paths: gitops/stage-YXX-slug` to each Application |
+| Stage 120 GPU MachineSet never creates nodes in a fresh environment | MachineSet copied from an older AWS cluster with wrong AZ, subnet, AMI, or provider spec | Regenerate the GPU MachineSet from a current worker MachineSet in the target cluster |
+| Stage 220 API key creation still uses old PostgreSQL hostname | `maas-db-config` changed but `maas-api` did not reload it | Verify the Secret data and restart `deployment/maas-api` before API-key validation |
+| Stage 220 MaaS CRs are Ready but local inference fails | Underlying Nemotron `LLMInferenceService` is not `Ready=True` yet | Wait for the `LLMInferenceService` readiness condition and inspect generated router/scheduler pods |

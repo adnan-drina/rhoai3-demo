@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stage-230-private-data-rag
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/stage: "230"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/manifest-generate-paths: gitops/stage-230-private-data-rag
+spec:
+  project: rhoai-demo
+  source:
+    # repoURL and targetRevision are set by deploy.sh from .env (GIT_REPO_URL, GIT_REPO_BRANCH)
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/stage-230-private-data-rag
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    # Environment-local secrets are created by stage-230 deploy.sh because they
+    # contain generated database passwords and MaaS API keys.
+    - group: ""
+      kind: Secret
+      name: private-rag-postgres-credentials
+      namespace: demo-sandbox
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: private-rag-llama-stack-secret
+      namespace: demo-sandbox
+      jsonPointers:
+        - /data
+    - group: datasciencepipelinesapplications.opendatahub.io
+      kind: DataSciencePipelinesApplication
+      name: private-rag-pipelines
+      namespace: demo-sandbox
+      jsonPointers:
+        - /status

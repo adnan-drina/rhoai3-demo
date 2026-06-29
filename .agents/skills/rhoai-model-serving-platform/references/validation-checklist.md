@@ -115,6 +115,11 @@ runbooks, or GitOps changes.
 - Model-specific vLLM flags are not copied from Granite, Llama, or Mistral
   examples to unrelated models without a model-specific source.
 - `VLLM_CPU_KVCACHE_SPACE` is sized to hardware capacity.
+- First-deployment readiness waits account for large image and modelcar pulls.
+  Fresh clusters can spend several minutes pulling modelcar, vLLM runtime,
+  scheduler, router, and tokenizer images before readiness conditions become
+  useful. Inspect pod events and image pull progress before changing manifest
+  fields.
 
 ## Default Deployment Strategy Review
 
@@ -136,6 +141,7 @@ oc get inferenceservice -A
 oc explain servingruntime.spec
 oc explain inferenceservice.spec.predictor
 oc get -o json inferenceservice <inferenceservicename/modelname> -n <projectname>
+oc get events -n <projectname> --sort-by=.lastTimestamp
 ```
 
 Additional dashboard-backed checks:
@@ -143,6 +149,9 @@ Additional dashboard-backed checks:
 - Serving runtimes page shows expected runtime enabled state.
 - Deployments page shows healthy deployment status.
 - New deployment wizard shows the intended default deployment strategy.
+- For llm-d or `LLMInferenceService` handoff, validate
+  `status.conditions[?(@.type=="Ready")].status == "True"` before layering MaaS
+  subscriptions or Playground validation on top.
 
 ## GitOps Review
 
@@ -164,6 +173,8 @@ Additional dashboard-backed checks:
 - A ServingRuntime or InferenceService field is added without official source
   or schema verification.
 - Required port or runtime arguments are overwritten and deployment fails.
+- Validation gives up during a progressing first image pull without checking
+  events and configured readiness timeout.
 - `--trust-remote-code` is used with an untrusted model source.
 - NIM credentials are committed or logged.
 - Demo docs claim model-serving behavior that is not implemented or validated.

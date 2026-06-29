@@ -112,10 +112,17 @@ For OpenShift monitoring access:
   user-defined project metrics
 - review whether the datasource should query platform Thanos,
   user workload monitoring, or another endpoint
+- GitOps-manage the Grafana service account explicitly before any token Secret,
+  RoleBinding, or ClusterRoleBinding references it. Do not assume
+  `Grafana.spec.serviceAccount` creates the service account early enough for
+  Argo CD sync ordering.
 - bind the Grafana service account only to the required monitoring role
 - patch namespace placeholders in RoleBindings and ClusterRoleBindings
 - make ClusterRoleBinding names unique per namespace
 - never commit generated token data or external datasource credentials
+- validate the datasource through Grafana's datasource API or a live panel
+  query. `GrafanaDatasource` status alone does not prove the token, URL, and
+  Prometheus query permissions are correct.
 
 ## Dashboard Guidance
 
@@ -137,6 +144,8 @@ active Grafana Operator CRDs.
   GitOps.
 - Do not copy the placeholder session secret.
 - Do not commit generated service-account token data.
+- Do not rely on operator-created service-account timing for token Secrets or
+  monitoring RBAC.
 - Do not assume `community-operators`, channel `v5`, or automatic approval are
   acceptable without active catalog verification.
 - Do not assume the CoP OAuth proxy image is the supported image for the active

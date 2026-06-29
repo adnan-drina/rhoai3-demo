@@ -173,6 +173,31 @@ Required pattern:
 Avoid `ServerSideApply=true` because it can break sync-wave behavior. Avoid
 `Replace=true` because it can break PVCs.
 
+## Sync Wave Health Traps
+
+Argo CD evaluates resource health as it advances through waves. A resource that
+needs another later-wave resource to become healthy can deadlock the rollout.
+Review these patterns before adding new waves:
+
+- A Service that Argo CD health-checks must be created in the same wave as the
+  first Deployment or StatefulSet that provides its endpoints, unless the
+  Application has a documented health override. Stage 220 learned this with
+  `service/maas-postgres` and `statefulset/maas-postgres`.
+- Token Secrets for service accounts require the referenced `ServiceAccount` to
+  exist first. If an operator can create the service account eventually, that
+  is still too late for Argo CD ordering. GitOps-manage the service account
+  explicitly when a token Secret or RBAC binding references it.
+- CRD-dependent resources belong after the operator/CRD wave or in a separate
+  Application with `SkipDryRunOnMissingResource=true`. Do not let a foundation
+  stage render later-stage custom resources before the owning operator and
+  feature component exist.
+- Shared singleton resources, especially `DataScienceCluster`, need one clear
+  owner. Later stages should patch the owning path or use controlled hooks; do
+  not render competing full copies from multiple Applications.
+
+When a sync appears stuck, inspect both the Argo CD Application operation state
+and the health of resources in earlier waves before changing product manifests.
+
 ## Universal Ignore Differences
 
 PVC specs are immutable after creation and clusters add fields such as

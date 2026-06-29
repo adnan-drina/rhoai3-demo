@@ -45,3 +45,4 @@ spec:
         - /spec/components/kueue
         - /spec/components/kserve
         - /spec/components/llamastackoperator
+        - /spec/components/aipipelines

@@ -30,14 +30,23 @@ PASS=0
 WARN=0
 FAIL=0
 
-pass()  { ((PASS++)); echo -e "${GREEN}[PASS]${NC} $1"; }
-warn()  { ((WARN++)); echo -e "${YELLOW}[WARN]${NC} $1"; }
-fail()  { ((FAIL++)); echo -e "${RED}[FAIL]${NC} $1"; }
+pass()  { ((PASS+=1)); echo -e "${GREEN}[PASS]${NC} $1"; }
+warn()  { ((WARN+=1)); echo -e "${YELLOW}[WARN]${NC} $1"; }
+fail()  { ((FAIL+=1)); echo -e "${RED}[FAIL]${NC} $1"; }
 
 echo "============================================="
 echo " RHOAI Demo — Prerequisite Check"
 echo "============================================="
 echo ""
+
+# Load local environment values before the first oc call. Use export semantics
+# so child processes see KUBECONFIG and the expected-cluster guard variables.
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/.env" 2>/dev/null || true
+  set +a
+fi
 
 # 1. oc login status
 echo "--- Cluster Access ---"
@@ -68,7 +77,7 @@ GPU_NODES=$(oc get nodes -l nvidia.com/gpu.present=true --no-headers 2>/dev/null
 if [[ "$GPU_NODES" -ge 1 ]]; then
   pass "GPU nodes found: $GPU_NODES"
 else
-  fail "No GPU nodes found (label: nvidia.com/gpu.present=true)"
+  warn "No GPU nodes found yet (Stage 120 creates the GPU MachineSet and installs GPU support)"
 fi
 
 # 4. Required CRDs
@@ -83,7 +92,7 @@ for crd in "${REQUIRED_CRDS[@]}"; do
   if oc get crd "$crd" &>/dev/null; then
     pass "CRD: $crd"
   else
-    warn "CRD missing: $crd (will be installed by step-02)"
+    warn "CRD missing: $crd (installed by the owning active stage)"
   fi
 done
 
@@ -106,13 +115,13 @@ echo "--- ArgoCD / GitOps ---"
 if oc get namespace openshift-gitops &>/dev/null; then
   pass "openshift-gitops namespace exists"
 else
-  fail "openshift-gitops namespace missing (run: scripts/bootstrap.sh)"
+  warn "openshift-gitops namespace missing before Stage 110 bootstrap"
 fi
 
 if oc get appproject rhoai-demo -n openshift-gitops &>/dev/null; then
   pass "ArgoCD AppProject 'rhoai-demo' exists"
 else
-  fail "ArgoCD AppProject 'rhoai-demo' missing (run: scripts/bootstrap.sh)"
+  warn "ArgoCD AppProject 'rhoai-demo' missing before Stage 110 bootstrap"
 fi
 
 TRACKING=$(oc get configmap argocd-cm -n openshift-gitops -o jsonpath='{.data.application\.resourceTrackingMethod}' 2>/dev/null || echo "")
@@ -125,12 +134,9 @@ fi
 # 6. .env file
 echo ""
 echo "--- Environment ---"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 if [[ -f "$REPO_ROOT/.env" ]]; then
   pass ".env file exists at $REPO_ROOT/.env"
-  # Check key variables
-  source "$REPO_ROOT/.env" 2>/dev/null || true
-  for var in MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+  for var in KUBECONFIG RHOAI_EXPECTED_API_SERVER GIT_REPO_URL GIT_REPO_BRANCH; do
     if [[ -n "${!var:-}" ]]; then
       pass "  $var is set"
     else

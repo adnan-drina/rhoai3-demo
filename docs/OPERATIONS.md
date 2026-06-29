@@ -16,6 +16,9 @@ The active implementation follows this sequence:
 4. `stage-220-models-as-a-service` - MaaS prerequisite enablement, local
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
+5. `stage-230-private-data-rag` - whoami private document grounding with the
+   Stage 110 S3 bucket, Docling conversion, a stage-owned pgvector database,
+   RHOAI Llama Stack, and Nemotron consumed through Stage 220 MaaS.
 
 ## Stage 110: RHOAI Base Platform
 
@@ -119,6 +122,9 @@ missing registry metadata and the endpoint when absent.
 Stage 220 migrates the shared Nemotron serving path into MaaS. Its deploy
 wrapper removes a stale direct Nemotron deployment from `demo-sandbox` before
 the MaaS-owned `LLMInferenceService` is reconciled in `models-as-a-service`.
+
+Stage 230 consumes the MaaS-owned Nemotron endpoint. It does not deploy another
+model or bypass MaaS governance.
 
 ### Platform Access (Users, Project, Connection)
 
@@ -711,6 +717,85 @@ matching the provider API shape.
 - External OpenAI `gpt-5.4-mini` access must go through MaaS and must be
   documented as an external-provider data path where prompts leave the cluster.
   Provider credentials stay local and are never committed.
+
+## Stage 230: Private Data RAG
+
+Stage 230 adds an internal-only private RAG path on top of Stage 220 MaaS. It
+uses the Stage 110 `demo-sandbox-bucket` ObjectBucketClaim as the private
+document source, a stage-owned Docling service for PDF-to-Markdown conversion,
+a stage-owned DSPA/KFP pipeline server for repeatable ingestion, a stage-owned
+PostgreSQL/pgvector database as the durable vector store, and a stage-owned
+`LlamaStackDistribution` named `lsd-private-rag`.
+
+### Deploy And Validate
+
+Stage 230 depends on Stages 110, 120, 210, and 220:
+
+```bash
+./stage-110-rhoai-base-platform/validate.sh
+./stage-120-gpu-as-a-service/validate.sh
+./stage-210-model-serving-foundation/validate.sh
+./stage-220-models-as-a-service/validate.sh
+./stage-230-private-data-rag/deploy.sh
+./stage-230-private-data-rag/validate.sh
+```
+
+The deploy script:
+
+- verifies the target cluster through `RHOAI_EXPECTED_API_SERVER`
+- verifies the Llama Stack CRD, Stage 110 OBC, Stage 220 Nemotron
+  `MaaSModelRef`, and a Stage 220 MaaS subscription that grants access to
+  the Nemotron model
+- creates runtime-local `private-rag-postgres-credentials`
+- creates a runtime-local MaaS API key as `ai-developer` and stores it in
+  `private-rag-llama-stack-secret`
+- grants `anyuid` only to the dedicated `private-rag-postgres` service account
+- applies the Stage 230 Argo CD Application
+- enables the RHOAI AI Pipelines component through the shared
+  `default-dsc` patch pattern
+- waits for `private-rag-postgres` and `lsd-private-rag`
+- waits for `private-rag-docling`
+- waits for the `private-rag-pipelines` DSPA route and Ready condition
+- uploads the whoami PDF corpus to the ODF/NooBaa bucket under
+  `private-rag/whoami/`
+- compiles and submits the `whoami-rag-ingestion` KFP pipeline
+- has the KFP run convert the PDF through Docling, register the `whoami`
+  vector database, ingest into Llama Stack pgvector, and record run evidence
+
+The validator checks Argo CD state, object bucket readiness, MaaS readiness,
+AI Pipelines and DSPA readiness, runtime secrets, pgvector readiness, Docling
+readiness, Llama Stack readiness, object storage upload, latest pipeline run
+success, vector database presence, whoami RAG retrieval, and a Nemotron-backed
+answer.
+
+### Design Notes
+
+- Nemotron remains the response-generation model and is consumed through MaaS;
+  Stage 230 does not deploy or bypass a model endpoint.
+- `all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
+  quickstart baseline and is supported by the documented Llama Stack
+  `inline::sentence-transformers` path. Nemotron is not an embedding model.
+- `docker.io/pgvector/pgvector:pg16` is an explicit demo exception. RHOAI docs
+  recommend PostgreSQL with pgvector for durable vector storage, but the active
+  RHOAI baseline does not provide a product image containing the pgvector
+  extension.
+- The previous implementation's MinIO server is not reused. Stage 230 uses the
+  Stage 110 ODF/NooBaa ObjectBucketClaim. The old whoami PDF and Docling
+  conversion boundary are reused because they still match the RHOAI 3.4 RAG
+  documentation pattern.
+- DSPA artifacts use a separate fixed NooBaa bucket
+  `private-rag-pipelines`, because the `DataSciencePipelinesApplication`
+  object-storage spec needs a stable bucket name. The KFP source-document
+  steps still read from the Stage 110 generated `demo-sandbox-bucket`.
+- The DSPA uses the in-cluster NooBaa `s3.openshift-storage.svc:80` HTTP
+  service for pipeline artifacts. This avoids self-signed TLS trust issues
+  inside DSPA while keeping traffic within the cluster network for the demo.
+- `quay.io/docling-project/docling-serve:latest` remains a demo/reference
+  dependency from the previous implementation and quickstart pattern. Pin or
+  replace it before making production-support claims.
+- External search, AutoRAG, guardrails, and a custom chatbot UI are deferred.
+  This stage proves the private internal RAG foundation first with a
+  product-visible DSPA/KFP ingestion workflow for the whoami PDF.
 
 ---
 

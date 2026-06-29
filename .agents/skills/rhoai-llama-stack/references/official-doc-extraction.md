@@ -111,7 +111,7 @@ Provider enablement details from the guide:
 | Tool runtime | `inline::wolfram_alpha` | set `WOLFRAM_ALPHA_API_KEY`; disconnected not supported |
 | Vector_IO | `inline::milvus` | set `MILVUS_DB_PATH` |
 | Vector_IO | `inline::faiss` | set `FAISS_INDEX_PATH` |
-| Vector_IO | `remote::pgvector` | set `PGVECTOR_DB` |
+| Vector_IO | `remote::pgvector` | set `PGVECTOR_HOST`, `PGVECTOR_PORT`, `PGVECTOR_DB`, `PGVECTOR_USER`, and `PGVECTOR_PASSWORD` |
 | Vector_IO | `remote::milvus` | set `MILVUS_URL`, `MILVUS_TOKEN`, `MILVUS_DB_NAME`, and `MILVUS_TIMEOUT` |
 | Vector_IO | `remote::qdrant` | set `QDRANT_URL`, `QDRANT_API_KEY`, and `QDRANT_VECTOR_SIZE` |
 
@@ -167,8 +167,13 @@ Common environment variables in examples:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
+- `PGVECTOR_HOST`
+- `PGVECTOR_PORT`
 - `PGVECTOR_DB`
+- `PGVECTOR_USER`
+- `PGVECTOR_PASSWORD`
 - `EMBEDDING_MODEL`
+- `EMBEDDING_PROVIDER`
 - vector provider variables such as `MILVUS_DB_PATH`, `MILVUS_URL`,
   `MILVUS_TOKEN`, `MILVUS_DB_NAME`, `FAISS_INDEX_PATH`, `QDRANT_URL`,
   `QDRANT_API_KEY`, and `QDRANT_VECTOR_SIZE`
@@ -194,7 +199,7 @@ coordinate retrieval and response generation.
 | Inline Milvus | `inline::milvus` | local development and testing; uses `MILVUS_DB_PATH` |
 | Remote Milvus | `remote::milvus` | external Milvus service; uses URL, token, database name, and timeout |
 | Inline FAISS | `inline::faiss` | local file-based vector index; uses `FAISS_INDEX_PATH` |
-| PostgreSQL with pgvector | `remote::pgvector` | durable PostgreSQL-backed vector storage; uses `PGVECTOR_DB` |
+| PostgreSQL with pgvector | `remote::pgvector` | durable PostgreSQL-backed vector storage; uses `PGVECTOR_HOST`, `PGVECTOR_PORT`, `PGVECTOR_DB`, `PGVECTOR_USER`, and `PGVECTOR_PASSWORD` |
 | Qdrant | `remote::qdrant` | external Qdrant service; uses URL, API key, and vector size |
 
 For OpenShift AI deployments, PostgreSQL metadata storage is required, and

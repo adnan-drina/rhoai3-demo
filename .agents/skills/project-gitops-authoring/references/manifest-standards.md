@@ -84,6 +84,12 @@ resources. Check these manually:
 - Route target ports match Service port names.
 - Namespaced references stay in the same namespace unless the resource type is
   cluster-scoped.
+- Argo CD sync-wave ordering does not place a health-checked resource before
+  the resource that makes it healthy. For example, a Service that needs
+  endpoints should normally be in the same sync wave as its first Deployment or
+  StatefulSet.
+- ServiceAccount token Secrets and RoleBindings reference ServiceAccounts that
+  are GitOps-managed before the token or binding is applied.
 
 Do not rationalize missing references. If a dependency is created by an
 operator or runtime script, document that in the manifest or README.

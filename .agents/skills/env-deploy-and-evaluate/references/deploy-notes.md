@@ -38,7 +38,37 @@
      -p "{\"spec\":{\"trustedCABundle\":{\"managementState\":\"Managed\",\"customCABundle\":$(echo "$CA" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}}}"
    ```
 
-## Per-Step Notes
+## Fresh Environment Rollout Checklist
+
+Use this sequence when redeploying the active demo to a new AWS/OpenShift
+environment:
+
+1. Export local environment values before any manual `oc` or `kubectl`
+   command:
+
+   ```bash
+   set -a
+   source .env
+   set +a
+   ```
+
+   This avoids stale default kubeconfig usage. If the guard reports the wrong
+   API server, fix `.env` or `KUBECONFIG` instead of bypassing the guard.
+2. Treat `validate-prerequisites.sh` as an advisory readiness check for a
+   fresh cluster. Missing GitOps, RHOAI, KServe, GPU, MaaS, or model CRDs can
+   be expected before their owning stage deploys.
+3. Deploy and validate one stage at a time. Do not continue until the current
+   stage validate script returns 0 or only documented warnings.
+4. For Stage 120, regenerate the AWS GPU MachineSet from a current worker
+   MachineSet in the target cluster. Do not reuse the previous cluster's
+   availability zone, subnet, AMI, or provider spec.
+5. Expect first model-serving rollouts to take longer than steady-state
+   reconciles. Fresh clusters may need to pull the modelcar, vLLM runtime,
+   scheduler, router, and tokenizer images before readiness conditions settle.
+6. After each stage, capture Argo CD sync/health, important CR readiness, pod
+   state, and validation output. Use this evidence before changing manifests.
+
+## Per-Stage Notes
 
 - **Stage 120**: Create or reconcile GPU MachineSets for `g6e.2xlarge`
   workers. The current demo default is one replica. GPU nodes should be labeled
@@ -56,6 +86,15 @@
   through RHOAI model serving and vLLM. Validation may deploy Nemotron
   temporarily, verify inference, and remove it for fresh-environment smoke
   testing.
+- **Stage 210 fresh image pulls**: The first direct Nemotron deployment can
+  spend more than 10 minutes pulling the modelcar and vLLM runtime. Validation
+  should use configurable readiness attempts and inspect pod events before
+  treating transient `ImagePullBackOff` as a manifest defect.
+- **Stage 210 Grafana token ordering**: When Grafana uses a service-account
+  token Secret for the Prometheus datasource, GitOps must create the
+  `ServiceAccount` before the token Secret. Do not rely on
+  `Grafana.spec.serviceAccount` to create the service account early enough for
+  Argo CD sync waves.
 - **Stage 210 baseline**: Run GuideLLM-style performance baseline tests and
   record concurrency, latency, throughput, and GPU-utilization breakpoints.
 - **Stage 220**: Register governed MaaS access for Nemotron and external
@@ -65,6 +104,14 @@
   `openshift-ingress` from the active OpenShift ingress certificate before the
   `maas-default-gateway` sync wave. A missing initial certificate reference can
   degrade the Gateway and prevent later patch hooks from running.
+- **Stage 220 service health ordering**: Keep `service/maas-postgres` and
+  `statefulset/maas-postgres` in the same Argo CD sync wave. If the Service is
+  in an earlier wave, Argo CD can wait for endpoints before the StatefulSet has
+  been created.
+- **Stage 220 local model readiness**: MaaS CRs and Gateway routes can be
+  healthy before the generated Nemotron `LLMInferenceService` reaches
+  `Ready=True`. Validate local MaaS inference only after the
+  `LLMInferenceService` readiness condition is true.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
@@ -135,6 +182,18 @@ with `DataScienceCluster phase Ready (phase=Not Ready)` and DSC conditions name
 later-stage components such as `kueue` or `modelsasservice`, Stage 110 is
 rendering later-stage component state too early. Move that component enablement
 to the owning stage's GitOps hook and keep Stage 110 base-ready.
+18. **Stale manual cluster context** — If a manual `oc` command sees resources
+from an old cluster, export `.env` values with `set -a; source .env; set +a`
+and rerun `oc whoami --show-server`. Do not run live diagnosis from the user's
+default kubeconfig by accident.
+19. **Service endpoint sync deadlock** — Argo CD can block later waves when an
+early-wave Service has no endpoints and the endpoint-producing workload is in a
+later wave. Move the Service into the same wave as its first workload or split
+health-sensitive resources into the same deployment unit.
+20. **Stale Argo CD operation state** — If an Application remains stuck after
+the underlying resource is fixed, inspect `.status.operationState` and prefer
+documented OpenShift GitOps-compatible refresh or operation-state cleanup over
+using an incompatible old local `argocd` CLI.
 
 ## Vector Store Persistence (pgvector)
 

@@ -1,6 +1,7 @@
 # RHOAI Demo Reimplementation
 
-This repository is being rebuilt for the next RHOAI demo iteration.
+This repository is being rebuilt as a staged Red Hat OpenShift AI demo for
+private enterprise AI platforms.
 
 The previous implementation has been moved to:
 
@@ -8,9 +9,13 @@ The previous implementation has been moved to:
 
 Active implementation areas:
 
-- `gitops/` - new GitOps source tree, currently empty except for its README
-- `scripts/` - new project automation, currently empty except for its README
-- `stage-YXX-slug/` - future root-level demo stage folders
+- `stage-110-rhoai-base-platform/` - GitOps, ODF MCG, RHOAI base platform, access, model registry
+- `stage-120-gpu-as-a-service/` - GPU worker, NFD, NVIDIA GPU Operator, Kueue, hardware profiles
+- `stage-210-model-serving-foundation/` - KServe/vLLM foundation, Nemotron endpoint, Grafana, GuideLLM
+- `stage-220-models-as-a-service/` - MaaS governance for Nemotron and external GPT
+- `stage-230-private-data-rag/` - whoami private RAG with DSPA/KFP ingestion, Docling, Llama Stack, pgvector, ODF S3, and MaaS Nemotron
+- `gitops/` - active GitOps source tree
+- `scripts/` - shared project automation
 - `.agents/` and `AGENTS.md` - active shared agent guidance
 - `docs/PLATFORM_BASELINE.md` - active product baseline and official docs index
 

@@ -1,0 +1,30 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: private-rag-pipelines
+  namespace: demo-sandbox
+  labels:
+    app.kubernetes.io/name: private-rag-pipelines
+    app.kubernetes.io/component: pipeline-server
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: Private RAG Ingestion Pipelines
+spec:
+  apiServer:
+    cacheEnabled: false
+    enableSamplePipeline: false
+    resourceTTL: 24h
+  objectStorage:
+    externalStorage:
+      bucket: private-rag-pipelines
+      basePath: artifacts
+      host: s3.openshift-storage.svc
+      port: "80"
+      scheme: http
+      secure: false
+      s3CredentialsSecret:
+        secretName: private-rag-pipelines-bucket
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY

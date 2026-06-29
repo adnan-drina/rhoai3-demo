@@ -44,6 +44,15 @@ GitOps changes.
 - PostgreSQL metadata storage is configured.
 - `VLLM_URL`, `INFERENCE_MODEL`, and TLS verification behavior match the active
   model-serving endpoint.
+- When Llama Stack consumes a MaaS model, `VLLM_API_TOKEN` is Secret-backed and
+  was issued by the MaaS API for the intended consumer persona. Validate both
+  the selected `MaaSSubscription` phase and that its `.spec.modelRefs[*].name`
+  includes the generation model being called, such as
+  `nemotron-3-nano-30b-a3b`.
+- For RHOAI 3.4 inline embeddings, `ENABLE_SENTENCE_TRANSFORMERS=true`,
+  `EMBEDDING_PROVIDER=sentence-transformers`, and `EMBEDDING_MODEL` are present.
+- For pgvector, use the documented `PGVECTOR_HOST`, `PGVECTOR_PORT`,
+  `PGVECTOR_DB`, `PGVECTOR_USER`, and `PGVECTOR_PASSWORD` Secret keys.
 - Storage settings match the selected vector store and metadata design.
 
 ## Provider Review
@@ -64,6 +73,9 @@ GitOps changes.
 - Vector database provider is selected intentionally.
 - Document ingestion records source documents, chunking settings, embedding
   model, and vector store ID.
+- If the RAG source documents are staged in S3-compatible object storage,
+  validate both object upload and vector database ingestion; an uploaded object
+  does not prove the vector store was populated.
 - Query workflows use Responses API with `file_search` when citations are
   required.
 - File citation expectations are document-level, not chunk-level or token-level.

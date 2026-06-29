@@ -85,13 +85,33 @@ OpenAI inference, and Gen AI Playground responses for both models.
 | API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output where applicable, checks token usage, and validates Gen AI Playground responses. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
+## Stage 230: Status — IMPLEMENTATION ADDED
+
+Stage 230 implements the private enterprise RAG baseline: the whoami PDF corpus
+from the previous implementation, Stage 110 object storage, Docling conversion,
+a stage-owned DSPA/KFP ingestion pipeline, a stage-owned pgvector database,
+RHOAI Llama Stack, and Nemotron consumed through Stage 220 MaaS. The stage is
+designed for fresh-environment deployment through
+`stage-230-private-data-rag/deploy.sh` and validation through
+`stage-230-private-data-rag/validate.sh`.
+
+### Open / deferred from Stage 230
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Fresh-environment rollout | high | Static render and server-side dry-run passed on cluster-xgg8t; run the full Stage 230 deploy after the branch is pushed so Argo CD can fetch the new GitOps path. |
+| Production embedding posture | medium | First implementation uses the quickstart `all-MiniLM-L6-v2` inline sentence-transformers provider; consider a separately served embedding model for a more production-like enterprise RAG stage. |
+| Docling image posture | medium | Stage 230 uses `quay.io/docling-project/docling-serve:latest` as a demo/reference dependency inherited from the previous implementation and quickstart pattern; pin or replace before production-positioned delivery. |
+| Pipeline hardening | medium | DSPA/KFP ingestion is now active; hardening work remains around pipeline image pinning, artifact retention policy, run cleanup, and richer dashboard evidence. |
+| AutoRAG comparison | low | Keep AutoRAG as a later optimization path because it is Technology Preview and Milvus-oriented in the current skill baseline. |
+| Guardrails | high | Safety shields and prompt-injection controls belong in the next GenAI stage after the private RAG baseline is validated. |
+
 ## Candidate Future Stages
 
 These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-authoring/references/stage-taxonomy.md`.
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-230-private-data-rag` | Production GenAI | Private data ingestion, RAG application |
 | `stage-240-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |

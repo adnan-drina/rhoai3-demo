@@ -135,6 +135,54 @@ Review points:
 - Disabling caching can increase compute time and resource usage.
 - Cached tasks are marked in the UI and do not have fresh execution logs.
 
+## ODF/NooBaa DSPA Object Storage Pattern
+
+Use a stable bucket name for DSPA artifacts because
+`DataSciencePipelinesApplication.spec.objectStorage.externalStorage.bucket`
+is a committed field:
+
+```yaml
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: private-rag-pipelines-bucket
+  namespace: demo-sandbox
+spec:
+  bucketName: private-rag-pipelines
+  storageClassName: openshift-storage.noobaa.io
+---
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: private-rag-pipelines
+  namespace: demo-sandbox
+spec:
+  apiServer:
+    cacheEnabled: false
+  objectStorage:
+    externalStorage:
+      bucket: private-rag-pipelines
+      basePath: artifacts
+      host: s3.openshift-storage.svc
+      port: "80"
+      scheme: http
+      secure: false
+      s3CredentialsSecret:
+        secretName: private-rag-pipelines-bucket
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+```
+
+Review points:
+
+- Verify `bucketName` with the live `ObjectBucketClaim` schema before using it.
+- Use `generateBucketName` for normal project source buckets; discover generated
+  source bucket names from the OBC ConfigMap in runner scripts.
+- Use the in-cluster S3 service for DSPA artifacts. If using HTTPS, validate CA
+  trust through DSPA `apiServer.cABundle`; otherwise use the cluster-internal
+  HTTP service only when the demo posture allows it.
+- Do not commit generated OBC credentials.
+
 ## Workspace Pattern
 
 ```python

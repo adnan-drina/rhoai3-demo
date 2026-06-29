@@ -27,9 +27,9 @@ active product baseline in `docs/PLATFORM_BASELINE.md`.
 
 ## Reimplementation Status
 
-The active implementation is being rewritten. Stage 110 and Stage 120 have
-active deploy and validate wrappers. Later stages remain planned until their
-root-level stage folders and Argo CD Applications are created.
+The active implementation is being rewritten. Stages 110, 120, 210, and 220
+have active deploy and validate wrappers. Later stages remain planned until
+their root-level stage folders and Argo CD Applications are created.
 
 Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
 user explicitly asks to restore or inspect the legacy implementation.

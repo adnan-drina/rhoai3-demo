@@ -15,6 +15,14 @@ Check every reference that links one resource to another:
 - Route and Ingress backends point to existing Services.
 - Service target ports match container ports by name or number.
 - Route target ports match Service port names.
+- Argo CD sync waves do not put a health-checked Service before the first
+  workload that creates its endpoints.
+- ServiceAccount token Secrets and RoleBindings do not rely on an
+  operator-created ServiceAccount unless the ordering is explicitly documented
+  and validated.
+- Shared platform singletons such as `DataScienceCluster`, `DSCInitialization`,
+  shared Gateways, or shared observability instances have one owning
+  Application/path.
 
 Flag runtime-created dependencies unless the manifest or README clearly says
 which operator or script creates them.

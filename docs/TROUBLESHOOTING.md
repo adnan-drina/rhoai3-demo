@@ -722,6 +722,154 @@ Expected demo posture: `ai-admin` can administer the namespace;
 `ai-developer` cannot. Developers consume MaaS models through AI asset
 endpoints and API keys, not direct namespace access.
 
+## Stage 230: Private Data RAG
+
+### Stage 230 deploy refuses to run
+
+- **Symptom:** `stage-230-private-data-rag/deploy.sh` exits before applying
+  the Argo CD Application.
+- **Likely causes:** one of the required prior-stage resources is not ready:
+  Llama Stack CRD, `demo-sandbox-bucket` ObjectBucketClaim, Nemotron
+  `MaaSModelRef`, MaaS subscription, or MaaS Gateway hostname.
+- **Confirm:**
+
+```bash
+oc get crd llamastackdistributions.llamastack.io
+oc get objectbucketclaim demo-sandbox-bucket -n demo-sandbox
+oc get maasmodelref nemotron-3-nano-30b-a3b -n models-as-a-service
+oc get maassubscription rhoai-developers-gpt-5-4-mini -n models-as-a-service
+oc get gateway maas-default-gateway -n openshift-ingress
+```
+
+- **Fix:** validate and repair the earlier stage first. Do not bypass MaaS by
+  pointing Llama Stack directly at a non-governed model endpoint.
+
+### DSPA is missing or not Ready
+
+- **Likely causes:** the shared `default-dsc` still has
+  `aipipelines.managementState=Removed`, the DSPA CRD is still installing, the
+  fixed NooBaa artifact bucket is not Bound, or the DSPA cannot reach object
+  storage.
+- **Confirm:**
+
+```bash
+oc get datasciencecluster default-dsc \
+  -o jsonpath='{.spec.components.aipipelines.managementState}{" "}{.status.conditions[?(@.type=="AIPipelinesReady")].status}{"\n"}'
+oc get crd datasciencepipelinesapplications.datasciencepipelinesapplications.opendatahub.io
+oc get objectbucketclaim private-rag-pipelines-bucket -n demo-sandbox
+oc get dspa private-rag-pipelines -n demo-sandbox -o yaml
+oc get route ds-pipeline-private-rag-pipelines -n demo-sandbox
+```
+
+- **Fix:** rerun `stage-230-private-data-rag/deploy.sh` after the Stage 230
+  Argo CD Application has refreshed from the branch containing the DSPA
+  manifests. The stage patch job enables AI Pipelines and waits for the DSPA
+  CRD before the pipeline server resources reconcile.
+
+### Whoami ingestion pipeline fails
+
+- **Likely causes:** DSPA route authentication failed, the KFP package could
+  not compile, the pipeline pods cannot mount the `private-rag-pipeline-workspace`
+  PVC, the Stage 110 OBC credentials are missing, Docling is not ready, or
+  Llama Stack is not reachable from pipeline pods.
+- **Confirm:**
+
+```bash
+oc get configmap private-rag-pipeline-last-run -n demo-sandbox -o yaml
+oc get workflow,pods -n demo-sandbox | grep -E 'whoami|private-rag|pipeline'
+oc get events -n demo-sandbox --sort-by=.lastTimestamp | tail -n 40
+oc logs deployment/private-rag-docling -n demo-sandbox --since=20m
+```
+
+- **Fix:** rerun `stage-230-private-data-rag/run-whoami-ingestion-pipeline.sh
+  --wait` after correcting the failed dependency. Do not use the direct
+  ingestion fallback unless you explicitly set
+  `RHOAI_STAGE230_ALLOW_DIRECT_INGEST_FALLBACK=true` for break-glass recovery.
+
+### private-rag-postgres CrashLoopBackOff
+
+- **Likely cause:** the pgvector image needs to initialize PostgreSQL data
+  ownership and can fail under restricted SCC.
+- **Fix:** rerun the Stage 230 deploy wrapper. It grants `anyuid` only to the
+  dedicated `private-rag-postgres` service account:
+
+```bash
+./stage-230-private-data-rag/deploy.sh
+oc adm policy who-can use scc anyuid | grep private-rag-postgres
+```
+
+Do not grant `anyuid` to the namespace default service account. That can break
+model-serving and modelcar mount assumptions elsewhere in the demo.
+
+### Llama Stack is ready but vector DB registration fails
+
+- **Symptom:** deploy or validate output reports `No vector_io provider` or
+  missing pgvector provider.
+- **Likely causes:** `PGVECTOR_*` Secret keys are missing, pgvector is not
+  reachable, or the Llama Stack pod started before the database was ready.
+- **Confirm:**
+
+```bash
+oc get secret private-rag-postgres-credentials -n demo-sandbox -o yaml
+oc logs deployment/lsd-private-rag -n demo-sandbox --since=10m
+oc exec deployment/lsd-private-rag -n demo-sandbox -- python3 - <<'PY'
+from llama_stack_client import LlamaStackClient
+client = LlamaStackClient(base_url="http://127.0.0.1:8321")
+print(client.providers.list())
+PY
+```
+
+- **Fix:** rerun `stage-230-private-data-rag/deploy.sh`. It recreates the
+  runtime secrets and re-registers the `whoami` vector database.
+
+### Docling conversion fails or times out
+
+- **Likely causes:** the `private-rag-docling` pod is still downloading
+  runtime assets, the KFP task cannot reach the in-cluster service, or the
+  source PDF is missing from `stage-230-private-data-rag/documents/`.
+- **Confirm:**
+
+```bash
+oc get deployment private-rag-docling -n demo-sandbox
+oc logs deployment/private-rag-docling -n demo-sandbox --since=20m
+ls -l stage-230-private-data-rag/documents/
+```
+
+- **Fix:** wait for the deployment to become ready and rerun the deploy script.
+  Increase `RHOAI_STAGE230_DOCLING_TIMEOUT` if the first conversion in a fresh
+  environment needs more time.
+
+### RAG query returns no useful context
+
+- **Likely causes:** the vector DB was not seeded, document upload failed, or
+  the vector store was deleted during testing.
+- **Confirm:**
+
+```bash
+oc get job private-rag-s3-seed -n demo-sandbox
+oc logs job/private-rag-s3-seed -n demo-sandbox
+./stage-230-private-data-rag/validate.sh
+```
+
+- **Fix:** rerun the deploy script. The ingestion logic converts the whoami PDF
+  through the KFP pipeline, unregisters and recreates the `whoami` vector
+  database, and re-ingests the converted Markdown so the demo corpus is
+  deterministic.
+
+### Llama Stack RAG answer gets 401 from MaaS
+
+- **Likely cause:** the stored MaaS API key expired, was revoked, or the Llama
+  Stack pod still has an old Secret value.
+- **Fix:** rerun Stage 230 deploy. It creates a fresh MaaS API key as
+  `ai-developer`, stores it in `private-rag-llama-stack-secret`, revokes the
+  old key when known, and lets the `LlamaStackDistribution` restart from the
+  updated Secret.
+
+```bash
+./stage-230-private-data-rag/deploy.sh
+./stage-230-private-data-rag/validate.sh
+```
+
 ---
 
 Legacy troubleshooting content is backed up at:
