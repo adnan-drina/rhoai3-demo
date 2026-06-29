@@ -462,11 +462,17 @@ wait_for_runtime() {
     --timeout=10m --insecure-skip-tls-verify=true
 
   local chatbot_route console_href expected_href
-  chatbot_route=$(jsonpath "route/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.spec.host}')
-  expected_href="https://${chatbot_route}"
   for _ in $(seq 1 60); do
-    console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
-    if [[ -n "$chatbot_route" && "$console_href" == "$expected_href" ]]; then
+    chatbot_route=$(jsonpath "route/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.spec.host}')
+    if [[ -n "$chatbot_route" ]] && oc get consolelink "$RAG_CONSOLELINK" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      expected_href="https://${chatbot_route}"
+      oc patch consolelink "$RAG_CONSOLELINK" --type=merge \
+        -p "{\"spec\":{\"href\":\"${expected_href}\"}}" \
+        --insecure-skip-tls-verify=true >/dev/null
+      console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
+    fi
+    if [[ -n "${expected_href:-}" && "$console_href" == "$expected_href" ]]; then
       echo "[OK] ${RAG_CONSOLELINK} points to ${expected_href}"
       echo "[OK] pgvector, Docling, Llama Stack, and Streamlit chatbot are ready"
       return 0
