@@ -50,7 +50,7 @@ Out of scope for this first RAG stage:
 
 - Nemotron remains the response-generation model. It is consumed through the
   Stage 220 MaaS gateway and is not redeployed by this stage.
-- `all-MiniLM-L6-v2` is used for embeddings because it is the quickstart
+- `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the quickstart
   baseline and is supported by the documented Llama Stack inline
   `sentence-transformers` provider. Nemotron is not used as an embedding model.
 - PostgreSQL with pgvector is the durable vector store. The demo uses

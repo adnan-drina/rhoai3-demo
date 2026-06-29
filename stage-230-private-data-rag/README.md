@@ -33,7 +33,7 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
-| Embeddings | Llama Stack inline `sentence-transformers` provider using `all-MiniLM-L6-v2` |
+| Embeddings | Llama Stack inline `sentence-transformers` provider using `sentence-transformers/all-MiniLM-L6-v2` |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
 | Generation model | Stage 220 Nemotron model consumed through the MaaS gateway |
 | Governance | Stage 220 MaaS subscription, API keys, token limits, and telemetry |

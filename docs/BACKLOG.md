@@ -100,7 +100,7 @@ designed for fresh-environment deployment through
 | Item | Priority | Notes |
 |------|----------|-------|
 | Fresh-environment rollout | high | Static render and server-side dry-run passed on cluster-xgg8t; run the full Stage 230 deploy after the branch is pushed so Argo CD can fetch the new GitOps path. |
-| Production embedding posture | medium | First implementation uses the quickstart `all-MiniLM-L6-v2` inline sentence-transformers provider; consider a separately served embedding model for a more production-like enterprise RAG stage. |
+| Production embedding posture | medium | First implementation uses the quickstart `sentence-transformers/all-MiniLM-L6-v2` inline sentence-transformers provider; consider a separately served embedding model for a more production-like enterprise RAG stage. |
 | Docling image posture | medium | Stage 230 uses `quay.io/docling-project/docling-serve:latest` as a demo/reference dependency inherited from the previous implementation and quickstart pattern; pin or replace before production-positioned delivery. |
 | Pipeline hardening | medium | DSPA/KFP ingestion is now active; hardening work remains around pipeline image pinning, artifact retention policy, run cleanup, and richer dashboard evidence. |
 | AutoRAG comparison | low | Keep AutoRAG as a later optimization path because it is Technology Preview and Milvus-oriented in the current skill baseline. |

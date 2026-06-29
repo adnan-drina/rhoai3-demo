@@ -778,7 +778,7 @@ answer.
 
 - Nemotron remains the response-generation model and is consumed through MaaS;
   Stage 230 does not deploy or bypass a model endpoint.
-- `all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
+- `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
   quickstart baseline and is supported by the documented Llama Stack
   `inline::sentence-transformers` path. Nemotron is not an embedding model.
 - `docker.io/pgvector/pgvector:pg16` is an explicit demo exception. RHOAI docs
