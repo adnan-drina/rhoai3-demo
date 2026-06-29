@@ -1,4 +1,4 @@
-# RAG Chatbot UI — adapted from https://github.com/rh-ai-quickstart/RAG
+# Stage 230 Private RAG Chatbot
 FROM registry.access.redhat.com/ubi9/python-312:latest
 
 WORKDIR /app
@@ -19,4 +19,4 @@ USER 1001
 
 EXPOSE 8501
 
-ENTRYPOINT ["python", "-m", "streamlit", "run", "/app/llama_stack_ui/distribution/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]
+ENTRYPOINT ["python", "-m", "streamlit", "run", "/app/rhoai_rag_chatbot/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]

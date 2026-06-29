@@ -34,9 +34,16 @@ spec:
             - name: http
               containerPort: 8501
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: private-rag-chatbot-config
           env:
             - name: HOME
               value: /tmp
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: LLAMA_STACK_ENDPOINT
               value: http://lsd-private-rag-service.enterprise-rag.svc.cluster.local:8321
             - name: LLAMA_STACK_TIMEOUT
@@ -47,11 +54,6 @@ spec:
               value: "false"
             - name: STREAMLIT_SERVER_HEADLESS
               value: "true"
-            - name: RAG_QUESTION_SUGGESTIONS
-              valueFrom:
-                configMapKeyRef:
-                  name: private-rag-chatbot-config
-                  key: RAG_QUESTION_SUGGESTIONS
           readinessProbe:
             httpGet:
               path: /

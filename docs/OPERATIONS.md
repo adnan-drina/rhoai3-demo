@@ -789,9 +789,11 @@ Chatbot` link under the `RHOAI Demo` section. Stage 230 creates the
 the active cluster through the deploy script and sync hook, using the same
 cluster-neutral pattern as the Stage 210 Grafana shortcut.
 
-Use the Chat page in Direct mode, select the `whoami` document collection, and
-ask one of the suggested questions. Direct mode searches the Llama Stack vector
-store and sends retrieved context to the MaaS-backed Nemotron model.
+Use the Chat tab, select the `whoami` document collection, and ask one of the
+suggested questions. The chatbot searches the Llama Stack vector store and
+sends retrieved context to the MaaS-backed Nemotron model. Use the Inspect tab
+to confirm the active Llama Stack endpoint, model ids, vector stores, MCP
+connector discovery state, tools, shields, and guardrails status.
 
 ### Design Notes
 
@@ -811,11 +813,17 @@ store and sends retrieved context to the MaaS-backed Nemotron model.
   recommend PostgreSQL with pgvector for durable vector storage, but the active
   RHOAI baseline does not provide a product image containing the pgvector
   extension.
-- The Streamlit chatbot source is adapted from the Red Hat Enterprise RAG
-  quickstart and built as a namespace-local image with OpenShift Builds. Do not
-  switch back to `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` for the
-  RHOAI 3.4 baseline; that image carries `llama-stack-client==0.6.0`, while the
-  deployed Llama Stack server requires the `0.7.x` client line.
+- The Streamlit chatbot is a repo-owned Stage 230 app informed by the Red Hat
+  Enterprise RAG quickstart and the legacy whoami app. Do not switch back to
+  `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` for the RHOAI 3.4
+  baseline; that image carries `llama-stack-client==0.6.0`, while the deployed
+  Llama Stack server requires the `0.7.x` client line.
+- MCP and guardrails are intentionally disabled in Stage 230. The chatbot code
+  exposes `mcp.py` and `guardrails.py` integration boundaries plus ConfigMap
+  flags (`MCP_ENABLED`, `GUARDRAILS_ENABLED`, and `GUARDRAILS_ENDPOINT`) so
+  later stages can add product-backed tool calling and safety controls without
+  replacing the RAG app. The guardrails adapter fails closed if it is enabled
+  before a reviewed product API payload is implemented.
 - The previous implementation's MinIO server is not reused. Stage 230 uses the
   stage-owned ODF/NooBaa `enterprise-rag-bucket` ObjectBucketClaim. The old
   whoami PDF and Docling conversion boundary are reused because they still
@@ -843,8 +851,8 @@ store and sends retrieved context to the MaaS-backed Nemotron model.
 - `quay.io/docling-project/docling-serve:latest` remains a demo/reference
   dependency from the previous implementation and quickstart pattern. Pin or
   replace it before making production-support claims.
-- External search, AutoRAG, guardrails, and a custom chatbot UI are deferred.
-  This stage proves the private internal RAG foundation first with a
+- External search, AutoRAG, enabled MCP tool calling, and enabled guardrails are
+  deferred. This stage proves the private internal RAG foundation first with a
   product-visible DSPA/KFP ingestion workflow for the whoami PDF.
 
 ---

@@ -9,6 +9,18 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "30"
 data:
+  CHATBOT_TITLE: Private RAG Chatbot
+  INFERENCE_MODEL: vllm-inference/nemotron-3-nano-30b-a3b
+  DEFAULT_VECTOR_STORE: whoami
+  RAG_TOP_K: "5"
+  RAG_MAX_CONTEXT_CHARS: "16000"
+  RAG_MAX_OUTPUT_TOKENS: "512"
+  RAG_TEMPERATURE: "0.1"
+  ENABLE_AGENT_MODE: "false"
+  MCP_ENABLED: "false"
+  GUARDRAILS_ENABLED: "false"
+  GUARDRAILS_ENDPOINT: ""
+  GUARDRAILS_VERIFY_TLS: "false"
   RAG_QUESTION_SUGGESTIONS: |
     {
       "whoami": [

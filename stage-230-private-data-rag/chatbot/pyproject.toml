@@ -1,25 +1,19 @@
 [project]
-name = "llama_stack_ui"
-version = "6"
-description = "Local LLM stack with UI for RAG-based applications"
+name = "rhoai-rag-chatbot"
+version = "0.1.0"
+description = "Stage 230 private RAG chatbot for the RHOAI 3 demo"
 authors = [
-    { name = "Saurabh Agarwal", email = "sauagarw@redhat.com" }
+    { name = "rhoai3-demo" }
 ]
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "streamlit",
-    "streamlit-option-menu",
-    "pandas",
     "llama-stack-client==0.7.2",
     "requests",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
-    "opentelemetry-exporter-otlp-proto-http",
 ]
 
-[tool.setuptools]
-packages = ["llama_stack_ui"]
+[tool.setuptools.packages.find]
+include = ["rhoai_rag_chatbot*"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

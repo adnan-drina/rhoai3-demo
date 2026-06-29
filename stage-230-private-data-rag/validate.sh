@@ -178,6 +178,7 @@ if resource_exists "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS"; then
     -- python -c '
 import importlib.metadata as md
 from llama_stack_client import LlamaStackClient
+import rhoai_rag_chatbot
 
 version = md.version("llama-stack-client")
 if not version.startswith("0.7."):
@@ -187,7 +188,7 @@ client = LlamaStackClient(base_url="http://lsd-private-rag-service.enterprise-ra
 models = client.models.list()
 if not models:
     raise SystemExit("Llama Stack returned no models")
-print(f"CHATBOT_LLAMA_STACK_CLIENT_OK {version}")
+print(f"CHATBOT_LLAMA_STACK_CLIENT_OK {version} app={rhoai_rag_chatbot.__version__}")
 ' 2>&1 || true)
   if grep -q "CHATBOT_LLAMA_STACK_CLIENT_OK" <<<"$output"; then
     R=pass

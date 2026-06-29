@@ -1002,6 +1002,8 @@ oc get deployment private-rag-chatbot -n enterprise-rag \
 oc get svc lsd-private-rag-service -n enterprise-rag
 oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
   python -c 'import importlib.metadata as md; print(md.version("llama-stack-client"))'
+oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
+  python -c 'import rhoai_rag_chatbot; print(rhoai_rag_chatbot.__version__)'
 ```
 
 - **Fix:** rerun Stage 230 deploy after Argo CD has synced the latest GitOps
@@ -1009,8 +1011,11 @@ oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
   `stage-230-private-data-rag/chatbot/` and the deployment should use
   `image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest`.
   The chatbot must report a `0.7.x` `llama-stack-client` for the RHOAI 3.4
-  Llama Stack server. If the app starts but no document collection appears,
-  rerun the ingestion pipeline so the `whoami` vector store exists.
+  Llama Stack server and import the `rhoai_rag_chatbot` package. If the app
+  starts but no document collection appears, rerun the ingestion pipeline so
+  the `whoami` vector store exists. If MCP or guardrails show as `deferred`,
+  that is expected for Stage 230; those features must remain disabled until the
+  later product-backed stages deploy and validate their resources.
 
 ### Llama Stack RAG answer gets 401 from MaaS
 

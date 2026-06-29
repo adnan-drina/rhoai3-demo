@@ -18,9 +18,10 @@ In scope:
   connection for private RAG documents
 - deploy a stage-owned PostgreSQL with pgvector runtime service
 - deploy a stage-owned `LlamaStackDistribution` named `lsd-private-rag`
-- deploy a stage-owned Streamlit RAG chatbot named `private-rag-chatbot`
-  adapted from the Red Hat AI Enterprise RAG quickstart UI and built in the
-  `enterprise-rag` namespace
+- deploy a stage-owned Streamlit RAG chatbot named `private-rag-chatbot`,
+  informed by the Red Hat AI Enterprise RAG quickstart and legacy whoami app
+  but implemented as a small repo-owned Stage 230 app in the `enterprise-rag`
+  namespace
 - expose the chatbot from the console application menu with a `Private RAG
   Chatbot` `ConsoleLink`
 - deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
@@ -37,7 +38,8 @@ Out of scope for this first RAG stage:
 
 - external web search
 - AutoRAG/Milvus optimization workflow
-- guardrails and safety shields
+- enabling guardrails and safety shields
+- enabling MCP tool calling or agent mode
 - production database HA
 
 ## Source Capture
@@ -48,8 +50,8 @@ Out of scope for this first RAG stage:
 | RHOAI 3.4 Working with data in S3-compatible object store | project object storage and connection posture |
 | RHOAI 3.4 MaaS docs | governed Nemotron endpoint, subscription, API-key use |
 | Previous main-branch Step 07 RAG implementation | whoami scenario, Docling conversion boundary, and repeatable ingestion pipeline pattern |
-| Red Hat AI Enterprise RAG quickstart | reference architecture and reusable Streamlit chatbot path |
-| rh-ai-quickstart/RAG main commit `d1f0847ae92a9c17e827a854334e035e2750a660` | Streamlit frontend image and UI behavior |
+| Red Hat AI Enterprise RAG quickstart | reference architecture and UI behavior patterns |
+| rh-ai-quickstart/RAG main commit `d1f0847ae92a9c17e827a854334e035e2750a660` | Reference frontend behavior; do not copy blindly |
 | rh-brain Enterprise RAG notes | Why/What narrative for private enterprise knowledge grounding |
 
 ## Implementation Decisions
@@ -77,12 +79,16 @@ Out of scope for this first RAG stage:
   carried forward from the previous implementation and Red Hat RAG quickstart
   pattern. Treat it as an external dependency to pin or replace before making
   production-support claims.
-- The Streamlit chatbot source is copied into this repo from the Red Hat
-  quickstart-inspired legacy implementation and built with OpenShift Builds.
-  The quickstart image `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45`
-  pins `llama-stack-client==0.6.0`, which is not compatible with the RHOAI 3.4
-  Llama Stack server version deployed by this stage. The repo-owned build pins
+- The Streamlit chatbot is implemented as a repo-owned Stage 230 app. It keeps
+  the direct-RAG behavior from the quickstart and legacy whoami app, but avoids
+  copying the broader quickstart UI. The quickstart image
+  `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` pins
+  `llama-stack-client==0.6.0`, which is not compatible with the RHOAI 3.4 Llama
+  Stack server version deployed by this stage. The repo-owned build pins
   `llama-stack-client==0.7.2`, matching the active server client line.
+- The chatbot includes disabled-by-default MCP and guardrails adapter modules
+  (`mcp.py` and `guardrails.py`) so later stages can add tool calling and safety
+  controls without redesigning the app.
 - External search is intentionally excluded for the private enterprise baseline.
 
 ## Acceptance Criteria
@@ -100,6 +106,9 @@ Out of scope for this first RAG stage:
   Nemotron-backed answer.
 - The `private-rag-chatbot` deployment is ready, the route responds, and the UI
   can be used to select the `whoami` vector store for demo questions.
+- The chatbot Inspect tab reports the Llama Stack endpoint, models, vector
+  stores, MCP connector discovery state, Llama Stack tools, shields, and
+  guardrails status.
 - The `private-rag-chatbot` container can call `client.models.list()` against
   `lsd-private-rag` with a RHOAI 3.4-compatible `llama-stack-client`.
 - The `rhoai-demo-rag-chatbot` `ConsoleLink` points to the generated

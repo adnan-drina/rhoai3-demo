@@ -90,8 +90,9 @@ OpenAI inference, and Gen AI Playground responses for both models.
 Stage 230 implements the private enterprise RAG baseline: the whoami PDF corpus
 from the previous implementation, Stage 110 object storage, Docling conversion,
 a stage-owned DSPA/KFP ingestion pipeline, a stage-owned pgvector database,
-RHOAI Llama Stack, a Streamlit RAG chatbot reused from the Red Hat quickstart,
-and Nemotron consumed through Stage 220 MaaS. The stage is designed for
+RHOAI Llama Stack, a repo-owned Streamlit RAG chatbot informed by the Red Hat
+quickstart and legacy whoami app, and Nemotron consumed through Stage 220 MaaS.
+The stage is designed for
 fresh-environment deployment through
 `stage-230-private-data-rag/deploy.sh` and validation through
 `stage-230-private-data-rag/validate.sh`.
@@ -105,8 +106,9 @@ fresh-environment deployment through
 | Docling image posture | medium | Stage 230 uses `quay.io/docling-project/docling-serve:latest` as a demo/reference dependency inherited from the previous implementation and quickstart pattern; pin or replace before production-positioned delivery. |
 | Streamlit app image posture | medium | Stage 230 now builds a repo-owned chatbot image from `stage-230-private-data-rag/chatbot/` with `llama-stack-client==0.7.2`; scan, pin the base image digest, and publish through a controlled registry before production-positioned delivery. |
 | Pipeline hardening | medium | DSPA/KFP ingestion is now active; hardening work remains around pipeline image pinning, artifact retention policy, run cleanup, and richer dashboard evidence. |
+| MCP integration | medium | Chatbot code now has a disabled-by-default MCP adapter; implement connector registration, agent/Responses API execution, scoped tool selection, and validation in a later agentic stage. |
 | AutoRAG comparison | low | Keep AutoRAG as a later optimization path because it is Technology Preview and Milvus-oriented in the current skill baseline. |
-| Guardrails | high | Safety shields and prompt-injection controls belong in the next GenAI stage after the private RAG baseline is validated. |
+| Guardrails | high | Chatbot code now has a disabled-by-default guardrails adapter; deploy and validate product-backed NeMo or FMS resources before enabling safety shields and prompt-injection controls. |
 
 ## Candidate Future Stages
 

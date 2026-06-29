@@ -33,12 +33,13 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
-| RAG application | Repo-owned Streamlit chatbot adapted from the Red Hat AI Enterprise RAG quickstart, built in OpenShift with a RHOAI 3.4-compatible Llama Stack client, and pointed at the stage-owned Llama Stack service |
+| RAG application | Repo-owned Streamlit chatbot informed by the Red Hat AI Enterprise RAG quickstart and the legacy whoami app, built in OpenShift with a RHOAI 3.4-compatible Llama Stack client, and pointed at the stage-owned Llama Stack service |
 | Demo shortcut | OpenShift console application-menu `ConsoleLink` named `Private RAG Chatbot`, patched at sync time to the generated chatbot route |
 | Embeddings | Llama Stack inline `sentence-transformers` provider using 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` embeddings |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
 | Generation model | Stage 220 Nemotron model consumed through the MaaS gateway |
 | Governance | Stage 220 MaaS subscription, API keys, token limits, and telemetry |
+| Future controls | Disabled-by-default MCP and guardrails adapters in the chatbot codebase for later agentic and safety stages |
 
 The first implementation is internal-only RAG: it does not add Tavily or other
 external search tools. That keeps the stage aligned with the private enterprise
@@ -47,7 +48,9 @@ in later stages. The whoami ingestion path intentionally runs through DSPA/KFP
 so the demo has a visible, repeatable RHOAI pipeline server workflow instead of
 only a deploy-time script. The Streamlit chatbot gives the stage an
 audience-facing test surface for selecting the `whoami` vector store, asking a
-question, and seeing retrieved context before the model answer.
+question, and seeing retrieved context before the model answer. MCP connectors
+and guardrails status are visible in the Inspect tab but intentionally disabled
+until later stages deploy the corresponding product-backed controls.
 
 ## Architecture Delta
 
@@ -91,8 +94,9 @@ flowchart LR
 
 The chatbot source lives in `stage-230-private-data-rag/chatbot/` and is built
 into the namespace-local `private-rag-chatbot:latest` image by OpenShift
-Builds. It is adapted from the Red Hat quickstart UI, but is not the published
-quickstart image: the quickstart `0.2.45` image pins `llama-stack-client==0.6.0`,
-which is incompatible with the RHOAI 3.4 Llama Stack server used here. The
-repo-owned build pins `llama-stack-client==0.7.2` and the validator confirms
-that the app can call `client.models.list()` against `lsd-private-rag`.
+Builds. The code is a purpose-built Stage 230 app, not a copy of the quickstart
+UI. The quickstart `0.2.45` image pins `llama-stack-client==0.6.0`, which is
+incompatible with the RHOAI 3.4 Llama Stack server used here. The repo-owned
+build pins `llama-stack-client==0.7.2`, keeps direct RAG small and inspectable,
+and includes disabled MCP and guardrails adapters so later stages can add tool
+calling and safety checks without replacing the chatbot.
