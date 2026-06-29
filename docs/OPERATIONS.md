@@ -16,8 +16,9 @@ The active implementation follows this sequence:
 4. `stage-220-models-as-a-service` - MaaS prerequisite enablement, local
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
-5. `stage-230-private-data-rag` - whoami private document grounding with the
-   Stage 110 S3 bucket, Docling conversion, a stage-owned pgvector database,
+5. `stage-230-private-data-rag` - whoami private document grounding in the
+   dedicated `enterprise-rag` OpenShift AI project, with ODF/NooBaa buckets,
+   Docling conversion, DSPA/KFP ingestion, a stage-owned pgvector database,
    RHOAI Llama Stack, and Nemotron consumed through Stage 220 MaaS.
 
 ## Stage 110: RHOAI Base Platform
@@ -721,10 +722,12 @@ matching the provider API shape.
 ## Stage 230: Private Data RAG
 
 Stage 230 adds an internal-only private RAG path on top of Stage 220 MaaS. It
-uses the Stage 110 `demo-sandbox-bucket` ObjectBucketClaim as the private
-document source, a stage-owned Docling service for PDF-to-Markdown conversion,
-a stage-owned DSPA/KFP pipeline server for repeatable ingestion, a stage-owned
-PostgreSQL/pgvector database as the durable vector store, and a stage-owned
+creates a dedicated OpenShift AI project named `Enterprise RAG`
+(`enterprise-rag`) as the private knowledge boundary. The stage owns an
+ODF/NooBaa source bucket (`enterprise-rag-bucket`), a dashboard-visible S3
+connection (`enterprise-rag-s3`), a Docling service for PDF-to-Markdown
+conversion, a DSPA/KFP pipeline server for repeatable ingestion, a
+PostgreSQL/pgvector database as the durable vector store, and a
 `LlamaStackDistribution` named `lsd-private-rag`.
 
 ### Deploy And Validate
@@ -743,14 +746,17 @@ Stage 230 depends on Stages 110, 120, 210, and 220:
 The deploy script:
 
 - verifies the target cluster through `RHOAI_EXPECTED_API_SERVER`
-- verifies the Llama Stack CRD, Stage 110 OBC, Stage 220 Nemotron
-  `MaaSModelRef`, and a Stage 220 MaaS subscription that grants access to
-  the Nemotron model
+- verifies the Llama Stack CRD, Stage 220 Nemotron `MaaSModelRef`, and a
+  Stage 220 MaaS subscription that grants access to the Nemotron model
+- applies the Stage 230 Argo CD Application
+- waits for the `enterprise-rag` OpenShift AI project and
+  `enterprise-rag-bucket` ObjectBucketClaim
 - creates runtime-local `private-rag-postgres-credentials`
 - creates a runtime-local MaaS API key as `ai-developer` and stores it in
   `private-rag-llama-stack-secret`
+- creates the dashboard-visible `enterprise-rag-s3` connection from generated
+  OBC credentials
 - grants `anyuid` only to the dedicated `private-rag-postgres` service account
-- applies the Stage 230 Argo CD Application
 - enables the RHOAI AI Pipelines component through the shared
   `default-dsc` patch pattern
 - waits for `private-rag-postgres` and `lsd-private-rag`
@@ -780,15 +786,17 @@ answer.
   RHOAI baseline does not provide a product image containing the pgvector
   extension.
 - The previous implementation's MinIO server is not reused. Stage 230 uses the
-  Stage 110 ODF/NooBaa ObjectBucketClaim. The old whoami PDF and Docling
-  conversion boundary are reused because they still match the RHOAI 3.4 RAG
-  documentation pattern.
+  stage-owned ODF/NooBaa `enterprise-rag-bucket` ObjectBucketClaim. The old
+  whoami PDF and Docling conversion boundary are reused because they still
+  match the RHOAI 3.4 RAG documentation pattern.
 - DSPA artifacts use a separate fixed NooBaa bucket
-  `private-rag-pipelines`, because the `DataSciencePipelinesApplication`
-  object-storage spec needs a stable bucket name. The KFP source-document
-  steps still read from the Stage 110 generated `demo-sandbox-bucket`.
+  `enterprise-rag-pipelines`, because the
+  `DataSciencePipelinesApplication` object-storage spec needs a stable bucket
+  name. The KFP source-document steps read from the stage-owned generated
+  `enterprise-rag-bucket`.
 - KFP task-to-task file exchange uses the AI Pipelines per-run workspace
-  configured in `dsl.PipelineConfig(workspace=...)`. Do not pre-create a
+  configured in `dsl.PipelineConfig(workspace=...)` with an explicit
+  Kubernetes PVC `accessModes: [ReadWriteOnce]` patch. Do not pre-create a
   GitOps-managed EBS PVC for this path; Argo CD waits on Pending
   `WaitForFirstConsumer` PVCs and can block later sync waves.
 - The DSPA uses the in-cluster NooBaa `s3.openshift-storage.svc:80` HTTP

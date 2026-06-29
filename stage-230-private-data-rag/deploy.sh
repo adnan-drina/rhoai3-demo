@@ -43,7 +43,7 @@ require_cmd python3
 
 GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
 GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
-PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_MAAS_DEMO_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}}}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -58,13 +58,14 @@ RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-ra
 RAG_POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 RAG_LS_SECRET="${RHOAI_STAGE230_LLAMASTACK_SECRET:-private-rag-llama-stack-secret}"
 RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
+RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
 RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
 RAG_EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-all-MiniLM-L6-v2}"
 RAG_EMBEDDING_DIMENSION="${RHOAI_STAGE230_EMBEDDING_DIMENSION:-384}"
 RAG_CHUNK_SIZE="${RHOAI_STAGE230_CHUNK_SIZE:-512}"
 RAG_MAX_TOKENS="${RHOAI_STAGE230_VLLM_MAX_TOKENS:-4096}"
 RAG_API_KEY_NAME="${RHOAI_STAGE230_API_KEY_NAME:-private-rag-${PROJECT_NS}}"
-OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-demo-sandbox-bucket}"
+OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
 
 TMP_FILES=()
 TMP_DIRS=()
@@ -95,7 +96,7 @@ jsonpath() {
 ensure_prerequisites() {
   echo "-- Checking Stage 230 prerequisites --"
 
-  local lsd_crd dsc_state obc_phase model_phase sub_phase sub_models gateway_host
+  local lsd_crd dsc_state model_phase sub_phase sub_models gateway_host
   lsd_crd=$(oc get crd llamastackdistributions.llamastack.io \
     --insecure-skip-tls-verify=true >/dev/null 2>&1 && echo yes || echo no)
   [[ "$lsd_crd" == "yes" ]] || { echo "ERROR: LlamaStackDistribution CRD is missing." >&2; exit 1; }
@@ -104,9 +105,6 @@ ensure_prerequisites() {
     -o jsonpath='{.spec.components.llamastackoperator.managementState}' \
     --insecure-skip-tls-verify=true 2>/dev/null || true)
   [[ "$dsc_state" == "Managed" ]] || { echo "ERROR: llamastackoperator is not Managed in default-dsc." >&2; exit 1; }
-
-  obc_phase=$(jsonpath "objectbucketclaim/${OBC_NAME}" "$PROJECT_NS" '{.status.phase}')
-  [[ "$obc_phase" == "Bound" ]] || { echo "ERROR: ${PROJECT_NS}/${OBC_NAME} is not Bound." >&2; exit 1; }
 
   model_phase=$(jsonpath "maasmodelref/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" '{.status.phase}')
   [[ "$model_phase" == "Ready" ]] || { echo "ERROR: MaaSModelRef ${NEMOTRON_MODEL_RESOURCE} is not Ready." >&2; exit 1; }
@@ -124,7 +122,7 @@ ensure_prerequisites() {
     -o jsonpath='{.spec.listeners[0].hostname}' --insecure-skip-tls-verify=true 2>/dev/null || true)
   [[ -n "$gateway_host" ]] || { echo "ERROR: MaaS Gateway hostname is missing." >&2; exit 1; }
 
-  echo "[OK] Prerequisites ready: Llama Stack, OBC, MaaS Nemotron, and MaaS subscription"
+  echo "[OK] Prerequisites ready: Llama Stack, MaaS Nemotron, and MaaS subscription"
 }
 
 urlencode() {
@@ -333,6 +331,76 @@ apply_argocd_application() {
   echo "[OK] Applied Argo CD Application ${app_name}"
 }
 
+wait_for_project_bootstrap() {
+  echo "-- Waiting for Enterprise RAG project bootstrap --"
+
+  local ns_phase source_obc_phase
+  for _ in $(seq 1 90); do
+    ns_phase=$(oc get namespace "$PROJECT_NS" \
+      -o jsonpath='{.status.phase}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+    source_obc_phase=$(jsonpath "objectbucketclaim/${OBC_NAME}" "$PROJECT_NS" '{.status.phase}')
+    if [[ "$ns_phase" == "Active" && "$source_obc_phase" == "Bound" ]]; then
+      echo "[OK] ${PROJECT_NS} project is Active and ${OBC_NAME} is Bound"
+      return 0
+    fi
+    sleep 10
+  done
+
+  echo "ERROR: Enterprise RAG project bootstrap did not complete." >&2
+  echo "namespace=${ns_phase:-missing} source_obc=${source_obc_phase:-missing}" >&2
+  oc get namespace "$PROJECT_NS" --insecure-skip-tls-verify=true >&2 || true
+  oc get objectbucketclaim "$OBC_NAME" -n "$PROJECT_NS" \
+    --insecure-skip-tls-verify=true >&2 || true
+  return 1
+}
+
+ensure_project_s3_connection() {
+  echo "-- Ensuring Enterprise RAG S3 dashboard connection --"
+
+  local access_key secret_key bucket host port endpoint connection_file
+  access_key=$(oc get secret "$OBC_NAME" -n "$PROJECT_NS" \
+    -o go-template='{{.data.AWS_ACCESS_KEY_ID | base64decode}}' \
+    --insecure-skip-tls-verify=true)
+  secret_key=$(oc get secret "$OBC_NAME" -n "$PROJECT_NS" \
+    -o go-template='{{.data.AWS_SECRET_ACCESS_KEY | base64decode}}' \
+    --insecure-skip-tls-verify=true)
+  bucket=$(jsonpath "configmap/${OBC_NAME}" "$PROJECT_NS" '{.data.BUCKET_NAME}')
+  host=$(jsonpath "configmap/${OBC_NAME}" "$PROJECT_NS" '{.data.BUCKET_HOST}')
+  port=$(jsonpath "configmap/${OBC_NAME}" "$PROJECT_NS" '{.data.BUCKET_PORT}')
+
+  if [[ -z "$access_key" || -z "$secret_key" || -z "$bucket" || -z "$host" || -z "$port" ]]; then
+    echo "ERROR: ${PROJECT_NS}/${OBC_NAME} is missing generated S3 connection data." >&2
+    return 1
+  fi
+
+  endpoint="https://${host}:${port}"
+  connection_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-s3-connection.XXXXXX")
+  TMP_FILES+=("$connection_file")
+  cat >"$connection_file" <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${RAG_S3_CONNECTION_SECRET}
+  namespace: ${PROJECT_NS}
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/stage: "230"
+  annotations:
+    opendatahub.io/connection-type-ref: s3
+    openshift.io/display-name: "Enterprise RAG object storage"
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "${access_key}"
+  AWS_SECRET_ACCESS_KEY: "${secret_key}"
+  AWS_S3_ENDPOINT: "${endpoint}"
+  AWS_S3_BUCKET: "${bucket}"
+  AWS_DEFAULT_REGION: "us-east-1"
+EOF
+  oc apply -f "$connection_file" --insecure-skip-tls-verify=true >/dev/null
+  echo "[OK] ${PROJECT_NS}/${RAG_S3_CONNECTION_SECRET} connection is ready"
+}
+
 wait_for_application() {
   local app_name="stage-230-private-data-rag"
   local sync health
@@ -426,7 +494,7 @@ ensure_document_configmap() {
 }
 
 seed_object_bucket() {
-  echo "-- Uploading whoami source documents to the Stage 110 S3 bucket --"
+  echo "-- Uploading whoami source documents to the Enterprise RAG S3 bucket --"
 
   local job_file
   job_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-s3-job.XXXXXX.yaml")
@@ -805,9 +873,11 @@ run_pipeline_ingestion() {
 }
 
 ensure_prerequisites
-ensure_runtime_secrets
-grant_pgvector_scc
 apply_argocd_application
+wait_for_project_bootstrap
+ensure_runtime_secrets
+ensure_project_s3_connection
+grant_pgvector_scc
 wait_for_application
 refresh_llamastack_runtime
 wait_for_runtime

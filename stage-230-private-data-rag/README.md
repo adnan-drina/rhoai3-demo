@@ -27,8 +27,9 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 
 | Capability | Demo implementation |
 |------------|---------------------|
-| Private document source | Stage 110 `demo-sandbox-bucket` ObjectBucketClaim backed by ODF/NooBaa; no MinIO server is deployed |
-| Pipeline server | RHOAI AI Pipelines `DataSciencePipelinesApplication` backed by a fixed NooBaa artifact bucket |
+| Private RAG project | Dedicated OpenShift AI project `Enterprise RAG` (`enterprise-rag`) with admin/developer access |
+| Private document source | Stage 230 `enterprise-rag-bucket` ObjectBucketClaim backed by ODF/NooBaa; no MinIO server is deployed |
+| Pipeline server | RHOAI AI Pipelines `DataSciencePipelinesApplication` backed by the `enterprise-rag-pipelines` NooBaa artifact bucket |
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |

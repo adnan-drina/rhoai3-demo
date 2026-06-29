@@ -2,12 +2,12 @@ apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
   name: private-rag-pipelines-bucket
-  namespace: demo-sandbox
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: private-rag-pipelines-bucket
     app.kubernetes.io/component: pipeline-artifacts
   annotations:
     argocd.argoproj.io/sync-wave: "8"
 spec:
-  bucketName: private-rag-pipelines
+  bucketName: enterprise-rag-pipelines
   storageClassName: openshift-storage.noobaa.io

@@ -80,6 +80,21 @@ Do not pre-create a GitOps-managed EBS PVC for KFP task-to-task file exchange.
 `WaitForFirstConsumer` PVCs can block Argo CD sync waves before a pipeline pod
 exists to bind them.
 
+For RHOAI 3.4 DSPA-backed runs, make the workspace PVC access mode explicit in
+the compiled IR. An empty `pvcSpecPatch` can fail run creation with
+`workspace PVC spec must specify accessModes`:
+
+```python
+dsl.PipelineConfig(
+    workspace=dsl.WorkspaceConfig(
+        size="5Gi",
+        kubernetes=dsl.KubernetesWorkspaceConfig(
+            pvcSpecPatch={"accessModes": ["ReadWriteOnce"]},
+        ),
+    ),
+)
+```
+
 ## Control Flow
 
 Use the simplest control flow that makes the demo clear:

@@ -2,7 +2,7 @@ apiVersion: llamastack.io/v1alpha1
 kind: LlamaStackDistribution
 metadata:
   name: lsd-private-rag
-  namespace: demo-sandbox
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: lsd-private-rag
     app.kubernetes.io/component: rag-orchestration

@@ -1,7 +1,7 @@
 """Stage 230 KFP v2 whoami RAG ingestion pipeline.
 
 Purpose:
-- download private whoami source documents from the Stage 110 ODF/NooBaa bucket
+- download private whoami source documents from the Stage 230 ODF/NooBaa bucket
 - convert PDFs to Markdown through the Stage 230 Docling service
 - register and populate the Stage 230 Llama Stack pgvector vector DB
 - validate retrieval and a Nemotron-backed answer for dashboard-visible evidence
@@ -23,7 +23,7 @@ from components.insert_via_llamastack import insert_via_llamastack_component
 from components.process_with_docling import process_with_docling_component
 from components.register_vector_db import register_vector_db_component
 
-SOURCE_OBC_SECRET = "demo-sandbox-bucket"
+SOURCE_OBC_SECRET = "enterprise-rag-bucket"
 
 
 def _set_resources(
@@ -54,9 +54,16 @@ def _inject_source_bucket_credentials(task: PipelineTask) -> None:
 @dsl.pipeline(
     name="whoami-rag-ingestion",
     description="Ingest the whoami PDF corpus into Llama Stack pgvector through Docling.",
-    pipeline_root="s3://private-rag-pipelines/artifacts",
+    pipeline_root="s3://enterprise-rag-pipelines/artifacts",
     pipeline_config=dsl.PipelineConfig(
-        workspace=dsl.WorkspaceConfig(size="5Gi"),
+        workspace=dsl.WorkspaceConfig(
+            size="5Gi",
+            kubernetes=dsl.KubernetesWorkspaceConfig(
+                pvcSpecPatch={
+                    "accessModes": ["ReadWriteOnce"],
+                },
+            ),
+        ),
     ),
 )
 def whoami_rag_ingestion_pipeline(

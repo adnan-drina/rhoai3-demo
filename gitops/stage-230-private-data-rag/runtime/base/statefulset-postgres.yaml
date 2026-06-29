@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: private-rag-postgres
-  namespace: demo-sandbox
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: private-rag-postgres
     app.kubernetes.io/component: vector-database

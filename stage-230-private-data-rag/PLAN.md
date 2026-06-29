@@ -12,12 +12,18 @@ processed with Docling and used to answer identity and expertise questions.
 
 In scope:
 
-- use the existing `demo-sandbox` project and Stage 110 S3 bucket
+- create a dedicated OpenShift AI project named `Enterprise RAG`
+  (`enterprise-rag`) as the private knowledge boundary
+- create a project-scoped ODF/NooBaa source bucket and dashboard-visible S3
+  connection for private RAG documents
 - deploy a stage-owned PostgreSQL with pgvector runtime service
 - deploy a stage-owned `LlamaStackDistribution` named `lsd-private-rag`
+- deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
+  artifact bucket
 - create environment-local secrets for pgvector and MaaS access
 - seed the whoami source PDF into the project bucket
-- convert the source PDF to Markdown with a stage-owned Docling service
+- convert the source PDF to Markdown with a stage-owned Docling service through
+  a KFP v2 pipeline
 - register and populate a Llama Stack vector database
 - validate retrieval and Nemotron answer generation through Llama Stack
 
@@ -26,7 +32,6 @@ Out of scope for this first RAG stage:
 - external web search
 - AutoRAG/Milvus optimization workflow
 - guardrails and safety shields
-- full Kubeflow Pipelines/DSPA ingestion
 - custom chatbot UI
 - production database HA
 
@@ -54,10 +59,12 @@ Out of scope for this first RAG stage:
   baseline.
 - The first implementation uses the previous `whoami` PDF corpus and converts
   it with Docling before ingestion. The old implementation's MinIO dependency
-  is intentionally replaced by the Stage 110 ODF/NooBaa ObjectBucketClaim.
-- The old KFP pipeline component boundaries remain the target pattern for a
-  later DSPA-backed ingestion workflow. This stage keeps ingestion in the
-  deploy script until we deliberately introduce an AI Pipelines foundation.
+  is intentionally replaced by the Stage 230 `enterprise-rag-bucket`
+  ObjectBucketClaim.
+- The KFP pipeline uses the old implementation's component boundaries, but runs
+  through a RHOAI `DataSciencePipelinesApplication` in `enterprise-rag`.
+- KFP task-to-task exchange uses the AI Pipelines per-run workspace with an
+  explicit `ReadWriteOnce` workspace PVC patch, not a GitOps-managed static PVC.
 - `quay.io/docling-project/docling-serve:latest` is a demo/reference image
   carried forward from the previous implementation and Red Hat RAG quickstart
   pattern. Treat it as an external dependency to pin or replace before making
@@ -67,6 +74,9 @@ Out of scope for this first RAG stage:
 ## Acceptance Criteria
 
 - Stage 230 Argo CD Application is `Synced` and `Healthy`.
+- `enterprise-rag` appears as an OpenShift AI project for `ai-admin` and
+  `ai-developer`.
+- `enterprise-rag-bucket` and `private-rag-pipelines-bucket` are Bound.
 - `private-rag-postgres` is running and has the `vector` extension.
 - `lsd-private-rag` is running and exposes Llama Stack on port `8321`.
 - Llama Stack lists the Nemotron model and a pgvector vector provider.

@@ -2,7 +2,7 @@ apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:
   name: private-rag-pipelines
-  namespace: demo-sandbox
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: private-rag-pipelines
     app.kubernetes.io/component: pipeline-server
@@ -18,7 +18,7 @@ spec:
     resourceTTL: 24h
   objectStorage:
     externalStorage:
-      bucket: private-rag-pipelines
+      bucket: enterprise-rag-pipelines
       basePath: artifacts
       host: s3.openshift-storage.svc
       port: "80"

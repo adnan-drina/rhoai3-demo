@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: private-rag-docling
-  namespace: demo-sandbox
+  namespace: enterprise-rag
   labels:
     app.kubernetes.io/name: private-rag-docling
     app.kubernetes.io/component: document-processing

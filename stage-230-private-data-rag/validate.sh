@@ -12,7 +12,7 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
   set +a
 fi
 
-PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_MAAS_DEMO_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}}}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -23,7 +23,7 @@ RAG_DSPA_OBC_NAME="${RHOAI_STAGE230_DSPA_OBC_NAME:-private-rag-pipelines-bucket}
 RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
 RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
 RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
-OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-demo-sandbox-bucket}"
+OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
 
 PASS=0
 FAIL=0
@@ -71,7 +71,7 @@ app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "ope
 check "Stage 230 Argo CD Application is Synced/Healthy" "$R"
 
 [[ "$(jsonpath "objectbucketclaim/${OBC_NAME}" "$PROJECT_NS" '{.status.phase}')" == "Bound" ]] && R=pass || R=missing
-check "Stage 110 project ObjectBucketClaim is Bound" "$R"
+check "Enterprise RAG project ObjectBucketClaim is Bound" "$R"
 
 dsc_aipipelines=$(oc get datasciencecluster default-dsc -n redhat-ods-applications \
   -o jsonpath='{.spec.components.aipipelines.managementState}' \

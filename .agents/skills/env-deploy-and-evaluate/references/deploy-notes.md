@@ -115,10 +115,15 @@ environment:
 - **Stage 230 DSPA workspace**: Do not pre-create a GitOps-managed EBS PVC for
   the KFP shared workspace. EBS uses `WaitForFirstConsumer`, and Argo CD can
   block later sync waves on a Pending PVC. Use the AI Pipelines per-run
-  workspace from `dsl.PipelineConfig(workspace=...)` and validate the pipeline
-  run evidence instead of a static PVC.
+  workspace from `dsl.PipelineConfig(workspace=...)` with an explicit
+  Kubernetes PVC patch containing `accessModes: [ReadWriteOnce]`, and validate
+  the pipeline run evidence instead of a static PVC.
+- **Stage 230 project boundary**: Private RAG runs in the dedicated
+  `enterprise-rag` OpenShift AI project. MaaS stays in `models-as-a-service`;
+  Stage 230 consumes Nemotron through MaaS and does not deploy private RAG
+  runtime resources into `demo-sandbox`.
 - **Stage 230 Kueue controller labels**: Long-running runtime controllers in
-  the Kueue-managed `demo-sandbox` namespace, such as Docling and pgvector, use
+  the Kueue-managed `enterprise-rag` namespace, such as Docling and pgvector, use
   the RHOAI-created `default` local queue. Kueue queue labels on admitted
   controllers are immutable, and Kueue injects bookkeeping labels/annotations.
   Keep narrow Argo CD `ignoreDifferences` entries for the injected fields

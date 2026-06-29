@@ -729,13 +729,12 @@ endpoints and API keys, not direct namespace access.
 - **Symptom:** `stage-230-private-data-rag/deploy.sh` exits before applying
   the Argo CD Application.
 - **Likely causes:** one of the required prior-stage resources is not ready:
-  Llama Stack CRD, `demo-sandbox-bucket` ObjectBucketClaim, Nemotron
-  `MaaSModelRef`, MaaS subscription, or MaaS Gateway hostname.
+  Llama Stack CRD, Nemotron `MaaSModelRef`, MaaS subscription, or MaaS Gateway
+  hostname.
 - **Confirm:**
 
 ```bash
 oc get crd llamastackdistributions.llamastack.io
-oc get objectbucketclaim demo-sandbox-bucket -n demo-sandbox
 oc get maasmodelref nemotron-3-nano-30b-a3b -n models-as-a-service
 oc get maassubscription rhoai-developers-gpt-5-4-mini -n models-as-a-service
 oc get gateway maas-default-gateway -n openshift-ingress
@@ -743,6 +742,26 @@ oc get gateway maas-default-gateway -n openshift-ingress
 
 - **Fix:** validate and repair the earlier stage first. Do not bypass MaaS by
   pointing Llama Stack directly at a non-governed model endpoint.
+
+### Enterprise RAG project or source bucket is missing
+
+- **Likely causes:** the Stage 230 Argo CD Application has not synced the
+  project resources, ODF/NooBaa is not ready, or the `enterprise-rag-bucket`
+  ObjectBucketClaim is still binding.
+- **Confirm:**
+
+```bash
+oc get namespace enterprise-rag --show-labels
+oc get rolebinding -n enterprise-rag
+oc get objectbucketclaim enterprise-rag-bucket -n enterprise-rag
+oc get secret enterprise-rag-s3 -n enterprise-rag \
+  -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}{"\n"}'
+```
+
+- **Fix:** rerun `stage-230-private-data-rag/deploy.sh` after Stage 110 ODF MCG
+  validates. The deploy wrapper applies the Stage 230 Application, waits for
+  `enterprise-rag-bucket`, and creates the runtime S3 connection secret from
+  generated OBC credentials.
 
 ### DSPA is missing or not Ready
 
@@ -756,9 +775,9 @@ oc get gateway maas-default-gateway -n openshift-ingress
 oc get datasciencecluster default-dsc \
   -o jsonpath='{.spec.components.aipipelines.managementState}{" "}{.status.conditions[?(@.type=="AIPipelinesReady")].status}{"\n"}'
 oc get crd datasciencepipelinesapplications.datasciencepipelinesapplications.opendatahub.io
-oc get objectbucketclaim private-rag-pipelines-bucket -n demo-sandbox
-oc get dspa private-rag-pipelines -n demo-sandbox -o yaml
-oc get route ds-pipeline-private-rag-pipelines -n demo-sandbox
+oc get objectbucketclaim private-rag-pipelines-bucket -n enterprise-rag
+oc get dspa private-rag-pipelines -n enterprise-rag -o yaml
+oc get route ds-pipeline-private-rag-pipelines -n enterprise-rag
 ```
 
 - **Fix:** rerun `stage-230-private-data-rag/deploy.sh` after the Stage 230
@@ -775,7 +794,7 @@ oc get route ds-pipeline-private-rag-pipelines -n demo-sandbox
 - **Confirm:**
 
 ```bash
-oc get pvc private-rag-pipeline-workspace -n demo-sandbox
+oc get pvc private-rag-pipeline-workspace -n enterprise-rag
 oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
   -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{"\n"}'
 ```
@@ -787,16 +806,16 @@ oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
 
 ### Stage 230 Argo CD Application stays OutOfSync on Kueue labels
 
-- **Likely cause:** the `demo-sandbox` namespace is Kueue-managed. Kueue
+- **Likely cause:** the `enterprise-rag` namespace is Kueue-managed. Kueue
   injects controller-owned labels and annotations into long-running
   controllers such as `private-rag-docling` and `private-rag-postgres`.
   Controller queue labels are immutable after admission.
 - **Confirm:**
 
 ```bash
-oc get deployment private-rag-docling -n demo-sandbox \
+oc get deployment private-rag-docling -n enterprise-rag \
   -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{" "}{.spec.template.metadata.labels.kueue\.x-k8s\.io/managed}{"\n"}'
-oc get statefulset private-rag-postgres -n demo-sandbox \
+oc get statefulset private-rag-postgres -n enterprise-rag \
   -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{"\n"}'
 ```
 
@@ -810,16 +829,20 @@ oc get statefulset private-rag-postgres -n demo-sandbox \
 ### Whoami ingestion pipeline fails
 
 - **Likely causes:** DSPA route authentication failed, the KFP package could
-  not compile, the per-run KFP workspace could not bind, the Stage 110 OBC
+  not compile, the per-run KFP workspace could not bind, the enterprise RAG OBC
   credentials are missing, Docling is not ready, or
   Llama Stack is not reachable from pipeline pods.
+- **Specific error:** `workspace PVC spec must specify accessModes` means the
+  compiled KFP IR has an empty workspace `pvcSpecPatch`. Stage 230 must compile
+  the pipeline with `dsl.KubernetesWorkspaceConfig(pvcSpecPatch={"accessModes":
+  ["ReadWriteOnce"]})`.
 - **Confirm:**
 
 ```bash
-oc get configmap private-rag-pipeline-last-run -n demo-sandbox -o yaml
-oc get workflow,pods -n demo-sandbox | grep -E 'whoami|private-rag|pipeline'
-oc get events -n demo-sandbox --sort-by=.lastTimestamp | tail -n 40
-oc logs deployment/private-rag-docling -n demo-sandbox --since=20m
+oc get configmap private-rag-pipeline-last-run -n enterprise-rag -o yaml
+oc get workflow,pods -n enterprise-rag | grep -E 'whoami|private-rag|pipeline'
+oc get events -n enterprise-rag --sort-by=.lastTimestamp | tail -n 40
+oc logs deployment/private-rag-docling -n enterprise-rag --since=20m
 ```
 
 - **Fix:** rerun `stage-230-private-data-rag/run-whoami-ingestion-pipeline.sh
@@ -851,9 +874,9 @@ model-serving and modelcar mount assumptions elsewhere in the demo.
 - **Confirm:**
 
 ```bash
-oc get secret private-rag-postgres-credentials -n demo-sandbox -o yaml
-oc logs deployment/lsd-private-rag -n demo-sandbox --since=10m
-oc exec deployment/lsd-private-rag -n demo-sandbox -- python3 - <<'PY'
+oc get secret private-rag-postgres-credentials -n enterprise-rag -o yaml
+oc logs deployment/lsd-private-rag -n enterprise-rag --since=10m
+oc exec deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
 from llama_stack_client import LlamaStackClient
 client = LlamaStackClient(base_url="http://127.0.0.1:8321")
 print(client.providers.list())
@@ -871,8 +894,8 @@ PY
 - **Confirm:**
 
 ```bash
-oc get deployment private-rag-docling -n demo-sandbox
-oc logs deployment/private-rag-docling -n demo-sandbox --since=20m
+oc get deployment private-rag-docling -n enterprise-rag
+oc logs deployment/private-rag-docling -n enterprise-rag --since=20m
 ls -l stage-230-private-data-rag/documents/
 ```
 
@@ -887,8 +910,8 @@ ls -l stage-230-private-data-rag/documents/
 - **Confirm:**
 
 ```bash
-oc get job private-rag-s3-seed -n demo-sandbox
-oc logs job/private-rag-s3-seed -n demo-sandbox
+oc get job private-rag-s3-seed -n enterprise-rag
+oc logs job/private-rag-s3-seed -n enterprise-rag
 ./stage-230-private-data-rag/validate.sh
 ```
 

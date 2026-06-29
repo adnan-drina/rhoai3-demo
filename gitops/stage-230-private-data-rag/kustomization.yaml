@@ -8,6 +8,7 @@ labels:
       demo.rhoai.io/stage: "230"
 
 resources:
+  - project/base
   - rhoai-dsc/base
   - pipelines/base
   - runtime/base

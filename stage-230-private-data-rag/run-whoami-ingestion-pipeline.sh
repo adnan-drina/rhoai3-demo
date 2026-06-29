@@ -23,7 +23,7 @@ if [[ "$ACTUAL_SERVER" != *"$RHOAI_EXPECTED_API_SERVER"* ]]; then
   exit 1
 fi
 
-PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
+PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
 DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
 DSPA_ROUTE_NAME="${RHOAI_STAGE230_DSPA_ROUTE_NAME:-ds-pipeline-${DSPA_NAME}}"
 PIPELINE_NAME="${RHOAI_STAGE230_PIPELINE_NAME:-whoami-rag-ingestion}"
@@ -37,7 +37,7 @@ RAG_EMBEDDING_DIMENSION="${RHOAI_STAGE230_EMBEDDING_DIMENSION:-384}"
 RAG_CHUNK_SIZE="${RHOAI_STAGE230_CHUNK_SIZE:-512}"
 RAG_PROCESSING_TIMEOUT="${RHOAI_STAGE230_DOCLING_TIMEOUT:-600}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
-SOURCE_OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-demo-sandbox-bucket}"
+SOURCE_OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
 LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
 WAIT_FOR_RUN=true
 RUN_TIMEOUT_SECONDS="${RHOAI_STAGE230_PIPELINE_TIMEOUT_SECONDS:-1800}"
@@ -396,7 +396,7 @@ wait_for_dspa
 route_host=$(wait_for_dspa_route)
 llamastack_url=$(resolve_llamastack_url)
 compile_pipeline
-result_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-pipeline-result.XXXXXX.json")
+result_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-pipeline-result.XXXXXX")
 submit_pipeline "$route_host" "$llamastack_url" "$result_file"
 record_last_run "$result_file"
 

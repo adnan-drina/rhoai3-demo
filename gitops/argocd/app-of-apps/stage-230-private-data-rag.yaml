@@ -40,19 +40,19 @@ spec:
     - group: ""
       kind: Secret
       name: private-rag-postgres-credentials
-      namespace: demo-sandbox
+      namespace: enterprise-rag
       jsonPointers:
         - /data
     - group: ""
       kind: Secret
       name: private-rag-llama-stack-secret
-      namespace: demo-sandbox
+      namespace: enterprise-rag
       jsonPointers:
         - /data
     - group: datasciencepipelinesapplications.opendatahub.io
       kind: DataSciencePipelinesApplication
       name: private-rag-pipelines
-      namespace: demo-sandbox
+      namespace: enterprise-rag
       jsonPointers:
         - /status
     # Kueue injects bookkeeping fields into admitted long-running controllers.
@@ -60,14 +60,14 @@ spec:
     - group: apps
       kind: Deployment
       name: private-rag-docling
-      namespace: demo-sandbox
+      namespace: enterprise-rag
       jsonPointers:
         - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
         - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
     - group: apps
       kind: StatefulSet
       name: private-rag-postgres
-      namespace: demo-sandbox
+      namespace: enterprise-rag
       jsonPointers:
         - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
         - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
