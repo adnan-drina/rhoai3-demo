@@ -7,6 +7,9 @@ kind: ObjectBucketClaim
 metadata:
   name: demo-sandbox-bucket
   namespace: demo-sandbox
+  annotations:
+    # Wait until ODF has created the NooBaa storage class.
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   generateBucketName: demo-sandbox
   storageClassName: openshift-storage.noobaa.io
