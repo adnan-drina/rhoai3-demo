@@ -6,6 +6,9 @@ metadata:
   labels:
     app.kubernetes.io/name: private-rag-docling
     app.kubernetes.io/component: document-processing
+    # Deployment queue labels are immutable after Kueue admission. Stage 230
+    # runtime controllers use the RHOAI-created default local queue.
+    kueue.x-k8s.io/queue-name: default
   annotations:
     argocd.argoproj.io/sync-wave: "12"
     openshift.io/display-name: Private RAG Docling
@@ -20,7 +23,7 @@ spec:
       labels:
         app.kubernetes.io/name: private-rag-docling
         app.kubernetes.io/component: document-processing
-        kueue.x-k8s.io/queue-name: lq-cpu-default
+        kueue.x-k8s.io/queue-name: default
     spec:
       containers:
         - name: docling

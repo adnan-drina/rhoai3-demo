@@ -117,6 +117,12 @@ environment:
   block later sync waves on a Pending PVC. Use the AI Pipelines per-run
   workspace from `dsl.PipelineConfig(workspace=...)` and validate the pipeline
   run evidence instead of a static PVC.
+- **Stage 230 Kueue controller labels**: Long-running runtime controllers in
+  the Kueue-managed `demo-sandbox` namespace, such as Docling and pgvector, use
+  the RHOAI-created `default` local queue. Kueue queue labels on admitted
+  controllers are immutable, and Kueue injects bookkeeping labels/annotations.
+  Keep narrow Argo CD `ignoreDifferences` entries for the injected fields
+  instead of patching live controllers to custom `lq-*` queues after admission.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".

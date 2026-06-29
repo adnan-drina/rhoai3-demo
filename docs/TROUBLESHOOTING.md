@@ -785,11 +785,33 @@ oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
   the Stage 230 Application so Argo CD prunes the old PVC and can advance to
   the later Llama Stack wave.
 
+### Stage 230 Argo CD Application stays OutOfSync on Kueue labels
+
+- **Likely cause:** the `demo-sandbox` namespace is Kueue-managed. Kueue
+  injects controller-owned labels and annotations into long-running
+  controllers such as `private-rag-docling` and `private-rag-postgres`.
+  Controller queue labels are immutable after admission.
+- **Confirm:**
+
+```bash
+oc get deployment private-rag-docling -n demo-sandbox \
+  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{" "}{.spec.template.metadata.labels.kueue\.x-k8s\.io/managed}{"\n"}'
+oc get statefulset private-rag-postgres -n demo-sandbox \
+  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{"\n"}'
+```
+
+- **Fix:** keep the Stage 230 runtime controllers on the RHOAI-created
+  `default` local queue and keep narrow Argo CD `ignoreDifferences` entries
+  only for Kueue-injected bookkeeping fields. Do not patch an admitted
+  controller from `default` to `lq-cpu-default`; the Kueue webhook rejects that
+  immutable queue-label change. Use the custom `lq-*` queues for RHOAI
+  hardware-profile workloads and explicitly authored short-lived jobs.
+
 ### Whoami ingestion pipeline fails
 
 - **Likely causes:** DSPA route authentication failed, the KFP package could
-  not compile, the pipeline pods cannot mount the `private-rag-pipeline-workspace`
-  PVC, the Stage 110 OBC credentials are missing, Docling is not ready, or
+  not compile, the per-run KFP workspace could not bind, the Stage 110 OBC
+  credentials are missing, Docling is not ready, or
   Llama Stack is not reachable from pipeline pods.
 - **Confirm:**
 
