@@ -565,6 +565,10 @@ after prerequisites and DSC feature flags are healthy.
      Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
      `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
      tenant.
+   - Waits for the MaaS-local Nemotron `LLMInferenceService` to reach
+     `Ready=True`. On a fresh cluster this can take several minutes because the
+     generated llm-d router/scheduler pulls the modelcar, inference scheduler,
+     and tokenizer images on a non-GPU worker.
    - Restarts `deployment/maas-api` after the database Secret and MaaS component
      are present so the API-key service reads the current `maas-db-config`.
 

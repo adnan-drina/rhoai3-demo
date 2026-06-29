@@ -7,7 +7,8 @@ during Stage 220.
 
 ## Validated Demo Configuration
 
-Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
+Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
+`cluster-xgg8t` during fresh-environment redeploy on 2026-06-29:
 
 | Area | Working decision |
 |------|------------------|
@@ -40,7 +41,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
   backend namespace, and the demo needs a clean separation between provider
   administration and user consumption.
 - Remove stale direct Nemotron deployments from `demo-sandbox` during Stage
-  230 deployment. A fresh environment might not have manual dashboard-created
+  220 deployment. A fresh environment might not have manual dashboard-created
   resources, but a reused environment often will.
 - Keep PostgreSQL outside the Kueue-managed MaaS namespace. Kueue should manage
   model workloads, not long-lived support infrastructure with immutable
@@ -137,6 +138,17 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12:
 - Legacy namespace labels matter. If an old `kueue-managed=true` label remains
   on a namespace, automation can re-add `kueue.openshift.io/managed=true` and
   mutate workloads unexpectedly.
+- Argo CD sync waves can deadlock when a Service that needs endpoints is in an
+  earlier wave than the workload that creates those endpoints. Keep
+  `service/maas-postgres` and `statefulset/maas-postgres` in the same sync wave
+  so Argo CD can create both before evaluating Service health.
+- A fresh llm-d `LLMInferenceService` can take several minutes after MaaS
+  policy resources are healthy because the generated router/scheduler
+  deployment pulls the modelcar image, the inference scheduler image, and the
+  tokenizer image on a non-GPU worker. Validation must wait for
+  `LLMInferenceService.status.conditions[Ready=True]`, not only for model
+  access through the Gateway. A transient registry `ImagePullBackOff` can
+  recover on retry; inspect events before changing manifests.
 - Stage scope was broad: prerequisites, operator lifecycle, Gateway, DB,
   dashboard flags, local model, external model, subscriptions, auth policies,
   user RBAC, and validation all changed together. Future stages should split
@@ -180,6 +192,10 @@ Before declaring MaaS ready in a new or upgraded environment:
      -o jsonpath='{.data.DB_CONNECTION_URL}' | base64 -d
    ```
 
+   The PostgreSQL Service and StatefulSet must be created in the same Argo CD
+   sync wave to avoid waiting for Service endpoints before the StatefulSet
+   exists.
+
 4. Confirm model-publication and access-policy resources:
 
    ```bash
@@ -192,6 +208,7 @@ Before declaring MaaS ready in a new or upgraded environment:
    - Dashboard AI asset endpoint listing as `ai-developer`.
    - Gateway `/maas-api/v1/subscriptions` as `ai-developer`.
    - Dashboard model listing from the MaaS project as `ai-admin`.
+   - MaaS-local Nemotron `LLMInferenceService` `Ready=True`.
    - Temporary MaaS API key creation as `ai-developer`.
    - Nemotron `/v1/chat/completions` through the MaaS Gateway with the temporary
      `sk-oai-*` key, including structured tool-call output and token usage.

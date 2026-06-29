@@ -370,6 +370,11 @@ wait_for_jsonpath "MaaS PostgreSQL StatefulSet availability" \
   "statefulset/maas-postgres" "$MAAS_DB_NS" \
   "{.status.readyReplicas}" "1" 90
 
+wait_for_jsonpath "MaaS Nemotron LLMInferenceService readiness" \
+  "llminferenceservice/${MAAS_NEMOTRON_NAME}" "$MAAS_NS" \
+  "{.status.conditions[?(@.type==\"Ready\")].status}" "True" \
+  "${RHOAI_STAGE220_NEMOTRON_READY_ATTEMPTS:-180}"
+
 if oc get deployment/maas-api -n redhat-ods-applications \
   --insecure-skip-tls-verify=true >/dev/null 2>&1; then
   echo "── Restarting maas-api to pick up maas-db-config ──"
