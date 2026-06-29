@@ -37,6 +37,7 @@ RAG_EMBEDDING_DIMENSION="${RHOAI_STAGE230_EMBEDDING_DIMENSION:-384}"
 RAG_CHUNK_SIZE="${RHOAI_STAGE230_CHUNK_SIZE:-512}"
 RAG_PROCESSING_TIMEOUT="${RHOAI_STAGE230_DOCLING_TIMEOUT:-600}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotron-3-nano-30b-a3b}"
 SOURCE_OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
 LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
 WAIT_FOR_RUN=true
@@ -193,11 +194,12 @@ submit_pipeline() {
   echo "   DSPA:        ${dspa_url}"
   echo "   S3 source:   ${s3_uri}"
   echo "   Llama Stack: ${llamastack_url}"
+  echo "   LLM model:   ${RAG_INFERENCE_MODEL}"
 
   export PROJECT_NS PIPELINE_NAME EXPERIMENT_NAME RUN_NAME DSPA_URL="$dspa_url" OC_TOKEN="$token"
   export PIPELINE_YAML="$pipeline_yaml" RESULT_FILE="$result_file"
   export S3_URI="$s3_uri" S3_ENDPOINT="$endpoint" DOCLING_SERVICE="$docling_service" LLAMASTACK_URL="$llamastack_url"
-  export NEMOTRON_MODEL_RESOURCE RAG_VECTOR_DB RAG_EMBEDDING_MODEL RAG_EMBEDDING_DIMENSION RAG_CHUNK_SIZE RAG_PROCESSING_TIMEOUT
+  export NEMOTRON_MODEL_RESOURCE RAG_INFERENCE_MODEL RAG_VECTOR_DB RAG_EMBEDDING_MODEL RAG_EMBEDDING_DIMENSION RAG_CHUNK_SIZE RAG_PROCESSING_TIMEOUT
   export WAIT_FOR_RUN RUN_TIMEOUT_SECONDS
 
   "$venv/bin/python3" <<'PY'
@@ -321,7 +323,7 @@ run = kfp_client.run_pipeline(
         "s3_endpoint": os.environ["S3_ENDPOINT"],
         "docling_service": os.environ["DOCLING_SERVICE"],
         "llamastack_url": os.environ["LLAMASTACK_URL"],
-        "inference_model": os.environ["NEMOTRON_MODEL_RESOURCE"],
+        "inference_model": os.environ["RAG_INFERENCE_MODEL"],
         "embedding_model": os.environ["RAG_EMBEDDING_MODEL"],
         "embedding_dimension": int(os.environ["RAG_EMBEDDING_DIMENSION"]),
         "vector_db_id": os.environ["RAG_VECTOR_DB"],

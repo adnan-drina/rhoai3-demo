@@ -766,18 +766,24 @@ The deploy script:
   `private-rag/whoami/`
 - compiles and submits the `whoami-rag-ingestion` KFP pipeline
 - has the KFP run convert the PDF through Docling, register the `whoami`
-  vector database, ingest into Llama Stack pgvector, and record run evidence
+  vector store, ingest into Llama Stack pgvector, and record run evidence
 
 The validator checks Argo CD state, object bucket readiness, MaaS readiness,
 AI Pipelines and DSPA readiness, runtime secrets, pgvector readiness, Docling
 readiness, Llama Stack readiness, object storage upload, latest pipeline run
-success, vector database presence, whoami RAG retrieval, and a Nemotron-backed
+success, vector store presence, whoami RAG retrieval, and a Nemotron-backed
 answer.
 
 ### Design Notes
 
 - Nemotron remains the response-generation model and is consumed through MaaS;
   Stage 230 does not deploy or bypass a model endpoint.
+- Keep the MaaS Kubernetes resource name and the Llama Stack model ID separate.
+  `RHOAI_MAAS_NEMOTRON_MODEL_NAME` identifies the MaaS resources
+  (`nemotron-3-nano-30b-a3b`), while
+  `RHOAI_STAGE230_INFERENCE_MODEL_ID` is the provider-qualified model ID
+  returned by the Stage 230 Llama Stack `/v1/models` API
+  (`vllm-inference/nemotron-3-nano-30b-a3b` by default).
 - `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
   quickstart baseline and is supported by the documented Llama Stack
   `inline::sentence-transformers` path. The stage configures a 384-dimensional

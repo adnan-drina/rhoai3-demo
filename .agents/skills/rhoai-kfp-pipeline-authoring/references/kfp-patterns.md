@@ -167,6 +167,10 @@ Apply these rules:
   `client.vector_stores.files.create(...)`, and validate retrieval with
   `client.vector_stores.search(...)`. Do not use the removed
   `client.vector_dbs` or `client.tool_runtime.rag_tool` paths.
+- pass Llama Stack chat/completion model IDs from a dedicated pipeline
+  parameter, not from the Kubernetes MaaS resource name. Validate the selected
+  value against `client.models.list()` before assuming that a short model name
+  such as `nemotron-3-nano-30b-a3b` is callable.
 - keep the vector store embedding dimension aligned with the actual embedding
   model output. In Stage 230, `sentence-transformers/all-MiniLM-L6-v2` uses a
   384-dimensional vector store; a 768-dimensional store causes file attachment

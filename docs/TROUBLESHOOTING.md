@@ -930,6 +930,28 @@ PY
   store in this demo; if the vector store expects 768 dimensions, delete it and
   rerun the stage so it is recreated from current defaults.
 
+### Llama Stack RAG answer reports Nemotron model not found
+
+- **Symptom:** the whoami ingestion summary fails after vector-store search
+  succeeds with `Model 'nemotron-3-nano-30b-a3b' not found`.
+- **Likely cause:** the pipeline passed the MaaS Kubernetes resource name
+  instead of the provider-qualified Llama Stack model ID.
+- **Confirm:**
+
+```bash
+oc exec -i deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
+from llama_stack_client import LlamaStackClient
+client = LlamaStackClient(base_url="http://127.0.0.1:8321")
+print(client.models.list())
+PY
+```
+
+- **Fix:** set `RHOAI_STAGE230_INFERENCE_MODEL_ID` to the model ID returned by
+  the Stage 230 Llama Stack runtime. The default is
+  `vllm-inference/nemotron-3-nano-30b-a3b`. Keep
+  `RHOAI_MAAS_NEMOTRON_MODEL_NAME` as the short MaaS resource name
+  `nemotron-3-nano-30b-a3b`.
+
 ### Docling conversion fails or times out
 
 - **Likely causes:** the `private-rag-docling` pod is still downloading

@@ -49,6 +49,11 @@ GitOps changes.
   the selected `MaaSSubscription` phase and that its `.spec.modelRefs[*].name`
   includes the generation model being called, such as
   `nemotron-3-nano-30b-a3b`.
+- Keep MaaS resource names separate from Llama Stack runtime model IDs.
+  `MaaSModelRef` and `MaaSSubscription` use the short resource name, while
+  Llama Stack chat/completion requests must use the model ID returned by
+  `client.models.list()` or `/v1/models` for the active distribution, for
+  example `vllm-inference/nemotron-3-nano-30b-a3b`.
 - For RHOAI 3.4 inline embeddings, `ENABLE_SENTENCE_TRANSFORMERS=true`,
   `EMBEDDING_PROVIDER=sentence-transformers`, and `EMBEDDING_MODEL` are present.
 - For pgvector, use the documented `PGVECTOR_HOST`, `PGVECTOR_PORT`,

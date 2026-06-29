@@ -47,6 +47,7 @@ PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_MAAS_DEMO_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}}}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotron-3-nano-30b-a3b}"
 RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
 RAG_DOCLING_SERVICE="${RHOAI_STAGE230_DOCLING_SERVICE:-private-rag-docling}"
@@ -722,7 +723,7 @@ ingest_documents() {
   docs_b64=$(printf '%s' "$docs_payload" | base64 | tr -d '\n')
 
   for attempt in $(seq 1 12); do
-    if oc exec "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
+    if oc exec -i "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
       --insecure-skip-tls-verify=true \
       -- env \
         RAG_DOCS_B64="$docs_b64" \
@@ -730,17 +731,17 @@ ingest_documents() {
         RAG_EMBEDDING_MODEL="$RAG_EMBEDDING_MODEL" \
         RAG_EMBEDDING_DIMENSION="$RAG_EMBEDDING_DIMENSION" \
         RAG_CHUNK_SIZE="$RAG_CHUNK_SIZE" \
-        RAG_INFERENCE_MODEL="$NEMOTRON_MODEL_RESOURCE" \
+        RAG_INFERENCE_MODEL="$RAG_INFERENCE_MODEL" \
         python3 - <<'PY'
 import base64
 import json
 import os
 import sys
+import time
 from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import Document as RAGDocument
 
 client = LlamaStackClient(base_url="http://127.0.0.1:8321")
-vector_db_id = os.environ["RAG_VECTOR_DB"]
+vector_store_name = os.environ["RAG_VECTOR_DB"]
 embedding_model = os.environ["RAG_EMBEDDING_MODEL"]
 embedding_dimension = int(os.environ["RAG_EMBEDDING_DIMENSION"])
 chunk_size = int(os.environ["RAG_CHUNK_SIZE"])
@@ -765,40 +766,66 @@ if provider_id is None:
     raise SystemExit("No vector_io provider is registered in Llama Stack")
 
 try:
-    for db in client.vector_dbs.list():
-        if ident(db) == vector_db_id:
-            client.vector_dbs.unregister(vector_db_id=vector_db_id)
-            break
+    for store in client.vector_stores.list():
+        store_id = getattr(store, "id", None)
+        store_name = getattr(store, "name", None)
+        if store_id == vector_store_name or store_name == vector_store_name:
+            client.vector_stores.delete(vector_store_id=store_id)
 except Exception as exc:
-    print(f"WARN: vector DB cleanup skipped: {exc}", file=sys.stderr)
+    print(f"WARN: vector store cleanup skipped: {exc}", file=sys.stderr)
 
-client.vector_dbs.register(
-    vector_db_id=vector_db_id,
-    embedding_model=embedding_model,
-    embedding_dimension=embedding_dimension,
-    provider_id=provider_id,
+vector_store = client.vector_stores.create(
+    name=vector_store_name,
+    metadata={
+        "stage": "230",
+        "scenario": "whoami",
+        "embedding_model": embedding_model,
+        "embedding_dimension": str(embedding_dimension),
+        "vector_provider": provider_id,
+        "chunk_size_tokens": str(chunk_size),
+    },
 )
+vector_store_id = getattr(vector_store, "id", None)
+if not vector_store_id:
+    raise SystemExit(f"Vector store {vector_store_name} did not return an id")
 
-rag_docs = [
-    RAGDocument(
-        document_id=doc["document_id"],
-        content=doc["content"],
-        mime_type=doc["mime_type"],
-        metadata=doc["metadata"],
+for doc in documents:
+    source_name = doc["metadata"]["source"]
+    uploaded_file = client.files.create(
+        file=(source_name, doc["content"].encode("utf-8"), doc["mime_type"]),
+        purpose="assistants",
     )
-    for doc in documents
-]
-
-client.tool_runtime.rag_tool.insert(
-    documents=rag_docs,
-    vector_db_id=vector_db_id,
-    chunk_size_in_tokens=chunk_size,
-)
+    file_id = getattr(uploaded_file, "id", None)
+    if not file_id:
+        raise SystemExit(f"Llama Stack file upload did not return an id for {source_name}")
+    store_file = client.vector_stores.files.create(
+        vector_store_id=vector_store_id,
+        file_id=file_id,
+        attributes={
+            "source": source_name,
+            "stage": "230",
+            "scenario": "whoami",
+            "chunk_size_tokens": str(chunk_size),
+        },
+    )
+    status = getattr(store_file, "status", "")
+    for _ in range(60):
+        if status in ("completed", "failed", "cancelled"):
+            break
+        time.sleep(2)
+        store_file = client.vector_stores.files.retrieve(
+            vector_store_id=vector_store_id,
+            file_id=file_id,
+        )
+        status = getattr(store_file, "status", "")
+    if status and status != "completed":
+        raise SystemExit(f"Vector store file {file_id} ended with status {status}")
 
 query = "Who is Adnan Drina and what is his current role?"
-rag_response = client.tool_runtime.rag_tool.query(
-    content=query,
-    vector_db_ids=[vector_db_id],
+rag_response = client.vector_stores.search(
+    vector_store_id=vector_store_id,
+    query=query,
+    max_num_results=5,
 )
 context = str(getattr(rag_response, "content", rag_response))
 if not any(term in context.lower() for term in ["adnan", "red hat", "principal", "solution architect"]):
@@ -829,7 +856,8 @@ answer = completion.choices[0].message.content
 if not answer:
     raise SystemExit("Nemotron returned an empty answer")
 
-print(f"RAG_VECTOR_DB={vector_db_id}")
+print(f"RAG_VECTOR_DB={vector_store_name}")
+print(f"RAG_VECTOR_STORE_ID={vector_store_id}")
 print(f"RAG_PROVIDER={provider_id}")
 print(f"RAG_MODEL={model_id}")
 print(f"RAG_ANSWER={answer[:400]}")

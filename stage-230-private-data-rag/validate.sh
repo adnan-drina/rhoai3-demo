@@ -16,6 +16,7 @@ PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_MAAS_DEMO_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}}}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotron-3-nano-30b-a3b}"
 RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
@@ -157,29 +158,39 @@ fi
 check "Latest whoami ingestion pipeline run succeeded" "$R"
 
 if resource_exists "deployment/${RAG_LSD_NAME}" "$PROJECT_NS"; then
-  output=$(oc exec "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
+  output=$(oc exec -i "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
     --insecure-skip-tls-verify=true \
-    -- env RAG_VECTOR_DB="$RAG_VECTOR_DB" RAG_INFERENCE_MODEL="$NEMOTRON_MODEL_RESOURCE" python3 - <<'PY' 2>&1 || true
+    -- env RAG_VECTOR_DB="$RAG_VECTOR_DB" RAG_INFERENCE_MODEL="$RAG_INFERENCE_MODEL" python3 - <<'PY' 2>&1 || true
 from llama_stack_client import LlamaStackClient
 
 client = LlamaStackClient(base_url="http://127.0.0.1:8321")
-vector_db_id = __import__("os").environ["RAG_VECTOR_DB"]
+vector_store_name = __import__("os").environ["RAG_VECTOR_DB"]
 preferred_model = __import__("os").environ["RAG_INFERENCE_MODEL"]
 
 def ident(obj):
     return getattr(obj, "identifier", None) or getattr(obj, "id", None) or getattr(obj, "provider_id", None)
 
-providers = [getattr(p, "provider_id", "") for p in client.providers.list() if getattr(p, "api", None) == "vector_io"]
+providers = [getattr(p, "provider_id", "") for p in client.providers.list() if "vector" in str(getattr(p, "api", "")).lower()]
 if not any("pgvector" in p for p in providers):
-    raise SystemExit(f"missing pgvector vector_io provider: {providers}")
+    raise SystemExit(f"missing pgvector vector provider: {providers}")
 
-vector_dbs = [ident(db) for db in client.vector_dbs.list()]
-if vector_db_id not in vector_dbs:
-    raise SystemExit(f"missing vector DB {vector_db_id}: {vector_dbs}")
+stores = list(client.vector_stores.list())
+store = next(
+    (
+        item for item in stores
+        if getattr(item, "name", None) == vector_store_name or ident(item) == vector_store_name
+    ),
+    None,
+)
+if store is None:
+    known = [f"{getattr(item, 'name', '')}:{ident(item)}" for item in stores]
+    raise SystemExit(f"missing vector store {vector_store_name}: {known}")
+vector_store_id = ident(store)
 
-rag_response = client.tool_runtime.rag_tool.query(
-    content="Who is Adnan Drina and what is his current role?",
-    vector_db_ids=[vector_db_id],
+rag_response = client.vector_stores.search(
+    vector_store_id=vector_store_id,
+    query="Who is Adnan Drina and what is his current role?",
+    max_num_results=5,
 )
 context = str(getattr(rag_response, "content", rag_response))
 if not any(term in context.lower() for term in ["adnan", "red hat", "principal", "solution architect"]):
