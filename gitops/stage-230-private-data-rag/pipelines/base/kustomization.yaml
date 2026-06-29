@@ -4,4 +4,3 @@ kind: Kustomization
 resources:
   - obc-private-rag-pipelines.yaml
   - dspa-private-rag.yaml
-  - pipeline-workspace-pvc.yaml

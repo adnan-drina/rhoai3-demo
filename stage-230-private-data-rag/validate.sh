@@ -20,7 +20,6 @@ RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
 RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
 RAG_DSPA_OBC_NAME="${RHOAI_STAGE230_DSPA_OBC_NAME:-private-rag-pipelines-bucket}"
-RAG_PIPELINE_WORKSPACE="${RHOAI_STAGE230_PIPELINE_WORKSPACE:-private-rag-pipeline-workspace}"
 RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
 RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
 RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
@@ -96,14 +95,6 @@ check "Private RAG DSPA pipeline server is Ready" "$R"
 dspa_route=$(jsonpath "route/ds-pipeline-${RAG_DSPA_NAME}" "$PROJECT_NS" '{.spec.host}')
 [[ -n "$dspa_route" ]] && R=pass || R=missing
 check "Private RAG DSPA route exists" "$R"
-
-if resource_exists "pvc/${RAG_PIPELINE_WORKSPACE}" "$PROJECT_NS"; then
-  phase=$(jsonpath "pvc/${RAG_PIPELINE_WORKSPACE}" "$PROJECT_NS" '{.status.phase}')
-  [[ "$phase" == "Bound" ]] && R=pass || R="${phase:-missing}"
-else
-  R=missing
-fi
-check "Private RAG pipeline workspace PVC is Bound" "$R"
 
 [[ "$(jsonpath "maasmodelref/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" '{.status.phase}')" == "Ready" ]] && R=pass || R=missing
 check "Stage 220 Nemotron MaaSModelRef is Ready" "$R"

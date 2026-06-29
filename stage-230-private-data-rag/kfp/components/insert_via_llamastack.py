@@ -16,6 +16,7 @@ def insert_via_llamastack_component(
     vector_db_ids: List[str],
     vector_db_id: str,
     chunk_size_tokens: int,
+    workspace_path: str,
 ) -> NamedTuple("InsertOutput", [("status", str), ("documents_inserted", int)]):
     """Insert one processed Markdown document through Llama Stack."""
     import json
@@ -58,7 +59,7 @@ def insert_via_llamastack_component(
         inserted += 1
         print(f"Inserted {doc_id} into vector DB {db_id}")
 
-    log_path = "/shared-data/ingestion-log.jsonl"
+    log_path = os.path.join(workspace_path, "ingestion-log.jsonl")
     with open(log_path, "a", encoding="utf-8") as handle:
         handle.write(
             json.dumps(

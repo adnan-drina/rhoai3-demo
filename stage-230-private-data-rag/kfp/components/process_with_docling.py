@@ -14,6 +14,7 @@ def process_with_docling_component(
     document_path: str,
     docling_service: str,
     processing_timeout: int,
+    workspace_path: str,
 ) -> NamedTuple("DoclingOutput", [("processed_file", str), ("success", bool)]):
     """Convert a PDF file to Markdown and store it in the shared PVC."""
     import json
@@ -66,7 +67,7 @@ def process_with_docling_component(
     if not markdown.strip():
         raise RuntimeError(f"Docling returned no Markdown. Document keys: {list(document.keys())}")
 
-    output_dir = "/shared-data/processed"
+    output_dir = os.path.join(workspace_path, "processed")
     os.makedirs(output_dir, exist_ok=True)
     base_name = os.path.splitext(os.path.basename(document_path))[0]
     output_path = os.path.join(output_dir, f"{base_name}.md")

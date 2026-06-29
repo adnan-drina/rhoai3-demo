@@ -64,15 +64,21 @@ Lightweight Python Components must be self-contained:
 
 ## Runtime Data Flow
 
-Project convention for shared intermediate data is a shared PVC mounted at
-`/shared-data`. Use descriptive subdirectories such as:
+Project convention for shared intermediate data is the AI Pipelines per-run
+workspace configured with `dsl.PipelineConfig(workspace=...)`. Pass
+`dsl.WORKSPACE_PATH_PLACEHOLDER` into components and use descriptive
+subdirectories such as:
 
 ```python
-SHARED = Path("/shared-data")
+SHARED = Path(workspace_path)
 DATASET_DIR = SHARED / "dataset"
 MODEL_DIR = SHARED / "model"
 METRICS_DIR = SHARED / "metrics"
 ```
+
+Do not pre-create a GitOps-managed EBS PVC for KFP task-to-task file exchange.
+`WaitForFirstConsumer` PVCs can block Argo CD sync waves before a pipeline pod
+exists to bind them.
 
 ## Control Flow
 

@@ -787,6 +787,10 @@ answer.
   `private-rag-pipelines`, because the `DataSciencePipelinesApplication`
   object-storage spec needs a stable bucket name. The KFP source-document
   steps still read from the Stage 110 generated `demo-sandbox-bucket`.
+- KFP task-to-task file exchange uses the AI Pipelines per-run workspace
+  configured in `dsl.PipelineConfig(workspace=...)`. Do not pre-create a
+  GitOps-managed EBS PVC for this path; Argo CD waits on Pending
+  `WaitForFirstConsumer` PVCs and can block later sync waves.
 - The DSPA uses the in-cluster NooBaa `s3.openshift-storage.svc:80` HTTP
   service for pipeline artifacts. This avoids self-signed TLS trust issues
   inside DSPA while keeping traffic within the cluster network for the demo.

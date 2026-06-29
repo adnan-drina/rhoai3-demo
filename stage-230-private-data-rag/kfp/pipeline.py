@@ -24,7 +24,6 @@ from components.process_with_docling import process_with_docling_component
 from components.register_vector_db import register_vector_db_component
 
 SOURCE_OBC_SECRET = "demo-sandbox-bucket"
-PIPELINE_PVC = "private-rag-pipeline-workspace"
 
 
 def _set_resources(
@@ -39,14 +38,6 @@ def _set_resources(
     task.set_cpu_limit(cpu_limit)
     task.set_memory_request(memory_request)
     task.set_memory_limit(memory_limit)
-
-
-def _mount_workspace(task: PipelineTask) -> None:
-    kubernetes.mount_pvc(
-        task,
-        pvc_name=PIPELINE_PVC,
-        mount_path="/shared-data",
-    )
 
 
 def _inject_source_bucket_credentials(task: PipelineTask) -> None:
@@ -64,6 +55,9 @@ def _inject_source_bucket_credentials(task: PipelineTask) -> None:
     name="whoami-rag-ingestion",
     description="Ingest the whoami PDF corpus into Llama Stack pgvector through Docling.",
     pipeline_root="s3://private-rag-pipelines/artifacts",
+    pipeline_config=dsl.PipelineConfig(
+        workspace=dsl.WorkspaceConfig(size="5Gi"),
+    ),
 )
 def whoami_rag_ingestion_pipeline(
     s3_uri: str,
@@ -82,9 +76,9 @@ def whoami_rag_ingestion_pipeline(
     download = download_from_s3_component(
         s3_uri=s3_uri,
         s3_endpoint=s3_endpoint,
+        workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )
     _inject_source_bucket_credentials(download)
-    _mount_workspace(download)
     _set_resources(download, cpu_request="500m", cpu_limit="1", memory_request="512Mi", memory_limit="1Gi")
     download.set_caching_options(False)
 
@@ -109,9 +103,9 @@ def whoami_rag_ingestion_pipeline(
             document_path=document_path,
             docling_service=docling_service,
             processing_timeout=processing_timeout,
+            workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         )
         docling.after(register)
-        _mount_workspace(docling)
         _set_resources(docling, cpu_request="500m", cpu_limit="2", memory_request="1Gi", memory_limit="3Gi")
         docling.set_caching_options(False)
 
@@ -121,8 +115,8 @@ def whoami_rag_ingestion_pipeline(
             vector_db_ids=register.outputs["vector_db_ids"],
             vector_db_id=vector_db_id,
             chunk_size_tokens=chunk_size_tokens,
+            workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         )
-        _mount_workspace(insert)
         _set_resources(insert)
         insert.set_caching_options(False)
 
@@ -130,9 +124,9 @@ def whoami_rag_ingestion_pipeline(
         llamastack_url=llamastack_url,
         vector_db_id=vector_db_id,
         inference_model=inference_model,
+        workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )
     summary.after(insert)
-    _mount_workspace(summary)
     _set_resources(summary)
     summary.set_caching_options(False)
 

@@ -12,6 +12,7 @@ def ingestion_summary_component(
     llamastack_url: str,
     vector_db_id: str,
     inference_model: str,
+    workspace_path: str,
     metrics: Output[Metrics],
 ) -> str:
     """Summarize ingestion and verify the whoami RAG query path."""
@@ -20,7 +21,7 @@ def ingestion_summary_component(
 
     from llama_stack_client import LlamaStackClient
 
-    log_path = "/shared-data/ingestion-log.jsonl"
+    log_path = os.path.join(workspace_path, "ingestion-log.jsonl")
     entries = []
     if os.path.exists(log_path):
         with open(log_path, encoding="utf-8") as handle:

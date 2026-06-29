@@ -13,6 +13,7 @@ from kfp.dsl import component
 def download_from_s3_component(
     s3_uri: str,
     s3_endpoint: str,
+    workspace_path: str,
 ) -> NamedTuple("DownloadOutput", [("downloaded_files", List[str]), ("file_count", int)]):
     """Download PDF documents from an S3 URI into the shared pipeline PVC."""
     import os
@@ -39,7 +40,7 @@ def download_from_s3_component(
     print(f"S3 bucket:   {bucket}")
     print(f"S3 prefix:   {prefix}")
 
-    shared_dir = "/shared-data/documents"
+    shared_dir = os.path.join(workspace_path, "documents")
     os.makedirs(shared_dir, exist_ok=True)
 
     client = boto3.client(
