@@ -23,6 +23,7 @@ RAG_CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot
 RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
 RAG_DSPA_OBC_NAME="${RHOAI_STAGE230_DSPA_OBC_NAME:-private-rag-pipelines-bucket}"
 RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
+RAG_CONSOLELINK="${RHOAI_STAGE230_CONSOLELINK:-rhoai-demo-rag-chatbot}"
 RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
 RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
 OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
@@ -64,6 +65,13 @@ jsonpath() {
   local namespace="$2"
   local path="$3"
   oc get "$resource" -n "$namespace" -o jsonpath="$path" \
+    --insecure-skip-tls-verify=true 2>/dev/null || true
+}
+
+cluster_jsonpath() {
+  local resource="$1"
+  local path="$2"
+  oc get "$resource" -o jsonpath="$path" \
     --insecure-skip-tls-verify=true 2>/dev/null || true
 }
 
@@ -163,6 +171,21 @@ else
   R=missing
 fi
 check "Private RAG Streamlit chatbot route responds" "$R"
+
+if [[ -n "$chatbot_route" ]]; then
+  console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
+  console_text=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.text}')
+  console_section=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.applicationMenu.section}')
+  expected_href="https://${chatbot_route}"
+  if [[ "$console_href" == "$expected_href" && "$console_text" == "Private RAG Chatbot" && "$console_section" == "RHOAI Demo" ]]; then
+    R=pass
+  else
+    R="href=${console_href:-missing} text=${console_text:-missing} section=${console_section:-missing}"
+  fi
+else
+  R=missing
+fi
+check "Private RAG chatbot console quick link is configured" "$R"
 
 resource_exists "configmap/${RAG_DOC_CONFIGMAP}" "$PROJECT_NS" && R=pass || R=missing
 check "Private demo document ConfigMap exists" "$R"

@@ -61,6 +61,7 @@ RAG_POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-cred
 RAG_LS_SECRET="${RHOAI_STAGE230_LLAMASTACK_SECRET:-private-rag-llama-stack-secret}"
 RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
 RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
+RAG_CONSOLELINK="${RHOAI_STAGE230_CONSOLELINK:-rhoai-demo-rag-chatbot}"
 RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
 RAG_EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}"
 RAG_EMBEDDING_DIMENSION="${RHOAI_STAGE230_EMBEDDING_DIMENSION:-384}"
@@ -92,6 +93,13 @@ jsonpath() {
   local namespace="$2"
   local path="$3"
   oc get "$resource" -n "$namespace" -o jsonpath="$path" \
+    --insecure-skip-tls-verify=true 2>/dev/null || true
+}
+
+cluster_jsonpath() {
+  local resource="$1"
+  local path="$2"
+  oc get "$resource" -o jsonpath="$path" \
     --insecure-skip-tls-verify=true 2>/dev/null || true
 }
 
@@ -452,7 +460,25 @@ wait_for_runtime() {
     --timeout=10m --insecure-skip-tls-verify=true
   oc rollout status "deployment/${RAG_CHATBOT_DEPLOYMENT}" -n "$PROJECT_NS" \
     --timeout=10m --insecure-skip-tls-verify=true
-  echo "[OK] pgvector, Docling, Llama Stack, and Streamlit chatbot are ready"
+
+  local chatbot_route console_href expected_href
+  chatbot_route=$(jsonpath "route/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.spec.host}')
+  expected_href="https://${chatbot_route}"
+  for _ in $(seq 1 60); do
+    console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
+    if [[ -n "$chatbot_route" && "$console_href" == "$expected_href" ]]; then
+      echo "[OK] ${RAG_CONSOLELINK} points to ${expected_href}"
+      echo "[OK] pgvector, Docling, Llama Stack, and Streamlit chatbot are ready"
+      return 0
+    fi
+    sleep 10
+  done
+
+  echo "ERROR: ${RAG_CONSOLELINK} was not patched to the private RAG chatbot route." >&2
+  echo "expected=${expected_href:-missing} actual=${console_href:-missing}" >&2
+  oc get consolelink "$RAG_CONSOLELINK" -o yaml \
+    --insecure-skip-tls-verify=true >&2 || true
+  return 1
 }
 
 wait_for_pipeline_server() {

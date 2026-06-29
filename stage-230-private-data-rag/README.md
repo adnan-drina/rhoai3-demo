@@ -34,6 +34,7 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
 | RAG application | Streamlit chatbot reused from the Red Hat AI Enterprise RAG quickstart and pointed at the stage-owned Llama Stack service |
+| Demo shortcut | OpenShift console application-menu `ConsoleLink` named `Private RAG Chatbot`, patched at sync time to the generated chatbot route |
 | Embeddings | Llama Stack inline `sentence-transformers` provider using 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` embeddings |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
 | Generation model | Stage 220 Nemotron model consumed through the MaaS gateway |
@@ -82,6 +83,7 @@ flowchart LR
 - [RHOAI 3.4: Working with AI pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index)
 - [RHOAI 3.4: Working with data in an S3-compatible object store](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_data_in_an_s3-compatible_object_store/index)
 - [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index)
+- [OCP 4.20: Web console customization](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/web_console/index)
 - Red Hat quickstart reference implementation: [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG), `frontend/` Streamlit UI, main commit `d1f0847ae92a9c17e827a854334e035e2750a660`
 - Previous main-branch implementation: `steps/step-07-rag/scenario-docs/whoami/adnan_drina_cv.pdf` and `steps/step-07-rag/kfp/`
 - rh-brain: `2026-01-29 - Deploy an Enterprise RAG Chatbot with Red Hat OpenShift AI`

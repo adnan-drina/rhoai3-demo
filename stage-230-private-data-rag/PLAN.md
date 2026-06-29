@@ -20,6 +20,8 @@ In scope:
 - deploy a stage-owned `LlamaStackDistribution` named `lsd-private-rag`
 - deploy a stage-owned Streamlit RAG chatbot named `private-rag-chatbot`
   reused from the Red Hat AI Enterprise RAG quickstart UI
+- expose the chatbot from the console application menu with a `Private RAG
+  Chatbot` `ConsoleLink`
 - deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
   artifact bucket
 - create environment-local secrets for pgvector and MaaS access
@@ -94,6 +96,8 @@ Out of scope for this first RAG stage:
   Nemotron-backed answer.
 - The `private-rag-chatbot` deployment is ready, the route responds, and the UI
   can be used to select the `whoami` vector store for demo questions.
+- The `rhoai-demo-rag-chatbot` `ConsoleLink` points to the generated
+  `private-rag-chatbot` route under the `RHOAI Demo` application-menu section.
 
 ## Follow-Up Candidates
 

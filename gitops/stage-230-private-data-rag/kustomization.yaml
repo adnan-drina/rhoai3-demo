@@ -13,3 +13,4 @@ resources:
   - pipelines/base
   - runtime/base
   - app/base
+  - app/console-link

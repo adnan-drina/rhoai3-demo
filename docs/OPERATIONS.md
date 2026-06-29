@@ -781,6 +781,11 @@ Get the chatbot URL:
 oc get route private-rag-chatbot -n enterprise-rag -o jsonpath='https://{.spec.host}{"\n"}'
 ```
 
+The OpenShift/RHOAI console application menu also includes a `Private RAG
+Chatbot` link under the `RHOAI Demo` section. The Stage 230 GitOps sync hook
+patches this `ConsoleLink` to the generated route for the active cluster, using
+the same cluster-neutral pattern as the Stage 210 Grafana shortcut.
+
 Use the Chat page in Direct mode, select the `whoami` document collection, and
 ask one of the suggested questions. Direct mode searches the Llama Stack vector
 store and sends retrieved context to the MaaS-backed Nemotron model.
