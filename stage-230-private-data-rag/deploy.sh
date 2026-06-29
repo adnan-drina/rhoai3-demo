@@ -398,7 +398,13 @@ build_chatbot_image() {
   oc logs -f "build/${build_name}" -n "$PROJECT_NS" \
     --insecure-skip-tls-verify=true
 
-  build_phase=$(jsonpath "build/${build_name}" "$PROJECT_NS" '{.status.phase}')
+  for _ in $(seq 1 60); do
+    build_phase=$(jsonpath "build/${build_name}" "$PROJECT_NS" '{.status.phase}')
+    if [[ "$build_phase" == "Complete" || "$build_phase" == "Failed" || "$build_phase" == "Error" || "$build_phase" == "Cancelled" ]]; then
+      break
+    fi
+    sleep 2
+  done
   if [[ "$build_phase" != "Complete" ]]; then
     echo "ERROR: chatbot build ${build_name} ended with phase ${build_phase:-missing}." >&2
     return 1
