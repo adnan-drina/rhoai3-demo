@@ -139,7 +139,7 @@ apply_argocd_application \
   "$ROOT_DIR/gitops/argocd/app-of-apps/stage-110-rhoai-base-platform.yaml"
 
 echo "✓ Application stage-110-rhoai-base-platform applied"
-echo "  Argo CD will reconcile the Stage 210 KServe patch through the shared DSC owner."
+echo "  Argo CD will reconcile the base shared DSC owner."
 
 wait_for_jsonpath "Stage 110 shared owner Application sync" \
   "application/stage-110-rhoai-base-platform" "openshift-gitops" \
@@ -147,6 +147,19 @@ wait_for_jsonpath "Stage 110 shared owner Application sync" \
 
 wait_for_jsonpath "Stage 110 shared owner Application health" \
   "application/stage-110-rhoai-base-platform" "openshift-gitops" \
+  "{.status.health.status}" "Healthy"
+
+echo "── Applying Stage 210 Argo CD Application ──"
+apply_argocd_application \
+  "stage-210-model-serving-foundation" \
+  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-210-model-serving-foundation.yaml"
+
+wait_for_jsonpath "Stage 210 Application sync" \
+  "application/stage-210-model-serving-foundation" "openshift-gitops" \
+  "{.status.sync.status}" "Synced"
+
+wait_for_jsonpath "Stage 210 Application health" \
+  "application/stage-210-model-serving-foundation" "openshift-gitops" \
   "{.status.health.status}" "Healthy"
 
 wait_for_jsonpath "DataScienceCluster readiness" \
@@ -554,19 +567,6 @@ ensure_inference_service "$runtime_name"
 wait_for_jsonpath "Nemotron InferenceService readiness" \
   "inferenceservice/${MODEL_DEPLOYMENT_NAME}" "$MODEL_NS" \
   "{.status.conditions[?(@.type==\"Ready\")].status}" "True"
-
-echo "── Applying Stage 210 observability Argo CD Application ──"
-apply_argocd_application \
-  "stage-210-model-serving-foundation" \
-  "$ROOT_DIR/gitops/argocd/app-of-apps/stage-210-model-serving-foundation.yaml"
-
-wait_for_jsonpath "Stage 210 observability Application sync" \
-  "application/stage-210-model-serving-foundation" "openshift-gitops" \
-  "{.status.sync.status}" "Synced"
-
-wait_for_jsonpath "Stage 210 observability Application health" \
-  "application/stage-210-model-serving-foundation" "openshift-gitops" \
-  "{.status.health.status}" "Healthy"
 
 echo "✓ Stage 210 deployment baseline is ready"
 echo "  Run ./stage-210-model-serving-foundation/validate.sh to confirm readiness."
