@@ -83,7 +83,10 @@ oc get application stage-110-rhoai-base-platform -n openshift-gitops \
   is enabled but the backing RHOAI observability stack in
   `redhat-ods-monitoring` did not deploy. On RHOAI 3.4, the documented
   prerequisites are Cluster Observability Operator, Red Hat build of
-  OpenTelemetry, and Tempo Operator.
+  OpenTelemetry, and Tempo Operator. `DSCInitialization.spec.monitoring` must
+  also include metrics and traces configuration; `managementState=Managed` and
+  `namespace=redhat-ods-monitoring` alone can leave the RHOAI `Monitoring`
+  service reporting `MetricsNotConfigured` and `TracesNotConfigured`.
 - **Checks:**
 
 ```bash
@@ -91,15 +94,18 @@ oc get subscription -n openshift-cluster-observability-operator cluster-observab
 oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
 oc get subscription -n openshift-tempo-operator tempo-product
 oc get dscinitialization default-dsci \
-  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.status.phase}{"\n"}'
+  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.spec.monitoring.metrics.storage.size}{" "}{.spec.monitoring.traces.storage.backend}{" "}{.status.phase}{"\n"}'
+oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{range .status.conditions[*]}{.type}={.status}{" "}{.reason}{"\n"}{end}'
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
 oc get pods,svc,route -n redhat-ods-monitoring
 ```
 
 - **Fix:** reconcile Stage 110 from current Git. Stage 110 owns the three
-  prerequisite operator Subscriptions, `DSCInitialization.spec.monitoring`, and
-  the dashboard flag. Do not enable the dashboard flag by itself.
+  prerequisite operator Subscriptions, the complete
+  `DSCInitialization.spec.monitoring` metrics/traces configuration, and the
+  dashboard flag. Do not enable the dashboard flag by itself.
 
 ## Stage 120: GPU-as-a-Service
 

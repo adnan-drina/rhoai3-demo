@@ -126,10 +126,39 @@ OBS_NS=$(oc get dscinitialization default-dsci \
   && R="pass" || R="managementState=${OBS_MGMT:-missing} namespace=${OBS_NS:-missing}"
 check "RHOAI observability stack configured in DSCInitialization" "$R"
 
+OBS_METRICS_REPLICAS=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.metrics.replicas}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_METRICS_SIZE=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.metrics.storage.size}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_TRACES_BACKEND=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.traces.storage.backend}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_TRACES_RATIO=$(oc get dscinitialization default-dsci \
+  -o jsonpath='{.spec.monitoring.traces.sampleRatio}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_METRICS_REPLICAS" == "1" && "$OBS_METRICS_SIZE" == "5Gi" ]] \
+  && R="pass" || R="metricsReplicas=${OBS_METRICS_REPLICAS:-missing} metricsSize=${OBS_METRICS_SIZE:-missing}"
+check "RHOAI observability metrics configured" "$R"
+[[ "$OBS_TRACES_BACKEND" == "pv" && "$OBS_TRACES_RATIO" == "0.1" ]] \
+  && R="pass" || R="tracesBackend=${OBS_TRACES_BACKEND:-missing} sampleRatio=${OBS_TRACES_RATIO:-missing}"
+check "RHOAI observability traces configured" "$R"
+
 OBS_DASHBOARD=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 [[ "$OBS_DASHBOARD" == "true" ]] && R="pass" || R="observabilityDashboard=${OBS_DASHBOARD:-missing}"
 check "RHOAI Observability dashboard menu enabled" "$R"
+
+OBS_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_STACK_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="MonitoringStackAvailable")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_OTEL_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="OpenTelemetryCollectorAvailable")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_PERSES_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="PersesAvailable")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+OBS_TEMPO_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="TempoAvailable")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_READY" == "True" && "$OBS_STACK_READY" == "True" && "$OBS_OTEL_READY" == "True" && "$OBS_PERSES_READY" == "True" && "$OBS_TEMPO_READY" == "True" ]] \
+  && R="pass" || R="Ready=${OBS_READY:-missing} MonitoringStack=${OBS_STACK_READY:-missing} OpenTelemetryCollector=${OBS_OTEL_READY:-missing} Perses=${OBS_PERSES_READY:-missing} Tempo=${OBS_TEMPO_READY:-missing}"
+check "RHOAI observability service Ready with metrics, traces, and Perses" "$R"
 
 OBS_PODS=$(oc get pods -n redhat-ods-monitoring --no-headers \
   --insecure-skip-tls-verify=true 2>/dev/null \

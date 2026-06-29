@@ -101,7 +101,7 @@
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/namespace.yaml` | Namespace | RHOAI 3.4 install guide | `oc get ns redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/operator-group.yaml` | OperatorGroup | RHOAI 3.4 install guide | `oc get operatorgroup -n redhat-ods-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/subscription.yaml` | Subscription (rhods-operator) | RHOAI 3.4 install guide | `oc get csv -n redhat-ods-operator` |
-| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/dsc-init.yaml` | DSCInitialization | RHOAI 3.4 Managing RHOAI docs | `oc get dscinitialization default-dsci` |
+| `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/dsc-init.yaml` | DSCInitialization with managed observability metrics and traces | RHOAI 3.4 Managing RHOAI and observability docs | `oc get dscinitialization default-dsci`; `oc get monitoring.services.platform.opendatahub.io default-monitoring` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/instance/base/datasciencecluster.yaml` | DataScienceCluster (dashboard + workbenches + modelregistry Managed; later-stage components Removed) | RHOAI 3.4 Managing RHOAI + Model registry docs | `oc get datasciencecluster default-dsc` |
 | `gitops/stage-110-rhoai-base-platform/access/base/namespace-demo-sandbox.yaml` | Namespace (DS project) | rhoai-project-workflows | `oc get ns demo-sandbox -o jsonpath='{.metadata.labels}'` |
 | `gitops/stage-110-rhoai-base-platform/access/base/group-rhoai-developers.yaml` | Group | rhoai-users-groups-access | `oc get group rhoai-developers` |
@@ -134,7 +134,7 @@
   - `rhods-operator` CSV phase = `Succeeded`
   - `noobaa` phase = `Ready` in `openshift-storage`
   - `dscinitialization` phase = `Ready`
-  - `DSCInitialization.spec.monitoring.managementState=Managed`, dashboard flag enabled, and `redhat-ods-monitoring` stack pods present
+  - `DSCInitialization.spec.monitoring.managementState=Managed`, metrics storage configured, PV-backed traces configured, dashboard flag enabled, RHOAI `Monitoring` service Ready, and `redhat-ods-monitoring` stack pods present
   - `datasciencecluster` phase = `Ready`
   - RHOAI Dashboard route responds HTTP 200
 - Functional checks:

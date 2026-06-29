@@ -43,13 +43,15 @@ MCG-only deployment provides S3-compatible object storage for RHOAI workloads. T
 
 ### OpenShift Observability Prerequisites
 
-The RHOAI observability dashboard is a Technology Preview capability. The RHOAI documentation enables it in two steps: first install the required OpenShift observability operators and enable `DSCInitialization.spec.monitoring`, then expose the dashboard menu through `OdhDashboardConfig`. Stage 110 installs the prerequisite operators so the dashboard is backed by real monitoring services instead of a visible but unavailable menu.
+The RHOAI observability dashboard is a Technology Preview capability. The RHOAI documentation enables it in two steps: first install the required OpenShift observability operators and configure `DSCInitialization.spec.monitoring` with metrics and traces, then expose the dashboard menu through `OdhDashboardConfig`. Stage 110 installs the prerequisite operators and configures a small demo stack so the dashboard is backed by real monitoring services instead of a visible but unavailable menu.
 
 - **Operator:** Cluster Observability Operator (`openshift-cluster-observability-operator`)
 - **Operator:** Red Hat build of OpenTelemetry (`openshift-opentelemetry-operator`)
 - **Operator:** Red Hat OpenShift distributed tracing platform / Tempo Operator (`openshift-tempo-operator`)
 - **Channel:** `stable` for all three prerequisite operators
 - **RHOAI stack namespace:** `redhat-ods-monitoring`
+- **Metrics:** one Prometheus replica with 5Gi storage and 90-day retention
+- **Traces:** Tempo with PV-backed storage and 10% sampling
 - **Docs:** [RHOAI 3.4 Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai)
 
 ### Red Hat OpenShift AI Self-Managed

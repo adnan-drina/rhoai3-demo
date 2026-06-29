@@ -59,6 +59,13 @@ The official chapter enables observability in
 | `traces.storage.retention` | Trace retention period. |
 | `traces.exporters` | External trace exporter configuration. |
 
+For an operational dashboard, configure metrics and traces with their required
+subfields. A DSCI that only sets `managementState: Managed` and
+`namespace: redhat-ods-monitoring`, or leaves metrics and traces empty, can
+reconcile as Ready while the RHOAI `Monitoring` service reports
+`MetricsNotConfigured`, `TracesNotConfigured`, `PersesAvailable=False`, and
+`MonitoringStackAvailable=False`.
+
 Healthy stack pods in `redhat-ods-monitoring` include:
 
 - `alertmanager-data-science-monitoringstack-*`
@@ -153,6 +160,7 @@ oc get pods -n redhat-ods-monitoring -l prometheus=data-science-monitoringstack
 oc get pods -n redhat-ods-monitoring | grep collector
 oc get svc -n redhat-ods-monitoring | grep alertmanager
 oc get route -n redhat-ods-monitoring
+oc get monitoring.services.platform.opendatahub.io default-monitoring -o yaml
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o yaml
 oc explain dscinitialization.spec.monitoring
 oc explain odhdashboardconfig.spec.dashboardConfig

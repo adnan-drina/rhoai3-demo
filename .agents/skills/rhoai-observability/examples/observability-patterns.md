@@ -7,6 +7,8 @@ them in active manifests.
 ## DSCI Monitoring Fragment
 
 Use this as a `DSCInitialization.spec` fragment, not a complete resource:
+Do not replace `metrics` or `traces` with `{}` when enabling the dashboard;
+the RHOAI `Monitoring` service treats empty sections as not configured.
 
 ```yaml
 spec:
@@ -37,6 +39,7 @@ Schema check:
 
 ```bash
 oc explain dscinitialization.spec.monitoring
+oc apply --dry-run=server -f <candidate-dsci.yaml>
 ```
 
 ## Dashboard Menu Fragment

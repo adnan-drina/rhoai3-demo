@@ -96,8 +96,9 @@ enables the documented sequence:
 
 1. Install Cluster Observability Operator, Red Hat build of OpenTelemetry, and
    Tempo Operator.
-2. Configure `DSCInitialization.spec.monitoring.managementState=Managed` and
-   `spec.monitoring.namespace=redhat-ods-monitoring`.
+2. Configure `DSCInitialization.spec.monitoring.managementState=Managed`,
+   `spec.monitoring.namespace=redhat-ods-monitoring`, metrics storage, and
+   PV-backed traces.
 3. Set
    `OdhDashboardConfig.spec.dashboardConfig.observabilityDashboard=true`.
 
@@ -109,7 +110,9 @@ oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
 oc get subscription -n openshift-tempo-operator tempo-product
 oc get pods -n redhat-ods-monitoring
 oc get dscinitialization default-dsci \
-  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{"\n"}'
+  -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.spec.monitoring.metrics.storage.size}{" "}{.spec.monitoring.traces.storage.backend}{"\n"}'
+oc get monitoring.services.platform.opendatahub.io default-monitoring \
+  -o jsonpath='{range .status.conditions[*]}{.type}={.status}{" "}{.reason}{"\n"}{end}'
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
 ```

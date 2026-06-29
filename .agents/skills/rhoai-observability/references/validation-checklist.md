@@ -22,7 +22,14 @@ runbook changes.
 - Monitoring namespace is explicitly set, normally `redhat-ods-monitoring`.
 - Metrics storage, retention, replicas, and resources are intentional for the
   demo environment.
+- Metrics are not left empty; `MonitoringStackAvailable=True` is required for
+  the dashboard to load real metrics-backed components.
 - Trace storage backend is one of the documented values: `pv`, `s3`, or `gcs`.
+- Traces are not left empty; `TempoAvailable=True` and
+  `OpenTelemetryCollectorAvailable=True` are required before trace visibility
+  is claimed.
+- `PersesAvailable=True` is validated on the RHOAI `Monitoring` service before
+  accepting the dashboard as working.
 - External exporter endpoints are placeholders unless approved endpoints exist.
 
 ## Dashboard Review
