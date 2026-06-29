@@ -130,6 +130,7 @@ def whoami_rag_ingestion_pipeline(
     summary = ingestion_summary_component(
         llamastack_url=llamastack_url,
         vector_db_id=vector_db_id,
+        vector_store_ids=register.outputs["vector_db_ids"],
         inference_model=inference_model,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     )

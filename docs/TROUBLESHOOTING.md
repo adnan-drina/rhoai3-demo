@@ -902,26 +902,30 @@ oc adm policy who-can use scc anyuid | grep private-rag-postgres
 Do not grant `anyuid` to the namespace default service account. That can break
 model-serving and modelcar mount assumptions elsewhere in the demo.
 
-### Llama Stack is ready but vector DB registration fails
+### Llama Stack is ready but vector store registration fails
 
-- **Symptom:** deploy or validate output reports `No vector_io provider` or
-  missing pgvector provider.
+- **Symptom:** deploy or validate output reports `No vector_io provider`,
+  missing pgvector provider, or a KFP component error such as
+  `LlamaStackClient object has no attribute vector_dbs`.
 - **Likely causes:** `PGVECTOR_*` Secret keys are missing, pgvector is not
-  reachable, or the Llama Stack pod started before the database was ready.
+  reachable, the Llama Stack pod started before the database was ready, or the
+  pipeline code is using an older Llama Stack client path.
 - **Confirm:**
 
 ```bash
 oc get secret private-rag-postgres-credentials -n enterprise-rag -o yaml
 oc logs deployment/lsd-private-rag -n enterprise-rag --since=10m
-oc exec deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
+oc exec -i deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
 from llama_stack_client import LlamaStackClient
 client = LlamaStackClient(base_url="http://127.0.0.1:8321")
 print(client.providers.list())
+print([name for name in dir(client) if "vector" in name])
 PY
 ```
 
 - **Fix:** rerun `stage-230-private-data-rag/deploy.sh`. It recreates the
-  runtime secrets and re-registers the `whoami` vector database.
+  runtime secrets and recreates the `whoami` vector store through
+  `client.vector_stores`, not the removed `client.vector_dbs` API.
 
 ### Docling conversion fails or times out
 

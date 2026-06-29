@@ -1,4 +1,4 @@
-"""Insert converted Markdown into the Llama Stack RAG tool runtime."""
+"""Insert converted Markdown into a Llama Stack vector store."""
 
 from typing import List, NamedTuple
 
@@ -23,8 +23,9 @@ def insert_via_llamastack_component(
     import os
     from collections import namedtuple
 
+    import time
+
     from llama_stack_client import LlamaStackClient
-    from llama_stack_client.types import Document as RAGDocument
 
     InsertOutput = namedtuple("InsertOutput", ["status", "documents_inserted"])
 
@@ -38,26 +39,41 @@ def insert_via_llamastack_component(
 
     client = LlamaStackClient(base_url=llamastack_url, timeout=300.0)
     doc_id = os.path.splitext(os.path.basename(processed_file))[0]
-    document = RAGDocument(
-        document_id=doc_id,
-        content=content,
-        mime_type="text/plain",
-        metadata={
-            "source": os.path.basename(processed_file),
-            "stage": "230",
-            "scenario": "whoami",
-        },
+    source_name = os.path.basename(processed_file)
+    uploaded_file = client.files.create(
+        file=(source_name, content.encode("utf-8"), "text/plain"),
+        purpose="assistants",
     )
+    file_id = getattr(uploaded_file, "id", None)
+    if not file_id:
+        raise RuntimeError(f"Llama Stack file upload did not return an id for {source_name}")
 
     inserted = 0
-    for db_id in vector_db_ids:
-        client.tool_runtime.rag_tool.insert(
-            documents=[document],
-            vector_db_id=db_id,
-            chunk_size_in_tokens=chunk_size_tokens,
+    for store_id in vector_db_ids:
+        store_file = client.vector_stores.files.create(
+            vector_store_id=store_id,
+            file_id=file_id,
+            attributes={
+                "source": source_name,
+                "stage": "230",
+                "scenario": "whoami",
+                "chunk_size_tokens": str(chunk_size_tokens),
+            },
         )
+        status = getattr(store_file, "status", "")
+        for _ in range(60):
+            if status in ("completed", "failed", "cancelled"):
+                break
+            time.sleep(2)
+            store_file = client.vector_stores.files.retrieve(
+                vector_store_id=store_id,
+                file_id=file_id,
+            )
+            status = getattr(store_file, "status", "")
+        if status and status != "completed":
+            raise RuntimeError(f"Vector store file {file_id} ended with status {status}")
         inserted += 1
-        print(f"Inserted {doc_id} into vector DB {db_id}")
+        print(f"Inserted {doc_id} file {file_id} into vector store {store_id}")
 
     log_path = os.path.join(workspace_path, "ingestion-log.jsonl")
     with open(log_path, "a", encoding="utf-8") as handle:
@@ -65,8 +81,10 @@ def insert_via_llamastack_component(
             json.dumps(
                 {
                     "document": doc_id,
+                    "file_id": file_id,
                     "status": "success",
                     "vector_db": vector_db_id,
+                    "vector_store_ids": vector_db_ids,
                     "stores": inserted,
                 }
             )

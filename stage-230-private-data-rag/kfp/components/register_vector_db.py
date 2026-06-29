@@ -1,4 +1,4 @@
-"""Register the whoami vector database in Llama Stack."""
+"""Register the whoami vector store in Llama Stack."""
 
 from typing import List, NamedTuple
 
@@ -18,7 +18,7 @@ def register_vector_db_component(
     vector_provider: str,
     reset_vector_db: bool,
 ) -> NamedTuple("VectorDbOutput", [("vector_db_ids", List[str]), ("provider_id", str)]):
-    """Create a fresh vector DB registration for this ingestion run."""
+    """Create a fresh vector store for this ingestion run."""
     from collections import namedtuple
 
     from llama_stack_client import LlamaStackClient
@@ -26,13 +26,6 @@ def register_vector_db_component(
     VectorDbOutput = namedtuple("VectorDbOutput", ["vector_db_ids", "provider_id"])
 
     client = LlamaStackClient(base_url=llamastack_url, timeout=300.0)
-
-    def ident(obj):
-        return (
-            getattr(obj, "identifier", None)
-            or getattr(obj, "id", None)
-            or getattr(obj, "provider_id", None)
-        )
 
     provider_id = None
     for provider in client.providers.list():
@@ -47,21 +40,40 @@ def register_vector_db_component(
     if not provider_id:
         raise RuntimeError("No vector_io provider is available in Llama Stack")
 
-    existing = [ident(db) for db in client.vector_dbs.list()]
-    if vector_db_id in existing and reset_vector_db:
-        print(f"Unregistering existing vector DB: {vector_db_id}")
-        client.vector_dbs.unregister(vector_db_id=vector_db_id)
-        existing = [db for db in existing if db != vector_db_id]
+    existing = []
+    for store in client.vector_stores.list():
+        store_id = getattr(store, "id", None)
+        store_name = getattr(store, "name", None)
+        if store_id == vector_db_id or store_name == vector_db_id:
+            existing.append(store)
 
-    if vector_db_id not in existing:
-        client.vector_dbs.register(
-            vector_db_id=vector_db_id,
-            embedding_model=embedding_model,
-            embedding_dimension=embedding_dimension,
-            provider_id=provider_id,
-        )
-        print(f"Registered vector DB {vector_db_id} with provider {provider_id}")
+    if reset_vector_db:
+        for store in existing:
+            store_id = getattr(store, "id", None)
+            if store_id:
+                print(f"Deleting existing vector store {vector_db_id}: {store_id}")
+                client.vector_stores.delete(vector_store_id=store_id)
+        existing = []
+
+    if existing:
+        vector_store = existing[0]
+        vector_store_id = getattr(vector_store, "id", None)
+        print(f"Reusing vector store {vector_db_id}: {vector_store_id}")
     else:
-        print(f"Reusing vector DB {vector_db_id} with provider {provider_id}")
+        vector_store = client.vector_stores.create(
+            name=vector_db_id,
+            metadata={
+                "stage": "230",
+                "scenario": "whoami",
+                "embedding_model": embedding_model,
+                "embedding_dimension": str(embedding_dimension),
+                "vector_provider": provider_id,
+            },
+        )
+        vector_store_id = getattr(vector_store, "id", None)
+        print(f"Created vector store {vector_db_id}: {vector_store_id}")
 
-    return VectorDbOutput(vector_db_ids=[vector_db_id], provider_id=provider_id)
+    if not vector_store_id:
+        raise RuntimeError(f"Vector store {vector_db_id} did not return an id")
+
+    return VectorDbOutput(vector_db_ids=[vector_store_id], provider_id=provider_id)

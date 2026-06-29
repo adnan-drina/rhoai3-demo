@@ -1,5 +1,7 @@
 """Create dashboard-visible ingestion metrics and validate RAG retrieval."""
 
+from typing import List
+
 from kfp.dsl import Metrics, Output, component
 
 
@@ -11,6 +13,7 @@ from kfp.dsl import Metrics, Output, component
 def ingestion_summary_component(
     llamastack_url: str,
     vector_db_id: str,
+    vector_store_ids: List[str],
     inference_model: str,
     workspace_path: str,
     metrics: Output[Metrics],
@@ -38,12 +41,16 @@ def ingestion_summary_component(
         raise RuntimeError(f"No successful ingestion entries found for {vector_db_id}")
 
     client = LlamaStackClient(base_url=llamastack_url, timeout=300.0)
+    if not vector_store_ids:
+        raise RuntimeError("No vector store ids were returned by the registration step")
+    vector_store_id = vector_store_ids[0]
     query = "Who is Adnan Drina and what is his current role?"
-    rag_response = client.tool_runtime.rag_tool.query(
-        content=query,
-        vector_db_ids=[vector_db_id],
+    rag_response = client.vector_stores.search(
+        vector_store_id=vector_store_id,
+        query=query,
+        max_num_results=5,
     )
-    context = str(getattr(rag_response, "content", rag_response))
+    context = str(rag_response)
     if not any(term in context.lower() for term in ["adnan", "red hat", "principal", "solution architect"]):
         raise RuntimeError(f"Unexpected RAG context: {context[:500]}")
 
@@ -61,6 +68,7 @@ def ingestion_summary_component(
 
     metrics.log_metric("documents_ingested", len(successful))
     metrics.log_metric("vector_db", vector_db_id)
+    metrics.log_metric("vector_store_id", vector_store_id)
     metrics.log_metric("rag_context_chars", len(context))
 
     print(f"RAG answer: {answer[:400]}")
