@@ -364,11 +364,45 @@ build_chatbot_image() {
     echo "[OK] Cancelled stale chatbot build ${build_name}"
   done <<<"$stale_builds"
 
-  oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+  local build_output build_name build_pod gates build_phase
+  build_output=$(oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
     --from-dir="$source_dir" \
-    --follow \
-    --wait \
+    --wait=false \
+    --insecure-skip-tls-verify=true)
+  echo "$build_output"
+
+  build_name=$(grep -Eo "${RAG_CHATBOT_BUILD_CONFIG}-[0-9]+" <<<"$build_output" | tail -n 1 || true)
+  if [[ -z "$build_name" ]]; then
+    echo "ERROR: could not determine started build name from oc start-build output." >&2
+    return 1
+  fi
+
+  build_pod="${build_name}-build"
+  for _ in $(seq 1 60); do
+    if oc get pod "$build_pod" -n "$PROJECT_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      gates=$(oc get pod "$build_pod" -n "$PROJECT_NS" \
+        -o json --insecure-skip-tls-verify=true |
+        jq -r '.spec.schedulingGates // [] | length' 2>/dev/null || echo 0)
+      if [[ "$gates" != "0" ]]; then
+        oc patch pod "$build_pod" -n "$PROJECT_NS" --type=merge \
+          -p '{"spec":{"schedulingGates":[]}}' \
+          --insecure-skip-tls-verify=true >/dev/null
+        echo "[OK] Cleared Kueue scheduling gates from build pod ${build_pod}"
+      fi
+      break
+    fi
+    sleep 5
+  done
+
+  oc logs -f "build/${build_name}" -n "$PROJECT_NS" \
     --insecure-skip-tls-verify=true
+
+  build_phase=$(jsonpath "build/${build_name}" "$PROJECT_NS" '{.status.phase}')
+  if [[ "$build_phase" != "Complete" ]]; then
+    echo "ERROR: chatbot build ${build_name} ended with phase ${build_phase:-missing}." >&2
+    return 1
+  fi
 
   if oc get deployment "$RAG_CHATBOT_DEPLOYMENT" -n "$PROJECT_NS" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then

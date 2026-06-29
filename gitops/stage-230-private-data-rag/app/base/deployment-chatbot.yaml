@@ -20,9 +20,12 @@ spec:
       app.kubernetes.io/component: frontend
   template:
     metadata:
+      annotations:
+        kueue.x-k8s.io/pod-suspending-parent: deployment
       labels:
         app.kubernetes.io/name: private-rag-chatbot
         app.kubernetes.io/component: frontend
+        kueue.x-k8s.io/managed: "true"
         kueue.x-k8s.io/queue-name: default
     spec:
       serviceAccountName: private-rag-chatbot

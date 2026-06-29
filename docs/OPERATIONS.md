@@ -847,7 +847,9 @@ connector discovery state, tools, shields, and guardrails status.
   inside DSPA while keeping traffic within the cluster network for the demo.
 - Because `enterprise-rag` is Kueue-managed, long-running runtime controllers
   and generated helper jobs use the RHOAI-created `default` LocalQueue unless
-  the stage explicitly creates another LocalQueue in that namespace.
+  the stage explicitly creates another LocalQueue in that namespace. Stable
+  Kueue template metadata is committed on long-running Deployments when needed
+  to keep Argo CD server-side diff clean.
 - OpenShift Build pods for `private-rag-chatbot` are not Kueue-managed. The
   BuildConfig intentionally does not carry `kueue.x-k8s.io/queue-name` because
   build pods can remain `SchedulingGated` after Kueue admission in this demo
