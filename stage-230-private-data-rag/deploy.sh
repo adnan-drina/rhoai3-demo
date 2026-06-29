@@ -332,17 +332,22 @@ build_chatbot_image() {
     return 1
   fi
 
+  local queue_label
   for _ in $(seq 1 60); do
-    if oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
-      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    queue_label=$(oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+      -o json --insecure-skip-tls-verify=true 2>/dev/null |
+      jq -r '.metadata.labels["kueue.x-k8s.io/queue-name"] // empty' 2>/dev/null || true)
+    if [[ "$queue_label" == "default" ]]; then
       break
     fi
     sleep 5
   done
 
-  if ! oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
-    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-    echo "ERROR: BuildConfig ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG} was not created by GitOps." >&2
+  queue_label=$(oc get buildconfig "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+    -o json --insecure-skip-tls-verify=true 2>/dev/null |
+    jq -r '.metadata.labels["kueue.x-k8s.io/queue-name"] // empty' 2>/dev/null || true)
+  if [[ "$queue_label" != "default" ]]; then
+    echo "ERROR: BuildConfig ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG} was not reconciled with the Kueue queue label." >&2
     return 1
   fi
 
