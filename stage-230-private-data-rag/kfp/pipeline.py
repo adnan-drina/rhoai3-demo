@@ -73,7 +73,7 @@ def whoami_rag_ingestion_pipeline(
     llamastack_url: str,
     inference_model: str = "nemotron-3-nano-30b-a3b",
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-    embedding_dimension: int = 768,
+    embedding_dimension: int = 384,
     vector_provider: str = "pgvector",
     vector_db_id: str = "whoami",
     chunk_size_tokens: int = 512,

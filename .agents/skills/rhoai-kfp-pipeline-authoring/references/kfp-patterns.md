@@ -167,6 +167,10 @@ Apply these rules:
   `client.vector_stores.files.create(...)`, and validate retrieval with
   `client.vector_stores.search(...)`. Do not use the removed
   `client.vector_dbs` or `client.tool_runtime.rag_tool` paths.
+- keep the vector store embedding dimension aligned with the actual embedding
+  model output. In Stage 230, `sentence-transformers/all-MiniLM-L6-v2` uses a
+  384-dimensional vector store; a 768-dimensional store causes file attachment
+  failures during vectorization.
 - start with the `whoami` corpus before adding larger ACME or enterprise
   document sets
 

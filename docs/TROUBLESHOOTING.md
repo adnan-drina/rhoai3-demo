@@ -926,6 +926,9 @@ PY
 - **Fix:** rerun `stage-230-private-data-rag/deploy.sh`. It recreates the
   runtime secrets and recreates the `whoami` vector store through
   `client.vector_stores`, not the removed `client.vector_dbs` API.
+  `sentence-transformers/all-MiniLM-L6-v2` must use a 384-dimensional vector
+  store in this demo; if the vector store expects 768 dimensions, delete it and
+  rerun the stage so it is recreated from current defaults.
 
 ### Docling conversion fails or times out
 

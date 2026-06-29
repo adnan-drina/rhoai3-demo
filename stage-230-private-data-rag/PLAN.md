@@ -52,7 +52,9 @@ Out of scope for this first RAG stage:
   Stage 220 MaaS gateway and is not redeployed by this stage.
 - `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the quickstart
   baseline and is supported by the documented Llama Stack inline
-  `sentence-transformers` provider. Nemotron is not used as an embedding model.
+  `sentence-transformers` provider. The vector store is configured for 384
+  dimensions, matching the runtime embeddings produced by this model. Nemotron
+  is not used as an embedding model.
 - PostgreSQL with pgvector is the durable vector store. The demo uses
   `docker.io/pgvector/pgvector:pg16` as an explicit demo exception because the
   pgvector extension is not provided by a RHOAI product image in the active

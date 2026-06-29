@@ -780,7 +780,8 @@ answer.
   Stage 230 does not deploy or bypass a model endpoint.
 - `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
   quickstart baseline and is supported by the documented Llama Stack
-  `inline::sentence-transformers` path. Nemotron is not an embedding model.
+  `inline::sentence-transformers` path. The stage configures a 384-dimensional
+  vector store for this embedding model. Nemotron is not an embedding model.
 - `docker.io/pgvector/pgvector:pg16` is an explicit demo exception. RHOAI docs
   recommend PostgreSQL with pgvector for durable vector storage, but the active
   RHOAI baseline does not provide a product image containing the pgvector
