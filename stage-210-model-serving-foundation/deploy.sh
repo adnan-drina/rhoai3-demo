@@ -83,10 +83,12 @@ wait_for_jsonpath() {
   local namespace="$3"
   local jsonpath="$4"
   local expected="$5"
+  local attempts="${6:-60}"
+  local interval_seconds="${7:-10}"
   local value=""
 
   echo "── Waiting for ${label} ──"
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 "$attempts"); do
     if [[ -n "$namespace" ]]; then
       value=$(oc get "$resource" -n "$namespace" \
         -o jsonpath="$jsonpath" --insecure-skip-tls-verify=true 2>/dev/null || true)
@@ -98,7 +100,7 @@ wait_for_jsonpath() {
       echo "✓ ${label}: ${value}"
       return 0
     fi
-    sleep 10
+    sleep "$interval_seconds"
   done
 
   echo "ERROR: ${label} did not reach ${expected} (last value: ${value:-missing})." >&2
@@ -566,7 +568,8 @@ ensure_inference_service "$runtime_name"
 
 wait_for_jsonpath "Nemotron InferenceService readiness" \
   "inferenceservice/${MODEL_DEPLOYMENT_NAME}" "$MODEL_NS" \
-  "{.status.conditions[?(@.type==\"Ready\")].status}" "True"
+  "{.status.conditions[?(@.type==\"Ready\")].status}" "True" \
+  "${RHOAI_STAGE210_MODEL_READY_ATTEMPTS:-180}" 10
 
 echo "✓ Stage 210 deployment baseline is ready"
 echo "  Run ./stage-210-model-serving-foundation/validate.sh to confirm readiness."
