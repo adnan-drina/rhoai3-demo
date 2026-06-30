@@ -40,6 +40,8 @@ files unless the user asks for fixes.
 7. For CR field authority, operator channel support, Red Hat product images,
    validated model artifacts, or README source grounding, hand off to
    `project-red-hat-doc-alignment-review`.
+   If the changed image belongs to an operator-generated operand or copied CSV
+   state, flag it before source review as likely wrong ownership.
 8. For RHOAI API compatibility tiers, Technology Preview or Developer Preview
    labeling, and Tier 4 boundary review, use `rhoai-api-tiers`.
 

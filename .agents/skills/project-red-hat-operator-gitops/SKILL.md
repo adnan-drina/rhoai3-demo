@@ -107,6 +107,13 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 - Keep lifecycle policy in Git: Subscription channel, catalog source, source
   namespace, install-plan approval strategy, and any deliberate `startingCSV`
   exception.
+- Keep operator-managed images operator-owned. Do not pin images solely for
+  repeatability; Red Hat Operators carry the operational knowledge needed to
+  install, configure, and manage platform components repeatably. Explicit image
+  tags or digests are exceptions that require Red Hat documentation, validated
+  artifact guidance, or a documented non-operator demo-app exception.
+  Generated operand images, CSV `relatedImages`, copied CSVs, and
+  operator-created Deployments are diagnostic data, not desired GitOps state.
 - Prefer automatic approval for the regular feature-forward demo path when
   product docs and environment constraints allow it. Use manual approval only
   when official docs require it or the demo deliberately needs a human gate.
@@ -162,12 +169,16 @@ For RHOAI specifically, follow the CoP `openshift-ai/instance` pattern:
 8. Verify Subscription channel, package name, catalog source, namespace,
    OperatorGroup shape, install-plan approval, and CR fields against official
    docs or live schema.
-9. For upgrades, plan the GitOps lifecycle sequence:
+9. Before changing any image field, classify ownership:
+   - repo-owned workload, hook, model, pipeline, or demo-app image
+   - official CR field documented as a supported operand image override
+   - operator-generated operand image or copied lifecycle state
+10. For upgrades, plan the GitOps lifecycle sequence:
    - update `docs/PLATFORM_BASELINE.md` when the product baseline changes
    - update channel overlays or approval strategy in Git
    - sync the operator Application before operand CR changes
    - validate Subscription, InstallPlan, CSV, CRDs, and operand readiness
-10. Validate the rendered manifests and review with
+11. Validate the rendered manifests and review with
    `references/validation-checklist.md`.
 
 ## Related Skills

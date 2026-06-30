@@ -2,6 +2,36 @@
 
 Active troubleshooting guidance for the reimplementation.
 
+## Operator-Generated Operand Images
+
+If a generated operand appears to use the wrong image, first decide whether the
+image is repo-owned or operator-owned. Repo-owned images include demo apps,
+hook Jobs, modelcars, pipeline components, and utility containers authored by
+this repository. Operator-owned images include CSV `relatedImages`, copied
+CSVs, generated CR image fields, generated datasources, and
+operator-created Deployments or StatefulSets.
+
+For operator-owned images, diagnose but do not patch:
+
+```bash
+oc get subscription -n <operator-namespace> <subscription-name> \
+  -o jsonpath='{.status.installedCSV}{"\n"}'
+oc get csv -n <operator-namespace> <installed-csv> \
+  -o jsonpath='{range .spec.relatedImages[*]}{.name}{"="}{.image}{"\n"}{end}'
+oc get <generated-kind> <name> -n <namespace> -o yaml
+```
+
+Use the owning Subscription `status.installedCSV` as the authoritative
+installed-version check. Copied CSVs created for all-namespace installs and
+display-name matches can be misleading. Durable fixes should change
+Subscription lifecycle policy, the product baseline, or documented CR fields;
+generated image patches are expected to drift or be reconciled away.
+
+If failed operator/controller pods remain after an API-server outage or leader
+election loss, verify ClusterOperators and events first. Deleting only the
+failed operator-managed pods so the owning controller recreates them is a live
+recovery action, not a GitOps change.
+
 ## Stage 110: RHOAI Base Platform
 
 Failure modes observed during the stage-110 bring-up, with the operationally

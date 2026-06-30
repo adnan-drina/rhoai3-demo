@@ -52,7 +52,8 @@ The RHOAI observability dashboard is a Technology Preview capability. The RHOAI 
   `startingCSV: cluster-observability-operator.v1.4.0` and manual InstallPlan
   approval automation for that CSV only. This keeps Perses and related operand
   images operator-managed while avoiding the current RHOAI 3.4 / COO 1.5
-  generated-resource incompatibility.
+  generated-resource incompatibility. This is an operator lifecycle policy, not
+  a general operand image pinning strategy.
 - **Channel:** `stable` for Red Hat build of OpenTelemetry and Tempo Operator
 - **RHOAI stack namespace:** `redhat-ods-monitoring`
 - **Metrics:** one Prometheus replica with 5Gi storage and 90-day retention
@@ -62,7 +63,8 @@ The RHOAI observability dashboard is a Technology Preview capability. The RHOAI 
   backend only to the installed Perses operator namespace, and grants
   `rhods-admins` the narrow Perses/Prometheus API permissions required by the
   dashboard. It does not patch generated Perses images or generated
-  datasources.
+  datasources; generated observability operands remain owned by the RHOAI and
+  Cluster Observability controllers.
 - **Docs:** [RHOAI 3.4 Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai)
 
 ### Red Hat OpenShift AI Self-Managed

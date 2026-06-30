@@ -60,6 +60,18 @@ is also GitOps state: channel changes, approval strategy, selected overlay,
 product baseline, and operand patches should be changed in Git and reconciled
 by Argo CD, not maintained as live Subscription drift.
 
+Classify image ownership before changing any image value. Do not pin images
+solely to create repeatability; Red Hat Operators package operational
+knowledge so platform components are installed, configured, and managed in an
+automated, repeatable, and supported way. Explicit image tags or digests are
+exceptions that require Red Hat documentation, a validated artifact reference,
+or a documented non-operator demo-app exception. OLM/operator-owned images,
+CSV `relatedImages`, generated CR image fields, copied CSVs, and
+operator-created operand Deployments are not project-owned. Diagnose those
+with Subscription, installed CSV, CRD, and generated-resource inspection, then
+fix durable compatibility issues through operator lifecycle policy or product
+baseline alignment instead of generated image patches.
+
 The active implementation is being rewritten. Current implementation folders
 `gitops/` and `scripts/` are placeholder-only until new content is introduced.
 New demo stages must be created as root-level `stage-YXX-slug/` folders.

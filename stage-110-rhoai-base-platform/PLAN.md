@@ -78,7 +78,7 @@
   - GitOps operator is bootstrapped imperatively before ArgoCD exists
   - ODF operator must be `Succeeded` before the MCG `StorageCluster` is applied (handled by `SkipDryRunOnMissingResource=true` + retry)
   - Cluster Observability Operator, Red Hat build of OpenTelemetry, and Tempo Operator must be installed before the RHOAI observability stack can materialize
-  - Cluster Observability Operator is held at `cluster-observability-operator.v1.4.0` through OLM `startingCSV` and manual approval automation; operand images remain operator-managed
+  - Cluster Observability Operator is held at `cluster-observability-operator.v1.4.0` through OLM `startingCSV` and manual approval automation; operand images, copied CSVs, and generated Perses resources remain operator-managed
   - `redhat-ods-monitoring` is GitOps-managed before Stage 110 creates the
     service-ca Secret sync hook and Perses dashboard access resources
   - The `prometheus-web-tls-ca` sync hook waits for the service-ca injected
@@ -163,7 +163,7 @@
 | Identity provider / access groups | deferred | Future stage in 1xx family |
 | RHOAI component enablement (kueue, kserve, MaaS, ray, etc.) | deferred | Each component added by its dedicated stage through a GitOps hook patch; Stage 110 ignores those DSC component fields to avoid self-healing later-stage state |
 | ODF full StorageCluster | deferred | Added only if a future stage needs block/file storage |
-| RHOAI observability dashboard backing stack | resolved with compatibility hold | Stage 110 installs Cluster Observability Operator at `cluster-observability-operator.v1.4.0`, Red Hat build of OpenTelemetry, and Tempo Operator before enabling DSCI monitoring and the dashboard flag. COO operand images remain operator-managed; do not patch generated Perses resources. |
+| RHOAI observability dashboard backing stack | resolved with compatibility hold | Stage 110 installs Cluster Observability Operator at `cluster-observability-operator.v1.4.0`, Red Hat build of OpenTelemetry, and Tempo Operator before enabling DSCI monitoring and the dashboard flag. COO operand images remain operator-managed; do not patch generated Perses resources, generated datasources, copied CSVs, or operator-created Deployments. |
 
 ## Review Log
 

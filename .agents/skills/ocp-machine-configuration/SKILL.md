@@ -71,8 +71,9 @@ Use the official docs to frame:
   policy configuration.
 - **KubeletConfig** and **ContainerRuntimeConfig**: supported custom resources
   for kubelet and CRI-O settings that generate machine configs.
-- **PinnedImageSet**: pins images to a machine config pool so nodes preload
-  images and avoid garbage collection removing them.
+- **PinnedImageSet**: an official OCP resource for documented cases where
+  nodes must preload selected images and avoid garbage collection removing
+  them. Do not use it as a general repeatability mechanism for this demo.
 - **Image mode for OpenShift**: builds or applies custom layered RHCOS images
   with `MachineOSConfig` and `MachineOSBuild` when the documented limitations
   and registry requirements are acceptable.

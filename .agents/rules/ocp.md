@@ -134,6 +134,13 @@ distributed tracing UI plugin changes, receiver TLS changes, and trace
 retention or deletion changes as live-environment operations unless they are
 only documented as future GitOps intent.
 
+OLM-generated CSVs, copied CSVs, CSV `relatedImages`, operator deployments,
+and operator-generated operands are operator-owned state. Do not copy them into
+GitOps or patch their image fields as a normal compatibility path. For
+operator compatibility, inspect the Subscription `status.installedCSV`, the
+owning CSV, CRDs, events, and user-facing readiness, then update Git-managed
+Subscription lifecycle policy or the product baseline.
+
 Treat OAuth, identity-provider, direct external OIDC, LDAP group sync,
 `kubeadmin` removal, RBAC binding, service-account token, SCC grant, custom
 SCC, IngressController, route admission, router certificate, GatewayClass,

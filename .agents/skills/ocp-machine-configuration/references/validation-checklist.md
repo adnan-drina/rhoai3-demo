@@ -99,7 +99,7 @@ Stop and correct the work if any of these are true:
   official docs and cluster behavior.
 - `ContainerRuntimeConfig` CRs are created repeatedly instead of consolidating
   changes for the target pool.
-- A `PinnedImageSet` pins mutable or unaudited images for critical demo
-  behavior.
+- A `PinnedImageSet` is used without a documented OCP use case, or includes
+  mutable or unaudited images for critical demo behavior.
 - Rendered machine configs are pruned without dry-run output.
 - Image mode is used when standard MCO configuration would satisfy the need.

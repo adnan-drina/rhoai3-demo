@@ -81,7 +81,8 @@ spec:
     - name: <fully-qualified-image-reference>
 ```
 
-Review pinned images with:
+When the official OCP `PinnedImageSet` use case applies, review configured
+images with:
 
 ```bash
 podman manifest inspect <fully-qualified-image-reference>

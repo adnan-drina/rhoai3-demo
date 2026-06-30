@@ -46,6 +46,12 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
   state.
 - `startingCSV` is absent unless official docs or a controlled install plan
   require it.
+- Every new or changed image field is classified as repo-owned, a documented
+  supported operand override, or operator-generated state before any explicit
+  image tag, digest, or override is accepted.
+- Copied CSVs are not used as authoritative installed-version checks. Validate
+  the owning Subscription `status.installedCSV` and the installed CSV phase in
+  the operator namespace.
 - Operator-generated operand image fields are not patched as a lifecycle
   shortcut when the owning operator or product controller should manage them.
   Compatibility-sensitive fixes use Subscription channel, `startingCSV`,

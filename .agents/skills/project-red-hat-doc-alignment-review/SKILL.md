@@ -52,6 +52,9 @@ claims, or undocumented assumptions.
      match official Red Hat documentation or verified installed schemas
    - Red Hat product images and validated artifacts are preferred whenever the
      demo claims Red Hat-supported posture
+   - operator-generated images, CSV `relatedImages`, copied CSVs, and
+     operator-created Deployments are not treated as project-owned desired
+     state unless official product docs expose a supported override field
 6. Use `references/doc-alignment-checklist.md` for the detailed review model.
 7. Use `rhoai-api-tiers` when the change depends on RHOAI API stability,
    Technology Preview, Developer Preview, or Tier 4 support posture.

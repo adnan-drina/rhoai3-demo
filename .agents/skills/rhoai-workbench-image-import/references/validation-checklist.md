@@ -26,7 +26,9 @@ runbooks, or demo operations.
 ## Import Field Review
 
 - Image location uses the intended registry, tag, or digest.
-- Digest-pinned image references are used when repeatability matters.
+- Digest-pinned image references are used only when Red Hat guidance,
+  validated artifact guidance, or an approved non-operator demo-app exception
+  requires them.
 - Name is clear for data scientists choosing a workbench image.
 - Description explains the image purpose without overstating support.
 - Accelerator identifier matches the active accelerator and hardware profile

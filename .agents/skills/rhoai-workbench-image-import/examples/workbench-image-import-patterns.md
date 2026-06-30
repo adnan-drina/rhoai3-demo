@@ -30,7 +30,9 @@ docker.io/acme/rhoai-workbench:demo
 
 Review points:
 
-- Use a digest when repeatability matters.
+- Use the image reference documented by Red Hat or the image owner. Use a
+  digest only when Red Hat guidance, validated artifact guidance, or an
+  approved non-operator demo-app exception requires it.
 - Avoid mutable tags for important demo paths unless rebuild cadence is
   documented.
 - Confirm the cluster can pull the image before the demo.

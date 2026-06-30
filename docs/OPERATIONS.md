@@ -22,6 +22,33 @@ The active implementation follows this sequence:
    Docling conversion, DSPA/KFP ingestion, a stage-owned pgvector database,
    RHOAI Llama Stack, and Nemotron consumed through Stage 220 MaaS.
 
+## Operator Lifecycle And Image Ownership
+
+Before changing an image value in GitOps, classify who owns it:
+
+- **Repo-owned images:** Argo CD hook Jobs, utility containers, demo apps,
+  pipeline component images, modelcar images, workbench images, and other
+  workloads authored by this repository. Avoid explicit image tags or digests
+  unless Red Hat documentation, validated artifact guidance, or a documented
+  non-operator demo-app exception requires them.
+- **Operator-owned images:** OLM CSV `relatedImages`, copied CSVs, generated CR
+  image fields, generated datasources, and operator-created Deployments or
+  StatefulSets. These must remain owned by OLM or the product operator.
+
+Do not patch operator-generated operand images as a compatibility shortcut.
+Use those values only for diagnosis, for example by comparing a generated CR
+with the owning Subscription `status.installedCSV` and CSV `relatedImages`.
+Durable fixes belong in Git-managed Subscription lifecycle policy (`channel`,
+`startingCSV`, `installPlanApproval`), `docs/PLATFORM_BASELINE.md`, or a
+documented product CR field that official docs expose as a supported override.
+For platform components, repeatability should come from Red Hat Operator
+packages and product lifecycle management, not from manually pinning images.
+
+Deleting a failed operator/controller pod can be appropriate after API-server
+instability when logs show leader-election or API timeout failures and the
+owning Deployment is otherwise healthy. Treat that as live recovery only. Do
+not capture it as generated Deployment patches or operand image pins in Git.
+
 ## Stage 110: RHOAI Base Platform
 
 ### Bootstrap Sequence

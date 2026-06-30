@@ -51,9 +51,11 @@ aligned with the active product baseline.
 10. For labels, OpenShift Topology annotations, and RHOAI Dashboard annotations,
    read `references/labels-and-annotations.md`.
 11. For new or changed images, model artifacts, CR fields, or operator settings,
+   first classify whether the field is repo-owned or operator-generated, then
    use `project-red-hat-doc-alignment-review` to confirm official Red Hat docs,
    Red Hat registry sources, validated model sources, or explicitly documented
-   demo exceptions.
+   demo exceptions. Do not pin generated operand images as a substitute for
+   operator lifecycle management.
 
 ## Output Expectations
 

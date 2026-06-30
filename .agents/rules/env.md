@@ -39,3 +39,10 @@ OpenShift safety guard without explicit user confirmation.
 When the new environment automation is recreated, use GitOps and per-stage
 scripts for environment changes. Keep operational runbooks in
 `docs/OPERATIONS.md` and recovery guidance in `docs/TROUBLESHOOTING.md`.
+
+When operator or controller pods fail after API-server instability, first
+inspect ClusterOperator health, pod logs, events, and leader-election/API
+timeout messages. If the owning Deployment is operator-managed and the desired
+state is otherwise healthy, deleting the failed pod to let it recreate is a
+live recovery action only. Do not convert that into GitOps image pins,
+generated Deployment patches, or copied generated resources.

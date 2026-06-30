@@ -125,7 +125,12 @@ For every touched manifest:
   sources, or internal build outputs?
 - Are non-Red Hat images explicitly justified as demo-only or external
   dependencies in the README?
-- Are image tags pinned where reproducibility matters?
+- Are explicit image tags or digests used only when Red Hat documentation,
+  validated artifact guidance, or a documented non-operator demo-app exception
+  requires them?
+- Are operator-generated image fields, CSV `relatedImages`, copied CSVs, and
+  operator-created Deployments left under operator ownership rather than
+  patched as GitOps desired state?
 - Are GitHub reference implementations locally curated instead of consumed as
   remote Kustomize bases or unreviewed scripts?
 - Is each GitHub example linked to Red Hat docs, a Red Hat article, a Red Hat

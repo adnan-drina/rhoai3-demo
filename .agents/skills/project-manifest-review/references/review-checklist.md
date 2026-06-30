@@ -99,6 +99,9 @@ Flag a `[SOURCE]` finding when:
 - an Operator `Subscription` channel, package, catalog source, or install
   posture changes
 - a manifest introduces or changes a container image reference
+- a manifest patches a generated operand image field, copied CSV, CSV
+  `relatedImages`, generated datasource, or operator-created Deployment as
+  GitOps desired state
 - a model-serving, registry, pipeline, or workbench manifest introduces an
   external model artifact or runtime dependency
 - the companion README claims Red Hat-supported behavior that is not clearly

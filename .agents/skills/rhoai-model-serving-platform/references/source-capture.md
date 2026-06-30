@@ -70,9 +70,11 @@
 - Active demo serving API shape for `nemotron-3-nano-30b-a3b`.
   Current decision: Stage 210 uses direct `InferenceService`; Stage 220 should
   use `LLMInferenceService` for MaaS after RHOAI 3.4 schema verification.
-- Exact Red Hat-supported vLLM image digest for the active baseline and model.
+- Exact Red Hat-supported vLLM image reference for the active baseline and
+  model.
   Verification: use official docs, installed runtime templates, Red Hat
-  registry metadata, or active cluster resources before pinning an image.
+  registry metadata, or active cluster resources. Do not pin an image unless
+  Red Hat documentation or validated artifact guidance requires it.
 - Dashboard backing fields for model serving platform enablement and default
   deployment strategy.
   Verification: use official docs or installed schema before automating these

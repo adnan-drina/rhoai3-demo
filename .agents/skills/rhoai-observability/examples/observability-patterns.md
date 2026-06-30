@@ -81,6 +81,10 @@ oc get perses data-science-perses -n redhat-ods-monitoring \
 Use the CSV comparison only as diagnostic evidence. Do not patch
 `Perses.spec.image`; Stage 110 should align the Cluster Observability Operator
 lifecycle and let the operator manage operand images.
+Do not copy generated CSVs, generated datasources, or generated observability
+Deployments into GitOps as a workaround. If a controller pod failed because of
+API timeout or leader-election loss, recreate that pod as live recovery and
+then rerun the Stage 110 validation.
 
 Use a GitOps hook to mirror `ConfigMap/prometheus-web-tls-ca` into
 `Secret/prometheus-web-tls-ca` only when the generated `MonitoringStack`

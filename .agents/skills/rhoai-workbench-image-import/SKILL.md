@@ -59,7 +59,10 @@ For this repo:
   operator runbook.
 - Do not claim Red Hat supports the contents of a custom image. Red Hat
   supports making custom workbench images selectable in OpenShift AI.
-- Use digest-pinned image references when repeatability matters.
+- Avoid digest pinning as a default repeatability mechanism. Use the image
+  reference documented by Red Hat or the image owner, and use a digest only
+  when Red Hat guidance, validated artifact guidance, or an approved
+  non-operator demo-app exception requires it.
 - Do not import images from registries that are unreachable from the OpenShift
   cluster.
 - Use accelerator metadata only after GPU support and the accelerator

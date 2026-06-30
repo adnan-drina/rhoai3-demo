@@ -100,6 +100,15 @@ introduces images or model artifacts, verify Red Hat registry, validated model,
 or explicitly documented demo-exception provenance before treating it as
 aligned.
 
+RHOAI controllers and prerequisite operators can generate product-owned
+operands such as monitoring resources, KServe resources, MaaS gateway
+resources, model-serving controllers, or dashboard-backed resources. Do not
+patch generated operand image fields, generated datasources, or
+operator-created Deployments as durable fixes. Use the matching `rhoai-*`
+skill plus `project-red-hat-operator-gitops` to decide whether the fix belongs
+in `DataScienceCluster`/`DSCInitialization` configuration, Subscription
+lifecycle policy, product baseline alignment, or a documented product wait.
+
 Use `rhoai-api-tiers` to classify API support posture before treating an API as
 durable demo contract. Do not invent CR fields, API versions, annotations, or
 operator settings. If a field is uncertain, verify it through official docs or

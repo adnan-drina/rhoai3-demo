@@ -67,6 +67,11 @@ For this repo:
   harmless placeholders.
 - Keep port-forward examples as operator runbook examples, not automated demo
   scripts.
+- Treat RHOAI-generated observability operands as product-owned. Stage 110's
+  Cluster Observability Operator `startingCSV` hold is an OLM lifecycle policy,
+  not an image pin. Do not patch generated `Perses.spec.image`, generated
+  `PersesDatasource` resources, or operator-created observability Deployments
+  as durable fixes.
 - Use `rhoai-guardrails-safety` for guardrails CR-level OpenTelemetry fields,
   spans, detector metrics, and Guardrails Gateway metrics. Use this skill for
   the shared observability stack receiving that data.
@@ -83,6 +88,8 @@ For this repo:
    - Cluster Observability Operator
    - Tempo Operator
    - Red Hat build of OpenTelemetry
+   Confirm the installed CSV through the owning Subscription, not copied CSVs
+   or display names.
 4. Configure `DSCInitialization.spec.monitoring` through GitOps.
 5. Enable the dashboard menu with
    `OdhDashboardConfig.spec.dashboardConfig.observabilityDashboard: true`

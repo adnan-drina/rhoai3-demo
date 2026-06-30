@@ -70,6 +70,13 @@ Remove the hold only after validating that the active RHOAI 3.4 build generates
 Perses resources compatible with the newer Cluster Observability Operator CRD
 schema and operand behavior.
 
+This baseline pins product documentation versions and selected operator
+lifecycle policy where required. It does not pin generated operand image
+fields, copied CSV content, or operator-created Deployments. If a generated
+operand is incompatible with the installed operator or CRD, update the
+Subscription lifecycle policy, product baseline, or a documented product CR
+field; do not treat generated image fields as project-owned desired state.
+
 ## Red Hat OpenShift AI 3.4 Documentation Index
 
 Use the official RHOAI 3.4 landing page as the entry point:

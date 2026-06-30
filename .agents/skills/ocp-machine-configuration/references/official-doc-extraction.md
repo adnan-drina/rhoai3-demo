@@ -92,11 +92,15 @@ registry access and for reducing update or application deployment risk.
 
 Review principles:
 
-- only pin fully qualified image references that can be inspected successfully
+- use `PinnedImageSet` only when the official OCP documented use case applies,
+  such as unreliable registry access or update/deployment risk reduction
+- include only fully qualified image references that can be inspected
+  successfully
 - target the correct machine config pool through labels
-- verify node storage capacity before assuming pinning will succeed
+- verify node storage capacity before assuming preloading will succeed
 - remember that pinned images are not removed by image garbage collection
-- avoid pinning mutable tags for release-critical or demo-critical content
+- avoid mutable tags for release-critical or demo-critical content if a
+  `PinnedImageSet` is explicitly justified
 
 ## Boot Image Management
 

@@ -32,6 +32,50 @@ When a generated operand and its installed operator are incompatible, align the
 Subscription channel, `startingCSV`, approval strategy, or product baseline
 through GitOps and let OLM/operator reconciliation own images.
 
+## Operand Image Ownership
+
+Classify image ownership before changing an image value:
+
+- **Repo-owned images**: Argo CD hook Jobs, utility containers, demo
+  applications, pipeline component images, workbench images, modelcar images,
+  and other workloads authored by this repository. Do not pin these solely for
+  repeatability. Use the Red Hat-documented image reference, validated artifact
+  reference, or project-approved non-operator demo-app exception.
+- **Supported operand overrides**: explicit CR fields documented by the
+  product as supported image overrides. Use only when the official docs and the
+  matching product skill capture the field and support posture.
+- **Operator-owned images**: CSV `relatedImages`, copied CSV content,
+  generated CR image fields, and operator-created Deployments or StatefulSets.
+  These are not project-owned desired state and should not be pinned or patched
+  as a compatibility shortcut.
+
+Use operator-owned image values only as diagnostic evidence:
+
+```sh
+oc get subscription -n <operator-namespace> <subscription-name> \
+  -o jsonpath='{.status.installedCSV}{"\n"}'
+oc get csv -n <operator-namespace> <installed-csv> \
+  -o jsonpath='{range .spec.relatedImages[*]}{.name}{"="}{.image}{"\n"}{end}'
+oc get <generated-kind> <name> -n <namespace> -o yaml
+```
+
+Durable fixes belong in one of these places:
+
+- Subscription lifecycle policy: `channel`, `startingCSV`, or
+  `installPlanApproval`
+- product baseline changes in `docs/PLATFORM_BASELINE.md`
+- documented product CR fields verified with official docs or `oc explain`
+- waiting for or adopting a product-controller fix when the generated resource
+  is invalid for the installed operand API
+
+For platform components, repeatability should come from the Operator package,
+Subscription lifecycle policy, and product baseline, not from pinning generated
+operand images or copying generated lifecycle state into Git.
+
+Deleting a failed operator/controller pod after API-server instability can be
+valid live recovery, but it is not desired GitOps state. Do not convert that
+recovery into generated Deployment patches or operand image pins.
+
 ## Installation
 
 Install Operators from Git in this order:

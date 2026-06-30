@@ -60,4 +60,6 @@
   `cluster-observability-operator.v1.4.0` for the active RHOAI 3.4
   observability dashboard. This is an operator lifecycle compatibility hold,
   not an operand image pin. Do not patch the product-generated `Perses` CR
-  image or generated `PersesDatasource` resources as the normal fix.
+  image, generated `PersesDatasource` resources, copied CSVs, or
+  operator-created observability Deployments as the normal fix. Comparing those
+  values against the installed CSV `relatedImages` is diagnostic only.

@@ -73,7 +73,9 @@ quay.io/my-repo/my-image@sha256:<digest>
 docker.io/my-repo/my-image:tag
 ```
 
-For repeatable demos, prefer digest-pinned references when feasible.
+For this project, digest pinning is not the default repeatability mechanism.
+Use a digest only when Red Hat guidance, validated artifact guidance, or an
+approved non-operator demo-app exception requires it.
 
 ## Accelerator Identifier
 

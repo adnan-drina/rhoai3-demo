@@ -35,7 +35,14 @@ Argo CD YAML.
 
 - Prefer Red Hat product images, Red Hat registry sources, Red Hat validated
   model artifacts, or internally built demo images.
-- Pin image tags where reproducibility matters.
+- Avoid image pinning unless Red Hat documentation, a validated artifact
+  reference, or a documented non-operator demo-app exception requires an
+  explicit tag or digest. For platform components, repeatability comes from
+  Operator packages, Subscription lifecycle policy, and the product baseline.
+- Do not pin operator-generated operand images. Generated CR image fields,
+  CSV `relatedImages`, copied CSV content, and operator-created Deployments are
+  owned by OLM or the product operator. Use Subscription lifecycle policy,
+  product baseline alignment, or documented product CR fields instead.
 - Do not introduce community images or external model artifacts as if they were
   Red Hat-supported. If a non-Red Hat dependency is required for the demo,
   document the exception in the README and keep credentials out of Git.
@@ -101,6 +108,12 @@ example, ODF's `OCSInitialization/ocsinit`). Do not also manage these in GitOps:
 the operator's reconciled spec differs from the committed copy, leaving the Argo
 CD Application permanently `OutOfSync`. Let the operator own them, and verify
 health with a read-only check instead of declaring the resource.
+
+The same rule applies to generated operand image fields and generated
+datasources. Inspect them to understand compatibility, but do not commit
+patches that fight the owning controller unless official product documentation
+identifies the field as a supported override and the relevant product skill
+records the exception.
 
 If a resource was committed and later removed, ArgoCD with `prune: false` keeps
 it `OutOfSync` (pending prune) because the live object still carries the

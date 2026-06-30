@@ -22,6 +22,9 @@ or live operations.
 - Monitoring, logging, and COO Operator installation channels, namespaces,
   subscriptions, and install modes are verified from product docs or the active
   cluster catalog.
+- Generated operand images, CSV `relatedImages`, copied CSVs, and
+  operator-created observability Deployments are not committed or patched as
+  GitOps desired state.
 - `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `AlertmanagerConfig`, and
   related monitoring resources use verified API versions and fields.
 - User workload monitoring ConfigMaps and namespace assumptions are verified

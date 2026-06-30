@@ -48,6 +48,9 @@ runbook changes.
   Subscription state is `installPlanApproval=Manual`,
   `startingCSV=cluster-observability-operator.v1.4.0`, and
   `status.installedCSV=cluster-observability-operator.v1.4.0`.
+- Validate the installed CSV from the owning Subscription. Do not use copied
+  CSVs from all-namespace installs or display-name matches as authoritative
+  compatibility checks.
 - If the RHOAI-generated `Perses` CR server image appears incompatible with the
   installed Perses operator, treat it as an operator/RHOAI compatibility
   mismatch. Do not pin or patch `Perses.spec.image` as the durable fix; align
@@ -58,6 +61,10 @@ runbook changes.
   `spec.client.tls.caCert.namespace`, do not hand-edit the generated datasource.
   Treat it as an operator compatibility issue and either align the COO version
   with the RHOAI release or wait for an RHOAI controller fix.
+- If observability operator pods fail only with API timeout or leader-election
+  errors after control-plane instability, recreate the failed pods after
+  ClusterOperators are healthy and rerun validation. Do not patch generated
+  Deployments or images to resolve transient pod state.
 - External exporter endpoints are placeholders unless approved endpoints exist.
 
 ## Dashboard Review

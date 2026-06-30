@@ -93,6 +93,9 @@ Every future `deploy.sh` must apply an ArgoCD Application as its first action:
 oc apply -f "$REPO_ROOT/gitops/argocd/app-of-apps/$STAGE_NAME.yaml"
 ```
 Never apply manifests directly with `oc apply -k` for ArgoCD-managed resources.
+Do not turn temporary live recovery for operator-managed pods into GitOps
+patches for generated Deployments, generated image fields, copied CSVs, or
+operand images.
 
 ### Final E2E Validation
 

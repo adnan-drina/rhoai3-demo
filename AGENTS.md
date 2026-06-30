@@ -54,6 +54,16 @@ Do not run backup scripts as active project commands.
   reimplementation explicitly changes the project model.
 - ArgoCD cluster-admin remains acceptable for this demo only when documented in
   `docs/OPERATIONS.md`.
+- Operator-managed operand images MUST remain owned by OLM and the product
+  operator. Do not patch generated operand image fields, generated CSV content,
+  or operator-created operand Deployments as a compatibility shortcut unless
+  official product documentation exposes that field as a supported override and
+  the relevant skill records the exception.
+- Compatibility fixes for generated operands should use Git-managed
+  Subscription lifecycle policy (`channel`, `startingCSV`,
+  `installPlanApproval`), product baseline alignment, or a product-controller
+  fix. Live pod deletion to recover from controller crash loops is operational
+  recovery only, not desired GitOps state.
 - New deploy automation must apply ArgoCD Applications first and avoid direct
   `oc apply -k` against ArgoCD-managed resources.
 

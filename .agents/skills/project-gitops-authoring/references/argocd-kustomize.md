@@ -115,6 +115,12 @@ For a manually pinned operator, the meaningful stage gate is:
 - only the intended InstallPlan is approved by GitOps automation
 - CRDs and user-visible functional validation pass after the CSV is installed
 
+This is an operator lifecycle pin, not an operand image pin. Do not add Argo CD
+hooks or generated-resource patches that set operator-owned operand image
+fields. If operand image/version diagnostics show a mismatch, fix it through
+the Subscription lifecycle policy or product baseline and validate the
+user-visible capability.
+
 If Argo CD needs custom health behavior for the pinned Subscription, document
 the reason and keep validation focused on `installedCSV`, CRD readiness, and
 the user-visible capability. Do not hide an actual CSV mismatch with a custom

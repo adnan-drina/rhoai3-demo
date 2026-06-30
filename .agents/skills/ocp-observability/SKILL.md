@@ -59,6 +59,11 @@ For this AWS-hosted RHOAI demo:
   RHOAI-specific surfaces.
 - Treat log output configuration, external log sinks, telemetry endpoints, and
   credentials as sensitive live-environment concerns.
+- Let OLM and the Cluster Observability Operator own generated operand images,
+  CSV `relatedImages`, copied CSVs, and generated observability resources.
+  Diagnose image/version mismatches through Subscription and CSV inspection,
+  then use operator lifecycle policy or product baseline alignment instead of
+  generated image patches.
 
 ## OCP Observability Model
 
@@ -97,6 +102,8 @@ Use the official docs to frame:
      skill
 4. For manifests, verify all API versions, CRDs, fields, namespaces,
    Operators, RBAC, credentials, and output endpoints before committing.
+   Classify image fields as repo-owned or operator-generated before proposing
+   any image pin.
 5. For live operations, use the repo environment guard and pair this skill with
    `env-troubleshoot`, `env-manage-resources`, or `env-deploy-and-evaluate`.
 6. Validate the output with `references/validation-checklist.md`.
