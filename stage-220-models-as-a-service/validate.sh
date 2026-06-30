@@ -870,17 +870,24 @@ if resource_exists "configmap/${MCP_CONFIGMAP}" "$MCP_NS"; then
   oc get configmap "$MCP_CONFIGMAP" -n "$MCP_NS" \
     -o jsonpath='{.data.config\.toml}' \
     --insecure-skip-tls-verify=true >"$MCP_CONFIG_BODY" 2>/dev/null || true
+  MCP_ENABLED_TOOLS=$(awk '
+    /enabled_tools = \[/ {inside=1}
+    inside {print}
+    inside && /\]/ {inside=0}
+  ' "$MCP_CONFIG_BODY")
   if grep -Fq 'read_only = true' "$MCP_CONFIG_BODY" &&
     grep -Fq 'toolsets = ["core", "config"]' "$MCP_CONFIG_BODY" &&
-    grep -Fq 'enabled_tools = [' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'enabled_tools = [' <<<"$MCP_ENABLED_TOOLS" &&
+    ! grep -Fq '"pods_list"' <<<"$MCP_ENABLED_TOOLS" &&
+    grep -Fq '"pods_get"' <<<"$MCP_ENABLED_TOOLS" &&
+    grep -Fq '"events_list"' <<<"$MCP_ENABLED_TOOLS" &&
     grep -Fq '"pods_list"' "$MCP_CONFIG_BODY" &&
-    grep -Fq '"events_list"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "Secret"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ConfigMap"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ClusterRoleBinding"' "$MCP_CONFIG_BODY"; then
     R="pass"
   else
-    R="missing read_only, restricted toolsets, enabled inspection tools, or denied sensitive resources"
+    R="missing read_only, restricted toolsets, bounded inspection tools, pods_list exclusion, or denied sensitive resources"
   fi
 else
   R="missing"
@@ -909,13 +916,13 @@ if not model:
 
 payload = {
     'model': model,
-    'input': 'Use OpenShift-MCP pods_list. Reply under 20 words.',
+    'input': 'Use OpenShift-MCP events_list to inspect recent demo-sandbox events. Reply under 30 words.',
     'tools': [{
         'type': 'mcp',
         'server_label': '${MCP_DISCOVERY_KEY}',
         'server_url': 'http://${MCP_SERVER_NAME}.${MCP_NS}.svc:8080/mcp',
         'require_approval': 'never',
-        'allowed_tools': ['pods_list'],
+        'allowed_tools': ['events_list'],
     }],
     'tool_choice': 'auto',
     'max_tool_calls': 2,

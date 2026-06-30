@@ -856,9 +856,9 @@ oc get configmap openshift-mcp-config -n rhoai-mcp \
 ```
 
 The repair script should leave the vLLM provider at a smaller output default
-such as 512 tokens. This is not a model-quality setting; it prevents MCP tool
-context from colliding with Nemotron's 8192-token context window in the
-Playground.
+such as 512 tokens. This is not a model-quality setting; it keeps MCP tool
+context and answer generation bounded even though Stage 220 serves the
+MaaS-published Nemotron backend with `--max-model-len=131072`.
 
 ### External OpenAI MaaS model stays Pending
 

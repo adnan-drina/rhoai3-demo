@@ -29,6 +29,7 @@ committing long-lived GitOps.
 | CPU request/limit | `2` / `4` |
 | Memory request/limit | `16Gi` / `24Gi` |
 | Stage 210 serving context | `8192` tokens by default |
+| Stage 220 MaaS serving context | `131072` tokens, aligned with the working code-assistant MaaS implementation for Playground MCP/tool context headroom |
 | Shared memory volume | `emptyDir.medium: Memory`, `sizeLimit: 2Gi`, mounted at `/dev/shm` |
 
 ## Required Tool-Calling Arguments
@@ -189,7 +190,7 @@ spec:
           - --enable-force-include-usage
           - --disable-uvicorn-access-log
           - --enable-prefix-caching
-          - --max-model-len=8192
+          - --max-model-len=131072
           - --max-num-batched-tokens=8192
           - --enable-auto-tool-choice
           - --tool-call-parser=qwen3_coder
@@ -218,8 +219,11 @@ Review points:
 - For this repo, Stage 220 owns the local Nemotron backend in
   `models-as-a-service` and removes stale direct `demo-sandbox` serving
   resources before reconciling the MaaS-owned `LLMInferenceService`.
-- Use the Stage 210 `8192` token default as the initial MaaS serving envelope
-  until RAG-specific benchmarks justify a larger context.
+- Stage 220 uses `--max-model-len=131072` for the MaaS-published Nemotron
+  backend so Gen AI Playground MCP tool schemas and tool results have enough
+  context headroom. Keep `--max-num-batched-tokens=8192` and MaaS
+  subscription/token policies conservative; the larger model context is not a
+  license to raise shared-service quotas without fresh benchmark evidence.
 - Wait for `LLMInferenceService` `Ready=True` before claiming MaaS local-model
   readiness. Gateway, subscription, and auth-policy resources can become
   healthy while the generated router/scheduler and model workload are still

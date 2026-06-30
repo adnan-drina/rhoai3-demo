@@ -61,7 +61,7 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 |------|----------|-------|
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 220 MaaS owns governed shared API access |
 | Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-4o-mini` provider routing through matching MaaS resources, combined subscription/auth policy, API-key-backed inference, and Gen AI Playground MaaS consumption are authored against live schemas. Revalidate after the current `gpt-4o-mini` alignment is deployed. |
-| Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
+| Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles exist for one `g6e.2xlarge` GPU worker and the Stage 210 `--max-model-len=8192` baseline; Stage 220 serves MaaS Nemotron with `--max-model-len=131072` for Playground MCP headroom. Rerun benchmarks before changing MaaS quotas, GPU shape, prompt sizes, or output-token defaults. |
 
 ## Stage 220: Status — VALIDATED
 

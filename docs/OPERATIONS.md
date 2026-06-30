@@ -614,17 +614,18 @@ Validated 2026-06-12 on cluster-klvxt after reconciling the live model to
 Initial policy interpretation for one `g6e.2xlarge` GPU worker:
 
 - Chat assistant lane: start MaaS limits at `8` active concurrent requests per
-  Nemotron replica, with 256 output-token defaults and a hard request context
-  budget within the `8192` serving envelope.
+  Nemotron replica, with 256 output-token defaults and conservative prompt
+  sizes even when the Stage 220 MaaS backend is served with a larger context
+  window for Playground MCP headroom.
 - Chat burst lane: allow `12` concurrent requests only for trusted/internal
   users or during demos where p95 TTFT around 6 seconds is acceptable.
 - RAG lane: start at `2` active concurrent requests per Nemotron replica for
   about 4k-token prompts and 512 output-token responses.
 - RAG burst lane: treat `4` concurrent requests as a breakpoint candidate until
   more RAG profiles prove the 19-second p95 TTFT spike was not repeatable.
-- Do not expose `131072`-token context through MaaS on this single-GPU profile.
-  Keep larger-context experiments separate from the governed shared service
-  until they have their own benchmark evidence.
+- Do not treat the Stage 220 `131072` served context as a shared-service usage
+  target. Keep larger-context RAG and high-output experiments separate from the
+  governed shared-service policy until they have their own benchmark evidence.
 
 ## Stage 220: Models-as-a-Service
 
@@ -839,18 +840,20 @@ OpenShift-MCP -> http://openshift-mcp.rhoai-mcp.svc:8080/mcp
 
 Use it from the Gen AI Playground MCP tab after selecting a tool-calling model
 such as the MaaS-published Nemotron model. The intended demo prompt shape is
-cluster inspection, for example asking for project, pod, event, or workload
-status. Do not use this path for write actions. The MCP server is configured
-read-only and denies Secrets, ConfigMaps, and RBAC objects even though the
-ServiceAccount has broad cluster `view` access.
+bounded cluster inspection, for example asking for namespace, recent event,
+known-pod, or node status. Do not use this path for broad pod listing or write
+actions. The MCP server is configured read-only and denies Secrets,
+ConfigMaps, and RBAC objects even though the ServiceAccount has broad cluster
+`view` access.
 
 Keep the MCP tool surface intentionally small. Stage 220 allowlists only
-namespace, pod, event, and node inspection tools because the MCP tool schema
-is inserted into the Llama Stack Responses API context. A broad tool catalog
-can consume most of Nemotron's 8192-token context or cause the MCP server to
-consume excessive memory while listing tools. The diagnostic Playground
-repair script sets the vLLM provider output default to 512 tokens so MCP
-requests leave room for tool context and a short answer.
+namespace, known-pod, event, and node inspection tools because the MCP tool
+schema and tool results are inserted into the Llama Stack Responses API
+context. Broad list tools such as `pods_list` can create excessive tool output
+and provider token pressure. The MaaS-published Nemotron backend is served with
+`--max-model-len=131072` for MCP headroom, and the diagnostic Playground repair
+script keeps the vLLM provider output default at 512 tokens so MCP requests
+leave room for tool context and a short answer.
 
 Useful checks:
 

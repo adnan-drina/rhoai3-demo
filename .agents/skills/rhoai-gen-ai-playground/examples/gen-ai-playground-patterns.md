@@ -163,7 +163,9 @@ Review points:
 - Use Llama Stack `/v1/models` to discover the model IDs used by
   `/v1/responses`; they can include the provider ID prefix.
 - For MCP demos with Nemotron, keep the vLLM provider output default small
-  enough for MCP tool context. A 512-token default is the Stage 220 baseline.
+  enough for MCP tool context. A 512-token default is the Stage 220 baseline,
+  even though the MaaS-published Nemotron backend is served with a 131072-token
+  context window for MCP headroom.
 
 ## Troubleshooting Pointers
 

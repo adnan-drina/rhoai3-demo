@@ -137,10 +137,13 @@ If the model or runtime is not configured correctly, RAG document search or MCP
 tool execution can fail without a clear user-facing error.
 
 In this demo, MCP tool-list responses are part of the model context and output
-budget. For the MaaS-published Nemotron model with an 8192-token context, keep
-the Playground vLLM provider output default low enough for MCP context, for
-example 512 tokens. A 4096-token default can combine with MCP tool context and
-produce a context-length error or an empty response in the Playground.
+budget. For the MaaS-published Nemotron model, Stage 220 uses
+`--max-model-len=131072` to match the working code-assistant MaaS
+implementation and provide Playground MCP headroom. Keep the Playground vLLM
+provider output default conservative, for example 512 tokens, so tool context
+and short answers do not compete unnecessarily. A broad tool catalog or a
+4096-token output default can still produce context pressure, rate-limit
+failures, or empty Playground responses.
 
 The official guide includes a Qwen model example for field placement. Treat it
 as an example, not as this demo's default model choice.

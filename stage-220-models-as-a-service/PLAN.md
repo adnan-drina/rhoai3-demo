@@ -80,9 +80,10 @@
 - Do not give `ai-developer` administrative access to the MaaS project. The
   user-facing path is through OpenShift AI dashboard assets and MaaS-governed
   API consumption, not namespace administration.
-- Do not expose the full Nemotron `131072` context window through the first
-  MaaS policy. Keep large-context RAG as an explicit tuning decision after
-  Stage 210/220 measurements prove the operating envelope.
+- Serve the MaaS-published Nemotron backend with the working `131072` context
+  window for Gen AI Playground MCP/tool context headroom, but keep MaaS
+  subscription limits, output-token defaults, and user guidance conservative
+  until Stage 210/220 measurements justify higher shared-service usage.
 - Do not enable write-capable MCP tools in Stage 220. The OpenShift MCP server
   is for read-only context inspection only, with Secrets, ConfigMaps, and RBAC
   resources denied by configuration.

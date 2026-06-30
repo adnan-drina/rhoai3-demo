@@ -142,9 +142,13 @@ runbooks, GitOps changes, or demo scripts.
 - The MCP Service URL in `gen-ai-aa-mcp-servers` points to a ready Service with
   endpoints.
 - The selected model supports tool calling.
-- The selected model has a small enough output-token budget for MCP context.
-  For the Stage 220 MaaS-published Nemotron model, validate a 512-token
-  provider default before demonstrating MCP.
+- The selected model has enough served context and a small enough output-token
+  budget for MCP context. For the Stage 220 MaaS-published Nemotron model,
+  validate `--max-model-len=131072` on the `LLMInferenceService` and a
+  512-token provider default before demonstrating MCP.
+- The OpenShift MCP allowlist avoids broad cluster-wide list tools such as
+  `pods_list`; use bounded tools such as `events_list`, `pods_get` for known
+  pods, namespace inspection, and node status.
 - Token authorization behavior is documented as browser-session scoped.
 - The demo verifies MCP through the Llama Stack Responses API. At minimum,
   validation must prove that the project Llama Stack server receives an
