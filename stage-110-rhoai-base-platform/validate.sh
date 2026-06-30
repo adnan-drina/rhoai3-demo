@@ -56,9 +56,7 @@ csv_phase_from_subscription() {
 }
 
 # ── 1. OpenShift GitOps operator ─────────────────────────────────────────────
-GITOPS_CSV=$(oc get csv -n openshift-operators \
-  -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift GitOps")].status.phase}' \
-  --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+GITOPS_CSV=$(csv_phase_from_subscription openshift-operators openshift-gitops-operator)
 [[ "$GITOPS_CSV" == "Succeeded" ]] && R="pass" || R="phase=${GITOPS_CSV:-not found}"
 check "OpenShift GitOps operator CSV Succeeded" "$R"
 
@@ -79,9 +77,7 @@ check "Argo CD Application Synced" "$R"
 check "Argo CD Application Healthy" "$R"
 
 # ── 4. ODF operator ───────────────────────────────────────────────────────────
-ODF_CSV=$(oc get csv -n openshift-storage \
-  -o jsonpath='{.items[?(@.spec.displayName=="OpenShift Data Foundation")].status.phase}' \
-  --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+ODF_CSV=$(csv_phase_from_subscription openshift-storage odf-operator)
 [[ "$ODF_CSV" == "Succeeded" ]] && R="pass" || R="phase=${ODF_CSV:-not found}"
 check "ODF operator CSV Succeeded" "$R"
 
@@ -92,9 +88,7 @@ NOOBAA_PHASE=$(oc get noobaa noobaa -n openshift-storage \
 check "NooBaa phase Ready" "$R"
 
 # ── 6. RHOAI operator ────────────────────────────────────────────────────────
-RHOAI_CSV=$(oc get csv -n redhat-ods-operator \
-  -o jsonpath='{.items[?(@.spec.displayName=="Red Hat OpenShift AI")].status.phase}' \
-  --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+RHOAI_CSV=$(csv_phase_from_subscription redhat-ods-operator rhods-operator)
 [[ "$RHOAI_CSV" == "Succeeded" ]] && R="pass" || R="phase=${RHOAI_CSV:-not found}"
 check "RHOAI operator CSV Succeeded" "$R"
 
