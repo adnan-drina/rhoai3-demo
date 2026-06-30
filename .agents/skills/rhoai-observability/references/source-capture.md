@@ -55,3 +55,9 @@
   resources plus narrow access to the OpenShift monitoring Prometheus API. Keep
   this as least-privilege RBAC for the demo admin group, not broad
   cluster-admin access.
+- Cluster Observability Operator compatibility:
+  Stage 110 uses OLM `startingCSV` plus manual approval automation to install
+  `cluster-observability-operator.v1.4.0` for the active RHOAI 3.4
+  observability dashboard. This is an operator lifecycle compatibility hold,
+  not an operand image pin. Do not patch the product-generated `Perses` CR
+  image or generated `PersesDatasource` resources as the normal fix.

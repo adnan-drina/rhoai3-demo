@@ -99,6 +99,12 @@ RHOAI_CSV=$(oc get csv -n redhat-ods-operator \
 check "RHOAI operator CSV Succeeded" "$R"
 
 # ── 7. RHOAI observability prerequisite operators ────────────────────────────
+EXPECTED_COO_CSV="cluster-observability-operator.v1.4.0"
+COO_INSTALLED_CSV=$(oc get subscription cluster-observability-operator -n openshift-cluster-observability-operator \
+  -o jsonpath='{.status.installedCSV}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$COO_INSTALLED_CSV" == "$EXPECTED_COO_CSV" ]] && R="pass" || R="installedCSV=${COO_INSTALLED_CSV:-not found} expected=${EXPECTED_COO_CSV}"
+check "Cluster Observability Operator CSV matches RHOAI 3.4 compatibility policy" "$R"
+
 COO_CSV=$(csv_phase_from_subscription openshift-cluster-observability-operator cluster-observability-operator)
 [[ "$COO_CSV" == "Succeeded" ]] && R="pass" || R="phase=${COO_CSV:-not found}"
 check "Cluster Observability Operator CSV Succeeded" "$R"

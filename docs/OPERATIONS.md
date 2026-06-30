@@ -41,16 +41,21 @@ The active implementation follows this sequence:
 GitOps operator channel is pinned to `gitops-1.20` in `gitops/bootstrap/overlays/operator/patch-channel.yaml`. Verified 2026-06-11 against OCP 4.20.24 on cluster-klvxt — no change needed before deploy.
 
 Stage 110 also installs the RHOAI observability prerequisite operators from
-`redhat-operators` on the `stable` channel:
+`redhat-operators`:
 
 - `cluster-observability-operator` in `openshift-cluster-observability-operator`
+  on the `stable` channel, held at
+  `cluster-observability-operator.v1.4.0` with `installPlanApproval: Manual`
+  and a GitOps hook that approves only that generated InstallPlan
 - `opentelemetry-product` in `openshift-opentelemetry-operator`
 - `tempo-product` in `openshift-tempo-operator`
 
 The package/channel selection was verified from the active cluster catalog on
-the OCP 4.20 / RHOAI 3.4 baseline. These operators must be available before
-the RHOAI `DSCInitialization.spec.monitoring` stack can create the backing
-services for **Observe & monitor -> Dashboard**.
+the OCP 4.20 / RHOAI 3.4 baseline. The Cluster Observability Operator hold is
+an OLM lifecycle policy, not an operand image pin; Perses, Prometheus, and
+related operand images remain operator-managed. These operators must be
+available before the RHOAI `DSCInitialization.spec.monitoring` stack can create
+the backing services for **Observe & monitor -> Dashboard**.
 
 Stage 110 also carries a narrow RHOAI 3.4 observability compatibility layer:
 
@@ -125,6 +130,9 @@ Validate the backing stack before relying on the UI:
 oc get subscription -n openshift-cluster-observability-operator cluster-observability-operator
 oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
 oc get subscription -n openshift-tempo-operator tempo-product
+oc get subscription cluster-observability-operator \
+  -n openshift-cluster-observability-operator \
+  -o jsonpath='{.spec.installPlanApproval}{" "}{.spec.startingCSV}{" "}{.status.installedCSV}{"\n"}'
 oc get pods -n redhat-ods-monitoring
 oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring
 oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring

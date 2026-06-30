@@ -141,9 +141,12 @@ oc get csv "$CSV" -n openshift-cluster-observability-operator \
 
 If the generated Perses image differs from the installed Cluster Observability
 Operator `perses` related image and the logs show unsupported Perses flags,
-treat it as a product compatibility incident. A one-shot patch to the generated
-`Perses` CR is not durable because the RHOAI controller can reconcile the image
-back to its generated value.
+treat it as a product compatibility incident. Do not pin or patch the generated
+`Perses` image: the RHOAI controller can reconcile it back, and operand image
+selection should remain under the owning operator lifecycle. Stage 110 handles
+the current RHOAI 3.4 compatibility posture by installing the Cluster
+Observability Operator at `cluster-observability-operator.v1.4.0` through OLM
+`startingCSV` plus manual InstallPlan approval automation.
 
 If the Perses dashboards are available but `default-monitoring` remains
 `Not Ready` with `tempo-datasource` and `spec.client.tls.caCert ... namespace is
@@ -151,7 +154,10 @@ required`, the remaining issue is the RHOAI-generated Tempo
 `PersesDatasource` not satisfying the installed v1alpha2 PersesDatasource
 schema. Do not patch the operator-owned generated datasource by hand; either
 use a compatible Cluster Observability Operator version or wait for the RHOAI
-monitoring controller to generate the v1alpha2-required namespace field.
+monitoring controller to generate the v1alpha2-required namespace field. If the
+cluster already installed a newer Cluster Observability Operator, do not assume
+that a Git change can downgrade it in place; plan a controlled prerequisite
+operator reinstall or redeploy Stage 110 into a fresh environment.
 
 ## Stage 120: GPU-as-a-Service
 

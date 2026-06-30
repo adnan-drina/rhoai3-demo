@@ -21,10 +21,16 @@ OLM owns the generated lifecycle state:
 - InstallPlans
 - CSVs
 - Operator deployments and related generated RBAC
+- operator-managed operand deployments and images, unless official product
+  docs expose a supported operand image override field
 - Subscription status and conditions
 - copied CSVs for all-namespace installs
 
 Do not commit generated InstallPlans, CSVs, or copied CSVs as desired state.
+Do not patch operator-generated operand images as the normal compatibility fix.
+When a generated operand and its installed operator are incompatible, align the
+Subscription channel, `startingCSV`, approval strategy, or product baseline
+through GitOps and let OLM/operator reconciliation own images.
 
 ## Installation
 

@@ -10,6 +10,7 @@ Update it first when preparing an upgrade.
 | Red Hat OpenShift AI Self-Managed | 3.4 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/ |
 | Red Hat OpenShift Container Platform | 4.20 | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/ |
 | Red Hat OpenShift Data Foundation | 4.20 | https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/ |
+| Red Hat OpenShift Cluster Observability Operator | 1.4.0 compatibility hold | https://docs.redhat.com/en/documentation/red_hat_openshift_cluster_observability_operator/1-latest/ |
 | Red Hat build of OpenTelemetry | 3.9 | https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9 |
 | Red Hat OpenShift distributed tracing platform | 3.9 | https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9 |
 
@@ -60,6 +61,14 @@ OpenShift Data Foundation is pinned to `4.20` because the demo OpenShift
 baseline is OCP `4.20`. Red Hat ODF update guidance says the ODF version should
 match the OCP minor version, and on OCP `4.20`, ODF `4.20` is the latest
 compatible ODF version that can be installed.
+
+The Cluster Observability Operator is held at
+`cluster-observability-operator.v1.4.0` for the RHOAI 3.4 observability
+dashboard. This is an OLM lifecycle compatibility hold, not an operand image
+pin: the operator still manages Perses, Prometheus, and related operand images.
+Remove the hold only after validating that the active RHOAI 3.4 build generates
+Perses resources compatible with the newer Cluster Observability Operator CRD
+schema and operand behavior.
 
 ## Red Hat OpenShift AI 3.4 Documentation Index
 

@@ -46,6 +46,10 @@ Use this checklist before accepting GitOps-managed Red Hat Operator resources.
   state.
 - `startingCSV` is absent unless official docs or a controlled install plan
   require it.
+- Operator-generated operand image fields are not patched as a lifecycle
+  shortcut when the owning operator or product controller should manage them.
+  Compatibility-sensitive fixes use Subscription channel, `startingCSV`,
+  approval strategy, product baseline, or official operand configuration fields.
 - Product baseline changes update `docs/PLATFORM_BASELINE.md` in the same
   lifecycle work.
 - Operator Application sync happens before operand CR fields that depend on

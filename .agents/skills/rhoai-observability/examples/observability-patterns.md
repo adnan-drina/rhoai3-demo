@@ -69,11 +69,18 @@ oc auth can-i create prometheuses/k8s --subresource=api \
 CSV=$(oc get subscription cluster-observability-operator \
   -n openshift-cluster-observability-operator \
   -o jsonpath='{.status.installedCSV}')
+oc get subscription cluster-observability-operator \
+  -n openshift-cluster-observability-operator \
+  -o jsonpath='{.spec.installPlanApproval}{" "}{.spec.startingCSV}{" "}{.status.installedCSV}{"\n"}'
 oc get csv "$CSV" -n openshift-cluster-observability-operator \
   -o jsonpath='{.spec.relatedImages[?(@.name=="perses")].image}{"\n"}'
 oc get perses data-science-perses -n redhat-ods-monitoring \
   -o jsonpath='{.spec.image}{"\n"}'
 ```
+
+Use the CSV comparison only as diagnostic evidence. Do not patch
+`Perses.spec.image`; Stage 110 should align the Cluster Observability Operator
+lifecycle and let the operator manage operand images.
 
 Use a GitOps hook to mirror `ConfigMap/prometheus-web-tls-ca` into
 `Secret/prometheus-web-tls-ca` only when the generated `MonitoringStack`

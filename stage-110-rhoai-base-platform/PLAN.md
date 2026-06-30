@@ -78,6 +78,7 @@
   - GitOps operator is bootstrapped imperatively before ArgoCD exists
   - ODF operator must be `Succeeded` before the MCG `StorageCluster` is applied (handled by `SkipDryRunOnMissingResource=true` + retry)
   - Cluster Observability Operator, Red Hat build of OpenTelemetry, and Tempo Operator must be installed before the RHOAI observability stack can materialize
+  - Cluster Observability Operator is held at `cluster-observability-operator.v1.4.0` through OLM `startingCSV` and manual approval automation; operand images remain operator-managed
   - `redhat-ods-monitoring` is GitOps-managed before Stage 110 creates the
     service-ca Secret sync hook and Perses dashboard access resources
   - The `prometheus-web-tls-ca` sync hook waits for the service-ca injected
@@ -100,7 +101,7 @@
 | `gitops/stage-110-rhoai-base-platform/odf/operator/base/subscription.yaml` | Subscription (odf-operator, `stable-4.20`) | ODF 4.20 AWS guide (verified live) | `oc get csv -n openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/instance/base/storagecluster.yaml` | StorageCluster (standalone MCG, `reconcileStrategy: standalone`) | ODF 4.20 live CRD (StorageSystem API removed in 4.20) | `oc get noobaa -n openshift-storage` |
 | `gitops/stage-110-rhoai-base-platform/odf/instance/base/console-plugin-{rbac,script,job}.yaml` | SA/ClusterRole/CRB/ConfigMap/Job | colleague config (adapted) | `oc get consoles.operator.openshift.io cluster -o jsonpath='{.spec.plugins}'` |
-| `gitops/stage-110-rhoai-base-platform/observability/cluster-observability-operator/operator/overlays/stable` | Subscription (`cluster-observability-operator`, `stable`) | RHOAI 3.4 observability prerequisites + live package metadata | `oc get subscription cluster-observability-operator -n openshift-cluster-observability-operator` |
+| `gitops/stage-110-rhoai-base-platform/observability/cluster-observability-operator/operator/overlays/stable-1.4` | Subscription (`cluster-observability-operator`, `stable`, `startingCSV: cluster-observability-operator.v1.4.0`) + generated InstallPlan approval hook | RHOAI 3.4 observability prerequisites + OLM package metadata + compatibility validation | `oc get subscription cluster-observability-operator -n openshift-cluster-observability-operator` |
 | `gitops/stage-110-rhoai-base-platform/observability/opentelemetry/operator/overlays/stable` | Subscription (`opentelemetry-product`, `stable`) | RHOAI 3.4 observability prerequisites + Red Hat build of OpenTelemetry docs + live package metadata | `oc get subscription opentelemetry-product -n openshift-opentelemetry-operator` |
 | `gitops/stage-110-rhoai-base-platform/observability/tempo/operator/overlays/stable` | Subscription (`tempo-product`, `stable`) | RHOAI 3.4 observability prerequisites + distributed tracing docs + live package metadata | `oc get subscription tempo-product -n openshift-tempo-operator` |
 | `gitops/stage-110-rhoai-base-platform/rhoai/operator/base/namespace.yaml` | Namespace | RHOAI 3.4 install guide | `oc get ns redhat-ods-operator` |
@@ -162,7 +163,7 @@
 | Identity provider / access groups | deferred | Future stage in 1xx family |
 | RHOAI component enablement (kueue, kserve, MaaS, ray, etc.) | deferred | Each component added by its dedicated stage through a GitOps hook patch; Stage 110 ignores those DSC component fields to avoid self-healing later-stage state |
 | ODF full StorageCluster | deferred | Added only if a future stage needs block/file storage |
-| RHOAI observability dashboard backing stack | resolved | Stage 110 now installs Cluster Observability Operator, Red Hat build of OpenTelemetry, and Tempo Operator before enabling DSCI monitoring and the dashboard flag |
+| RHOAI observability dashboard backing stack | resolved with compatibility hold | Stage 110 installs Cluster Observability Operator at `cluster-observability-operator.v1.4.0`, Red Hat build of OpenTelemetry, and Tempo Operator before enabling DSCI monitoring and the dashboard flag. COO operand images remain operator-managed; do not patch generated Perses resources. |
 
 ## Review Log
 

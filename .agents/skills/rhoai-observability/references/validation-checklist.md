@@ -43,11 +43,16 @@ runbook changes.
   the Perses operator outside the namespace allowed by product-generated
   NetworkPolicies, add a narrow NetworkPolicy that permits only the installed
   Perses operator namespace and pod selector.
-- Verify the RHOAI-generated `Perses` CR uses a server image compatible with
-  the installed Perses operator. On COO 1.5, compare
-  `Perses.spec.image` with the `perses` entry in the installed
-  `ClusterServiceVersion.spec.relatedImages`; a mismatch can make the backend
-  crash on operator-injected TLS flags.
+- Verify the Cluster Observability Operator lifecycle policy before debugging
+  operand images. For the active RHOAI 3.4 demo, the expected fresh-environment
+  Subscription state is `installPlanApproval=Manual`,
+  `startingCSV=cluster-observability-operator.v1.4.0`, and
+  `status.installedCSV=cluster-observability-operator.v1.4.0`.
+- If the RHOAI-generated `Perses` CR server image appears incompatible with the
+  installed Perses operator, treat it as an operator/RHOAI compatibility
+  mismatch. Do not pin or patch `Perses.spec.image` as the durable fix; align
+  the Cluster Observability Operator lifecycle policy or wait for a product
+  controller fix.
 - If `Monitoring.status.phase` is `Not Ready` only because the generated
   `tempo-datasource` fails v1alpha2 validation on
   `spec.client.tls.caCert.namespace`, do not hand-edit the generated datasource.
