@@ -65,6 +65,14 @@ oc auth can-i list persesdashboards.perses.dev \
 
 oc auth can-i create prometheuses/k8s --subresource=api \
   --as=ai-admin --as-group=rhods-admins -n openshift-monitoring
+
+CSV=$(oc get subscription cluster-observability-operator \
+  -n openshift-cluster-observability-operator \
+  -o jsonpath='{.status.installedCSV}')
+oc get csv "$CSV" -n openshift-cluster-observability-operator \
+  -o jsonpath='{.spec.relatedImages[?(@.name=="perses")].image}{"\n"}'
+oc get perses data-science-perses -n redhat-ods-monitoring \
+  -o jsonpath='{.spec.image}{"\n"}'
 ```
 
 Use a GitOps hook to mirror `ConfigMap/prometheus-web-tls-ca` into

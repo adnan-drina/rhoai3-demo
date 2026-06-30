@@ -123,18 +123,35 @@ oc get pods,svc,route -n redhat-ods-monitoring
   `prometheus-web-tls-ca` sync hook, Perses backend access, dashboard RBAC, and
   the dashboard flag. Do not enable the dashboard flag by itself.
 
-If `data-science-perses-0` is `CrashLoopBackOff`, inspect the pod logs before
-adding a workaround:
+If `data-science-perses-0` is `CrashLoopBackOff`, inspect the pod logs and
+compare the generated Perses image with the installed Cluster Observability
+Operator related image:
 
 ```bash
 oc logs pod/data-science-perses-0 -n redhat-ods-monitoring --previous
 oc get subscription -A | grep -E 'cluster-observability|opentelemetry|tempo'
+oc get perses data-science-perses -n redhat-ods-monitoring \
+  -o jsonpath='{.spec.image}{"\n"}'
+CSV=$(oc get subscription cluster-observability-operator \
+  -n openshift-cluster-observability-operator \
+  -o jsonpath='{.status.installedCSV}')
+oc get csv "$CSV" -n openshift-cluster-observability-operator \
+  -o jsonpath='{.spec.relatedImages[?(@.name=="perses")].image}{"\n"}'
 ```
 
-The compatibility resources above fix missing CA Secret and dashboard access
-issues. They do not mask a Perses binary/operator version mismatch; treat that
-as a separate operator compatibility incident and verify against the installed
-Cluster Observability Operator CSV.
+The Stage 110 `job-align-perses-image` hook aligns the RHOAI-generated Perses
+CR with the `perses` related image from the installed Cluster Observability
+Operator CSV. If the logs still show unsupported Perses flags after the hook
+runs, treat it as a product compatibility incident and verify against the
+installed Cluster Observability Operator CSV.
+
+If the Perses dashboards are available but `default-monitoring` remains
+`Not Ready` with `tempo-datasource` and `spec.client.tls.caCert ... namespace is
+required`, the remaining issue is the RHOAI-generated Tempo
+`PersesDatasource` not satisfying the installed v1alpha2 PersesDatasource
+schema. Do not patch the operator-owned generated datasource by hand; either
+use a compatible Cluster Observability Operator version or wait for the RHOAI
+monitoring controller to generate the v1alpha2-required namespace field.
 
 ## Stage 120: GPU-as-a-Service
 

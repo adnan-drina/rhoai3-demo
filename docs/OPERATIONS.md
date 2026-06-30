@@ -65,6 +65,10 @@ Stage 110 also carries a narrow RHOAI 3.4 observability compatibility layer:
 - `rhods-admins` receives read-only Perses dashboard/datasource discovery plus
   the narrow `prometheuses/api/k8s` access required by the dashboard query
   path.
+- `job-align-perses-image` patches the RHOAI-generated `Perses` CR to use the
+  `perses` related image from the installed Cluster Observability Operator CSV.
+  This keeps the Perses server binary aligned with the Perses operator that
+  injects its runtime flags.
 
 Remove these helpers only after validating that a later RHOAI/observability
 operator build creates equivalent behavior natively.
@@ -128,6 +132,8 @@ oc get subscription -n openshift-tempo-operator tempo-product
 oc get pods -n redhat-ods-monitoring
 oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring
 oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring
+oc get perses data-science-perses -n redhat-ods-monitoring \
+  -o jsonpath='{.spec.image}{"\n"}'
 oc get dscinitialization default-dsci \
   -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.spec.monitoring.metrics.storage.size}{" "}{.spec.monitoring.traces.storage.backend}{"\n"}'
 oc get monitoring.services.platform.opendatahub.io default-monitoring \

@@ -9,3 +9,4 @@ resources:
   - observability/prometheus-web-tls-ca-sync.yaml
   - observability/perses-backend-operator-access.yaml
   - observability/perses-dashboard-rbac.yaml
+  - observability/perses-image-align.yaml
