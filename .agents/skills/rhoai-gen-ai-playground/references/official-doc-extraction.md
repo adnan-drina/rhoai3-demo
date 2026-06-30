@@ -137,17 +137,20 @@ render it from the corrected `LlamaStackDistribution`.
 
 Changing selected Playground models from the dashboard can regenerate the
 project `LlamaStackDistribution`, ConfigMap, and deployment. For this demo,
-complete the desired model selection first, wait for the dashboard-generated
-Playground to become ready, and then run the Stage 220 Playground helper. A
-model checkbox state in the UI does not prove that the generated Llama Stack
-backend still has Secret-backed MaaS tokens or the corrected provider mapping.
+complete the desired model selection first and wait for the
+dashboard-generated Playground to become ready before validating. A model
+checkbox state in the UI does not prove that the generated Llama Stack backend
+can complete requests.
 
 For the local Nemotron model, keep the Llama Stack provider on the MaaS vLLM
-route. For the external OpenAI `gpt-5.4-mini` model published through MaaS,
-use the Llama Stack `remote::openai` provider with the MaaS Gateway base URL.
-The Llama Stack vLLM provider sends `max_tokens`, while `gpt-5.4-mini` expects
-`max_completion_tokens`; using `remote::openai` preserves MaaS governance while
-matching the external provider API shape.
+route. For the external OpenAI `gpt-4o-mini` model published through MaaS, the
+MaaS resource name and provider target model ID intentionally match. This lets
+the dashboard-created Playground use one stable model identity instead of a
+Kubernetes alias plus a separate upstream model ID.
+
+The AI asset endpoints MaaS tab should display the MaaS resource id
+`gpt-4o-mini`. For this model, the governed MaaS asset identity and upstream
+OpenAI provider model id are the same.
 
 Use the model IDs returned by Llama Stack `/v1/models`. In the validated demo
 configuration they are provider-qualified IDs. The dashboard-generated provider
@@ -155,18 +158,22 @@ number can change based on model selection order, for example:
 
 ```text
 maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
-maas-vllm-inference-<m>/gpt-5.4-mini
+maas-vllm-inference-<m>/gpt-4o-mini
 ```
 
-The GPT provider id intentionally keeps whichever dashboard-created
-`maas-vllm-inference-*` alias was assigned even though the provider type is
-patched to `remote::openai`. Existing Playground browser sessions can keep
-sending an older `.../gpt-5-4-mini` model id after the backend config is
-corrected. That stale model id cannot be made valid through MaaS because MaaS
-validates the request body model against the `ExternalModel.spec.targetModel`
-`gpt-5.4-mini`. After the repair, refresh the Playground page or remove and
-re-add the GPT model so the UI uses the `/v1/models` id ending in
-`/gpt-5.4-mini`.
+Existing Playground browser sessions can keep stale model selections after the
+dashboard recreates the Playground backend. After changing selected models,
+refresh the page or start a new chat so the UI uses the current `/v1/models`
+output.
+
+For non-browser validation of the dashboard BFF path, send both
+`Authorization: Bearer <user-token>` and `x-forwarded-access-token:
+<user-token>`. First verify that
+`/gen-ai/api/v1/lsd/models?namespace=<project>` exposes the provider-qualified
+target model ID such as `maas-vllm-inference-<m>/gpt-4o-mini`. Then validate
+`/gen-ai/api/v1/lsd/responses` with that listed model ID. A direct Llama Stack
+`/v1/responses` success proves the provider mapping, but it does not prove the
+product Playground backend can authorize, list, and forward the request.
 
 ## Configure A Playground
 

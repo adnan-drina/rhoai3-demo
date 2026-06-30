@@ -66,15 +66,22 @@ runbooks, GitOps changes, or demo scripts.
   recreate the generated deployment and let the operator render it again.
 - The Llama Stack config maps the local MaaS-published Nemotron model through
   the MaaS vLLM provider.
-- External OpenAI `gpt-5.4-mini` published through MaaS uses a
-  `remote::openai` provider pointed at the MaaS Gateway base URL, not a vLLM
-  provider that sends `max_tokens`.
-- Registered model entries use `provider_model_id` for the provider target
-  model ID. Do not use unverified field names copied from memory.
+- External OpenAI `gpt-4o-mini` published through MaaS uses the same stable
+  model identity for the MaaS resource name and provider target model ID.
+- Registered model entries use `provider_model_id` only when the product
+  generated config needs an explicit provider target. Do not use unverified
+  field names copied from memory.
 - Playground validation uses the model IDs returned by Llama Stack
   `/v1/models`, which can be provider-qualified.
 - Validation sends real `/v1/responses` requests from inside the Llama Stack
   pod for each MaaS-backed model before claiming the playground works.
+- Validation checks the dashboard BFF
+  `/gen-ai/api/v1/lsd/models?namespace=<project>` model list and confirms the
+  external GPT entry exposes `gpt-4o-mini`.
+- Validation also sends `/gen-ai/api/v1/lsd/responses` requests through the
+  dashboard BFF with a real user token before claiming the browser Playground
+  works. Non-browser BFF tests need both `Authorization: Bearer <user-token>`
+  and `x-forwarded-access-token: <user-token>`.
 
 ## Playground Workflow Review
 

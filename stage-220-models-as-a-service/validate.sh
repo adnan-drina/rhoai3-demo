@@ -21,10 +21,10 @@ MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_NS="${RHOAI_MAAS_DATABASE_NAMESPACE:-models-as-a-service-db}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
 PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.4}"
-OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-mini}"
-OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-mini}"
+OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-4o-mini}"
+OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-4o-mini}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
-OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}"
+OPENAI_ACCESS_RESOURCE="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 DIRECT_NEMOTRON_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
 PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
@@ -198,6 +198,7 @@ validate_playground_if_present() {
   local data_key data_token data_subscription result token_index
   local lsd_secret lsd_key lsd_value deploy_secret deploy_key deploy_value
   local config_file output models_output
+  local lsd_token_result deploy_token_result
 
   if ! resource_exists "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
     check "Gen AI Playground LlamaStackDistribution is not present yet" "pass"
@@ -214,35 +215,43 @@ validate_playground_if_present() {
       result="missing VLLM_API_TOKEN, MAAS_API_KEY_ID, or MAAS_SUBSCRIPTION data"
     fi
   else
-    result="missing"
+    result="pass"
   fi
-  check "Gen AI Playground MaaS API key Secret exists" "$result"
+  check "Gen AI Playground optional helper MaaS API key Secret state" "$result"
 
-  result="pass"
+  lsd_token_result="pass"
   for token_index in 1 2; do
     lsd_secret=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.name}")
     lsd_key=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.key}")
     lsd_value=$(jsonpath "llamastackdistribution/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.server.containerSpec.env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].value}")
-    if [[ "$lsd_secret" != "$PLAYGROUND_SECRET" || "$lsd_key" != "VLLM_API_TOKEN" || -n "$lsd_value" ]]; then
-      result="VLLM_API_TOKEN_${token_index} is not Secret-backed"
+    if [[ -n "$lsd_secret" && -n "$lsd_key" ]]; then
+      continue
+    elif [[ -n "$lsd_value" && "$lsd_value" != "fake" ]]; then
+      continue
+    else
+      lsd_token_result="VLLM_API_TOKEN_${token_index} is missing or still fake"
     fi
   done
-  check "Gen AI Playground LlamaStackDistribution uses Secret-backed MaaS tokens" "$result"
+  check "Gen AI Playground LlamaStackDistribution has usable MaaS token env" "$lsd_token_result"
 
   if resource_exists "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
-    result="pass"
+    deploy_token_result="pass"
     for token_index in 1 2; do
       deploy_secret=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.name}")
       deploy_key=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].valueFrom.secretKeyRef.key}")
       deploy_value=$(jsonpath "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS" "{.spec.template.spec.containers[0].env[?(@.name==\"VLLM_API_TOKEN_${token_index}\")].value}")
-      if [[ "$deploy_secret" != "$PLAYGROUND_SECRET" || "$deploy_key" != "VLLM_API_TOKEN" || -n "$deploy_value" ]]; then
-        result="deployment VLLM_API_TOKEN_${token_index} is not Secret-backed"
+      if [[ -n "$deploy_secret" && -n "$deploy_key" ]]; then
+        continue
+      elif [[ -n "$deploy_value" && "$deploy_value" != "fake" ]]; then
+        continue
+      else
+        deploy_token_result="deployment VLLM_API_TOKEN_${token_index} is missing or still fake"
       fi
     done
   else
-    result="deployment missing"
+    deploy_token_result="deployment missing"
   fi
-  check "Gen AI Playground deployment uses Secret-backed MaaS tokens" "$result"
+  check "Gen AI Playground deployment has usable MaaS token env" "$deploy_token_result"
 
   if resource_exists "configmap/${PLAYGROUND_CONFIGMAP}" "$PROJECT_NS"; then
     config_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-playground-config.XXXXXX")
@@ -250,15 +259,13 @@ validate_playground_if_present() {
     oc get configmap "$PLAYGROUND_CONFIGMAP" -n "$PROJECT_NS" \
       -o jsonpath='{.data.config\.yaml}' \
       --insecure-skip-tls-verify=true > "$config_file"
-    if grep -q "provider_type: remote::openai" "$config_file" &&
-      grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1" "$config_file" &&
-      grep -q "provider_model_id: ${OPENAI_MODEL_ID}" "$config_file" &&
-      grep -q "provider_type: remote::vllm" "$config_file" &&
+    if grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1" "$config_file" &&
+      grep -q "model_id: ${OPENAI_MODEL_ID}" "$config_file" &&
       grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${NEMOTRON_MODEL_RESOURCE}/v1" "$config_file" &&
       grep -q "provider_model_id: ${NEMOTRON_MODEL_RESOURCE}" "$config_file"; then
       result="pass"
     else
-      result="missing MaaS provider type, base URL, or provider_model_id mapping"
+      result="missing MaaS base URL or model mapping"
     fi
   else
     result="missing"
@@ -349,6 +356,144 @@ for label, target in models:
     result="deployment missing"
   fi
   check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "$result"
+
+  if resource_exists "deployment/rhods-dashboard" "redhat-ods-applications"; then
+    local dashboard_pod developer_token bff_model_list bff_models bff_output
+
+    dashboard_pod=$(oc get pod -n redhat-ods-applications -l app=rhods-dashboard \
+      -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+    developer_token=$(get_demo_user_token "ai-developer" "${AI_DEVELOPER_PASSWORD:-}" || true)
+
+    if [[ -z "$dashboard_pod" || -z "$developer_token" ]]; then
+      result="dashboard pod or ai-developer token unavailable"
+    else
+      bff_model_list=$(oc exec -i -n redhat-ods-applications "$dashboard_pod" -c rhods-dashboard -- \
+        env USER_TOKEN="$developer_token" PROJECT_NS="$PROJECT_NS" python3 - <<'PY' 2>/dev/null || true
+import os
+import ssl
+import urllib.error
+import urllib.request
+
+ctx = ssl._create_unverified_context()
+url = (
+    "https://127.0.0.1:8443/gen-ai/api/v1/lsd/models"
+    f"?namespace={os.environ['PROJECT_NS']}"
+)
+req = urllib.request.Request(
+    url,
+    headers={
+        "Accept": "application/json",
+        "Authorization": f"Bearer {os.environ['USER_TOKEN']}",
+        "x-forwarded-access-token": os.environ["USER_TOKEN"],
+    },
+)
+try:
+    with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+        print(resp.read().decode(errors="replace"))
+except urllib.error.HTTPError as err:
+    print(err.read().decode(errors="replace"))
+PY
+)
+
+      if [[ "$bff_model_list" != *"/${OPENAI_MODEL_ID}"* && "$bff_model_list" != *"\"${OPENAI_MODEL_ID}\""* ]]; then
+        result="dashboard model list does not expose /${OPENAI_MODEL_ID}"
+      elif [[ "$OPENAI_MODEL_RESOURCE" != "$OPENAI_MODEL_ID" && "$bff_model_list" == *"/${OPENAI_MODEL_RESOURCE}"* ]]; then
+        result="dashboard model list still exposes stale /${OPENAI_MODEL_RESOURCE}"
+      else
+        bff_models=$(oc exec "deployment/${PLAYGROUND_LSD_NAME}" -n "$PROJECT_NS" -- python3 -c "
+import json
+import urllib.request
+
+with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
+    listed_models = json.loads(resp.read()).get('data', [])
+
+targets = {
+    'nemotron': '${NEMOTRON_MODEL_RESOURCE}',
+    'openai': '${OPENAI_MODEL_ID}',
+}
+resolved = {}
+for item in listed_models:
+    model_id = item.get('identifier') or item.get('id') or ''
+    metadata = item.get('custom_metadata') or {}
+    for label, target in targets.items():
+        if metadata.get('provider_resource_id') == target or model_id == target or model_id.endswith('/' + target):
+            resolved[label] = model_id
+missing = sorted(set(targets) - set(resolved))
+if missing:
+    raise SystemExit('missing models: ' + ','.join(missing))
+print(json.dumps(resolved))
+" 2>/dev/null || true)
+
+        if [[ -z "$bff_models" ]]; then
+          result="could not discover provider-qualified Llama Stack model ids"
+        else
+          bff_output=$(oc exec -i -n redhat-ods-applications "$dashboard_pod" -c rhods-dashboard -- \
+            env USER_TOKEN="$developer_token" PROJECT_NS="$PROJECT_NS" BFF_MODELS="$bff_models" python3 - <<'PY' 2>&1 || true
+import json
+import os
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+models = json.loads(os.environ["BFF_MODELS"])
+url = (
+    "https://127.0.0.1:8443/gen-ai/api/v1/lsd/responses"
+    f"?namespace={os.environ['PROJECT_NS']}"
+)
+ctx = ssl._create_unverified_context()
+failed = []
+
+for label, model in models.items():
+    payload = {
+        "model": model,
+        "input": "Reply with exactly: ok",
+        "max_output_tokens": 8,
+        "stream": False,
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={
+            "content-type": "application/json",
+            "Authorization": f"Bearer {os.environ['USER_TOKEN']}",
+            "x-forwarded-access-token": os.environ["USER_TOKEN"],
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=180) as resp:
+            body = resp.read().decode(errors="replace")
+            status = resp.status
+    except urllib.error.HTTPError as err:
+        status = err.code
+        body = err.read().decode(errors="replace")
+    except Exception as err:
+        status = "ERR"
+        body = repr(err)
+
+    if status not in (200, 201) or "ok" not in body.lower():
+        failed.append(f"{label}:{status}:{body[:180].replace(chr(10), ' ')}")
+
+if failed:
+    print("; ".join(failed))
+    sys.exit(1)
+
+print("OK dashboard BFF responses")
+PY
+)
+          if grep -q "OK dashboard BFF responses" <<<"$bff_output"; then
+            result="pass"
+          else
+            result="bff=${bff_output//$'\n'/ }"
+          fi
+        fi
+      fi
+    fi
+  else
+    result="dashboard deployment missing"
+  fi
+  check "Gen AI Playground dashboard BFF works for MaaS Nemotron and GPT" "$result"
 }
 
 APP_SYNC=$(jsonpath "applications.argoproj.io/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
@@ -645,9 +790,9 @@ GATEWAY_LOG_ERRORS=$(oc logs -n openshift-ingress \
   --since=3m --tail=500 --insecure-skip-tls-verify=true 2>/dev/null \
   | grep -E 'allow_on_headers_stop_iteration|Proto constraint validation failed|unknown field|Error adding/updating listener' \
   || true)
-OPENAI_AUTH_ENFORCED=$(jsonpath "authpolicy/maas-auth-gpt-5-4-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+OPENAI_AUTH_ENFORCED=$(jsonpath "authpolicy/maas-auth-gpt-4o-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
 NEMOTRON_AUTH_ENFORCED=$(jsonpath "authpolicy/maas-auth-nemotron-3-nano-30b-a3b" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
-OPENAI_TRLP_ENFORCED=$(jsonpath "tokenratelimitpolicy/maas-trlp-gpt-5-4-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
+OPENAI_TRLP_ENFORCED=$(jsonpath "tokenratelimitpolicy/maas-trlp-gpt-4o-mini" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
 NEMOTRON_TRLP_ENFORCED=$(jsonpath "tokenratelimitpolicy/maas-trlp-nemotron-3-nano-30b-a3b" "$MAAS_NS" "{.status.conditions[?(@.type==\"Enforced\")].status}")
 if [[ -n "$GATEWAY_LOG_ERRORS" ]]; then
   R="gateway Envoy log reports recent generated filter rejection"
@@ -791,7 +936,7 @@ JSON
       "content": "Reply with exactly: ok"
     }
   ],
-  "max_completion_tokens": 8
+  "max_tokens": 8
 }
 JSON
 )

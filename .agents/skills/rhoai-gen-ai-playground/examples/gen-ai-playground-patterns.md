@@ -110,10 +110,12 @@ Review points:
   results outside the cluster.
 - Use Verify model before relying on the endpoint in a demo.
 
-## MaaS-Backed Playground Provider Pattern
+## MaaS-Backed Playground Provider Repair Pattern
 
-Use this as a review pattern for a dashboard-created project playground that
-must consume MaaS-published models through Llama Stack. Verify the active
+Use this only as a repair review pattern for a dashboard-created project
+playground that cannot consume MaaS-published models through the
+product-generated Llama Stack configuration. First validate the dashboard
+generated config and response path without patching it. Verify the active
 `LlamaStackDistribution` schema and generated config before applying changes.
 The `maas-vllm-inference-*` provider numbers are dashboard-generated examples;
 preserve the provider ids assigned by the active playground.
@@ -125,7 +127,7 @@ providers:
       provider_type: remote::openai
       config:
         api_key: ${env.VLLM_API_TOKEN_1:=fake}
-        base_url: https://maas.<apps-domain>/models-as-a-service/gpt-5-4-mini/v1
+        base_url: https://maas.<apps-domain>/models-as-a-service/gpt-4o-mini/v1
         network:
           tls:
             verify: ${env.VLLM_TLS_VERIFY:=true}
@@ -138,8 +140,8 @@ providers:
         tls_verify: ${env.VLLM_TLS_VERIFY:=true}
 models:
   - provider_id: maas-vllm-inference-1
-    model_id: gpt-5-4-mini
-    provider_model_id: gpt-5.4-mini
+    model_id: gpt-4o-mini
+    provider_model_id: gpt-4o-mini
     model_type: llm
   - provider_id: maas-vllm-inference-2
     model_id: nemotron-3-nano-30b-a3b
@@ -152,8 +154,12 @@ Review points:
 - Replace placeholder app domain values with the live MaaS Gateway host.
 - The token environment variables must be Secret-backed in the
   `LlamaStackDistribution` and generated deployment.
-- Keep the external GPT model on `remote::openai` even though the base URL is a
-  MaaS URL. This avoids the vLLM provider's `max_tokens` payload shape.
+- Use `remote::openai` only when validation proves the generated provider type
+  sends a payload shape the selected external provider rejects.
+- For external models whose MaaS resource alias differs from the provider
+  model ID, register the Llama Stack `model_id` and `provider_model_id` with
+  the provider model ID. For `gpt-4o-mini`, the MaaS resource name and
+  provider model ID intentionally match.
 - Use Llama Stack `/v1/models` to discover the model IDs used by
   `/v1/responses`; they can include the provider ID prefix.
 
@@ -169,8 +175,9 @@ Review points:
 - Thinking indefinitely often points to context length or OOM constraints.
 - `401 Unauthorized` from a MaaS route usually means the Playground Llama
   Stack deployment still has a placeholder token or stale API key.
-- `Unsupported parameter: max_tokens` on external GPT models indicates the
-  wrong Llama Stack provider type for an OpenAI-compatible model route.
+- Provider-specific unsupported-parameter errors indicate a payload-shape
+  mismatch between the generated Llama Stack provider and the selected
+  external model.
 - Missing MCP tab content points to missing platform-level MCP configuration.
 - Failed MCP tool calls usually require model card and vLLM runtime argument
   review.

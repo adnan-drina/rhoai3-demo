@@ -742,66 +742,64 @@ oc logs deployment/lsd-genai-playground -n demo-sandbox --since=10m \
   | grep -E '401|Unauthorized|fake'
 ```
 
-- **Fix:** bind the Playground to a real MaaS API key and validate the
-  Llama Stack Responses API:
+- **Fix:** first recreate or update the Playground from the dashboard so it
+  regenerates product-owned resources from the current AI asset endpoint list,
+  then validate the Llama Stack and dashboard BFF response paths:
 
 ```bash
-./stage-220-models-as-a-service/configure-genai-playground.sh
 ./stage-220-models-as-a-service/validate.sh
 ```
 
-The helper stores the API key in
-`demo-sandbox/genai-playground-maas-api-key`, patches `VLLM_API_TOKEN_1` and
-`VLLM_API_TOKEN_2` to read from that Secret, and recreates the generated
-deployment if the operator cannot merge Secret refs over literal placeholder
-values. It also revokes old active Playground keys named
-`genai-playground-demo-sandbox` before creating the replacement key.
+If the product-generated backend still contains placeholder tokens after
+recreation, `configure-genai-playground.sh` can be used as a diagnostic repair
+tool. It is not the normal desired configuration path.
 
 If checking or unchecking a model in the Playground settings triggers a
 Playground update, treat that as a new generated-resource lifecycle event.
 Wait for the dashboard-created `LlamaStackDistribution` to become `Ready`,
-then rerun `configure-genai-playground.sh`. Otherwise the UI can show the model
-as selected while the backend has reset to placeholder tokens and the wrong
-provider type.
-
-- **External GPT-specific symptom:** the Playground returns a provider error
-  that `max_tokens` is not supported.
-- **Fix:** use the Llama Stack `remote::openai` provider for
-  `gpt-5.4-mini` while still routing through the MaaS Gateway. Keep Nemotron on
-  the MaaS vLLM provider. The Stage 220 helper patches `llama-stack-config`
-  accordingly.
+refresh the browser, and rerun validation. Otherwise the UI can show the model
+as selected while the backend has reset to stale generated state.
 
 Expected model IDs inside Llama Stack are provider-qualified:
 
 ```text
 maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
-maas-vllm-inference-<m>/gpt-5.4-mini
+maas-vllm-inference-<m>/gpt-4o-mini
 ```
 
 Short model IDs can fail through the Llama Stack API even when they work at the
 raw MaaS Gateway layer.
 
-If logs show `Model 'maas-vllm-inference-*/gpt-5-4-mini' not found` after a
-Playground repair, the backend provider id was changed and an already-open
-browser session is still sending the dashboard-created provider/model alias.
-Keep the generated provider id, change its provider type to `remote::openai`,
-and set `provider_model_id: gpt-5.4-mini`.
+If logs show `Model 'maas-vllm-inference-*/gpt-4o-mini' not found`, the
+browser or dashboard backend is using a stale provider-qualified model id.
+Refresh the page or recreate the Playground after the model list shows
+`gpt-4o-mini` as Ready in AI asset endpoints.
 
-If logs then show `model in request body 'gpt-5-4-mini' doesn't match
-ExternalModel`, the browser is still sending the old model alias. Refresh the
-Playground page or remove and re-add the GPT model so the request uses
-the `/v1/models` id ending in `/gpt-5.4-mini`. Do not rewrite MaaS or OpenAI
-routing to accept `gpt-5-4-mini`; the external provider target model is
-`gpt-5.4-mini`.
+If the AI asset endpoints MaaS tab shows the model name as `gpt-4o-mini`,
+that is expected. The MaaS resource id and upstream OpenAI provider model id
+are intentionally the same.
+
+If direct Llama Stack `/v1/responses` checks pass but the browser still does
+not show a reply, validate both dashboard BFF paths. First check
+`/gen-ai/api/v1/lsd/models?namespace=<project>` and confirm the GPT entry
+includes `gpt-4o-mini`. Then validate
+`/gen-ai/api/v1/lsd/responses` with that listed model id. Non-browser BFF
+checks must include both `Authorization: Bearer <user-token>` and
+`x-forwarded-access-token: <user-token>`. A `401 Unauthorized` from the
+dashboard pod with only one of those headers does not prove the MaaS route is
+broken.
 
 ### External OpenAI MaaS model stays Pending
 
 - **Symptom:** `ExternalModel` exists, but `MaaSModelRef` is `Pending` and the
   combined `MaaSSubscription` reports a missing or unavailable external model.
-- **Likely cause:** the `ExternalModel.metadata.name` contains dots. The MaaS
-  controller creates a Kubernetes `Service` from the `ExternalModel` name, and
-  Services require DNS-1035 names. Use `gpt-5-4-mini` as the resource name and
-  keep the real OpenAI model ID in `spec.targetModel: gpt-5.4-mini`.
+- **Likely cause:** the `ExternalModel.metadata.name` is not a valid
+  Kubernetes Service name, for example because the upstream provider model ID
+  contains dots. The MaaS controller creates a Kubernetes `Service` from the
+  `ExternalModel` name, and Services require DNS-1035 names. Prefer provider
+  model IDs that are also DNS-safe, such as `gpt-4o-mini`; otherwise use a
+  DNS-safe resource alias and keep the real provider model ID in
+  `spec.targetModel`.
 - **Confirm:**
 
 ```bash
@@ -812,7 +810,7 @@ oc get externalmodel,maasmodelref,maassubscription -n models-as-a-service
 
 - **Fix:** update GitOps so `ExternalModel`, `MaaSModelRef`,
   `MaaSSubscription.modelRefs`, and `MaaSAuthPolicy.modelRefs` use the same
-  DNS-safe resource alias. Then resync Stage 220 and rerun validation.
+  DNS-safe resource name. Then resync Stage 220 and rerun validation.
 
 ### External OpenAI MaaS inference fails after the model appears Ready
 
@@ -828,11 +826,11 @@ oc label secret openai-provider-api-key -n models-as-a-service --overwrite \
 ./stage-220-models-as-a-service/validate.sh
 ```
 
-- **Symptom:** external OpenAI inference returns
-  `Unsupported parameter: 'max_tokens' is not supported with this model`.
-- **Fix:** use `max_completion_tokens` for `gpt-5.4-mini` client requests.
-  The Stage 220 validator uses this payload shape when proving the external MaaS
-  route.
+- **Symptom:** external OpenAI inference returns a provider-specific unsupported
+  parameter error.
+- **Fix:** verify the selected OpenAI model's current Chat Completions payload
+  requirements. Stage 220 uses `gpt-4o-mini`, which accepts the standard
+  `max_tokens` field used by the validator.
 
 ### Stage 220 sync fails on immutable Kueue queue label for maas-postgres
 
@@ -984,7 +982,7 @@ endpoints and API keys, not direct namespace access.
 ```bash
 oc get crd llamastackdistributions.llamastack.io
 oc get maasmodelref nemotron-3-nano-30b-a3b -n models-as-a-service
-oc get maassubscription rhoai-developers-gpt-5-4-mini -n models-as-a-service
+oc get maassubscription rhoai-developers-gpt-4o-mini -n models-as-a-service
 oc get gateway maas-default-gateway -n openshift-ingress
 ```
 

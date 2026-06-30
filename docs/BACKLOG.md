@@ -60,13 +60,13 @@ wrote JSON results under gitignored `runs/stage-210-guidellm/`.
 | Item | Priority | Notes |
 |------|----------|-------|
 | Endpoint auth posture | medium | Stage 210 uses a controlled direct endpoint for baseline work; Stage 220 MaaS owns governed shared API access |
-| Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini` provider routing through DNS-safe `gpt-5-4-mini` MaaS resources, combined subscription/auth policy, API-key-backed inference, and Gen AI Playground MaaS consumption are authored against live schemas. Full validation on 2026-06-13 passed 62/62 checks on cluster-klvxt. |
+| Stage 220 model publication and policy | done | MaaS prerequisites, local Nemotron `LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-4o-mini` provider routing through matching MaaS resources, combined subscription/auth policy, API-key-backed inference, and Gen AI Playground MaaS consumption are authored against live schemas. Revalidate after the current `gpt-4o-mini` alignment is deployed. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles now exist for one `g6e.2xlarge` GPU worker and `--max-model-len=8192`; rerun before changing MaaS quotas, GPU shape, model config, prompt sizes, or output-token defaults |
 
 ## Stage 220: Status — VALIDATED
 
 Stage 220 GitOps creates the MaaS prerequisite stack, local Nemotron
-`LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-5.4-mini`
+`LLMInferenceService`/`MaaSModelRef`, external OpenAI `gpt-4o-mini`
 resources, combined subscription/auth policy, and `rhods-admins` namespace
 administration.
 

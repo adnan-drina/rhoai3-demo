@@ -262,7 +262,7 @@
 | Grafana Operator support posture | risk | Grafana Operator is from `community-operators`; use only as a demo observability UI and document the support boundary. |
 | OCI modelcar pull permissions | risk | The Red Hat registry modelcar may require entitlement/pull credentials; keep credentials out of Git. |
 | Scarce GPU capacity | risk | Use Recreate strategy and one replica; Stage 120 scale-to-zero remains available. |
-| MaaS and external OpenAI | deferred | Stage 220 owns MaaS, including external `gpt-5.4-mini`. |
+| MaaS and external OpenAI | deferred | Stage 220 owns MaaS, including external `gpt-4o-mini`. |
 
 ## Review Log
 

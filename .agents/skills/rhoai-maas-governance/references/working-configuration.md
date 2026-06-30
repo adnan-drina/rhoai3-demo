@@ -24,12 +24,12 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | PostgreSQL | demo-local PostgreSQL 16 StatefulSet in `models-as-a-service-db`, outside the Kueue-managed MaaS model namespace |
 | MaaS DB Secret | `maas-db-config` in `redhat-ods-applications`, with key `DB_CONNECTION_URL`; generated from local secrets and never committed; for this demo it must point to `maas-postgres.models-as-a-service-db.svc.cluster.local` |
 | Local model backend | Nemotron `LLMInferenceService` in `models-as-a-service`, then `MaaSModelRef` in the same namespace with `spec.modelRef.kind: LLMInferenceService` |
-| External OpenAI model | `ExternalModel.metadata.name: gpt-5-4-mini`, `ExternalModel.spec.targetModel: gpt-5.4-mini`, and matching `MaaSModelRef.metadata.name: gpt-5-4-mini` |
+| External OpenAI model | `ExternalModel.metadata.name: gpt-4o-mini`, `ExternalModel.spec.targetModel: gpt-4o-mini`, and matching `MaaSModelRef.metadata.name: gpt-4o-mini` |
 | Provider credential | `openai-provider-api-key` Secret in `models-as-a-service`, with data key `api-key` and label `inference.networking.k8s.io/bbr-managed=true`; generated or copied by deploy automation, not committed |
 | Access policy | Users need both `MaaSSubscription` quota and `MaaSAuthPolicy` gateway authorization before model access is claimed |
 | Developer access | `ai-developer` does not get direct namespace access to `models-as-a-service`; the user path is AI asset endpoints, MaaS API keys, and OpenAI-compatible MaaS endpoints |
 | Admin access | `ai-admin` maps to `rhods-admins` and can administer the MaaS namespace and MaaS dashboard policy surfaces |
-| Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`, Secret-backed MaaS API key, Nemotron through `remote::vllm`, external `gpt-5.4-mini` through `remote::openai` pointed at the MaaS Gateway while preserving the dashboard-created GPT provider id |
+| Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`; validate product-generated model discovery and responses for Nemotron and external `gpt-4o-mini` before using any diagnostic repair helper |
 
 ## Design Decisions
 
@@ -66,9 +66,8 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   playground can use the models.
 - Treat dashboard model-selection changes as Playground regeneration events.
   Checking or unchecking a MaaS model can recreate the project
-  `LlamaStackDistribution`, ConfigMap, and generated deployment, resetting
-  Secret-backed token references and provider mappings until the Stage 220
-  Playground helper is rerun.
+  `LlamaStackDistribution`, ConfigMap, and generated deployment. Revalidate
+  the product-generated model list and response path after each regeneration.
 - Pin RHCL until the end-to-end RHOAI/RHCL/Gateway path is validated on a
   newer CSV. Automatic operator upgrades are normal for many demo components,
   but MaaS Gateway policy generation is a compatibility boundary. On the
@@ -92,10 +91,17 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   verification sections list `*.maas.opendatahub.io` CRDs, while some YAML
   examples use `models.opendatahub.io/v1alpha1`. The installed CRD schema is
   authoritative for GitOps authoring on the target cluster.
-- Dotted external model names such as `gpt-5.4-mini` are not safe Kubernetes
-  aliases. The MaaS controller creates Kubernetes networking resources from the
-  `ExternalModel` name, so use a DNS-safe resource name like `gpt-5-4-mini` and
-  keep the provider model ID in `spec.targetModel`.
+- Dotted external model IDs are not safe Kubernetes resource names. The MaaS
+  controller creates Kubernetes networking resources from the `ExternalModel`
+  name, so prefer an upstream model ID that is already DNS-safe for
+  Playground-facing demos. If the upstream ID is not DNS-safe, use a DNS-safe
+  resource alias and keep the provider model ID in `spec.targetModel`.
+- The AI asset endpoints MaaS tab displays the MaaS model resource id. For
+  `gpt-4o-mini`, that resource id intentionally matches the upstream provider
+  model ID, which avoids the Playground alias split that broke the previous
+  dotted-name experiment. Confirm the target with
+  `ExternalModel.spec.targetModel: gpt-4o-mini` and confirm Playground
+  readiness through the Llama Stack and dashboard BFF model lists.
 - MaaS dashboard visibility can fail even when CRs look ready. Validate the
   real dashboard API and Gateway API paths with demo user tokens.
 - A subscription alone is not enough. A matching `MaaSAuthPolicy` is required;
@@ -127,26 +133,35 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   target model ID in the validated RHOAI 3.4 demo environment. Do not use
   guessed fields such as `provider_resource_id` without checking the installed
   schema or product code path.
-- For external `gpt-5.4-mini` through MaaS, the Llama Stack `remote::vllm`
-  provider sends `max_tokens` and fails against the OpenAI provider. Use
-  `remote::openai` with the MaaS Gateway base URL so governance remains MaaS
-  controlled while the client payload matches OpenAI's expected shape.
+- For external OpenAI models whose API accepts the standard Chat Completions
+  `max_tokens` field, the dashboard-generated Playground provider can remain
+  on the product-generated MaaS route. If a future OpenAI model requires a
+  different payload shape, validate the official RHOAI/Llama Stack path before
+  adding any repair helper.
+- For external models whose Kubernetes-safe MaaS resource alias differs from
+  the provider target model, use the alias only in MaaS resource names and
+  Gateway URL paths. For `gpt-4o-mini`, the MaaS resource name and provider
+  target are intentionally identical.
 - Llama Stack `/v1/models` exposes provider-qualified model IDs such as
-  `maas-vllm-inference-2/gpt-5.4-mini`; the generated provider number depends
+  `maas-vllm-inference-2/gpt-4o-mini`; the generated provider number depends
   on dashboard model selection order, so use the IDs returned by `/v1/models`
   in Playground `/v1/responses` checks.
-- Preserve dashboard-created provider aliases when patching a project
-  `LlamaStackDistribution`. A browser session can keep sending the old
-  provider-qualified model id, for example
-  `maas-vllm-inference-*/gpt-5-4-mini`, after the backend is corrected. Switch
-  the GPT provider type to `remote::openai` and set `provider_model_id:
-  gpt-5.4-mini`, but keep the generated provider id stable unless the
-  playground is recreated. Do not try to make the old model alias work through
-  MaaS; MaaS correctly rejects request bodies whose model is not the external
-  `targetModel`. Refresh the page or reselect the GPT model after repair.
-- External OpenAI requests for `gpt-5.4-mini` must use
-  `max_completion_tokens`; `max_tokens` produces an OpenAI provider error even
-  when MaaS routing, credential lookup, and policy enforcement are healthy.
+- If a diagnostic repair helper patches a project `LlamaStackDistribution`,
+  preserve dashboard-created provider IDs. A browser session can keep sending
+  an old provider-qualified model ID after the backend is corrected. Refresh
+  the page or reselect the GPT model after repair.
+- The durable validation gate is that dashboard
+  `/gen-ai/api/v1/lsd/models?namespace=<project>` lists the external model as
+  a selectable provider-qualified ID and `/gen-ai/api/v1/lsd/responses`
+  succeeds with that listed model ID.
+- External OpenAI requests for `gpt-4o-mini` use the standard
+  `max_tokens` Chat Completions field.
+- The real dashboard BFF path is a separate validation gate. Direct
+  `http://127.0.0.1:8321/v1/responses` calls from the Llama Stack pod can pass
+  while the Playground backend still fails because of auth-header shape or a
+  stale provider-qualified model id. Validate the BFF with both
+  `Authorization: Bearer <user-token>` and `x-forwarded-access-token:
+  <user-token>`.
 - If external inference returns `provider 'openai' credentials not found`, check
   that the provider Secret has both data key `api-key` and label
   `inference.networking.k8s.io/bbr-managed=true`.
@@ -259,7 +274,7 @@ Before declaring MaaS ready in a new or upgraded environment:
    - Nemotron `/v1/chat/completions` through the MaaS Gateway with the temporary
      `sk-oai-*` key, including structured tool-call output and token usage.
    - External OpenAI `/v1/chat/completions` through the MaaS Gateway with the
-     same temporary `sk-oai-*` key, `max_completion_tokens`, and token usage.
+     same temporary `sk-oai-*` key, `max_tokens`, and token usage.
    - If a Gen AI Playground exists, Secret-backed Llama Stack MaaS tokens,
      provider/model mapping for Nemotron and external GPT, Llama Stack
      `/v1/models` discovery, and `/v1/responses` completions for both models.

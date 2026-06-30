@@ -733,7 +733,8 @@ output and token usage, verifies unauthenticated inference is rejected, and
 revokes the temporary key. Do not treat raw
 OpenShift OAuth tokens as the inference credential; the generated MaaS policy
 requires `Authorization: Bearer <maas-api-key>` for chat/completions. External
-OpenAI `gpt-5.4-mini` requests use `max_completion_tokens`, not `max_tokens`.
+OpenAI `gpt-4o-mini` requests use the standard Chat Completions `max_tokens`
+field.
 
 If a Gen AI Playground already exists in `demo-sandbox`, the validator also
 checks that the generated `LlamaStackDistribution` and deployment use a
@@ -758,10 +759,17 @@ to end.
 
 The external model resources use the installed
 `maas.opendatahub.io/v1alpha1` schemas confirmed with `oc explain`. External
-OpenAI `gpt-5.4-mini` is represented by the DNS-safe MaaS resource name
-`gpt-5-4-mini` because the ExternalModel controller creates Kubernetes
-Services from the resource name. Keep the exact provider model ID in
-`spec.targetModel`. Re-run the schema checks after RHOAI or RHCL upgrades
+OpenAI `gpt-4o-mini` is represented by the same MaaS resource name and
+provider model ID: `ExternalModel.metadata.name: gpt-4o-mini` and
+`spec.targetModel: gpt-4o-mini`. This avoids the previous alias split between
+Kubernetes resource names and provider model names.
+
+The AI asset endpoints MaaS tab is expected to show `gpt-4o-mini`. After
+adding the model to a Playground, validate that the product-generated Llama
+Stack and dashboard BFF model lists expose a provider-qualified id ending in
+`/gpt-4o-mini` and that `/gen-ai/api/v1/lsd/responses` returns a response.
+
+Re-run the schema checks after RHOAI or RHCL upgrades
 before changing `MaaSModelRef`, `ExternalModel`, `MaaSSubscription`, or
 `MaaSAuthPolicy` manifests because the RHOAI 3.4 documentation examples and
 CRD verification section use different
@@ -770,40 +778,25 @@ API groups for some MaaS resources.
 ### Gen AI Playground Configuration
 
 The RHOAI dashboard creates the project `LlamaStackDistribution` when
-`ai-developer` creates a Gen AI Playground in `demo-sandbox`. That
-dashboard-created resource can contain placeholder MaaS tokens until it is
-bound to a real MaaS API key.
-
-After creating the Playground from the dashboard, run:
+`ai-developer` creates a Gen AI Playground in `demo-sandbox`. The normal
+workflow is to let the dashboard generate the Playground resources from the
+selected AI asset endpoints, then validate the generated Llama Stack model
+list and response path:
 
 ```bash
-./stage-220-models-as-a-service/configure-genai-playground.sh
 ./stage-220-models-as-a-service/validate.sh
 ```
 
 If you later update the Playground model selection, for example by checking or
 unchecking the GPT model, the dashboard can recreate the
-`LlamaStackDistribution`, ConfigMap, and generated deployment. That reset
-returns the generated resources to placeholder MaaS tokens and default provider
-types. Finish model selection first, wait for the Playground to become ready,
-then rerun `configure-genai-playground.sh`.
+`LlamaStackDistribution`, ConfigMap, and generated deployment. Finish model
+selection first, wait for the Playground to become ready, refresh the browser,
+then rerun validation.
 
-The helper:
-
-- logs in as `ai-developer` using `.env` credentials
-- revokes old active Playground keys named `genai-playground-demo-sandbox`
-  before creating the replacement key
-- creates a MaaS API key for `rhoai-developers-gpt-5-4-mini`
-- stores the key in the project Secret
-  `demo-sandbox/genai-playground-maas-api-key`
-- patches the `LlamaStackDistribution` token environment variables to read
-  from that Secret
-- patches `llama-stack-config` so Nemotron uses the MaaS vLLM route and
-  `gpt-5.4-mini` uses the OpenAI-compatible provider route through MaaS
-- recreates the generated Llama Stack deployment when needed, because the
-  operator can fail to merge `valueFrom` Secret refs over literal placeholder
-  token values
-- validates `/v1/responses` from inside the Llama Stack pod for both models
+`configure-genai-playground.sh` is a diagnostic repair tool, not the normal
+configuration path. Use it only when validation shows the dashboard-generated
+Llama Stack backend has placeholder tokens or stale model mappings and you
+need to recover the demo without recreating the Playground from the dashboard.
 
 Use the model IDs reported by the Llama Stack `/v1/models` API. They are
 provider-qualified, and the generated provider number can change when the
@@ -811,16 +804,20 @@ dashboard recreates a playground:
 
 ```text
 maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
-maas-vllm-inference-<m>/gpt-5.4-mini
+maas-vllm-inference-<m>/gpt-4o-mini
 ```
 
-The external GPT route intentionally uses the Llama Stack `remote::openai`
-provider with the MaaS Gateway base URL. The `remote::vllm` provider sends
-`max_tokens`, while OpenAI `gpt-5.4-mini` requires `max_completion_tokens`.
-Keeping GPT on the OpenAI-compatible provider preserves MaaS governance while
-matching the provider API shape. Preserve whichever `maas-vllm-inference-*`
-provider id the dashboard generated for GPT; the implementation behind that id
-is patched to `remote::openai`.
+The external GPT route should use the provider mapping selected by the
+product-generated Playground as long as the actual response path works. With
+`gpt-4o-mini`, the MaaS resource name and provider target match and the
+standard `max_tokens` field is accepted, so the normal dashboard-generated
+provider mapping should be validated before using any repair helper.
+
+For non-browser validation of the dashboard BFF path, use both
+`Authorization: Bearer <user-token>` and `x-forwarded-access-token:
+<user-token>`. A direct Llama Stack `/v1/responses` call is necessary but not
+sufficient evidence that the Gen AI Playground browser workflow is healthy;
+the dashboard BFF model list and response path must both validate.
 
 ### Access Posture
 
@@ -830,7 +827,7 @@ is patched to `remote::openai`.
 - `ai-developer` should not have direct namespace access to
   `models-as-a-service`; the intended path is OpenShift AI dashboard assets,
   Gen AI Playground, and MaaS-issued API keys.
-- External OpenAI `gpt-5.4-mini` access must go through MaaS and must be
+- External OpenAI `gpt-4o-mini` access must go through MaaS and must be
   documented as an external-provider data path where prompts leave the cluster.
   Provider credentials stay local and are never committed.
 

@@ -3,7 +3,7 @@
 Recommended Codex sub-agent settings:
 
 - Agent type: worker
-- Model: `gpt-5.4-mini`
+- Model: `gpt-4o-mini`
 - Reasoning effort: medium
 - Workspace: `/Users/adrina/Sandbox/rhoai3-demo`
 - Branch/worktree: current `rhoai34-refactoring` working tree
@@ -229,4 +229,3 @@ Do not:
 - Do not print secrets, tokens, kubeconfig content, or `.env`.
 - Do not keep increasing load after the endpoint is clearly unhealthy.
 ```
-

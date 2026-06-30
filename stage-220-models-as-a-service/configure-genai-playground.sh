@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# configure-genai-playground.sh - Bind a dashboard-created Gen AI Playground
-# LlamaStackDistribution to the Stage 220 MaaS models.
+# configure-genai-playground.sh - Diagnostic repair for a dashboard-created
+# Gen AI Playground that has stale MaaS credentials or model mappings.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,19 +39,21 @@ fi
 
 PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
-MAAS_SUBSCRIPTION="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-5-4-mini}"
-OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-mini}"
-OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-mini}"
+MAAS_SUBSCRIPTION="${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}"
+OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-4o-mini}"
+OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-4o-mini}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 PLAYGROUND_LSD_NAME="${RHOAI_PLAYGROUND_LSD_NAME:-lsd-genai-playground}"
 PLAYGROUND_CONFIGMAP="${RHOAI_PLAYGROUND_CONFIGMAP:-llama-stack-config}"
 PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas-api-key}"
-# Preserve the dashboard-created provider id so already-open Playground
-# sessions do not keep sending a stale model id after we switch GPT to the
-# OpenAI-compatible provider implementation.
+# Preserve the dashboard-created provider ids while changing the GPT provider
+# implementation to the OpenAI-compatible adapter. The browser must still
+# refresh after this helper so it uses the Llama Stack model id ending in the
+# provider target, for example /gpt-4o-mini.
 PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-vllm-inference-1}"
 PLAYGROUND_NEMOTRON_PROVIDER="${RHOAI_PLAYGROUND_NEMOTRON_PROVIDER_ID:-maas-vllm-inference-2}"
 PLAYGROUND_API_KEY_NAME="genai-playground-${PROJECT_NS}"
+FORCE_OPENAI_PROVIDER_PATCH="${RHOAI_PLAYGROUND_FORCE_OPENAI_PROVIDER_PATCH:-false}"
 CREATED_API_KEY_VALUE=""
 CREATED_API_KEY_ID=""
 
@@ -233,6 +235,11 @@ patch_llamastack_env() {
 patch_llamastack_config() {
   local host tmp
 
+  if [[ "$FORCE_OPENAI_PROVIDER_PATCH" != "true" ]]; then
+    echo "↷ Skipping Llama Stack provider rewrite. Set RHOAI_PLAYGROUND_FORCE_OPENAI_PROVIDER_PATCH=true only for a diagnosed provider-shape mismatch."
+    return 0
+  fi
+
   host="$(gateway_host)"
   tmp=$(mktemp "${TMPDIR:-/tmp}/rhoai-playground-config.XXXXXX")
   TMP_FILES+=("$tmp")
@@ -283,17 +290,31 @@ for provider in inference_providers:
             "tls_verify": "${env.VLLM_TLS_VERIFY:=true}",
         }
 
-for model in registered_models:
-    if model.get("provider_id") == gpt_provider or model.get("model_id") == openai_resource:
-        model["provider_id"] = gpt_provider
-        model["model_id"] = openai_resource
-        model["provider_model_id"] = openai_model
-        model["model_type"] = "llm"
-    elif model.get("provider_id") == nemotron_provider or model.get("model_id") == nemotron_model:
-        model["provider_id"] = nemotron_provider
-        model["model_id"] = nemotron_model
-        model["provider_model_id"] = nemotron_model
-        model["model_type"] = "llm"
+registered_models[:] = [
+    model for model in registered_models
+    if not (
+        model.get("provider_id") in {gpt_provider, nemotron_provider}
+        or model.get("model_id") in {
+            openai_resource,
+            openai_model,
+            nemotron_model,
+        }
+    )
+]
+
+def add_model(model_id, provider_id, provider_model_id, display_name=None):
+    model = {
+        "provider_id": provider_id,
+        "model_id": model_id,
+        "provider_model_id": provider_model_id,
+        "model_type": "llm",
+    }
+    if display_name:
+        model["metadata"] = {"display_name": display_name}
+    registered_models.append(model)
+
+add_model(nemotron_model, nemotron_provider, nemotron_model)
+add_model(openai_model, gpt_provider, openai_model, openai_model)
 
 checks = [
     any(p["provider_id"] == gpt_provider and p["provider_type"] == "remote::openai" for p in inference_providers),
@@ -325,7 +346,7 @@ recreate_playground_deployment() {
   oc delete deployment "$PLAYGROUND_LSD_NAME" -n "$PROJECT_NS" \
     --ignore-not-found=true --wait=true --insecure-skip-tls-verify=true >/dev/null
 
-  for _ in $(seq 1 36); do
+  for _ in $(seq 1 72); do
     if oc get deployment "$PLAYGROUND_LSD_NAME" -n "$PROJECT_NS" \
       --insecure-skip-tls-verify=true >/dev/null 2>&1 &&
       oc rollout status "deployment/${PLAYGROUND_LSD_NAME}" -n "$PROJECT_NS" \
@@ -420,4 +441,4 @@ patch_llamastack_env
 patch_llamastack_config
 recreate_playground_deployment
 validate_playground_responses
-echo "NOTE: If selected Playground models are changed in the dashboard, rerun this helper after the dashboard finishes recreating the Playground."
+echo "NOTE: This is a diagnostic repair path. Prefer recreating or updating the Playground through the RHOAI dashboard and validating with validate.sh before using provider rewrites."

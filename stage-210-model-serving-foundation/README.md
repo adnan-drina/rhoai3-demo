@@ -48,7 +48,7 @@ then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
 | Red Hat AI MaaS code assistant quickstart | Provides a Red Hat-maintained implementation reference for Nemotron 3 Nano on AWS `g6e.2xlarge`/L40S infrastructure, including vLLM arguments, resource sizing, MaaS `LLMInferenceService`, tiered access, and Grafana usage patterns. | [rh-ai-quickstart/maas-code-assistant](https://github.com/rh-ai-quickstart/maas-code-assistant) |
 
 This stage uses direct model serving, not Models-as-a-Service and not llm-d.
-MaaS governance and external OpenAI `gpt-5.4-mini` registration belong to
+MaaS governance and external OpenAI `gpt-4o-mini` registration belong to
 Stage 220. Distributed inference with llm-d remains a later scale-out option.
 EvalHub, MLflow, LMEval, judge-based evaluation, and risk assessment remain
 deferred to later MLOps/evaluation stages.
