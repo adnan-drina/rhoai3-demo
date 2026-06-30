@@ -646,6 +646,16 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   dashboard experience is complete until generated model AuthPolicy and
   TokenRateLimitPolicy resources are enforced and the dashboard/API checks
   pass for real demo users.
+- **Dependency-upgrade boundary observed on cluster-xgg8t:** approving the
+  broader RHCL dependency InstallPlan moved RHCL to `1.3.4` and kept Stage 220
+  functional, but the same plan failed for later dependency updates such as DNS
+  Operator `1.3.1` and Service Mesh `3.3.5`. OLM reported
+  `InstallComponentFailed` because generated MaaS Authorino `AuthConfig`
+  resources did not validate against the stricter incoming
+  `authconfigs.authorino.kuadrant.io` schema. Do not approve more dependency
+  plans or patch generated `AuthConfig` resources as a workaround. Hold the
+  validated operator set and require a Red Hat-supported replacement path plus
+  full Stage 220 validation before moving beyond it.
 
 ### Gen AI Playground accepts prompts but models do not reply
 

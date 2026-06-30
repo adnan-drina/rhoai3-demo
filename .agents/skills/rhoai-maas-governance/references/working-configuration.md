@@ -75,6 +75,13 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   active baseline, use `rhcl-operator.v1.3.4` as the latest supported 1.3.z
   compatibility hold because RHCL 1.4.0 is deprecated in the official release
   notes.
+- Do not approve RHCL dependency upgrades just because OLM offers them.
+  On `cluster-xgg8t`, RHCL `1.3.4` installed cleanly, but the combined
+  dependency plan for DNS Operator `1.3.1`, Service Mesh `3.3.5`, and
+  Authorino CRD changes failed because existing generated MaaS `AuthConfig`
+  resources did not validate against the stricter Authorino schema. Treat this
+  as an operator compatibility boundary and rerun full MaaS validation before
+  accepting any newer dependency set.
 - Enable `Tenant.spec.telemetry.metrics.captureUser` only as an explicit demo
   choice. The official guide defaults user capture off for privacy and
   cardinality reasons.
@@ -153,6 +160,13 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 - A newer RHCL CSV can generate Gateway WASM configuration rejected by the
   OpenShift gateway Envoy. Fix the operator lifecycle boundary first instead of
   papering over generated-resource failures.
+- A newer dependency InstallPlan can also fail before the new operators become
+  active if existing generated Authorino `AuthConfig` resources do not validate
+  against the incoming CRD schema. If OLM reports
+  `InstallComponentFailed` for `authconfigs.authorino.kuadrant.io`, do not
+  patch generated `AuthConfig` resources as the durable fix. Hold the working
+  operator set, record the failed CSVs, and wait for Red Hat guidance or a
+  validated replacement operator set.
 - On the active RHOAI 3.4 build, the generated `maas-api-key-cleanup` CronJob
   can point to `http://maas-api:8080` while the generated `maas-api` Service
   and Deployment expose HTTPS on `8443`. The generated
