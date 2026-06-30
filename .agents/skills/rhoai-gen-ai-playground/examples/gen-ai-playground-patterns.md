@@ -136,7 +136,7 @@ providers:
       config:
         api_token: ${env.VLLM_API_TOKEN_2:=fake}
         base_url: https://maas.<apps-domain>/models-as-a-service/nemotron-3-nano-30b-a3b/v1
-        max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+        max_tokens: ${env.VLLM_MAX_TOKENS:=512}
         tls_verify: ${env.VLLM_TLS_VERIFY:=true}
 models:
   - provider_id: maas-vllm-inference-1
@@ -162,6 +162,8 @@ Review points:
   provider model ID intentionally match.
 - Use Llama Stack `/v1/models` to discover the model IDs used by
   `/v1/responses`; they can include the provider ID prefix.
+- For MCP demos with Nemotron, keep the vLLM provider output default small
+  enough for MCP tool context. A 512-token default is the Stage 220 baseline.
 
 ## Troubleshooting Pointers
 
@@ -179,5 +181,5 @@ Review points:
   mismatch between the generated Llama Stack provider and the selected
   external model.
 - Missing MCP tab content points to missing platform-level MCP configuration.
-- Failed MCP tool calls usually require model card and vLLM runtime argument
-  review.
+- Failed MCP tool calls usually require model card, vLLM runtime argument,
+  output-token budget, MCP tool allowlist, and MCP pod memory review.

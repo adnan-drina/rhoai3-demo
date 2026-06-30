@@ -52,6 +52,7 @@ PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas
 # provider target, for example /gpt-4o-mini.
 PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-vllm-inference-1}"
 PLAYGROUND_NEMOTRON_PROVIDER="${RHOAI_PLAYGROUND_NEMOTRON_PROVIDER_ID:-maas-vllm-inference-2}"
+PLAYGROUND_VLLM_MAX_TOKENS="${RHOAI_PLAYGROUND_VLLM_MAX_TOKENS:-512}"
 PLAYGROUND_API_KEY_NAME="genai-playground-${PROJECT_NS}"
 FORCE_OPENAI_PROVIDER_PATCH="${RHOAI_PLAYGROUND_FORCE_OPENAI_PROVIDER_PATCH:-false}"
 CREATED_API_KEY_VALUE=""
@@ -208,7 +209,8 @@ patch_llamastack_env() {
 
   patch=$(oc get llamastackdistribution "$PLAYGROUND_LSD_NAME" -n "$PROJECT_NS" \
     -o json --insecure-skip-tls-verify=true |
-    jq -c --arg secret "$PLAYGROUND_SECRET" '
+    jq -c --arg secret "$PLAYGROUND_SECRET" --arg max_tokens "$PLAYGROUND_VLLM_MAX_TOKENS" '
+      (
       [.spec.server.containerSpec.env | to_entries[] |
        select(.value.name == "VLLM_API_TOKEN_1" or .value.name == "VLLM_API_TOKEN_2") |
        {
@@ -219,6 +221,25 @@ patch_llamastack_env() {
            valueFrom: {secretKeyRef: {name: $secret, key: "VLLM_API_TOKEN"}}
          }
        }]
+      )
+      +
+      (
+        if any(.spec.server.containerSpec.env[]?; .name == "VLLM_MAX_TOKENS") then
+          [.spec.server.containerSpec.env | to_entries[] |
+           select(.value.name == "VLLM_MAX_TOKENS") |
+           {
+             op: "replace",
+             path: ("/spec/server/containerSpec/env/" + (.key|tostring)),
+             value: {name: "VLLM_MAX_TOKENS", value: $max_tokens}
+           }]
+        else
+          [{
+            op: "add",
+            path: "/spec/server/containerSpec/env/-",
+            value: {name: "VLLM_MAX_TOKENS", value: $max_tokens}
+          }]
+        end
+      )
     ')
 
   if [[ "$patch" == "[]" ]]; then
@@ -229,16 +250,11 @@ patch_llamastack_env() {
   oc patch llamastackdistribution "$PLAYGROUND_LSD_NAME" -n "$PROJECT_NS" \
     --type=json -p "$patch" --insecure-skip-tls-verify=true >/dev/null
 
-  echo "✓ LlamaStackDistribution reads MaaS tokens from ${PLAYGROUND_SECRET}"
+  echo "✓ LlamaStackDistribution reads MaaS tokens from ${PLAYGROUND_SECRET} and sets VLLM_MAX_TOKENS=${PLAYGROUND_VLLM_MAX_TOKENS}"
 }
 
 patch_llamastack_config() {
   local host tmp
-
-  if [[ "$FORCE_OPENAI_PROVIDER_PATCH" != "true" ]]; then
-    echo "↷ Skipping Llama Stack provider rewrite. Set RHOAI_PLAYGROUND_FORCE_OPENAI_PROVIDER_PATCH=true only for a diagnosed provider-shape mismatch."
-    return 0
-  fi
 
   host="$(gateway_host)"
   tmp=$(mktemp "${TMPDIR:-/tmp}/rhoai-playground-config.XXXXXX")
@@ -249,12 +265,14 @@ patch_llamastack_config() {
     --insecure-skip-tls-verify=true > "$tmp"
 
   python3 - "$tmp" "$host" "$OPENAI_MODEL_RESOURCE" "$OPENAI_MODEL_ID" \
-    "$NEMOTRON_MODEL_RESOURCE" "$PLAYGROUND_GPT_PROVIDER" "$PLAYGROUND_NEMOTRON_PROVIDER" <<'PY'
+    "$NEMOTRON_MODEL_RESOURCE" "$PLAYGROUND_GPT_PROVIDER" "$PLAYGROUND_NEMOTRON_PROVIDER" \
+    "$PLAYGROUND_VLLM_MAX_TOKENS" "$FORCE_OPENAI_PROVIDER_PATCH" <<'PY'
 from pathlib import Path
 import sys
 import yaml
 
-path, host, openai_resource, openai_model, nemotron_model, gpt_provider, nemotron_provider = sys.argv[1:]
+path, host, openai_resource, openai_model, nemotron_model, gpt_provider, nemotron_provider, vllm_max_tokens, force_openai_provider_patch = sys.argv[1:]
+force_openai_provider_patch = force_openai_provider_patch == "true"
 text = Path(path).read_text()
 config = yaml.safe_load(text)
 inference_providers = config["providers"]["inference"]
@@ -274,7 +292,7 @@ gpt_provider = provider_for_resource(openai_resource, gpt_provider)
 nemotron_provider = provider_for_resource(nemotron_model, nemotron_provider)
 
 for provider in inference_providers:
-    if provider["provider_id"] == gpt_provider:
+    if force_openai_provider_patch and provider["provider_id"] == gpt_provider:
         provider["provider_type"] = "remote::openai"
         provider["config"] = {
             "api_key": "${env.VLLM_API_TOKEN_1:=fake}",
@@ -286,42 +304,51 @@ for provider in inference_providers:
         provider["config"] = {
             "api_token": "${env.VLLM_API_TOKEN_2:=fake}",
             "base_url": endpoint(nemotron_model),
-            "max_tokens": "${env.VLLM_MAX_TOKENS:=4096}",
+            "max_tokens": "${env.VLLM_MAX_TOKENS:=" + vllm_max_tokens + "}",
             "tls_verify": "${env.VLLM_TLS_VERIFY:=true}",
         }
 
-registered_models[:] = [
-    model for model in registered_models
-    if not (
-        model.get("provider_id") in {gpt_provider, nemotron_provider}
-        or model.get("model_id") in {
-            openai_resource,
-            openai_model,
-            nemotron_model,
+if force_openai_provider_patch:
+    registered_models[:] = [
+        model for model in registered_models
+        if not (
+            model.get("provider_id") in {gpt_provider, nemotron_provider}
+            or model.get("model_id") in {
+                openai_resource,
+                openai_model,
+                nemotron_model,
+            }
+        )
+    ]
+
+    def add_model(model_id, provider_id, provider_model_id, display_name=None):
+        model = {
+            "provider_id": provider_id,
+            "model_id": model_id,
+            "provider_model_id": provider_model_id,
+            "model_type": "llm",
         }
-    )
-]
+        if display_name:
+            model["metadata"] = {"display_name": display_name}
+        registered_models.append(model)
 
-def add_model(model_id, provider_id, provider_model_id, display_name=None):
-    model = {
-        "provider_id": provider_id,
-        "model_id": model_id,
-        "provider_model_id": provider_model_id,
-        "model_type": "llm",
-    }
-    if display_name:
-        model["metadata"] = {"display_name": display_name}
-    registered_models.append(model)
-
-add_model(nemotron_model, nemotron_provider, nemotron_model)
-add_model(openai_model, gpt_provider, openai_model, openai_model)
+    add_model(nemotron_model, nemotron_provider, nemotron_model)
+    add_model(openai_model, gpt_provider, openai_model, openai_model)
 
 checks = [
-    any(p["provider_id"] == gpt_provider and p["provider_type"] == "remote::openai" for p in inference_providers),
     any(p["provider_id"] == nemotron_provider and p["provider_type"] == "remote::vllm" for p in inference_providers),
-    any(m.get("provider_id") == gpt_provider and m.get("provider_model_id") == openai_model for m in registered_models),
-    any(m.get("provider_id") == nemotron_provider and m.get("provider_model_id") == nemotron_model for m in registered_models),
+    any(
+        p["provider_id"] == nemotron_provider
+        and p.get("config", {}).get("max_tokens") == "${env.VLLM_MAX_TOKENS:=" + vllm_max_tokens + "}"
+        for p in inference_providers
+    ),
 ]
+if force_openai_provider_patch:
+    checks.extend([
+        any(p["provider_id"] == gpt_provider and p["provider_type"] == "remote::openai" for p in inference_providers),
+        any(m.get("provider_id") == gpt_provider and m.get("provider_model_id") == openai_model for m in registered_models),
+        any(m.get("provider_id") == nemotron_provider and m.get("provider_model_id") == nemotron_model for m in registered_models),
+    ])
 if not all(checks):
     raise SystemExit("failed to produce required Llama Stack provider/model mappings")
 
@@ -332,7 +359,11 @@ PY
     --from-file=config.yaml="$tmp" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
-  echo "✓ Llama Stack config uses vLLM for Nemotron and OpenAI-compatible provider for ${OPENAI_MODEL_ID} through MaaS"
+  if [[ "$FORCE_OPENAI_PROVIDER_PATCH" == "true" ]]; then
+    echo "✓ Llama Stack config uses vLLM for Nemotron and OpenAI-compatible provider for ${OPENAI_MODEL_ID} through MaaS"
+  else
+    echo "✓ Llama Stack config keeps dashboard provider mappings and sets Nemotron max_tokens default to ${PLAYGROUND_VLLM_MAX_TOKENS}"
+  fi
 }
 
 recreate_playground_deployment() {

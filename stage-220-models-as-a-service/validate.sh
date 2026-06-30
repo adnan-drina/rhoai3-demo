@@ -37,6 +37,7 @@ MCP_CONFIGMAP="${RHOAI_OPENSHIFT_MCP_CONFIGMAP:-openshift-mcp-config}"
 MCP_DISCOVERY_CONFIGMAP="${RHOAI_MCP_DISCOVERY_CONFIGMAP:-gen-ai-aa-mcp-servers}"
 MCP_DISCOVERY_KEY="${RHOAI_OPENSHIFT_MCP_DISCOVERY_KEY:-OpenShift-MCP}"
 MCP_IMAGE="${RHOAI_OPENSHIFT_MCP_IMAGE:-quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server:latest}"
+PLAYGROUND_VLLM_MAX_TOKENS="${RHOAI_PLAYGROUND_VLLM_MAX_TOKENS:-512}"
 # Keep the dashboard-generated provider id stable while changing the provider
 # implementation to remote::openai. The generated provider number can change
 # when the dashboard recreates a playground, so validation discovers model ids
@@ -871,17 +872,92 @@ if resource_exists "configmap/${MCP_CONFIGMAP}" "$MCP_NS"; then
     --insecure-skip-tls-verify=true >"$MCP_CONFIG_BODY" 2>/dev/null || true
   if grep -Fq 'read_only = true' "$MCP_CONFIG_BODY" &&
     grep -Fq 'toolsets = ["core", "config"]' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'enabled_tools = [' "$MCP_CONFIG_BODY" &&
+    grep -Fq '"pods_list"' "$MCP_CONFIG_BODY" &&
+    grep -Fq '"events_list"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "Secret"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ConfigMap"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ClusterRoleBinding"' "$MCP_CONFIG_BODY"; then
     R="pass"
   else
-    R="missing read_only, restricted toolsets, or denied sensitive resources"
+    R="missing read_only, restricted toolsets, enabled inspection tools, or denied sensitive resources"
   fi
 else
   R="missing"
 fi
-check "OpenShift MCP config is read-only and denies sensitive resources" "$R"
+check "OpenShift MCP config is read-only, small-surface, and denies sensitive resources" "$R"
+
+if resource_exists "deployment/${PLAYGROUND_LSD_NAME}" "$PROJECT_NS"; then
+  MCP_RESPONSE_OUTPUT=$(oc exec "deployment/${PLAYGROUND_LSD_NAME}" -n "$PROJECT_NS" -- python3 -c "
+import json
+import sys
+import urllib.error
+import urllib.request
+
+with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
+    listed_models = json.loads(resp.read()).get('data', [])
+
+model = None
+target = '${NEMOTRON_MODEL_RESOURCE}'
+for item in listed_models:
+    model_id = item.get('identifier') or item.get('id') or ''
+    if model_id == target or model_id.endswith('/' + target):
+        model = model_id
+        break
+if not model:
+    raise SystemExit('nemotron model target not listed')
+
+payload = {
+    'model': model,
+    'input': 'Use OpenShift-MCP pods_list. Reply under 20 words.',
+    'tools': [{
+        'type': 'mcp',
+        'server_label': '${MCP_DISCOVERY_KEY}',
+        'server_url': 'http://${MCP_SERVER_NAME}.${MCP_NS}.svc:8080/mcp',
+        'require_approval': 'never',
+        'allowed_tools': ['pods_list'],
+    }],
+    'tool_choice': 'auto',
+    'max_tool_calls': 2,
+    'max_output_tokens': int('${PLAYGROUND_VLLM_MAX_TOKENS}'),
+    'temperature': 0,
+    'stream': False,
+}
+req = urllib.request.Request(
+    'http://127.0.0.1:8321/v1/responses',
+    data=json.dumps(payload).encode(),
+    headers={'content-type': 'application/json'},
+    method='POST',
+)
+try:
+    with urllib.request.urlopen(req, timeout=240) as resp:
+        body = resp.read().decode('utf-8', 'replace')
+        data = json.loads(body)
+        output_types = [item.get('type') for item in data.get('output', [])]
+        if data.get('error'):
+            print('error=' + json.dumps(data.get('error')))
+            sys.exit(1)
+        if 'mcp_list_tools' not in output_types:
+            print('missing mcp_list_tools output, types=' + ','.join(output_types))
+            sys.exit(1)
+        print('OK mcp response path output_types=' + ','.join(output_types))
+except urllib.error.HTTPError as err:
+    body = err.read().decode('utf-8', 'replace')
+    print('http=' + str(err.code) + ' body=' + body[:240].replace('\\n', ' '))
+    sys.exit(1)
+except Exception as err:
+    print(repr(err))
+    sys.exit(1)
+" 2>&1 || true)
+  if grep -q "OK mcp response path" <<<"$MCP_RESPONSE_OUTPUT"; then
+    R="pass"
+  else
+    R="mcp=${MCP_RESPONSE_OUTPUT//$'\n'/ }"
+  fi
+else
+  R="playground deployment missing"
+fi
+check "Gen AI Playground can reach OpenShift MCP through Llama Stack Responses API" "$R"
 
 if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")

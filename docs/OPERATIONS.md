@@ -748,9 +748,9 @@ OpenShift-specific MCP server project, and is discovered through
 `redhat-ods-applications/gen-ai-aa-mcp-servers`. Validation checks that the
 server deployment is available, the Service has endpoints, the ServiceAccount
 is bound to the `view` ClusterRole, and the MCP `config.toml` sets
-`read_only = true`, enables only `core` and `config` toolsets, and denies
-`Secret`, `ConfigMap`, and RBAC resources. Treat this as preview/demo tool
-context, not production automation.
+`read_only = true`, enables only `core` and `config` toolsets, allowlists the
+small demo inspection tool set, and denies `Secret`, `ConfigMap`, and RBAC
+resources. Treat this as preview/demo tool context, not production automation.
 
 If validation fails on the RHCL pin or on MaaS Gateway generated policy
 filters, inspect the installed RHCL CSV, generated Kuadrant AuthPolicy and
@@ -844,6 +844,14 @@ status. Do not use this path for write actions. The MCP server is configured
 read-only and denies Secrets, ConfigMaps, and RBAC objects even though the
 ServiceAccount has broad cluster `view` access.
 
+Keep the MCP tool surface intentionally small. Stage 220 allowlists only
+namespace, pod, event, and node inspection tools because the MCP tool schema
+is inserted into the Llama Stack Responses API context. A broad tool catalog
+can consume most of Nemotron's 8192-token context or cause the MCP server to
+consume excessive memory while listing tools. The diagnostic Playground
+repair script sets the vLLM provider output default to 512 tokens so MCP
+requests leave room for tool context and a short answer.
+
 Useful checks:
 
 ```bash
@@ -851,6 +859,7 @@ oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o yaml
 oc get deployment,service,endpoints openshift-mcp -n rhoai-mcp
 oc get configmap openshift-mcp-config -n rhoai-mcp -o yaml
 oc get clusterrolebinding rhoai-demo-openshift-mcp-view -o yaml
+oc logs deployment/openshift-mcp -n rhoai-mcp --since=10m
 ```
 
 ### Access Posture

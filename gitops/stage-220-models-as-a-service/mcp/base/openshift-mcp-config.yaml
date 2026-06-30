@@ -18,6 +18,13 @@ data:
     list_output = "yaml"
     cluster_provider_strategy = "in-cluster"
     toolsets = ["core", "config"]
+    enabled_tools = [
+      "namespaces_list",
+      "pods_list",
+      "pods_get",
+      "events_list",
+      "nodes_top"
+    ]
     disabled_tools = [
       "pods_delete",
       "pods_exec",
@@ -27,7 +34,7 @@ data:
       "resources_scale",
       "nodes_log"
     ]
-    server_instructions = "Use this read-only OpenShift MCP server for cluster status, events, pods, projects, and resource inspection. Do not request secrets, configmaps, RBAC objects, or write actions."
+    server_instructions = "Use this read-only OpenShift MCP server for namespace, pod, event, and node status inspection. Do not request secrets, configmaps, RBAC objects, or write actions."
 
     [http]
     read_header_timeout = "10s"

@@ -821,6 +821,45 @@ the pod logs:
 oc logs deployment/openshift-mcp -n rhoai-mcp --since=10m
 ```
 
+### OpenShift MCP appears in Playground but returns no model response
+
+- **Symptom:** `OpenShift-MCP` is visible and selectable in the Playground,
+  but a chat message with MCP enabled returns an empty response, no visible
+  answer, or an upstream connection error.
+- **Likely causes:**
+  - Llama Stack can reach the MCP server, but the MCP tool schema plus prompt
+    exceeds the selected model's effective context/output budget.
+  - The OpenShift MCP tool catalog is too broad for the demo, causing the
+    model to spend the response budget listing tools rather than calling one.
+  - The MCP pod hit its memory limit and was OOMKilled while serving tool-list
+    requests.
+- **Confirm:**
+
+```bash
+oc logs deployment/lsd-genai-playground -n demo-sandbox --since=30m \
+  | grep -E 'maximum context length|MCP|mcp|Provider SDK error'
+oc describe pod -n rhoai-mcp -l app.kubernetes.io/name=openshift-mcp \
+  | grep -E 'OOMKilled|Restart Count|Limits|Requests'
+oc get configmap openshift-mcp-config -n rhoai-mcp \
+  -o jsonpath='{.data.config\.toml}'
+```
+
+- **Fix:** keep the Stage 220 OpenShift MCP server read-only and small-surface.
+  The GitOps config must include an `enabled_tools` allowlist for the intended
+  demo inspection tools and enough memory for tool-list handling. If the
+  dashboard-created Llama Stack backend still uses a 4096-token vLLM output
+  default for Nemotron, rerun:
+
+```bash
+./stage-220-models-as-a-service/configure-genai-playground.sh
+./stage-220-models-as-a-service/validate.sh
+```
+
+The repair script should leave the vLLM provider at a smaller output default
+such as 512 tokens. This is not a model-quality setting; it prevents MCP tool
+context from colliding with Nemotron's 8192-token context window in the
+Playground.
+
 ### External OpenAI MaaS model stays Pending
 
 - **Symptom:** `ExternalModel` exists, but `MaaSModelRef` is `Pending` and the

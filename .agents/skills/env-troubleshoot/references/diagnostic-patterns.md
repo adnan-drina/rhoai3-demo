@@ -31,6 +31,7 @@ Known symptom → cause → fix patterns for the RHOAI demo active baseline.
 | Playground shows no MCP servers | Missing ConfigMap | Verify `gen-ai-aa-mcp-servers` in `redhat-ods-applications` |
 | Dashboard MCP servers show "Error" | Transport mismatch: gen-ai backend defaults to `streamable-http` but server only supports SSE | Add `"transport": "sse"` to ConfigMap JSON. Check: `curl /gen-ai/api/v1/mcp/status?server_url=<url>` |
 | Dashboard MCP shows "Token Required" | `streamable-http` POST to `/sse` returns 400 (needs SSE session) | Change URL to `/mcp` (if server supports streamable-http) or add `"transport": "sse"` |
+| Playground MCP returns empty response or no visible answer | MCP tool schema and model output budget exceed the effective context, or the MCP pod was OOMKilled while listing tools | Check Llama Stack logs for `maximum context length`, check MCP pod restart reason, reduce MCP `enabled_tools`, raise MCP memory, and keep the Playground vLLM output default near 512 for Nemotron |
 | Model scaling overwritten | Used `oc scale` (imperative) | Use `oc patch inferenceservice` (declarative) |
 | llama-stack-client HTTP 426 | Client/server version mismatch | Pin the client to the active RHOAI 3.4 Llama Stack server line; the prior Step 07 implementation used `llama-stack-client>=0.7,<0.8` after 0.4 clients failed |
 | Docling KFP component 404 | Old v1alpha API path | Change to `/v1/convert/file` |

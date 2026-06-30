@@ -30,7 +30,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | Developer access | `ai-developer` does not get direct namespace access to `models-as-a-service`; the user path is AI asset endpoints, MaaS API keys, and OpenAI-compatible MaaS endpoints |
 | Admin access | `ai-admin` maps to `rhods-admins` and can administer the MaaS namespace and MaaS dashboard policy surfaces |
 | Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`; validate product-generated model discovery and responses for Nemotron and external `gpt-4o-mini` before using any diagnostic repair helper |
-| OpenShift MCP | read-only OpenShift MCP server in `rhoai-mcp`, discovered through `redhat-ods-applications/gen-ai-aa-mcp-servers` as `OpenShift-MCP`; config sets `read_only = true`, `toolsets = ["core", "config"]`, and denies `Secret`, `ConfigMap`, and RBAC resources |
+| OpenShift MCP | read-only OpenShift MCP server in `rhoai-mcp`, discovered through `redhat-ods-applications/gen-ai-aa-mcp-servers` as `OpenShift-MCP`; config sets `read_only = true`, `toolsets = ["core", "config"]`, an `enabled_tools` allowlist for namespace/pod/event/node inspection, and denies `Secret`, `ConfigMap`, and RBAC resources |
 
 ## Design Decisions
 
@@ -39,8 +39,9 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   model selection, but they do not replace the product-documented MaaS CRs.
 - For Stage 220 MCP context, use the newer OpenShift MCP server source and Red
   Hat preview guidance. Register it through the RHOAI Gen AI Playground MCP
-  discovery ConfigMap, keep it read-only, and keep sensitive resources denied.
-  Do not use MCP as a back door around MaaS model governance or OpenShift RBAC.
+  discovery ConfigMap, keep it read-only, keep sensitive resources denied, and
+  allowlist only the small set of demo inspection tools. Do not use MCP as a
+  back door around MaaS model governance or OpenShift RBAC.
 - Publish the local Nemotron model from `models-as-a-service`, not
   `demo-sandbox`. MaaS-published models must have the `MaaSModelRef` in the
   backend namespace, and the demo needs a clean separation between provider
@@ -159,6 +160,15 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   `/gen-ai/api/v1/lsd/models?namespace=<project>` lists the external model as
   a selectable provider-qualified ID and `/gen-ai/api/v1/lsd/responses`
   succeeds with that listed model ID.
+- MCP readiness requires more than the discovery ConfigMap. Validate from the
+  project Llama Stack server that `/v1/responses` can receive an
+  `mcp_list_tools` result from `OpenShift-MCP`. If the claim is model-driven
+  tool use, require an actual `mcp_call`; otherwise present MCP as available
+  context, not as a completed agent action.
+- For the MaaS-published Nemotron model, do not leave the Playground vLLM
+  provider default output budget at 4096 for MCP demos. MCP tool schemas and
+  server instructions consume context; use a smaller default such as 512
+  tokens so the request fits inside the model's 8192-token context window.
 - External OpenAI requests for `gpt-4o-mini` use the standard
   `max_tokens` Chat Completions field.
 - The real dashboard BFF path is a separate validation gate. Direct
@@ -167,6 +177,11 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   stale provider-qualified model id. Validate the BFF with both
   `Authorization: Bearer <user-token>` and `x-forwarded-access-token:
   <user-token>`.
+- If Playground MCP appears to hang or return no visible answer, inspect
+  Llama Stack for context-length errors and inspect the MCP pod for OOMKills.
+  The observed failure mode on the fresh environment was a combination of
+  broad MCP tool-list context, a 4096-token vLLM output default, and an MCP pod
+  memory limit that was too low for repeated tool-list requests.
 - If external inference returns `provider 'openai' credentials not found`, check
   that the provider Secret has both data key `api-key` and label
   `inference.networking.k8s.io/bbr-managed=true`.

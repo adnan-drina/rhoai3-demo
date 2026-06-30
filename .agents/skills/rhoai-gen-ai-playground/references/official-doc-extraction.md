@@ -95,6 +95,10 @@ Source-grounded implementation points:
 - Run with `read_only = true` for Stage 220-style demos.
 - Enable only needed toolsets to reduce tool surface and model confusion. For
   the MaaS demo, use `toolsets = ["core", "config"]`.
+- Use the OpenShift MCP server `enabled_tools` allowlist for the demo
+  inspection tools instead of exposing the whole toolset. A smaller tool
+  catalog reduces Llama Stack Responses API context size and improves model
+  tool selection.
 - Deny sensitive resource access in `config.toml`, especially `Secret`,
   `ConfigMap`, `Role`, `RoleBinding`, `ClusterRole`, and
   `ClusterRoleBinding`.
@@ -131,6 +135,12 @@ can cause deployment failure.
 
 If the model or runtime is not configured correctly, RAG document search or MCP
 tool execution can fail without a clear user-facing error.
+
+In this demo, MCP tool-list responses are part of the model context and output
+budget. For the MaaS-published Nemotron model with an 8192-token context, keep
+the Playground vLLM provider output default low enough for MCP context, for
+example 512 tokens. A 4096-token default can combine with MCP tool context and
+produce a context-length error or an empty response in the Playground.
 
 The official guide includes a Qwen model example for field placement. Treat it
 as an example, not as this demo's default model choice.

@@ -129,6 +129,11 @@ runbooks, GitOps changes, or demo scripts.
   in user-facing material.
 - The OpenShift MCP server runs with `read_only = true`.
 - The OpenShift MCP server enables only required toolsets.
+- The OpenShift MCP server uses an `enabled_tools` allowlist for the specific
+  demo inspection tools, so Llama Stack does not expose an unnecessarily large
+  tool schema to the selected model.
+- The OpenShift MCP server has enough memory for tool-list handling and does
+  not show recent `OOMKilled` restarts.
 - Sensitive resource types are denied in the MCP server config: `Secret`,
   `ConfigMap`, `Role`, `RoleBinding`, `ClusterRole`, and
   `ClusterRoleBinding`.
@@ -137,8 +142,14 @@ runbooks, GitOps changes, or demo scripts.
 - The MCP Service URL in `gen-ai-aa-mcp-servers` points to a ready Service with
   endpoints.
 - The selected model supports tool calling.
+- The selected model has a small enough output-token budget for MCP context.
+  For the Stage 220 MaaS-published Nemotron model, validate a 512-token
+  provider default before demonstrating MCP.
 - Token authorization behavior is documented as browser-session scoped.
-- The demo verifies that the model uses the selected MCP tool.
+- The demo verifies MCP through the Llama Stack Responses API. At minimum,
+  validation must prove that the project Llama Stack server receives an
+  `mcp_list_tools` response from the configured server; when model/tool
+  behavior is the claim, validation must also prove a real `mcp_call`.
 
 ## Export, Update, And Delete Review
 
