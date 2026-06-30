@@ -1,9 +1,11 @@
 # Prompt Engineering Reference
 
-## Active Direct-RAG Prompt
+## Active Prompts
 
 The active Stage 230 chatbot prompt lives in
 `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/prompts.py`.
+
+RAG mode uses:
 
 ```text
 You are a helpful enterprise AI assistant. Answer questions using the provided
@@ -12,7 +14,15 @@ clearly. Keep the answer concise and include source names when context is
 available.
 ```
 
-Context is injected as:
+Model-only mode uses:
+
+```text
+You are a helpful enterprise AI assistant. Answer questions directly from the
+model's general capabilities. Do not claim to have used private documents,
+retrieved context, or source citations.
+```
+
+RAG context is injected as:
 
 ```text
 Use this private RAG context to answer the question.
@@ -38,7 +48,7 @@ when changing prompts or adding agent/tool paths:
 | Needs explicit tool hints | Tool names may not be discovered reliably | Add concise tool hints in future agent prompts |
 | Retry on failure works | Short retry prompts can help tool flows | Use concise retry instruction only |
 
-## Direct-RAG Guidelines
+## RAG And Model-Only Guidelines
 
 - Keep the system prompt short.
 - Keep retrieval context bounded with `RAG_MAX_CONTEXT_CHARS`.
@@ -48,6 +58,8 @@ when changing prompts or adding agent/tool paths:
   citation precision.
 - If no context is retrieved, prefer a clear "not enough private context"
   answer over a general-knowledge answer.
+- In model-only mode, skip vector-store search and do not claim private
+  document grounding or citations.
 
 ## Future Agent/MCP Guidelines
 

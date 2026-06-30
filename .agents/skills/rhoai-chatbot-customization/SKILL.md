@@ -10,8 +10,9 @@ metadata:
 description: >
   Guide changes to the Stage 230 private RAG Streamlit chatbot. Use when the
   user asks to customize the chatbot, update direct-RAG prompts, change
-  suggested questions, fix Llama Stack client compatibility, inspect RAG
-  retrieval behavior, or prepare the app for later MCP and guardrails stages.
+  suggested questions, switch between RAG and model-only answer behavior, fix
+  Llama Stack client compatibility, inspect RAG retrieval behavior, or prepare
+  the app for later MCP and guardrails stages.
   The active app is a repo-owned implementation under
   stage-230-private-data-rag/chatbot/rhoai_rag_chatbot, not a copied
   quickstart UI. Do NOT use for Llama Stack server/provider/vector-store
@@ -25,8 +26,9 @@ description: >
 Structured workflow for modifying the active Stage 230 private RAG chatbot. The
 chatbot is a small Streamlit app backed by the Stage 230
 `LlamaStackDistribution`. It implements direct RAG over the `whoami` vector
-store and keeps explicit, disabled-by-default integration boundaries for future
-MCP tool calling and product guardrails.
+store, model-only comparison against the same governed model, and explicit,
+disabled-by-default integration boundaries for future MCP tool calling and
+product guardrails.
 
 Use `rhoai-llama-stack` for the Llama Stack platform beneath this chatbot:
 `LlamaStackDistribution`, providers, vector stores, OpenAI-compatible APIs,
@@ -56,7 +58,7 @@ private-rag-chatbot (Streamlit)
   app.py                  UI: Chat and Inspect tabs
   config.py               environment-backed app contract
   llama_stack_gateway.py  models, vector stores, search, chat completions
-  prompts.py              direct-RAG prompt and context formatting
+  prompts.py              RAG and model-only prompt and context formatting
   mcp.py                  future MCP connector discovery/tool contract
   guardrails.py           future guardrails decision boundary
 
@@ -67,7 +69,7 @@ Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
 
 ## When To Use
 
-- Changing the direct-RAG system prompt or context formatting
+- Changing the direct-RAG system prompt, model-only prompt, or context formatting
 - Adding, removing, or editing suggested questions
 - Fixing model or vector-store selection behavior
 - Fixing `llama-stack-client` compatibility after a RHOAI/Llama Stack update
@@ -80,7 +82,7 @@ Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
 | File | What to edit |
 |------|-------------|
 | `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/app.py` | Streamlit UI, chat flow, Inspect tab, state handling |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/prompts.py` | Direct-RAG system prompt and context message format |
+| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/prompts.py` | RAG and model-only system prompts and context message format |
 | `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/llama_stack_gateway.py` | Llama Stack client adapter, model list, vector search, completions |
 | `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/config.py` | Environment variables and defaults |
 | `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/mcp.py` | Future MCP connector discovery and Responses API tool contract |
@@ -101,14 +103,17 @@ Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
    version and run the Stage 230 validator. A stale client fails with HTTP 426
    `Client version ... is not compatible with server version ...`.
 
-### Change Direct-RAG Behavior
+### Change Answer Behavior
 
-1. Edit `prompts.py` for system prompt or context formatting.
+1. Edit `prompts.py` for RAG prompt, model-only prompt, or context formatting.
 2. Edit `llama_stack_gateway.py` only when Llama Stack response shape or API use
    changes.
-3. Keep answers grounded in retrieved context. If no context is retrieved, the
-   answer should say so rather than inventing private facts.
-4. Validate with a whoami question from `RAG_QUESTION_SUGGESTIONS`.
+3. In RAG mode, keep answers grounded in retrieved context. If no context is
+   retrieved, the answer should say so rather than inventing private facts.
+4. In model-only mode, skip vector-store search and do not claim private
+   document grounding or source citations.
+5. Validate by asking the same whoami question in both `RAG` and `Model only`
+   modes.
 
 ### Change Suggested Questions
 

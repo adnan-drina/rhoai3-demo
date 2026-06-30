@@ -12,7 +12,7 @@ from rhoai_rag_chatbot.config import ChatbotConfig, load_config
 from rhoai_rag_chatbot.guardrails import GuardrailsGateway
 from rhoai_rag_chatbot.llama_stack_gateway import LlamaStackGateway, SearchHit, VectorStoreRef
 from rhoai_rag_chatbot.mcp import McpRegistry
-from rhoai_rag_chatbot.prompts import build_rag_messages
+from rhoai_rag_chatbot.prompts import build_model_only_messages, build_rag_messages
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -58,6 +58,9 @@ def _render_history() -> None:
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            mode = message.get("mode")
+            if message["role"] == "assistant" and mode:
+                st.caption(f"Mode: {mode}")
             hits = message.get("hits") or []
             if hits:
                 _render_hits(hits)
@@ -136,14 +139,24 @@ def _chat(config: ChatbotConfig, gateway: LlamaStackGateway, models: list[str], 
             models,
             index=_pick_default(models, config.default_model),
         )
-        store_options = stores
-        selected_store = st.selectbox(
-            "Knowledge base",
-            store_options,
-            index=_pick_default([store.name for store in store_options], config.default_vector_store),
-            format_func=_store_label,
-        ) if store_options else None
-        top_k = st.slider("Retrieved chunks", 1, 10, min(max(config.top_k, 1), 10))
+        answer_mode = st.radio(
+            "Answer mode",
+            ["RAG", "Model only"],
+            index=0,
+            horizontal=True,
+        )
+        rag_enabled = answer_mode == "RAG"
+        selected_store = None
+        top_k = config.top_k
+        if rag_enabled:
+            store_options = stores
+            selected_store = st.selectbox(
+                "Knowledge base",
+                store_options,
+                index=_pick_default([store.name for store in store_options], config.default_vector_store),
+                format_func=_store_label,
+            ) if store_options else None
+            top_k = st.slider("Retrieved chunks", 1, 10, min(max(config.top_k, 1), 10))
         temperature = st.slider("Temperature", 0.0, 1.0, config.temperature, 0.05)
         max_tokens = st.slider("Max output tokens", 128, 2048, min(max(config.max_tokens, 128), 2048), 64)
 
@@ -152,10 +165,11 @@ def _chat(config: ChatbotConfig, gateway: LlamaStackGateway, models: list[str], 
         st.caption(f"Guardrails: {guardrails.status().status}")
 
     st.title(config.title)
-    selected_question = _suggestion_buttons(config, selected_store)
+    selected_question = _suggestion_buttons(config, selected_store) if rag_enabled else None
     _render_history()
 
-    prompt = selected_question or st.chat_input("Ask about the private knowledge base")
+    prompt_placeholder = "Ask about the private knowledge base" if rag_enabled else "Ask the model directly"
+    prompt = selected_question or st.chat_input(prompt_placeholder)
     if not prompt:
         return
 
@@ -173,16 +187,24 @@ def _chat(config: ChatbotConfig, gateway: LlamaStackGateway, models: list[str], 
 
     with st.chat_message("assistant"):
         hits: list[SearchHit] = []
-        if selected_store is not None:
+        if rag_enabled and selected_store is not None:
             with st.spinner("Retrieving private context"):
                 hits = gateway.search(selected_store.id, prompt, top_k)
             if hits:
                 _render_hits(hits)
             else:
                 st.info("No private context was retrieved.")
+        elif rag_enabled:
+            st.info("No knowledge base is available.")
+        else:
+            st.caption("Retrieval skipped.")
 
         with st.spinner("Generating answer"):
-            messages = build_rag_messages(prompt, hits, config.max_context_chars)
+            messages = (
+                build_rag_messages(prompt, hits, config.max_context_chars)
+                if rag_enabled
+                else build_model_only_messages(prompt)
+            )
             try:
                 answer = gateway.complete(model, messages, temperature=temperature, max_tokens=max_tokens)
             except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -195,8 +217,9 @@ def _chat(config: ChatbotConfig, gateway: LlamaStackGateway, models: list[str], 
             st.warning(answer)
         else:
             st.markdown(answer or "The model returned an empty response.")
+            st.caption(f"Mode: {answer_mode}")
 
-    st.session_state.messages.append({"role": "assistant", "content": answer, "hits": hits})
+    st.session_state.messages.append({"role": "assistant", "content": answer, "hits": hits, "mode": answer_mode})
 
 
 def main() -> None:

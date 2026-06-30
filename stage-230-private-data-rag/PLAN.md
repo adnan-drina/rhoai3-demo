@@ -22,6 +22,8 @@ In scope:
   informed by the Red Hat AI Enterprise RAG quickstart and legacy whoami app
   but implemented as a small repo-owned Stage 230 app in the `enterprise-rag`
   namespace
+- expose a chatbot answer-mode control so the same governed model can be tested
+  with private RAG retrieval enabled or disabled
 - expose the chatbot from the console application menu with a `Private RAG
   Chatbot` `ConsoleLink`
 - deploy a stage-owned DSPA/KFP pipeline server backed by a fixed NooBaa
@@ -86,6 +88,9 @@ Out of scope for this first RAG stage:
   `llama-stack-client==0.6.0`, which is not compatible with the RHOAI 3.4 Llama
   Stack server version deployed by this stage. The repo-owned build pins
   `llama-stack-client==0.7.2`, matching the active server client line.
+- The chatbot defaults to RAG mode and also supports a `Model only` mode. Model
+  only skips vector-store search and uses a separate prompt that does not claim
+  private document grounding or citations.
 - The chatbot includes disabled-by-default MCP and guardrails adapter modules
   (`mcp.py` and `guardrails.py`) so later stages can add tool calling and safety
   controls without redesigning the app.
@@ -106,6 +111,8 @@ Out of scope for this first RAG stage:
   Nemotron-backed answer.
 - The `private-rag-chatbot` deployment is ready, the route responds, and the UI
   can be used to select the `whoami` vector store for demo questions.
+- The chatbot can answer the same prompt in `RAG` mode and `Model only` mode so
+  users can compare grounded and ungrounded model behavior.
 - The chatbot Inspect tab reports the Llama Stack endpoint, models, vector
   stores, MCP connector discovery state, Llama Stack tools, shields, and
   guardrails status.

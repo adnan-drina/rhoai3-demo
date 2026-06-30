@@ -21,9 +21,4 @@ data:
   GUARDRAILS_ENABLED: "false"
   GUARDRAILS_ENDPOINT: ""
   GUARDRAILS_VERIFY_TLS: "false"
-  RAG_QUESTION_SUGGESTIONS: |
-    {
-      "whoami": [
-        "Who is Adnan Drina and what is his current role?"
-      ]
-    }
+  RAG_QUESTION_SUGGESTIONS: "{}"

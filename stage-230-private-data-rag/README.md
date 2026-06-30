@@ -33,7 +33,7 @@ This stage introduces the private knowledge layer for the GenAI demo flow:
 | Ingestion workflow | KFP v2 whoami pipeline downloads from S3, calls Docling, inserts into Llama Stack, and records metrics |
 | Document preparation | Docling service converts the whoami PDF to Markdown before ingestion |
 | RAG orchestration | RHOAI 3.4 Llama Stack `LlamaStackDistribution` |
-| RAG application | Repo-owned Streamlit chatbot informed by the Red Hat AI Enterprise RAG quickstart and the legacy whoami app, built in OpenShift with a RHOAI 3.4-compatible Llama Stack client, and pointed at the stage-owned Llama Stack service |
+| RAG application | Repo-owned Streamlit chatbot informed by the Red Hat AI Enterprise RAG quickstart and the legacy whoami app, built in OpenShift with a RHOAI 3.4-compatible Llama Stack client, pointed at the stage-owned Llama Stack service, and able to switch between RAG and model-only answers |
 | Demo shortcut | OpenShift console application-menu `ConsoleLink` named `Private RAG Chatbot`, patched at sync time to the generated chatbot route |
 | Embeddings | Llama Stack inline `sentence-transformers` provider using 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` embeddings |
 | Vector store | PostgreSQL with pgvector, managed as a stage-owned runtime service |
@@ -48,9 +48,10 @@ in later stages. The whoami ingestion path intentionally runs through DSPA/KFP
 so the demo has a visible, repeatable RHOAI pipeline server workflow instead of
 only a deploy-time script. The Streamlit chatbot gives the stage an
 audience-facing test surface for selecting the `whoami` vector store, asking a
-question, and seeing retrieved context before the model answer. MCP connectors
-and guardrails status are visible in the Inspect tab but intentionally disabled
-until later stages deploy the corresponding product-backed controls.
+question, seeing retrieved context before the model answer, and comparing the
+same prompt with retrieval disabled. MCP connectors and guardrails status are
+visible in the Inspect tab but intentionally disabled until later stages deploy
+the corresponding product-backed controls.
 
 ## Architecture Delta
 

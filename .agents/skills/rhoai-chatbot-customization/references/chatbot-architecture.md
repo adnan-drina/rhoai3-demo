@@ -10,7 +10,7 @@ stage-230-private-data-rag/chatbot/
     ├── app.py                  # Streamlit Chat and Inspect tabs
     ├── config.py               # Environment-backed app contract
     ├── llama_stack_gateway.py  # Llama Stack adapter
-    ├── prompts.py              # Direct-RAG prompt and context format
+    ├── prompts.py              # RAG and model-only prompt and context format
     ├── mcp.py                  # Future MCP connector/tool boundary
     └── guardrails.py           # Future guardrails decision boundary
 ```
@@ -20,17 +20,17 @@ not a full copy of the Red Hat quickstart frontend. The quickstart and legacy
 app remain references for useful behavior, especially direct RAG, agent tool
 calling, Inspect pages, and prompt tuning.
 
-## Active Mode
+## Active Modes
 
-| Aspect | Stage 230 Direct RAG |
-|--------|----------------------|
-| API | `client.chat.completions.create()` |
-| Retrieval | `client.vector_stores.search()` against selected vector store |
-| Context | retrieved chunks are injected into the user message |
-| Default model | `vllm-inference/nemotron-3-nano-30b-a3b` |
-| Default vector store | `whoami` |
-| Guardrails | disabled-by-default adapter in `guardrails.py` |
-| MCP | connector discovery/tool contract in `mcp.py`, disabled by default |
+| Aspect | RAG mode | Model-only mode |
+|--------|----------|-----------------|
+| API | `client.chat.completions.create()` | `client.chat.completions.create()` |
+| Retrieval | `client.vector_stores.search()` against selected vector store | skipped |
+| Context | retrieved chunks are injected into the user message | none |
+| Default model | `vllm-inference/nemotron-3-nano-30b-a3b` | `vllm-inference/nemotron-3-nano-30b-a3b` |
+| Default vector store | `whoami` | not used |
+| Guardrails | disabled-by-default adapter in `guardrails.py` | disabled-by-default adapter in `guardrails.py` |
+| MCP | connector discovery/tool contract in `mcp.py`, disabled by default | connector discovery/tool contract in `mcp.py`, disabled by default |
 
 ## Future Extension Points
 
