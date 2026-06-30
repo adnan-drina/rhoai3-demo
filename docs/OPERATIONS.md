@@ -737,6 +737,14 @@ requires `Authorization: Bearer <maas-api-key>` for chat/completions. External
 OpenAI `gpt-4o-mini` requests use the standard Chat Completions `max_tokens`
 field.
 
+MaaS quota or external-provider throttling is reported as a validation warning,
+not as a configuration failure, when the model assets, subscriptions, auth
+policies, API-key path, and discovery paths are otherwise healthy. A `429 Too
+Many Requests` response proves the governed request path is active but the
+current demo quota or upstream provider window is exhausted; wait for the
+window to reset or adjust the demo subscription limit before repeating
+interactive tests.
+
 If a Gen AI Playground already exists in `demo-sandbox`, the validator also
 checks that the generated `LlamaStackDistribution` and deployment use a
 Secret-backed MaaS API key instead of the dashboard-created placeholder token.

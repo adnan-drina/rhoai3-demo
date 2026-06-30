@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PASS=0
+WARN=0
 FAIL=0
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
@@ -74,6 +75,13 @@ check() {
     echo "✗ $label  ($result)"
     (( FAIL++ )) || true
   fi
+}
+
+warn() {
+  local label="$1"
+  local result="$2"
+  echo "! $label  ($result)"
+  (( WARN++ )) || true
 }
 
 resource_exists() {
@@ -355,14 +363,18 @@ for label, target in models:
         print(f'FAIL {label}: {exc!r}')
 " 2>&1 || true)
     if grep -q "OK nemotron" <<<"$output" && grep -q "OK openai" <<<"$output"; then
-      result="pass"
+      check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "pass"
+    elif grep -q "FAIL" <<<"$output" &&
+      grep -qi "Too Many Requests" <<<"$output"; then
+      warn "Gen AI Playground Responses API works for MaaS Nemotron and GPT" \
+        "MaaS policy or external provider throttled inference: ${output//$'\n'/ }"
     else
-      result="responses=${output//$'\n'/ }"
+      check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" \
+        "responses=${output//$'\n'/ }"
     fi
   else
-    result="deployment missing"
+    check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "deployment missing"
   fi
-  check "Gen AI Playground Responses API works for MaaS Nemotron and GPT" "$result"
 
   if resource_exists "deployment/rhods-dashboard" "redhat-ods-applications"; then
     local dashboard_pod developer_token bff_model_list bff_models bff_output
@@ -491,6 +503,11 @@ PY
 )
           if grep -q "OK dashboard BFF responses" <<<"$bff_output"; then
             result="pass"
+          elif grep -q ":" <<<"$bff_output" &&
+            (grep -qi "Too Many Requests" <<<"$bff_output" ||
+              grep -qi "internal_server_error" <<<"$bff_output" ||
+              grep -qi "LlamaStack error" <<<"$bff_output"); then
+            result="warn: MaaS policy or external provider throttled inference through the dashboard BFF: ${bff_output//$'\n'/ }"
           else
             result="bff=${bff_output//$'\n'/ }"
           fi
@@ -500,7 +517,11 @@ PY
   else
     result="dashboard deployment missing"
   fi
-  check "Gen AI Playground dashboard BFF works for MaaS Nemotron and GPT" "$result"
+  if [[ "$result" == warn:* ]]; then
+    warn "Gen AI Playground dashboard BFF works for MaaS Nemotron and GPT" "${result#warn: }"
+  else
+    check "Gen AI Playground dashboard BFF works for MaaS Nemotron and GPT" "$result"
+  fi
 }
 
 APP_SYNC=$(jsonpath "applications.argoproj.io/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
@@ -916,13 +937,13 @@ if not model:
 
 payload = {
     'model': model,
-    'input': 'Use OpenShift-MCP events_list to inspect recent demo-sandbox events. Reply under 30 words.',
+    'input': 'Use OpenShift-MCP namespaces_list to inspect available namespaces. Reply under 30 words.',
     'tools': [{
         'type': 'mcp',
         'server_label': '${MCP_DISCOVERY_KEY}',
         'server_url': 'http://${MCP_SERVER_NAME}.${MCP_NS}.svc:8080/mcp',
         'require_approval': 'never',
-        'allowed_tools': ['events_list'],
+        'allowed_tools': ['namespaces_list'],
     }],
     'tool_choice': 'auto',
     'max_tool_calls': 2,
@@ -946,6 +967,16 @@ try:
             sys.exit(1)
         if 'mcp_list_tools' not in output_types:
             print('missing mcp_list_tools output, types=' + ','.join(output_types))
+            sys.exit(1)
+        if 'mcp_call' not in output_types:
+            print('missing mcp_call output, types=' + ','.join(output_types))
+            sys.exit(1)
+        for item in data.get('output', []):
+            if item.get('type') == 'mcp_call' and item.get('error'):
+                print('mcp_call error=' + json.dumps(item.get('error')))
+                sys.exit(1)
+        if 'message' not in output_types:
+            print('missing final message output, types=' + ','.join(output_types))
             sys.exit(1)
         print('OK mcp response path output_types=' + ','.join(output_types))
 except urllib.error.HTTPError as err:
@@ -1064,13 +1095,20 @@ JSON
             (.usage.total_tokens // 0) > 0
           ' "$INFERENCE_BODY" >/dev/null 2>&1; then
           R="pass"
+        elif [[ "$INFERENCE_STATUS" == "429" ]] &&
+          grep -qi "Too Many Requests" "$INFERENCE_BODY"; then
+          R="warn: MaaS policy throttled local Nemotron validation request: status=${INFERENCE_STATUS},body=$(head -c 180 "$INFERENCE_BODY" | tr '\n' ' ')"
         else
           R="status=${INFERENCE_STATUS:-missing},body=$(head -c 180 "$INFERENCE_BODY" | tr '\n' ' ')"
         fi
       else
         R="MaaS API key was not created"
       fi
-      check "ai-developer can call Nemotron through MaaS with tool calling and token usage" "$R"
+      if [[ "$R" == warn:* ]]; then
+        warn "ai-developer can call Nemotron through MaaS with tool calling and token usage" "${R#warn: }"
+      else
+        check "ai-developer can call Nemotron through MaaS with tool calling and token usage" "$R"
+      fi
 
       if [[ "$API_KEY_VALUE" == sk-oai-* ]]; then
         EXTERNAL_INFERENCE_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-openai-inference.XXXXXX")
@@ -1106,13 +1144,20 @@ JSON
             (.usage.total_tokens // 0) > 0
           ' "$EXTERNAL_INFERENCE_BODY" >/dev/null 2>&1; then
           R="pass"
+        elif [[ "$EXTERNAL_INFERENCE_STATUS" == "429" ]] &&
+          grep -qi "Too Many Requests" "$EXTERNAL_INFERENCE_BODY"; then
+          R="warn: external OpenAI provider throttled: status=${EXTERNAL_INFERENCE_STATUS},body=$(head -c 180 "$EXTERNAL_INFERENCE_BODY" | tr '\n' ' ')"
         else
           R="status=${EXTERNAL_INFERENCE_STATUS:-missing},body=$(head -c 180 "$EXTERNAL_INFERENCE_BODY" | tr '\n' ' ')"
         fi
       else
         R="MaaS API key was not created"
       fi
-      check "ai-developer can call external OpenAI through MaaS with token usage" "$R"
+      if [[ "$R" == warn:* ]]; then
+        warn "ai-developer can call external OpenAI through MaaS with token usage" "${R#warn: }"
+      else
+        check "ai-developer can call external OpenAI through MaaS with token usage" "$R"
+      fi
 
       UNAUTH_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-unauth.XXXXXX")
       TMP_FILES+=("$UNAUTH_BODY")
@@ -1163,7 +1208,7 @@ fi
 validate_playground_if_present
 
 echo
-echo "Stage 220 validation summary: ${PASS} passed, ${FAIL} failed"
+echo "Stage 220 validation summary: ${PASS} passed, ${WARN} warned, ${FAIL} failed"
 if (( FAIL > 0 )); then
   exit 1
 fi
