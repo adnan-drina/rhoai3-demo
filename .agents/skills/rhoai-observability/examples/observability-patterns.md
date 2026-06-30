@@ -56,6 +56,29 @@ Review against:
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o yaml
 ```
 
+## Sandbox Compatibility Checks
+
+In current demo clusters, validate the product-generated monitoring stack and
+Perses dashboard access in addition to the official DSCI and dashboard fields:
+
+```bash
+oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring \
+  -o jsonpath='{.data.service-ca\.crt}{"\n"}'
+
+oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring
+
+oc auth can-i list persesdashboards.perses.dev \
+  --as=ai-admin --as-group=rhods-admins --all-namespaces
+
+oc auth can-i create prometheuses/k8s --subresource=api \
+  --as=ai-admin --as-group=rhods-admins -n openshift-monitoring
+```
+
+Use a GitOps hook to mirror `ConfigMap/prometheus-web-tls-ca` into
+`Secret/prometheus-web-tls-ca` only when the generated `MonitoringStack`
+expects the Secret and the service-ca bundle is present as a ConfigMap. Do not
+commit the cluster-specific CA bundle.
+
 ## User Workload Scrape Label
 
 Apply only to user workloads that expose metrics:

@@ -86,7 +86,11 @@ oc get application stage-110-rhoai-base-platform -n openshift-gitops \
   OpenTelemetry, and Tempo Operator. `DSCInitialization.spec.monitoring` must
   also include metrics and traces configuration; `managementState=Managed` and
   `namespace=redhat-ods-monitoring` alone can leave the RHOAI `Monitoring`
-  service reporting `MetricsNotConfigured` and `TracesNotConfigured`.
+  service reporting `MetricsNotConfigured` and `TracesNotConfigured`. In demo
+  sandbox clusters, the product-generated monitoring stack can also expect
+  `Secret/prometheus-web-tls-ca` while OpenShift service-ca injection creates
+  the CA bundle as `ConfigMap/prometheus-web-tls-ca`; Stage 110 mirrors the
+  ConfigMap into the expected Secret at sync time.
 - **Checks:**
 
 ```bash
@@ -99,13 +103,33 @@ oc get monitoring.services.platform.opendatahub.io default-monitoring \
   -o jsonpath='{range .status.conditions[*]}{.type}={.status}{" "}{.reason}{"\n"}{end}'
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
+oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring
+oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring
+oc auth can-i list persesdashboards.perses.dev \
+  --as=ai-admin --as-group=rhods-admins --all-namespaces
+oc auth can-i create prometheuses/k8s --subresource=api \
+  --as=ai-admin --as-group=rhods-admins -n openshift-monitoring
 oc get pods,svc,route -n redhat-ods-monitoring
 ```
 
 - **Fix:** reconcile Stage 110 from current Git. Stage 110 owns the three
   prerequisite operator Subscriptions, the complete
-  `DSCInitialization.spec.monitoring` metrics/traces configuration, and the
-  dashboard flag. Do not enable the dashboard flag by itself.
+  `DSCInitialization.spec.monitoring` metrics/traces configuration, the
+  `prometheus-web-tls-ca` sync hook, Perses backend access, dashboard RBAC, and
+  the dashboard flag. Do not enable the dashboard flag by itself.
+
+If `data-science-perses-0` is `CrashLoopBackOff`, inspect the pod logs before
+adding a workaround:
+
+```bash
+oc logs pod/data-science-perses-0 -n redhat-ods-monitoring --previous
+oc get subscription -A | grep -E 'cluster-observability|opentelemetry|tempo'
+```
+
+The compatibility resources above fix missing CA Secret and dashboard access
+issues. They do not mask a Perses binary/operator version mismatch; treat that
+as a separate operator compatibility incident and verify against the installed
+Cluster Observability Operator CSV.
 
 ## Stage 120: GPU-as-a-Service
 

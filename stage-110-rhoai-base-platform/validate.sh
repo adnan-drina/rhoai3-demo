@@ -146,6 +146,34 @@ OBS_DASHBOARD=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-app
 [[ "$OBS_DASHBOARD" == "true" ]] && R="pass" || R="observabilityDashboard=${OBS_DASHBOARD:-missing}"
 check "RHOAI Observability dashboard menu enabled" "$R"
 
+OBS_TLS_SECRET=$(oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring \
+  -o jsonpath='{.data.service-ca\.crt}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ -n "$OBS_TLS_SECRET" ]] && R="pass" || R="secret=missing"
+check "RHOAI observability Prometheus web TLS CA Secret present" "$R"
+
+OBS_PERSES_NETPOL=$(oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring \
+  -o jsonpath='{.metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_PERSES_NETPOL" == "perses-backend-operator-access" ]] && R="pass" || R="networkpolicy=${OBS_PERSES_NETPOL:-missing}"
+check "Perses backend operator access NetworkPolicy present" "$R"
+
+ADMIN_PERSES_DASHBOARDS=$(oc auth can-i list persesdashboards.perses.dev \
+  --as=ai-admin --as-group=rhods-admins --all-namespaces \
+  --insecure-skip-tls-verify=true 2>/dev/null || echo "no")
+[[ "$ADMIN_PERSES_DASHBOARDS" == "yes" ]] && R="pass" || R="can-i=${ADMIN_PERSES_DASHBOARDS:-no}"
+check "ai-admin can discover Perses dashboards" "$R"
+
+ADMIN_PERSES_DATASOURCES=$(oc auth can-i list persesdatasources.perses.dev \
+  --as=ai-admin --as-group=rhods-admins --all-namespaces \
+  --insecure-skip-tls-verify=true 2>/dev/null || echo "no")
+[[ "$ADMIN_PERSES_DATASOURCES" == "yes" ]] && R="pass" || R="can-i=${ADMIN_PERSES_DATASOURCES:-no}"
+check "ai-admin can discover Perses datasources" "$R"
+
+ADMIN_PROMETHEUS_API=$(oc auth can-i create prometheuses/k8s --subresource=api \
+  --as=ai-admin --as-group=rhods-admins -n openshift-monitoring \
+  --insecure-skip-tls-verify=true 2>/dev/null || echo "no")
+[[ "$ADMIN_PROMETHEUS_API" == "yes" ]] && R="pass" || R="can-i=${ADMIN_PROMETHEUS_API:-no}"
+check "ai-admin can query OpenShift monitoring Prometheus API" "$R"
+
 OBS_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 OBS_STACK_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
@@ -159,6 +187,16 @@ OBS_TEMPO_READY=$(oc get monitoring.services.platform.opendatahub.io default-mon
 [[ "$OBS_READY" == "True" && "$OBS_STACK_READY" == "True" && "$OBS_OTEL_READY" == "True" && "$OBS_PERSES_READY" == "True" && "$OBS_TEMPO_READY" == "True" ]] \
   && R="pass" || R="Ready=${OBS_READY:-missing} MonitoringStack=${OBS_STACK_READY:-missing} OpenTelemetryCollector=${OBS_OTEL_READY:-missing} Perses=${OBS_PERSES_READY:-missing} Tempo=${OBS_TEMPO_READY:-missing}"
 check "RHOAI observability service Ready with metrics, traces, and Perses" "$R"
+
+OBS_CLUSTER_DASHBOARD=$(oc get persesdashboard dashboard-0-cluster-admin -n redhat-ods-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_CLUSTER_DASHBOARD" == "True" ]] && R="pass" || R="available=${OBS_CLUSTER_DASHBOARD:-missing}"
+check "RHOAI Cluster Perses dashboard available" "$R"
+
+OBS_MODEL_DASHBOARD=$(oc get persesdashboard dashboard-1-model -n redhat-ods-monitoring \
+  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$OBS_MODEL_DASHBOARD" == "True" ]] && R="pass" || R="available=${OBS_MODEL_DASHBOARD:-missing}"
+check "RHOAI Model Perses dashboard available" "$R"
 
 OBS_PODS=$(oc get pods -n redhat-ods-monitoring --no-headers \
   --insecure-skip-tls-verify=true 2>/dev/null \

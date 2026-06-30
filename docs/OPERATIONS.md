@@ -52,6 +52,23 @@ the OCP 4.20 / RHOAI 3.4 baseline. These operators must be available before
 the RHOAI `DSCInitialization.spec.monitoring` stack can create the backing
 services for **Observe & monitor -> Dashboard**.
 
+Stage 110 also carries a narrow RHOAI 3.4 observability compatibility layer:
+
+- `redhat-ods-monitoring` is GitOps-managed as the monitoring namespace.
+- `job-sync-prometheus-web-tls-ca` mirrors the service-ca injected
+  `ConfigMap/prometheus-web-tls-ca` into the
+  `Secret/prometheus-web-tls-ca` expected by the product-generated
+  `MonitoringStack`.
+- `perses-backend-operator-access` allows the Perses operator to reach the
+  RHOAI Perses backend when OLM installs the operator outside
+  `redhat-ods-monitoring`.
+- `rhods-admins` receives read-only Perses dashboard/datasource discovery plus
+  the narrow `prometheuses/api/k8s` access required by the dashboard query
+  path.
+
+Remove these helpers only after validating that a later RHOAI/observability
+operator build creates equivalent behavior natively.
+
 ### Accessing Argo CD
 
 ```bash
@@ -109,12 +126,18 @@ oc get subscription -n openshift-cluster-observability-operator cluster-observab
 oc get subscription -n openshift-opentelemetry-operator opentelemetry-product
 oc get subscription -n openshift-tempo-operator tempo-product
 oc get pods -n redhat-ods-monitoring
+oc get secret prometheus-web-tls-ca -n redhat-ods-monitoring
+oc get networkpolicy perses-backend-operator-access -n redhat-ods-monitoring
 oc get dscinitialization default-dsci \
   -o jsonpath='{.spec.monitoring.managementState}{" "}{.spec.monitoring.namespace}{" "}{.spec.monitoring.metrics.storage.size}{" "}{.spec.monitoring.traces.storage.backend}{"\n"}'
 oc get monitoring.services.platform.opendatahub.io default-monitoring \
   -o jsonpath='{range .status.conditions[*]}{.type}={.status}{" "}{.reason}{"\n"}{end}'
 oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications \
   -o jsonpath='{.spec.dashboardConfig.observabilityDashboard}{"\n"}'
+oc auth can-i list persesdashboards.perses.dev \
+  --as=ai-admin --as-group=rhods-admins --all-namespaces
+oc auth can-i create prometheuses/k8s --subresource=api \
+  --as=ai-admin --as-group=rhods-admins -n openshift-monitoring
 ```
 
 ### Model Registry

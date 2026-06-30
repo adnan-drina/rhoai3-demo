@@ -44,3 +44,14 @@
 - Whether to expose Tempo Query or Alertmanager through a route.
   Verification: prefer temporary port-forward examples unless the demo requires
   external access.
+- RHOAI 3.4 sandbox compatibility for the generated monitoring stack:
+  some clusters create the service-ca bundle as
+  `ConfigMap/prometheus-web-tls-ca` while the generated `MonitoringStack`
+  references `Secret/prometheus-web-tls-ca`. Keep the sync-hook pattern
+  environment-specific and remove it when the product-generated stack creates
+  the Secret natively or changes the reference.
+- Perses dashboard access in demo persona workflows:
+  the dashboard UI can require read access to Perses dashboard/datasource
+  resources plus narrow access to the OpenShift monitoring Prometheus API. Keep
+  this as least-privilege RBAC for the demo admin group, not broad
+  cluster-admin access.

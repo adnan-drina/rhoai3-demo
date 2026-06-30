@@ -78,6 +78,11 @@
   - GitOps operator is bootstrapped imperatively before ArgoCD exists
   - ODF operator must be `Succeeded` before the MCG `StorageCluster` is applied (handled by `SkipDryRunOnMissingResource=true` + retry)
   - Cluster Observability Operator, Red Hat build of OpenTelemetry, and Tempo Operator must be installed before the RHOAI observability stack can materialize
+  - `redhat-ods-monitoring` is GitOps-managed before Stage 110 creates the
+    service-ca Secret sync hook and Perses dashboard access resources
+  - The `prometheus-web-tls-ca` sync hook waits for the service-ca injected
+    ConfigMap, then creates the Secret referenced by the generated
+    `MonitoringStack`
   - RHOAI operator must be `Succeeded` before DSCI/DSC are applied (same mechanism)
   - `argocd.argoproj.io/sync-wave` annotations manage within-Application ordering
 - Secret and credential handling: No credentials committed. NooBaa admin credentials and OBC-generated secrets are runtime-only.

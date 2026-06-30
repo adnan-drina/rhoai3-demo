@@ -30,6 +30,15 @@ runbook changes.
   is claimed.
 - `PersesAvailable=True` is validated on the RHOAI `Monitoring` service before
   accepting the dashboard as working.
+- If the generated `MonitoringStack` references
+  `Secret/prometheus-web-tls-ca`, verify the Secret exists and contains
+  `service-ca.crt`. In current demo environments, GitOps may need a sync hook
+  that mirrors the service-ca injected `ConfigMap/prometheus-web-tls-ca` into
+  the expected Secret without committing certificate material.
+- Verify the Perses operator can reach the RHOAI Perses backend. If OLM installs
+  the Perses operator outside the namespace allowed by product-generated
+  NetworkPolicies, add a narrow NetworkPolicy that permits only the installed
+  Perses operator namespace and pod selector.
 - External exporter endpoints are placeholders unless approved endpoints exist.
 
 ## Dashboard Review
@@ -39,6 +48,10 @@ runbook changes.
 - The resource is reviewed in the OpenShift AI application namespace, normally
   `redhat-ods-applications`.
 - User-facing docs describe the menu as "Observe & monitor".
+- The demo RHOAI admin group can list/watch Perses dashboards and datasources
+  and can access the `prometheuses/api/k8s` subresource in
+  `openshift-monitoring`; Perses query POSTs require `create` on that
+  subresource.
 
 ## User Workload Metrics Review
 
