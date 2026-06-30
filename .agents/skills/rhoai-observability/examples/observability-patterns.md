@@ -18,27 +18,20 @@ spec:
     alerting: {}
     metrics:
       replicas: 1
-      resources:
-        cpulimit: 500m
-        cpurequest: 100m
-        memorylimit: 512Mi
-        memoryrequest: 256Mi
       storage:
         size: 5Gi
         retention: 90d
-      exporters: {}
     traces:
       sampleRatio: '0.1'
       storage:
         backend: pv
-        retention: 2160h
-      exporters: {}
+        retention: 2160h0m0s
 ```
 
 Schema check:
 
 ```bash
-oc explain dscinitialization.spec.monitoring
+oc explain dscinitialization.spec.monitoring --api-version=dscinitialization.opendatahub.io/v2
 oc apply --dry-run=server -f <candidate-dsci.yaml>
 ```
 

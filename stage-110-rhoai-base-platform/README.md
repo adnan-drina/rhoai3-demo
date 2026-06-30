@@ -66,7 +66,8 @@ The RHOAI operator installs the AI platform control plane. `DSCInitialization` c
 - **Operator:** Red Hat OpenShift AI Self-Managed (`redhat-ods-operator` namespace)
 - **Channel:** `stable-3.4`
 - **API version:** `DataScienceCluster` pinned to `v2` (the served storage version that declares the 3.4 component schema)
-- **DSCI:** predefined namespaces, monitoring managed in `redhat-ods-monitoring`
+- **DSCI:** pinned to `v2` with predefined namespaces and monitoring managed in
+  `redhat-ods-monitoring`
 - **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`). Kueue, KServe, MaaS, and Llama Stack are removed until their dedicated stages enable them.
 - **Model Registry database:** the registry instance is created day-2 from the dashboard using the default PostgreSQL (non-production); see `docs/OPERATIONS.md`
 - **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)

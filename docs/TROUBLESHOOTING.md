@@ -32,6 +32,11 @@ still hit.
   with `multiCloudGateway.reconcileStrategy: standalone`.
 - **`field not declared in schema` on DataScienceCluster** — the manifest must
   use `datasciencecluster.opendatahub.io/v2`; v1 lacks the 3.4 component fields.
+- **Persistent OutOfSync on `DSCInitialization/default-dsci`** — check the
+  storage version and fields before assuming Argo CD is stuck. Current RHOAI 3.4
+  clusters serve `dscinitialization.opendatahub.io/v2`; fields such as
+  `spec.monitoring.metrics.resources` are not in the v2 schema and are pruned or
+  rejected by the API.
 - **A single resource is permanently OutOfSync (e.g. `OCSInitialization`)** — it
   is operator-owned. Do not manage it in GitOps. If it was previously committed,
   clear the orphaned tracking once:

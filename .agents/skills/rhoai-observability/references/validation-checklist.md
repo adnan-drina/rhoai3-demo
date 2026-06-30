@@ -18,10 +18,14 @@ runbook changes.
 - Required Operators are listed before enabling the stack:
   Cluster Observability Operator, Tempo Operator, and Red Hat build of
   OpenTelemetry.
+- `DSCInitialization` uses the served storage API version for the active
+  baseline. On current RHOAI 3.4 clusters this is
+  `dscinitialization.opendatahub.io/v2`; verify with the CRD before editing.
 - `DSCInitialization.spec.monitoring.managementState` is `Managed`.
 - Monitoring namespace is explicitly set, normally `redhat-ods-monitoring`.
-- Metrics storage, retention, replicas, and resources are intentional for the
-  demo environment.
+- Metrics storage, retention, and replicas are intentional for the demo
+  environment. Do not use fields absent from the active DSCI schema; for
+  example, `spec.monitoring.metrics.resources` is not present in the v2 schema.
 - Metrics are not left empty; `MonitoringStackAvailable=True` is required for
   the dashboard to load real metrics-backed components.
 - Trace storage backend is one of the documented values: `pv`, `s3`, or `gcs`.
