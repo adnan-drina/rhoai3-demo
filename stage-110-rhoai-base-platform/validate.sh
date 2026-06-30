@@ -103,6 +103,11 @@ COO_CSV=$(csv_phase_from_subscription openshift-cluster-observability-operator c
 [[ "$COO_CSV" == "Succeeded" ]] && R="pass" || R="phase=${COO_CSV:-not found}"
 check "Cluster Observability Operator CSV Succeeded" "$R"
 
+COO_MEMORY_LIMIT=$(oc get subscription cluster-observability-operator -n openshift-cluster-observability-operator \
+  -o jsonpath='{.spec.config.resources.limits.memory}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+[[ "$COO_MEMORY_LIMIT" == "1Gi" ]] && R="pass" || R="memoryLimit=${COO_MEMORY_LIMIT:-missing}"
+check "Cluster Observability Operator resource policy protects Perses operator" "$R"
+
 OTEL_CSV=$(csv_phase_from_subscription openshift-opentelemetry-operator opentelemetry-product)
 [[ "$OTEL_CSV" == "Succeeded" ]] && R="pass" || R="phase=${OTEL_CSV:-not found}"
 check "Red Hat build of OpenTelemetry Operator CSV Succeeded" "$R"

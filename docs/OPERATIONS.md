@@ -80,9 +80,13 @@ Stage 110 also installs the RHOAI observability prerequisite operators from
 The package/channel selection was verified from the active cluster catalog on
 the OCP 4.20 / RHOAI 3.4 baseline. The Cluster Observability Operator hold is
 an OLM lifecycle policy, not an operand image pin; Perses, Prometheus, and
-related operand images remain operator-managed. These operators must be
-available before the RHOAI `DSCInitialization.spec.monitoring` stack can create
-the backing services for **Observe & monitor -> Dashboard**.
+related operand images remain operator-managed. Stage 110 sets
+`Subscription.spec.config.resources` for the Cluster Observability Operator so
+OLM gives the operator pods enough headroom; this prevents the
+`perses-operator` pod from repeatedly hitting the default 512Mi limit during
+dashboard reconciliation bursts. These operators must be available before the
+RHOAI `DSCInitialization.spec.monitoring` stack can create the backing services
+for **Observe & monitor -> Dashboard**.
 
 Stage 110 also carries a narrow RHOAI 3.4 observability compatibility layer:
 

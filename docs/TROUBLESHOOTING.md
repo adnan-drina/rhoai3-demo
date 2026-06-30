@@ -178,6 +178,20 @@ the current RHOAI 3.4 compatibility posture by installing the Cluster
 Observability Operator at `cluster-observability-operator.v1.4.0` through OLM
 `startingCSV` plus manual InstallPlan approval automation.
 
+If `perses-operator` in `openshift-cluster-observability-operator` restarts
+with `Last State: OOMKilled` while `Monitoring/default-monitoring` later
+recovers, keep the fix in the COO `Subscription`, not in the generated
+Deployment. Stage 110 sets `Subscription.spec.config.resources` for the Cluster
+Observability Operator overlay so OLM reconciles higher resource limits for the
+operator-managed pods. Validate with:
+
+```bash
+oc describe pod -n openshift-cluster-observability-operator \
+  -l app.kubernetes.io/name=perses-operator
+oc get subscription cluster-observability-operator \
+  -n openshift-cluster-observability-operator -o yaml
+```
+
 If the Perses dashboards are available but `default-monitoring` remains
 `Not Ready` with `tempo-datasource` and `spec.client.tls.caCert ... namespace is
 required`, the remaining issue is the RHOAI-generated Tempo
