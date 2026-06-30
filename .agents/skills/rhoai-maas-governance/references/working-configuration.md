@@ -243,6 +243,14 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   `LLMInferenceService.status.conditions[Ready=True]`, not only for model
   access through the Gateway. A transient registry `ImagePullBackOff` can
   recover on retry; inspect events before changing manifests.
+- Stage 220 validation depends on multiple OpenShift API reads. If CRDs,
+  Gateway hostnames, or `LLMInferenceService` readiness appear missing during
+  validation but manual `oc get` checks show them healthy, treat that as a
+  transient read first. Retry critical CRD and JSONPath reads, and derive the
+  MaaS Gateway host from `MaaSModelRef.status.endpoint` if the Gateway listener
+  hostname read is empty. Do not patch generated MaaS, Kuadrant, Gateway, or
+  Llama Stack resources until retried checks and manual inspection show a real
+  product-resource defect.
 - Stage scope was broad: prerequisites, operator lifecycle, Gateway, DB,
   dashboard flags, local model, external model, subscriptions, auth policies,
   user RBAC, and validation all changed together. Future stages should split

@@ -972,6 +972,33 @@ oc rollout status deployment/maas-api -n redhat-ods-applications
 ./stage-220-models-as-a-service/validate.sh
 ```
 
+### Stage 220 validation reports missing CRDs or Gateway host, but resources exist
+
+- **Symptom:** validation reports missing MaaS/LWS CRDs, missing
+  `maas-default-gateway` hostname, missing Nemotron readiness, or cascading
+  `status=000` MaaS API checks, but manual `oc get crd`, `oc get gateway`, and
+  `oc get llminferenceservice` show healthy resources.
+- **Likely cause:** transient OpenShift API reads returned empty output during
+  validation. This can cascade: if `GATEWAY_HOST` is empty, the later
+  subscription, API-key, inference, and unauthenticated checks build URLs with
+  no host and fail with `no host given`.
+- **Fix:** rerun the current Stage 220 validator, which retries critical CRD
+  and JSONPath reads and falls back to the Ready `MaaSModelRef.status.endpoint`
+  when deriving the Gateway host. Do not patch generated MaaS, Kuadrant,
+  Gateway, or Llama Stack resources unless the retried checks and manual
+  inspection still show a real platform defect.
+
+Useful confirmation commands:
+
+```bash
+oc get crd tenants.maas.opendatahub.io leaderworkersets.leaderworkerset.x-k8s.io
+oc get gateway maas-default-gateway -n openshift-ingress \
+  -o jsonpath='{.spec.listeners[?(@.name=="https")].hostname}{"\n"}'
+oc get llminferenceservice nemotron-3-nano-30b-a3b -n models-as-a-service \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}{"\n"}'
+oc get maasmodelrefs -n models-as-a-service
+```
+
 ### MaaS API key cleanup jobs fail every 15 minutes
 
 - **Symptom:** `maas-api-key-cleanup-*` Jobs in `redhat-ods-applications` fail

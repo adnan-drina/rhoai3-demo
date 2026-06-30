@@ -87,15 +87,30 @@ warn() {
 resource_exists() {
   local resource="$1"
   local namespace="$2"
-  if [[ -n "$namespace" ]]; then
-    oc get "$resource" -n "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1
-  else
-    oc get "$resource" --insecure-skip-tls-verify=true >/dev/null 2>&1
-  fi
+  local attempt
+
+  for attempt in 1 2 3; do
+    if [[ -n "$namespace" ]]; then
+      oc get "$resource" -n "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1 && return 0
+    else
+      oc get "$resource" --insecure-skip-tls-verify=true >/dev/null 2>&1 && return 0
+    fi
+    sleep 2
+  done
+
+  return 1
 }
 
 crd_exists() {
-  oc get crd "$1" --insecure-skip-tls-verify=true >/dev/null 2>&1
+  local crd="$1"
+  local attempt
+
+  for attempt in 1 2 3; do
+    oc get crd "$crd" --insecure-skip-tls-verify=true >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+
+  return 1
 }
 
 jsonpath() {
@@ -109,6 +124,48 @@ jsonpath() {
     oc get "$resource" -o jsonpath="$path" \
       --insecure-skip-tls-verify=true 2>/dev/null || true
   fi
+}
+
+jsonpath_nonempty() {
+  local resource="$1"
+  local namespace="$2"
+  local path="$3"
+  local attempt value
+
+  for attempt in 1 2 3; do
+    value=$(jsonpath "$resource" "$namespace" "$path")
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+    sleep 2
+  done
+
+  printf '%s' "$value"
+}
+
+get_gateway_host() {
+  local host endpoint
+
+  host=$(jsonpath_nonempty "gateway/maas-default-gateway" "openshift-ingress" "{.spec.listeners[?(@.name==\"https\")].hostname}")
+  if [[ -z "$host" ]]; then
+    host=$(jsonpath_nonempty "gateway/maas-default-gateway" "openshift-ingress" "{.spec.listeners[0].hostname}")
+  fi
+
+  if [[ -z "$host" ]]; then
+    endpoint=$(jsonpath_nonempty "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.endpoint}")
+    if [[ -n "$endpoint" ]]; then
+      host=$(ENDPOINT="$endpoint" python3 - <<'PY'
+import os
+from urllib.parse import urlparse
+
+print(urlparse(os.environ["ENDPOINT"]).netloc)
+PY
+)
+    fi
+  fi
+
+  printf '%s' "$host"
 }
 
 contains_word() {
@@ -664,7 +721,7 @@ AI_DEVELOPER_CAN=$(can_i_as "ai-developer" "get" "pods" "$MAAS_NS" "rhoai-develo
 [[ "$AI_DEVELOPER_CAN" == "no" ]] && R="pass" || R="can-i=${AI_DEVELOPER_CAN:-unknown}"
 check "ai-developer has no direct MaaS namespace access" "$R"
 
-GATEWAY_HOST=$(jsonpath "gateway/maas-default-gateway" "openshift-ingress" "{.spec.listeners[0].hostname}")
+GATEWAY_HOST=$(get_gateway_host)
 if [[ "$GATEWAY_HOST" == maas.* && "$GATEWAY_HOST" != "maas.placeholder.example.com" ]]; then
   R="pass"
 else
@@ -729,8 +786,8 @@ fi
 check "MaaS namespace has the GPU reserved LocalQueue" "$R"
 
 if resource_exists "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS"; then
-  NEMOTRON_URI=$(jsonpath "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.model.uri}")
-  NEMOTRON_READY=$(jsonpath "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.conditions[?(@.type==\"Ready\")].status}")
+  NEMOTRON_URI=$(jsonpath_nonempty "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.model.uri}")
+  NEMOTRON_READY=$(jsonpath_nonempty "llminferenceservices.serving.kserve.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.conditions[?(@.type==\"Ready\")].status}")
   if [[ "$NEMOTRON_URI" == "oci://registry.redhat.io/rhai/modelcar-nvidia-nemotron-3-nano-30b-a3b-fp8:3.0" &&
     "$NEMOTRON_READY" == "True" ]]; then
     R="pass"
