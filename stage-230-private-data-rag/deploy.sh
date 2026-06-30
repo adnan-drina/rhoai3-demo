@@ -367,6 +367,28 @@ build_chatbot_image() {
     return 1
   fi
 
+  clear_chatbot_build_gates() {
+    local gated_pods build_pod gates
+    gated_pods=$(oc get pods -n "$PROJECT_NS" \
+      -l "buildconfig=${RAG_CHATBOT_BUILD_CONFIG}" \
+      -o json --insecure-skip-tls-verify=true 2>/dev/null |
+      jq -r '.items[]? | select((.spec.schedulingGates // []) | length > 0) | .metadata.name' \
+      2>/dev/null || true)
+
+    while IFS= read -r build_pod; do
+      [[ -n "$build_pod" ]] || continue
+      gates=$(oc get pod "$build_pod" -n "$PROJECT_NS" \
+        -o json --insecure-skip-tls-verify=true |
+        jq -r '.spec.schedulingGates // [] | length' 2>/dev/null || echo 0)
+      if [[ "$gates" != "0" ]]; then
+        oc patch pod "$build_pod" -n "$PROJECT_NS" --type=merge \
+          -p '{"spec":{"schedulingGates":[]}}' \
+          --insecure-skip-tls-verify=true >/dev/null
+        echo "[OK] Cleared Kueue scheduling gates from build pod ${build_pod}"
+      fi
+    done <<<"$gated_pods"
+  }
+
   stale_builds=$(oc get build -n "$PROJECT_NS" \
     -l "buildconfig=${RAG_CHATBOT_BUILD_CONFIG}" \
     -o json --insecure-skip-tls-verify=true 2>/dev/null |
@@ -379,11 +401,28 @@ build_chatbot_image() {
     echo "[OK] Cancelled stale chatbot build ${build_name}"
   done <<<"$stale_builds"
 
-  local build_output build_name build_pod gates build_phase
-  build_output=$(oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
+  local build_output build_output_file build_name build_pod gates build_phase start_pid
+  build_output_file=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage230-chatbot-build.XXXXXX")
+  TMP_FILES+=("$build_output_file")
+
+  oc start-build "$RAG_CHATBOT_BUILD_CONFIG" -n "$PROJECT_NS" \
     --from-dir="$source_dir" \
     --wait=false \
-    --insecure-skip-tls-verify=true)
+    --insecure-skip-tls-verify=true >"$build_output_file" 2>&1 &
+  start_pid=$!
+
+  while kill -0 "$start_pid" >/dev/null 2>&1; do
+    clear_chatbot_build_gates
+    sleep 2
+  done
+
+  if ! wait "$start_pid"; then
+    cat "$build_output_file" >&2 || true
+    echo "ERROR: oc start-build failed for ${PROJECT_NS}/${RAG_CHATBOT_BUILD_CONFIG}." >&2
+    return 1
+  fi
+
+  build_output=$(cat "$build_output_file")
   echo "$build_output"
 
   build_name=$(grep -Eo "${RAG_CHATBOT_BUILD_CONFIG}-[0-9]+" <<<"$build_output" | tail -n 1 || true)
@@ -396,14 +435,13 @@ build_chatbot_image() {
   for _ in $(seq 1 60); do
     if oc get pod "$build_pod" -n "$PROJECT_NS" \
       --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      clear_chatbot_build_gates
       gates=$(oc get pod "$build_pod" -n "$PROJECT_NS" \
         -o json --insecure-skip-tls-verify=true |
         jq -r '.spec.schedulingGates // [] | length' 2>/dev/null || echo 0)
       if [[ "$gates" != "0" ]]; then
-        oc patch pod "$build_pod" -n "$PROJECT_NS" --type=merge \
-          -p '{"spec":{"schedulingGates":[]}}' \
-          --insecure-skip-tls-verify=true >/dev/null
-        echo "[OK] Cleared Kueue scheduling gates from build pod ${build_pod}"
+        echo "ERROR: Build pod ${build_pod} still has Kueue scheduling gates." >&2
+        return 1
       fi
       break
     fi
