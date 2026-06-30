@@ -83,9 +83,6 @@
   - The `prometheus-web-tls-ca` sync hook waits for the service-ca injected
     ConfigMap, then creates the Secret referenced by the generated
     `MonitoringStack`
-  - The Perses image alignment hook waits for the RHOAI-generated `Perses` CR
-    and installed Cluster Observability Operator CSV, then patches the generated
-    CR to the COO-provided `perses` related image when they differ
   - RHOAI operator must be `Succeeded` before DSCI/DSC are applied (same mechanism)
   - `argocd.argoproj.io/sync-wave` annotations manage within-Application ordering
 - Secret and credential handling: No credentials committed. NooBaa admin credentials and OBC-generated secrets are runtime-only.

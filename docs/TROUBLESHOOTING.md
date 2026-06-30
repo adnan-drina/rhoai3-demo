@@ -139,11 +139,11 @@ oc get csv "$CSV" -n openshift-cluster-observability-operator \
   -o jsonpath='{.spec.relatedImages[?(@.name=="perses")].image}{"\n"}'
 ```
 
-The Stage 110 `job-align-perses-image` hook aligns the RHOAI-generated Perses
-CR with the `perses` related image from the installed Cluster Observability
-Operator CSV. If the logs still show unsupported Perses flags after the hook
-runs, treat it as a product compatibility incident and verify against the
-installed Cluster Observability Operator CSV.
+If the generated Perses image differs from the installed Cluster Observability
+Operator `perses` related image and the logs show unsupported Perses flags,
+treat it as a product compatibility incident. A one-shot patch to the generated
+`Perses` CR is not durable because the RHOAI controller can reconcile the image
+back to its generated value.
 
 If the Perses dashboards are available but `default-monitoring` remains
 `Not Ready` with `tempo-datasource` and `spec.client.tls.caCert ... namespace is

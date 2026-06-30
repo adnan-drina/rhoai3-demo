@@ -174,21 +174,6 @@ ADMIN_PROMETHEUS_API=$(oc auth can-i create prometheuses/k8s --subresource=api \
 [[ "$ADMIN_PROMETHEUS_API" == "yes" ]] && R="pass" || R="can-i=${ADMIN_PROMETHEUS_API:-no}"
 check "ai-admin can query OpenShift monitoring Prometheus API" "$R"
 
-COO_CSV_NAME=$(oc get subscription cluster-observability-operator \
-  -n openshift-cluster-observability-operator \
-  -o jsonpath='{.status.installedCSV}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-COO_PERSES_IMAGE=""
-if [[ -n "$COO_CSV_NAME" ]]; then
-  COO_PERSES_IMAGE=$(oc get csv "$COO_CSV_NAME" \
-    -n openshift-cluster-observability-operator \
-    -o jsonpath='{.spec.relatedImages[?(@.name=="perses")].image}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-fi
-LIVE_PERSES_IMAGE=$(oc get perses data-science-perses -n redhat-ods-monitoring \
-  -o jsonpath='{.spec.image}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
-[[ -n "$COO_PERSES_IMAGE" && "$LIVE_PERSES_IMAGE" == "$COO_PERSES_IMAGE" ]] \
-  && R="pass" || R="live=${LIVE_PERSES_IMAGE:-missing} coo=${COO_PERSES_IMAGE:-missing}"
-check "RHOAI Perses image aligned with installed COO" "$R"
-
 OBS_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
 OBS_STACK_READY=$(oc get monitoring.services.platform.opendatahub.io default-monitoring \

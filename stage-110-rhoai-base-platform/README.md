@@ -54,10 +54,9 @@ The RHOAI observability dashboard is a Technology Preview capability. The RHOAI 
 - **Traces:** Tempo with PV-backed storage and 10% sampling
 - **Compatibility:** Stage 110 mirrors the service-ca `ConfigMap` into the
   `Secret` expected by the generated `MonitoringStack`, opens the Perses
-  backend only to the installed Perses operator namespace, aligns the generated
-  Perses CR image with the installed Cluster Observability Operator related
-  image, and grants `rhods-admins` the narrow Perses/Prometheus API permissions
-  required by the dashboard.
+  backend only to the installed Perses operator namespace, and grants
+  `rhods-admins` the narrow Perses/Prometheus API permissions required by the
+  dashboard.
 - **Docs:** [RHOAI 3.4 Managing observability](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-observability_managing-rhoai)
 
 ### Red Hat OpenShift AI Self-Managed
