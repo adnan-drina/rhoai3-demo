@@ -433,7 +433,7 @@ fi
 
 USER_TOKEN=$(get_demo_user_token)
 HOST=$(gateway_host)
-cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "" true
+cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "" false
 create_maas_api_key "$USER_TOKEN" "$HOST"
 store_playground_api_key "$CREATED_API_KEY_VALUE" "$CREATED_API_KEY_ID"
 cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "$CREATED_API_KEY_ID" false
