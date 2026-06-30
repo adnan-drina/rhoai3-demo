@@ -897,18 +897,21 @@ if resource_exists "configmap/${MCP_CONFIGMAP}" "$MCP_NS"; then
     inside && /\]/ {inside=0}
   ' "$MCP_CONFIG_BODY")
   if grep -Fq 'read_only = true' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'list_output = "table"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'toolsets = ["core", "config"]' "$MCP_CONFIG_BODY" &&
     grep -Fq 'enabled_tools = [' <<<"$MCP_ENABLED_TOOLS" &&
+    grep -Fq '"pods_list_in_namespace"' <<<"$MCP_ENABLED_TOOLS" &&
     ! grep -Fq '"pods_list"' <<<"$MCP_ENABLED_TOOLS" &&
+    ! grep -Fq '"namespaces_list"' <<<"$MCP_ENABLED_TOOLS" &&
     grep -Fq '"pods_get"' <<<"$MCP_ENABLED_TOOLS" &&
-    grep -Fq '"events_list"' <<<"$MCP_ENABLED_TOOLS" &&
     grep -Fq '"pods_list"' "$MCP_CONFIG_BODY" &&
+    grep -Fq '"namespaces_list"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "Secret"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ConfigMap"' "$MCP_CONFIG_BODY" &&
     grep -Fq 'kind = "ClusterRoleBinding"' "$MCP_CONFIG_BODY"; then
     R="pass"
   else
-    R="missing read_only, restricted toolsets, bounded inspection tools, pods_list exclusion, or denied sensitive resources"
+    R="missing read_only, table list output, restricted toolsets, namespace-scoped inspection tools, broad list exclusions, or denied sensitive resources"
   fi
 else
   R="missing"
@@ -937,13 +940,13 @@ if not model:
 
 payload = {
     'model': model,
-    'input': 'Use OpenShift-MCP namespaces_list to inspect available namespaces. Reply under 30 words.',
+    'input': 'Use OpenShift-MCP pods_list_in_namespace with namespace demo-sandbox. Reply under 30 words with pod readiness only.',
     'tools': [{
         'type': 'mcp',
         'server_label': '${MCP_DISCOVERY_KEY}',
         'server_url': 'http://${MCP_SERVER_NAME}.${MCP_NS}.svc:8080/mcp',
         'require_approval': 'never',
-        'allowed_tools': ['namespaces_list'],
+        'allowed_tools': ['pods_list_in_namespace'],
     }],
     'tool_choice': 'auto',
     'max_tool_calls': 2,
@@ -1126,10 +1129,37 @@ JSON
   "messages": [
     {
       "role": "user",
-      "content": "Reply with exactly: ok"
+      "content": "Use the get_pod_readiness_summary tool for namespace demo-sandbox."
     }
   ],
-  "max_tokens": 8
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_pod_readiness_summary",
+        "description": "Return a short OpenShift pod readiness summary for one namespace.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "namespace": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "namespace"
+          ]
+        }
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "get_pod_readiness_summary"
+    }
+  },
+  "max_tokens": 80,
+  "temperature": 0
 }
 JSON
 )
@@ -1140,7 +1170,8 @@ JSON
         done
         if [[ "$EXTERNAL_INFERENCE_STATUS" == "200" ]] &&
           jq -e '
-            (.choices[0].message.content // "" | test("ok"; "i")) and
+            .choices[0].message.tool_calls[0].function.name == "get_pod_readiness_summary" and
+            (.choices[0].message.tool_calls[0].function.arguments | contains("demo-sandbox")) and
             (.usage.total_tokens // 0) > 0
           ' "$EXTERNAL_INFERENCE_BODY" >/dev/null 2>&1; then
           R="pass"
@@ -1154,9 +1185,9 @@ JSON
         R="MaaS API key was not created"
       fi
       if [[ "$R" == warn:* ]]; then
-        warn "ai-developer can call external OpenAI through MaaS with token usage" "${R#warn: }"
+        warn "ai-developer can call external OpenAI through MaaS with tool calling and token usage" "${R#warn: }"
       else
-        check "ai-developer can call external OpenAI through MaaS with token usage" "$R"
+        check "ai-developer can call external OpenAI through MaaS with tool calling and token usage" "$R"
       fi
 
       UNAUTH_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-unauth.XXXXXX")

@@ -167,6 +167,29 @@ Review points:
   even though the MaaS-published Nemotron backend is served with a 131072-token
   context window for MCP headroom.
 
+## External GPT And MCP Review Pattern
+
+Use this pattern when deciding whether an external MaaS-published GPT model can
+participate in Playground MCP demos.
+
+Review points:
+
+- Validate direct GPT function calling first through the MaaS Chat Completions
+  endpoint with a simple function schema and a small `max_tokens` value.
+- Validate Playground MCP separately through Llama Stack `/v1/responses`.
+  Require `mcp_list_tools`, `mcp_call`, and a final `message` before claiming
+  GPT can use the MCP server.
+- Keep GPT+MCP prompts tightly bounded. Prefer one small tool such as
+  `pods_list_in_namespace` for `demo-sandbox` pod readiness or `pods_get` for
+  a known pod.
+- Do not use broad cluster-listing prompts for external GPT. MCP tool schemas
+  and tool results leave the cluster and can trigger external provider TPM
+  limits.
+- If the Playground shows no GPT answer, inspect Llama Stack logs for
+  `Request too large`, `rate_limit_exceeded`, or `tokens per min` before
+  changing model registration.
+- Use Nemotron as the standard Stage 220 OpenShift MCP demo model.
+
 ## Troubleshooting Pointers
 
 ```bash
@@ -182,6 +205,9 @@ Review points:
 - Provider-specific unsupported-parameter errors indicate a payload-shape
   mismatch between the generated Llama Stack provider and the selected
   external model.
+- `Request too large`, `rate_limit_exceeded`, or `tokens per min` in Llama
+  Stack logs means the external provider rejected the prompt/tool payload; it
+  does not by itself prove tool calling is disabled.
 - Missing MCP tab content points to missing platform-level MCP configuration.
 - Failed MCP tool calls usually require model card, vLLM runtime argument,
   output-token budget, MCP tool allowlist, and MCP pod memory review.

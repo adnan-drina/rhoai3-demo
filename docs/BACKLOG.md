@@ -82,7 +82,7 @@ OpenAI inference, and Gen AI Playground responses for both models.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output where applicable, checks token usage, and validates Gen AI Playground responses. |
+| API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output for both models, checks token usage, and validates Gen AI Playground responses. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
 ## Stage 230: Status — IMPLEMENTATION ADDED

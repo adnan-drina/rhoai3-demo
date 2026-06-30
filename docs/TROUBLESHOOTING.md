@@ -831,13 +831,18 @@ oc logs deployment/openshift-mcp -n rhoai-mcp --since=10m
     exceeds the selected model's effective context/output budget.
   - The OpenShift MCP tool catalog is too broad for the demo, causing the
     model to spend the response budget listing tools rather than calling one.
+  - The MCP server returns YAML for broad list tools, which can produce large
+    tool results that are then forwarded through Llama Stack.
   - The MCP pod hit its memory limit and was OOMKilled while serving tool-list
     requests.
+  - For external `gpt-4o-mini`, the MCP request or tool output is too large
+    for the external provider quota or token-per-minute limit even though
+    direct function calling is enabled.
 - **Confirm:**
 
 ```bash
 oc logs deployment/lsd-genai-playground -n demo-sandbox --since=30m \
-  | grep -E 'maximum context length|MCP|mcp|Provider SDK error'
+  | grep -E 'maximum context length|MCP|mcp|Provider SDK error|Request too large|rate_limit_exceeded|tokens per min'
 oc describe pod -n rhoai-mcp -l app.kubernetes.io/name=openshift-mcp \
   | grep -E 'OOMKilled|Restart Count|Limits|Requests'
 oc get configmap openshift-mcp-config -n rhoai-mcp \
@@ -845,8 +850,11 @@ oc get configmap openshift-mcp-config -n rhoai-mcp \
 ```
 
 - **Fix:** keep the Stage 220 OpenShift MCP server read-only and small-surface.
-  The GitOps config must include an `enabled_tools` allowlist for the intended
-  demo inspection tools and enough memory for tool-list handling. If the
+  The GitOps config must include `list_output = "table"`, an `enabled_tools`
+  allowlist for the intended demo inspection tools, and enough memory for
+  tool-list handling. Do not expose cluster-wide `namespaces_list`,
+  `pods_list`, broad event listing, or log tools for the Stage 220 Playground
+  demo. If the
   dashboard-created Llama Stack backend still uses a 4096-token vLLM output
   default for Nemotron, rerun:
 
@@ -859,6 +867,16 @@ The repair script should leave the vLLM provider at a smaller output default
 such as 512 tokens. This is not a model-quality setting; it keeps MCP tool
 context and answer generation bounded even though Stage 220 serves the
 MaaS-published Nemotron backend with `--max-model-len=131072`.
+
+For `gpt-4o-mini`, first distinguish direct tool-calling support from
+Playground MCP behavior. A direct MaaS Chat Completions request with a simple
+function schema can return `tool_calls`, while a Playground MCP request can
+still fail if the MCP tool schema or tool result causes excessive provider
+token pressure. In that case, use Nemotron as the primary OpenShift MCP demo
+model. If you need to test GPT with MCP, start a new Playground chat, choose a
+single bounded tool, and ask for a small result such as pod readiness in
+`demo-sandbox` or one known pod. Do not use broad cluster-listing prompts for
+the GPT MCP path.
 
 ### External OpenAI MaaS model stays Pending
 

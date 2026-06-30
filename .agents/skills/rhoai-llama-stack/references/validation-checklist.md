@@ -153,6 +153,14 @@ Check:
   before normal API handling.
 - `/v1/models` returns expected models
 - `/v1/responses` works for RAG and tool workflows
+- For MCP workflows, inspect the Responses API output types. A model-driven
+  tool-use claim requires `mcp_list_tools`, `mcp_call`, and a final `message`;
+  a model list or plain text response is not sufficient.
+- Direct OpenAI-compatible Chat Completions function calling through MaaS does
+  not by itself prove Playground MCP behavior. For external GPT models, test
+  `/v1/responses` with a bounded MCP tool and check Llama Stack logs for
+  provider token-limit errors such as `Request too large`,
+  `rate_limit_exceeded`, or `tokens per min`.
 - file citation annotations appear when `file_search` is used
 - authenticated endpoints reject missing or invalid bearer tokens
 
@@ -181,3 +189,6 @@ Check:
   ephemeral.
 - Remote providers are used in disconnected environments without an explicit
   exception.
+- External GPT MCP failures are diagnosed as model registration problems before
+  checking direct MaaS function calling, Responses API output types, and
+  external-provider token-limit logs.

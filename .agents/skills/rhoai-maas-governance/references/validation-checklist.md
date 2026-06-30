@@ -96,6 +96,10 @@ notes for Models-as-a-Service.
 - External OpenAI `gpt-4o-mini` validation uses the standard Chat Completions
   `max_tokens` field. Provider-specific OpenAI API compatibility errors must
   be fixed in the client payload, not hidden by MaaS readiness checks.
+- If direct external GPT tool calling is claimed, validate it with a
+  MaaS API-key-authenticated Chat Completions request that includes a simple
+  function schema and returns `tool_calls`. Do not infer GPT tool calling from
+  MaaS CR readiness or model listing.
 - Do not validate `/v1/chat/completions` with raw OpenShift OAuth tokens. The
   generated AuthPolicy permits Kubernetes tokens for discovery paths such as
   `/v1/models`; inference requests use `Authorization: Bearer <maas-api-key>`.
@@ -125,6 +129,10 @@ notes for Models-as-a-Service.
 - Validation checks Llama Stack `/v1/models` and sends `/v1/responses`
   requests for both MaaS-backed models. Dashboard model listing alone is not
   enough.
+- GPT MCP behavior is validated separately from direct GPT function calling.
+  When testing external `gpt-4o-mini` with MCP, require an actual
+  `mcp_call` through Llama Stack `/v1/responses` and inspect Llama Stack logs
+  for external-provider token-limit errors before changing MaaS resources.
 - Validation checks the dashboard BFF `/gen-ai/api/v1/lsd/responses` path with
   real user credentials. Use both `Authorization: Bearer <user-token>` and
   `x-forwarded-access-token: <user-token>` for non-browser tests.
@@ -164,8 +172,8 @@ RHOAI upgrades, RHCL upgrades, or MaaS troubleshooting.
   `/maas-api/v1/subscriptions` calls as allowed demo users.
 - Validation includes real MaaS API key creation, authenticated Nemotron
   inference through the MaaS Gateway, structured tool-call output, token usage,
-  external OpenAI inference through the same MaaS Gateway, token usage, and key
-  revocation.
+  external OpenAI function calling through the same MaaS Gateway, token usage,
+  and key revocation.
 - Validation includes the Gen AI Playground/Llama Stack response path when a
   playground exists in the demo project.
 - Validation includes the dashboard BFF response path when the stage claims the
@@ -246,6 +254,10 @@ Do not approve a MaaS change when:
 - token limits are absent from a model subscription
 - preview features are described as generally available
 - external provider limits are ignored in capacity planning
+- a GPT MCP failure is treated as missing tool-calling support without first
+  validating direct Chat Completions function calling and checking for
+  external-provider `Request too large`, `rate_limit_exceeded`, or
+  `tokens per min` errors
 - stale API keys remain after a group removal where immediate revocation is
   required
 - exact CR fields are copied from memory instead of official docs or installed

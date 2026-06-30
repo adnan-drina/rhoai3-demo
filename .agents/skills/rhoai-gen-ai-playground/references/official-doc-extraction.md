@@ -93,12 +93,19 @@ Source-grounded implementation points:
 - The OpenShift MCP server exposes an HTTP MCP endpoint at `/mcp` when run with
   an HTTP port.
 - Run with `read_only = true` for Stage 220-style demos.
+- Use `list_output = "table"` for Stage 220-style list tools so MCP tool
+  results stay compact when Llama Stack forwards them into the model context.
 - Enable only needed toolsets to reduce tool surface and model confusion. For
   the MaaS demo, use `toolsets = ["core", "config"]`.
 - Use the OpenShift MCP server `enabled_tools` allowlist for the demo
   inspection tools instead of exposing the whole toolset. A smaller tool
   catalog reduces Llama Stack Responses API context size and improves model
   tool selection.
+- Prefer namespace-scoped or known-resource tools such as
+  `pods_list_in_namespace`, `pods_get`, and `nodes_top`. Avoid cluster-wide
+  `namespaces_list`, `pods_list`, broad event listing, and log tools in the
+  Stage 220 Playground demo because the tool result can dominate the external
+  provider request.
 - Deny sensitive resource access in `config.toml`, especially `Secret`,
   `ConfigMap`, `Role`, `RoleBinding`, `ClusterRole`, and
   `ClusterRoleBinding`.
@@ -210,6 +217,22 @@ Existing Playground browser sessions can keep stale model selections after the
 dashboard recreates the Playground backend. After changing selected models,
 refresh the page or start a new chat so the UI uses the current `/v1/models`
 output.
+
+Do not collapse all tool-use behavior into one check. For the external
+`gpt-4o-mini` MaaS model, direct OpenAI-compatible Chat Completions function
+calling through the MaaS Gateway is supported and was validated with a simple
+forced tool schema. Playground MCP goes through the Llama Stack Responses API
+and adds MCP tool schemas plus tool output to the provider request. A GPT MCP
+call can therefore fail from external-provider token pressure even when direct
+function calling works.
+
+For the Stage 220 demo, use Nemotron as the primary OpenShift MCP model. Use
+external GPT with MCP only for tightly bounded checks and only after
+validating that `/v1/responses` returns `mcp_list_tools`, `mcp_call`, and a
+final `message`. If Llama Stack logs show `Request too large`,
+`rate_limit_exceeded`, or `tokens per min`, reduce the MCP tool surface,
+result format, prompt, and requested output instead of assuming GPT tool
+calling is disabled.
 
 For non-browser validation of the dashboard BFF path, send both
 `Authorization: Bearer <user-token>` and `x-forwarded-access-token:

@@ -68,6 +68,9 @@ runbooks, GitOps changes, or demo scripts.
   the MaaS vLLM provider.
 - External OpenAI `gpt-4o-mini` published through MaaS uses the same stable
   model identity for the MaaS resource name and provider target model ID.
+- External GPT tool-calling claims are validated separately from MCP. A simple
+  OpenAI-compatible MaaS Chat Completions request with a function schema should
+  return `tool_calls` before claiming direct GPT function calling works.
 - Registered model entries use `provider_model_id` only when the product
   generated config needs an explicit provider target. Do not use unverified
   field names copied from memory.
@@ -128,6 +131,8 @@ runbooks, GitOps changes, or demo scripts.
 - The OpenShift MCP server is labeled Developer Preview or Technology Preview
   in user-facing material.
 - The OpenShift MCP server runs with `read_only = true`.
+- The OpenShift MCP server uses `list_output = "table"` for compact list
+  results.
 - The OpenShift MCP server enables only required toolsets.
 - The OpenShift MCP server uses an `enabled_tools` allowlist for the specific
   demo inspection tools, so Llama Stack does not expose an unnecessarily large
@@ -146,9 +151,15 @@ runbooks, GitOps changes, or demo scripts.
   budget for MCP context. For the Stage 220 MaaS-published Nemotron model,
   validate `--max-model-len=131072` on the `LLMInferenceService` and a
   512-token provider default before demonstrating MCP.
+- For Stage 220, use Nemotron as the primary OpenShift MCP demo model. External
+  `gpt-4o-mini` can complete bounded MCP calls through Llama Stack, but broad
+  MCP prompts can send large tool schemas or results to the external provider
+  and fail with `Request too large`, `rate_limit_exceeded`, or
+  `tokens per min` even though GPT function calling is enabled.
 - The OpenShift MCP allowlist avoids broad cluster-wide list tools such as
-  `pods_list`; use bounded tools such as `events_list`, `pods_get` for known
-  pods, namespace inspection, and node status.
+  `namespaces_list`, `pods_list`, broad event listing, and log tools; use
+  bounded tools such as `pods_list_in_namespace`, `pods_get` for known pods,
+  and node status.
 - Token authorization behavior is documented as browser-session scoped.
 - The demo verifies MCP through the Llama Stack Responses API. At minimum,
   validation must prove that the project Llama Stack server receives an
@@ -203,6 +214,9 @@ Stop and correct the work if any of these are true:
   vector database.
 - RAG or MCP behavior is promised without checking model tool-calling support
   and runtime arguments.
+- GPT MCP failures are interpreted as lack of tool-calling support without
+  checking direct MaaS Chat Completions function calling and Llama Stack logs
+  for external-provider token-limit errors.
 - OpenShift MCP is exposed with write-capable tools, missing denied-resource
   configuration, or no explicit preview-status caveat.
 - Updating a playground omits the inline vector database deletion warning.

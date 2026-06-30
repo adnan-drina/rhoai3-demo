@@ -77,6 +77,10 @@
 - Do not hide the external-provider boundary. Prompts, context, and generated
   content for `gpt-4o-mini` leave the cluster and must be limited to approved
   demo workloads.
+- Do not use external `gpt-4o-mini` as the primary OpenShift MCP demo path.
+  Direct MaaS Chat Completions function calling works for the external model,
+  and bounded Playground MCP calls can work, but broad MCP prompts can produce
+  large tool schemas or tool outputs that hit external provider TPM limits.
 - Do not give `ai-developer` administrative access to the MaaS project. The
   user-facing path is through OpenShift AI dashboard assets and MaaS-governed
   API consumption, not namespace administration.
@@ -108,8 +112,9 @@
 - [x] Demo users have both `MaaSSubscription` quota and `MaaSAuthPolicy`
   gateway authorization before access is claimed.
 - [x] Validation proves model listing, API-key creation, local Nemotron
-  inference, external OpenAI inference, generated rate-limit policy
-  enforcement, token usage, and forbidden access for an unauthenticated subject.
+  tool-calling inference, external OpenAI function calling, generated
+  rate-limit policy enforcement, token usage, and forbidden access for an
+  unauthenticated subject.
 - [x] `ai-admin` can administer MaaS resources and policies; `ai-developer`
   can discover and consume allowed MaaS models without direct access to the
   MaaS administration namespace.

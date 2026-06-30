@@ -15,5 +15,5 @@ data:
   OpenShift-MCP: |
     {
       "url": "http://openshift-mcp.rhoai-mcp.svc:8080/mcp",
-      "description": "Read-only MCP server for Red Hat OpenShift cluster context. Use it to inspect projects, pods, events, workload status, and API resources without exposing Secrets, ConfigMaps, RBAC objects, or write operations."
+      "description": "Read-only MCP server for Red Hat OpenShift cluster context. Use it for bounded namespace-scoped pod readiness, known-pod status, and node usage summaries without exposing Secrets, ConfigMaps, RBAC objects, broad cluster listings, or write operations."
     }

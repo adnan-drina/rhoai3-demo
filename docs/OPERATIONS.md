@@ -729,13 +729,14 @@ the published model, not just the underlying CRs.
 
 The validator also creates a temporary MaaS API key as `ai-developer`, calls
 the Nemotron and external OpenAI OpenAI-compatible `/v1/chat/completions`
-endpoints through the MaaS Gateway, verifies structured Nemotron tool-call
-output and token usage, verifies unauthenticated inference is rejected, and
-revokes the temporary key. Do not treat raw
+endpoints through the MaaS Gateway, verifies structured tool-call output and
+token usage for both Nemotron and external GPT, verifies unauthenticated
+inference is rejected, and revokes the temporary key. Do not treat raw
 OpenShift OAuth tokens as the inference credential; the generated MaaS policy
 requires `Authorization: Bearer <maas-api-key>` for chat/completions. External
 OpenAI `gpt-4o-mini` requests use the standard Chat Completions `max_tokens`
-field.
+field. This direct Chat Completions function-calling check is separate from
+Playground MCP behavior.
 
 MaaS quota or external-provider throttling is reported as a validation warning,
 not as a configuration failure, when the model assets, subscriptions, auth
@@ -749,7 +750,10 @@ If a Gen AI Playground already exists in `demo-sandbox`, the validator also
 checks that the generated `LlamaStackDistribution` and deployment use a
 Secret-backed MaaS API key instead of the dashboard-created placeholder token.
 It validates the Llama Stack model list and `/v1/responses` path for both
-Nemotron and external GPT through MaaS.
+Nemotron and external GPT through MaaS. For MCP, the durable validation gate is
+an actual `mcp_call` through the Llama Stack Responses API. Stage 220 validates
+that path with Nemotron because it is the local, private, tool-calling model
+for the MCP demo.
 
 Stage 220 also registers a read-only OpenShift MCP server for the Gen AI
 Playground MCP tab. The server runs in `rhoai-mcp`, uses the newer
@@ -848,17 +852,30 @@ OpenShift-MCP -> http://openshift-mcp.rhoai-mcp.svc:8080/mcp
 
 Use it from the Gen AI Playground MCP tab after selecting a tool-calling model
 such as the MaaS-published Nemotron model. The intended demo prompt shape is
-bounded cluster inspection, for example asking for namespace, recent event,
-known-pod, or node status. Do not use this path for broad pod listing or write
-actions. The MCP server is configured read-only and denies Secrets,
-ConfigMaps, and RBAC objects even though the ServiceAccount has broad cluster
-`view` access.
+bounded cluster inspection, for example asking for pod status in a specific
+namespace, one known pod, or node usage status. Do not use this path for broad
+namespace, pod, event, or log listing, and do not use it for write actions. The
+MCP server is configured read-only, formats list results as `table` output,
+and denies Secrets, ConfigMaps, and RBAC objects even though the ServiceAccount
+has broad cluster `view` access.
+
+External `gpt-4o-mini` can emit standard function/tool calls through the MaaS
+OpenAI-compatible Chat Completions endpoint and can complete bounded MCP calls
+through the Playground Llama Stack Responses API. It is not the preferred
+OpenShift MCP demo model, because MCP tool schemas and tool outputs are sent
+to the external provider and can trigger provider token-per-minute limits. In
+one validated failure mode, a broad GPT+MCP request was rejected by OpenAI as
+`Request too large ... Requested 1411226` tokens. For external GPT+MCP tests,
+start a new chat, use only one bounded tool such as `pods_list_in_namespace`
+for `demo-sandbox` or `pods_get` for a known pod, and inspect Llama Stack logs
+before assuming tool calling is disabled.
 
 Keep the MCP tool surface intentionally small. Stage 220 allowlists only
-namespace, known-pod, event, and node inspection tools because the MCP tool
-schema and tool results are inserted into the Llama Stack Responses API
-context. Broad list tools such as `pods_list` can create excessive tool output
-and provider token pressure. The MaaS-published Nemotron backend is served with
+namespace-scoped pod inspection, known-pod, and node status tools because the
+MCP tool schema and tool results are inserted into the Llama Stack Responses
+API context. Broad list tools such as `namespaces_list`, `pods_list`,
+`events_list`, and log tools can create excessive tool output and provider
+token pressure. The MaaS-published Nemotron backend is served with
 `--max-model-len=131072` for MCP headroom, and the diagnostic Playground repair
 script keeps the vLLM provider output default at 512 tokens so MCP requests
 leave room for tool context and a short answer.

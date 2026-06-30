@@ -15,16 +15,16 @@ data:
     port = "8080"
     stateless = true
     read_only = true
-    list_output = "yaml"
+    list_output = "table"
     cluster_provider_strategy = "in-cluster"
     toolsets = ["core", "config"]
     enabled_tools = [
-      "namespaces_list",
+      "pods_list_in_namespace",
       "pods_get",
-      "events_list",
       "nodes_top"
     ]
     disabled_tools = [
+      "namespaces_list",
       "pods_list",
       "pods_delete",
       "pods_exec",
@@ -34,7 +34,7 @@ data:
       "resources_scale",
       "nodes_log"
     ]
-    server_instructions = "Use this read-only OpenShift MCP server for bounded namespace, event, known-pod, and node status inspection. Do not request broad pod listings, secrets, configmaps, RBAC objects, or write actions."
+    server_instructions = "Use this read-only OpenShift MCP server for bounded namespace-scoped pod inspection, known-pod status, and node usage summaries. Do not request cluster-wide namespace or pod listings, events, logs, secrets, configmaps, RBAC objects, or write actions."
 
     [http]
     read_header_timeout = "10s"

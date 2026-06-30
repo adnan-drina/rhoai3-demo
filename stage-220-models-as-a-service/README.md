@@ -76,8 +76,10 @@ This stage is implemented in phases:
    dashboard-created direct Nemotron `InferenceService` from `demo-sandbox`
    before the MaaS-owned backend is reconciled.
 4. Validate user access with real demo users, temporary MaaS API keys,
-   Nemotron tool-calling inference, external OpenAI inference, and MaaS
-   observability prerequisites.
+   Nemotron tool-calling inference, external OpenAI function calling, and MaaS
+   observability prerequisites. Nemotron remains the primary model for the
+   OpenShift MCP demo because it keeps cluster context on the private
+   inference path.
 5. Register a read-only OpenShift MCP server in Gen AI Playground discovery so
    users can test model tool use against OpenShift cluster context without
    giving the model write permissions or access to Secrets, ConfigMaps, or
@@ -111,4 +113,7 @@ configuration. The server is registered for Gen AI Playground through the
 platform-level `gen-ai-aa-mcp-servers` ConfigMap in
 `redhat-ods-applications`. MCP and Gen AI Playground are preview surfaces in
 this demo, so use them to demonstrate governed tool context, not production
-automation.
+automation. External GPT can complete tightly bounded MCP calls, but broad
+OpenShift MCP prompts can send large tool schemas or results to the external
+provider and hit provider token limits; use Nemotron for the standard MCP demo
+flow.
