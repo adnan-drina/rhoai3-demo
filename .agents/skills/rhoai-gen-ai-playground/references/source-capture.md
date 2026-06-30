@@ -21,6 +21,8 @@
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_the_model_catalog/index | Catalog deployment and Add as AI asset endpoint handoff |
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_and_monitoring_models | Deployed model operations context |
 | https://access.redhat.com/support/offerings/techpreview | Technology Preview support scope |
+| https://www.redhat.com/en/blog/model-context-protocol-server-red-hat-openshift-now-available-technology-preview | Red Hat blog for the newer MCP server for Red Hat OpenShift and preview posture |
+| https://github.com/openshift/openshift-mcp-server | OpenShift-specific MCP server source, Helm chart defaults, read-only configuration, denied-resource guidance, and image source |
 
 ## Supporting Project Sources
 
@@ -48,6 +50,10 @@
   models, playground loading, RAG document use, prompt save/load status, MCP
   server visibility and authorization, custom endpoint verification, exported
   template contents, and playground troubleshooting logs.
+- For OpenShift MCP demos, use the newer `openshift/openshift-mcp-server`
+  source and Red Hat preview material before falling back to generic Kubernetes
+  MCP examples. The RHOAI integration point remains the platform-level
+  `gen-ai-aa-mcp-servers` ConfigMap.
 
 ## Unresolved Or Environment-Specific Items
 

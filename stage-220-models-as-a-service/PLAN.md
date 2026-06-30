@@ -19,7 +19,8 @@
   `DataScienceCluster`, Red Hat Connectivity Link and Kuadrant prerequisites,
   MaaS Gateway API resources, Authorino TLS setup, PostgreSQL-backed API-key
   storage, `Tenant`, `MaaSModelRef`, `MaaSSubscription`,
-  `MaaSAuthPolicy`, `ExternalModel`, and a MaaS-published Nemotron endpoint.
+  `MaaSAuthPolicy`, `ExternalModel`, a MaaS-published Nemotron endpoint, and a
+  read-only OpenShift MCP server registered for Gen AI Playground discovery.
 - Phase-one implementation: cert-manager preflight validation, GitOps-managed
   RHCL, Kuadrant, Authorino TLS, `maas-default-gateway`, in-cluster PostgreSQL
   16 demo database, `maas-db-config`, dashboard flags, DSC MaaS/Llama Stack
@@ -52,8 +53,9 @@
   through Gen AI studio AI asset endpoints and MaaS API keys.
 - Full experience scope: include MaaS subscriptions, authorization policies,
   API keys, governed local Nemotron, governed external OpenAI, Gen AI
-  Playground consumption, MaaS observability, and clear Technology Preview
-  labeling for preview features.
+  Playground consumption, read-only OpenShift MCP tool context, MaaS
+  observability, and clear Technology Preview or Developer Preview labeling for
+  preview features.
 - Existing components reused: Stage 210 Nemotron vLLM configuration,
   Grafana/User Workload Monitoring, `demo-sandbox` as the consumer project,
   and Stage 120 GPU hardware profiles.
@@ -81,6 +83,9 @@
 - Do not expose the full Nemotron `131072` context window through the first
   MaaS policy. Keep large-context RAG as an explicit tuning decision after
   Stage 210/220 measurements prove the operating envelope.
+- Do not enable write-capable MCP tools in Stage 220. The OpenShift MCP server
+  is for read-only context inspection only, with Secrets, ConfigMaps, and RBAC
+  resources denied by configuration.
 
 ## Acceptance Criteria
 
@@ -109,6 +114,8 @@
   MaaS administration namespace.
 - [x] Gen AI Playground can use the MaaS-published local and external models
   through AI asset endpoints.
+- [x] OpenShift MCP server is registered in Gen AI Playground discovery and is
+  validated as read-only with denied sensitive resources.
 - [ ] MaaS observability is enabled and validates subscription/request/token
   signals where the installed Technology Preview components expose them.
 
@@ -124,6 +131,8 @@
 | Red Hat quickstart | [Red Hat AI quickstart - MaaS code assistant](https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant) | `project-red-hat-doc-alignment-review`, `rhoai-maas-governance` | Narrative and architecture reference for Nemotron, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S context. |
 | Red Hat Developer article | `/Users/adrina/Sandbox/rh-brain/Red Hat Brain/wiki/sources/2026-06-12 - Model-as-a-Service How to Run Your Own Private AI API.md` | `project-red-hat-doc-alignment-review`, `project-documentation-authoring` | Narrative source for MaaS as a governed internal private AI API product with developer self-service, monitoring, quota, security, and shadow-AI reduction. |
 | Red Hat Developer gateway example | [Centralized routing for external and self-hosted LLMs on OpenShift AI](https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service) | `rhoai-maas-governance`, `project-red-hat-doc-alignment-review` | Supporting example for a unified OpenAI-compatible gateway, external OpenAI `gpt-4o-mini`, and self-hosted model routing. The article uses LiteLLM; this stage uses the native RHOAI MaaS `ExternalModel` path from official docs. |
+| OpenShift MCP product direction | [Red Hat - Model Context Protocol server for Red Hat OpenShift now available as Technology Preview](https://www.redhat.com/en/blog/model-context-protocol-server-red-hat-openshift-now-available-technology-preview) | `rhoai-gen-ai-playground`, `rhoai-llama-stack` | Source for using the Red Hat/OpenShift MCP server pattern and for preview-status safety framing. |
+| OpenShift MCP implementation | [openshift/openshift-mcp-server](https://github.com/openshift/openshift-mcp-server) | `rhoai-gen-ai-playground`, `project-gitops-authoring` | Source for image, HTTP `/mcp` endpoint, Helm chart defaults, read-only configuration, denied-resource guidance, and ServiceAccount/RBAC posture. |
 | Red Hat implementation reference | [rh-ai-quickstart/maas-code-assistant `feat/upgrade-to-rhoai-3.4`](https://github.com/rh-ai-quickstart/maas-code-assistant/tree/feat/upgrade-to-rhoai-3.4) | `rhoai-maas-governance`, `rhoai-distributed-inference-llmd` | Implementation pattern for `LLMInferenceService`, Gateway, tier/RBAC, vLLM args, Grafana, and the known-good `rhcl-operator.v1.3.4` pin. Must be revalidated against RHOAI 3.4 CRDs. |
 | Sibling demo reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | `rhoai-distributed-inference-llmd`, `rhoai-model-serving-platform` | Concrete Nemotron vLLM/tool-calling configuration to preserve where schema-compatible. |
 | Sibling MaaS reference | `/Users/adrina/Sandbox/rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | `rhoai-maas-governance` | MaaS model-reference pattern; example only until active CRD schema is verified. |

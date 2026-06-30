@@ -30,12 +30,17 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | Developer access | `ai-developer` does not get direct namespace access to `models-as-a-service`; the user path is AI asset endpoints, MaaS API keys, and OpenAI-compatible MaaS endpoints |
 | Admin access | `ai-admin` maps to `rhods-admins` and can administer the MaaS namespace and MaaS dashboard policy surfaces |
 | Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`; validate product-generated model discovery and responses for Nemotron and external `gpt-4o-mini` before using any diagnostic repair helper |
+| OpenShift MCP | read-only OpenShift MCP server in `rhoai-mcp`, discovered through `redhat-ods-applications/gen-ai-aa-mcp-servers` as `OpenShift-MCP`; config sets `read_only = true`, `toolsets = ["core", "config"]`, and denies `Secret`, `ConfigMap`, and RBAC resources |
 
 ## Design Decisions
 
 - Use the native RHOAI 3.4 MaaS `ExternalModel` path for OpenAI provider
   registration. Red Hat Developer LiteLLM examples can inform narrative and
   model selection, but they do not replace the product-documented MaaS CRs.
+- For Stage 220 MCP context, use the newer OpenShift MCP server source and Red
+  Hat preview guidance. Register it through the RHOAI Gen AI Playground MCP
+  discovery ConfigMap, keep it read-only, and keep sensitive resources denied.
+  Do not use MCP as a back door around MaaS model governance or OpenShift RBAC.
 - Publish the local Nemotron model from `models-as-a-service`, not
   `demo-sandbox`. MaaS-published models must have the `MaaSModelRef` in the
   backend namespace, and the demo needs a clean separation between provider

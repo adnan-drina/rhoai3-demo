@@ -789,6 +789,38 @@ checks must include both `Authorization: Bearer <user-token>` and
 dashboard pod with only one of those headers does not prove the MaaS route is
 broken.
 
+### OpenShift MCP server is not visible in Gen AI Playground
+
+- **Symptom:** the Playground MCP tab does not list `OpenShift-MCP`, or MCP
+  tool calls fail before reaching the server.
+- **Likely cause:** the platform MCP discovery ConfigMap is missing, malformed,
+  or points to a Service without ready endpoints.
+- **Confirm:**
+
+```bash
+oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o yaml
+oc get deployment,service,endpoints openshift-mcp -n rhoai-mcp
+oc get configmap openshift-mcp-config -n rhoai-mcp -o yaml
+```
+
+- **Fix:** sync Stage 220 and rerun validation:
+
+```bash
+./stage-220-models-as-a-service/deploy.sh
+./stage-220-models-as-a-service/validate.sh
+```
+
+Do not replace the read-only OpenShift MCP server with the older generic MCP
+demo image. Stage 220 follows the newer OpenShift MCP server project and Red
+Hat preview guidance. If the server starts but tools fail, first check that
+the config still includes `read_only = true`, `toolsets = ["core", "config"]`,
+and denied entries for `Secret`, `ConfigMap`, and RBAC resources. Then inspect
+the pod logs:
+
+```bash
+oc logs deployment/openshift-mcp -n rhoai-mcp --since=10m
+```
+
 ### External OpenAI MaaS model stays Pending
 
 - **Symptom:** `ExternalModel` exists, but `MaaSModelRef` is `Pending` and the

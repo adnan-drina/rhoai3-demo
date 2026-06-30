@@ -18,4 +18,5 @@ resources:
   - tenant/base
   - external-models/base
   - policies/base
+  - mcp/base
   - jobs/base

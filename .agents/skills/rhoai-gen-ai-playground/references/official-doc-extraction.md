@@ -78,6 +78,38 @@ Resource shape:
 Verification checks that the `ConfigMap` exists and includes the expected
 server key.
 
+## OpenShift MCP Server Pattern For This Demo
+
+When the demo needs an OpenShift cluster-context MCP server, prefer the newer
+Red Hat/OpenShift MCP server project and Red Hat preview guidance over older
+generic Kubernetes MCP examples.
+
+Source-grounded implementation points:
+
+- Treat the MCP server for Red Hat OpenShift as Developer Preview unless the
+  active product baseline changes.
+- Use the `openshift/openshift-mcp-server` source for image, chart defaults,
+  endpoint shape, configuration, and safety guidance.
+- The OpenShift MCP server exposes an HTTP MCP endpoint at `/mcp` when run with
+  an HTTP port.
+- Run with `read_only = true` for Stage 220-style demos.
+- Enable only needed toolsets to reduce tool surface and model confusion. For
+  the MaaS demo, use `toolsets = ["core", "config"]`.
+- Deny sensitive resource access in `config.toml`, especially `Secret`,
+  `ConfigMap`, `Role`, `RoleBinding`, `ClusterRole`, and
+  `ClusterRoleBinding`.
+- Use ServiceAccount/RBAC for in-cluster authentication. A cluster `view`
+  binding is acceptable for a broad read-only demo only when paired with MCP
+  read-only mode and denied resources.
+- Register the server in the RHOAI product discovery ConfigMap:
+  `redhat-ods-applications/gen-ai-aa-mcp-servers`.
+- Prefer an internal cluster Service URL such as
+  `http://openshift-mcp.<namespace>.svc:8080/mcp` for the dashboard-discovered
+  server entry.
+- Do not enable write-capable MCP tools without a separate agentic-AI stage,
+  explicit security review, user approval workflow, and stronger gateway or
+  OAuth controls.
+
 ## Model And Runtime Requirements
 
 RAG and MCP features rely on model tool-calling behavior. The official guide

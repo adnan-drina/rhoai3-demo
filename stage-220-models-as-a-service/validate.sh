@@ -31,6 +31,12 @@ PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
 PLAYGROUND_LSD_NAME="${RHOAI_PLAYGROUND_LSD_NAME:-lsd-genai-playground}"
 PLAYGROUND_CONFIGMAP="${RHOAI_PLAYGROUND_CONFIGMAP:-llama-stack-config}"
 PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas-api-key}"
+MCP_NS="${RHOAI_MCP_NAMESPACE:-rhoai-mcp}"
+MCP_SERVER_NAME="${RHOAI_OPENSHIFT_MCP_NAME:-openshift-mcp}"
+MCP_CONFIGMAP="${RHOAI_OPENSHIFT_MCP_CONFIGMAP:-openshift-mcp-config}"
+MCP_DISCOVERY_CONFIGMAP="${RHOAI_MCP_DISCOVERY_CONFIGMAP:-gen-ai-aa-mcp-servers}"
+MCP_DISCOVERY_KEY="${RHOAI_OPENSHIFT_MCP_DISCOVERY_KEY:-OpenShift-MCP}"
+MCP_IMAGE="${RHOAI_OPENSHIFT_MCP_IMAGE:-quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server:latest}"
 # Keep the dashboard-generated provider id stable while changing the provider
 # implementation to remote::openai. The generated provider number can change
 # when the dashboard recreates a playground, so validation discovers model ids
@@ -810,6 +816,72 @@ else
   R="pass"
 fi
 check "MaaS Gateway generated policy filters are healthy" "$R"
+
+if resource_exists "configmap/${MCP_DISCOVERY_CONFIGMAP}" "redhat-ods-applications"; then
+  MCP_DISCOVERY_DATA=$(oc get configmap "$MCP_DISCOVERY_CONFIGMAP" -n redhat-ods-applications \
+    -o json --insecure-skip-tls-verify=true 2>/dev/null \
+    | jq -r --arg key "$MCP_DISCOVERY_KEY" '.data[$key] // ""' 2>/dev/null || true)
+  if [[ "$MCP_DISCOVERY_DATA" == *"http://${MCP_SERVER_NAME}.${MCP_NS}.svc:8080/mcp"* &&
+    "$MCP_DISCOVERY_DATA" == *"Read-only MCP server"* ]]; then
+    R="pass"
+  else
+    R="missing ${MCP_DISCOVERY_KEY} entry or expected URL"
+  fi
+else
+  R="missing"
+fi
+check "OpenShift MCP is registered for Gen AI Playground discovery" "$R"
+
+if resource_exists "deployment/${MCP_SERVER_NAME}" "$MCP_NS"; then
+  MCP_READY=$(jsonpath "deployment/${MCP_SERVER_NAME}" "$MCP_NS" "{.status.availableReplicas}")
+  MCP_DEPLOY_IMAGE=$(jsonpath "deployment/${MCP_SERVER_NAME}" "$MCP_NS" "{.spec.template.spec.containers[0].image}")
+  if [[ "$MCP_READY" == "1" && "$MCP_DEPLOY_IMAGE" == "$MCP_IMAGE" ]]; then
+    R="pass"
+  else
+    R="availableReplicas=${MCP_READY:-0},image=${MCP_DEPLOY_IMAGE:-missing}"
+  fi
+else
+  R="missing"
+fi
+check "OpenShift MCP server deployment is available with the OpenShift MCP image" "$R"
+
+if resource_exists "service/${MCP_SERVER_NAME}" "$MCP_NS"; then
+  MCP_ENDPOINTS=$(oc get endpoints "$MCP_SERVER_NAME" -n "$MCP_NS" \
+    -o jsonpath='{.subsets[*].addresses[*].ip}' \
+    --insecure-skip-tls-verify=true 2>/dev/null || true)
+  [[ -n "$MCP_ENDPOINTS" ]] && R="pass" || R="service has no ready endpoints"
+else
+  R="missing"
+fi
+check "OpenShift MCP service has ready endpoints" "$R"
+
+MCP_RBAC_REF=$(jsonpath "clusterrolebinding/rhoai-demo-openshift-mcp-view" "" "{.roleRef.kind}/{.roleRef.name}:{.subjects[0].namespace}/{.subjects[0].name}")
+if [[ "$MCP_RBAC_REF" == "ClusterRole/view:${MCP_NS}/${MCP_SERVER_NAME}" ]]; then
+  R="pass"
+else
+  R="binding=${MCP_RBAC_REF:-missing}"
+fi
+check "OpenShift MCP ServiceAccount is bound to read-only cluster view" "$R"
+
+if resource_exists "configmap/${MCP_CONFIGMAP}" "$MCP_NS"; then
+  MCP_CONFIG_BODY=$(mktemp "${TMPDIR:-/tmp}/rhoai-stage220-mcp-config.XXXXXX")
+  TMP_FILES+=("$MCP_CONFIG_BODY")
+  oc get configmap "$MCP_CONFIGMAP" -n "$MCP_NS" \
+    -o jsonpath='{.data.config\.toml}' \
+    --insecure-skip-tls-verify=true >"$MCP_CONFIG_BODY" 2>/dev/null || true
+  if grep -Fq 'read_only = true' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'toolsets = ["core", "config"]' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'kind = "Secret"' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'kind = "ConfigMap"' "$MCP_CONFIG_BODY" &&
+    grep -Fq 'kind = "ClusterRoleBinding"' "$MCP_CONFIG_BODY"; then
+    R="pass"
+  else
+    R="missing read_only, restricted toolsets, or denied sensitive resources"
+  fi
+else
+  R="missing"
+fi
+check "OpenShift MCP config is read-only and denies sensitive resources" "$R"
 
 if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")

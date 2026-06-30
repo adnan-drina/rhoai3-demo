@@ -122,6 +122,20 @@ runbooks, GitOps changes, or demo scripts.
   `ConfigMap` in `redhat-ods-applications`.
 - MCP server data keys are unique and case-sensitive.
 - MCP server values are valid JSON.
+- OpenShift cluster-context MCP demos use the newer
+  `openshift/openshift-mcp-server` source and Red Hat preview guidance, not the
+  older generic server pattern.
+- The OpenShift MCP server is labeled Developer Preview or Technology Preview
+  in user-facing material.
+- The OpenShift MCP server runs with `read_only = true`.
+- The OpenShift MCP server enables only required toolsets.
+- Sensitive resource types are denied in the MCP server config: `Secret`,
+  `ConfigMap`, `Role`, `RoleBinding`, `ClusterRole`, and
+  `ClusterRoleBinding`.
+- ServiceAccount/RBAC grants are reviewed as a separate context-access
+  boundary from MaaS model access.
+- The MCP Service URL in `gen-ai-aa-mcp-servers` points to a ready Service with
+  endpoints.
 - The selected model supports tool calling.
 - Token authorization behavior is documented as browser-session scoped.
 - The demo verifies that the model uses the selected MCP tool.
@@ -144,6 +158,8 @@ Run only after following the OpenShift safety guard in `AGENTS.md`:
 oc get odhdashboardconfig -A -o yaml
 oc get datasciencecluster -A -o yaml
 oc get configmap gen-ai-aa-mcp-servers -n redhat-ods-applications -o yaml
+oc get deployment,service,endpoints -n rhoai-mcp
+oc get configmap openshift-mcp-config -n rhoai-mcp -o yaml
 oc get pods -A | rg 'lsd-genai-playground|predictor'
 ```
 
@@ -172,5 +188,7 @@ Stop and correct the work if any of these are true:
   vector database.
 - RAG or MCP behavior is promised without checking model tool-calling support
   and runtime arguments.
+- OpenShift MCP is exposed with write-capable tools, missing denied-resource
+  configuration, or no explicit preview-status caveat.
 - Updating a playground omits the inline vector database deletion warning.
 - Exported Python is presented as a complete runnable application.
