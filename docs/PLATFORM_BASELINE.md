@@ -10,6 +10,7 @@ Update it first when preparing an upgrade.
 | Red Hat OpenShift AI Self-Managed | 3.4 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/ |
 | Red Hat OpenShift Container Platform | 4.20 | https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/ |
 | Red Hat OpenShift Data Foundation | 4.20 | https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation/4.20/ |
+| Red Hat Connectivity Link | 1.3.4 compatibility hold | https://docs.redhat.com/en/documentation/red_hat_connectivity_link/1.4/html/release_notes/rhcl-release-notes |
 | Red Hat OpenShift Cluster Observability Operator | 1.4.0 compatibility hold | https://docs.redhat.com/en/documentation/red_hat_openshift_cluster_observability_operator/1-latest/ |
 | Red Hat build of OpenTelemetry | 3.9 | https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/3.9 |
 | Red Hat OpenShift distributed tracing platform | 3.9 | https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform/3.9 |
@@ -69,6 +70,14 @@ pin: the operator still manages Perses, Prometheus, and related operand images.
 Remove the hold only after validating that the active RHOAI 3.4 build generates
 Perses resources compatible with the newer Cluster Observability Operator CRD
 schema and operand behavior.
+
+Red Hat Connectivity Link is held at `rhcl-operator.v1.3.4` for the RHOAI 3.4
+MaaS Gateway path. RHCL 1.4.0 is deprecated in the official RHCL 1.4 release
+notes, which direct upgrade customers to pin Connectivity Link and dependent
+operators to the latest 1.3.z version. Do not approve RHCL 1.4.x InstallPlans
+until Red Hat publishes a supported replacement path and the Stage 220 MaaS
+Gateway, dashboard, API-key, local-model, external-model, and Playground
+regression gates pass.
 
 This baseline pins product documentation versions and selected operator
 lifecycle policy where required. It does not pin generated operand image

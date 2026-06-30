@@ -135,6 +135,13 @@ Do not commit the API key. If the generated deployment keeps the old literal
 placeholder values, recreate the generated deployment and let the operator
 render it from the corrected `LlamaStackDistribution`.
 
+Changing selected Playground models from the dashboard can regenerate the
+project `LlamaStackDistribution`, ConfigMap, and deployment. For this demo,
+complete the desired model selection first, wait for the dashboard-generated
+Playground to become ready, and then run the Stage 220 Playground helper. A
+model checkbox state in the UI does not prove that the generated Llama Stack
+backend still has Secret-backed MaaS tokens or the corrected provider mapping.
+
 For the local Nemotron model, keep the Llama Stack provider on the MaaS vLLM
 route. For the external OpenAI `gpt-5.4-mini` model published through MaaS,
 use the Llama Stack `remote::openai` provider with the MaaS Gateway base URL.
@@ -143,12 +150,23 @@ The Llama Stack vLLM provider sends `max_tokens`, while `gpt-5.4-mini` expects
 matching the external provider API shape.
 
 Use the model IDs returned by Llama Stack `/v1/models`. In the validated demo
-configuration they are provider-qualified IDs, for example:
+configuration they are provider-qualified IDs. The dashboard-generated provider
+number can change based on model selection order, for example:
 
 ```text
-maas-vllm-inference-2/nemotron-3-nano-30b-a3b
-maas-openai-inference-1/gpt-5.4-mini
+maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
+maas-vllm-inference-<m>/gpt-5.4-mini
 ```
+
+The GPT provider id intentionally keeps whichever dashboard-created
+`maas-vllm-inference-*` alias was assigned even though the provider type is
+patched to `remote::openai`. Existing Playground browser sessions can keep
+sending an older `.../gpt-5-4-mini` model id after the backend config is
+corrected. That stale model id cannot be made valid through MaaS because MaaS
+validates the request body model against the `ExternalModel.spec.targetModel`
+`gpt-5.4-mini`. After the repair, refresh the Playground page or remove and
+re-add the GPT model so the UI uses the `/v1/models` id ending in
+`/gpt-5.4-mini`.
 
 ## Configure A Playground
 

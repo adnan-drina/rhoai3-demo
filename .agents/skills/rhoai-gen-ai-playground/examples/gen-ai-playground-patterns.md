@@ -115,11 +115,13 @@ Review points:
 Use this as a review pattern for a dashboard-created project playground that
 must consume MaaS-published models through Llama Stack. Verify the active
 `LlamaStackDistribution` schema and generated config before applying changes.
+The `maas-vllm-inference-*` provider numbers are dashboard-generated examples;
+preserve the provider ids assigned by the active playground.
 
 ```yaml
 providers:
   inference:
-    - provider_id: maas-openai-inference-1
+    - provider_id: maas-vllm-inference-1
       provider_type: remote::openai
       config:
         api_key: ${env.VLLM_API_TOKEN_1:=fake}
@@ -135,7 +137,7 @@ providers:
         max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
         tls_verify: ${env.VLLM_TLS_VERIFY:=true}
 models:
-  - provider_id: maas-openai-inference-1
+  - provider_id: maas-vllm-inference-1
     model_id: gpt-5-4-mini
     provider_model_id: gpt-5.4-mini
     model_type: llm

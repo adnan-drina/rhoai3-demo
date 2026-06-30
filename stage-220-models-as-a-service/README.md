@@ -77,7 +77,7 @@ This stage is implemented in phases:
 
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
 use schemas observed on the current RHOAI 3.4 cluster. Stage 220 pins Red Hat
-Connectivity Link to `rhcl-operator.v1.3.3` with manual InstallPlan approval,
+Connectivity Link to `rhcl-operator.v1.3.4` with manual InstallPlan approval,
 matching the RHOAI 3.4 MaaS quickstart implementation evidence. This is a
 deliberate compatibility guard because RHCL 1.4.0 was observed on
 `cluster-klvxt` to generate a Kuadrant Gateway WASM EnvoyFilter containing

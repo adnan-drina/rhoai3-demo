@@ -20,7 +20,7 @@ fi
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_NS="${RHOAI_MAAS_DATABASE_NAMESPACE:-models-as-a-service-db}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
-PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.3}"
+PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.4}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-5.4-mini}"
 OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-5-4-mini}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
@@ -31,7 +31,11 @@ PROJECT_NS="${RHOAI_DEMO_PROJECT_NAMESPACE:-demo-sandbox}"
 PLAYGROUND_LSD_NAME="${RHOAI_PLAYGROUND_LSD_NAME:-lsd-genai-playground}"
 PLAYGROUND_CONFIGMAP="${RHOAI_PLAYGROUND_CONFIGMAP:-llama-stack-config}"
 PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas-api-key}"
-PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-openai-inference-1}"
+# Keep the dashboard-generated provider id stable while changing the provider
+# implementation to remote::openai. The generated provider number can change
+# when the dashboard recreates a playground, so validation discovers model ids
+# from Llama Stack /v1/models instead of assuming provider order.
+PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-vllm-inference-1}"
 PLAYGROUND_NEMOTRON_PROVIDER="${RHOAI_PLAYGROUND_NEMOTRON_PROVIDER_ID:-maas-vllm-inference-2}"
 
 TMP_FILES=()
@@ -246,12 +250,11 @@ validate_playground_if_present() {
     oc get configmap "$PLAYGROUND_CONFIGMAP" -n "$PROJECT_NS" \
       -o jsonpath='{.data.config\.yaml}' \
       --insecure-skip-tls-verify=true > "$config_file"
-    if grep -q "provider_id: ${PLAYGROUND_GPT_PROVIDER}" "$config_file" &&
-      grep -q "provider_type: remote::openai" "$config_file" &&
+    if grep -q "provider_type: remote::openai" "$config_file" &&
       grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${OPENAI_MODEL_RESOURCE}/v1" "$config_file" &&
       grep -q "provider_model_id: ${OPENAI_MODEL_ID}" "$config_file" &&
-      grep -q "provider_id: ${PLAYGROUND_NEMOTRON_PROVIDER}" "$config_file" &&
       grep -q "provider_type: remote::vllm" "$config_file" &&
+      grep -q "base_url: https://${GATEWAY_HOST}/models-as-a-service/${NEMOTRON_MODEL_RESOURCE}/v1" "$config_file" &&
       grep -q "provider_model_id: ${NEMOTRON_MODEL_RESOURCE}" "$config_file"; then
       result="pass"
     else
@@ -269,12 +272,16 @@ import urllib.request
 
 with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
     data = json.loads(resp.read())
-ids = {item.get('identifier') or item.get('id') for item in data.get('data', [])}
-required = {
-    '${PLAYGROUND_NEMOTRON_PROVIDER}/${NEMOTRON_MODEL_RESOURCE}',
-    '${PLAYGROUND_GPT_PROVIDER}/${OPENAI_MODEL_ID}',
-}
-missing = sorted(required - ids)
+items = data.get('data', [])
+targets = {'${NEMOTRON_MODEL_RESOURCE}', '${OPENAI_MODEL_ID}'}
+seen = set()
+for item in items:
+    model_id = item.get('identifier') or item.get('id') or ''
+    metadata = item.get('custom_metadata') or {}
+    for target in targets:
+        if metadata.get('provider_resource_id') == target or model_id == target or model_id.endswith('/' + target):
+            seen.add(target)
+missing = sorted(targets - seen)
 print('OK models' if not missing else 'MISSING ' + ','.join(missing))
 " 2>&1 || true)
     if grep -q "OK models" <<<"$models_output"; then
@@ -294,11 +301,23 @@ import urllib.error
 import urllib.request
 
 models = [
-    ('nemotron', '${PLAYGROUND_NEMOTRON_PROVIDER}/${NEMOTRON_MODEL_RESOURCE}'),
-    ('openai', '${PLAYGROUND_GPT_PROVIDER}/${OPENAI_MODEL_ID}'),
+    ('nemotron', '${NEMOTRON_MODEL_RESOURCE}'),
+    ('openai', '${OPENAI_MODEL_ID}'),
 ]
 
-for label, model in models:
+with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
+    listed_models = json.loads(resp.read()).get('data', [])
+
+def find_model_id(target):
+    for item in listed_models:
+        model_id = item.get('identifier') or item.get('id') or ''
+        metadata = item.get('custom_metadata') or {}
+        if metadata.get('provider_resource_id') == target or model_id == target or model_id.endswith('/' + target):
+            return model_id
+    raise RuntimeError(f'model target not listed: {target}')
+
+for label, target in models:
+    model = find_model_id(target)
     payload = json.dumps({
         'model': model,
         'input': 'You are concise. Reply with exactly: playground-ok',

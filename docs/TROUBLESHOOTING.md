@@ -640,7 +640,7 @@ exists and isolates the defect to the Gateway/AuthPolicy header-injection path.
   `AuthPolicy` or EnvoyFilter resources in GitOps unless official Red Hat
   documentation or support guidance requires it.
 - **Current action:** Stage 220 pins Red Hat Connectivity Link to
-  `rhcl-operator.v1.3.3` with manual InstallPlan approval. If validation shows
+  `rhcl-operator.v1.3.4` with manual InstallPlan approval. If validation shows
   any other installed CSV, remediate RHCL through operator lifecycle first and
   then rerun `deploy.sh` and `validate.sh`. Do not claim the Stage 220
   dashboard experience is complete until generated model AuthPolicy and
@@ -677,7 +677,15 @@ The helper stores the API key in
 `demo-sandbox/genai-playground-maas-api-key`, patches `VLLM_API_TOKEN_1` and
 `VLLM_API_TOKEN_2` to read from that Secret, and recreates the generated
 deployment if the operator cannot merge Secret refs over literal placeholder
-values.
+values. It also revokes old active Playground keys named
+`genai-playground-demo-sandbox` before creating the replacement key.
+
+If checking or unchecking a model in the Playground settings triggers a
+Playground update, treat that as a new generated-resource lifecycle event.
+Wait for the dashboard-created `LlamaStackDistribution` to become `Ready`,
+then rerun `configure-genai-playground.sh`. Otherwise the UI can show the model
+as selected while the backend has reset to placeholder tokens and the wrong
+provider type.
 
 - **External GPT-specific symptom:** the Playground returns a provider error
   that `max_tokens` is not supported.
@@ -689,12 +697,25 @@ values.
 Expected model IDs inside Llama Stack are provider-qualified:
 
 ```text
-maas-vllm-inference-2/nemotron-3-nano-30b-a3b
-maas-openai-inference-1/gpt-5.4-mini
+maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
+maas-vllm-inference-<m>/gpt-5.4-mini
 ```
 
 Short model IDs can fail through the Llama Stack API even when they work at the
 raw MaaS Gateway layer.
+
+If logs show `Model 'maas-vllm-inference-*/gpt-5-4-mini' not found` after a
+Playground repair, the backend provider id was changed and an already-open
+browser session is still sending the dashboard-created provider/model alias.
+Keep the generated provider id, change its provider type to `remote::openai`,
+and set `provider_model_id: gpt-5.4-mini`.
+
+If logs then show `model in request body 'gpt-5-4-mini' doesn't match
+ExternalModel`, the browser is still sending the old model alias. Refresh the
+Playground page or remove and re-add the GPT model so the request uses
+the `/v1/models` id ending in `/gpt-5.4-mini`. Do not rewrite MaaS or OpenAI
+routing to accept `gpt-5-4-mini`; the external provider target model is
+`gpt-5.4-mini`.
 
 ### External OpenAI MaaS model stays Pending
 
@@ -785,6 +806,42 @@ oc logs -n redhat-ods-applications deploy/maas-api --since=10m \
 oc rollout restart deployment/maas-api -n redhat-ods-applications
 oc rollout status deployment/maas-api -n redhat-ods-applications
 ./stage-220-models-as-a-service/validate.sh
+```
+
+### MaaS API key cleanup jobs fail every 15 minutes
+
+- **Symptom:** `maas-api-key-cleanup-*` Jobs in `redhat-ods-applications` fail
+  with backoff or active-deadline events. A manual probe to the generated
+  command times out:
+
+```bash
+oc get cronjob maas-api-key-cleanup -n redhat-ods-applications -o yaml
+oc get networkpolicy maas-api-cleanup-restrict -n redhat-ods-applications -o yaml
+```
+
+- **Cause observed on cluster-xgg8t:** the generated CronJob called
+  `http://maas-api:8080/internal/v1/api-keys/cleanup`, but the generated
+  `maas-api` Service and Deployment expose HTTPS on port `8443`. The generated
+  cleanup NetworkPolicy also restricted cleanup pods to port `8080`.
+- **Confirm the real endpoint:**
+
+```bash
+oc run maas-cleanup-https-check --rm -i --restart=Never \
+  -n redhat-ods-applications \
+  --image=registry.redhat.io/ubi9/ubi-minimal \
+  --command -- /bin/sh -c \
+  'curl -sk -i -X POST https://maas-api:8443/internal/v1/api-keys/cleanup'
+```
+
+- **Live demo recovery:** suspend the generated broken CronJob and create a
+  clearly annotated replacement CronJob that calls the verified HTTPS endpoint.
+  Treat this as live recovery for the active RHOAI 3.4 build, not as a product
+  recommendation. Remove the replacement after Red Hat fixes the generated
+  resources in a future operator update.
+
+```bash
+oc patch cronjob maas-api-key-cleanup -n redhat-ods-applications \
+  --type=merge -p '{"spec":{"suspend":true}}'
 ```
 
 ### Nemotron still exists as a direct demo-sandbox deployment

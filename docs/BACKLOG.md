@@ -72,7 +72,7 @@ administration.
 
 Deployed and validated 2026-06-13 on cluster-klvxt after migrating the direct
 `demo-sandbox` Nemotron deployment into `models-as-a-service`. Validation
-confirmed `rhcl-operator.v1.3.3`, MaaS CRDs, local Nemotron readiness,
+confirmed `rhcl-operator.v1.3.4`, MaaS CRDs, local Nemotron readiness,
 external OpenAI registration, subscription/auth policy, generated Kuadrant
 policy filters, dashboard AI asset endpoint discovery, Gateway subscription
 discovery for real demo users, MaaS API key lifecycle, Nemotron and external

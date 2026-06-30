@@ -82,7 +82,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: PINNED_CSV
-              value: rhcl-operator.v1.3.3
+              value: rhcl-operator.v1.3.4
             - name: PACKAGE_LABEL
               value: operators.coreos.com/rhcl-operator.openshift-operators
           command:

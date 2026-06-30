@@ -46,7 +46,10 @@ NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a
 PLAYGROUND_LSD_NAME="${RHOAI_PLAYGROUND_LSD_NAME:-lsd-genai-playground}"
 PLAYGROUND_CONFIGMAP="${RHOAI_PLAYGROUND_CONFIGMAP:-llama-stack-config}"
 PLAYGROUND_SECRET="${RHOAI_PLAYGROUND_MAAS_API_KEY_SECRET:-genai-playground-maas-api-key}"
-PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-openai-inference-1}"
+# Preserve the dashboard-created provider id so already-open Playground
+# sessions do not keep sending a stale model id after we switch GPT to the
+# OpenAI-compatible provider implementation.
+PLAYGROUND_GPT_PROVIDER="${RHOAI_PLAYGROUND_GPT_PROVIDER_ID:-maas-vllm-inference-1}"
 PLAYGROUND_NEMOTRON_PROVIDER="${RHOAI_PLAYGROUND_NEMOTRON_PROVIDER_ID:-maas-vllm-inference-2}"
 PLAYGROUND_API_KEY_NAME="genai-playground-${PROJECT_NS}"
 CREATED_API_KEY_VALUE=""
@@ -99,7 +102,7 @@ create_maas_api_key() {
     -H "Authorization: Bearer ${token}" \
     -H "Content-Type: application/json" \
     "https://${host}/maas-api/v1/api-keys" \
-    --data-binary "{\"name\":\"genai-playground-${PROJECT_NS}\",\"subscriptionName\":\"${MAAS_SUBSCRIPTION}\"}" \
+    --data-binary "{\"name\":\"${PLAYGROUND_API_KEY_NAME}\",\"subscriptionName\":\"${MAAS_SUBSCRIPTION}\"}" \
     2>/dev/null || true)
 
   key=$(jq -r '.key // empty' "$body" 2>/dev/null || true)
@@ -136,18 +139,6 @@ store_playground_api_key() {
   echo "✓ Project Secret ${PROJECT_NS}/${PLAYGROUND_SECRET} contains a MaaS API key for the playground"
 }
 
-existing_playground_api_key_id() {
-  if ! oc get secret "$PLAYGROUND_SECRET" -n "$PROJECT_NS" \
-    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-    return 0
-  fi
-
-  oc get secret "$PLAYGROUND_SECRET" -n "$PROJECT_NS" \
-    -o jsonpath='{.data.MAAS_API_KEY_ID}' \
-    --insecure-skip-tls-verify=true 2>/dev/null |
-    base64 --decode 2>/dev/null || true
-}
-
 revoke_maas_api_key() {
   local token="$1"
   local host="$2"
@@ -175,6 +166,7 @@ cleanup_duplicate_playground_api_keys() {
   local token="$1"
   local host="$2"
   local keep_id="$3"
+  local strict="${4:-false}"
   local body status duplicate_ids key_id
 
   body=$(mktemp "${TMPDIR:-/tmp}/rhoai-playground-key-search.XXXXXX")
@@ -189,6 +181,11 @@ cleanup_duplicate_playground_api_keys() {
 
   if [[ "$status" != "200" ]]; then
     echo "WARN: could not search for duplicate playground MaaS API keys (status=${status})." >&2
+    if [[ "$strict" == "true" ]]; then
+      head -c 240 "$body" >&2 || true
+      echo >&2
+      return 1
+    fi
     return 0
   fi
 
@@ -196,7 +193,7 @@ cleanup_duplicate_playground_api_keys() {
     .data[]? |
     select(.name == $name and .status == "active" and .id != $keep) |
     .id
-  ' "$body" 2>/dev/null || true)
+  ' "$body" 2>/dev/null | sort -u || true)
 
   while IFS= read -r key_id; do
     [[ -n "$key_id" ]] || continue
@@ -247,81 +244,67 @@ patch_llamastack_config() {
   python3 - "$tmp" "$host" "$OPENAI_MODEL_RESOURCE" "$OPENAI_MODEL_ID" \
     "$NEMOTRON_MODEL_RESOURCE" "$PLAYGROUND_GPT_PROVIDER" "$PLAYGROUND_NEMOTRON_PROVIDER" <<'PY'
 from pathlib import Path
-import re
 import sys
+import yaml
 
 path, host, openai_resource, openai_model, nemotron_model, gpt_provider, nemotron_provider = sys.argv[1:]
 text = Path(path).read_text()
+config = yaml.safe_load(text)
+inference_providers = config["providers"]["inference"]
+registered_models = config["registered_resources"]["models"]
 
-gpt_block = f"""  - provider_id: {gpt_provider}
-    provider_type: remote::openai
-    config:
-      api_key: ${{env.VLLM_API_TOKEN_1:=fake}}
-      base_url: https://{host}/models-as-a-service/{openai_resource}/v1
-      network:
-        tls:
-          verify: ${{env.VLLM_TLS_VERIFY:=true}}
-"""
+def endpoint(resource):
+    return f"https://{host}/models-as-a-service/{resource}/v1"
 
-text = re.sub(
-    r"  - provider_id: maas-vllm-inference-1\n"
-    r"    provider_type: remote::vllm\n"
-    r"    config:\n"
-    r"      api_token: \$\{env\.VLLM_API_TOKEN_1:=fake\}\n"
-    r"      base_url: .*/models-as-a-service/" + re.escape(openai_resource) + r"/v1\n"
-    r"      max_tokens: \$\{env\.VLLM_MAX_TOKENS:=4096\}\n"
-    r"      tls_verify: \$\{env\.VLLM_TLS_VERIFY:=true\}\n",
-    gpt_block,
-    text,
-)
+def provider_for_resource(resource, fallback):
+    expected = endpoint(resource)
+    for provider in inference_providers:
+        if provider.get("config", {}).get("base_url") == expected:
+            return provider["provider_id"]
+    return fallback
 
-text = re.sub(
-    r"  - provider_id: maas-openai-inference-1\n"
-    r"    provider_type: remote::openai\n"
-    r"    config:\n"
-    r"      api_key: \$\{env\.VLLM_API_TOKEN_1:=fake\}\n"
-    r"      base_url: .*/models-as-a-service/" + re.escape(openai_resource) + r"/v1\n"
-    r"      network:\n"
-    r"        tls:\n"
-    r"          verify: \$\{env\.VLLM_TLS_VERIFY:=true\}\n",
-    gpt_block,
-    text,
-)
+gpt_provider = provider_for_resource(openai_resource, gpt_provider)
+nemotron_provider = provider_for_resource(nemotron_model, nemotron_provider)
 
-text = re.sub(
-    r"  - provider_id: (?:maas-vllm-inference-1|maas-openai-inference-1)\n"
-    r"    model_id: " + re.escape(openai_resource) + r"\n"
-    r"(?:    provider_(?:model|resource)_id: .+\n)?"
-    r"    model_type: llm\n",
-    f"  - provider_id: {gpt_provider}\n"
-    f"    model_id: {openai_resource}\n"
-    f"    provider_model_id: {openai_model}\n"
-    f"    model_type: llm\n",
-    text,
-)
+for provider in inference_providers:
+    if provider["provider_id"] == gpt_provider:
+        provider["provider_type"] = "remote::openai"
+        provider["config"] = {
+            "api_key": "${env.VLLM_API_TOKEN_1:=fake}",
+            "base_url": endpoint(openai_resource),
+            "network": {"tls": {"verify": "${env.VLLM_TLS_VERIFY:=true}"}},
+        }
+    elif provider["provider_id"] == nemotron_provider:
+        provider["provider_type"] = "remote::vllm"
+        provider["config"] = {
+            "api_token": "${env.VLLM_API_TOKEN_2:=fake}",
+            "base_url": endpoint(nemotron_model),
+            "max_tokens": "${env.VLLM_MAX_TOKENS:=4096}",
+            "tls_verify": "${env.VLLM_TLS_VERIFY:=true}",
+        }
 
-text = re.sub(
-    r"  - provider_id: (?:maas-vllm-inference-2|maas-openai-inference-2)\n"
-    r"    model_id: " + re.escape(nemotron_model) + r"\n"
-    r"(?:    provider_(?:model|resource)_id: .+\n)?"
-    r"    model_type: llm\n",
-    f"  - provider_id: {nemotron_provider}\n"
-    f"    model_id: {nemotron_model}\n"
-    f"    provider_model_id: {nemotron_model}\n"
-    f"    model_type: llm\n",
-    text,
-)
+for model in registered_models:
+    if model.get("provider_id") == gpt_provider or model.get("model_id") == openai_resource:
+        model["provider_id"] = gpt_provider
+        model["model_id"] = openai_resource
+        model["provider_model_id"] = openai_model
+        model["model_type"] = "llm"
+    elif model.get("provider_id") == nemotron_provider or model.get("model_id") == nemotron_model:
+        model["provider_id"] = nemotron_provider
+        model["model_id"] = nemotron_model
+        model["provider_model_id"] = nemotron_model
+        model["model_type"] = "llm"
 
-required = [
-    f"provider_type: remote::openai",
-    f"provider_model_id: {openai_model}",
-    f"provider_model_id: {nemotron_model}",
+checks = [
+    any(p["provider_id"] == gpt_provider and p["provider_type"] == "remote::openai" for p in inference_providers),
+    any(p["provider_id"] == nemotron_provider and p["provider_type"] == "remote::vllm" for p in inference_providers),
+    any(m.get("provider_id") == gpt_provider and m.get("provider_model_id") == openai_model for m in registered_models),
+    any(m.get("provider_id") == nemotron_provider and m.get("provider_model_id") == nemotron_model for m in registered_models),
 ]
-missing = [item for item in required if item not in text]
-if missing:
-    raise SystemExit(f"failed to produce required Llama Stack config entries: {missing}")
+if not all(checks):
+    raise SystemExit("failed to produce required Llama Stack provider/model mappings")
 
-Path(path).write_text(text)
+Path(path).write_text(yaml.safe_dump(config, sort_keys=False))
 PY
 
   oc create configmap "$PLAYGROUND_CONFIGMAP" -n "$PROJECT_NS" \
@@ -365,9 +348,20 @@ import json
 import urllib.error
 import urllib.request
 
+with urllib.request.urlopen('http://127.0.0.1:8321/v1/models', timeout=60) as resp:
+    listed_models = json.loads(resp.read()).get('data', [])
+
+def find_model_id(target):
+    for item in listed_models:
+        model_id = item.get('identifier') or item.get('id') or ''
+        metadata = item.get('custom_metadata') or {}
+        if metadata.get('provider_resource_id') == target or model_id == target or model_id.endswith('/' + target):
+            return model_id
+    raise RuntimeError(f'model target not listed: {target}')
+
 models = [
-    ('nemotron', '${PLAYGROUND_NEMOTRON_PROVIDER}/${NEMOTRON_MODEL_RESOURCE}'),
-    ('openai', '${PLAYGROUND_GPT_PROVIDER}/${OPENAI_MODEL_ID}'),
+    ('nemotron', find_model_id('${NEMOTRON_MODEL_RESOURCE}')),
+    ('openai', find_model_id('${OPENAI_MODEL_ID}')),
 ]
 
 for label, model in models:
@@ -418,14 +412,12 @@ fi
 
 USER_TOKEN=$(get_demo_user_token)
 HOST=$(gateway_host)
-OLD_API_KEY_ID=$(existing_playground_api_key_id)
+cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "" true
 create_maas_api_key "$USER_TOKEN" "$HOST"
 store_playground_api_key "$CREATED_API_KEY_VALUE" "$CREATED_API_KEY_ID"
-if [[ -n "$OLD_API_KEY_ID" && "$OLD_API_KEY_ID" != "$CREATED_API_KEY_ID" ]]; then
-  revoke_maas_api_key "$USER_TOKEN" "$HOST" "$OLD_API_KEY_ID" || true
-fi
-cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "$CREATED_API_KEY_ID"
+cleanup_duplicate_playground_api_keys "$USER_TOKEN" "$HOST" "$CREATED_API_KEY_ID" false
 patch_llamastack_env
 patch_llamastack_config
 recreate_playground_deployment
 validate_playground_responses
+echo "NOTE: If selected Playground models are changed in the dashboard, rerun this helper after the dashboard finishes recreating the Playground."

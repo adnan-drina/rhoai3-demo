@@ -660,7 +660,7 @@ after prerequisites and DSC feature flags are healthy.
      `DataScienceCluster`.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
-   - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.3` with manual
+   - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.4` with manual
      InstallPlan approval. The bootstrap ArgoCD instance includes a conservative
      Subscription health customization: a manual pinned Subscription is healthy
      only when `status.installedCSV == spec.startingCSV`. This allows the RHCL
@@ -744,7 +744,7 @@ On the current `cluster-klvxt` environment, RHCL 1.4.0 generated a Gateway
 WASM EnvoyFilter with `allow_on_headers_stop_iteration`; the OpenShift gateway
 Envoy rejected that field, so Gateway requests did not reliably inject the
 identity headers required by `maas-api`. Stage 220 now expects
-`rhcl-operator.v1.3.3`, current model policies with `Enforced=True`, and
+`rhcl-operator.v1.3.4`, current model policies with `Enforced=True`, and
 functional dashboard/Gateway discovery for the published MaaS models.
 
 Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the
@@ -777,10 +777,19 @@ After creating the Playground from the dashboard, run:
 ./stage-220-models-as-a-service/validate.sh
 ```
 
+If you later update the Playground model selection, for example by checking or
+unchecking the GPT model, the dashboard can recreate the
+`LlamaStackDistribution`, ConfigMap, and generated deployment. That reset
+returns the generated resources to placeholder MaaS tokens and default provider
+types. Finish model selection first, wait for the Playground to become ready,
+then rerun `configure-genai-playground.sh`.
+
 The helper:
 
-- logs in as `ai-developer` using `.env` credentials and creates a MaaS API key
-  for `rhoai-developers-gpt-5-4-mini`
+- logs in as `ai-developer` using `.env` credentials
+- revokes old active Playground keys named `genai-playground-demo-sandbox`
+  before creating the replacement key
+- creates a MaaS API key for `rhoai-developers-gpt-5-4-mini`
 - stores the key in the project Secret
   `demo-sandbox/genai-playground-maas-api-key`
 - patches the `LlamaStackDistribution` token environment variables to read
@@ -792,19 +801,22 @@ The helper:
   token values
 - validates `/v1/responses` from inside the Llama Stack pod for both models
 
-Use the model IDs reported by the Llama Stack `/v1/models` API. In the current
-demo they are provider-qualified:
+Use the model IDs reported by the Llama Stack `/v1/models` API. They are
+provider-qualified, and the generated provider number can change when the
+dashboard recreates a playground:
 
 ```text
-maas-vllm-inference-2/nemotron-3-nano-30b-a3b
-maas-openai-inference-1/gpt-5.4-mini
+maas-vllm-inference-<n>/nemotron-3-nano-30b-a3b
+maas-vllm-inference-<m>/gpt-5.4-mini
 ```
 
 The external GPT route intentionally uses the Llama Stack `remote::openai`
 provider with the MaaS Gateway base URL. The `remote::vllm` provider sends
 `max_tokens`, while OpenAI `gpt-5.4-mini` requires `max_completion_tokens`.
 Keeping GPT on the OpenAI-compatible provider preserves MaaS governance while
-matching the provider API shape.
+matching the provider API shape. Preserve whichever `maas-vllm-inference-*`
+provider id the dashboard generated for GPT; the implementation behind that id
+is patched to `remote::openai`.
 
 ### Access Posture
 

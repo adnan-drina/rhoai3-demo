@@ -23,7 +23,8 @@
 | Managing OpenShift AI dashboard customization | `OdhDashboardConfig` feature flag context |
 | Managing observability | Platform observability context for MaaS usage metrics |
 | Red Hat OpenShift AI API tiers | Support posture review for MaaS CRDs and preview features |
-| Red Hat Connectivity Link 1.3 installing guide | RHCL installation, supported component prerequisites, and Kuadrant/Authorino context for the active demo cluster package while Stage 220 pins `rhcl-operator.v1.3.3` |
+| Red Hat Connectivity Link 1.3 installing guide | RHCL installation, supported component prerequisites, and Kuadrant/Authorino context for the active demo cluster package while Stage 220 pins `rhcl-operator.v1.3.4` |
+| Red Hat Connectivity Link 1.4 release notes | RHCL 1.4.0 deprecation notice and instruction to pin Connectivity Link plus dependent operators to the latest 1.3.z version |
 | OpenShift 4.20 cert-manager Operator documentation | cert-manager prerequisite installation and `CertManager` operand behavior |
 | Red Hat Ecosystem Catalog PostgreSQL 16 RHEL 9 image | Demo-local PostgreSQL 16 container image and environment-variable contract for the MaaS API-key database |
 
@@ -32,7 +33,7 @@
 | Source | Role |
 |--------|------|
 | https://docs.redhat.com/en/learn/ai-quickstarts/rh-maas-code-assistant | Red Hat AI quickstart narrative for private code assistant, Nemotron 3 Nano, MaaS, vLLM/llm-d, Grafana, and AWS `g6e.2xlarge`/L40S requirements |
-| https://github.com/rh-ai-quickstart/maas-code-assistant/tree/feat/upgrade-to-rhoai-3.4 | Source repository branch for RHOAI 3.4 MaaS implementation evidence, including `LLMInferenceService`, Gateway references, model resource sizing, Grafana examples, and the known-good `rhcl-operator.v1.3.3` pin |
+| https://github.com/rh-ai-quickstart/maas-code-assistant/tree/feat/upgrade-to-rhoai-3.4 | Source repository branch for RHOAI 3.4 MaaS implementation evidence, including `LLMInferenceService`, Gateway references, model resource sizing, Grafana examples, and the known-good `rhcl-operator.v1.3.4` pin |
 | https://developers.redhat.com/articles/2026/05/25/route-external-and-local-llms-models-as-a-service | Red Hat Developer example for centralized routing across external and self-hosted LLMs, including `gpt-5.4-mini`; use for narrative and model-choice context, not as CRD authority |
 | `rhoai3-coding-demo/gitops/stages/030-private-model-serving/base/models/nemotron-3-nano-30b.yaml` | Working local reference for publishing Nemotron through `LLMInferenceService` with Gateway, scheduler pool, tool-calling args, reasoning parser args, prefix caching, resources, and `/dev/shm` |
 | `rhoai3-coding-demo/gitops/stages/040-governed-models-as-a-service/base/models-maas-crds/local-modelrefs.yaml` | Working local reference for MaaSModelRef resources that publish local `LLMInferenceService` backends |
@@ -60,7 +61,7 @@
   patterns. Provider credential scopes, rate limits, and model availability
   must be verified with the provider outside this skill.
 - The active Stage 220 implementation pins Red Hat Connectivity Link to
-  `rhcl-operator.v1.3.3` with manual InstallPlan approval. Do not relax the pin
+  `rhcl-operator.v1.3.4` with manual InstallPlan approval. Do not relax the pin
   until RHOAI/RHCL/Gateway validation proves the newer operator version works
   end to end without generated-resource patches.
 

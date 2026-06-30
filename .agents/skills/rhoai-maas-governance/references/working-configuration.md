@@ -19,7 +19,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | Tenant namespace | `models-as-a-service` |
 | Gateway | `maas-default-gateway` in `openshift-ingress`, with `opendatahub.io/managed: "false"` and `security.opendatahub.io/authorino-tls-bootstrap: "true"` |
 | Gateway TLS | stable `maas-gateway-tls` Secret in `openshift-ingress`, generated from the active OpenShift ingress certificate by deploy automation |
-| Connectivity Link | `rhcl-operator.v1.3.3`, manual InstallPlan approval, with the approval job accepting only the pinned CSV |
+| Connectivity Link | `rhcl-operator.v1.3.4`, manual InstallPlan approval, with the approval job accepting only the pinned CSV |
 | Kuadrant and Authorino | `Kuadrant` and `Authorino` are managed in `kuadrant-system`; Authorino TLS and service CA trust are configured through GitOps |
 | PostgreSQL | demo-local PostgreSQL 16 StatefulSet in `models-as-a-service-db`, outside the Kueue-managed MaaS model namespace |
 | MaaS DB Secret | `maas-db-config` in `redhat-ods-applications`, with key `DB_CONNECTION_URL`; generated from local secrets and never committed; for this demo it must point to `maas-postgres.models-as-a-service-db.svc.cluster.local` |
@@ -29,7 +29,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | Access policy | Users need both `MaaSSubscription` quota and `MaaSAuthPolicy` gateway authorization before model access is claimed |
 | Developer access | `ai-developer` does not get direct namespace access to `models-as-a-service`; the user path is AI asset endpoints, MaaS API keys, and OpenAI-compatible MaaS endpoints |
 | Admin access | `ai-admin` maps to `rhods-admins` and can administer the MaaS namespace and MaaS dashboard policy surfaces |
-| Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`, Secret-backed MaaS API key, Nemotron through `remote::vllm`, external `gpt-5.4-mini` through `remote::openai` pointed at the MaaS Gateway |
+| Gen AI Playground | dashboard-created `LlamaStackDistribution` in `demo-sandbox`, Secret-backed MaaS API key, Nemotron through `remote::vllm`, external `gpt-5.4-mini` through `remote::openai` pointed at the MaaS Gateway while preserving the dashboard-created GPT provider id |
 
 ## Design Decisions
 
@@ -64,9 +64,17 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   project resources that still need validation. MaaS CR readiness, dashboard
   model listing, and direct MaaS inference do not prove the Llama Stack
   playground can use the models.
+- Treat dashboard model-selection changes as Playground regeneration events.
+  Checking or unchecking a MaaS model can recreate the project
+  `LlamaStackDistribution`, ConfigMap, and generated deployment, resetting
+  Secret-backed token references and provider mappings until the Stage 220
+  Playground helper is rerun.
 - Pin RHCL until the end-to-end RHOAI/RHCL/Gateway path is validated on a
   newer CSV. Automatic operator upgrades are normal for many demo components,
-  but MaaS Gateway policy generation is a compatibility boundary.
+  but MaaS Gateway policy generation is a compatibility boundary. On the
+  active baseline, use `rhcl-operator.v1.3.4` as the latest supported 1.3.z
+  compatibility hold because RHCL 1.4.0 is deprecated in the official release
+  notes.
 - Enable `Tenant.spec.telemetry.metrics.captureUser` only as an explicit demo
   choice. The official guide defaults user capture off for privacy and
   cardinality reasons.
@@ -99,6 +107,10 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   `LlamaStackDistribution` token env vars to a project Secret that contains a
   real MaaS API key, then validate `/v1/responses` from inside the Llama Stack
   pod.
+- A recreated dashboard Playground can leave an existing project Secret and
+  persistent MaaS API key behind. Before creating the replacement
+  `genai-playground-<project>` key, search and revoke old active keys with the
+  same name; then store only the newly issued key in the project Secret.
 - The Llama Stack operator can fail to merge `valueFrom` Secret refs over
   existing literal placeholder env values in the generated deployment. If the
   `LlamaStackDistribution` is correct but the deployment still has literal
@@ -112,9 +124,19 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   provider sends `max_tokens` and fails against the OpenAI provider. Use
   `remote::openai` with the MaaS Gateway base URL so governance remains MaaS
   controlled while the client payload matches OpenAI's expected shape.
-- Llama Stack `/v1/models` can expose provider-qualified model IDs such as
-  `maas-openai-inference-1/gpt-5.4-mini`; use those IDs in Playground
-  `/v1/responses` checks.
+- Llama Stack `/v1/models` exposes provider-qualified model IDs such as
+  `maas-vllm-inference-2/gpt-5.4-mini`; the generated provider number depends
+  on dashboard model selection order, so use the IDs returned by `/v1/models`
+  in Playground `/v1/responses` checks.
+- Preserve dashboard-created provider aliases when patching a project
+  `LlamaStackDistribution`. A browser session can keep sending the old
+  provider-qualified model id, for example
+  `maas-vllm-inference-*/gpt-5-4-mini`, after the backend is corrected. Switch
+  the GPT provider type to `remote::openai` and set `provider_model_id:
+  gpt-5.4-mini`, but keep the generated provider id stable unless the
+  playground is recreated. Do not try to make the old model alias work through
+  MaaS; MaaS correctly rejects request bodies whose model is not the external
+  `targetModel`. Refresh the page or reselect the GPT model after repair.
 - External OpenAI requests for `gpt-5.4-mini` must use
   `max_completion_tokens`; `max_tokens` produces an OpenAI provider error even
   when MaaS routing, credential lookup, and policy enforcement are healthy.
@@ -131,6 +153,16 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 - A newer RHCL CSV can generate Gateway WASM configuration rejected by the
   OpenShift gateway Envoy. Fix the operator lifecycle boundary first instead of
   papering over generated-resource failures.
+- On the active RHOAI 3.4 build, the generated `maas-api-key-cleanup` CronJob
+  can point to `http://maas-api:8080` while the generated `maas-api` Service
+  and Deployment expose HTTPS on `8443`. The generated
+  `maas-api-cleanup-restrict` NetworkPolicy can also restrict cleanup pods to
+  the wrong port. If recurring cleanup Jobs fail with timeouts, verify the
+  generated Service, CronJob, and NetworkPolicy before blaming RHCL. For live
+  demo recovery, suspend the broken generated CronJob and create a clearly
+  annotated replacement CronJob that calls
+  `https://maas-api:8443/internal/v1/api-keys/cleanup` with `curl -k`; remove
+  that replacement after Red Hat fixes the generated resources.
 - Argo CD health for a manually pinned OLM `Subscription` can be misleading
   when newer InstallPlans remain unapproved. The meaningful gate is that
   `status.installedCSV` equals the pinned `spec.startingCSV`, plus CRD and
