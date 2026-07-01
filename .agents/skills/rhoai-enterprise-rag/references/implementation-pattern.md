@@ -117,6 +117,10 @@
 - Install notebook dependencies into the active workbench Python environment;
   avoid `pip install --user` because RHOAI notebook images can run in a
   virtualenv where user site packages are not visible.
+- When dependency installation runs from a bootstrap init container, install
+  packages into a shared PVC path and expose that path to the main notebook
+  container with `PYTHONPATH`. Installing into the init container's default
+  Python environment does not persist into the Jupyter container.
 - Pin notebook dependencies to versions available from the active RHOAI Python
   package index; verify the Llama Stack client version against the active
   server and package index before committing.

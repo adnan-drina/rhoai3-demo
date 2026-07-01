@@ -34,6 +34,10 @@ Use this checklist before accepting Stage 230 RAG changes.
   `retrieval_pipeline_ag_news.ipynb`, with helper scripts and sample data kept
   in hidden generated workspace content, and JupyterLab should be rooted at
   the curated workspace directory rather than the PVC root or full repo clone.
+- Enterprise RAG Workbench can import the required notebook client libraries
+  from the same Python environment used by Jupyter kernels. Validate
+  `llama_stack_client` from the running workbench container before asking a
+  user to run the ingestion notebook.
 - If the workbench selects a Kueue-enabled hardware profile, the target
   namespace is labeled `kueue.openshift.io/managed=true`, the referenced
   `LocalQueue` exists in the same namespace, and the Notebook includes

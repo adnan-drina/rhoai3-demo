@@ -101,7 +101,11 @@ spec:
               cp "${stage_dir}/scripts/agnews_rag_acceptance.py" "${workspace}/.stage230/scripts/"
               cp -R "${stage_dir}/data/agnews-sample" "${workspace}/.stage230/data/"
 
-              python -m pip install -r "${workspace}/.stage230/requirements.txt"
+              rm -rf "${workspace}/.stage230/python"
+              python -m pip install \
+                --no-cache-dir \
+                --target "${workspace}/.stage230/python" \
+                -r "${workspace}/.stage230/requirements.txt"
           env:
             - name: GIT_REPO_URL
               value: https://github.com/adnan-drina/rhoai3-demo.git
@@ -132,6 +136,8 @@ spec:
                 --ServerApp.quit_button=False
             - name: HOME
               value: /opt/app-root/src/workspace
+            - name: PYTHONPATH
+              value: /opt/app-root/src/workspace/.stage230/python
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4
             - name: LLAMA_STACK_BASE_URL

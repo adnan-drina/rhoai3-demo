@@ -1302,6 +1302,11 @@ steps unless those components are intentionally reintroduced.
   PVC binding delay, failed sparse source fetch, or package install failure in
   the bootstrap init container. The RHOAI notebook image can run inside a
   virtual environment, so the bootstrap must not use `pip install --user`.
+  Dependencies installed into an init container's default Python environment
+  are not visible to the main Jupyter container. Stage 230 installs notebook
+  dependencies into the shared workspace path
+  `/opt/app-root/src/workspace/.stage230/python` and exposes that path through
+  `PYTHONPATH`.
   The workbench bootstrap intentionally copies only the two AG News notebooks
   into `/opt/app-root/src/workspace` and keeps helper scripts/sample data under
   hidden `.stage230` content. If the full `rhoai3-demo` repository appears in
@@ -1342,6 +1347,8 @@ steps unless those components are intentionally reintroduced.
   oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
   oc exec -n enterprise-rag <workbench-pod> -c enterprise-rag-workbench -- \
     find /opt/app-root/src/workspace -maxdepth 1 -mindepth 1 -printf '%f\n'
+  oc exec -n enterprise-rag <workbench-pod> -c enterprise-rag-workbench -- \
+    python -c 'from llama_stack_client import LlamaStackClient; print(LlamaStackClient.__name__)'
   ```
 
   Keep the workbench image, Notebook fields, and PVC in GitOps. Do not commit

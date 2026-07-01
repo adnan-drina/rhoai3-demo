@@ -218,11 +218,21 @@ if [[ -n "$workbench_pod" ]]; then
     'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
+     test -d /opt/app-root/src/workspace/.stage230/python &&
      test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else
     check "Enterprise RAG Workbench exposes curated notebook workspace" "expected two visible notebooks and hidden .stage230 helper content"
+  fi
+  if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+    'python - <<'"'"'PY'"'"'
+from llama_stack_client import LlamaStackClient
+print(LlamaStackClient.__name__)
+PY' >/dev/null 2>&1; then
+    check "Enterprise RAG Workbench can import llama-stack-client" "pass"
+  else
+    check "Enterprise RAG Workbench can import llama-stack-client" "missing from active notebook Python environment"
   fi
 else
   check "Enterprise RAG Workbench pod exists" "missing"
