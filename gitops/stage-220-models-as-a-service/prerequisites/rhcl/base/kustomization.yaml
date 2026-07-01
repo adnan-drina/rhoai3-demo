@@ -3,4 +3,7 @@ kind: Kustomization
 
 resources:
   - approve-installplan.yaml
+  - authorino-subscription.yaml
+  - dns-subscription.yaml
+  - limitador-subscription.yaml
   - subscription.yaml

@@ -676,12 +676,14 @@ after prerequisites and DSC feature flags are healthy.
    - Verifies cert-manager is already installed and configured as a platform
      prerequisite.
    - Pins Red Hat Connectivity Link to `rhcl-operator.v1.3.4` with manual
-     InstallPlan approval. The bootstrap ArgoCD instance includes a conservative
-     Subscription health customization: a manual pinned Subscription is healthy
-     only when `status.installedCSV == spec.startingCSV`. This allows the RHCL
-     pin to coexist with OLM `UpgradePending` while newer RHCL plans remain
+     InstallPlan approval and GitOps-manages the RHCL dependency
+     Subscriptions for Authorino, DNS, and Limitador at their validated 1.3.x
+     CSVs. The bootstrap ArgoCD instance includes a conservative Subscription
+     health customization: a manual pinned Subscription is healthy only when
+     `status.installedCSV == spec.startingCSV`. This allows the RHCL hold to
+     coexist with OLM `UpgradePending` while RHCL 1.4.x plans remain
      intentionally unapproved. The deployment fails visibly if a different RHCL
-     CSV is already installed.
+     or dependency CSV is already installed.
    - Applies the Stage 220 Application for LeaderWorkerSet, RHCL, Kuadrant,
      Authorino, the MaaS Gateway, PostgreSQL, the local Nemotron
      `LLMInferenceService`, external OpenAI, model policy, and the default MaaS
@@ -775,14 +777,16 @@ is bound to the `view` ClusterRole, and the MCP `config.toml` sets
 small demo inspection tool set, and denies `Secret`, `ConfigMap`, and RBAC
 resources. Treat this as preview/demo tool context, not production automation.
 
-If validation fails on the RHCL pin or on MaaS Gateway generated policy
+If validation fails on the RHCL or dependency pin, or on MaaS Gateway generated
+policy
 filters, inspect the installed RHCL CSV, generated Kuadrant AuthPolicy and
 TokenRateLimitPolicy status, and gateway logs before retrying the dashboard.
 On the current `cluster-klvxt` environment, RHCL 1.4.0 generated a Gateway
 WASM EnvoyFilter with `allow_on_headers_stop_iteration`; the OpenShift gateway
 Envoy rejected that field, so Gateway requests did not reliably inject the
 identity headers required by `maas-api`. Stage 220 now expects
-`rhcl-operator.v1.3.4`, current model policies with `Enforced=True`, and
+`rhcl-operator.v1.3.4`, Authorino/DNS/Limitador on the validated 1.3.x CSVs,
+current model policies with `Enforced=True`, and
 functional dashboard/Gateway discovery for the published MaaS models.
 
 Do not patch generated Kuadrant `AuthPolicy` or EnvoyFilter resources as the

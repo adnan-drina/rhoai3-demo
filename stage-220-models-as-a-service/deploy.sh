@@ -319,6 +319,80 @@ cleanup_demo_sandbox_nemotron() {
   fi
 }
 
+label_servicemonitor_out_of_user_workload_monitoring() {
+  local namespace="$1"
+  local name="$2"
+
+  if ! oc get servicemonitor "$name" -n "$namespace" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    return 0
+  fi
+
+  oc label servicemonitor "$name" -n "$namespace" \
+    openshift.io/user-monitoring=false --overwrite \
+    --insecure-skip-tls-verify=true >/dev/null
+}
+
+ensure_istio_podmonitor_targets_metrics_port() {
+  local namespace="openshift-ingress"
+  local name="istio-pod-monitor"
+  local port relabel_exists
+
+  if ! oc get podmonitor "$name" -n "$namespace" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    return 0
+  fi
+
+  port=$(oc get podmonitor "$name" -n "$namespace" \
+    -o jsonpath='{.spec.podMetricsEndpoints[0].port}' \
+    --insecure-skip-tls-verify=true 2>/dev/null || true)
+
+  if [[ "$port" != "metrics" ]]; then
+    if [[ -n "$port" ]]; then
+      oc patch podmonitor "$name" -n "$namespace" --type=json \
+        -p='[{"op":"replace","path":"/spec/podMetricsEndpoints/0/port","value":"metrics"}]' \
+        --insecure-skip-tls-verify=true >/dev/null
+    else
+      oc patch podmonitor "$name" -n "$namespace" --type=json \
+        -p='[{"op":"add","path":"/spec/podMetricsEndpoints/0/port","value":"metrics"}]' \
+        --insecure-skip-tls-verify=true >/dev/null
+    fi
+  fi
+
+  relabel_exists=$(oc get podmonitor "$name" -n "$namespace" -o json \
+    --insecure-skip-tls-verify=true \
+    | jq -r '
+      any(.spec.podMetricsEndpoints[0].relabelings[]?;
+        .action == "keep"
+        and .regex == "metrics"
+        and (.sourceLabels // []) == ["__meta_kubernetes_pod_container_port_name"]
+      )
+    ')
+
+  if [[ "$relabel_exists" != "true" ]]; then
+    oc patch podmonitor "$name" -n "$namespace" --type=json \
+      -p='[{"op":"add","path":"/spec/podMetricsEndpoints/0/relabelings/0","value":{"action":"keep","regex":"metrics","sourceLabels":["__meta_kubernetes_pod_container_port_name"]}}]' \
+      --insecure-skip-tls-verify=true >/dev/null
+  fi
+}
+
+ensure_known_monitoring_noise_is_excluded() {
+  echo "── Excluding known invalid generated monitoring targets ──"
+
+  label_servicemonitor_out_of_user_workload_monitoring \
+    openshift-kueue-operator kueue-metrics
+  label_servicemonitor_out_of_user_workload_monitoring \
+    openshift-nfd nfd-controller-manager-metrics-monitor
+  label_servicemonitor_out_of_user_workload_monitoring \
+    redhat-ods-applications odh-model-controller-metrics-monitor
+  label_servicemonitor_out_of_user_workload_monitoring \
+    openshift-lws-operator lws-controller-manager-metrics-monitor
+
+  ensure_istio_podmonitor_targets_metrics_port
+
+  echo "✓ Known generated monitoring targets are aligned"
+}
+
 if ! oc get crd certificates.cert-manager.io --insecure-skip-tls-verify=true >/dev/null 2>&1; then
   echo "ERROR: cert-manager CRDs are missing. Install cert-manager Operator for Red Hat OpenShift before Stage 220." >&2
   exit 1
@@ -383,6 +457,8 @@ if oc get deployment/maas-api -n redhat-ods-applications \
   oc rollout status deployment/maas-api -n redhat-ods-applications \
     --timeout=180s --insecure-skip-tls-verify=true
 fi
+
+ensure_known_monitoring_noise_is_excluded
 
 echo "✓ Stage 220 rollout requested"
 echo "  Run ./stage-220-models-as-a-service/validate.sh to check MaaS prerequisites, local Nemotron publication, external model publication, and access policy."

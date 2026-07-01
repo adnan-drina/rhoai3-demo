@@ -87,13 +87,14 @@ This stage is implemented in phases:
 
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
 use schemas observed on the current RHOAI 3.4 cluster. Stage 220 pins Red Hat
-Connectivity Link to `rhcl-operator.v1.3.4` with manual InstallPlan approval,
-matching the RHOAI 3.4 MaaS quickstart implementation evidence. This is a
-deliberate compatibility guard because RHCL 1.4.0 was observed on
-`cluster-klvxt` to generate a Kuadrant Gateway WASM EnvoyFilter containing
-`allow_on_headers_stop_iteration`, which the OpenShift gateway Envoy rejected.
-The live MaaS API group is `maas.opendatahub.io/v1alpha1`; Stage 220 model
-publication and policy resources use that installed schema.
+Connectivity Link to `rhcl-operator.v1.3.4` with manual InstallPlan approval
+and also GitOps-manages the RHCL dependency Subscriptions for Authorino, DNS,
+and Limitador at their validated 1.3.x CSVs. This is a deliberate
+compatibility guard because the official RHCL 1.4 release notes deprecate
+RHCL 1.4.0 and direct upgrade customers to pin Connectivity Link and dependent
+operators to the latest 1.3.z release. The live MaaS API group is
+`maas.opendatahub.io/v1alpha1`; Stage 220 model publication and policy
+resources use that installed schema.
 
 Stage 220 intentionally does not patch generated Kuadrant `AuthPolicy` or
 EnvoyFilter resources. The implementation follows the documented MaaS/RHCL

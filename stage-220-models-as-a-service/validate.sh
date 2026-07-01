@@ -22,6 +22,9 @@ MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_DB_NS="${RHOAI_MAAS_DATABASE_NAMESPACE:-models-as-a-service-db}"
 MAAS_DB_CONFIG_SECRET="${RHOAI_MAAS_DB_CONFIG_SECRET:-maas-db-config}"
 PINNED_RHCL_CSV="${RHOAI_PINNED_RHCL_CSV:-rhcl-operator.v1.3.4}"
+PINNED_AUTHORINO_CSV="${RHOAI_PINNED_AUTHORINO_CSV:-authorino-operator.v1.3.1}"
+PINNED_DNS_CSV="${RHOAI_PINNED_DNS_CSV:-dns-operator.v1.3.1}"
+PINNED_LIMITADOR_CSV="${RHOAI_PINNED_LIMITADOR_CSV:-limitador-operator.v1.3.1}"
 OPENAI_MODEL_ID="${RHOAI_OPENAI_MODEL_ID:-gpt-4o-mini}"
 OPENAI_MODEL_RESOURCE="${RHOAI_OPENAI_MODEL_RESOURCE:-gpt-4o-mini}"
 OPENAI_PROVIDER_SECRET="${RHOAI_OPENAI_PROVIDER_SECRET:-openai-provider-api-key}"
@@ -581,6 +584,81 @@ PY
   fi
 }
 
+check_known_servicemonitor_excluded() {
+  local namespace="$1"
+  local name="$2"
+  local label
+
+  if ! resource_exists "servicemonitor/${name}" "$namespace"; then
+    check "Known generated ServiceMonitor absent or not installed: ${namespace}/${name}" "pass"
+    return
+  fi
+
+  label=$(jsonpath "servicemonitor/${name}" "$namespace" '{.metadata.labels.openshift\.io/user-monitoring}')
+  [[ "$label" == "false" ]] && R="pass" || R="openshift.io/user-monitoring=${label:-missing}"
+  check "Known invalid generated ServiceMonitor excluded from user-workload monitoring: ${namespace}/${name}" "$R"
+}
+
+validate_known_monitoring_noise_is_resolved() {
+  local port relabel_exists alerts targets
+
+  check_known_servicemonitor_excluded \
+    openshift-kueue-operator kueue-metrics
+  check_known_servicemonitor_excluded \
+    openshift-nfd nfd-controller-manager-metrics-monitor
+  check_known_servicemonitor_excluded \
+    redhat-ods-applications odh-model-controller-metrics-monitor
+  check_known_servicemonitor_excluded \
+    openshift-lws-operator lws-controller-manager-metrics-monitor
+
+  if resource_exists "podmonitor/istio-pod-monitor" "openshift-ingress"; then
+    port=$(jsonpath "podmonitor/istio-pod-monitor" "openshift-ingress" '{.spec.podMetricsEndpoints[0].port}')
+    relabel_exists=$(oc get podmonitor istio-pod-monitor -n openshift-ingress -o json \
+      --insecure-skip-tls-verify=true \
+      | jq -r '
+        any(.spec.podMetricsEndpoints[0].relabelings[]?;
+          .action == "keep"
+          and .regex == "metrics"
+          and (.sourceLabels // []) == ["__meta_kubernetes_pod_container_port_name"]
+        )
+      ' 2>/dev/null || true)
+    if [[ "$port" == "metrics" && "$relabel_exists" == "true" ]]; then
+      R="pass"
+    else
+      R="port=${port:-missing}, metrics-port keep relabel=${relabel_exists:-missing}"
+    fi
+    check "Generated Istio PodMonitor scrapes only the gateway metrics port" "$R"
+  else
+    check "Generated Istio PodMonitor absent or not installed" "pass"
+  fi
+
+  if ! command -v jq >/dev/null 2>&1 ||
+    ! resource_exists "pod/prometheus-k8s-0" "openshift-monitoring"; then
+    warn "Prometheus alert API validation" "jq or prometheus-k8s-0 unavailable"
+    return
+  fi
+
+  alerts=$(oc -n openshift-monitoring exec prometheus-k8s-0 -c prometheus -- \
+    curl -s 'http://localhost:9090/api/v1/query?query=ALERTS%7Balertname%3D~%22TargetDown%7CPrometheusOperatorRejectedResources%22%2Calertstate%3D%22firing%22%7D' \
+    2>/dev/null \
+    | jq -r '.data.result[]? | [.metric.alertname, (.metric.job // ""), (.metric.namespace // ""), (.metric.resource // "")] | @tsv' \
+    2>/dev/null || true)
+  [[ -z "$alerts" ]] && R="pass" || R="${alerts//$'\n'/; }"
+  check "Prometheus has no firing TargetDown or rejected-resource alerts for the known monitoring issue" "$R"
+
+  targets=$(oc -n openshift-monitoring exec prometheus-k8s-0 -c prometheus -- \
+    curl -s 'http://localhost:9090/api/v1/targets?state=active' \
+    2>/dev/null \
+    | jq -r '
+      .data.activeTargets[]
+      | select((.labels.job // "") == "openshift-ingress/istio-pod-monitor")
+      | select(.health != "up")
+      | [.scrapeUrl, (.lastError // "")] | @tsv
+    ' 2>/dev/null || true)
+  [[ -z "$targets" ]] && R="pass" || R="${targets//$'\n'/; }"
+  check "Generated Istio PodMonitor has no down active targets" "$R"
+}
+
 APP_SYNC=$(jsonpath "applications.argoproj.io/stage-220-models-as-a-service" "openshift-gitops" "{.status.sync.status}")
 [[ "$APP_SYNC" == "Synced" ]] && R="pass" || R="sync=${APP_SYNC:-not found}"
 check "Stage 220 Application Synced" "$R"
@@ -635,6 +713,24 @@ else
   R="installedCSV=${RHCL_CSV:-missing},approval=${RHCL_APPROVAL:-missing},startingCSV=${RHCL_STARTING_CSV:-missing},expected=${PINNED_RHCL_CSV}"
 fi
 check "Red Hat Connectivity Link Operator is pinned to the MaaS-compatible CSV" "$R"
+
+while IFS='|' read -r sub_name expected_csv label; do
+  DEP_CSV=$(jsonpath "subscription/${sub_name}" "openshift-operators" "{.status.installedCSV}")
+  DEP_APPROVAL=$(jsonpath "subscription/${sub_name}" "openshift-operators" "{.spec.installPlanApproval}")
+  DEP_STARTING_CSV=$(jsonpath "subscription/${sub_name}" "openshift-operators" "{.spec.startingCSV}")
+  if [[ "$DEP_CSV" == "$expected_csv" &&
+    "$DEP_APPROVAL" == "Manual" &&
+    "$DEP_STARTING_CSV" == "$expected_csv" ]]; then
+    R="pass"
+  else
+    R="installedCSV=${DEP_CSV:-missing},approval=${DEP_APPROVAL:-missing},startingCSV=${DEP_STARTING_CSV:-missing},expected=${expected_csv}"
+  fi
+  check "${label} Operator is pinned to the MaaS-compatible CSV" "$R"
+done <<EOF
+authorino-operator-stable-redhat-operators-openshift-marketplace|${PINNED_AUTHORINO_CSV}|Authorino
+dns-operator-stable-redhat-operators-openshift-marketplace|${PINNED_DNS_CSV}|DNS
+limitador-operator-stable-redhat-operators-openshift-marketplace|${PINNED_LIMITADOR_CSV}|Limitador
+EOF
 
 for crd in \
   kuadrants.kuadrant.io \
@@ -1298,6 +1394,7 @@ else
 fi
 
 validate_playground_if_present
+validate_known_monitoring_noise_is_resolved
 
 echo
 echo "Stage 220 validation summary: ${PASS} passed, ${WARN} warned, ${FAIL} failed"

@@ -20,6 +20,7 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
 | Gateway | `maas-default-gateway` in `openshift-ingress`, with `opendatahub.io/managed: "false"` and `security.opendatahub.io/authorino-tls-bootstrap: "true"` |
 | Gateway TLS | stable `maas-gateway-tls` Secret in `openshift-ingress`, generated from the active OpenShift ingress certificate by deploy automation |
 | Connectivity Link | `rhcl-operator.v1.3.4`, manual InstallPlan approval, with the approval job accepting only the pinned CSV |
+| Connectivity Link dependencies | GitOps-managed Authorino, DNS, and Limitador Subscriptions with manual approval and validated 1.3.x `startingCSV` values |
 | Kuadrant and Authorino | `Kuadrant` and `Authorino` are managed in `kuadrant-system`; Authorino TLS and service CA trust are configured through GitOps |
 | PostgreSQL | demo-local PostgreSQL 16 StatefulSet in `models-as-a-service-db`, outside the Kueue-managed MaaS model namespace |
 | MaaS DB Secret | `maas-db-config` in `redhat-ods-applications`, with key `DB_CONNECTION_URL`; generated from local secrets and never committed; for this demo it must point to `maas-postgres.models-as-a-service-db.svc.cluster.local` |
@@ -83,9 +84,11 @@ Validated on `cluster-klvxt` for Stage 220 on 2026-06-12 and refreshed on
   active baseline, use `rhcl-operator.v1.3.4` as the latest supported 1.3.z
   compatibility hold because RHCL 1.4.0 is deprecated in the official release
   notes.
-- Do not approve RHCL dependency upgrades just because OLM offers them.
-  On `cluster-xgg8t`, RHCL `1.3.4` installed cleanly, but the combined
-  dependency plan for DNS Operator `1.3.1`, Service Mesh `3.3.5`, and
+- Do not approve RHCL dependency upgrades just because OLM offers them. RHCL,
+  Authorino, DNS, and Limitador must be represented as GitOps-owned
+  Subscriptions with manual approval and pinned `startingCSV` values on the
+  active baseline. On `cluster-xgg8t`, RHCL `1.3.4` installed cleanly, but the
+  combined dependency plan for DNS Operator `1.3.1`, Service Mesh `3.3.5`, and
   Authorino CRD changes failed because existing generated MaaS `AuthConfig`
   resources did not validate against the stricter Authorino schema. Treat this
   as an operator compatibility boundary and rerun full MaaS validation before
@@ -277,11 +280,16 @@ Before declaring MaaS ready in a new or upgraded environment:
    oc explain tenants.maas.opendatahub.io.spec
    ```
 
-2. Confirm RHCL compatibility:
+2. Confirm RHCL compatibility and dependency holds:
 
    ```bash
    oc get subscription rhcl-operator -n openshift-operators \
      -o jsonpath='{.spec.installPlanApproval}{" "}{.spec.startingCSV}{" "}{.status.installedCSV}{"\n"}'
+   oc get subscription -n openshift-operators \
+     authorino-operator-stable-redhat-operators-openshift-marketplace \
+     dns-operator-stable-redhat-operators-openshift-marketplace \
+     limitador-operator-stable-redhat-operators-openshift-marketplace \
+     -o custom-columns=NAME:.metadata.name,APPROVAL:.spec.installPlanApproval,STARTINGCSV:.spec.startingCSV,INSTALLED:.status.installedCSV
    ```
 
 3. Confirm Kueue and database namespace separation:

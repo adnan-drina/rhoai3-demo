@@ -74,10 +74,12 @@ schema and operand behavior.
 Red Hat Connectivity Link is held at `rhcl-operator.v1.3.4` for the RHOAI 3.4
 MaaS Gateway path. RHCL 1.4.0 is deprecated in the official RHCL 1.4 release
 notes, which direct upgrade customers to pin Connectivity Link and dependent
-operators to the latest 1.3.z version. Do not approve RHCL 1.4.x InstallPlans
-until Red Hat publishes a supported replacement path and the Stage 220 MaaS
-Gateway, dashboard, API-key, local-model, external-model, and Playground
-regression gates pass.
+operators to the latest 1.3.z version. Stage 220 therefore also GitOps-manages
+the RHCL dependency Subscriptions for Authorino, DNS, and Limitador with
+manual approval and 1.3.x `startingCSV` values. Do not approve RHCL 1.4.x
+InstallPlans until Red Hat publishes a supported replacement path and the Stage
+220 MaaS Gateway, dashboard, API-key, local-model, external-model, and
+Playground regression gates pass.
 
 This baseline pins product documentation versions and selected operator
 lifecycle policy where required. It does not pin generated operand image
