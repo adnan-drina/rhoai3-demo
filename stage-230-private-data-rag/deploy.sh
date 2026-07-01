@@ -135,6 +135,17 @@ print(urlparse(os.environ["ENDPOINT"]).netloc)
 PY
 }
 
+normalize_openai_base_url() {
+  ENDPOINT="$1" python3 - <<'PY'
+import os
+
+endpoint = os.environ["ENDPOINT"].rstrip("/")
+if not endpoint.endswith("/v1"):
+    endpoint = f"{endpoint}/v1"
+print(endpoint)
+PY
+}
+
 ensure_maas_api_key() {
   local endpoint gateway_host user_token api_key_body status api_key api_key_id existing
 
@@ -207,7 +218,7 @@ ensure_runtime_secrets() {
     --from-literal=MILVUS_CONSISTENCY_LEVEL=Bounded \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
-  maas_endpoint="${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint)}"
+  maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint)}")"
   maas_token="$(ensure_maas_api_key)"
 
   oc create secret generic "$LLAMA_SECRET" \

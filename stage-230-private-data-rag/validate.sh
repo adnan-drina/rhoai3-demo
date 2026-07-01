@@ -91,6 +91,9 @@ for secret in "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET"; do
   resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
 done
 
+vllm_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
+[[ "$vllm_url" == */v1 ]] && check "Llama Stack MaaS base URL ends with /v1" "pass" || check "Llama Stack MaaS base URL ends with /v1" "${vllm_url:-missing}"
+
 [[ "$(available_replicas statefulset/private-rag-postgres "$RAG_NS")" == "1" ]] \
   && check "PostgreSQL metadata store is available" "pass" \
   || check "PostgreSQL metadata store is available" "availableReplicas=$(available_replicas statefulset/private-rag-postgres "$RAG_NS")"

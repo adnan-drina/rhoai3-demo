@@ -113,6 +113,9 @@ Review points:
   and store it in a project Secret.
 - Point `VLLM_URL` at the MaaS Gateway model route, for example
   `https://maas.<apps-domain>/models-as-a-service/<model>/v1`.
+- If the MaaS API returns a model endpoint without `/v1`, normalize it before
+  storing it in the Llama Stack Secret. Without `/v1`, Llama Stack's vLLM
+  provider probes `/models` and the MaaS route returns 404.
 - Keep `VLLM_TLS_VERIFY=false` only for the demo self-signed certificate
   posture; production deployments should validate TLS.
 - Do not use the generation LLM as the embedding model unless official model

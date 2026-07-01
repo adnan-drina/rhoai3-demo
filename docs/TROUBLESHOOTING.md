@@ -1220,11 +1220,13 @@ steps unless those components are intentionally reintroduced.
 
 - **Symptom:** `validate.sh` reports that `/v1/models` does not include
   `nemotron-3-nano-30b-a3b`.
-- **Likely cause:** the `private-rag-llama-stack-secret` contains a stale MaaS
-  endpoint, invalid API key, or mismatched `INFERENCE_MODEL`.
+- **Likely cause:** the `private-rag-llama-stack-secret` contains a MaaS
+  endpoint without the OpenAI-compatible `/v1` suffix, a stale endpoint, invalid
+  API key, or mismatched `INFERENCE_MODEL`.
 - **Fix:** confirm Stage 220 passes, then rerun
   `stage-230-private-data-rag/deploy.sh` so it refreshes the Llama Stack Secret
-  from the current `MaaSModelRef.status.endpoint` and API-key flow.
+  from the current `MaaSModelRef.status.endpoint`, normalizes it to `/v1`, and
+  uses the current API-key flow.
 
 ### Llama Stack is Ready but no OpenShift Route exists
 
