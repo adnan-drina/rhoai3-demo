@@ -130,6 +130,11 @@ reranker_ready=$(condition_status "inferenceservice/${RERANKER_NAME}" "$RAG_NS" 
   && check "Qwen3 reranker InferenceService is Ready" "pass" \
   || check "Qwen3 reranker InferenceService is Ready" "${reranker_ready:-missing}"
 
+reranker_queue=$(jsonpath "inferenceservice/${RERANKER_NAME}" "$RAG_NS" "{.metadata.labels.kueue\\.x-k8s\\.io/queue-name}")
+[[ "$reranker_queue" == "lq-cpu-default" ]] \
+  && check "Qwen3 reranker uses CPU LocalQueue" "pass" \
+  || check "Qwen3 reranker uses CPU LocalQueue" "${reranker_queue:-missing}"
+
 reranker_route_host=$(jsonpath "route/${RERANKER_NAME}" "$RAG_NS" "{.spec.host}")
 [[ -n "$reranker_route_host" ]] \
   && check "Qwen3 reranker route exists" "pass" \
@@ -146,6 +151,11 @@ resource_exists "pvc/${WORKBENCH_NAME}" "$RAG_NS" \
 resource_exists "notebook/${WORKBENCH_NAME}" "$RAG_NS" \
   && check "Enterprise RAG Workbench Notebook exists" "pass" \
   || check "Enterprise RAG Workbench Notebook exists" "missing"
+
+workbench_queue=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.labels.kueue\\.x-k8s\\.io/queue-name}")
+[[ "$workbench_queue" == "lq-cpu-default" ]] \
+  && check "Enterprise RAG Workbench uses CPU LocalQueue" "pass" \
+  || check "Enterprise RAG Workbench uses CPU LocalQueue" "${workbench_queue:-missing}"
 
 workbench_ready=$(condition_status "notebook/${WORKBENCH_NAME}" "$RAG_NS" "Ready")
 if [[ "$workbench_ready" == "True" ]]; then

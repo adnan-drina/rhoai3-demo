@@ -26,7 +26,7 @@
     implementation
   - RHOAI project workbench for notebook-driven ingestion and acceptance runs
   - `enterprise-rag` CPU LocalQueue for the Stage 120 `cpu-default` hardware
-    profile
+    profile and CPU reranker scheduling
   - deterministic AG News sample and smoke-test helper
 - Existing components reused:
   - Stage 220 Nemotron MaaS endpoint

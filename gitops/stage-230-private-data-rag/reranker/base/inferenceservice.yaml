@@ -7,6 +7,7 @@ metadata:
     app.kubernetes.io/part-of: rag
     app.kubernetes.io/name: qwen3-reranker
     app.kubernetes.io/component: reranker
+    kueue.x-k8s.io/queue-name: lq-cpu-default
     opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "11"

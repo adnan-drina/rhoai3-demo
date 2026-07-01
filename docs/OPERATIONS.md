@@ -929,7 +929,7 @@ implementation. The current first slice:
 
 - creates the `enterprise-rag` OpenShift AI project
 - labels `enterprise-rag` for Kueue management and creates `lq-cpu-default`
-  for the Stage 120 `CPU Default` hardware profile
+  for the Stage 120 `CPU Default` hardware profile and CPU reranker scheduling
 - deploys PostgreSQL for Llama Stack metadata
 - deploys a demo-local Milvus endpoint for the documented remote Milvus
   provider

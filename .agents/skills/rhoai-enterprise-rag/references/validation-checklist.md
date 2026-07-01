@@ -32,6 +32,9 @@ Use this checklist before accepting Stage 230 RAG changes.
   namespace is labeled `kueue.openshift.io/managed=true`, the referenced
   `LocalQueue` exists in the same namespace, and the Notebook includes
   `kueue.x-k8s.io/queue-name`.
+- If the CPU reranker runs in a Kueue-managed namespace, its `InferenceService`
+  includes `kueue.x-k8s.io/queue-name` for a LocalQueue with sufficient CPU and
+  memory quota.
 - Secrets contain no committed real values.
 - Llama Stack `/v1/models` and `LlamaStackClient.models.list()` show:
   - Nemotron generation model
