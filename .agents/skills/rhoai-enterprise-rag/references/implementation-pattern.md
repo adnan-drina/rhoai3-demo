@@ -110,6 +110,9 @@
 - Install notebook dependencies into the active workbench Python environment;
   avoid `pip install --user` because RHOAI notebook images can run in a
   virtualenv where user site packages are not visible.
+- Pin notebook dependencies to versions available from the active RHOAI Python
+  package index; verify the Llama Stack client version against the active
+  server and package index before committing.
 - Treat the cloned repo under the workbench PVC as generated stage content:
   fetch the target branch and reset that repo copy to the branch head on
   startup so stale shallow clones do not block redeploys.

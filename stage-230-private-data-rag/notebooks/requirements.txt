@@ -1,2 +1,2 @@
-llama-stack-client==0.7.1
+llama-stack-client==0.7.2
 requests==2.32.4
