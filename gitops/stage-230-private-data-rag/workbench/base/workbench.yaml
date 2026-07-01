@@ -46,7 +46,7 @@ metadata:
     opendatahub.io/odh-managed: "true"
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "14"
     notebooks.opendatahub.io/inject-oauth: "true"
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:3.4
     opendatahub.io/hardware-profile-name: cpu-default

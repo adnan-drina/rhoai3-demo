@@ -107,6 +107,9 @@
   GitOps-managed when the workbench is part of the repeatable demo. The
   workbench may clone the repo and install a pinned `requirements.txt`, but it
   must not carry committed credentials.
+- Keep workbench `Notebook` resources in the same Argo CD sync wave as their
+  PVCs when the storage class binds on `WaitForFirstConsumer`; placing the PVC
+  in an earlier wave can deadlock sync because no consumer pod exists yet.
 
 ## Demo Exceptions To Record
 
