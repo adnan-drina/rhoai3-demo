@@ -1195,16 +1195,16 @@ steps unless those components are intentionally reintroduced.
 ### Stage 230 PostgreSQL pgvector extension is missing
 
 - **Symptom:** Stage 230 validation reports that
-  `private-rag-postgres-enable-pgvector` did not complete or that PostgreSQL
-  does not have an installed `vector` extension.
-- **Likely cause:** the PostgreSQL pod is not ready, the extension Job ran
-  before the database accepted connections, or the active PostgreSQL image no
-  longer includes the pgvector extension.
-- **Fix:** check the PostgreSQL pod and extension Job logs:
+  PostgreSQL does not have an installed `vector` extension.
+- **Likely cause:** the PostgreSQL pod is not ready, the StatefulSet
+  `postStart` hook could not create the extension through local PostgreSQL
+  superuser access, or the active PostgreSQL image no longer includes the
+  pgvector extension.
+- **Fix:** check the PostgreSQL pod logs and extension state:
 
   ```bash
-  oc get pods,jobs -n enterprise-rag | grep private-rag-postgres
-  oc logs job/private-rag-postgres-enable-pgvector -n enterprise-rag
+  oc get pods,statefulset -n enterprise-rag | grep private-rag-postgres
+  oc logs statefulset/private-rag-postgres -n enterprise-rag --tail=120
   oc exec -n enterprise-rag private-rag-postgres-0 -- \
     bash -lc 'export PGPASSWORD="$POSTGRESQL_PASSWORD"; psql -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" -c "\dx vector"'
   ```

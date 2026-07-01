@@ -28,6 +28,26 @@ spec:
         - name: postgresql
           image: registry.redhat.io/rhel9/postgresql-16:latest
           imagePullPolicy: IfNotPresent
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/bash
+                  - -ec
+                  - |
+                    for _ in $(seq 1 60); do
+                      if pg_isready -U postgres -d "${POSTGRESQL_DATABASE}"; then
+                        psql \
+                          -U postgres \
+                          -d "${POSTGRESQL_DATABASE}" \
+                          -v ON_ERROR_STOP=1 \
+                          -c "CREATE EXTENSION IF NOT EXISTS vector;"
+                        exit 0
+                      fi
+                      sleep 5
+                    done
+                    echo "PostgreSQL did not become ready for pgvector initialization" >&2
+                    exit 1
           envFrom:
             - secretRef:
                 name: private-rag-postgres-credentials

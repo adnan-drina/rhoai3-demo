@@ -121,11 +121,6 @@ vllm_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base
   && check "PostgreSQL metadata store is available" "pass" \
   || check "PostgreSQL metadata store is available" "availableReplicas=$(available_replicas statefulset/private-rag-postgres "$RAG_NS")"
 
-pgvector_job=$(jsonpath "job/private-rag-postgres-enable-pgvector" "$RAG_NS" "{.status.succeeded}")
-[[ "$pgvector_job" == "1" ]] \
-  && check "PostgreSQL pgvector extension job completed" "pass" \
-  || check "PostgreSQL pgvector extension job completed" "${pgvector_job:-missing}"
-
 postgres_pod=$(oc get pods -n "$RAG_NS" -l "statefulset.kubernetes.io/pod-name=private-rag-postgres-0" \
   -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
 if [[ -n "$postgres_pod" ]]; then
