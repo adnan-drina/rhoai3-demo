@@ -203,6 +203,21 @@ def ensure_vector_store(
     return vector_store_id, uploaded_count
 
 
+def vector_store_file_counts(client: LlamaStackClient, vector_store_id: str) -> dict[str, int]:
+    store = client.vector_stores.retrieve(vector_store_id=vector_store_id)
+    file_counts = get_value(store, "file_counts")
+    counts = {
+        "cancelled": int(get_value(file_counts, "cancelled") or 0),
+        "completed": int(get_value(file_counts, "completed") or 0),
+        "failed": int(get_value(file_counts, "failed") or 0),
+        "in_progress": int(get_value(file_counts, "in_progress") or 0),
+        "total": int(get_value(file_counts, "total") or 0),
+    }
+    if counts["failed"] or counts["cancelled"] or counts["in_progress"]:
+        raise RuntimeError(f"vector store file ingestion is not clean: {counts}")
+    return counts
+
+
 def search(
     client: LlamaStackClient,
     vector_store_id: str,
@@ -406,6 +421,7 @@ def main() -> None:
         records,
         args.reset,
     )
+    file_counts = vector_store_file_counts(client, vector_store_id)
 
     results = []
     for question in select_questions(manifest, args):
@@ -437,6 +453,7 @@ def main() -> None:
                 "status": "pass",
                 "vector_store_id": vector_store_id,
                 "uploaded_count": uploaded_count,
+                "file_counts": file_counts,
                 "search_mode": args.search_mode,
                 "question_count": len(results),
                 "results": results,

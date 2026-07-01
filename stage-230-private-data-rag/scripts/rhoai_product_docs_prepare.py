@@ -36,6 +36,7 @@ def load_manifest(path: Path) -> dict[str, Any]:
 
 def normalize_text(value: str) -> str:
     value = value.replace("\u00a0", " ")
+    value = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", value)
     value = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", value)
     value = re.sub(r"[ \t]+", " ", value)
     value = re.sub(r"\n[ \t]+", "\n", value)

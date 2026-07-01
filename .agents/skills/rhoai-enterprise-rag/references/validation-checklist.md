@@ -69,6 +69,10 @@ Use this checklist before accepting Stage 230 RAG changes.
 - For AG News, raw text ingestion does not pretend to validate Docling.
 - For Dutch government publications or other unstructured corpora, Docling
   conversion output is validated before vector-store attachment.
+- PDF extraction output is sanitized before Files API upload. Remove NUL and
+  other non-printing control characters while preserving ordinary whitespace.
+  A vector store with failed file attachments is not a clean corpus, even if
+  smoke queries happen to pass.
 - A single preprocessed Dutch smoke PDF may be used before the larger corpus is
   ready, but the stage must label it as a deterministic development smoke path,
   include the raw PDF plus extracted chunks and questions, and keep Docling/KFP

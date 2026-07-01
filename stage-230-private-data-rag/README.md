@@ -82,8 +82,10 @@ chunks directly to the reranker acceptance path.
 
 The RHOAI product-document explainer corpus downloads official PDFs at runtime
 from `docs.redhat.com`, prepares focused chunks with source metadata, and
-indexes them through the same Files API and Vector Stores API path. If a
-runtime blocks programmatic PDF GET requests, the helper falls back to the
+indexes them through the same Files API and Vector Stores API path. PDF text
+extraction sanitizes non-printing control characters before upload so code
+sample pages do not create failed vector-store file attachments. If a runtime
+blocks programmatic PDF GET requests, the helper falls back to the
 matching official `html-single` guide for the same product content. This lets
 the demo audience ask why the stage uses Llama Stack, pgvector, RAGAS,
 AutoRAG, EvalHub, guardrails, AI Pipelines, and Docling vocabulary without
