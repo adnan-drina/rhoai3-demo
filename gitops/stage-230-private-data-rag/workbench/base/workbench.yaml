@@ -80,7 +80,7 @@ spec:
                 git -C "${repo_dir}" checkout "${GIT_REPO_BRANCH}"
                 git -C "${repo_dir}" pull --ff-only origin "${GIT_REPO_BRANCH}"
               fi
-              python -m pip install --user -r "${repo_dir}/stage-230-private-data-rag/notebooks/requirements.txt"
+              python -m pip install -r "${repo_dir}/stage-230-private-data-rag/notebooks/requirements.txt"
           env:
             - name: GIT_REPO_URL
               value: https://github.com/adnan-drina/rhoai3-demo.git

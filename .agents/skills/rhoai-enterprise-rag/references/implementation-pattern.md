@@ -107,6 +107,9 @@
   GitOps-managed when the workbench is part of the repeatable demo. The
   workbench may clone the repo and install a pinned `requirements.txt`, but it
   must not carry committed credentials.
+- Install notebook dependencies into the active workbench Python environment;
+  avoid `pip install --user` because RHOAI notebook images can run in a
+  virtualenv where user site packages are not visible.
 - Keep workbench `Notebook` resources in the same Argo CD sync wave as their
   PVCs when the storage class binds on `WaitForFirstConsumer`; placing the PVC
   in an earlier wave can deadlock sync because no consumer pod exists yet.

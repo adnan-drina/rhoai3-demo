@@ -1300,7 +1300,8 @@ steps unless those components are intentionally reintroduced.
 - **Likely cause:** missing project access, an unavailable workbench image,
   missing `lq-cpu-default` LocalQueue for the `cpu-default` hardware profile,
   PVC binding delay, failed repository clone, or package install failure in the
-  bootstrap init container.
+  bootstrap init container. The RHOAI notebook image can run inside a virtual
+  environment, so the bootstrap must not use `pip install --user`.
 - **GitOps note:** the Notebook and its PVC must be in the same Argo CD sync
   wave when the storage class uses `WaitForFirstConsumer`; otherwise Argo can
   wait on the PVC before creating the consumer pod.
