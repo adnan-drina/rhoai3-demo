@@ -34,7 +34,7 @@ LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secre
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
 RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
-EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/ibm-granite/granite-embedding-125m-english}"
+EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 
 check() {
@@ -268,9 +268,9 @@ if [[ -n "$route_host" ]]; then
     check "Llama Stack lists MaaS-backed Nemotron model" "status=${status},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
   if [[ "$status" == "200" ]] && grep -q "$EMBEDDING_MODEL" "$models_body"; then
-    check "Llama Stack lists Granite embedding model" "pass"
+    check "Llama Stack lists Nomic embedding model" "pass"
   else
-    check "Llama Stack lists Granite embedding model" "status=${status},model=${EMBEDDING_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
+    check "Llama Stack lists Nomic embedding model" "status=${status},model=${EMBEDDING_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
   if [[ "$status" == "200" ]] && grep -q "$RERANKER_MODEL" "$models_body"; then
     check "Llama Stack lists Qwen3 reranker model" "pass"

@@ -6,7 +6,7 @@
 |-------|----------------------------|-------|
 | RHOAI project | `enterprise-rag` | Dedicated project for the RAG runtime and notebooks/jobs |
 | Generation model | Stage 220 Nemotron through MaaS | Reuse governed model access and policies instead of deploying a duplicate LLM |
-| Embedding provider | Start with the reference `sentence-transformers/ibm-granite/granite-embedding-125m-english` path if compatible with installed Llama Stack; otherwise select a documented embedding provider and record dimensions | Embedding dimension must match vector-store registration |
+| Embedding provider | Use the embedding model listed by the active RHOAI Llama Stack server, currently `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` with dimension 768 | The article notebook defaults to Granite, but the demo must use a model returned by `/v1/models` unless a supported registration path is validated |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
 | Reranker | CPU-hosted Qwen3 reranker reference model registered in Llama Stack as `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |

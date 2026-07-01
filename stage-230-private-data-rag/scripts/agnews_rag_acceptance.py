@@ -20,7 +20,7 @@ from llama_stack_client import LlamaStackClient
 
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-acceptance"
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/ibm-granite/granite-embedding-125m-english"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_GENERATION_MODEL = "vllm-inference/nemotron-3-nano-30b-a3b"
 DEFAULT_RERANKER_MODEL = "vllm-reranker/qwen3-reranker"
 VALID_CATEGORIES = {"world", "sports", "business", "sci_tech"}

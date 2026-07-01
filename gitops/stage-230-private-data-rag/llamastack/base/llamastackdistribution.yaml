@@ -46,7 +46,7 @@ spec:
         - name: EMBEDDING_PROVIDER
           value: sentence-transformers
         - name: EMBEDDING_MODEL
-          value: sentence-transformers/ibm-granite/granite-embedding-125m-english
+          value: sentence-transformers/nomic-ai/nomic-embed-text-v1.5
         - name: INFERENCE_MODEL
           valueFrom:
             secretKeyRef:

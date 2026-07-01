@@ -941,7 +941,7 @@ implementation. The current first slice:
   reference implementation, registers it in Llama Stack as
   `vllm-reranker/qwen3-reranker`, and sizes it for the current demo CPU worker
   pool
-- uses `sentence-transformers/ibm-granite/granite-embedding-125m-english` for
+- uses `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` for
   AG News indexing
 - provides an Enterprise RAG Workbench, deterministic AG News sample, smoke
   helper, and full acceptance helper. The workbench visible workspace is
@@ -995,7 +995,7 @@ Current status:
 `validate.sh` currently proves the runtime foundation and prepares the next
 gate:
 
-- Llama Stack model list includes the configured Nemotron provider, Granite
+- Llama Stack model list includes the configured Nemotron provider, Nomic
   embedding model, and Qwen3 reranker model
 - PostgreSQL, etcd, Milvus, and the `LlamaStackDistribution` are ready
 - Qwen3 reranker `InferenceService` and Route exist and are ready

@@ -19,7 +19,7 @@ from llama_stack_client import LlamaStackClient
 
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-smoke"
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/ibm-granite/granite-embedding-125m-english"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_SEARCH_MODE = "vector"
 
 
