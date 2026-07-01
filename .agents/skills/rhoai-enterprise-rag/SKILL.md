@@ -17,8 +17,7 @@ description: >
   documents, Kubeflow Pipeline automation for repeatable document processing,
   and Nemotron generation through the demo MaaS layer. Use for Stage 230
   private-data RAG, AG News reference replication, official RHOAI product
-  documentation Q&A, future Dutch government publication ingestion, and RAG
-  architecture reviews.
+  documentation Q&A, and RAG architecture reviews.
   Do NOT use for AutoRAG optimization runs (use rhoai-autorag), generic Llama
   Stack platform configuration (use rhoai-llama-stack), model-serving runtime
   details (use rhoai-model-serving-platform), MaaS policy details (use
@@ -63,7 +62,6 @@ This skill covers:
 - Docling-based conversion, chunking, extraction, and subset selection for
   unstructured enterprise documents
 - Kubeflow Pipeline automation for repeatable Docling data processing
-- future Dutch government publication ingestion using the same retrieval pattern
 
 Adjacent skills:
 
@@ -99,9 +97,8 @@ For this repo:
   without explicit user agreement and a recorded stage-plan decision.
 - Keep AG News as a compatibility validation corpus. Do not add Docling to AG
   News text rows.
-- Move the audience demo to Dutch government publications only after the
-  reference pattern works. Use Docling and KFP automation for that unstructured
-  corpus.
+- Keep the audience demo focused on repo-stored official RHOAI product
+  documentation unless the stage plan is explicitly changed.
 - Prefer remote PostgreSQL with pgvector for rebuilt Stage 230 because the
   active environment must prove metadata-filtered hybrid search and the
   installed pgvector provider enforces filters for vector, keyword, and hybrid
@@ -137,7 +134,7 @@ For this repo:
 
 ## Stage 230 Target Pattern
 
-The rebuilt Stage 230 should prove this flow before adding custom corpora:
+The rebuilt Stage 230 proves this flow before additional corpora are added:
 
 ```text
 AG News documents
@@ -151,13 +148,13 @@ AG News documents
   -> final Nemotron answer through MaaS
 ```
 
-For Dutch government publication ingestion, keep the same retrieval pipeline
-and replace the corpus, metadata taxonomy, ingestion source, and domain
+For the RHOAI product-document corpus, keep the same retrieval pipeline and
+replace the corpus, metadata taxonomy, ingestion source, and product-doc
 prompts. Validate each processing step in the workbench first, then automate
 the same contract through DSPA/KFP:
 
 ```text
-Dutch government PDFs / HTML / Office documents
+RHOAI product PDFs
   -> Docling conversion and chunking
   -> optional extraction or subset selection
   -> DSPA/KFP automation for repeatable processing

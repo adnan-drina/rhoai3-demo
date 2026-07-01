@@ -11,11 +11,9 @@
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
 | Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
-| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; start with a compile-ready single-document contract before DSPA/S3 larger-corpus execution |
+| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Target the committed RHOAI product PDFs first; start with a compile-ready product-document contract before DSPA/S3 larger-corpus execution |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
-| First Dutch development corpus | Single public Staatsblad PDF smoke corpus | Use a deterministic source PDF, article-level chunks, and recommended metadata to validate the Dutch path before a larger corpus is available |
 | Product-document explainer corpus | Repo-stored official RHOAI 3.4 PDFs plus deterministic prepared chunks | Use the same Files API, Vector Stores API, filtered hybrid retrieval, rerank, and final-answer path to answer demo-audience questions about official product capabilities. Mirror source PDFs into the project S3 bucket during deployment, but do not treat adjacent product topics as implemented stage scope. |
-| Future corpus | Larger Dutch government publication set | Replace AG News metadata taxonomy and automate processing after the single-document smoke path works |
 
 ## Implementation Phases
 
@@ -62,26 +60,7 @@
    - Start from a small repo-owned app or notebook surface.
    - Do not hide failed retrieval behind a generic chat response.
    - Show model answer, retrieved context, metadata filters, and rerank scores.
-7. Add a first Dutch government publication smoke corpus.
-   - Use a single deterministic public document when the larger corpus is not
-     ready, such as `stb-2022-14.pdf` for the Wet open overheid.
-   - Keep the raw source PDF, extracted article-level JSONL chunks, and smoke
-     questions under the stage data folder.
-   - Apply enterprise metadata consistently: `source_authority`,
-     `publication_type`, `ministry`, `topic`, `publication_date`, `language`,
-     `jurisdiction`, `access_tier`, `source_url`, and `version`.
-   - Use this smoke corpus to validate metadata extraction, filtered hybrid
-     search, reranking, language-following answers, and expected legal terms.
-   - Add a metadata contract and preparation helper for the single document.
-     A local/workbench converter such as `pypdf` can validate article
-     detection only; the supported pipeline path should use Docling.
-   - Add `docling-standard` KFP source once the document contract is clear,
-     validate compilation, run it through the project DSPA, and review S3
-     output artifacts before indexing pipeline output.
-   - Do not present this single-PDF smoke path as accepted until the Docling
-     component has run, task logs/metrics have been checked, artifacts have
-     been reviewed, and the pipeline output passes the RAG smoke helper.
-8. Add a focused RHOAI product-document explainer corpus when the demo needs
+7. Add a focused RHOAI product-document explainer corpus when the demo needs
    source-grounded answers about platform capabilities.
    - Use a manifest of official RHOAI PDFs from the active baseline, such as
      Llama Stack, AutoRAG, evaluating AI systems, guardrails, AI Pipelines, and
@@ -100,17 +79,7 @@
    - Keep this corpus scoped to audience explanation. It does not by itself
      implement AutoRAG optimization, EvalHub jobs, guardrails, or new product
      capabilities beyond the active RAG and pipeline data-preparation path.
-9. Replace the corpus with a larger Dutch government publication set.
-   - Define Dutch metadata: source authority, publication type, ministry,
-     publication date, jurisdiction, language, topic, version, and access tier.
-   - Add Docling conversion for unstructured documents such as PDFs, HTML,
-     Office files, scanned images, or documents with tables and layout.
-   - Use Docling chunking and extraction where they improve retrieval quality
-     or metadata completeness.
-   - Use subset selection when the corpus is too large for fast iteration and
-     the sample must preserve diversity and coverage.
-10. Automate document processing with AI Pipelines when the corpus is no longer
-   a small deterministic sample.
+8. Automate RHOAI product-document processing with AI Pipelines.
    - Use the official-doc-linked `opendatahub-io/data-processing` stable branch
      as the first implementation reference.
    - Compare the current `main/kubeflow-pipelines` tree when the user asks for
@@ -123,7 +92,7 @@
      or image-heavy documents, custom page-level instructions, remote VLM
      conversion, or documents that require image descriptors.
    - Preserve the reference pipeline's S3 input model when processing staged
-     private documents: mount `data-processing-docling-pipeline` with
+     product documents: mount `data-processing-docling-pipeline` with
      `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, and
      `S3_PREFIX`, generated from the Stage 110/230 object-storage connection
      at deploy or run time.
@@ -234,7 +203,8 @@ Record these before claiming support:
 - Guardrails or MCP tool calling.
 - External web search.
 
-Docling and KFP are expected before indexing a larger Dutch government
-publication corpus, not for the AG News compatibility phase and not as a
-blocker for a single preprocessed smoke PDF. Keep this distinction clear in
-README, PLAN, deploy scripts, and validation output.
+Docling and KFP are expected before indexing the larger RHOAI product-document
+corpus through an automated pipeline, not for the AG News compatibility phase
+and not as a blocker for deterministic preprocessed product-document smoke
+tests. Keep this distinction clear in README, PLAN, deploy scripts, and
+validation output.

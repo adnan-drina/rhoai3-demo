@@ -83,14 +83,13 @@ Relevant paths:
 - `kubeflow-pipelines/docling-vlm/vlm_convert_pipeline.py`
 - `kubeflow-pipelines/docling-vlm/vlm_components.py`
 
-Patterns reused for the Dutch government publication phase:
+Patterns reused for the RHOAI product-document pipeline phase:
 
 - choose `docling-standard` first for normal PDF conversion, OCR, table
   structure, enrichments, Markdown output, Docling JSON output, and optional
   HybridChunker chunk output
-- for the first `stb-2022-14.pdf` implementation slice, adapt the stable
-  branch `docling-standard` shape into local KFP source and validate
-  compilation before adding DSPA/S3 execution
+- adapt the stable branch `docling-standard` shape into local KFP source and
+  validate compilation before adding DSPA/S3 execution
 - reserve `docling-vlm` for complex layouts, scanned/image-heavy documents,
   custom page-level instructions, or remote VLM conversion needs
 - use KFP `ParallelFor` over PDF splits for scale-out conversion
@@ -111,7 +110,7 @@ Patterns not copied directly:
   as Red Hat image, reviewed custom image, or demo exception
 - local `pypdf` article detection as proof that the supported Docling runtime
   conversion has executed
-- default sample PDFs as proof of the Dutch government publication use case
+- default sample PDFs as proof of the RHOAI product-document use case
 - direct S3 credentials or remote VLM API keys in committed manifests
 
 ## Source Boundaries

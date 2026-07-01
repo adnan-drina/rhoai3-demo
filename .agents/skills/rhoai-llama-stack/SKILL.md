@@ -71,8 +71,7 @@ Use other skills for adjacent work:
   reusable prompt, and custom endpoint user workflows
 - `rhoai-enterprise-rag` for metadata-aware enterprise RAG application
   patterns, AG News reference replication, hybrid search, reranking, provider
-  selection such as pgvector or Milvus, and future Dutch government
-  publication ingestion
+  selection such as pgvector or Milvus, and RHOAI product-document ingestion
 - `rhoai-autorag` for product AutoRAG optimization runs, JSON evaluation data,
   leaderboard review, and generated indexing/inference notebook handoff
 - `rhoai-guardrails-safety` for NeMo Guardrails, FMS Guardrails, detector

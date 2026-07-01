@@ -67,16 +67,16 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Vector store is created with expected name and metadata.
 - Embedding model ID and dimension are captured.
 - For AG News, raw text ingestion does not pretend to validate Docling.
-- For Dutch government publications or other unstructured corpora, Docling
+- For RHOAI product-document PDFs or other unstructured corpora, Docling
   conversion output is validated before vector-store attachment.
 - PDF extraction output is sanitized before Files API upload. Remove NUL and
   other non-printing control characters while preserving ordinary whitespace.
   A vector store with failed file attachments is not a clean corpus, even if
   smoke queries happen to pass.
-- A single preprocessed Dutch smoke PDF may be used before the larger corpus is
-  ready, but the stage must label it as a deterministic development smoke path,
-  include the raw PDF plus extracted chunks and questions, and keep Docling/KFP
-  automation as a required gate before indexing the larger corpus.
+- Preprocessed RHOAI product-document chunks may be used before the automated
+  pipeline is ready, but the stage must label them as deterministic smoke data,
+  include the source PDFs plus extracted chunks and questions, and keep
+  Docling/KFP automation as a required gate before scaling the corpus.
 - A single-document preparation contract should include central metadata,
   deterministic article or chunk extraction, a prepared JSONL output, and a
   smoke query that proves filtered hybrid retrieval and answer generation from
@@ -163,9 +163,9 @@ Use this checklist before accepting Stage 230 RAG changes.
   automated validation.
 - Workbench notebook or terminal flow can run the product-document preparation
   and smoke scripts when official-product Q&A is in scope.
-- Dutch government publication ingestion status is tracked in
-  `docs/BACKLOG.md`: single-document smoke path, larger-corpus Docling/KFP
-  automation, and any deferred evaluation work must be distinguished.
+- RHOAI product-document ingestion status is tracked in `docs/BACKLOG.md`:
+  deterministic smoke data, product-document Docling/KFP automation, and any
+  deferred evaluation work must be distinguished.
 - If KFP source is introduced, compile it locally or from the workbench and
   record the selected `opendatahub-io/data-processing` branch and image
   posture.

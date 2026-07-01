@@ -47,7 +47,6 @@ RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 SOURCE_UPLOAD_JOB="${RHOAI_STAGE230_SOURCE_UPLOAD_JOB:-stage230-source-upload}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
-RAG_DUTCH_DOCS_PREFIX="${RHOAI_STAGE230_DUTCH_DOCS_PREFIX:-raw/dutch-government}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
 POSTGRES_DB="${RHOAI_STAGE230_POSTGRES_DATABASE:-llamastack}"
@@ -162,7 +161,6 @@ stringData:
   S3_BUCKET: "${bucket}"
   S3_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
   RHOAI_STAGE230_PRODUCT_DOCS_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
-  RHOAI_STAGE230_DUTCH_DOCS_PREFIX: "${RAG_DUTCH_DOCS_PREFIX}"
 EOF
 
   oc apply -f - --insecure-skip-tls-verify=true <<EOF
@@ -187,7 +185,6 @@ stringData:
   AWS_S3_BUCKET: "${bucket}"
   AWS_DEFAULT_REGION: "us-east-1"
   RHOAI_STAGE230_PRODUCT_DOCS_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
-  RHOAI_STAGE230_DUTCH_DOCS_PREFIX: "${RAG_DUTCH_DOCS_PREFIX}"
 EOF
 
   oc delete job "$SOURCE_UPLOAD_JOB" -n "$RAG_NS" --ignore-not-found \
@@ -263,7 +260,6 @@ spec:
                       "sparse-checkout",
                       "set",
                       "stage-230-private-data-rag/data/rhoai-product-docs/source",
-                      "stage-230-private-data-rag/data/dutch-government/source",
                   ],
                   check=True,
               )
@@ -284,10 +280,6 @@ spec:
                   (
                       stage_dir / "data/rhoai-product-docs/source",
                       os.environ["RHOAI_STAGE230_PRODUCT_DOCS_PREFIX"],
-                  ),
-                  (
-                      stage_dir / "data/dutch-government/source",
-                      os.environ["RHOAI_STAGE230_DUTCH_DOCS_PREFIX"],
                   ),
               ]
               uploaded = 0
@@ -339,11 +331,6 @@ spec:
                 secretKeyRef:
                   name: ${RAG_S3_CONNECTION_SECRET}
                   key: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
-            - name: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
-              valueFrom:
-                secretKeyRef:
-                  name: ${RAG_S3_CONNECTION_SECRET}
-                  key: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
           resources:
             requests:
               cpu: 250m

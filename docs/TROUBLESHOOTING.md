@@ -1163,10 +1163,10 @@ should not be used as active recovery guidance for the new RAG stage.
 ### Old Stage 230 scripts are about to be run
 
 - **Symptom:** a command path references `run-whoami-ingestion-pipeline.sh`,
-  Docling, DSPA, or `private-rag-chatbot`.
+  a removed corpus-specific pipeline, or `private-rag-chatbot`.
 - **Fix:** stop and use `stage-230-private-data-rag/PLAN.md` instead. The old
-  scripts are stale until they are rewritten for the new metadata-aware AG News
-  RAG flow and the later Docling/KFP Dutch publication phase.
+  scripts are stale. The active path is metadata-aware RAG with the AG News
+  compatibility corpus and RHOAI product-document audience corpus.
 
 ### New Stage 230 implementation fails during development
 
@@ -1185,9 +1185,8 @@ new troubleshooting entries should cover:
 - reranker endpoint failures
 - Enterprise RAG Workbench startup failures
 - MaaS-backed Nemotron authorization failures
-- Docling conversion output missing or malformed after the Dutch corpus is
-  introduced
-- KFP run failures after Docling automation is introduced
+- RHOAI product-document preparation or smoke-test failures
+- KFP run failures after RHOAI product-document automation is introduced
 
 Do not carry forward old DSPA, Docling, chatbot, or whoami-specific recovery
 steps unless those components are intentionally reintroduced.

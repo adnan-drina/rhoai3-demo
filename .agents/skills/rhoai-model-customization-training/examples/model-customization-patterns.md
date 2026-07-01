@@ -83,7 +83,7 @@ Review points:
 ## Docling And KFP Data Preparation Review
 
 ```text
-Corpus: <AG News | Dutch government publications | other>
+Corpus: <AG News | RHOAI product documents | other>
 Input format: plain text | PDF | HTML | Office document | scanned image | mixed
 Docling needed: yes | no
 Docling task: convert | chunk | extract | subset-select | RAG preparation

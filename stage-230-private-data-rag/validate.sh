@@ -32,11 +32,7 @@ RAG_BUCKET_OBC="${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-bucket}"
 RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
-RAG_DUTCH_DOCS_PREFIX="${RHOAI_STAGE230_DUTCH_DOCS_PREFIX:-raw/dutch-government}"
 DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-dspa-enterprise-rag}"
-DOCLING_PIPELINE_EVIDENCE_CM="${RHOAI_STAGE230_DOCLING_EVIDENCE_CM:-stage230-docling-pipeline-evidence}"
-DOCLING_PIPELINE_OUTPUT_KEY="${RHOAI_STAGE230_DOCLING_OUTPUT_KEY:-processed/dutch-government/stb-2022-14-docling-kfp-chunks.jsonl}"
-DOCLING_PIPELINE_TIMEOUT_SECONDS="${RHOAI_STAGE230_DOCLING_TIMEOUT_SECONDS:-1800}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -319,20 +315,11 @@ if [[ -n "$workbench_pod" ]]; then
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
-     test -f /opt/app-root/src/workspace/dutch_publication_rag_smoke.ipynb &&
-     test -f /opt/app-root/src/workspace/dutch_publication_docling_prepare.ipynb &&
      test -f /opt/app-root/src/workspace/rhoai_product_docs_rag_smoke.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
-     test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_rag_smoke.py &&
-     test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_prepare.py &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_prepare.py &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_rag_smoke.py &&
-     test -f /opt/app-root/src/workspace/.stage230/kfp/dutch_publication_docling_pipeline.py &&
-     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/source/stb-2022-14.pdf &&
-     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/metadata/stb-2022-14-metadata.json &&
-     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-chunks.jsonl &&
-     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-questions.json &&
      test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json &&
      test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/source/Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf &&
      test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl &&
@@ -340,7 +327,7 @@ if [[ -n "$workbench_pod" ]]; then
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else
-    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, Dutch smoke notebook, RHOAI product docs notebook, and hidden .stage230 helper content"
+    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, RHOAI product docs notebook, and hidden .stage230 helper content"
   fi
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'python - <<'"'"'PY'"'"'
@@ -430,18 +417,6 @@ else
   check "AG News RAG acceptance script compiles" "py_compile failed"
 fi
 
-if python3 -m py_compile "$SCRIPT_DIR/scripts/dutch_publication_rag_smoke.py" >/dev/null 2>&1; then
-  check "Dutch publication RAG smoke script compiles" "pass"
-else
-  check "Dutch publication RAG smoke script compiles" "py_compile failed"
-fi
-
-if python3 -m py_compile "$SCRIPT_DIR/scripts/dutch_publication_prepare.py" >/dev/null 2>&1; then
-  check "Dutch publication preparation script compiles" "pass"
-else
-  check "Dutch publication preparation script compiles" "py_compile failed"
-fi
-
 if python3 -m py_compile "$SCRIPT_DIR/scripts/rhoai_product_docs_prepare.py" >/dev/null 2>&1; then
   check "RHOAI product docs preparation script compiles" "pass"
 else
@@ -452,99 +427,6 @@ if python3 -m py_compile "$SCRIPT_DIR/scripts/rhoai_product_docs_rag_smoke.py" >
   check "RHOAI product docs RAG smoke script compiles" "pass"
 else
   check "RHOAI product docs RAG smoke script compiles" "py_compile failed"
-fi
-
-if python3 -m py_compile \
-  "$SCRIPT_DIR/kfp/components/dutch_docling_components.py" \
-  "$SCRIPT_DIR/kfp/dutch_publication_docling_pipeline.py" >/dev/null 2>&1; then
-  check "Dutch publication Docling KFP source compiles" "pass"
-else
-  check "Dutch publication Docling KFP source compiles" "py_compile failed"
-fi
-
-if python3 - <<'PY' >/dev/null 2>&1
-import kfp
-from kfp import kubernetes
-PY
-then
-  kfp_compile_dir=$(mktemp -d)
-  if python3 "$SCRIPT_DIR/kfp/dutch_publication_docling_pipeline.py" \
-    --output "$kfp_compile_dir/stage-230-dutch-publication-docling.yaml" >/dev/null 2>&1 \
-    && [[ -s "$kfp_compile_dir/stage-230-dutch-publication-docling.yaml" ]]; then
-    check "Dutch publication Docling KFP pipeline compiles" "pass"
-  else
-    check "Dutch publication Docling KFP pipeline compiles" "compile failed"
-  fi
-  rm -rf "$kfp_compile_dir"
-else
-  warn "Dutch publication Docling KFP pipeline compile was not run" "local python3 cannot import kfp and kfp-kubernetes"
-fi
-
-if [[ "${RHOAI_STAGE230_RUN_DSPA_PIPELINE:-false}" == "true" ]]; then
-  dspa_out=$(mktemp)
-  dspa_err=$(mktemp)
-  if "$SCRIPT_DIR/run-docling-pipeline.sh" \
-    --timeout-seconds="${DOCLING_PIPELINE_TIMEOUT_SECONDS}" \
-    --output-s3-key="${DOCLING_PIPELINE_OUTPUT_KEY}" >"$dspa_out" 2>"$dspa_err"; then
-    check "Dutch publication Docling DSPA/KFP run passes" "pass"
-    if [[ -n "${workbench_pod:-}" ]]; then
-      kfp_rag_out=$(mktemp)
-      kfp_rag_err=$(mktemp)
-      if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-        "cd /opt/app-root/src/workspace &&
-         OUTPUT_S3_KEY='${DOCLING_PIPELINE_OUTPUT_KEY}' python - <<'PY'
-import os
-from pathlib import Path
-
-import boto3
-from botocore.config import Config
-from urllib3 import disable_warnings
-from urllib3.exceptions import InsecureRequestWarning
-
-disable_warnings(InsecureRequestWarning)
-target = Path('.stage230/data/dutch-government/processed/stb-2022-14-docling-kfp-chunks.jsonl')
-target.parent.mkdir(parents=True, exist_ok=True)
-client = boto3.client(
-    's3',
-    endpoint_url=os.environ['S3_ENDPOINT_URL'],
-    aws_access_key_id=os.environ['S3_ACCESS_KEY'],
-    aws_secret_access_key=os.environ['S3_SECRET_KEY'],
-    region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
-    verify=False,
-    config=Config(signature_version='s3v4'),
-)
-body = client.get_object(Bucket=os.environ['S3_BUCKET'], Key=os.environ['OUTPUT_S3_KEY'])['Body'].read()
-target.write_bytes(body)
-print(f'downloaded {len(body)} bytes from s3://{os.environ[\"S3_BUCKET\"]}/{os.environ[\"OUTPUT_S3_KEY\"]}')
-PY
-         python .stage230/scripts/dutch_publication_rag_smoke.py \
-           --reset \
-           --sample .stage230/data/dutch-government/processed/stb-2022-14-docling-kfp-chunks.jsonl \
-           --vector-store stage230-dutch-woo-kfp-demo \
-           --search-mode hybrid \
-           --query \"Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?\" \
-           --expected-topic openbaarmaking_op_verzoek \
-           --expected-term \"vier weken\"" >"$kfp_rag_out" 2>"$kfp_rag_err"; then
-        check "Dutch publication KFP output RAG smoke passes" "pass"
-      else
-        check "Dutch publication KFP output RAG smoke passes" "$(head -c 300 "$kfp_rag_err" | tr '\n' ' ')"
-      fi
-      rm -f "$kfp_rag_out" "$kfp_rag_err"
-    else
-      check "Dutch publication KFP output RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
-    fi
-  else
-    check "Dutch publication Docling DSPA/KFP run passes" "$(head -c 500 "$dspa_err" | tr '\n' ' ')"
-  fi
-  rm -f "$dspa_out" "$dspa_err"
-else
-  warn "Dutch publication Docling DSPA/KFP run was not run" "set RHOAI_STAGE230_RUN_DSPA_PIPELINE=true"
-fi
-
-if resource_exists "configmap/${DOCLING_PIPELINE_EVIDENCE_CM}" "$RAG_NS"; then
-  check "Docling pipeline run evidence ConfigMap exists" "pass"
-else
-  warn "Docling pipeline run evidence ConfigMap exists" "run the DSPA/KFP gate"
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
@@ -567,65 +449,6 @@ if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   fi
 else
   warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
-fi
-
-if [[ "${RHOAI_STAGE230_RUN_DOCLING_PREP:-false}" == "true" ]]; then
-  if [[ -n "${workbench_pod:-}" ]]; then
-    docling_prep_out=$(mktemp)
-    docling_prep_err=$(mktemp)
-    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-      'cd /opt/app-root/src/workspace &&
-       mkdir -p .stage230/compiled &&
-       python .stage230/kfp/dutch_publication_docling_pipeline.py \
-         --output .stage230/compiled/stage-230-dutch-publication-docling.yaml &&
-       test -s .stage230/compiled/stage-230-dutch-publication-docling.yaml &&
-       python .stage230/scripts/dutch_publication_prepare.py \
-         --converter pypdf \
-         --source-pdf .stage230/data/dutch-government/source/stb-2022-14.pdf \
-         --metadata .stage230/data/dutch-government/metadata/stb-2022-14-metadata.json \
-         --output .stage230/data/dutch-government/processed/stb-2022-14-docling-chunks.jsonl \
-         --converted-dir .stage230/data/dutch-government/processed/docling &&
-       python .stage230/scripts/dutch_publication_rag_smoke.py \
-         --reset \
-         --sample .stage230/data/dutch-government/processed/stb-2022-14-docling-chunks.jsonl \
-         --vector-store stage230-dutch-woo-docling-demo \
-         --search-mode hybrid \
-         --query "Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?" \
-         --expected-topic openbaarmaking_op_verzoek \
-         --expected-term "vier weken"' >"$docling_prep_out" 2>"$docling_prep_err"; then
-      check "Dutch publication prepared-chunk RAG smoke passes" "pass"
-    else
-      check "Dutch publication prepared-chunk RAG smoke passes" "$(head -c 300 "$docling_prep_err" | tr '\n' ' ')"
-    fi
-    rm -f "$docling_prep_out" "$docling_prep_err"
-  else
-    check "Dutch publication prepared-chunk RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
-  fi
-else
-  warn "Dutch publication prepared-chunk RAG smoke was not run" "set RHOAI_STAGE230_RUN_DOCLING_PREP=true"
-fi
-
-if [[ "${RHOAI_STAGE230_RUN_DUTCH_SMOKE:-false}" == "true" ]]; then
-  if [[ -n "${workbench_pod:-}" ]]; then
-    dutch_smoke_out=$(mktemp)
-    dutch_smoke_err=$(mktemp)
-    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-      'cd /opt/app-root/src/workspace &&
-       python .stage230/scripts/dutch_publication_rag_smoke.py \
-         --reset \
-         --vector-store stage230-dutch-woo-demo \
-         --search-mode hybrid \
-         --query "Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?" \
-         --expected-topic openbaarmaking_op_verzoek \
-         --expected-term "vier weken"' >"$dutch_smoke_out" 2>"$dutch_smoke_err"; then
-      check "Dutch publication full RAG smoke passes" "pass"
-    else
-      check "Dutch publication full RAG smoke passes" "$(head -c 300 "$dutch_smoke_err" | tr '\n' ' ')"
-    fi
-    rm -f "$dutch_smoke_out" "$dutch_smoke_err"
-  else
-    check "Dutch publication full RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
-  fi
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then

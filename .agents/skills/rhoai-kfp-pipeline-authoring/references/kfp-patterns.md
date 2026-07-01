@@ -307,6 +307,12 @@ Apply these rules:
 - review upstream component base images before adoption. KFP component images
   are explicit runtime dependencies; classify them as Red Hat image, reviewed
   custom image, or demo exception
+- for Docling components, make runtime cache behavior explicit. If a notebook or
+  component image runs with a non-writable application home, set writable cache
+  paths such as `HOME`, `XDG_CACHE_HOME`, `EASYOCR_MODULE_PATH`, and
+  `TORCH_HOME` under `/tmp`. Disable OCR for text-native PDF smoke paths; enable
+  OCR only when the target corpus requires it and the runtime image has been
+  validated for the required model downloads/cache writes.
 - use the active Llama Stack client/API shape from `rhoai-llama-stack` and the
   live client. For the current RHOAI 3.4 line, create stores through
   `client.vector_stores.create(...)`, upload source text through
@@ -323,8 +329,8 @@ Apply these rules:
   384-dimensional vector store; a 768-dimensional store causes file attachment
   failures during vectorization.
 - keep AG News as the non-Docling compatibility corpus. Introduce Docling/KFP
-  when the stage moves to Dutch government publications or another
-  unstructured corpus
+  when the stage moves to RHOAI product-document PDFs or another unstructured
+  corpus
 
 ## New Pipeline Checklist
 

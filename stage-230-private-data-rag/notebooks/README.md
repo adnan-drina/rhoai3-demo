@@ -2,12 +2,10 @@
 
 Open the `enterprise-rag` project in Red Hat OpenShift AI and start the
 `Enterprise RAG Workbench`. The workbench startup creates a curated JupyterLab
-workspace under `/opt/app-root/src/workspace` with five visible notebooks:
+workspace under `/opt/app-root/src/workspace` with three visible notebooks:
 
 - `Ingestion_pipeline_ag_news.ipynb`
 - `retrieval_pipeline_ag_news.ipynb`
-- `dutch_publication_rag_smoke.ipynb`
-- `dutch_publication_docling_prepare.ipynb`
 - `rhoai_product_docs_rag_smoke.ipynb`
 
 Generated helper scripts, sample data, and dependencies are stored under the
@@ -22,36 +20,6 @@ cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
   --search-mode hybrid
-```
-
-Run the Dutch government publication smoke flow from a workbench terminal:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/scripts/dutch_publication_rag_smoke.py \
-  --reset \
-  --vector-store stage230-dutch-woo-demo \
-  --search-mode hybrid
-```
-
-Validate the Dutch publication data-preparation steps in the notebook or from
-a workbench terminal:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/kfp/dutch_publication_docling_pipeline.py \
-  --output .stage230/compiled/stage-230-dutch-publication-docling.yaml
-python .stage230/scripts/dutch_publication_prepare.py \
-  --converter pypdf
-```
-
-The `pypdf` converter is a local/workbench validation helper for the current
-single-PDF smoke document. The supported automation path runs the same
-contract with Docling through DSPA/KFP from the repository:
-
-```bash
-./stage-230-private-data-rag/run-docling-pipeline.sh
-RHOAI_STAGE230_RUN_DSPA_PIPELINE=true ./stage-230-private-data-rag/validate.sh
 ```
 
 Prepare and query the focused RHOAI 3.4 product-document explainer corpus:
