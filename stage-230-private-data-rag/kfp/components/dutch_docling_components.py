@@ -11,7 +11,7 @@ DOCLING_BASE_IMAGE = os.getenv("DOCLING_BASE_IMAGE", "quay.io/fabianofranz/docli
 
 @dsl.component(
     base_image=DOCLING_BASE_IMAGE,
-    packages_to_install=["boto3==1.42.0"],
+    packages_to_install=["boto3==1.42.54"],
 )
 def download_pdf_from_s3(
     output_pdf: Output[Dataset],
@@ -96,7 +96,7 @@ def convert_pdf_with_docling(
 
 @dsl.component(
     base_image=DOCLING_BASE_IMAGE,
-    packages_to_install=["boto3==1.42.0"],
+    packages_to_install=["boto3==1.42.54"],
 )
 def build_dutch_publication_chunks(
     input_markdown: Input[Dataset],
