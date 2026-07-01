@@ -129,8 +129,9 @@ spec:
                 --ServerApp.token=''
                 --ServerApp.password=''
                 --ServerApp.base_url=/notebook/enterprise-rag/enterprise-rag-workbench
-                --ServerApp.root_dir=/opt/app-root/src/workspace
                 --ServerApp.quit_button=False
+            - name: HOME
+              value: /opt/app-root/src/workspace
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4
             - name: LLAMA_STACK_BASE_URL
