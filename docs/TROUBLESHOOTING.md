@@ -1177,6 +1177,7 @@ new troubleshooting entries should cover:
 - Llama Stack provider registration failures
 - PostgreSQL metadata connection failures
 - Milvus gRPC or token failures
+- PVCs stuck in `Pending` with `WaitForFirstConsumer`
 - embedding model and vector dimension mismatches
 - Files API upload or vector-store attachment errors
 - metadata filter extraction failures
@@ -1189,6 +1190,19 @@ new troubleshooting entries should cover:
 
 Do not carry forward old pgvector, DSPA, Docling, or whoami-specific recovery
 steps unless those components are intentionally reintroduced.
+
+### Stage 230 Argo CD sync waits on the Milvus PVC
+
+- **Symptom:** the Stage 230 Application remains `OutOfSync` or `Progressing`,
+  `private-rag-milvus-data` is `Pending`, and the PVC event says
+  `waiting for first consumer to be created before binding`.
+- **Likely cause:** the active storage class uses `WaitForFirstConsumer`.
+  If the PVC is placed in an earlier Argo CD sync wave than the Deployment that
+  consumes it, Argo CD waits for a volume bind that cannot happen yet.
+- **Fix:** keep the Milvus PVC and Milvus Deployment in the same sync wave so
+  the scheduler can create the first consumer and trigger dynamic provisioning.
+  Do not manually bind the PVC or change the cluster storage class for this
+  demo stage.
 
 ### Stage 230 deploy cannot create the Llama Stack MaaS token
 

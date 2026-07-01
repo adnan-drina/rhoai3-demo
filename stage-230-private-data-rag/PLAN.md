@@ -230,6 +230,8 @@ Deferred implementation inventory:
 - Confirm PostgreSQL, etcd, and Milvus availability.
 - Confirm Llama Stack readiness and model list.
 - Confirm the AG News smoke-test helper compiles.
+- Keep storage consumers in the same Argo CD sync wave as PVCs when the
+  cluster storage class uses `WaitForFirstConsumer`.
 - Next gate: run AG News ingestion for the deterministic sample, resolve the
   vector store by metadata, run category-targeted hybrid search, and generate a
   final Nemotron answer using retrieved context.
