@@ -1241,6 +1241,29 @@ steps unless those components are intentionally reintroduced.
   operator-managed `lsd-enterprise-rag-service` Service. Do not patch the
   generated Ingress.
 
+### Llama Stack Responses API says the Nemotron model is not found
+
+- **Symptom:** `/v1/models` shows Nemotron, but `/v1/responses` with
+  `model: nemotron-3-nano-30b-a3b` returns `Model ... not found`.
+- **Likely cause:** Llama Stack registers the model with a provider-qualified
+  identifier.
+- **Fix:** use the exact identifier returned by `/v1/models`, currently
+  `vllm-inference/nemotron-3-nano-30b-a3b`.
+
+### Stage 230 hybrid search ignores metadata filters
+
+- **Symptom:** `vector_stores.search` with `search_mode: hybrid` and an
+  OpenAI-style filter such as
+  `{"type":"eq","key":"category","value":"business"}` returns chunks from
+  other categories, while `search_mode: vector` or `keyword` returns the
+  expected category.
+- **Likely cause:** in the observed RHOAI 3.4 Llama Stack remote Milvus path,
+  native hybrid search does not enforce the translated filter expression,
+  although the same expression works directly against Milvus.
+- **Fix:** use filtered `vector` search for the current deterministic smoke
+  validation. Do not claim hybrid metadata filtering until this behavior is
+  resolved through a supported Llama Stack/RHOAI path.
+
 ---
 
 Legacy troubleshooting content is backed up at:

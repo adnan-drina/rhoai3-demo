@@ -9,6 +9,7 @@ available in the execution environment.
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import os
 import tempfile
@@ -18,7 +19,8 @@ from llama_stack_client import LlamaStackClient
 
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-smoke"
-DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_SEARCH_MODE = "vector"
 
 
 def load_records(path: Path) -> list[dict]:
@@ -55,26 +57,35 @@ def get_value(item, *keys):
     return None
 
 
-def find_or_create_vector_store(client, name: str, embedding_model: str):
+def find_vector_store(client, name: str):
     for store in as_items(client.vector_stores.list()):
         if get_value(store, "name") == name:
             return get_value(store, "id", "vector_store_id")
+    return None
 
-    store = client.vector_stores.create(
-        name=name,
-        embedding_model=embedding_model,
-        metadata={
+
+def create_vector_store(client, name: str, embedding_model: str):
+    create_kwargs = {
+        "name": name,
+        "metadata": {
             "tenant_id": "rhoai-demo",
             "version_no": "v1",
             "corpus": "agnews-sample",
             "environment": "demo",
             "language": "en",
         },
-    )
+    }
+    if "embedding_model" in inspect.signature(client.vector_stores.create).parameters:
+        create_kwargs["embedding_model"] = embedding_model
+    else:
+        create_kwargs["extra_body"] = {"embedding_model": embedding_model}
+
+    store = client.vector_stores.create(**create_kwargs)
     return get_value(store, "id", "vector_store_id")
 
 
-def upload_records(client, vector_store_id: str, records: list[dict]) -> None:
+def upload_records(client, vector_store_id: str, records: list[dict]) -> int:
+    uploaded_count = 0
     with tempfile.TemporaryDirectory(prefix="stage230-agnews-") as tmpdir:
         tmp_path = Path(tmpdir)
         for record in records:
@@ -97,9 +108,11 @@ def upload_records(client, vector_store_id: str, records: list[dict]) -> None:
                     "record_id": record["id"],
                 },
             )
+            uploaded_count += 1
+    return uploaded_count
 
 
-def search(client, vector_store_id: str, query: str, category: str | None):
+def search(client, vector_store_id: str, query: str, category: str | None, search_mode: str):
     filters = None
     if category:
         filters = {
@@ -110,7 +123,7 @@ def search(client, vector_store_id: str, query: str, category: str | None):
     kwargs = {
         "vector_store_id": vector_store_id,
         "query": query,
-        "search_mode": "hybrid",
+        "search_mode": search_mode,
         "max_num_results": 3,
     }
     if filters:
@@ -124,6 +137,8 @@ def main() -> None:
     parser.add_argument("--sample", type=Path, default=Path(__file__).parents[1] / "data/agnews-sample/agnews-sample.jsonl")
     parser.add_argument("--vector-store", default=os.environ.get("RHOAI_STAGE230_VECTOR_STORE", DEFAULT_VECTOR_STORE))
     parser.add_argument("--embedding-model", default=os.environ.get("RHOAI_STAGE230_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL))
+    parser.add_argument("--search-mode", default=os.environ.get("RHOAI_STAGE230_SEARCH_MODE", DEFAULT_SEARCH_MODE), choices=["vector", "keyword", "hybrid"])
+    parser.add_argument("--reset", action="store_true", help="Delete and recreate the vector store before ingesting records.")
     parser.add_argument("--query", default="Find business news about oil prices.")
     parser.add_argument("--category", default="business")
     args = parser.parse_args()
@@ -133,11 +148,34 @@ def main() -> None:
 
     client = LlamaStackClient(base_url=args.base_url)
     records = load_records(args.sample)
-    vector_store_id = find_or_create_vector_store(client, args.vector_store, args.embedding_model)
-    upload_records(client, vector_store_id, records)
-    result = search(client, vector_store_id, args.query, args.category)
+    vector_store_id = find_vector_store(client, args.vector_store)
+    if vector_store_id and args.reset:
+        client.vector_stores.delete(vector_store_id=vector_store_id)
+        vector_store_id = None
+
+    uploaded_count = 0
+    if not vector_store_id:
+        vector_store_id = create_vector_store(client, args.vector_store, args.embedding_model)
+        uploaded_count = upload_records(client, vector_store_id, records)
+
+    result = search(client, vector_store_id, args.query, args.category, args.search_mode)
+    result_items = as_items(result)
+    if args.category:
+        mismatches = [
+            item
+            for item in result_items
+            if (get_value(item, "attributes") or {}).get("category") != args.category
+        ]
+        if mismatches:
+            raise SystemExit(
+                f"metadata filter mismatch: expected category={args.category}, "
+                f"got {[get_value(item, 'attributes') for item in mismatches]}"
+            )
+
     print(json.dumps({
         "vector_store_id": vector_store_id,
+        "uploaded_count": uploaded_count,
+        "search_mode": args.search_mode,
         "query": args.query,
         "category": args.category,
         "result": result.model_dump() if hasattr(result, "model_dump") else result,

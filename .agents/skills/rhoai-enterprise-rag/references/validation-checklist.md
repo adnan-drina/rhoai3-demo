@@ -65,7 +65,9 @@ Use this checklist before accepting Stage 230 RAG changes.
 
 - Metadata extraction returns no invented filters.
 - Hybrid search is used for the main retrieval path.
-- Metadata filters narrow results for category-specific queries.
+- Metadata filters narrow results for category-specific queries. Validate this
+  per search mode; do not assume `hybrid`, `vector`, and `keyword` enforce
+  filters identically.
 - Reranker scores are present when reranker is enabled.
 - Final answer uses retrieved context and does not claim unsupported citations.
 - Validation includes a negative or out-of-scope query.

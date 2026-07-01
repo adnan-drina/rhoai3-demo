@@ -234,9 +234,10 @@ Deferred implementation inventory:
   cluster storage class uses `WaitForFirstConsumer`.
 - Expose Llama Stack through a GitOps-managed OpenShift Route to the
   operator-managed Service; do not patch generated Ingress resources.
-- Next gate: run AG News ingestion for the deterministic sample, resolve the
-  vector store by metadata, run category-targeted hybrid search, and generate a
-  final Nemotron answer using retrieved context.
+- Next gate: extend the AG News smoke path from metadata-filtered vector search
+  to hybrid search and final Nemotron answer generation. Use the
+  provider-qualified Llama Stack model ID
+  `vllm-inference/nemotron-3-nano-30b-a3b` for Responses API calls.
 - When Dutch publications are introduced, validate Docling conversion output,
   chunk quality, extracted metadata, KFP run status, branch choice, Secret
   contract, and artifact output before indexing.
@@ -253,6 +254,7 @@ Deferred implementation inventory:
 | Item | Type | Resolution |
 |------|------|------------|
 | Milvus and etcd image/lifecycle posture | risk | Recorded as a demo exception for the first rebuild; replace with a Red Hat-advised Milvus service or managed vector database before production-positioned delivery |
+| Remote Milvus native hybrid filtering | finding | Filtered `vector` and `keyword` search return the expected category; filtered `hybrid` search currently returns mixed categories in this environment. Do not claim hybrid metadata filtering until this is resolved or handled through a documented supported path. |
 | Reranker artifact provenance | risk | Treat as optional until model artifact and serving runtime are validated |
 | Hugging Face dataset egress | risk | Include a small deterministic AG News sample for validation; make full dataset download optional |
 | Embedding provider mismatch | risk | List active Llama Stack models and capture embedding dimension before vector store creation |

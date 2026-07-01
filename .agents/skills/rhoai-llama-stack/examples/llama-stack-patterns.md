@@ -136,6 +136,9 @@ Review points:
 
 - Wrong suffixes cause request failures.
 - Use bearer tokens when OAuth is enabled.
+- For Responses API generation, use the exact model identifier returned by
+  `/v1/models`; MaaS-backed vLLM models are commonly provider-qualified, for
+  example `vllm-inference/nemotron-3-nano-30b-a3b`.
 
 ## RAG Provider Selection Matrix
 
