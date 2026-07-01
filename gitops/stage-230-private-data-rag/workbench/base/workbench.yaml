@@ -75,15 +75,32 @@ spec:
           args:
             - |
               export HOME=/opt/app-root/src
-              repo_dir=/opt/app-root/src/rhoai3-demo
-              if [[ ! -d "${repo_dir}/.git" ]]; then
-                git clone --depth 1 --single-branch --branch "${GIT_REPO_BRANCH}" "${GIT_REPO_URL}" "${repo_dir}"
-              else
-                git -C "${repo_dir}" fetch origin "${GIT_REPO_BRANCH}" --depth 1
-                git -C "${repo_dir}" checkout -B "${GIT_REPO_BRANCH}" FETCH_HEAD
-                git -C "${repo_dir}" reset --hard FETCH_HEAD
-              fi
-              python -m pip install -r "${repo_dir}/stage-230-private-data-rag/notebooks/requirements.txt"
+              workspace=/opt/app-root/src
+              source_dir=/tmp/stage230-source
+              stage_dir="${source_dir}/stage-230-private-data-rag"
+
+              rm -rf "${source_dir}"
+              git clone --depth 1 --filter=blob:none --sparse --single-branch \
+                --branch "${GIT_REPO_BRANCH}" "${GIT_REPO_URL}" "${source_dir}"
+              git -C "${source_dir}" sparse-checkout set \
+                stage-230-private-data-rag/notebooks \
+                stage-230-private-data-rag/scripts \
+                stage-230-private-data-rag/data
+
+              rm -rf "${workspace}/rhoai3-demo" "${workspace}/.stage230"
+              find "${workspace}" -maxdepth 1 -type f \
+                \( -name '*ag_news*.ipynb' -o -name 'enterprise-rag-agnews.ipynb' \) \
+                -delete
+
+              mkdir -p "${workspace}/.stage230/scripts" "${workspace}/.stage230/data"
+              cp "${stage_dir}/notebooks/Ingestion_pipeline_ag_news.ipynb" "${workspace}/"
+              cp "${stage_dir}/notebooks/retrieval_pipeline_ag_news.ipynb" "${workspace}/"
+              cp "${stage_dir}/notebooks/requirements.txt" "${workspace}/.stage230/requirements.txt"
+              cp "${stage_dir}/scripts/agnews_rag_smoke.py" "${workspace}/.stage230/scripts/"
+              cp "${stage_dir}/scripts/agnews_rag_acceptance.py" "${workspace}/.stage230/scripts/"
+              cp -R "${stage_dir}/data/agnews-sample" "${workspace}/.stage230/data/"
+
+              python -m pip install -r "${workspace}/.stage230/requirements.txt"
           env:
             - name: GIT_REPO_URL
               value: https://github.com/adnan-drina/rhoai3-demo.git
@@ -103,7 +120,7 @@ spec:
         - name: enterprise-rag-workbench
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4
           imagePullPolicy: Always
-          workingDir: /opt/app-root/src/rhoai3-demo/stage-230-private-data-rag
+          workingDir: /opt/app-root/src
           env:
             - name: NOTEBOOK_ARGS
               value: |-

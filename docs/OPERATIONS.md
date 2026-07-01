@@ -938,7 +938,11 @@ implementation. The current first slice:
 - deploys a CPU Qwen3 reranker adapted from the Red Hat article-linked
   reference implementation and sized for the current demo CPU worker pool
 - provides an Enterprise RAG Workbench, deterministic AG News sample, smoke
-  helper, and full acceptance helper
+  helper, and full acceptance helper. The workbench visible workspace is
+  intentionally curated to two notebooks,
+  `Ingestion_pipeline_ag_news.ipynb` and
+  `retrieval_pipeline_ag_news.ipynb`; generated helper content is stored under
+  hidden `.stage230` workspace content.
 
 The next validation gate is to ingest the deterministic AG News sample through
 Files and Vector Stores APIs, validate metadata filtering and hybrid retrieval,
@@ -989,6 +993,8 @@ gate:
 - PostgreSQL, etcd, Milvus, and the `LlamaStackDistribution` are ready
 - Qwen3 reranker `InferenceService` and Route exist and are ready
 - the Enterprise RAG Workbench `Notebook`, PVC, and ServiceAccount exist
+- the Enterprise RAG Workbench exposes the curated two-notebook workspace and
+  does not expose the full `rhoai3-demo` repository checkout
 - the `enterprise-rag` namespace is Kueue-managed and has the
   `lq-cpu-default` LocalQueue
 - the AG News smoke and acceptance helpers compile
@@ -1006,8 +1012,10 @@ The next validation expansion should prove the user-visible RAG outcome:
 Run the workbench acceptance flow:
 
 ```bash
-cd /opt/app-root/src/rhoai3-demo/stage-230-private-data-rag
-python scripts/agnews_rag_acceptance.py --reset
+cd /opt/app-root/src
+python .stage230/scripts/agnews_rag_acceptance.py \
+  --vector-store stage230-agnews-demo \
+  --search-mode hybrid
 ```
 
 The current hard gate is hybrid metadata filtering. The script must fail if

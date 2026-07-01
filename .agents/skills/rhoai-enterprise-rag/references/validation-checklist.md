@@ -28,6 +28,11 @@ Use this checklist before accepting Stage 230 RAG changes.
   scope.
 - Enterprise RAG Workbench exists and can open JupyterLab when notebook-driven
   ingestion or inspection is in scope.
+- Enterprise RAG Workbench exposes the curated notebook workspace expected by
+  the stage. For the AG News compatibility phase, the visible workspace should
+  show `Ingestion_pipeline_ag_news.ipynb` and
+  `retrieval_pipeline_ag_news.ipynb`, with helper scripts and sample data kept
+  in hidden generated workspace content.
 - If the workbench selects a Kueue-enabled hardware profile, the target
   namespace is labeled `kueue.openshift.io/managed=true`, the referenced
   `LocalQueue` exists in the same namespace, and the Notebook includes

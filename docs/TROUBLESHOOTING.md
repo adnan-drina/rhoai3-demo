@@ -1299,12 +1299,13 @@ steps unless those components are intentionally reintroduced.
   `enterprise-rag` project.
 - **Likely cause:** missing project access, an unavailable workbench image,
   missing `lq-cpu-default` LocalQueue for the `cpu-default` hardware profile,
-  PVC binding delay, failed repository clone, or package install failure in the
-  bootstrap init container. The RHOAI notebook image can run inside a virtual
-  environment, so the bootstrap must not use `pip install --user`.
-  Reused PVCs can also contain a shallow Git checkout that diverges from the
-  branch head; the bootstrap should reset the repo copy to the fetched branch
-  rather than relying on `git pull --ff-only`.
+  PVC binding delay, failed sparse source fetch, or package install failure in
+  the bootstrap init container. The RHOAI notebook image can run inside a
+  virtual environment, so the bootstrap must not use `pip install --user`.
+  The workbench bootstrap intentionally copies only the two AG News notebooks
+  into the visible workspace and keeps helper scripts/sample data under hidden
+  `.stage230` content. If the full `rhoai3-demo` repository appears in
+  JupyterLab, the bootstrap cleanup did not run against a reused PVC.
   The RHOAI 3.4 Python package index might not publish every upstream patch
   version; pin notebook dependencies to versions available from that index and
   compatible with the active server.
@@ -1338,6 +1339,8 @@ steps unless those components are intentionally reintroduced.
     -l kubernetes.io/service-name=enterprise-rag-workbench-kube-rbac-proxy
   oc get httproute nb-enterprise-rag-enterprise-rag-workbench -n redhat-ods-applications -o yaml
   oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
+  oc exec -n enterprise-rag <workbench-pod> -c enterprise-rag-workbench -- \
+    find /opt/app-root/src -maxdepth 1 -mindepth 1 -printf '%f\n'
   ```
 
   Keep the workbench image, Notebook fields, and PVC in GitOps. Do not commit

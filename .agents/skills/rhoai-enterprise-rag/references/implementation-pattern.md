@@ -104,18 +104,24 @@
 - Use Argo CD for long-lived resources; use scripts/jobs only for ingestion and
   validation actions that are naturally procedural.
 - Keep RHOAI workbench `Notebook`, PVC, and ServiceAccount resources
-  GitOps-managed when the workbench is part of the repeatable demo. The
-  workbench may clone the repo and install a pinned `requirements.txt`, but it
-  must not carry committed credentials.
+  GitOps-managed when the workbench is part of the repeatable demo.
+- Keep the data scientist's visible workbench workspace curated. For the AG
+  News compatibility phase, expose the two article-style notebooks
+  `Ingestion_pipeline_ag_news.ipynb` and `retrieval_pipeline_ag_news.ipynb`;
+  place generated helper scripts, sample data, and requirements under hidden
+  workspace content such as `.stage230`.
+- If the workbench fetches source from Git, use sparse checkout or another
+  curated copy process. Do not expose the full implementation repository in
+  JupyterLab unless the stage explicitly teaches repository internals.
 - Install notebook dependencies into the active workbench Python environment;
   avoid `pip install --user` because RHOAI notebook images can run in a
   virtualenv where user site packages are not visible.
 - Pin notebook dependencies to versions available from the active RHOAI Python
   package index; verify the Llama Stack client version against the active
   server and package index before committing.
-- Treat the cloned repo under the workbench PVC as generated stage content:
-  fetch the target branch and reset that repo copy to the branch head on
-  startup so stale shallow clones do not block redeploys.
+- Treat any generated workbench helper content under the PVC as disposable:
+  refresh it from the GitOps source on startup and clean older generated
+  layouts, such as a previous full `rhoai3-demo` checkout.
 - Keep workbench `Notebook` resources in the same Argo CD sync wave as their
   PVCs when the storage class binds on `WaitForFirstConsumer`; placing the PVC
   in an earlier wave can deadlock sync because no consumer pod exists yet.
