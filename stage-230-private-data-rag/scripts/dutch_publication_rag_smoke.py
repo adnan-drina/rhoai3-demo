@@ -221,6 +221,28 @@ def extract_json(text: str) -> dict[str, Any]:
     return json.loads(match.group(0))
 
 
+def chat_message_content(response: dict[str, Any], purpose: str) -> str:
+    choice = (response.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    content = message.get("content")
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                parts.append(str(part.get("text") or part.get("content") or ""))
+            else:
+                parts.append(str(part))
+        content = "\n".join(part for part in parts if part)
+    content = content or ""
+    if choice.get("finish_reason") == "length" and not content.strip():
+        reasoning_preview = str(message.get("reasoning") or "")[:240]
+        raise RuntimeError(
+            f"{purpose} stopped before assistant content was emitted; "
+            f"increase max_tokens or tighten the prompt. reasoning_preview={reasoning_preview!r}"
+        )
+    return str(content)
+
+
 def extract_metadata_filter(
     base_url: str,
     model: str,
@@ -234,19 +256,29 @@ def extract_metadata_filter(
             {
                 "role": "system",
                 "content": (
-                    "You extract metadata filters for Dutch government publication RAG. "
-                    f"Return only compact JSON like {{\"topic\":\"openbaarmaking_op_verzoek\"}}. "
+                    "You are a metadata classifier for Dutch government publication RAG. "
+                    "Return exactly one compact JSON object in the assistant content and no prose. "
+                    "Do not wrap the JSON in markdown. Do not explain your reasoning. "
                     f"Valid topic values are: {topics}. Use null if the question is out of scope "
-                    "or if no listed topic is implied."
+                    "or if no listed topic is implied.\n"
+                    "Examples:\n"
+                    "Question: Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?\n"
+                    "Answer: {\"topic\":\"openbaarmaking_op_verzoek\"}\n"
+                    "Question: Welke soorten informatie moet een bestuursorgaan uit eigen beweging openbaar maken?\n"
+                    "Answer: {\"topic\":\"actieve_openbaarmaking\"}\n"
+                    "Question: Wanneer blijft openbaarmaking van informatie achterwege volgens artikel 5.1?\n"
+                    "Answer: {\"topic\":\"uitzonderingen\"}\n"
+                    "Question: Who has the right to access public information under the Wet open overheid?\n"
+                    "Answer: {\"topic\":\"recht_op_toegang\"}"
                 ),
             },
             {"role": "user", "content": query},
         ],
         "temperature": 0,
-        "max_tokens": 96,
+        "max_tokens": 192,
     }
     response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload, api_key=api_key)
-    content = response["choices"][0]["message"].get("content") or ""
+    content = chat_message_content(response, "metadata extraction")
     parsed = extract_json(content)
     topic = parsed.get("topic")
     if topic is not None:
@@ -376,16 +408,17 @@ def final_answer(
                 "content": (
                     "Answer using only the provided retrieved context. Follow the language "
                     "of the user's question. If the context does not contain the answer, say "
-                    "that the retrieved context is insufficient."
+                    "that the retrieved context is insufficient. Put the final answer in the "
+                    "assistant content."
                 ),
             },
             {"role": "user", "content": f"Question: {query}\n\nRetrieved context:\n{context}"},
         ],
         "temperature": 0,
-        "max_tokens": 256,
+        "max_tokens": 512,
     }
     response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload, api_key=api_key)
-    answer = response["choices"][0]["message"].get("content") or ""
+    answer = chat_message_content(response, "final answer")
     if len(answer.strip()) < 10:
         raise RuntimeError(f"final answer was empty or too short: {answer!r}")
     return answer.strip()

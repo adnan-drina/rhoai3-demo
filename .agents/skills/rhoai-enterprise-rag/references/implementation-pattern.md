@@ -144,6 +144,12 @@
 - Use checked Python subprocess cells, not unchecked `!python ...` shell
   escapes, for notebook validation helpers. IPython shell escapes can print a
   traceback while `nbconvert --execute` still exits successfully.
+- For reasoning-enabled generation models such as Nemotron, structured
+  metadata extraction must require the JSON object in `message.content` and
+  allocate enough completion tokens for the model to finish after any internal
+  reasoning. Do not parse the `reasoning` field as the answer; if
+  `finish_reason=length` appears before content is emitted, tighten the prompt
+  or increase the extraction token budget.
 - Keep the workbench notebook path runnable with the current supported
   retrieval mode. For the active pgvector path, `hybrid` is the acceptance
   mode because metadata filters are enforced in vector, keyword, and hybrid
