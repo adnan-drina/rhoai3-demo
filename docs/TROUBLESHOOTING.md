@@ -1355,6 +1355,29 @@ steps unless those components are intentionally reintroduced.
   Git credentials or package tokens into the notebook, `requirements.txt`, or
   manifests.
 
+### Stage 230 Llama Stack model list is missing Granite or Qwen3
+
+- **Symptom:** `validate.sh` reports that `/v1/models` does not list
+  `sentence-transformers/ibm-granite/granite-embedding-125m-english` or
+  `vllm-reranker/qwen3-reranker`, or the retrieval notebook cannot call the
+  Llama Stack rerank API.
+- **Likely cause:** the `LlamaStackDistribution` is running without the
+  Stage 230 `userConfig` ConfigMap, the config did not render, or the
+  `VLLM_RERANKER_URL`/embedding environment variables are missing from the
+  generated Llama Stack pod.
+- **Checks:**
+
+  ```bash
+  oc get configmap lsd-enterprise-rag-config -n enterprise-rag -o yaml
+  oc get llamastackdistribution lsd-enterprise-rag -n enterprise-rag -o yaml
+  oc get pods -n enterprise-rag | grep lsd-enterprise-rag
+  oc logs -n enterprise-rag deploy/lsd-enterprise-rag --tail=100
+  curl -sk https://$(oc get route lsd-enterprise-rag -n enterprise-rag -o jsonpath='{.spec.host}')/v1/models | jq
+  ```
+
+  Keep the provider registration in GitOps. Do not patch the generated Llama
+  Stack deployment or generated config in place.
+
 ### Stage 230 Workbench opens to `no healthy upstream`
 
 - **Symptom:** the OpenShift AI dashboard Open link resolves to the Gateway URL,

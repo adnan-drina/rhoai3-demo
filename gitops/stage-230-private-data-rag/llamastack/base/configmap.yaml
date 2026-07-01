@@ -1,0 +1,233 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lsd-enterprise-rag-config
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: lsd-enterprise-rag
+    app.kubernetes.io/component: orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+data:
+  config.yaml: |
+    version: 2
+    image_name: rh
+
+    apis:
+      - agents
+      - batches
+      - datasetio
+      - eval
+      - inference
+      - safety
+      - scoring
+      - tool_runtime
+      - vector_io
+      - files
+
+    providers:
+      agents:
+        - provider_id: meta-reference
+          provider_type: inline::meta-reference
+          config:
+            persistence:
+              agent_state:
+                backend: kv_default
+                namespace: agents::meta_reference
+              responses:
+                backend: sql_default
+                max_write_queue_size: 10000
+                num_writers: 4
+                table_name: agents_responses
+      batches:
+        - provider_id: reference
+          provider_type: inline::reference
+          config:
+            kvstore:
+              backend: kv_default
+              namespace: batches
+      datasetio:
+        - provider_id: huggingface
+          provider_type: remote::huggingface
+          config:
+            kvstore:
+              backend: kv_default
+              namespace: datasetio::huggingface
+        - provider_id: localfs
+          provider_type: inline::localfs
+          config:
+            kvstore:
+              backend: kv_default
+              namespace: datasetio::localfs
+      eval:
+        - provider_id: trustyai_lmeval
+          provider_type: remote::trustyai_lmeval
+          module: llama_stack_provider_lmeval==0.4.2
+          config:
+            base_url: ${env.VLLM_URL}
+            use_k8s: true
+      files:
+        - provider_id: meta-reference-files
+          provider_type: inline::localfs
+          config:
+            metadata_store:
+              backend: sql_default
+              table_name: files_metadata
+            storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      inference:
+        - provider_id: vllm-inference
+          provider_type: remote::vllm
+          config:
+            base_url: ${env.VLLM_URL}
+            api_token: ${env.VLLM_API_TOKEN=''}
+            max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+            tls_verify: ${env.VLLM_TLS_VERIFY:=false}
+            drop_params: true
+        - provider_id: vllm-reranker
+          provider_type: remote::vllm
+          config:
+            base_url: ${env.VLLM_RERANKER_URL}
+            tls_verify: ${env.VLLM_RERANKER_TLS_VERIFY:=false}
+        - provider_id: sentence-transformers
+          provider_type: inline::sentence-transformers
+          config: {}
+      safety:
+        - provider_id: trustyai_fms
+          provider_type: remote::trustyai_fms
+          module: llama_stack_provider_trustyai_fms==0.3.2
+          config:
+            shields: {}
+      scoring:
+        - provider_id: basic
+          provider_type: inline::basic
+          config: {}
+        - provider_id: llm-as-judge
+          provider_type: inline::llm-as-judge
+          config: {}
+      tool_runtime:
+        - provider_id: brave-search
+          provider_type: remote::brave-search
+          config:
+            api_key: ${env.BRAVE_SEARCH_API_KEY:=}
+            max_results: 3
+        - provider_id: tavily-search
+          provider_type: remote::tavily-search
+          config:
+            api_key: ${env.TAVILY_SEARCH_API_KEY:=}
+            max_results: 3
+        - provider_id: rag-runtime
+          provider_type: inline::rag-runtime
+          config: {}
+        - provider_id: model-context-protocol
+          provider_type: remote::model-context-protocol
+          config: {}
+      vector_io:
+        - provider_id: milvus-remote
+          provider_type: remote::milvus
+          config:
+            uri: ${env.MILVUS_ENDPOINT}
+            token: ${env.MILVUS_TOKEN}
+            consistency_level: ${env.MILVUS_CONSISTENCY_LEVEL:=Bounded}
+            persistence:
+              backend: kv_default
+              namespace: vector_io::milvus_remote
+
+    registered_resources:
+      benchmarks: []
+      connectors: []
+      datasets: []
+      models:
+        - model_id: nemotron-3-nano-30b-a3b
+          provider_id: vllm-inference
+          provider_model_id: nemotron-3-nano-30b-a3b
+          model_type: llm
+          metadata: {}
+        - model_id: qwen3-reranker
+          provider_id: vllm-reranker
+          provider_model_id: qwen3-reranker
+          model_type: rerank
+          metadata: {}
+      scoring_fns: []
+      shields: []
+      tool_groups:
+        - toolgroup_id: builtin::websearch
+          provider_id: tavily-search
+        - toolgroup_id: builtin::rag
+          provider_id: rag-runtime
+      vector_stores: []
+
+    server:
+      port: 8321
+      workers: 1
+
+    storage:
+      backends:
+        kv_default:
+          type: kv_postgres
+          host: ${env.POSTGRES_HOST}
+          port: ${env.POSTGRES_PORT}
+          db: ${env.POSTGRES_DB}
+          user: ${env.POSTGRES_USER}
+          password: ${env.POSTGRES_PASSWORD}
+          table_name: llamastack_kvstore
+        sql_default:
+          type: sql_postgres
+          host: ${env.POSTGRES_HOST}
+          port: ${env.POSTGRES_PORT}
+          db: ${env.POSTGRES_DB}
+          user: ${env.POSTGRES_USER}
+          password: ${env.POSTGRES_PASSWORD}
+      stores:
+        conversations:
+          backend: sql_default
+          table_name: openai_conversations
+        inference:
+          backend: sql_default
+          max_write_queue_size: 10000
+          num_writers: 4
+          table_name: inference_store
+        metadata:
+          backend: kv_default
+          namespace: registry
+        prompts:
+          backend: kv_default
+          namespace: prompts
+
+    vector_stores:
+      annotation_prompt_params:
+        annotation_instruction_template: "Do not emit opaque file-id citation markers in demo answers."
+        chunk_annotation_template: |
+          [{index}] {metadata_text}
+
+          {chunk_text}
+        enable_annotations: true
+      chunk_retrieval_params:
+        chunk_multiplier: 5
+        default_reranker_strategy: rrf
+        max_tokens_in_context: 4000
+        rrf_impact_factor: 60.0
+        weighted_search_alpha: 0.5
+      context_prompt_params:
+        chunk_annotation_template: |
+          Result {index}
+
+          Content: {chunk.content}
+
+          Metadata: {metadata}
+        context_template: |
+          The above results were retrieved to help answer the user's query: "{query}". Use them as supporting information only in answering this query. {annotation_instruction}
+      file_batch_params:
+        cleanup_interval_seconds: 86400
+        file_batch_chunk_size: 10
+        max_concurrent_files_per_batch: 3
+      file_ingestion_params:
+        default_chunk_overlap_tokens: 128
+        default_chunk_size_tokens: 512
+      file_search_params:
+        footer_template: |
+          END of knowledge_search tool results.
+        header_template: |
+          knowledge_search tool found {num_chunks} chunks:
+
+          BEGIN of knowledge_search tool results.

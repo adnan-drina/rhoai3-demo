@@ -42,9 +42,12 @@ Patterns reused:
 - file-level metadata such as `category` and document type
 - Files API upload followed by Vector Stores API attachment
 - remote Milvus vector store provider
+- Llama Stack `userConfig` ConfigMap for provider and registered-resource
+  wiring when the `rh-dev` distribution alone does not expose the article's
+  reranker registration
 - hybrid vector-store search
 - LLM tool/function call to extract metadata filters
-- reranker endpoint before final answer generation
+- Llama Stack `/v1alpha/inference/rerank` before final answer generation
 - CPU-hosted Qwen3 reranker with vLLM CPU settings from
   `chart/templates/qwen3-reranker.yaml`; adapt request size and batching to
   the active demo worker-node capacity after checking scheduler headroom
@@ -56,6 +59,9 @@ Patterns not copied directly:
 - direct `helm install`; this repo uses local GitOps/Kustomize and Argo CD
 - hardcoded sample passwords; this repo uses generated or environment-local
   Secrets
+- notebook-local `%pip install` as the primary workbench setup; this repo
+  preinstalls notebook dependencies into the shared workbench PVC and validates
+  imports from the running workbench container
 - user-facing claims that example images or model artifacts are Red
   Hat-supported unless a Red Hat source says so
 - Llama tool-call behavior when the active MaaS/Llama Stack/Nemotron path does

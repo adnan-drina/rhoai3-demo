@@ -45,6 +45,8 @@ spec:
           value: "true"
         - name: EMBEDDING_PROVIDER
           value: sentence-transformers
+        - name: EMBEDDING_MODEL
+          value: sentence-transformers/ibm-granite/granite-embedding-125m-english
         - name: INFERENCE_MODEL
           valueFrom:
             secretKeyRef:
@@ -70,6 +72,10 @@ spec:
             secretKeyRef:
               name: private-rag-llama-stack-secret
               key: VLLM_MAX_TOKENS
+        - name: VLLM_RERANKER_URL
+          value: http://qwen3-reranker-predictor.enterprise-rag.svc.cluster.local:8080/v1
+        - name: VLLM_RERANKER_TLS_VERIFY
+          value: "false"
         - name: MILVUS_ENDPOINT
           valueFrom:
             secretKeyRef:
@@ -94,5 +100,7 @@ spec:
           memory: 12Gi
     distribution:
       name: rh-dev
+    userConfig:
+      configMapName: lsd-enterprise-rag-config
     storage:
       size: 5Gi

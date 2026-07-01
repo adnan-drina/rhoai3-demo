@@ -33,6 +33,8 @@ MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
+RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
+EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/ibm-granite/granite-embedding-125m-english}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 
 check() {
@@ -265,6 +267,16 @@ if [[ -n "$route_host" ]]; then
   else
     check "Llama Stack lists MaaS-backed Nemotron model" "status=${status},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
+  if [[ "$status" == "200" ]] && grep -q "$EMBEDDING_MODEL" "$models_body"; then
+    check "Llama Stack lists Granite embedding model" "pass"
+  else
+    check "Llama Stack lists Granite embedding model" "status=${status},model=${EMBEDDING_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
+  fi
+  if [[ "$status" == "200" ]] && grep -q "$RERANKER_MODEL" "$models_body"; then
+    check "Llama Stack lists Qwen3 reranker model" "pass"
+  else
+    check "Llama Stack lists Qwen3 reranker model" "status=${status},model=${RERANKER_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
+  fi
   rm -f "$models_body"
 else
   check "Llama Stack route exists" "missing"
@@ -286,7 +298,8 @@ if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   if [[ -n "$route_host" && -n "$reranker_route_host" ]]; then
     if python3 "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" \
       --base-url "https://${route_host}" \
-      --reranker-base-url "https://${reranker_route_host}" \
+      --reranker-base-url "https://${route_host}" \
+      --reranker-model "$RERANKER_MODEL" \
       --reset >/tmp/stage230-agnews-acceptance.json 2>/tmp/stage230-agnews-acceptance.err; then
       check "AG News full RAG acceptance passes" "pass"
     else

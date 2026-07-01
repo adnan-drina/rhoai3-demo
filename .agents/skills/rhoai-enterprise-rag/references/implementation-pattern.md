@@ -9,7 +9,7 @@
 | Embedding provider | Start with the reference `sentence-transformers/ibm-granite/granite-embedding-125m-english` path if compatible with installed Llama Stack; otherwise select a documented embedding provider and record dimensions | Embedding dimension must match vector-store registration |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
-| Reranker | CPU-hosted Qwen3 reranker reference model | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
+| Reranker | CPU-hosted Qwen3 reranker reference model registered in Llama Stack as `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
@@ -31,7 +31,9 @@
      active Stage 220 setup.
    - Register the embedding provider and capture model ID plus dimension.
    - Deploy the Qwen3 reranker through GitOps-managed KServe/vLLM CPU resources
-     after recording the modelcar/runtime image posture as a demo exception.
+     after recording the modelcar/runtime image posture as a demo exception,
+     and register it in Llama Stack so notebooks call
+     `/v1alpha/inference/rerank` instead of the KServe endpoint directly.
    - Verify the reranker request fits a single schedulable CPU worker node and
      the selected LocalQueue has quota; reduce batching before using GPU
      capacity for the reranker.
@@ -121,6 +123,10 @@
   packages into a shared PVC path and expose that path to the main notebook
   container with `PYTHONPATH`. Installing into the init container's default
   Python environment does not persist into the Jupyter container.
+- The article-linked notebooks use `%pip install` cells for
+  `llama-stack-client`; for this repo, a GitOps-managed workbench should be
+  ready when opened and validation must import `llama_stack_client` inside the
+  running workbench container.
 - Pin notebook dependencies to versions available from the active RHOAI Python
   package index; verify the Llama Stack client version against the active
   server and package index before committing.

@@ -49,8 +49,7 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Llama Stack `/v1/models` and `LlamaStackClient.models.list()` show:
   - Nemotron generation model
   - embedding model
-  - reranker model if Llama Stack registration is supported; otherwise the
-    direct reranker endpoint is validated separately and the gap is recorded
+  - `vllm-reranker/qwen3-reranker`
 
 ## Ingestion
 
@@ -94,6 +93,9 @@ Use this checklist before accepting Stage 230 RAG changes.
   per search mode; do not assume `hybrid`, `vector`, and `keyword` enforce
   filters identically.
 - Qwen3 reranker scores are present for AG News compatibility validation.
+- Reranking is invoked through Llama Stack `/v1alpha/inference/rerank`, not
+  directly against the KServe/vLLM endpoint, unless the stage plan explicitly
+  records a temporary fallback.
 - Final answer uses retrieved context and does not claim unsupported citations.
 - Validation includes a negative or out-of-scope query.
 

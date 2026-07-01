@@ -20,10 +20,10 @@ from llama_stack_client import LlamaStackClient
 
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-acceptance"
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/ibm-granite/granite-embedding-125m-english"
 DEFAULT_GENERATION_MODEL = "vllm-inference/nemotron-3-nano-30b-a3b"
-DEFAULT_RERANKER_MODEL = "qwen3-reranker"
-VALID_CATEGORIES = {"world", "sports", "business", "technology"}
+DEFAULT_RERANKER_MODEL = "vllm-reranker/qwen3-reranker"
+VALID_CATEGORIES = {"world", "sports", "business", "sci_tech"}
 
 
 def normalize_base_url(url: str) -> str:
@@ -112,11 +112,14 @@ def create_vector_store(client: LlamaStackClient, name: str, embedding_model: st
             "provider_id": "milvus-remote",
             "embedding_model": embedding_model,
         },
+        "extra_body": {
+            "provider_id": "milvus-remote",
+        },
     }
     if "embedding_model" in inspect.signature(client.vector_stores.create).parameters:
         create_kwargs["embedding_model"] = embedding_model
     else:
-        create_kwargs["extra_body"] = {"embedding_model": embedding_model}
+        create_kwargs["extra_body"]["embedding_model"] = embedding_model
     store = client.vector_stores.create(**create_kwargs)
     return get_value(store, "id", "vector_store_id")
 
@@ -135,7 +138,7 @@ def upload_records(client: LlamaStackClient, vector_store_id: str, records: list
                 file_id=get_value(uploaded, "id", "file_id"),
                 attributes={
                     "category": record["category"],
-                    "doc_type": record["doc_type"],
+                    "document_type": record.get("document_type", record.get("doc_type", "news_article")),
                     "tenant_id": record["tenant_id"],
                     "version_no": record["version_no"],
                     "source": record["source"],
@@ -180,7 +183,7 @@ def extract_metadata_filter(base_url: str, model: str, query: str) -> tuple[dict
                 "content": (
                     "You extract AG News metadata filters. Return only compact JSON like "
                     '{"category":"business"}. Valid categories: world, sports, business, '
-                    "technology. Use null if no category is implied."
+                    "sci_tech. Use null if no category is implied."
                 ),
             },
             {"role": "user", "content": query},
@@ -247,7 +250,17 @@ def item_text(item: Any) -> str:
 
 def rerank(base_url: str, model: str, query: str, candidates: list[Any]) -> tuple[list[dict[str, Any]], str]:
     documents = [item_text(item) for item in candidates]
+    typed_items = [{"type": "text", "text": document} for document in documents]
     payloads = [
+        (
+            "/v1alpha/inference/rerank",
+            {
+                "model": model,
+                "query": query,
+                "items": typed_items,
+                "max_num_results": min(3, len(documents)),
+            },
+        ),
         (
             "/v1/rerank",
             {

@@ -19,7 +19,7 @@ from llama_stack_client import LlamaStackClient
 
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-smoke"
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/ibm-granite/granite-embedding-125m-english"
 DEFAULT_SEARCH_MODE = "vector"
 
 
@@ -74,11 +74,14 @@ def create_vector_store(client, name: str, embedding_model: str):
             "environment": "demo",
             "language": "en",
         },
+        "extra_body": {
+            "provider_id": "milvus-remote",
+        },
     }
     if "embedding_model" in inspect.signature(client.vector_stores.create).parameters:
         create_kwargs["embedding_model"] = embedding_model
     else:
-        create_kwargs["extra_body"] = {"embedding_model": embedding_model}
+        create_kwargs["extra_body"]["embedding_model"] = embedding_model
 
     store = client.vector_stores.create(**create_kwargs)
     return get_value(store, "id", "vector_store_id")
@@ -101,7 +104,7 @@ def upload_records(client, vector_store_id: str, records: list[dict]) -> int:
                 file_id=get_value(uploaded, "id", "file_id"),
                 attributes={
                     "category": record["category"],
-                    "doc_type": record["doc_type"],
+                    "document_type": record.get("document_type", record.get("doc_type", "news_article")),
                     "tenant_id": record["tenant_id"],
                     "version_no": record["version_no"],
                     "source": record["source"],
