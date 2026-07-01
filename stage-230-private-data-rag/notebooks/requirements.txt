@@ -1,6 +1,6 @@
 llama-stack-client==0.7.2
 pypdf==6.10.0
 requests==2.32.5
-kfp==2.14.6
-kfp-kubernetes==2.14.6
+kfp==2.16.1
+kfp-kubernetes==2.16.1
 boto3==1.42.0

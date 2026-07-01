@@ -99,7 +99,7 @@ compile_pipeline() {
     python3 -m venv "$venv_path"
   fi
   "$venv_path/bin/pip" install -q --upgrade pip
-  "$venv_path/bin/pip" install -q kfp==2.14.6 kfp-kubernetes==2.14.6
+  "$venv_path/bin/pip" install -q kfp==2.16.1 kfp-kubernetes==2.16.1
 
   mkdir -p "$ROOT_DIR/artifacts"
   "$venv_path/bin/python" "$SCRIPT_DIR/kfp/dutch_publication_docling_pipeline.py" --output "$output" >/dev/null
