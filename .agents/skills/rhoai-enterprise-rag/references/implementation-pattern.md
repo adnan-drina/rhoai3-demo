@@ -13,7 +13,8 @@
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
-| Future corpus | Dutch government publications | Replace AG News metadata taxonomy after the reference pattern works |
+| First Dutch development corpus | Single public Staatsblad PDF smoke corpus | Use a deterministic source PDF, article-level chunks, and recommended metadata to validate the Dutch path before a larger corpus is available |
+| Future corpus | Larger Dutch government publication set | Replace AG News metadata taxonomy and automate processing after the single-document smoke path works |
 
 ## Implementation Phases
 
@@ -60,7 +61,19 @@
    - Start from a small repo-owned app or notebook surface.
    - Do not hide failed retrieval behind a generic chat response.
    - Show model answer, retrieved context, metadata filters, and rerank scores.
-7. Replace the corpus with Dutch government publications.
+7. Add a first Dutch government publication smoke corpus.
+   - Use a single deterministic public document when the larger corpus is not
+     ready, such as `stb-2022-14.pdf` for the Wet open overheid.
+   - Keep the raw source PDF, extracted article-level JSONL chunks, and smoke
+     questions under the stage data folder.
+   - Apply enterprise metadata consistently: `source_authority`,
+     `publication_type`, `ministry`, `topic`, `publication_date`, `language`,
+     `jurisdiction`, `access_tier`, `source_url`, and `version`.
+   - Use this smoke corpus to validate metadata extraction, filtered hybrid
+     search, reranking, language-following answers, and expected legal terms.
+   - Do not present this preprocessed single-PDF smoke path as the final
+     Docling/KFP ingestion architecture.
+8. Replace the corpus with a larger Dutch government publication set.
    - Define Dutch metadata: source authority, publication type, ministry,
      publication date, jurisdiction, language, topic, version, and access tier.
    - Add Docling conversion for unstructured documents such as PDFs, HTML,
@@ -69,7 +82,7 @@
      or metadata completeness.
    - Use subset selection when the corpus is too large for fast iteration and
      the sample must preserve diversity and coverage.
-8. Automate document processing with AI Pipelines when the corpus is no longer
+9. Automate document processing with AI Pipelines when the corpus is no longer
    a small deterministic sample.
    - Use the official-doc-linked `opendatahub-io/data-processing` stable branch
      as the first implementation reference.
@@ -169,6 +182,7 @@ Record these before claiming support:
 - Guardrails or MCP tool calling.
 - External web search.
 
-Docling and KFP are expected for the Dutch government publication phase, not
-for the AG News compatibility phase. Keep this distinction clear in README,
-PLAN, deploy scripts, and validation output.
+Docling and KFP are expected before indexing a larger Dutch government
+publication corpus, not for the AG News compatibility phase and not as a
+blocker for a single preprocessed smoke PDF. Keep this distinction clear in
+README, PLAN, deploy scripts, and validation output.

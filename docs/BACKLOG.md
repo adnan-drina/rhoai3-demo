@@ -93,8 +93,10 @@ Developer OGX/Llama Stack article and its linked `agnews-rag-demo` repository.
 The first rebuilt version reproduces the AG News pattern with Nemotron through
 Stage 220 MaaS, PostgreSQL with pgvector for Llama Stack metadata and vector
 retrieval, metadata filtering, hybrid search, CPU-hosted Qwen3 reranking, and
-an Enterprise RAG Workbench. Once that reference flow is proven, the corpus
-will shift to Dutch government publications.
+an Enterprise RAG Workbench. The first Dutch development corpus is a single
+public Staatsblad PDF (`stb-2022-14.pdf`) for smoke tests. A larger Dutch
+government publication corpus still requires Docling/KFP automation before it
+is indexed.
 
 ### Open / deferred from Stage 230
 
@@ -107,7 +109,7 @@ will shift to Dutch government publications.
 | Embedding provider and dimension | high | Select the embedding provider from installed Llama Stack capabilities, capture the model ID and vector dimension, and validate before indexing. |
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
 | Hybrid metadata filtering | high | Resolved by selecting the active pgvector provider path. Keep this as a validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted. |
-| Dutch government publication corpus | high | After AG News validates, define metadata taxonomy and ingestion path for Dutch government publications. Use Docling for unstructured documents and keep AG News as the compatibility corpus. |
+| Dutch government publication corpus | high | Single-document smoke path added with `stb-2022-14.pdf`, recommended metadata, and default questions. Next: use Docling and KFP before indexing a larger Dutch government publication corpus. |
 | Docling/KFP data preparation | high | Use the RHOAI 3.4 "Prepare your data for AI consumption" chapter and `opendatahub-io/data-processing` stable branch, with the `main/kubeflow-pipelines` tree as a newer reference to compare. Start from notebooks or jobs, then automate with `docling-standard` for ordinary PDFs and `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
 | Guardrails and MCP | medium | Add product-backed guardrails and MCP after base RAG works. |

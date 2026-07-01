@@ -57,7 +57,7 @@ metadata:
     opendatahub.io/user: ai-2dadmin
     opendatahub.io/username: ai-admin
     openshift.io/display-name: "Enterprise RAG Workbench"
-    openshift.io/description: "AG News enterprise RAG ingestion, retrieval, reranking, and grounded answer validation."
+    openshift.io/description: "Enterprise RAG ingestion, retrieval, reranking, and grounded answer validation."
     notebooks.opendatahub.io/idle-culling-enabled: "true"
     notebooks.opendatahub.io/idle-culling-time: "30m"
 spec:
@@ -96,10 +96,13 @@ spec:
               mkdir -p "${workspace}/.stage230/scripts" "${workspace}/.stage230/data"
               cp "${stage_dir}/notebooks/Ingestion_pipeline_ag_news.ipynb" "${workspace}/"
               cp "${stage_dir}/notebooks/retrieval_pipeline_ag_news.ipynb" "${workspace}/"
+              cp "${stage_dir}/notebooks/dutch_publication_rag_smoke.ipynb" "${workspace}/"
               cp "${stage_dir}/notebooks/requirements.txt" "${workspace}/.stage230/requirements.txt"
               cp "${stage_dir}/scripts/agnews_rag_smoke.py" "${workspace}/.stage230/scripts/"
               cp "${stage_dir}/scripts/agnews_rag_acceptance.py" "${workspace}/.stage230/scripts/"
+              cp "${stage_dir}/scripts/dutch_publication_rag_smoke.py" "${workspace}/.stage230/scripts/"
               cp -R "${stage_dir}/data/agnews-sample" "${workspace}/.stage230/data/"
+              cp -R "${stage_dir}/data/dutch-government" "${workspace}/.stage230/data/"
 
               rm -rf "${workspace}/.stage230/python"
               python -m pip install \

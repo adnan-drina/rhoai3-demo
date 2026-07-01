@@ -69,6 +69,10 @@ Use this checklist before accepting Stage 230 RAG changes.
 - For AG News, raw text ingestion does not pretend to validate Docling.
 - For Dutch government publications or other unstructured corpora, Docling
   conversion output is validated before vector-store attachment.
+- A single preprocessed Dutch smoke PDF may be used before the larger corpus is
+  ready, but the stage must label it as a deterministic development smoke path,
+  include the raw PDF plus extracted chunks and questions, and keep Docling/KFP
+  automation as a required gate before indexing the larger corpus.
 - KFP automation is validated only after the Docling notebook/job path works.
 - Docling KFP implementation declares whether it adapts `docling-standard` or
   `docling-vlm` and why.
@@ -123,8 +127,9 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Validate script proves end-to-end RAG, not only pod readiness.
 - Workbench notebook or terminal flow can run the same acceptance script as
   automated validation.
-- Deferred Dutch government publication ingestion is tracked in
-  `docs/BACKLOG.md` until implemented.
+- Dutch government publication ingestion status is tracked in
+  `docs/BACKLOG.md`: single-document smoke path, larger-corpus Docling/KFP
+  automation, and any deferred evaluation work must be distinguished.
 - If KFP is used, pipeline server readiness, compiled pipeline artifact,
   pipeline run status, task logs, and artifact output are checked through
   `rhoai-ai-pipelines` and `rhoai-kfp-pipeline-authoring`.

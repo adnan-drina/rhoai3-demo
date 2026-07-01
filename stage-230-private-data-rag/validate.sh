@@ -223,13 +223,18 @@ if [[ -n "$workbench_pod" ]]; then
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
+     test -f /opt/app-root/src/workspace/dutch_publication_rag_smoke.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
+     test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_rag_smoke.py &&
+     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/source/stb-2022-14.pdf &&
+     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-chunks.jsonl &&
+     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-questions.json &&
      test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else
-    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected two visible notebooks and hidden .stage230 helper content"
+    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, Dutch smoke notebook, and hidden .stage230 helper content"
   fi
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'python - <<'"'"'PY'"'"'
@@ -301,6 +306,12 @@ else
   check "AG News RAG acceptance script compiles" "py_compile failed"
 fi
 
+if python3 -m py_compile "$SCRIPT_DIR/scripts/dutch_publication_rag_smoke.py" >/dev/null 2>&1; then
+  check "Dutch publication RAG smoke script compiles" "pass"
+else
+  check "Dutch publication RAG smoke script compiles" "py_compile failed"
+fi
+
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   if [[ -n "${workbench_pod:-}" ]]; then
     acceptance_out=$(mktemp)
@@ -321,6 +332,29 @@ if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   fi
 else
   warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_DUTCH_SMOKE:-false}" == "true" ]]; then
+  if [[ -n "${workbench_pod:-}" ]]; then
+    dutch_smoke_out=$(mktemp)
+    dutch_smoke_err=$(mktemp)
+    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+      'cd /opt/app-root/src/workspace &&
+       python .stage230/scripts/dutch_publication_rag_smoke.py \
+         --reset \
+         --vector-store stage230-dutch-woo-demo \
+         --search-mode hybrid \
+         --query "Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?" \
+         --expected-topic openbaarmaking_op_verzoek \
+         --expected-term "vier weken"' >"$dutch_smoke_out" 2>"$dutch_smoke_err"; then
+      check "Dutch publication full RAG smoke passes" "pass"
+    else
+      check "Dutch publication full RAG smoke passes" "$(head -c 300 "$dutch_smoke_err" | tr '\n' ' ')"
+    fi
+    rm -f "$dutch_smoke_out" "$dutch_smoke_err"
+  else
+    check "Dutch publication full RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
+  fi
 fi
 
 echo

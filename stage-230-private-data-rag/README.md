@@ -30,6 +30,7 @@ accurate assistant experience than a model-only prompt can provide.
 | RHOAI project workbench | Notebook-driven ingestion, retrieval inspection, reranker testing, and acceptance runs in the `enterprise-rag` project | [RHOAI 3.4 working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index) |
 | Kueue-backed CPU hardware profile | Schedules the workbench through the Stage 120 `CPU Default` hardware profile and `lq-cpu-default` LocalQueue | [RHOAI 3.4 workload management with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) |
 | Qwen3 reranker | CPU-hosted neural reranking layer adapted from the article-linked reference implementation and sized for the demo worker nodes | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
+| Staatsblad 2022 no. 14 smoke corpus | First Dutch government publication development corpus with recommended enterprise metadata, based on the Wet open overheid text placement PDF | [Official publication PDF](https://zoek.officielebekendmakingen.nl/stb-2022-14.pdf) |
 | Docling | Planned data-preparation layer for unstructured Dutch government publications | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | Red Hat OpenShift AI Pipelines | Planned automation layer for repeatable Docling conversion, chunking, extraction, and subset selection using the Red Hat `opendatahub-io/data-processing` KFP examples | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 
@@ -45,11 +46,16 @@ curated article-aligned Llama Stack `userConfig`, a CPU Qwen3 reranker exposed
 as `vllm-reranker/qwen3-reranker`,
 environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
 News acceptance sample. AG News is already structured text and should not be
-used to claim Docling validation. Docling and KFP become part of this stage
-when the corpus changes to unstructured Dutch government publications.
-The workbench opens into a curated two-notebook workspace under
-`/opt/app-root/src/workspace`, following the article-linked AG News flow:
-`Ingestion_pipeline_ag_news.ipynb` and `retrieval_pipeline_ag_news.ipynb`.
+used to claim Docling validation. The first Dutch development smoke corpus is
+`stb-2022-14.pdf`, the Staatsblad publication for the Wet open overheid text
+placement, preprocessed into article-level chunks with metadata for repeatable
+development tests. Docling and KFP become required before the corpus expands
+to a larger set of unstructured Dutch government publications.
+The workbench opens into a curated notebook workspace under
+`/opt/app-root/src/workspace`, following the article-linked AG News flow and
+the first Dutch smoke flow:
+`Ingestion_pipeline_ag_news.ipynb`, `retrieval_pipeline_ag_news.ipynb`, and
+`dutch_publication_rag_smoke.ipynb`.
 Runtime helper scripts and sample data are generated under hidden `.stage230`
 workspace content rather than showing the full implementation repository to the
 data scientist.
@@ -71,6 +77,7 @@ capacity.
 flowchart LR
   user["Data scientist or app user"]
   corpus["AG News sample corpus"]
+  dutch["Staatsblad 2022 no. 14"]
   files["Files API"]
   vectors["Vector Stores API"]
   stack["Llama Stack / OGX"]
@@ -87,6 +94,7 @@ flowchart LR
   user --> workbench
   workbench --> stack
   corpus --> files
+  dutch --> files
   files --> vectors
   vectors --> stack
   stack --> pgvector
@@ -114,6 +122,17 @@ The deterministic workbench flow is available from the workbench:
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
+  --search-mode hybrid
+```
+
+The Dutch publication smoke path uses the same runtime and validates language
+following, metadata filtering, reranking, and grounded answer generation:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/dutch_publication_rag_smoke.py \
+  --reset \
+  --vector-store stage230-dutch-woo-demo \
   --search-mode hybrid
 ```
 

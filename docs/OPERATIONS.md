@@ -943,20 +943,23 @@ implementation. The current first slice:
   pool
 - uses `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` for
   AG News indexing
-- provides an Enterprise RAG Workbench, deterministic AG News sample, smoke
-  helper, and full acceptance helper. The workbench visible workspace is
-  intentionally rooted at `/opt/app-root/src/workspace` and curated to two notebooks,
-  `Ingestion_pipeline_ag_news.ipynb` and
-  `retrieval_pipeline_ag_news.ipynb`; generated helper content is stored under
-  hidden `.stage230` workspace content.
+- provides an Enterprise RAG Workbench, deterministic AG News sample, full AG
+  News acceptance helper, and a deterministic Dutch government publication
+  smoke corpus based on `stb-2022-14.pdf`. The workbench visible workspace is
+  intentionally rooted at `/opt/app-root/src/workspace` and curated to three
+  notebooks: `Ingestion_pipeline_ag_news.ipynb`,
+  `retrieval_pipeline_ag_news.ipynb`, and
+  `dutch_publication_rag_smoke.ipynb`. Generated helper content is stored
+  under hidden `.stage230` workspace content.
 
 The validation gate is to ingest the deterministic AG News sample through
 Files and Vector Stores APIs, validate metadata-filtered hybrid retrieval,
 rerank candidates, and then generate a Nemotron answer from retrieved context.
 
-The Dutch government publication corpus will be added only after the AG News
-reference path is working. That phase should use the RHOAI 3.4 Docling and KFP
-data-preparation guidance instead of resurrecting the old whoami pipeline.
+The first Dutch government publication development corpus uses a single public
+Staatsblad PDF for deterministic smoke tests. A larger Dutch publication corpus
+should use the RHOAI 3.4 Docling and KFP data-preparation guidance instead of
+resurrecting the old whoami pipeline.
 
 ### Operational Status
 
@@ -976,6 +979,12 @@ Current status:
   AG News acceptance helper. Run it from the Enterprise RAG Workbench, or set
   `RHOAI_STAGE230_RUN_ACCEPTANCE=true` before `validate.sh` to run the same
   helper inside the Enterprise RAG Workbench container.
+- `stage-230-private-data-rag/scripts/dutch_publication_rag_smoke.py` is the
+  first Dutch government publication smoke helper, using the same RAG runtime
+  against `stb-2022-14.pdf` article-level chunks and recommended metadata. Run
+  it from the Enterprise RAG Workbench, or set
+  `RHOAI_STAGE230_RUN_DUTCH_SMOKE=true` before `validate.sh` to run it inside
+  the Enterprise RAG Workbench container.
 - Old `run-whoami-*`, chatbot, DSPA/KFP, and Docling artifacts are
   removed from the active stage.
 
@@ -1000,11 +1009,13 @@ gate:
 - PostgreSQL, pgvector extension, and the `LlamaStackDistribution` are ready
 - Qwen3 reranker `InferenceService` and Route exist and are ready
 - the Enterprise RAG Workbench `Notebook`, PVC, and ServiceAccount exist
-- the Enterprise RAG Workbench exposes the curated two-notebook workspace and
+- the Enterprise RAG Workbench exposes the curated AG News and Dutch smoke
+  notebook workspace and
   does not expose the full `rhoai3-demo` repository checkout
 - the `enterprise-rag` namespace is Kueue-managed and has the
   `lq-cpu-default` LocalQueue
 - the AG News smoke and acceptance helpers compile
+- the Dutch publication smoke helper compiles
 
 The next validation expansion should prove the user-visible RAG outcome:
 
@@ -1023,6 +1034,16 @@ Run the workbench-equivalent validated flow:
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
+  --search-mode hybrid
+```
+
+Run the Dutch publication smoke flow:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/dutch_publication_rag_smoke.py \
+  --reset \
+  --vector-store stage230-dutch-woo-demo \
   --search-mode hybrid
 ```
 
