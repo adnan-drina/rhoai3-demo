@@ -33,6 +33,7 @@ accurate assistant experience than a model-only prompt can provide.
 | Staatsblad 2022 no. 14 smoke corpus | First Dutch government publication development corpus with recommended enterprise metadata, based on the Wet open overheid text placement PDF | [Official publication PDF](https://zoek.officielebekendmakingen.nl/stb-2022-14.pdf) |
 | Docling | Data-preparation layer for unstructured Dutch government publications; the current slice includes a Docling-standard preparation helper and compile-ready KFP source for the single PDF smoke corpus | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | Red Hat OpenShift AI Pipelines | Automation target for repeatable Docling conversion, chunking, extraction, and subset selection; the current slice compiles the KFP definition, while DSPA execution and S3-backed larger-corpus runs remain the next gate | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
+| Official RHOAI 3.4 product PDFs | Audience explainer corpus for querying the same documentation that describes Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling | [RHOAI 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
 baseline. The Red Hat article and GitHub repository guide the demo shape; the
@@ -58,7 +59,8 @@ The workbench opens into a curated notebook workspace under
 the first Dutch smoke flow:
 `Ingestion_pipeline_ag_news.ipynb`, `retrieval_pipeline_ag_news.ipynb`, and
 `dutch_publication_rag_smoke.ipynb`, plus
-`dutch_publication_docling_prepare.ipynb` for the data-preparation contract.
+`dutch_publication_docling_prepare.ipynb` for the data-preparation contract
+and `rhoai_product_docs_rag_smoke.ipynb` for official-product-document Q&A.
 Runtime helper scripts and sample data are generated under hidden `.stage230`
 workspace content rather than showing the full implementation repository to the
 data scientist.
@@ -74,6 +76,17 @@ The reranker resource request is intentionally smaller than the article-linked
 example so it can schedule on the demo CPU worker pool without using GPU
 capacity.
 
+The RHOAI product-document explainer corpus downloads official PDFs at runtime
+from `docs.redhat.com`, prepares focused chunks with source metadata, and
+indexes them through the same Files API and Vector Stores API path. If a
+runtime blocks programmatic PDF GET requests, the helper falls back to the
+matching official `html-single` guide for the same product content. This lets
+the demo audience ask why the stage uses Llama Stack, pgvector, RAGAS,
+AutoRAG, EvalHub, guardrails, AI Pipelines, and Docling vocabulary without
+copying product-document binaries into Git. It is documentation grounding only;
+it does not mean Stage 230 implements AutoRAG optimization, EvalHub jobs, AI
+safety guardrails, or DSPA/KFP execution yet.
+
 ## Architecture
 
 ```mermaid
@@ -81,6 +94,7 @@ flowchart LR
   user["Data scientist or app user"]
   corpus["AG News sample corpus"]
   dutch["Staatsblad 2022 no. 14"]
+  rhoai_docs["RHOAI 3.4 product PDFs"]
   files["Files API"]
   vectors["Vector Stores API"]
   stack["Llama Stack / OGX"]
@@ -98,6 +112,7 @@ flowchart LR
   workbench --> stack
   corpus --> files
   dutch --> files
+  rhoai_docs --> files
   files --> vectors
   vectors --> stack
   stack --> pgvector
@@ -153,6 +168,23 @@ python .stage230/scripts/dutch_publication_prepare.py \
 `--converter pypdf` is only the local/workbench validation path. The supported
 pipeline path uses Docling through the KFP component runtime.
 
+The RHOAI product-document explainer flow downloads selected official PDFs,
+creates focused chunks, and validates three default questions:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/rhoai_product_docs_prepare.py \
+  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+  --source-dir .stage230/data/rhoai-product-docs/source \
+  --output .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl
+python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
+  --reset \
+  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+  --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+  --vector-store stage230-rhoai-34-product-docs \
+  --search-mode hybrid
+```
+
 The Stage 230 acceptance gate uses `--search-mode hybrid` and intentionally
 fails if metadata extraction, hybrid metadata filtering, reranking, or final
 grounded answer generation is broken. The active pgvector path was selected
@@ -164,6 +196,10 @@ nice-to-have.
 - [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx)
 - [AG News RAG demo repository](https://github.com/abdelhamidfg/agnews-rag-demo)
 - [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
+- [RHOAI 3.4: Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index)
+- [RHOAI 3.4: Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/evaluating_ai_systems/index)
+- [RHOAI 3.4: Enabling AI safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/enabling_ai_safety_with_guardrails/index)
+- [RHOAI 3.4: Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index)
 - [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index)
 - [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models)
 - [OpenDataHub data-processing examples](https://github.com/opendatahub-io/data-processing/tree/stable)

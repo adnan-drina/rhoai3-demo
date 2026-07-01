@@ -39,6 +39,9 @@
     Docling-standard KFP source for the single-document smoke corpus
   - workbench notebook for compiling the Docling preparation pipeline and
     validating prepared chunks before indexing
+  - RHOAI 3.4 product-document explainer corpus manifest, preparation helper,
+    RAG smoke helper, and workbench notebook for official-doc-grounded demo
+    audience Q&A
 - Existing components reused:
   - Stage 220 Nemotron MaaS endpoint
   - Stage 110 RHOAI dashboard and shared DSC owner
@@ -51,6 +54,8 @@
   - DSPA execution, S3-backed source ingestion, and larger-corpus indexing
     before the single-document data-preparation contract works
   - guardrails and MCP
+  - implementing the product capabilities described by the RHOAI
+    product-document explainer corpus beyond the Stage 230 RAG runtime itself
   - production HA for databases or vector stores
 
 The previous Stage 230 whoami/Docling/DSPA/chatbot implementation is being
@@ -89,6 +94,14 @@ reranking, and final Dutch answer all pass. DSPA run evidence becomes required
 before the corpus shifts from one public PDF to a larger unstructured
 publication set.
 
+The RHOAI 3.4 product-document corpus is a separate explainer dataset. It
+validates that the same RAG runtime can ground answers in official Red Hat
+guide content for Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI
+Pipelines, and Docling. The helper prefers official PDFs and falls back to the
+matching official `html-single` guide only when a runtime blocks programmatic
+PDF downloads. It does not move those adjacent product capabilities into Stage
+230 implementation scope.
+
 ## Design Decisions
 
 | Decision | Choice | Reason |
@@ -96,6 +109,7 @@ publication set.
 | Generation model | Use Stage 220 Nemotron through MaaS | Preserves the demo story: governed model first, private data second |
 | Initial corpus | AG News | The Red Hat article and repo use it, so it is the best compatibility test |
 | First Dutch development corpus | Staatsblad 2022 no. 14 (`stb-2022-14.pdf`) | Provides a public, deterministic Dutch government publication for smoke tests after AG News compatibility has passed |
+| RHOAI product-document corpus | Selected official RHOAI 3.4 PDFs downloaded at runtime, with official `html-single` fallback if PDF GET is blocked | Lets the same RAG system answer audience questions about the product docs behind this demo without committing large binaries |
 | Future corpus | Larger Dutch government publication set | This becomes the real enterprise use case after the single-document smoke path works |
 | Vector store | Remote PostgreSQL with pgvector | Official RHOAI 3.4 Llama Stack docs document `remote::pgvector`, and live validation showed pgvector enforces metadata filters for vector, keyword, and hybrid search in the active environment |
 | Metadata store | PostgreSQL for Llama Stack metadata | Required by official Llama Stack guidance; this stage intentionally uses the same PostgreSQL service for metadata and pgvector vector storage while keeping the concerns distinct in configuration |
@@ -115,6 +129,7 @@ publication set.
 |---------|--------|-------|-------|
 | Concept/value | [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx) | `project-documentation-authoring`, `rhoai-enterprise-rag` | Explains metadata filtering, hybrid search, reranking, and enterprise RAG value |
 | Product config | [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) | `rhoai-llama-stack`, `rhoai-enterprise-rag` | Product authority for Llama Stack, vector stores, ingestion, query, PostgreSQL metadata, pgvector, and Milvus |
+| Product explainer corpus | [RHOAI 3.4 documentation landing page](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) | `rhoai-enterprise-rag`, `rhoai-llama-stack`, `rhoai-autorag`, `rhoai-evaluation`, `rhoai-guardrails-safety`, `rhoai-ai-pipelines` | Runtime-downloaded PDFs used as a focused audience Q&A corpus for RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling |
 | Product config | [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | Product authority for governed Nemotron access |
 | Product config | [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) | `rhoai-model-customization-training`, `rhoai-ai-pipelines`, `rhoai-kfp-pipeline-authoring` | Product authority for Docling data preparation and KFP automation |
 | Reference implementation | [abdelhamidfg/agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) | `rhoai-enterprise-rag` | Red Hat article-linked repo; example-only source for chart and notebooks |
@@ -237,9 +252,11 @@ Planned first implementation inventory:
 | `gitops/stage-230-private-data-rag/workbench/` | Project workbench `Notebook`, ServiceAccount, and PVC | RHOAI project workbench and Notebook CR docs | Workbench resource exists, pod starts, and the visible workspace contains the AG News notebooks, Dutch smoke notebook, and hidden generated helper content |
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/dutch-government/` | Source `stb-2022-14.pdf`, article-level JSONL chunks, and smoke-test questions | User-provided official Dutch government publication, locally extracted for deterministic development smoke tests | Metadata fields present, JSON parses, Files API upload succeeds, filtered hybrid search and answer generation pass |
+| `stage-230-private-data-rag/data/rhoai-product-docs/metadata/` | Source manifest for selected official RHOAI 3.4 PDF guides | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; downloaded PDFs are generated at runtime and remain gitignored |
 | `stage-230-private-data-rag/scripts/` | AG News smoke and acceptance helpers | RHOAI Llama Stack APIs and Red Hat article-linked notebook pattern | Python compile now; full ingestion/search/rerank/answer run after runtime is deployed |
 | `stage-230-private-data-rag/scripts/dutch_publication_rag_smoke.py` | Dutch publication smoke helper | RHOAI Llama Stack APIs, Stage 230 RAG runtime pattern, and user-provided `stb-2022-14.pdf` | Python compile now; optional workbench smoke run with `RHOAI_STAGE230_RUN_DUTCH_SMOKE=true` |
 | `stage-230-private-data-rag/scripts/dutch_publication_prepare.py` | Dutch publication preparation helper with Docling runtime path and pypdf local validation path | RHOAI data-preparation chapter and `opendatahub-io/data-processing` `docling-standard` pattern | Python compile, local pypdf contract validation, and workbench prepared-chunk smoke with `RHOAI_STAGE230_RUN_DOCLING_PREP=true` |
+| `stage-230-private-data-rag/scripts/rhoai_product_docs_*.py` | Runtime PDF download, focused product-doc chunking, vector-store ingest, filtered hybrid retrieval, reranking, and final answer smoke helper | Official RHOAI 3.4 PDFs and the active Stage 230 Llama Stack RAG path | Python compile, local PDF preparation, and optional workbench smoke run with `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true` |
 | `stage-230-private-data-rag/kfp/` | Compile-ready KFP v2 Docling-standard preparation source for `stb-2022-14.pdf` | RHOAI AI Pipelines docs, RHOAI data-preparation chapter, and reviewed `opendatahub-io/data-processing` stable branch | Local KFP compile, workbench compile, branch choice recorded, and image posture documented |
 
 Deferred implementation inventory:
@@ -271,12 +288,13 @@ Deferred implementation inventory:
 - Confirm the Enterprise RAG Workbench `Notebook` exists and reports Ready
   when the RHOAI notebook controller sets status.
 - Confirm the Enterprise RAG Workbench exposes the curated AG News and Dutch
-  smoke notebook workspace and does not expose the full `rhoai3-demo`
-  implementation repo.
+  smoke notebook workspace plus the RHOAI product-doc explainer notebook, and
+  does not expose the full `rhoai3-demo` implementation repo.
 - Confirm the AG News smoke-test helper compiles.
 - Confirm the AG News acceptance helper compiles.
 - Confirm the Dutch publication smoke helper compiles.
 - Confirm the Dutch publication preparation helper and KFP source compile.
+- Confirm the RHOAI product-document preparation and smoke helpers compile.
 - Confirm the Docling-standard KFP pipeline compiles locally when `kfp` is
   available.
 - Keep storage consumers in the same Argo CD sync wave as PVCs when the
@@ -302,6 +320,11 @@ Deferred implementation inventory:
   RAG Workbench when `RHOAI_STAGE230_RUN_DOCLING_PREP=true`: compile the KFP
   source, prepare article-level chunks with the local validation converter,
   and index those prepared chunks through the same RAG smoke helper.
+- The RHOAI product-document explainer smoke is run from the Enterprise RAG
+  Workbench when `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`: download official
+  PDFs from `docs.redhat.com`, prepare focused chunks, create the
+  `stage230-rhoai-34-product-docs` vector store, and answer selected audience
+  questions from retrieved context.
 - Before indexing a larger corpus, validate actual Docling conversion output,
   chunk quality, extracted metadata, DSPA/KFP run status, S3 Secret contract,
   task logs, metrics, and artifact output.
@@ -324,6 +347,7 @@ Deferred implementation inventory:
 | Hugging Face dataset egress | risk | Include a small deterministic AG News sample for validation; make full dataset download optional |
 | Embedding provider mismatch | risk | List active Llama Stack models and capture embedding dimension before vector store creation |
 | Dutch publication ingestion | in progress | Single-document smoke corpus added from `stb-2022-14.pdf`; metadata, preparation helper, KFP source, and workbench notebook added for the preparation contract; larger corpus ingestion requires DSPA/S3 execution before indexing |
+| RHOAI product-document ingestion | in progress | Focused official RHOAI 3.4 PDF corpus added for demo-audience Q&A; downloaded PDFs and prepared chunks are runtime artifacts, not committed source |
 | RAGAS / evaluation | deferred | Keep for a later evaluation-focused stage |
 | Docling/KFP data preparation | in progress | Compile-ready `docling-standard` KFP source and local/workbench preparation validation are added for the single PDF. Next: execute through DSPA with S3-backed input and review artifacts before larger-corpus indexing |
 | Guardrails and MCP | deferred | Keep for later safety and agentic stages |

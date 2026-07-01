@@ -18,8 +18,8 @@ The active implementation follows this sequence:
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
 5. `stage-230-private-data-rag` - metadata-aware enterprise RAG with RHOAI
-   Llama Stack / OGX, PostgreSQL with pgvector, AG News validation, and
-   Nemotron consumed through Stage 220 MaaS.
+   Llama Stack / OGX, PostgreSQL with pgvector, AG News validation, official
+   RHOAI product-document Q&A, and Nemotron consumed through Stage 220 MaaS.
 
 ## Operator Lifecycle And Image Ownership
 
@@ -946,15 +946,22 @@ implementation. The current first slice:
 - provides an Enterprise RAG Workbench, deterministic AG News sample, full AG
   News acceptance helper, and a deterministic Dutch government publication
   smoke corpus based on `stb-2022-14.pdf`. The workbench visible workspace is
-  intentionally rooted at `/opt/app-root/src/workspace` and curated to four
+  intentionally rooted at `/opt/app-root/src/workspace` and curated to five
   notebooks: `Ingestion_pipeline_ag_news.ipynb`,
   `retrieval_pipeline_ag_news.ipynb`, and
   `dutch_publication_rag_smoke.ipynb`, plus
-  `dutch_publication_docling_prepare.ipynb`. Generated helper content is
+  `dutch_publication_docling_prepare.ipynb` and
+  `rhoai_product_docs_rag_smoke.ipynb`. Generated helper content is
   stored under hidden `.stage230` workspace content.
 - adds a Dutch publication metadata contract, preparation helper, and
   compile-ready Docling-standard KFP source adapted from the Red Hat-documented
   `opendatahub-io/data-processing` stable branch.
+- adds a focused official RHOAI 3.4 product-document explainer corpus for
+  demo-audience Q&A about Llama Stack RAG, AutoRAG, RAGAS, EvalHub,
+  guardrails, AI Pipelines, and Docling. The PDFs are downloaded from
+  `docs.redhat.com` at runtime and are not committed to Git. If a runtime
+  blocks programmatic PDF GET requests, the helper falls back to the matching
+  official `html-single` guide.
 
 The validation gate is to ingest the deterministic AG News sample through
 Files and Vector Stores APIs, validate metadata-filtered hybrid retrieval,
@@ -997,6 +1004,13 @@ Current status:
 - `stage-230-private-data-rag/kfp/dutch_publication_docling_pipeline.py`
   compiles the first Docling-standard KFP source for the single PDF. DSPA
   execution and S3-backed larger-corpus processing are still the next gate.
+- `stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py`
+  downloads selected official RHOAI 3.4 PDFs and prepares focused product-doc
+  chunks with source metadata.
+- `stage-230-private-data-rag/scripts/rhoai_product_docs_rag_smoke.py` indexes
+  those chunks into the `stage230-rhoai-34-product-docs` vector store and
+  validates metadata-filtered hybrid retrieval, reranking, and a final
+  Nemotron answer.
 - Old `run-whoami-*`, chatbot, DSPA/KFP, and Docling artifacts are
   removed from the active stage.
 
@@ -1023,13 +1037,14 @@ gate:
 - Qwen3 reranker `InferenceService` and Route exist and are ready
 - the Enterprise RAG Workbench `Notebook`, PVC, and ServiceAccount exist
 - the Enterprise RAG Workbench exposes the curated AG News and Dutch smoke
-  notebook workspace and
+  notebook workspace, the RHOAI product-doc explainer notebook, and
   does not expose the full `rhoai3-demo` repository checkout
 - the `enterprise-rag` namespace is Kueue-managed and has the
   `lq-cpu-default` LocalQueue
 - the AG News smoke and acceptance helpers compile
 - the Dutch publication smoke helper compiles
 - the Dutch publication preparation helper and KFP source compile
+- the RHOAI product-document preparation and smoke helpers compile
 - the Docling-standard KFP pipeline compiles when local `python3` can import
   `kfp`
 
@@ -1044,6 +1059,9 @@ The next validation expansion should prove the user-visible RAG outcome:
 - the single-document data-preparation contract can compile the KFP source,
   generate prepared article chunks, and index those chunks through the same
   RAG smoke path when `RHOAI_STAGE230_RUN_DOCLING_PREP=true`
+- the RHOAI product-document explainer corpus can be downloaded, prepared, and
+  indexed through the same RAG path when
+  `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`
 - later, actual Docling output, DSPA/KFP run status, task logs, metrics, and
   processed artifacts are validated before larger Dutch publication content is
   indexed
@@ -1080,6 +1098,26 @@ python .stage230/scripts/dutch_publication_prepare.py \
 The `pypdf` converter validates article detection and metadata for the current
 PDF in the workbench image. The supported larger-corpus path must run the
 Docling KFP component and review produced artifacts before indexing.
+
+Run the official RHOAI product-document explainer corpus:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/rhoai_product_docs_prepare.py \
+  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+  --source-dir .stage230/data/rhoai-product-docs/source \
+  --output .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl
+python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
+  --reset \
+  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+  --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+  --vector-store stage230-rhoai-34-product-docs \
+  --search-mode hybrid
+```
+
+This flow is useful for explaining the setup to a demo audience from official
+RHOAI 3.4 docs. It does not replace implementation validation for AutoRAG,
+EvalHub, guardrails, AI Pipelines, or later Docling/DSPA work.
 
 The command must fail if metadata extraction, hybrid metadata filtering,
 reranking, or final grounded answer generation is broken. Use `--reset` after

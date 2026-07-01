@@ -77,6 +77,15 @@ Use this checklist before accepting Stage 230 RAG changes.
   deterministic article or chunk extraction, a prepared JSONL output, and a
   smoke query that proves filtered hybrid retrieval and answer generation from
   the prepared output.
+- Official product-document explainer corpora use active-baseline Red Hat PDF
+  guide URLs in a manifest, download PDFs at runtime when possible, fall back
+  only to matching official `html-single` guides when PDF GET is blocked, keep
+  generated PDFs or HTML and processed chunks out of Git, and attach source URL, guide title,
+  documentation category, product version, page, topic, tenant, and version
+  metadata to every chunk.
+- Product-document explainer corpora must not imply that adjacent capabilities
+  such as AutoRAG, EvalHub, guardrails, AI Pipelines, or RAGAS evaluation have
+  been implemented unless their own stage manifests and validation exist.
 - Local extraction helpers such as `pypdf` may validate article detection for
   a readable PDF, but they do not prove the supported Docling path.
 - KFP source must compile before DSPA execution is introduced.
@@ -135,6 +144,8 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Validate script proves end-to-end RAG, not only pod readiness.
 - Workbench notebook or terminal flow can run the same acceptance script as
   automated validation.
+- Workbench notebook or terminal flow can run the product-document preparation
+  and smoke scripts when official-product Q&A is in scope.
 - Dutch government publication ingestion status is tracked in
   `docs/BACKLOG.md`: single-document smoke path, larger-corpus Docling/KFP
   automation, and any deferred evaluation work must be distinguished.

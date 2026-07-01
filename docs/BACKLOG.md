@@ -97,7 +97,9 @@ an Enterprise RAG Workbench. The first Dutch development corpus is a single
 public Staatsblad PDF (`stb-2022-14.pdf`) for smoke tests. A metadata contract,
 preparation helper, and compile-ready Docling-standard KFP source now exist for
 that single-document path. A larger Dutch government publication corpus still
-requires DSPA/S3-backed Docling execution before it is indexed.
+requires DSPA/S3-backed Docling execution before it is indexed. A focused
+official RHOAI 3.4 product-document explainer corpus is also available for
+demo-audience Q&A about the product docs behind the stage design.
 
 ### Open / deferred from Stage 230
 
@@ -111,6 +113,7 @@ requires DSPA/S3-backed Docling execution before it is indexed.
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
 | Hybrid metadata filtering | high | Resolved by selecting the active pgvector provider path. Keep this as a validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted. |
 | Dutch government publication corpus | high | Single-document smoke path added with `stb-2022-14.pdf`, recommended metadata, default questions, and a preparation contract. Next: run Docling through DSPA/S3 and review artifacts before indexing a larger Dutch government publication corpus. |
+| RHOAI product-document explainer corpus | medium | Source manifest, preparation helper, smoke helper, and workbench notebook added for runtime-downloaded official RHOAI 3.4 PDFs covering Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling. This is documentation grounding for audience Q&A, not implementation scope for those adjacent capabilities. |
 | Docling/KFP data preparation | high | Compile-ready `docling-standard` KFP source and workbench/local validation are added for the single PDF. Next: add DSPA, S3 Secret generation from project object-storage data, imported pipeline/version handling, run automation, task-log checks, metrics, and artifact review. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
 | Guardrails and MCP | medium | Add product-backed guardrails and MCP after base RAG works. |

@@ -1,0 +1,136 @@
+{
+  "corpus": {
+    "access_tier": "public",
+    "corpus": "rhoai-3.4-product-docs",
+    "document_type": "red_hat_product_documentation_pdf",
+    "language": "en",
+    "product": "Red Hat OpenShift AI Self-Managed",
+    "product_version": "3.4",
+    "source": "docs.redhat.com",
+    "source_authority": "Red Hat",
+    "tenant_id": "rhoai-demo",
+    "version": "rhoai-3.4-product-docs-v1",
+    "version_no": "v1"
+  },
+  "documents": [
+    {
+      "guide_slug": "working-with-llama-stack",
+      "title": "Working with Llama Stack",
+      "documentation_category": "Develop / Working with Llama Stack",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/working_with_llama_stack/Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf",
+      "default_topic": "llama_stack_rag",
+      "focus_terms": ["RAG", "retrieval", "vector store", "hybrid search", "pgvector", "Ragas", "BEIR", "LlamaStackDistribution"],
+      "topic_rules": [
+        {"topic": "ragas_evaluation", "terms": ["Ragas", "RAGAS"]},
+        {"topic": "llama_stack_rag", "terms": ["RAG", "retrieval", "vector store", "hybrid search", "pgvector", "Qdrant", "PostgreSQL"]}
+      ]
+    },
+    {
+      "guide_slug": "working-with-autorag",
+      "title": "Working with AutoRAG",
+      "documentation_category": "Develop / Working with AutoRAG",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/working_with_autorag/Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf",
+      "default_topic": "autorag",
+      "focus_terms": ["AutoRAG", "RAG pattern", "optimization run", "leaderboard", "faithfulness", "correctness", "generated indexing", "inference notebook"],
+      "topic_rules": [
+        {"topic": "autorag", "terms": ["AutoRAG", "RAG pattern", "optimization", "leaderboard", "faithfulness", "context correctness"]}
+      ]
+    },
+    {
+      "guide_slug": "evaluating-ai-systems",
+      "title": "Evaluating AI systems",
+      "documentation_category": "Evaluate / Evaluating AI systems",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/evaluating_ai_systems/Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/evaluating_ai_systems/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf",
+      "default_topic": "evalhub",
+      "focus_terms": ["EvalHub", "LM-Eval", "evaluation job", "benchmark", "provider", "MLflow", "automated risk assessment"],
+      "topic_rules": [
+        {"topic": "evalhub", "terms": ["EvalHub", "provider", "benchmark", "evaluation job", "MLflow"]},
+        {"topic": "lm_eval", "terms": ["LM-Eval", "LMEvalJob"]},
+        {"topic": "risk_assessment", "terms": ["risk assessment", "Garak", "harm categories"]}
+      ]
+    },
+    {
+      "guide_slug": "guardrails",
+      "title": "Enabling AI safety with Guardrails",
+      "documentation_category": "Maintain Safety / Enabling AI safety with Guardrails",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/enabling_ai_safety_with_guardrails/Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/enabling_ai_safety_with_guardrails/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf",
+      "default_topic": "guardrails",
+      "focus_terms": ["NeMo Guardrails", "FMS Guardrails", "PII", "guardrail checks", "retrieval rails", "detector", "OpenTelemetry", "metrics"],
+      "topic_rules": [
+        {"topic": "guardrails", "terms": ["NeMo Guardrails", "FMS Guardrails", "guardrail", "detector", "PII", "retrieval rails", "OpenTelemetry"]}
+      ]
+    },
+    {
+      "guide_slug": "working-with-ai-pipelines",
+      "title": "Working with AI pipelines",
+      "documentation_category": "Develop / Working with AI pipelines",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/working_with_ai_pipelines/Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AI_pipelines-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AI_pipelines-en-US.pdf",
+      "default_topic": "ai_pipelines",
+      "focus_terms": ["AI pipelines", "Kubeflow Pipelines", "pipeline server", "pipeline run", "PipelineVersion", "DSPA", "artifact", "experiment"],
+      "topic_rules": [
+        {"topic": "ai_pipelines", "terms": ["AI pipelines", "Kubeflow Pipelines", "pipeline server", "pipeline run", "PipelineVersion", "DSPA", "artifact", "experiment"]}
+      ]
+    },
+    {
+      "guide_slug": "customize-models-genai",
+      "title": "Customize models to build Gen AI applications",
+      "documentation_category": "Train / Customize models for Gen AI and Agentic AI Applications",
+      "source_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/pdf/customize_models_for_gen_ai_and_agentic_ai_applications/Red_Hat_OpenShift_AI_Self-Managed-3.4-Customize_models_to_build_gen_AI_applications-en-US.pdf",
+      "html_single_url": "https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/customize_models_for_gen_ai_and_agentic_ai_applications/index",
+      "source_file": "Red_Hat_OpenShift_AI_Self-Managed-3.4-Customize_models_to_build_gen_AI_applications-en-US.pdf",
+      "default_topic": "docling_data_prep",
+      "focus_terms": ["Docling", "data processing", "Kubeflow Pipeline", "RAG Evaluation", "RAGAS", "synthetic data"],
+      "topic_rules": [
+        {"topic": "ragas_evaluation", "terms": ["RAG Evaluation", "RAGAS"]},
+        {"topic": "docling_data_prep", "terms": ["Docling", "data processing", "Kubeflow Pipeline", "chunking"]}
+      ]
+    }
+  ],
+  "smoke_questions": [
+    {
+      "query": "How does OpenShift AI use Llama Stack, vector stores, and hybrid search for RAG?",
+      "expected_topic": "llama_stack_rag",
+      "expected_terms": ["Llama Stack", "vector"]
+    },
+    {
+      "query": "What is AutoRAG used for in OpenShift AI?",
+      "expected_topic": "autorag",
+      "expected_terms": ["AutoRAG"]
+    },
+    {
+      "query": "How can RAGAS be used to evaluate RAG systems with OpenShift AI?",
+      "expected_topic": "ragas_evaluation",
+      "expected_terms": ["RAG"]
+    },
+    {
+      "query": "What does EvalHub provide for evaluating LLMs?",
+      "expected_topic": "evalhub",
+      "expected_terms": ["EvalHub"]
+    },
+    {
+      "query": "How do guardrails help protect generative AI applications in OpenShift AI?",
+      "expected_topic": "guardrails",
+      "expected_terms": ["guardrail"]
+    },
+    {
+      "query": "What role do AI Pipelines and Kubeflow Pipelines play in OpenShift AI?",
+      "expected_topic": "ai_pipelines",
+      "expected_terms": ["pipeline"]
+    },
+    {
+      "query": "How does Docling help prepare documents for RAG workflows?",
+      "expected_topic": "docling_data_prep",
+      "expected_terms": ["Docling"]
+    }
+  ]
+}

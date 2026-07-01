@@ -14,6 +14,7 @@
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; start with a compile-ready single-document contract before DSPA/S3 larger-corpus execution |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
 | First Dutch development corpus | Single public Staatsblad PDF smoke corpus | Use a deterministic source PDF, article-level chunks, and recommended metadata to validate the Dutch path before a larger corpus is available |
+| Product-document explainer corpus | Runtime-downloaded official RHOAI 3.4 PDFs | Use the same Files API, Vector Stores API, filtered hybrid retrieval, rerank, and final-answer path to answer demo-audience questions about official product capabilities. Do not commit downloaded PDFs or treat adjacent product topics as implemented stage scope. |
 | Future corpus | Larger Dutch government publication set | Replace AG News metadata taxonomy and automate processing after the single-document smoke path works |
 
 ## Implementation Phases
@@ -79,7 +80,20 @@
    - Do not present this single-PDF smoke path as the final Docling/KFP
      ingestion architecture until the Docling component has run and artifacts
      have been reviewed.
-8. Replace the corpus with a larger Dutch government publication set.
+8. Add a focused RHOAI product-document explainer corpus when the demo needs
+   source-grounded answers about platform capabilities.
+   - Use a manifest of official RHOAI PDFs from the active baseline, such as
+     Llama Stack, AutoRAG, evaluating AI systems, guardrails, AI Pipelines, and
+     model-customization/data-preparation guides.
+   - Download PDFs at runtime from `docs.redhat.com`; if programmatic PDF GET
+     is blocked, fall back to the matching official `html-single` guide. Do
+     not commit large product-document binaries.
+   - Preserve product version, guide title, documentation category, page,
+     topic, source URL, tenant, and version metadata on each uploaded chunk.
+   - Keep this corpus scoped to audience explanation. It does not by itself
+     implement AutoRAG optimization, EvalHub jobs, guardrails, or DSPA/KFP
+     execution.
+9. Replace the corpus with a larger Dutch government publication set.
    - Define Dutch metadata: source authority, publication type, ministry,
      publication date, jurisdiction, language, topic, version, and access tier.
    - Add Docling conversion for unstructured documents such as PDFs, HTML,
@@ -88,7 +102,7 @@
      or metadata completeness.
    - Use subset selection when the corpus is too large for fast iteration and
      the sample must preserve diversity and coverage.
-9. Automate document processing with AI Pipelines when the corpus is no longer
+10. Automate document processing with AI Pipelines when the corpus is no longer
    a small deterministic sample.
    - Use the official-doc-linked `opendatahub-io/data-processing` stable branch
      as the first implementation reference.

@@ -225,20 +225,24 @@ if [[ -n "$workbench_pod" ]]; then
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/dutch_publication_rag_smoke.ipynb &&
      test -f /opt/app-root/src/workspace/dutch_publication_docling_prepare.ipynb &&
+     test -f /opt/app-root/src/workspace/rhoai_product_docs_rag_smoke.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_rag_smoke.py &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_prepare.py &&
+     test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_prepare.py &&
+     test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_rag_smoke.py &&
      test -f /opt/app-root/src/workspace/.stage230/kfp/dutch_publication_docling_pipeline.py &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/source/stb-2022-14.pdf &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/metadata/stb-2022-14-metadata.json &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-chunks.jsonl &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-questions.json &&
+     test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json &&
      test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else
-    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, Dutch smoke notebook, and hidden .stage230 helper content"
+    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, Dutch smoke notebook, RHOAI product docs notebook, and hidden .stage230 helper content"
   fi
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'python - <<'"'"'PY'"'"'
@@ -320,6 +324,18 @@ if python3 -m py_compile "$SCRIPT_DIR/scripts/dutch_publication_prepare.py" >/de
   check "Dutch publication preparation script compiles" "pass"
 else
   check "Dutch publication preparation script compiles" "py_compile failed"
+fi
+
+if python3 -m py_compile "$SCRIPT_DIR/scripts/rhoai_product_docs_prepare.py" >/dev/null 2>&1; then
+  check "RHOAI product docs preparation script compiles" "pass"
+else
+  check "RHOAI product docs preparation script compiles" "py_compile failed"
+fi
+
+if python3 -m py_compile "$SCRIPT_DIR/scripts/rhoai_product_docs_rag_smoke.py" >/dev/null 2>&1; then
+  check "RHOAI product docs RAG smoke script compiles" "pass"
+else
+  check "RHOAI product docs RAG smoke script compiles" "py_compile failed"
 fi
 
 if python3 -m py_compile \
@@ -426,6 +442,35 @@ if [[ "${RHOAI_STAGE230_RUN_DUTCH_SMOKE:-false}" == "true" ]]; then
   else
     check "Dutch publication full RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
   fi
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then
+  if [[ -n "${workbench_pod:-}" ]]; then
+    rhoai_docs_out=$(mktemp)
+    rhoai_docs_err=$(mktemp)
+    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+      'cd /opt/app-root/src/workspace &&
+       python .stage230/scripts/rhoai_product_docs_prepare.py \
+         --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+         --source-dir .stage230/data/rhoai-product-docs/source \
+         --output .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl &&
+       python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
+         --reset \
+         --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+         --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+         --vector-store stage230-rhoai-34-product-docs \
+         --max-questions 3 \
+         --search-mode hybrid' >"$rhoai_docs_out" 2>"$rhoai_docs_err"; then
+      check "RHOAI product documentation RAG smoke passes" "pass"
+    else
+      check "RHOAI product documentation RAG smoke passes" "$(head -c 300 "$rhoai_docs_err" | tr '\n' ' ')"
+    fi
+    rm -f "$rhoai_docs_out" "$rhoai_docs_err"
+  else
+    check "RHOAI product documentation RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
+  fi
+else
+  warn "RHOAI product documentation RAG smoke was not run" "set RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true"
 fi
 
 echo
