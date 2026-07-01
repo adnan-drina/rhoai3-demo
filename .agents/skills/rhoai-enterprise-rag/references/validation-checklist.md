@@ -32,7 +32,8 @@ Use this checklist before accepting Stage 230 RAG changes.
   the stage. For the AG News compatibility phase, the visible workspace should
   show `Ingestion_pipeline_ag_news.ipynb` and
   `retrieval_pipeline_ag_news.ipynb`, with helper scripts and sample data kept
-  in hidden generated workspace content.
+  in hidden generated workspace content, and JupyterLab should be rooted at
+  the curated workspace directory rather than the PVC root or full repo clone.
 - If the workbench selects a Kueue-enabled hardware profile, the target
   namespace is labeled `kueue.openshift.io/managed=true`, the referenced
   `LocalQueue` exists in the same namespace, and the Notebook includes

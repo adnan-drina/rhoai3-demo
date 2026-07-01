@@ -75,7 +75,8 @@ spec:
           args:
             - |
               export HOME=/opt/app-root/src
-              workspace=/opt/app-root/src
+              pvc_root=/opt/app-root/src
+              workspace="${pvc_root}/workspace"
               source_dir=/tmp/stage230-source
               stage_dir="${source_dir}/stage-230-private-data-rag"
 
@@ -87,8 +88,8 @@ spec:
                 stage-230-private-data-rag/scripts \
                 stage-230-private-data-rag/data
 
-              rm -rf "${workspace}/rhoai3-demo" "${workspace}/.stage230"
-              find "${workspace}" -maxdepth 1 -type f \
+              rm -rf "${pvc_root}/rhoai3-demo" "${pvc_root}/.stage230" "${workspace}"
+              find "${pvc_root}" -maxdepth 1 -type f \
                 \( -name '*ag_news*.ipynb' -o -name 'enterprise-rag-agnews.ipynb' \) \
                 -delete
 
@@ -120,7 +121,7 @@ spec:
         - name: enterprise-rag-workbench
           image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4
           imagePullPolicy: Always
-          workingDir: /opt/app-root/src
+          workingDir: /opt/app-root/src/workspace
           env:
             - name: NOTEBOOK_ARGS
               value: |-
@@ -128,6 +129,7 @@ spec:
                 --ServerApp.token=''
                 --ServerApp.password=''
                 --ServerApp.base_url=/notebook/enterprise-rag/enterprise-rag-workbench
+                --ServerApp.root_dir=/opt/app-root/src/workspace
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4

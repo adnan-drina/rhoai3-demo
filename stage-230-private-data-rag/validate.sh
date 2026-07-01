@@ -215,9 +215,10 @@ if [[ -n "$workbench_pod" ]]; then
     && check "Enterprise RAG Workbench pod has ready containers" "pass" \
     || check "Enterprise RAG Workbench pod has ready containers" "${workbench_pod_ready:-missing}"
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-    'test -f /opt/app-root/src/Ingestion_pipeline_ag_news.ipynb &&
-     test -f /opt/app-root/src/retrieval_pipeline_ag_news.ipynb &&
-     test -d /opt/app-root/src/.stage230 &&
+    'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
+     test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
+     test -d /opt/app-root/src/workspace/.stage230 &&
+     test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else

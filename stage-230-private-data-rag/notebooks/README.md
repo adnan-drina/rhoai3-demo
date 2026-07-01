@@ -1,21 +1,21 @@
 # Enterprise RAG Workbench
 
 Open the `enterprise-rag` project in Red Hat OpenShift AI and start the
-`Enterprise RAG Workbench`. The workbench startup creates a curated workspace
-under `/opt/app-root/src` with two visible notebooks:
+`Enterprise RAG Workbench`. The workbench startup creates a curated JupyterLab
+workspace under `/opt/app-root/src/workspace` with two visible notebooks:
 
 - `Ingestion_pipeline_ag_news.ipynb`
 - `retrieval_pipeline_ag_news.ipynb`
 
 Generated helper scripts, sample data, and dependencies are stored under the
-hidden `/opt/app-root/src/.stage230` directory so the visible JupyterLab file
-browser matches the Red Hat article-style notebook flow instead of exposing the
-full `rhoai3-demo` implementation repository.
+hidden `/opt/app-root/src/workspace/.stage230` directory so the visible
+JupyterLab file browser matches the Red Hat article-style notebook flow
+instead of exposing the full `rhoai3-demo` implementation repository.
 
 Run the acceptance flow from a workbench terminal if you need a CLI check:
 
 ```bash
-cd /opt/app-root/src
+cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
   --search-mode hybrid

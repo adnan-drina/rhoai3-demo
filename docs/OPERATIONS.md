@@ -939,7 +939,7 @@ implementation. The current first slice:
   reference implementation and sized for the current demo CPU worker pool
 - provides an Enterprise RAG Workbench, deterministic AG News sample, smoke
   helper, and full acceptance helper. The workbench visible workspace is
-  intentionally curated to two notebooks,
+  intentionally rooted at `/opt/app-root/src/workspace` and curated to two notebooks,
   `Ingestion_pipeline_ag_news.ipynb` and
   `retrieval_pipeline_ag_news.ipynb`; generated helper content is stored under
   hidden `.stage230` workspace content.
@@ -1012,7 +1012,7 @@ The next validation expansion should prove the user-visible RAG outcome:
 Run the workbench acceptance flow:
 
 ```bash
-cd /opt/app-root/src
+cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
   --search-mode hybrid

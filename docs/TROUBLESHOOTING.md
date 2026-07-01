@@ -1303,9 +1303,10 @@ steps unless those components are intentionally reintroduced.
   the bootstrap init container. The RHOAI notebook image can run inside a
   virtual environment, so the bootstrap must not use `pip install --user`.
   The workbench bootstrap intentionally copies only the two AG News notebooks
-  into the visible workspace and keeps helper scripts/sample data under hidden
-  `.stage230` content. If the full `rhoai3-demo` repository appears in
-  JupyterLab, the bootstrap cleanup did not run against a reused PVC.
+  into `/opt/app-root/src/workspace` and keeps helper scripts/sample data under
+  hidden `.stage230` content. If the full `rhoai3-demo` repository appears in
+  JupyterLab, the bootstrap cleanup did not run against a reused PVC or
+  JupyterLab is not rooted at `/opt/app-root/src/workspace`.
   The RHOAI 3.4 Python package index might not publish every upstream patch
   version; pin notebook dependencies to versions available from that index and
   compatible with the active server.
@@ -1340,7 +1341,7 @@ steps unless those components are intentionally reintroduced.
   oc get httproute nb-enterprise-rag-enterprise-rag-workbench -n redhat-ods-applications -o yaml
   oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
   oc exec -n enterprise-rag <workbench-pod> -c enterprise-rag-workbench -- \
-    find /opt/app-root/src -maxdepth 1 -mindepth 1 -printf '%f\n'
+    find /opt/app-root/src/workspace -maxdepth 1 -mindepth 1 -printf '%f\n'
   ```
 
   Keep the workbench image, Notebook fields, and PVC in GitOps. Do not commit

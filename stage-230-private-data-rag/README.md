@@ -45,11 +45,12 @@ environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
 News acceptance sample. AG News is already structured text and should not be
 used to claim Docling validation. Docling and KFP become part of this stage
 when the corpus changes to unstructured Dutch government publications.
-The workbench exposes a curated two-notebook workspace, following the
-article-linked AG News flow: `Ingestion_pipeline_ag_news.ipynb` and
-`retrieval_pipeline_ag_news.ipynb`. Runtime helper scripts and sample data are
-generated under hidden `.stage230` workspace content rather than showing the
-full implementation repository to the data scientist.
+The workbench opens into a curated two-notebook workspace under
+`/opt/app-root/src/workspace`, following the article-linked AG News flow:
+`Ingestion_pipeline_ag_news.ipynb` and `retrieval_pipeline_ag_news.ipynb`.
+Runtime helper scripts and sample data are generated under hidden `.stage230`
+workspace content rather than showing the full implementation repository to the
+data scientist.
 
 Demo exceptions are explicit: the demo-local Milvus/etcd images and the Qwen3
 reranker modelcar are implementation artifacts adapted from the Red Hat
@@ -104,7 +105,7 @@ flowchart LR
 The deterministic acceptance flow is available from the workbench:
 
 ```bash
-cd /opt/app-root/src
+cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
   --search-mode hybrid

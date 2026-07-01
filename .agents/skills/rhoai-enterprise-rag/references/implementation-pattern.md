@@ -108,8 +108,9 @@
 - Keep the data scientist's visible workbench workspace curated. For the AG
   News compatibility phase, expose the two article-style notebooks
   `Ingestion_pipeline_ag_news.ipynb` and `retrieval_pipeline_ag_news.ipynb`;
-  place generated helper scripts, sample data, and requirements under hidden
-  workspace content such as `.stage230`.
+  root JupyterLab at a dedicated directory such as
+  `/opt/app-root/src/workspace`, and place generated helper scripts, sample
+  data, and requirements under hidden workspace content such as `.stage230`.
 - If the workbench fetches source from Git, use sparse checkout or another
   curated copy process. Do not expose the full implementation repository in
   JupyterLab unless the stage explicitly teaches repository internals.
