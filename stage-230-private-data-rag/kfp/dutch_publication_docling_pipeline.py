@@ -16,6 +16,7 @@ data for AI consumption".
 """
 
 import argparse
+import json
 from pathlib import Path
 
 from components.dutch_docling_components import (
@@ -27,8 +28,10 @@ from kfp import compiler, dsl, kubernetes
 
 
 ROOT = Path(__file__).resolve().parents[1]
-METADATA_JSON = (ROOT / "data/dutch-government/metadata/stb-2022-14-metadata.json").read_text(
-    encoding="utf-8"
+METADATA_JSON = json.dumps(
+    json.loads((ROOT / "data/dutch-government/metadata/stb-2022-14-metadata.json").read_text(encoding="utf-8")),
+    ensure_ascii=False,
+    separators=(",", ":"),
 )
 DEFAULT_SOURCE_FILENAME = "stb-2022-14.pdf"
 DEFAULT_INPUT_S3_KEY = "raw/dutch-government/stb-2022-14.pdf"

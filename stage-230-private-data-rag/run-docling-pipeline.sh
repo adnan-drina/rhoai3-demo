@@ -243,8 +243,82 @@ DSPA_URL="https://${DSPA_ROUTE}"
 OC_TOKEN="$(oc whoami -t --insecure-skip-tls-verify=true)"
 RUN_EVIDENCE_JSON="$(mktemp)"
 REVIEW_LOGS="$(mktemp)"
-export DSPA_URL RAG_NS PIPELINE_YAML PIPELINE_NAME EXPERIMENT_NAME OC_TOKEN WAIT_FOR_RUN TIMEOUT_SECONDS
+PIPELINE_CR_YAML="$(mktemp)"
+PIPELINE_VERSION_NAME="v-$(date +%s)"
+export DSPA_URL RAG_NS PIPELINE_YAML PIPELINE_NAME PIPELINE_CR_YAML PIPELINE_VERSION_NAME
+export EXPERIMENT_NAME OC_TOKEN WAIT_FOR_RUN TIMEOUT_SECONDS
 export S3_PDF_KEY OUTPUT_S3_KEY SOURCE_FILENAME PIPELINE_S3_SECRET CHUNK_MAX_TOKENS RUN_EVIDENCE_JSON
+
+"$KFP_PYTHON" - <<'PY'
+import json
+import os
+from pathlib import Path
+
+import yaml
+
+
+pipeline_name = os.environ["PIPELINE_NAME"]
+pipeline_version_name = os.environ["PIPELINE_VERSION_NAME"]
+pipeline_yaml = Path(os.environ["PIPELINE_YAML"])
+pipeline_cr_yaml = Path(os.environ["PIPELINE_CR_YAML"])
+
+compiled_docs = [doc for doc in yaml.safe_load_all(pipeline_yaml.read_text(encoding="utf-8")) if doc]
+if not compiled_docs:
+    raise RuntimeError(f"{pipeline_yaml} did not contain a compiled KFP pipeline spec")
+pipeline_spec = compiled_docs[0]
+platform_spec = compiled_docs[1] if len(compiled_docs) > 1 else None
+if not isinstance(pipeline_spec, dict) or "pipelineInfo" not in pipeline_spec:
+    raise RuntimeError(f"{pipeline_yaml} is not a valid compiled KFP pipeline spec")
+
+labels = {
+    "app.kubernetes.io/part-of": "rag",
+    "app.kubernetes.io/component": "docling-pipeline",
+    "demo.rhoai.io/stage": "230",
+}
+pipeline_resource = {
+    "apiVersion": "pipelines.kubeflow.org/v2beta1",
+    "kind": "Pipeline",
+    "metadata": {
+        "name": pipeline_name,
+        "namespace": os.environ["RAG_NS"],
+        "labels": labels,
+    },
+    "spec": {
+        "displayName": pipeline_name,
+        "description": "Stage 230 Dutch publication Docling preparation pipeline.",
+        "tags": {"stage": "230", "corpus": "dutch-government"},
+    },
+}
+pipeline_version_resource = {
+    "apiVersion": "pipelines.kubeflow.org/v2beta1",
+    "kind": "PipelineVersion",
+    "metadata": {
+        "name": f"{pipeline_name}-{pipeline_version_name}",
+        "namespace": os.environ["RAG_NS"],
+        "labels": labels,
+    },
+    "spec": {
+        "pipelineName": pipeline_name,
+        "displayName": pipeline_version_name,
+        "description": "Compiled Stage 230 Docling KFP IR for the current run.",
+        "pipelineSpec": pipeline_spec,
+        "tags": {"stage": "230", "corpus": "dutch-government"},
+    },
+}
+if platform_spec:
+    pipeline_version_resource["spec"]["platformSpec"] = platform_spec
+pipeline_cr_yaml.write_text(
+    yaml.safe_dump_all(
+        [pipeline_resource, pipeline_version_resource],
+        sort_keys=False,
+        allow_unicode=True,
+    ),
+    encoding="utf-8",
+)
+print(pipeline_cr_yaml)
+PY
+
+oc apply -f "$PIPELINE_CR_YAML" --insecure-skip-tls-verify=true >/dev/null
 
 "$KFP_PYTHON" - <<'PY'
 import json
@@ -269,9 +343,8 @@ def item_id(item, *names):
 
 namespace = os.environ["RAG_NS"]
 pipeline_name = os.environ["PIPELINE_NAME"]
+pipeline_version_name = os.environ["PIPELINE_VERSION_NAME"]
 experiment_name = os.environ["EXPERIMENT_NAME"]
-pipeline_yaml = os.environ["PIPELINE_YAML"]
-run_suffix = int(time.time())
 
 kfp_client = client.Client(
     host=os.environ["DSPA_URL"],
@@ -279,35 +352,44 @@ kfp_client = client.Client(
     existing_token=os.environ["OC_TOKEN"],
     verify_ssl=False,
 )
-kfp_client.list_pipelines(page_size=1)
 
-pipeline_id = None
-try:
-    pipeline = kfp_client.upload_pipeline(
-        pipeline_package_path=pipeline_yaml,
-        pipeline_name=pipeline_name,
-    )
-    pipeline_id = item_id(pipeline, "pipeline_id", "pipeline_id")
-except Exception:
+def find_pipeline():
     pipelines = kfp_client.list_pipelines(page_size=100).pipelines or []
-    pipeline = next((candidate for candidate in pipelines if item_name(candidate) == pipeline_name), None)
-    if pipeline is None:
-        raise
-    pipeline_id = item_id(pipeline, "pipeline_id", "id")
+    return next((candidate for candidate in pipelines if item_name(candidate) == pipeline_name), None)
+
+
+def find_pipeline_version(pipeline_id):
+    versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=100)
+    pipeline_versions = versions.pipeline_versions or []
+    return next((candidate for candidate in pipeline_versions if item_name(candidate) == pipeline_version_name), None)
+
+
+pipeline = None
+for _ in range(60):
+    pipeline = find_pipeline()
+    if pipeline is not None:
+        break
+    time.sleep(2)
+if pipeline is None:
+    raise RuntimeError(f"DSPA did not list Pipeline CR {pipeline_name}")
+
+pipeline_id = item_id(pipeline, "pipeline_id", "id")
 
 if not pipeline_id:
     raise RuntimeError(f"could not resolve pipeline id for {pipeline_name}")
 
-version_name = f"v-{run_suffix}"
-version = kfp_client.upload_pipeline_version(
-    pipeline_package_path=pipeline_yaml,
-    pipeline_version_name=version_name,
-    pipeline_id=pipeline_id,
-)
+version = None
+for _ in range(60):
+    version = find_pipeline_version(pipeline_id)
+    if version is not None:
+        break
+    time.sleep(2)
+if version is None:
+    raise RuntimeError(f"DSPA did not list PipelineVersion CR {pipeline_name}-{pipeline_version_name}")
+
 version_id = item_id(version, "pipeline_version_id", "id")
 if not version_id:
-    versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, sort_by="created_at desc")
-    version_id = item_id(versions.pipeline_versions[0], "pipeline_version_id", "id")
+    raise RuntimeError(f"could not resolve pipeline version id for {pipeline_version_name}")
 
 try:
     experiment = kfp_client.create_experiment(name=experiment_name, namespace=namespace)
@@ -325,7 +407,7 @@ params = {
     "pipeline_s3_secret_name": os.environ["PIPELINE_S3_SECRET"],
     "chunk_max_tokens": int(os.environ["CHUNK_MAX_TOKENS"]),
 }
-run_name = f"docling-stb-2022-14-{run_suffix}"
+run_name = f"docling-stb-2022-14-{int(time.time())}"
 run = kfp_client.run_pipeline(
     experiment_id=experiment_id,
     job_name=run_name,
@@ -355,7 +437,7 @@ evidence = {
     "pipeline_id": pipeline_id,
     "pipeline_name": pipeline_name,
     "pipeline_version_id": version_id,
-    "pipeline_version_name": version_name,
+    "pipeline_version_name": pipeline_version_name,
     "run_id": run_id,
     "run_name": run_name,
     "run_state": str(state),

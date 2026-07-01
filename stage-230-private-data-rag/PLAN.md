@@ -273,7 +273,7 @@ Planned first implementation inventory:
 | `gitops/stage-230-private-data-rag/rhoai-dsc/` | Shared DSC patch job enabling `aipipelines` and Argo Workflows controllers | RHOAI DSC component configuration and AI Pipelines docs | `default-dsc.spec.components.aipipelines.managementState=Managed` |
 | `gitops/stage-230-private-data-rag/pipelines/` | DSPA pipeline server backed by the deterministic Stage 230 NooBaa bucket and Kubernetes API pipeline store | RHOAI AI Pipelines docs | DSPA Ready, route exists, object storage condition passes, pipeline definitions appear after runner import |
 | `stage-230-private-data-rag/kfp/` | Modular KFP v2 Docling-standard pipeline for `stb-2022-14.pdf`: S3 fetch, Docling conversion, chunk generation, S3 output | RHOAI AI Pipelines docs, RHOAI data-preparation chapter, and reviewed `opendatahub-io/data-processing` stable branch | Local KFP compile, workbench compile, branch choice recorded, image posture documented, DSPA run succeeds, metrics/logs/artifacts reviewed |
-| `stage-230-private-data-rag/run-docling-pipeline.sh` | KFP lifecycle runner | RHOAI AI Pipelines docs and repo KFP runner standards | Uploads pipeline/version, creates experiment/run, waits for completion, reviews S3 output, records evidence ConfigMap |
+| `stage-230-private-data-rag/run-docling-pipeline.sh` | KFP lifecycle runner | RHOAI AI Pipelines docs and repo KFP runner standards | Creates Kubernetes API `Pipeline`/`PipelineVersion` resources, creates experiment/run, waits for completion, reviews S3 output, records evidence ConfigMap |
 
 ## Script Plan
 
@@ -302,6 +302,9 @@ Planned first implementation inventory:
 - Confirm the shared DSC has AI Pipelines enabled.
 - Confirm the `dspa-enterprise-rag` pipeline server exists, reports ready, and
   exposes a route.
+- Confirm the DSPA artifact repository endpoint matches the desired GitOps
+  object-storage endpoint. If object-storage settings changed after server
+  creation, recreate the DSPA instead of patching generated ConfigMaps.
 - Confirm repo-stored RHOAI product source PDFs and prepared chunks exist.
 - Confirm PostgreSQL availability and `pgvector` extension installation.
 - Confirm Llama Stack readiness and model list.

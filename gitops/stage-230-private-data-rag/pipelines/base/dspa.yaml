@@ -27,9 +27,9 @@ spec:
     externalStorage:
       bucket: enterprise-rag
       host: s3.openshift-storage.svc
-      port: "443"
-      scheme: https
-      secure: true
+      port: "80"
+      scheme: http
+      secure: false
       region: us-east-1
       basePath: pipelines
       s3CredentialsSecret:

@@ -152,6 +152,15 @@
 - Use a project-scoped ObjectBucketClaim for private RAG source documents and
   future pipeline artifacts. Generate dashboard/workbench and pipeline S3
   Secrets from the OBC-generated credentials; never commit access keys.
+- For the active Stage 230 DSPA, use the in-cluster NooBaa HTTP service
+  endpoint for AI Pipelines artifacts and for the
+  `data-processing-docling-pipeline` Secret. Keep the dashboard/workbench S3
+  connection separate if it uses the OBC-advertised HTTPS endpoint.
+- If the DSPA object-storage endpoint, scheme, bucket, or credentials are
+  wrong, update GitOps and recreate the DSPA. RHOAI pipeline server
+  object-storage settings are not reliably mutated in place; generated
+  workflow-controller artifact repository ConfigMaps are not project-owned
+  desired state.
 - For the Stage 230 product-document corpus, keep official source PDFs and
   deterministic prepared chunks in the stage folder and upload source PDFs to
   S3 at deployment time. Do not make runtime download from `docs.redhat.com`

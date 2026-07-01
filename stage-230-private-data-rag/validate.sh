@@ -171,7 +171,7 @@ else
   warn "Enterprise RAG DSPA reports Ready" "${dspa_ready:-not reported yet}"
 fi
 
-dspa_object_storage=$(condition_status "dspa/${DSPA_NAME}" "$RAG_NS" "ObjectStorageAvailable")
+dspa_object_storage=$(condition_status "dspa/${DSPA_NAME}" "$RAG_NS" "ObjectStoreAvailable")
 if [[ "$dspa_object_storage" == "True" || -z "$dspa_object_storage" ]]; then
   [[ "$dspa_object_storage" == "True" ]] \
     && check "Enterprise RAG DSPA object storage is available" "pass" \

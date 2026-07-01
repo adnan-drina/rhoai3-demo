@@ -186,7 +186,8 @@ Run the automated DSPA/KFP pipeline from the repository after deployment:
 ```
 
 The runner compiles the KFP definition, uploads a new pipeline version to the
-`dspa-enterprise-rag` pipeline server, creates a run in the
+`dspa-enterprise-rag` pipeline server through Kubernetes API
+`Pipeline`/`PipelineVersion` custom resources, creates a run in the
 `stage-230-private-data-rag` experiment, waits for completion, reviews the
 prepared JSONL artifact in S3, and stores run evidence in the
 `stage230-docling-pipeline-evidence` ConfigMap. The full validation gate also

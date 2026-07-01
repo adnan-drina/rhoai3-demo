@@ -986,7 +986,9 @@ Current status:
   non-committed runtime Secrets, creates the `enterprise-rag-s3` dashboard
   connection and `data-processing-docling-pipeline` S3 Secret from
   OBC-generated credentials, and uploads repo-stored source PDFs to the
-  project bucket from an in-cluster Job.
+  project bucket from an in-cluster Job. The dashboard connection uses the OBC
+  advertised HTTPS endpoint. The pipeline Secret uses the in-cluster NooBaa
+  HTTP service endpoint that matches the DSPA artifact store configuration.
 - `stage-230-private-data-rag/validate.sh` checks the Stage 230 Application,
   runtime resources, Llama Stack readiness, model listing, Qwen3 reranker
   readiness, workbench resources, helper syntax, DSPA readiness, and KFP
@@ -1011,9 +1013,10 @@ Current status:
 - `stage-230-private-data-rag/kfp/dutch_publication_docling_pipeline.py`
   compiles the first Docling-standard KFP source for the single PDF.
 - `stage-230-private-data-rag/run-docling-pipeline.sh` compiles the KFP source,
-  imports a pipeline version into `dspa-enterprise-rag`, starts a run, waits
-  for completion, reviews the generated S3 artifact, and stores evidence in
-  the `stage230-docling-pipeline-evidence` ConfigMap.
+  creates or updates `Pipeline` and `PipelineVersion` custom resources for the
+  Kubernetes API pipeline store, starts a run, waits for completion, reviews
+  the generated S3 artifact, and stores evidence in the
+  `stage230-docling-pipeline-evidence` ConfigMap.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py`
   prepares focused product-doc chunks with source metadata from the selected
   official RHOAI 3.4 PDFs stored in the stage folder. Use `--force-download`
@@ -1043,6 +1046,14 @@ Current status:
 - leave Docling/KFP execution to an explicit gate: run
   `run-docling-pipeline.sh` directly or set
   `RHOAI_STAGE230_RUN_DSPA_PIPELINE=true` for `validate.sh`
+
+If the DSPA object-storage endpoint, scheme, bucket, or credentials are wrong,
+do not live patch the generated workflow-controller ConfigMap. Red Hat
+OpenShift AI documents pipeline server object-storage settings as requiring
+pipeline server deletion and recreation when incorrect. For this demo, update
+`gitops/stage-230-private-data-rag/pipelines/base/dspa.yaml`, recreate
+`enterprise-rag/dspa-enterprise-rag`, and then rerun `deploy.sh` so generated
+pipeline S3 secrets and source uploads match the recreated server.
 
 `validate.sh` currently proves the runtime foundation and prepares the next
 gate:

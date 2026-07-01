@@ -117,7 +117,7 @@ jsonpath() {
 }
 
 ensure_object_storage() {
-  local akid sak bucket host port endpoint
+  local akid sak bucket host port endpoint pipeline_endpoint
 
   wait_for_object_bucket
 
@@ -134,6 +134,7 @@ ensure_object_storage() {
   port=$(oc get configmap "$RAG_BUCKET_OBC" -n "$RAG_NS" \
     -o jsonpath='{.data.BUCKET_PORT}' --insecure-skip-tls-verify=true)
   endpoint="https://${host}:${port}"
+  pipeline_endpoint="http://${host}:80"
 
   oc apply -f - --insecure-skip-tls-verify=true <<EOF
 apiVersion: v1
@@ -175,14 +176,14 @@ metadata:
     demo.rhoai.io/stage: "230"
 type: Opaque
 stringData:
-  S3_ENDPOINT_URL: "${endpoint}"
+  S3_ENDPOINT_URL: "${pipeline_endpoint}"
   S3_ACCESS_KEY: "${akid}"
   S3_SECRET_KEY: "${sak}"
   S3_BUCKET: "${bucket}"
   S3_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
   AWS_ACCESS_KEY_ID: "${akid}"
   AWS_SECRET_ACCESS_KEY: "${sak}"
-  AWS_S3_ENDPOINT: "${endpoint}"
+  AWS_S3_ENDPOINT: "${pipeline_endpoint}"
   AWS_S3_BUCKET: "${bucket}"
   AWS_DEFAULT_REGION: "us-east-1"
   RHOAI_STAGE230_PRODUCT_DOCS_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"

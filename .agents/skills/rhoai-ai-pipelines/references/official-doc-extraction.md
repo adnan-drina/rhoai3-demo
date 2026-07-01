@@ -37,6 +37,10 @@ and active-baseline linked Red Hat docs.
   connectivity. MySQL 8.4 and later disable this plugin by default.
 - Pipeline definitions are stored as Kubernetes resources by default, enabling
   version control and GitOps workflows.
+- When a pipeline server uses Kubernetes API storage, GitOps-friendly pipeline
+  import can be implemented by creating `Pipeline` and `PipelineVersion`
+  custom resources directly. Preserve both compiled KFP IR documents when the
+  compiler emits a separate Kubernetes `platformSpec`.
 - Caching can be configured at pipeline and task levels by default. Pipeline
   server configuration can disable that flexibility for all pipelines.
 
@@ -65,6 +69,9 @@ and active-baseline linked Red Hat docs.
   resources with `apiVersion: pipelines.kubeflow.org/v2beta1`.
 - `PipelineVersion` includes `spec.pipelineSpec` and can include
   `spec.platformSpec` when Kubernetes resource configuration is used.
+- Multi-line JSON default values can make compiled YAML headers invalid for
+  Kubernetes API storage. Keep large JSON string defaults compact or pass them
+  as run parameters from the runner.
 
 ## KFP SDK Authentication
 
@@ -187,6 +194,9 @@ and active-baseline linked Red Hat docs.
 
 - `ObjectStorageAvailable=False` can indicate object-store TLS trust problems,
   inaccessible object storage, or wrong credentials.
+- Active RHOAI 3.4 DSPA status uses the `ObjectStoreAvailable` condition name
+  for object-store connectivity. Check the live CRD/status before hard-coding
+  condition names in validation scripts.
 - `DatabaseAvailable=False` can indicate database network timeout, certificate
   trust failure, or a blocked database host.
 - `APIServerReady=False` can indicate route creation failure caused by a long
