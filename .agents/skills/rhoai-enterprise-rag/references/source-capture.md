@@ -42,9 +42,8 @@ Patterns reused:
 - file-level metadata such as `category` and document type
 - Files API upload followed by Vector Stores API attachment
 - remote Milvus vector store provider
-- Llama Stack `userConfig` ConfigMap for provider and registered-resource
-  wiring when the `rh-dev` distribution alone does not expose the article's
-  reranker registration
+- Llama Stack `userConfig` ConfigMap for provider wiring when the `rh-dev`
+  distribution alone does not expose the article's reranker provider
 - hybrid vector-store search
 - LLM tool/function call to extract metadata filters
 - Llama Stack `/v1alpha/inference/rerank` before final answer generation

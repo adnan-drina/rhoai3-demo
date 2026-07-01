@@ -1378,6 +1378,31 @@ steps unless those components are intentionally reintroduced.
   Keep the provider registration in GitOps. Do not patch the generated Llama
   Stack deployment or generated config in place.
 
+### Stage 230 Llama Stack CrashLoopBackOff after userConfig changes
+
+- **Symptom:** `lsd-enterprise-rag` enters `CrashLoopBackOff` after changing
+  `lsd-enterprise-rag-config`, while the `LlamaStackDistribution` remains
+  `Initializing`.
+- **Likely cause:** the copied article-linked config does not match the active
+  RHOAI 3.4 Llama Stack server. In this environment:
+  - `agents` is not a valid API; use the `responses` provider path.
+  - `inline::rag-runtime` is not available; use `inline::file-search`.
+  - file-search templates must contain the literal `file_search` keyword and
+    chunk annotations must contain `{file_id}`.
+  - do not manually register models that the provider already lists; use model
+    IDs returned by `/v1/models`.
+- **Checks:**
+
+  ```bash
+  oc logs -n enterprise-rag deploy/lsd-enterprise-rag --tail=200
+  oc get configmap lsd-enterprise-rag-config -n enterprise-rag -o jsonpath='{.data.config\.yaml}'
+  curl -sk https://$(oc get route lsd-enterprise-rag -n enterprise-rag -o jsonpath='{.spec.host}')/v1/models | jq
+  ```
+
+  Fix the GitOps ConfigMap and let the Llama Stack Operator recreate the
+  generated Deployment. Do not patch the generated Deployment or mounted config
+  directly.
+
 ### Stage 230 Workbench opens to `no healthy upstream`
 
 - **Symptom:** the OpenShift AI dashboard Open link resolves to the Gateway URL,

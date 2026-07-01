@@ -9,7 +9,7 @@
 | Embedding provider | Use the embedding model listed by the active RHOAI Llama Stack server, currently `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` with dimension 768 | The article notebook defaults to Granite, but the demo must use a model returned by `/v1/models` unless a supported registration path is validated |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
-| Reranker | CPU-hosted Qwen3 reranker reference model registered in Llama Stack as `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
+| Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
@@ -29,10 +29,11 @@
 3. Register providers and models.
    - Register Nemotron generation through the MaaS endpoint returned by the
      active Stage 220 setup.
-   - Register the embedding provider and capture model ID plus dimension.
+   - Configure the embedding provider and capture the model ID plus dimension
+     returned by `/v1/models`.
    - Deploy the Qwen3 reranker through GitOps-managed KServe/vLLM CPU resources
      after recording the modelcar/runtime image posture as a demo exception,
-     and register it in Llama Stack so notebooks call
+     and expose it through Llama Stack so notebooks call
      `/v1alpha/inference/rerank` instead of the KServe endpoint directly.
    - Verify the reranker request fits a single schedulable CPU worker node and
      the selected LocalQueue has quota; reduce batching before using GPU

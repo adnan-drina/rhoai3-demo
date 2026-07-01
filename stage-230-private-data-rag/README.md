@@ -22,7 +22,7 @@ accurate assistant experience than a model-only prompt can provide.
 
 | Technology | Role in this stage | Source |
 |------------|-------------------|--------|
-| Red Hat OpenShift AI Llama Stack / OGX | RAG runtime, OpenAI-compatible Files and Vector Stores APIs, retrieval orchestration, provider configuration, and registered Qwen3 reranker access | [RHOAI 3.4 Llama Stack docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
+| Red Hat OpenShift AI Llama Stack / OGX | RAG runtime, OpenAI-compatible Files and Vector Stores APIs, retrieval orchestration, provider configuration, and provider-listed Qwen3 reranker access | [RHOAI 3.4 Llama Stack docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Remote Milvus provider | Vector store provider used by Llama Stack; this stage currently deploys a demo-local Milvus service as the remote endpoint | [RHOAI 3.4 Llama Stack vector store guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | PostgreSQL | Required metadata store for Llama Stack deployments | [RHOAI 3.4 Llama Stack PostgreSQL guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Nomic embedding model | Active RHOAI Llama Stack inline sentence-transformers embedding model used for AG News indexing | [RHOAI Llama Stack models API](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
@@ -42,7 +42,7 @@ and configuration.
 The current implementation is the first rebuilt slice: `enterprise-rag`,
 PostgreSQL metadata storage, a demo-local Milvus endpoint for the documented
 remote Milvus provider, `LlamaStackDistribution` with a curated
-article-aligned Llama Stack `userConfig`, a CPU Qwen3 reranker registered as
+article-aligned Llama Stack `userConfig`, a CPU Qwen3 reranker exposed as
 `vllm-reranker/qwen3-reranker`,
 environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
 News acceptance sample. AG News is already structured text and should not be

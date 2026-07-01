@@ -938,7 +938,7 @@ implementation. The current first slice:
   reference implementation
 - consumes Nemotron through the Stage 220 MaaS gateway
 - deploys a CPU Qwen3 reranker adapted from the Red Hat article-linked
-  reference implementation, registers it in Llama Stack as
+  reference implementation, exposes it through Llama Stack as
   `vllm-reranker/qwen3-reranker`, and sizes it for the current demo CPU worker
   pool
 - uses `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` for
