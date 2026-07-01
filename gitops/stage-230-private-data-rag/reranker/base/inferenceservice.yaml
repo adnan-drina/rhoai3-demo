@@ -35,15 +35,15 @@ spec:
         - --dtype=float32
         - --max-model-len=1024
         - --served-model-name=qwen3-reranker
-        - --max-num-seqs=8
-        - --max-num-batched-tokens=1024
+        - --max-num-seqs=4
+        - --max-num-batched-tokens=512
       env:
         - name: VLLM_CPU_KVCACHE_SPACE
-          value: "4"
+          value: "2"
       resources:
         requests:
+          cpu: "4"
+          memory: 10Gi
+        limits:
           cpu: "8"
           memory: 16Gi
-        limits:
-          cpu: "12"
-          memory: 20Gi

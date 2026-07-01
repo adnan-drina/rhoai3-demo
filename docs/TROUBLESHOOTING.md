@@ -1269,16 +1269,21 @@ steps unless those components are intentionally reintroduced.
 
 - **Symptom:** `validate.sh` reports that `InferenceService/qwen3-reranker`
   is missing or not Ready, or the `qwen3-reranker` Route has no backend.
-- **Likely cause:** the CPU vLLM runtime image, modelcar pull, or resource
-  request is not accepted by the current cluster. The Qwen3 reranker modelcar
-  is a demo exception adapted from the Red Hat article-linked implementation,
-  not an operator-managed product operand.
+- **Likely cause:** the CPU vLLM runtime image, modelcar pull, Kueue queue
+  label, or resource request is not accepted by the current cluster. The
+  Qwen3 reranker modelcar is a demo exception adapted from the Red Hat
+  article-linked implementation, not an operator-managed product operand. The
+  article-linked `8` CPU request may not fit a fresh demo cluster if no worker
+  has enough unallocated requested CPU, so the active GitOps manifest uses a
+  smaller `4` CPU / `10Gi` request and reduced batching.
 - **Fix:** inspect the KServe predictor pod, init container, and events:
 
   ```bash
   oc get inferenceservice qwen3-reranker -n enterprise-rag
   oc get pods -n enterprise-rag | grep qwen3-reranker
   oc describe inferenceservice qwen3-reranker -n enterprise-rag
+  oc describe pod -n enterprise-rag -l serving.kserve.io/inferenceservice=qwen3-reranker
+  oc get localqueue lq-cpu-default -n enterprise-rag
   oc logs -n enterprise-rag deploy/qwen3-reranker-predictor --all-containers --tail=100
   ```
 

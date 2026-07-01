@@ -46,7 +46,8 @@ Patterns reused:
 - LLM tool/function call to extract metadata filters
 - reranker endpoint before final answer generation
 - CPU-hosted Qwen3 reranker with vLLM CPU settings from
-  `chart/templates/qwen3-reranker.yaml`
+  `chart/templates/qwen3-reranker.yaml`; adapt request size and batching to
+  the active demo worker-node capacity after checking scheduler headroom
 
 Patterns not copied directly:
 

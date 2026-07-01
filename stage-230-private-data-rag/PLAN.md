@@ -83,6 +83,7 @@ corpus shifts from AG News text rows to unstructured public documents.
 | Metadata store | PostgreSQL for Llama Stack metadata | Required by official Llama Stack guidance; not the same decision as vector storage |
 | Embeddings | Start with the article/repo embedding path if compatible; otherwise select and document a supported provider and dimension | Embedding dimensions must be explicit and validated before indexing |
 | Reranker | Use the article's Qwen3 reranker pattern on CPU | Reranker improves precision; the non-Red-Hat modelcar remains a documented demo exception |
+| Reranker demo sizing | Request `4` CPU and `10Gi` memory, limit `8` CPU and `16Gi`, and use reduced CPU vLLM batching (`max-num-seqs=4`, `max-num-batched-tokens=512`) | Fresh demo worker nodes did not have enough requested CPU headroom for the article-linked `8` CPU request; this keeps reranking available without requiring GPU capacity |
 | Deployment style | Re-author reference Helm resources into Kustomize/GitOps | This repo uses Argo CD and local curation, not direct Helm installs |
 | Ingestion interface | Notebook plus deterministic validation job/script | Keeps the Red Hat demo feel while allowing repeatable redeploy validation |
 | Data preparation automation | Add Docling and KFP after AG News compatibility passes | RHOAI 3.4 documents Docling for unstructured data and KFP for automating multi-step Docling processing |
@@ -126,6 +127,8 @@ Boundaries:
 - Helm output is translated into local GitOps manifests
 - the Qwen3 reranker uses CPU resources in this demo; no GPU is required for
   the initial reranking workload
+- the GitOps manifest sizes the reranker for the demo cluster worker shape
+  rather than copying the article-linked CPU request verbatim
 
 ### Data Processing Reference Reviewed
 
@@ -271,6 +274,7 @@ Deferred implementation inventory:
 | Milvus and etcd image/lifecycle posture | risk | Recorded as a demo exception for the first rebuild; replace with a Red Hat-advised Milvus service or managed vector database before production-positioned delivery |
 | Remote Milvus native hybrid filtering | finding | Filtered `vector` and `keyword` search return the expected category; filtered `hybrid` search currently returns mixed categories in this environment. Do not claim hybrid metadata filtering until this is resolved or handled through a documented supported path. |
 | Qwen3 reranker artifact provenance | risk | Accepted as a demo exception based on the Red Hat article-linked implementation; do not present the modelcar as Red Hat-supported |
+| Qwen3 reranker CPU sizing | finding | The article-linked `8` CPU request did not schedule on the fresh demo cluster because no worker had enough unallocated requested CPU. GitOps uses a `4` CPU / `10Gi` request with reduced batching for the demo. Revisit if the reranker becomes a throughput-sensitive component. |
 | Nemotron tool calling for metadata extraction | finding | Tool-call requests returned HTTP 500 in the current MaaS/Llama Stack path; use structured JSON chat completion for metadata extraction until a supported tool-call path is verified |
 | Hugging Face dataset egress | risk | Include a small deterministic AG News sample for validation; make full dataset download optional |
 | Embedding provider mismatch | risk | List active Llama Stack models and capture embedding dimension before vector store creation |

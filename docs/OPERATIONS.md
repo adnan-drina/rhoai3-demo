@@ -936,7 +936,7 @@ implementation. The current first slice:
 - deploys a `LlamaStackDistribution` configured for RAG
 - consumes Nemotron through the Stage 220 MaaS gateway
 - deploys a CPU Qwen3 reranker adapted from the Red Hat article-linked
-  reference implementation
+  reference implementation and sized for the current demo CPU worker pool
 - provides an Enterprise RAG Workbench, deterministic AG News sample, smoke
   helper, and full acceptance helper
 

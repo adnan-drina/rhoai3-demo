@@ -9,7 +9,7 @@
 | Embedding provider | Start with the reference `sentence-transformers/ibm-granite/granite-embedding-125m-english` path if compatible with installed Llama Stack; otherwise select a documented embedding provider and record dimensions | Embedding dimension must match vector-store registration |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
-| Reranker | CPU-hosted Qwen3 reranker reference model | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU |
+| Reranker | CPU-hosted Qwen3 reranker reference model | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
@@ -32,6 +32,9 @@
    - Register the embedding provider and capture model ID plus dimension.
    - Deploy the Qwen3 reranker through GitOps-managed KServe/vLLM CPU resources
      after recording the modelcar/runtime image posture as a demo exception.
+   - Verify the reranker request fits a single schedulable CPU worker node and
+     the selected LocalQueue has quota; reduce batching before using GPU
+     capacity for the reranker.
 4. Ingest AG News.
    - Prefer a deterministic small AG News sample checked into the repo or
      stored as a ConfigMap for validation.
