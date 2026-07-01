@@ -45,7 +45,6 @@ RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
 POSTGRES_DB="${RHOAI_STAGE230_POSTGRES_DATABASE:-llamastack}"
-MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
@@ -191,7 +190,7 @@ ensure_maas_api_key() {
 }
 
 ensure_runtime_secrets() {
-  local postgres_password milvus_password maas_endpoint maas_token
+  local postgres_password maas_endpoint maas_token
 
   postgres_password=$(jsonpath "secret/${POSTGRES_SECRET}" "$RAG_NS" "{.data.POSTGRESQL_PASSWORD}" | base64 --decode 2>/dev/null || true)
   if [[ -z "$postgres_password" ]]; then
@@ -203,19 +202,6 @@ ensure_runtime_secrets() {
     --from-literal=POSTGRESQL_USER="$POSTGRES_USER" \
     --from-literal=POSTGRESQL_PASSWORD="$postgres_password" \
     --from-literal=POSTGRESQL_DATABASE="$POSTGRES_DB" \
-    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
-
-  milvus_password=$(jsonpath "secret/${MILVUS_SECRET}" "$RAG_NS" "{.data.root-password}" | base64 --decode 2>/dev/null || true)
-  if [[ -z "$milvus_password" ]]; then
-    milvus_password="${RHOAI_STAGE230_MILVUS_PASSWORD:-$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 32)}"
-  fi
-
-  oc create secret generic "$MILVUS_SECRET" \
-    -n "$RAG_NS" \
-    --from-literal=root-password="$milvus_password" \
-    --from-literal=MILVUS_ENDPOINT="tcp://private-rag-milvus.${RAG_NS}.svc.cluster.local:19530" \
-    --from-literal=MILVUS_TOKEN="root:${milvus_password}" \
-    --from-literal=MILVUS_CONSISTENCY_LEVEL=Bounded \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
   maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint)}")"
@@ -230,7 +216,7 @@ ensure_runtime_secrets() {
     --from-literal=VLLM_MAX_TOKENS="$VLLM_MAX_TOKENS" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
-  oc label secret "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET" -n "$RAG_NS" --overwrite \
+  oc label secret "$POSTGRES_SECRET" "$LLAMA_SECRET" -n "$RAG_NS" --overwrite \
     app.kubernetes.io/part-of=rag \
     demo.rhoai.io/stage=230 \
     --insecure-skip-tls-verify=true >/dev/null

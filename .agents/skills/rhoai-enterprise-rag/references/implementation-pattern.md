@@ -7,7 +7,7 @@
 | RHOAI project | `enterprise-rag` | Dedicated project for the RAG runtime and notebooks/jobs |
 | Generation model | Stage 220 Nemotron through MaaS | Reuse governed model access and policies instead of deploying a duplicate LLM. For Stage 230 notebook and acceptance helpers, pass the MaaS OpenAI-compatible base URL, API key, and unqualified provider model name separately from the Llama Stack base URL. |
 | Embedding provider | Use the embedding model listed by the active RHOAI Llama Stack server, currently `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` with dimension 768 | The article notebook defaults to Granite, but the demo must use a model returned by `/v1/models` unless a supported registration path is validated |
-| Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
+| Vector store | Remote PostgreSQL with pgvector | Official RHOAI 3.4 Llama Stack docs document pgvector as a remote vector provider. In the observed Stage 230 RHOAI 3.4 environment, the installed pgvector provider enforces metadata filters for vector, keyword, and hybrid search. |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
 | Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
@@ -18,14 +18,14 @@
 ## Implementation Phases
 
 1. Reset the old Stage 230 artifacts.
-   - Remove old whoami/Docling/DSPA/pgvector-specific active GitOps and app
+   - Remove old whoami/Docling/DSPA-specific active GitOps and app
      code from the stage.
    - Keep old content only under backup or Git history for reference.
 2. Deploy the RAG runtime foundation.
    - Ensure the Llama Stack Operator is enabled through the shared RHOAI DSC
      owner.
    - Create `enterprise-rag` project, RBAC, Secrets, PostgreSQL metadata
-     service, remote Milvus service, and `LlamaStackDistribution`.
+     service with pgvector enabled, and `LlamaStackDistribution`.
 3. Register providers and models.
    - Register Nemotron generation through the MaaS endpoint returned by the
      active Stage 220 setup.
@@ -132,10 +132,10 @@
   escapes, for notebook validation helpers. IPython shell escapes can print a
   traceback while `nbconvert --execute` still exits successfully.
 - Keep the workbench notebook path runnable with the current supported
-  retrieval mode. If filtered `hybrid` search is still a hard acceptance gate
-  but fails in the active Llama Stack/Milvus path, run the notebook with
-  filtered `vector` search and keep the stricter hybrid command documented as
-  an unresolved acceptance gate.
+  retrieval mode. For the active pgvector path, `hybrid` is the acceptance
+  mode because metadata filters are enforced in vector, keyword, and hybrid
+  search. If a future provider change breaks filtered hybrid search, stop and
+  record the provider-specific finding before changing user-facing notebooks.
 - Pin notebook dependencies to versions available from the active RHOAI Python
   package index; verify the Llama Stack client version against the active
   server and package index before committing.
@@ -153,8 +153,8 @@
 
 Record these before claiming support:
 
-- Milvus and etcd images if deployed directly rather than provided by a Red Hat
-  product or operator.
+- Milvus and etcd images if a future revision reintroduces them directly
+  rather than using a Red Hat product, operator, or supported managed service.
 - Qwen3 reranker model artifact and any serving/runtime image that is not a
   Red Hat product image or operator-owned operand.
 - Hugging Face dataset download dependency.

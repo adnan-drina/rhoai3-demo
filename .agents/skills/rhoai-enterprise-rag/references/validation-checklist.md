@@ -23,7 +23,13 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Llama Stack Operator is enabled through the shared DSC owner.
 - `LlamaStackDistribution` is Ready.
 - PostgreSQL metadata storage is reachable from Llama Stack.
-- Milvus gRPC endpoint and token are configured when using `milvus-remote`.
+- PostgreSQL has the `vector` extension installed when the active provider is
+  `remote::pgvector`.
+- Llama Stack `run.yaml` includes the documented pgvector provider keys:
+  `PGVECTOR_HOST`, `PGVECTOR_PORT`, `PGVECTOR_DB`, `PGVECTOR_USER`, and
+  `PGVECTOR_PASSWORD`.
+- Milvus gRPC endpoint and token are configured only when a future revision
+  intentionally uses `milvus-remote`.
 - Qwen3 reranker `InferenceService` is Ready when AG News compatibility is in
   scope.
 - Enterprise RAG Workbench exists and can open JupyterLab when notebook-driven
@@ -97,9 +103,9 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Metadata filters narrow results for category-specific queries. Validate this
   per search mode; do not assume `hybrid`, `vector`, and `keyword` enforce
   filters identically.
-- If the current `hybrid` path ignores filters, keep the user-facing notebook
-  on the verified filtered mode and keep the hybrid path as a documented
-  unresolved acceptance gate.
+- In the active Stage 230 pgvector path, filtered `hybrid` search must pass.
+  If a provider returns mixed metadata categories, treat it as a blocking
+  provider/configuration issue rather than weakening the acceptance gate.
 - Qwen3 reranker scores are present for AG News compatibility validation.
 - Reranking is invoked through Llama Stack `/v1alpha/inference/rerank`, not
   directly against the KServe/vLLM endpoint, unless the stage plan explicitly

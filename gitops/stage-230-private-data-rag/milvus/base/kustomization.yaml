@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - pvc-milvus.yaml
-  - deployment-etcd.yaml
-  - service-etcd.yaml
-  - deployment-milvus.yaml
-  - service-milvus.yaml

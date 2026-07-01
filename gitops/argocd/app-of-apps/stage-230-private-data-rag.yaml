@@ -36,16 +36,10 @@ spec:
         maxDuration: 5m
   ignoreDifferences:
     # Environment-local secrets are created by stage-230 deploy.sh because they
-    # contain generated database passwords, Milvus credentials, and MaaS API keys.
+    # contain generated database passwords and MaaS API keys.
     - group: ""
       kind: Secret
       name: private-rag-postgres-credentials
-      namespace: enterprise-rag
-      jsonPointers:
-        - /data
-    - group: ""
-      kind: Secret
-      name: private-rag-milvus-secret
       namespace: enterprise-rag
       jsonPointers:
         - /data

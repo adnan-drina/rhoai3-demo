@@ -29,7 +29,6 @@ fi
 
 RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
-MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
@@ -111,7 +110,7 @@ namespace_kueue=$(jsonpath "namespace/${RAG_NS}" "" "{.metadata.labels.kueue\\.o
 resource_exists "localqueue/lq-cpu-default" "$RAG_NS" \
   && check "enterprise-rag CPU LocalQueue exists" "pass" \
   || check "enterprise-rag CPU LocalQueue exists" "missing"
-for secret in "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET"; do
+for secret in "$POSTGRES_SECRET" "$LLAMA_SECRET"; do
   resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
 done
 
@@ -122,13 +121,23 @@ vllm_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base
   && check "PostgreSQL metadata store is available" "pass" \
   || check "PostgreSQL metadata store is available" "availableReplicas=$(available_replicas statefulset/private-rag-postgres "$RAG_NS")"
 
-[[ "$(available_replicas deployment/private-rag-etcd "$RAG_NS")" == "1" ]] \
-  && check "Milvus etcd dependency is available" "pass" \
-  || check "Milvus etcd dependency is available" "availableReplicas=$(available_replicas deployment/private-rag-etcd "$RAG_NS")"
+pgvector_job=$(jsonpath "job/private-rag-postgres-enable-pgvector" "$RAG_NS" "{.status.succeeded}")
+[[ "$pgvector_job" == "1" ]] \
+  && check "PostgreSQL pgvector extension job completed" "pass" \
+  || check "PostgreSQL pgvector extension job completed" "${pgvector_job:-missing}"
 
-[[ "$(available_replicas deployment/private-rag-milvus "$RAG_NS")" == "1" ]] \
-  && check "Milvus vector store service is available" "pass" \
-  || check "Milvus vector store service is available" "availableReplicas=$(available_replicas deployment/private-rag-milvus "$RAG_NS")"
+postgres_pod=$(oc get pods -n "$RAG_NS" -l "statefulset.kubernetes.io/pod-name=private-rag-postgres-0" \
+  -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+if [[ -n "$postgres_pod" ]]; then
+  if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$postgres_pod" -- bash -lc \
+    'export PGPASSWORD="$POSTGRESQL_PASSWORD"; psql -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" -tAc "select extversion from pg_extension where extname = '"'"'vector'"'"';" | grep -q .'; then
+    check "PostgreSQL vector extension is installed" "pass"
+  else
+    check "PostgreSQL vector extension is installed" "missing"
+  fi
+else
+  check "PostgreSQL pod exists for pgvector validation" "missing"
+fi
 
 lls_phase=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.phase}")
 [[ "$lls_phase" == "Ready" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_phase:-missing}"

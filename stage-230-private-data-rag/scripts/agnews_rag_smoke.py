@@ -20,6 +20,7 @@ from llama_stack_client import LlamaStackClient
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-smoke"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_VECTOR_PROVIDER = "pgvector"
 DEFAULT_SEARCH_MODE = "vector"
 
 
@@ -64,7 +65,7 @@ def find_vector_store(client, name: str):
     return None
 
 
-def create_vector_store(client, name: str, embedding_model: str):
+def create_vector_store(client, name: str, embedding_model: str, provider_id: str):
     create_kwargs = {
         "name": name,
         "metadata": {
@@ -73,9 +74,11 @@ def create_vector_store(client, name: str, embedding_model: str):
             "corpus": "agnews-sample",
             "environment": "demo",
             "language": "en",
+            "provider_id": provider_id,
+            "embedding_model": embedding_model,
         },
         "extra_body": {
-            "provider_id": "milvus-remote",
+            "provider_id": provider_id,
         },
     }
     if "embedding_model" in inspect.signature(client.vector_stores.create).parameters:
@@ -140,6 +143,7 @@ def main() -> None:
     parser.add_argument("--sample", type=Path, default=Path(__file__).parents[1] / "data/agnews-sample/agnews-sample.jsonl")
     parser.add_argument("--vector-store", default=os.environ.get("RHOAI_STAGE230_VECTOR_STORE", DEFAULT_VECTOR_STORE))
     parser.add_argument("--embedding-model", default=os.environ.get("RHOAI_STAGE230_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL))
+    parser.add_argument("--vector-provider", default=os.environ.get("RHOAI_STAGE230_VECTOR_PROVIDER", DEFAULT_VECTOR_PROVIDER))
     parser.add_argument("--search-mode", default=os.environ.get("RHOAI_STAGE230_SEARCH_MODE", DEFAULT_SEARCH_MODE), choices=["vector", "keyword", "hybrid"])
     parser.add_argument("--reset", action="store_true", help="Delete and recreate the vector store before ingesting records.")
     parser.add_argument("--query", default="Find business news about oil prices.")
@@ -158,7 +162,7 @@ def main() -> None:
 
     uploaded_count = 0
     if not vector_store_id:
-        vector_store_id = create_vector_store(client, args.vector_store, args.embedding_model)
+        vector_store_id = create_vector_store(client, args.vector_store, args.embedding_model, args.vector_provider)
         uploaded_count = upload_records(client, vector_store_id, records)
 
     result = search(client, vector_store_id, args.query, args.category, args.search_mode)

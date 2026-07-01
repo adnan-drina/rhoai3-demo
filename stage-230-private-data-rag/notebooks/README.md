@@ -18,11 +18,12 @@ Run the same working flow from a workbench terminal if you need a CLI check:
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
-  --search-mode vector
+  --search-mode hybrid
 ```
 
 The notebook flow validates AG News ingestion, LLM-driven metadata extraction,
 filtered retrieval, Qwen3 reranking, and final Nemotron answer generation. The
-stricter Stage 230 acceptance gate still uses `--search-mode hybrid` and must
-continue to fail until remote Milvus hybrid search enforces metadata filters
-through a supported RHOAI/Llama Stack path.
+Stage 230 acceptance gate uses `--search-mode hybrid` and must fail if
+metadata filters are ignored, reranker scores are missing, or the final
+Nemotron answer is not grounded in retrieved context. The active implementation
+uses pgvector because filtered hybrid search is required for the demo story.

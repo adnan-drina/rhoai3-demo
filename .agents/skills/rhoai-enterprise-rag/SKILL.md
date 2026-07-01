@@ -10,8 +10,9 @@ metadata:
 description: >
   Use when planning, documenting, implementing, or reviewing enterprise RAG on
   Red Hat OpenShift AI with Llama Stack or OGX: metadata-aware retrieval,
-  OpenAI-compatible Files and Vector Stores APIs, remote Milvus vector stores,
-  PostgreSQL Llama Stack metadata storage, hybrid search, neural reranking,
+  OpenAI-compatible Files and Vector Stores APIs, PostgreSQL with pgvector
+  vector storage, PostgreSQL Llama Stack metadata storage, hybrid search,
+  neural reranking,
   RAG notebooks or ingestion jobs, Docling data preparation for unstructured
   documents, Kubeflow Pipeline automation for repeatable document processing,
   and Nemotron generation through the demo MaaS layer. Use for Stage 230
@@ -50,7 +51,7 @@ This skill covers:
 - enterprise RAG architecture using OpenShift AI Llama Stack / OGX
 - metadata at vector-store, document, and chunk levels
 - file ingestion with OpenAI-compatible Files and Vector Stores APIs
-- remote Milvus as the first Stage 230 vector-store target
+- remote PostgreSQL with pgvector as the active Stage 230 vector-store target
 - PostgreSQL as required Llama Stack metadata storage
 - hybrid retrieval with metadata filters
 - neural reranking with a cross-encoder reranker
@@ -95,10 +96,15 @@ For this repo:
 - Move the audience demo to Dutch government publications only after the
   reference pattern works. Use Docling and KFP automation for that unstructured
   corpus.
-- Prefer remote Milvus for the rebuilt Stage 230 because the target Red Hat
-  article and official Llama Stack guide both support that path.
+- Prefer remote PostgreSQL with pgvector for rebuilt Stage 230 because the
+  active environment must prove metadata-filtered hybrid search and the
+  installed pgvector provider enforces filters for vector, keyword, and hybrid
+  search paths.
+- Treat the Red Hat AG News article's Milvus path as implementation evidence,
+  not the active Stage 230 provider, unless a future RHOAI/Llama Stack version
+  proves filtered hybrid search works with the selected Milvus path.
 - Keep PostgreSQL metadata storage separate from the vector store decision.
-- Do not commit Hugging Face tokens, Milvus tokens, database passwords, MaaS API
+- Do not commit Hugging Face tokens, database passwords, MaaS API
   keys, or OpenAI keys.
 - Do not copy Helm output blindly. Re-author example resources into local
   Kustomize/GitOps manifests and validate fields against official docs or live
@@ -132,7 +138,7 @@ AG News documents
   -> Files API upload
   -> Vector Stores API attachment with metadata
   -> Llama Stack chunking and embedding
-  -> remote Milvus indexing
+  -> pgvector indexing
   -> query metadata extraction with Nemotron
   -> hybrid vector-store search
   -> reranker scoring

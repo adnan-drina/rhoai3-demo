@@ -21,6 +21,7 @@ from llama_stack_client import LlamaStackClient
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-acceptance"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_VECTOR_PROVIDER = "pgvector"
 DEFAULT_GENERATION_MODEL = "nemotron-3-nano-30b-a3b"
 DEFAULT_RERANKER_MODEL = "vllm-reranker/qwen3-reranker"
 VALID_CATEGORIES = {"world", "sports", "business", "sci_tech"}
@@ -110,7 +111,7 @@ def find_vector_store(client: LlamaStackClient, name: str) -> str | None:
     return None
 
 
-def create_vector_store(client: LlamaStackClient, name: str, embedding_model: str) -> str:
+def create_vector_store(client: LlamaStackClient, name: str, embedding_model: str, provider_id: str) -> str:
     create_kwargs = {
         "name": name,
         "metadata": {
@@ -119,11 +120,11 @@ def create_vector_store(client: LlamaStackClient, name: str, embedding_model: st
             "corpus": "agnews-sample",
             "environment": "demo",
             "language": "en",
-            "provider_id": "milvus-remote",
+            "provider_id": provider_id,
             "embedding_model": embedding_model,
         },
         "extra_body": {
-            "provider_id": "milvus-remote",
+            "provider_id": provider_id,
         },
     }
     if "embedding_model" in inspect.signature(client.vector_stores.create).parameters:
@@ -163,6 +164,7 @@ def ensure_vector_store(
     client: LlamaStackClient,
     vector_store_name: str,
     embedding_model: str,
+    provider_id: str,
     records: list[dict[str, Any]],
     reset: bool,
 ) -> tuple[str, int]:
@@ -172,7 +174,7 @@ def ensure_vector_store(
         vector_store_id = None
     uploaded_count = 0
     if not vector_store_id:
-        vector_store_id = create_vector_store(client, vector_store_name, embedding_model)
+        vector_store_id = create_vector_store(client, vector_store_name, embedding_model, provider_id)
         uploaded_count = upload_records(client, vector_store_id, records)
     return vector_store_id, uploaded_count
 
@@ -386,6 +388,7 @@ def main() -> None:
     parser.add_argument("--sample", type=Path, default=Path(__file__).parents[1] / "data/agnews-sample/agnews-sample.jsonl")
     parser.add_argument("--vector-store", default=os.environ.get("RHOAI_STAGE230_VECTOR_STORE", DEFAULT_VECTOR_STORE))
     parser.add_argument("--embedding-model", default=os.environ.get("RHOAI_STAGE230_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL))
+    parser.add_argument("--vector-provider", default=os.environ.get("RHOAI_STAGE230_VECTOR_PROVIDER", DEFAULT_VECTOR_PROVIDER))
     parser.add_argument("--generation-model", default=os.environ.get("RHOAI_STAGE230_GENERATION_MODEL", DEFAULT_GENERATION_MODEL))
     parser.add_argument("--reranker-model", default=os.environ.get("RHOAI_STAGE230_RERANKER_MODEL", DEFAULT_RERANKER_MODEL))
     parser.add_argument("--query", default="Find business news about oil prices.")
@@ -410,6 +413,7 @@ def main() -> None:
         client,
         args.vector_store,
         args.embedding_model,
+        args.vector_provider,
         records,
         args.reset,
     )

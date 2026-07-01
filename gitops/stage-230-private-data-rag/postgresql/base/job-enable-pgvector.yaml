@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: private-rag-postgres-enable-pgvector
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: private-rag-postgres
+    app.kubernetes.io/component: database
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  backoffLimit: 12
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: rag
+        app.kubernetes.io/name: private-rag-postgres-enable-pgvector
+        app.kubernetes.io/component: database
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: enable-pgvector
+          image: registry.redhat.io/rhel9/postgresql-16:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -ec
+          args:
+            - |
+              export PGPASSWORD="${POSTGRESQL_PASSWORD}"
+
+              for _ in $(seq 1 60); do
+                if pg_isready -h private-rag-postgres -U "${POSTGRESQL_USER}" -d "${POSTGRESQL_DATABASE}"; then
+                  break
+                fi
+                sleep 5
+              done
+
+              psql \
+                -h private-rag-postgres \
+                -U "${POSTGRESQL_USER}" \
+                -d "${POSTGRESQL_DATABASE}" \
+                -v ON_ERROR_STOP=1 \
+                -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          envFrom:
+            - secretRef:
+                name: private-rag-postgres-credentials
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

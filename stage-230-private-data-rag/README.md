@@ -1,7 +1,7 @@
 # Private Data RAG
 
-Metadata-aware enterprise RAG on OpenShift AI with Llama Stack / OGX, Milvus,
-and governed Nemotron access through MaaS.
+Metadata-aware enterprise RAG on OpenShift AI with Llama Stack / OGX,
+PostgreSQL with pgvector, and governed Nemotron access through MaaS.
 
 ## Why This Matters
 
@@ -23,8 +23,7 @@ accurate assistant experience than a model-only prompt can provide.
 | Technology | Role in this stage | Source |
 |------------|-------------------|--------|
 | Red Hat OpenShift AI Llama Stack / OGX | RAG runtime, OpenAI-compatible Files and Vector Stores APIs, retrieval orchestration, provider configuration, and provider-listed Qwen3 reranker access | [RHOAI 3.4 Llama Stack docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
-| Remote Milvus provider | Vector store provider used by Llama Stack; this stage currently deploys a demo-local Milvus service as the remote endpoint | [RHOAI 3.4 Llama Stack vector store guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
-| PostgreSQL | Required metadata store for Llama Stack deployments | [RHOAI 3.4 Llama Stack PostgreSQL guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
+| PostgreSQL with pgvector | Llama Stack metadata store and active remote vector provider for metadata-filtered vector, keyword, and hybrid search | [RHOAI 3.4 Llama Stack vector store guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Nomic embedding model | Active RHOAI Llama Stack inline sentence-transformers embedding model used for AG News indexing | [RHOAI Llama Stack models API](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Models-as-a-Service | Governed access to the existing Nemotron model | [RHOAI 3.4 MaaS docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) |
 | AG News reference implementation | Initial compatibility corpus and implementation pattern for metadata, hybrid retrieval, and reranking | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
@@ -40,10 +39,10 @@ official RHOAI documentation remains the source of truth for product behavior
 and configuration.
 
 The current implementation is the first rebuilt slice: `enterprise-rag`,
-PostgreSQL metadata storage, a demo-local Milvus endpoint for the documented
-remote Milvus provider, `LlamaStackDistribution` with a curated
-article-aligned Llama Stack `userConfig`, a CPU Qwen3 reranker exposed as
-`vllm-reranker/qwen3-reranker`,
+PostgreSQL metadata storage with the `pgvector` extension, a documented
+`remote::pgvector` Llama Stack provider, `LlamaStackDistribution` with a
+curated article-aligned Llama Stack `userConfig`, a CPU Qwen3 reranker exposed
+as `vllm-reranker/qwen3-reranker`,
 environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
 News acceptance sample. AG News is already structured text and should not be
 used to claim Docling validation. Docling and KFP become part of this stage
@@ -59,9 +58,9 @@ The article-linked notebooks install `llama-stack-client` with notebook-local
 client libraries into the workbench PVC and exposes them through `PYTHONPATH`
 so the workbench is ready when opened.
 
-Demo exceptions are explicit: the demo-local Milvus/etcd images and the Qwen3
-reranker modelcar are implementation artifacts adapted from the Red Hat
-article-linked reference path, not Red Hat-supported product operands.
+Demo exceptions are explicit: the Qwen3 reranker modelcar is an implementation
+artifact adapted from the Red Hat article-linked reference path, not a
+Red Hat-supported product operand.
 The reranker resource request is intentionally smaller than the article-linked
 example so it can schedule on the demo CPU worker pool without using GPU
 capacity.
@@ -75,7 +74,7 @@ flowchart LR
   files["Files API"]
   vectors["Vector Stores API"]
   stack["Llama Stack / OGX"]
-  milvus["Remote Milvus"]
+  pgvector["PostgreSQL + pgvector"]
   pg["PostgreSQL metadata"]
   reranker["Qwen3 reranker"]
   workbench["Enterprise RAG Workbench"]
@@ -90,7 +89,7 @@ flowchart LR
   corpus --> files
   files --> vectors
   vectors --> stack
-  stack --> milvus
+  stack --> pgvector
   stack --> pg
   stack --> reranker
   stack --> maas
@@ -100,9 +99,9 @@ flowchart LR
   kfp -. "future ingestion path" .-> files
 ```
 
-- New in this stage: metadata-aware RAG runtime, a remote-Milvus-compatible
-  vector store endpoint, PostgreSQL Llama Stack metadata, CPU reranking, an
-  RHOAI workbench, and an AG News compatibility sample.
+- New in this stage: metadata-aware RAG runtime, PostgreSQL-backed pgvector
+  retrieval, PostgreSQL Llama Stack metadata, CPU reranking, an RHOAI
+  workbench, and an AG News compatibility sample.
 - Already available: GPU platform, model serving, Nemotron, and governed MaaS
   access from earlier stages.
 - Value of the integration: a governed model can answer from private,
@@ -115,15 +114,14 @@ The deterministic workbench flow is available from the workbench:
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
-  --search-mode vector
+  --search-mode hybrid
 ```
 
-The stricter Stage 230 acceptance gate uses `--search-mode hybrid` and
-intentionally fails if metadata extraction, hybrid metadata filtering,
-reranking, or final grounded answer generation is broken. Current live findings
-show that filtered `vector` and `keyword` search work, but the remote Milvus
-`hybrid` path still needs a supported fix before Stage 230 hybrid acceptance
-is considered complete.
+The Stage 230 acceptance gate uses `--search-mode hybrid` and intentionally
+fails if metadata extraction, hybrid metadata filtering, reranking, or final
+grounded answer generation is broken. The active pgvector path was selected
+because filtered hybrid search is part of the stage outcome, not a deferred
+nice-to-have.
 
 ## References
 

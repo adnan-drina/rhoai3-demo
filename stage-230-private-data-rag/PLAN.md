@@ -20,8 +20,9 @@
   - `enterprise-rag` OpenShift AI project
   - Llama Stack / OGX RAG runtime
   - PostgreSQL metadata store for Llama Stack
-  - demo-local Milvus endpoint used through the documented remote Milvus
-    provider
+  - PostgreSQL `pgvector` extension used through the documented
+    `remote::pgvector` provider for metadata-filtered vector, keyword, and
+    hybrid search
   - CPU-hosted Qwen3 reranker based on the Red Hat article-linked reference
     implementation
   - Llama Stack `userConfig` adapted from the Red Hat article-linked reference
@@ -42,7 +43,7 @@
   - guardrails and MCP
   - production HA for databases or vector stores
 
-The previous Stage 230 whoami/Docling/DSPA/pgvector implementation is being
+The previous Stage 230 whoami/Docling/DSPA/chatbot implementation is being
 retired as active design. It can be used as historical reference only. The new
 baseline starts by reproducing the Red Hat Developer AG News enterprise RAG
 pattern, replacing the article's Llama generation model with our governed
@@ -52,7 +53,7 @@ Nemotron model.
 
 | Layer | Stage 230 design | Rationale |
 |-------|------------------|-----------|
-| Infrastructure | Reuse Stage 120 GPU capacity for existing Nemotron; deploy storage-backed PostgreSQL and a demo-local Milvus endpoint in the RAG project | Keeps scarce GPU capacity governed while providing RAG state in a dedicated project |
+| Infrastructure | Reuse Stage 120 GPU capacity for existing Nemotron; deploy storage-backed PostgreSQL with pgvector in the RAG project | Keeps scarce GPU capacity governed while providing RAG state in a dedicated project |
 | Platform | RHOAI Llama Stack / OGX, MaaS, KServe/vLLM for the Qwen3 reranker, and project workbench | Aligns with RHOAI 3.4 Llama Stack, model deployment, and workbench documentation plus Stage 220 governance |
 | Application | AG News ingestion plus retrieval pipeline using Files API, Vector Stores API, metadata filtering, hybrid search, rerank, final answer | Matches the Red Hat article and gives deterministic validation before custom data |
 | Governance | Vector-store metadata, document metadata, MaaS policy, API keys, explicit demo exceptions | Shows how private data and model access are controlled separately |
@@ -82,8 +83,8 @@ corpus shifts from AG News text rows to unstructured public documents.
 | Generation model | Use Stage 220 Nemotron through MaaS | Preserves the demo story: governed model first, private data second |
 | Initial corpus | AG News | The Red Hat article and repo use it, so it is the best compatibility test |
 | Future corpus | Dutch government publications | This becomes the real enterprise use case after the reference flow works |
-| Vector store | Remote Milvus provider with a demo-local Milvus service | Official RHOAI 3.4 Llama Stack docs document remote Milvus and the Red Hat article uses Milvus; the Milvus deployment itself is a demo exception |
-| Metadata store | PostgreSQL for Llama Stack metadata | Required by official Llama Stack guidance; not the same decision as vector storage |
+| Vector store | Remote PostgreSQL with pgvector | Official RHOAI 3.4 Llama Stack docs document `remote::pgvector`, and live validation showed pgvector enforces metadata filters for vector, keyword, and hybrid search in the active environment |
+| Metadata store | PostgreSQL for Llama Stack metadata | Required by official Llama Stack guidance; this stage intentionally uses the same PostgreSQL service for metadata and pgvector vector storage while keeping the concerns distinct in configuration |
 | Embeddings | Use `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` through the inline sentence-transformers provider | This is the embedding model listed by the active RHOAI 3.4 Llama Stack server; the article notebook's Granite default is not assumed unless `/v1/models` lists it or registration is validated |
 | Reranker | Use the article's Qwen3 reranker pattern on CPU | Reranker improves precision; the non-Red-Hat modelcar remains a documented demo exception |
 | Reranker registration | Register Qwen3 in Llama Stack as `vllm-reranker/qwen3-reranker` and call `/v1alpha/inference/rerank` | Matches the reference notebook flow better than calling the KServe/vLLM endpoint directly |
@@ -92,14 +93,14 @@ corpus shifts from AG News text rows to unstructured public documents.
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` instead of requiring `%pip` cells | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
 | Ingestion interface | Notebook plus deterministic validation job/script | Keeps the Red Hat demo feel while allowing repeatable redeploy validation |
 | Data preparation automation | Add Docling and KFP after AG News compatibility passes | RHOAI 3.4 documents Docling for unstructured data and KFP for automating multi-step Docling processing |
-| Old implementation | Remove active whoami/Docling/DSPA/pgvector resources during implementation | Avoids mixed architectures and stale claims |
+| Old implementation | Remove active whoami/Docling/DSPA/chatbot resources during implementation | Avoids mixed architectures and stale claims |
 
 ## Source Capture
 
 | Purpose | Source | Skill | Notes |
 |---------|--------|-------|-------|
 | Concept/value | [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx) | `project-documentation-authoring`, `rhoai-enterprise-rag` | Explains metadata filtering, hybrid search, reranking, and enterprise RAG value |
-| Product config | [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) | `rhoai-llama-stack`, `rhoai-enterprise-rag` | Product authority for Llama Stack, vector stores, ingestion, query, PostgreSQL metadata, and Milvus |
+| Product config | [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) | `rhoai-llama-stack`, `rhoai-enterprise-rag` | Product authority for Llama Stack, vector stores, ingestion, query, PostgreSQL metadata, pgvector, and Milvus |
 | Product config | [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | Product authority for governed Nemotron access |
 | Product config | [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) | `rhoai-model-customization-training`, `rhoai-ai-pipelines`, `rhoai-kfp-pipeline-authoring` | Product authority for Docling data preparation and KFP automation |
 | Reference implementation | [abdelhamidfg/agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) | `rhoai-enterprise-rag` | Red Hat article-linked repo; example-only source for chart and notebooks |
@@ -130,6 +131,9 @@ Boundaries:
 - hardcoded sample credentials are not reused
 - the Llama model is replaced with Nemotron through MaaS
 - Helm output is translated into local GitOps manifests
+- the article's Milvus provider is not copied as the active vector store
+  because the Stage 230 acceptance gate requires metadata-filtered hybrid
+  search and pgvector is the verified supported path in the active environment
 - the Qwen3 reranker uses CPU resources in this demo; no GPU is required for
   the initial reranking workload
 - the GitOps manifest sizes the reranker for the demo cluster worker shape
@@ -200,7 +204,7 @@ Docling KFP adoption rules:
     not already enabled
   - Nemotron model access belongs to Stage 220 MaaS resources
 - Secret handling:
-  - Milvus token, PostgreSQL password, MaaS token, and optional Hugging Face
+  - PostgreSQL password, MaaS token, and optional Hugging Face
     token must be generated or loaded locally and not committed
 
 ## Manifest Inventory
@@ -210,8 +214,7 @@ Planned first implementation inventory:
 | Path | Kind | Source authority | Validation |
 |------|------|------------------|------------|
 | `gitops/stage-230-private-data-rag/project/` | Namespace, RBAC, and CPU LocalQueue | RHOAI project workflow docs, Kueue workload management docs, and repo standards | `oc get project`, RHOAI dashboard visibility, namespace Kueue label, `lq-cpu-default` readiness |
-| `gitops/stage-230-private-data-rag/postgresql/` | StatefulSet and Service; Secret generated by deploy script | RHOAI Llama Stack PostgreSQL metadata guidance | Pod readiness and Llama Stack metadata connection |
-| `gitops/stage-230-private-data-rag/milvus/` | PVC, etcd Deployment, Milvus Deployment, Services; Secret generated by deploy script | RHOAI remote Milvus provider guidance plus curated reference repo | gRPC endpoint reachable and vector store registration succeeds |
+| `gitops/stage-230-private-data-rag/postgresql/` | StatefulSet, Service, and pgvector extension Job; Secret generated by deploy script | RHOAI Llama Stack PostgreSQL metadata and pgvector guidance | Pod readiness, pgvector extension installed, Llama Stack metadata connection, and vector store registration succeeds |
 | `gitops/stage-230-private-data-rag/llamastack/` | `LlamaStackDistribution` using official `rh-dev` distribution plus curated `userConfig` ConfigMap for AG News provider configuration | RHOAI Llama Stack docs, installed CRD schema, and reviewed article-linked config pattern | Server-side dry run, `LlamaStackDistribution` Ready, and `/v1/models` lists Nemotron, Nomic embedding, and Qwen3 reranker |
 | `gitops/stage-230-private-data-rag/reranker/` | Qwen3 reranker `ServingRuntime`, `InferenceService`, and Route | RHOAI model deployment docs plus reviewed article-linked artifact/runtime pattern | Rerank endpoint responds and scores returned candidates |
 | `gitops/stage-230-private-data-rag/workbench/` | Project workbench `Notebook`, ServiceAccount, and PVC | RHOAI project workbench and Notebook CR docs | Workbench resource exists, pod starts, and the visible workspace contains only the two AG News notebooks plus hidden generated helper content |
@@ -232,8 +235,7 @@ Deferred implementation inventory:
 - Apply the Stage 230 Argo CD Application first.
 - Wait for the `enterprise-rag` namespace.
 - Create or update non-committed Secrets from local environment values,
-  generated database credentials, generated Milvus credentials, and the
-  Stage 220 MaaS API-key flow.
+  generated database credentials and the Stage 220 MaaS API-key flow.
 - Refresh the Argo CD Application after Secret creation.
 - Do not run ingestion until runtime readiness is confirmed.
 
@@ -242,7 +244,7 @@ Deferred implementation inventory:
 - Confirm Stage 230 Argo CD sync/health.
 - Confirm `enterprise-rag` project and RBAC.
 - Confirm environment-local Secrets exist.
-- Confirm PostgreSQL, etcd, and Milvus availability.
+- Confirm PostgreSQL availability and `pgvector` extension installation.
 - Confirm Llama Stack readiness and model list.
 - Confirm the Qwen3 reranker `InferenceService` and route.
 - Confirm the Enterprise RAG Workbench `Notebook` exists and reports Ready
@@ -255,10 +257,10 @@ Deferred implementation inventory:
   cluster storage class uses `WaitForFirstConsumer`.
 - Expose Llama Stack through a GitOps-managed OpenShift Route to the
   operator-managed Service; do not patch generated Ingress resources.
-- Next gate: extend the AG News smoke path from metadata-filtered vector search
-  to hybrid search and final Nemotron answer generation. Use the
-  provider-qualified Llama Stack model ID
-  `vllm-inference/nemotron-3-nano-30b-a3b` for Responses API calls.
+- Next gate: run the AG News acceptance path with metadata-filtered hybrid
+  search and final Nemotron answer generation. Use the provider-qualified
+  Llama Stack model ID `vllm-inference/nemotron-3-nano-30b-a3b` for Responses
+  API calls.
 - Full acceptance is run with
   `stage-230-private-data-rag/scripts/agnews_rag_acceptance.py --reset`; it
   must fail if metadata extraction, hybrid filtering, reranking, or grounded
@@ -278,8 +280,7 @@ Deferred implementation inventory:
 
 | Item | Type | Resolution |
 |------|------|------------|
-| Milvus and etcd image/lifecycle posture | risk | Recorded as a demo exception for the first rebuild; replace with a Red Hat-advised Milvus service or managed vector database before production-positioned delivery |
-| Remote Milvus native hybrid filtering | finding | Filtered `vector` and `keyword` search return the expected category; filtered `hybrid` search currently returns mixed categories in this environment. Do not claim hybrid metadata filtering until this is resolved or handled through a documented supported path. |
+| Remote Milvus native hybrid filtering | resolved design finding | Filtered `vector` and `keyword` search worked in the observed Milvus path, but filtered `hybrid` search returned mixed categories. Stage 230 now uses pgvector because filtered hybrid search is a required acceptance gate. Revisit Milvus only after a future RHOAI/Llama Stack path proves equivalent behavior. |
 | Qwen3 reranker artifact provenance | risk | Accepted as a demo exception based on the Red Hat article-linked implementation; do not present the modelcar as Red Hat-supported |
 | Qwen3 reranker CPU sizing | finding | The article-linked `8` CPU request did not schedule on the fresh demo cluster because no worker had enough unallocated requested CPU. GitOps uses a `4` CPU / `10Gi` request with reduced batching for the demo. Revisit if the reranker becomes a throughput-sensitive component. |
 | Nemotron tool calling for metadata extraction | finding | Tool-call requests returned HTTP 500 in the current MaaS/Llama Stack path; use structured JSON chat completion for metadata extraction until a supported tool-call path is verified |
@@ -294,8 +295,8 @@ Deferred implementation inventory:
 
 - Confirm whether the first user-visible surface should remain notebooks only
   or add a small Streamlit app after API validation passes.
-- Resolve hybrid search metadata filtering through a supported RHOAI/Llama
-  Stack path before claiming the stage complete.
+- Validate the pgvector-backed hybrid path in a fresh environment before
+  claiming the stage complete.
 
 ## Retrospective And Skill Updates
 

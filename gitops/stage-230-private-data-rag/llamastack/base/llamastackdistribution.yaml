@@ -47,6 +47,27 @@ spec:
           value: sentence-transformers
         - name: EMBEDDING_MODEL
           value: sentence-transformers/nomic-ai/nomic-embed-text-v1.5
+        - name: ENABLE_PGVECTOR
+          value: "true"
+        - name: PGVECTOR_HOST
+          value: private-rag-postgres.enterprise-rag.svc.cluster.local
+        - name: PGVECTOR_PORT
+          value: "5432"
+        - name: PGVECTOR_DB
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_DATABASE
+        - name: PGVECTOR_USER
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_USER
+        - name: PGVECTOR_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_PASSWORD
         - name: INFERENCE_MODEL
           valueFrom:
             secretKeyRef:
@@ -76,21 +97,6 @@ spec:
           value: http://qwen3-reranker-predictor.enterprise-rag.svc.cluster.local:8080/v1
         - name: VLLM_RERANKER_TLS_VERIFY
           value: "false"
-        - name: MILVUS_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: private-rag-milvus-secret
-              key: MILVUS_ENDPOINT
-        - name: MILVUS_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: private-rag-milvus-secret
-              key: MILVUS_TOKEN
-        - name: MILVUS_CONSISTENCY_LEVEL
-          valueFrom:
-            secretKeyRef:
-              name: private-rag-milvus-secret
-              key: MILVUS_CONSISTENCY_LEVEL
       resources:
         requests:
           cpu: 250m

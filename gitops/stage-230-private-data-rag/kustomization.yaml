@@ -10,7 +10,6 @@ labels:
 resources:
   - project/base
   - postgresql/base
-  - milvus/base
   - reranker/base
   - llamastack/base
   - workbench/base

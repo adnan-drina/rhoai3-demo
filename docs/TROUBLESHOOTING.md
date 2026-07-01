@@ -1144,7 +1144,7 @@ endpoints and API keys, not direct namespace access.
 
 ## Stage 230: Private Data RAG
 
-Stage 230 is being reimplemented. The previous whoami/Docling/DSPA/pgvector
+Stage 230 is being reimplemented. The previous whoami/Docling/DSPA/chatbot
 troubleshooting entries no longer describe the intended target design and
 should not be used as active recovery guidance for the new RAG stage.
 
@@ -1152,10 +1152,10 @@ should not be used as active recovery guidance for the new RAG stage.
 
 - **Symptom:** `enterprise-rag` contains resources such as
   `private-rag-chatbot`, `private-rag-docling`, `private-rag-pipelines`,
-  `private-rag-postgres`, `whoami` vector-store references, or pgvector-related
-  Secrets.
+  `whoami` vector-store references, old DSPA resources, or old chatbot
+  resources.
 - **Likely cause:** the previous Stage 230 implementation was deployed before
-  the AG News/Milvus reset.
+  the AG News reset.
 - **Fix:** do not patch those resources into the new design. Remove or replace
   them as part of the Stage 230 reset implementation, then let Argo CD recreate
   only the new desired resources.
@@ -1163,7 +1163,7 @@ should not be used as active recovery guidance for the new RAG stage.
 ### Old Stage 230 scripts are about to be run
 
 - **Symptom:** a command path references `run-whoami-ingestion-pipeline.sh`,
-  Docling, DSPA, pgvector, or `private-rag-chatbot`.
+  Docling, DSPA, or `private-rag-chatbot`.
 - **Fix:** stop and use `stage-230-private-data-rag/PLAN.md` instead. The old
   scripts are stale until they are rewritten for the new metadata-aware AG News
   RAG flow and the later Docling/KFP Dutch publication phase.
@@ -1176,12 +1176,12 @@ new troubleshooting entries should cover:
 
 - Llama Stack provider registration failures
 - PostgreSQL metadata connection failures
-- Milvus gRPC or token failures
+- PostgreSQL pgvector extension failures
 - PVCs stuck in `Pending` with `WaitForFirstConsumer`
 - embedding model and vector dimension mismatches
 - Files API upload or vector-store attachment errors
 - metadata filter extraction failures
-- hybrid search returning empty results
+- hybrid search returning empty or unfiltered results
 - reranker endpoint failures
 - Enterprise RAG Workbench startup failures
 - MaaS-backed Nemotron authorization failures
@@ -1189,21 +1189,29 @@ new troubleshooting entries should cover:
   introduced
 - KFP run failures after Docling automation is introduced
 
-Do not carry forward old pgvector, DSPA, Docling, or whoami-specific recovery
+Do not carry forward old DSPA, Docling, chatbot, or whoami-specific recovery
 steps unless those components are intentionally reintroduced.
 
-### Stage 230 Argo CD sync waits on the Milvus PVC
+### Stage 230 PostgreSQL pgvector extension is missing
 
-- **Symptom:** the Stage 230 Application remains `OutOfSync` or `Progressing`,
-  `private-rag-milvus-data` is `Pending`, and the PVC event says
-  `waiting for first consumer to be created before binding`.
-- **Likely cause:** the active storage class uses `WaitForFirstConsumer`.
-  If the PVC is placed in an earlier Argo CD sync wave than the Deployment that
-  consumes it, Argo CD waits for a volume bind that cannot happen yet.
-- **Fix:** keep the Milvus PVC and Milvus Deployment in the same sync wave so
-  the scheduler can create the first consumer and trigger dynamic provisioning.
-  Do not manually bind the PVC or change the cluster storage class for this
-  demo stage.
+- **Symptom:** Stage 230 validation reports that
+  `private-rag-postgres-enable-pgvector` did not complete or that PostgreSQL
+  does not have an installed `vector` extension.
+- **Likely cause:** the PostgreSQL pod is not ready, the extension Job ran
+  before the database accepted connections, or the active PostgreSQL image no
+  longer includes the pgvector extension.
+- **Fix:** check the PostgreSQL pod and extension Job logs:
+
+  ```bash
+  oc get pods,jobs -n enterprise-rag | grep private-rag-postgres
+  oc logs job/private-rag-postgres-enable-pgvector -n enterprise-rag
+  oc exec -n enterprise-rag private-rag-postgres-0 -- \
+    bash -lc 'export PGPASSWORD="$POSTGRESQL_PASSWORD"; psql -U "$POSTGRESQL_USER" -d "$POSTGRESQL_DATABASE" -c "\dx vector"'
+  ```
+
+  If the extension is unavailable, stop and re-evaluate the PostgreSQL image
+  and RHOAI Llama Stack pgvector provider path before changing the acceptance
+  gate.
 
 ### Stage 230 deploy cannot create the Llama Stack MaaS token
 
@@ -1280,13 +1288,13 @@ steps unless those components are intentionally reintroduced.
   `{"type":"eq","key":"category","value":"business"}` returns chunks from
   other categories, while `search_mode: vector` or `keyword` returns the
   expected category.
-- **Likely cause:** in the observed RHOAI 3.4 Llama Stack remote Milvus path,
-  native hybrid search does not enforce the translated filter expression,
-  although the same expression works directly against Milvus.
-- **Fix:** use filtered `vector` search for the current deterministic smoke
-  validation and user-facing workbench notebook. Keep `hybrid` as the stricter
-  Stage 230 acceptance gate, and do not claim hybrid metadata filtering until
-  this behavior is resolved through a supported Llama Stack/RHOAI path.
+- **Likely cause:** provider-specific filter behavior. This was observed with
+  the remote Milvus path in RHOAI 3.4; filtered `vector` and `keyword` worked,
+  while filtered `hybrid` returned mixed categories.
+- **Fix:** use the active pgvector-backed Stage 230 configuration and rerun
+  acceptance with `--search-mode hybrid --reset`. Do not switch to a weaker
+  search mode without user approval; metadata-filtered hybrid retrieval is a
+  Stage 230 acceptance gate.
 
 ### Stage 230 Qwen3 reranker does not become Ready
 

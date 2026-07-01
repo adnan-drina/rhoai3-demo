@@ -4,7 +4,7 @@
 
 | Source | Role |
 |--------|------|
-| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index | Product authority for Llama Stack / OGX support posture, API behavior, `LlamaStackDistribution`, provider configuration, vector stores, ingestion, query, PostgreSQL metadata, Milvus, and RAG examples |
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index | Product authority for Llama Stack / OGX support posture, API behavior, `LlamaStackDistribution`, provider configuration, vector stores, ingestion, query, PostgreSQL metadata, pgvector, Milvus, and RAG examples |
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index | Product authority for consuming Nemotron through governed MaaS access |
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index | Product authority for model deployment and endpoint behavior when a reranker is served through OpenShift AI |
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index | Product authority for project workbench lifecycle, connections, project storage, and project permissions |
@@ -41,7 +41,11 @@ Patterns reused:
 - vector-store metadata such as `tenant_id` and `version_no`
 - file-level metadata such as `category` and document type
 - Files API upload followed by Vector Stores API attachment
-- remote Milvus vector store provider
+- remote Milvus vector store provider from the article, reviewed but not
+  selected as the active Stage 230 provider
+- remote PostgreSQL with pgvector as the active Stage 230 provider after live
+  validation showed filtered hybrid search works through the installed
+  pgvector path
 - Llama Stack `userConfig` ConfigMap for provider wiring when the `rh-dev`
   distribution alone does not expose the article's reranker provider
 - hybrid vector-store search
@@ -111,6 +115,9 @@ Patterns not copied directly:
 - The official model customization guide defines the Docling and KFP
   data-preparation workflow for unstructured documents.
 - The article and GitHub repo define a useful demo pattern.
+- The article's Milvus provider choice is reference evidence, not mandatory
+  project architecture. The active Stage 230 implementation uses pgvector
+  because metadata-filtered hybrid search must be a working acceptance gate.
 - The GitHub repo does not define our GitOps layout, secret handling, image
   posture, model choice, or production support claims.
 - AutoRAG is a separate product workflow and should not be mixed into the first

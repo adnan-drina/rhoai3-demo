@@ -87,26 +87,26 @@ OpenAI inference, and Gen AI Playground responses for both models.
 
 ## Stage 230: Status — REPLANNING
 
-Stage 230 is being reset from the earlier whoami/Docling/DSPA/pgvector design
+Stage 230 is being reset from the earlier whoami/Docling/DSPA/chatbot design
 to a metadata-aware enterprise RAG implementation based on the Red Hat
 Developer OGX/Llama Stack article and its linked `agnews-rag-demo` repository.
 The first rebuilt version reproduces the AG News pattern with Nemotron through
-Stage 220 MaaS, remote Milvus, PostgreSQL Llama Stack metadata, metadata
-filtering, hybrid search, CPU-hosted Qwen3 reranking, and an Enterprise RAG
-Workbench. Once that reference flow is proven, the corpus will shift to Dutch
-government publications.
+Stage 220 MaaS, PostgreSQL with pgvector for Llama Stack metadata and vector
+retrieval, metadata filtering, hybrid search, CPU-hosted Qwen3 reranking, and
+an Enterprise RAG Workbench. Once that reference flow is proven, the corpus
+will shift to Dutch government publications.
 
 ### Open / deferred from Stage 230
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Remove stale active implementation | high | Remove or replace old whoami, Docling, DSPA/KFP, pgvector, and previous Streamlit chatbot artifacts during the Stage 230 rebuild so the stage has one coherent architecture. |
+| Remove stale active implementation | high | Remove or replace old whoami, Docling, DSPA/KFP, and previous Streamlit chatbot artifacts during the Stage 230 rebuild so the stage has one coherent architecture. |
 | AG News compatibility implementation | high | Re-author the Red Hat article-linked Helm/notebook pattern into local GitOps, notebooks/jobs, and validation scripts; do not apply the reference Helm chart directly. Current GitOps includes runtime foundation, Qwen3 reranker, workbench, and acceptance helper. |
 | Nemotron through MaaS | high | Replace the reference Llama generation model with the governed Stage 220 Nemotron MaaS endpoint. |
-| Remote Milvus posture | high | Use the RHOAI 3.4 Llama Stack remote Milvus provider pattern; document any non-Red Hat Milvus/etcd image choices as demo exceptions. |
+| pgvector provider posture | high | Use the RHOAI 3.4 Llama Stack `remote::pgvector` provider pattern and validate the PostgreSQL `vector` extension during deploy. |
 | Embedding provider and dimension | high | Select the embedding provider from installed Llama Stack capabilities, capture the model ID and vector dimension, and validate before indexing. |
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
-| Hybrid metadata filtering | high | Filtered `vector` and `keyword` search work in the observed Llama Stack/Milvus path, but filtered `hybrid` search returns mixed categories. Resolve through a supported RHOAI/Llama Stack path before claiming Stage 230 complete. |
+| Hybrid metadata filtering | high | Resolved by selecting the active pgvector provider path. Keep this as a validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted. |
 | Dutch government publication corpus | high | After AG News validates, define metadata taxonomy and ingestion path for Dutch government publications. Use Docling for unstructured documents and keep AG News as the compatibility corpus. |
 | Docling/KFP data preparation | high | Use the RHOAI 3.4 "Prepare your data for AI consumption" chapter and `opendatahub-io/data-processing` stable branch, with the `main/kubeflow-pipelines` tree as a newer reference to compare. Start from notebooks or jobs, then automate with `docling-standard` for ordinary PDFs and `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
