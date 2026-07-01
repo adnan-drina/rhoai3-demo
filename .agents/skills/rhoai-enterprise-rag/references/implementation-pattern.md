@@ -110,6 +110,9 @@
 - Install notebook dependencies into the active workbench Python environment;
   avoid `pip install --user` because RHOAI notebook images can run in a
   virtualenv where user site packages are not visible.
+- Treat the cloned repo under the workbench PVC as generated stage content:
+  fetch the target branch and reset that repo copy to the branch head on
+  startup so stale shallow clones do not block redeploys.
 - Keep workbench `Notebook` resources in the same Argo CD sync wave as their
   PVCs when the storage class binds on `WaitForFirstConsumer`; placing the PVC
   in an earlier wave can deadlock sync because no consumer pod exists yet.

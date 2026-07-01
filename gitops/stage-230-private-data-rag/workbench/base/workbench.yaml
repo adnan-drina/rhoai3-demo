@@ -77,8 +77,8 @@ spec:
                 git clone --depth 1 --single-branch --branch "${GIT_REPO_BRANCH}" "${GIT_REPO_URL}" "${repo_dir}"
               else
                 git -C "${repo_dir}" fetch origin "${GIT_REPO_BRANCH}" --depth 1
-                git -C "${repo_dir}" checkout "${GIT_REPO_BRANCH}"
-                git -C "${repo_dir}" pull --ff-only origin "${GIT_REPO_BRANCH}"
+                git -C "${repo_dir}" checkout -B "${GIT_REPO_BRANCH}" FETCH_HEAD
+                git -C "${repo_dir}" reset --hard FETCH_HEAD
               fi
               python -m pip install -r "${repo_dir}/stage-230-private-data-rag/notebooks/requirements.txt"
           env:

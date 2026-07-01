@@ -1302,6 +1302,9 @@ steps unless those components are intentionally reintroduced.
   PVC binding delay, failed repository clone, or package install failure in the
   bootstrap init container. The RHOAI notebook image can run inside a virtual
   environment, so the bootstrap must not use `pip install --user`.
+  Reused PVCs can also contain a shallow Git checkout that diverges from the
+  branch head; the bootstrap should reset the repo copy to the fetched branch
+  rather than relying on `git pull --ff-only`.
 - **GitOps note:** the Notebook and its PVC must be in the same Argo CD sync
   wave when the storage class uses `WaitForFirstConsumer`; otherwise Argo can
   wait on the PVC before creating the consumer pod.
