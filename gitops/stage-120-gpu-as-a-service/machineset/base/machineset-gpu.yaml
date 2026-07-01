@@ -7,26 +7,26 @@ metadata:
     machine.openshift.io/memoryMb: '65536'
     machine.openshift.io/vCPU: '8'
   labels:
-    machine.openshift.io/cluster-api-cluster: cluster-xgg8t-nj68g
+    machine.openshift.io/cluster-api-cluster: cluster-qt67m-xmnfl
     app.kubernetes.io/part-of: gpu-infra
     app.kubernetes.io/name: aws-gpu-machineset
     app.kubernetes.io/component: gpu-worker
     cluster-api/accelerator: nvidia-gpu
-  name: cluster-xgg8t-nj68g-gpu-us-east-2b
+  name: cluster-qt67m-xmnfl-gpu-us-east-2b
   namespace: openshift-machine-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      machine.openshift.io/cluster-api-cluster: cluster-xgg8t-nj68g
-      machine.openshift.io/cluster-api-machineset: cluster-xgg8t-nj68g-gpu-us-east-2b
+      machine.openshift.io/cluster-api-cluster: cluster-qt67m-xmnfl
+      machine.openshift.io/cluster-api-machineset: cluster-qt67m-xmnfl-gpu-us-east-2b
   template:
     metadata:
       labels:
-        machine.openshift.io/cluster-api-cluster: cluster-xgg8t-nj68g
+        machine.openshift.io/cluster-api-cluster: cluster-qt67m-xmnfl
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
-        machine.openshift.io/cluster-api-machineset: cluster-xgg8t-nj68g-gpu-us-east-2b
+        machine.openshift.io/cluster-api-machineset: cluster-qt67m-xmnfl-gpu-us-east-2b
         cluster-api/accelerator: nvidia-gpu
         node-role.kubernetes.io/gpu: ''
     spec:
@@ -53,7 +53,7 @@ spec:
             name: aws-cloud-credentials
           deviceIndex: 0
           iamInstanceProfile:
-            id: cluster-xgg8t-nj68g-worker-profile
+            id: cluster-qt67m-xmnfl-worker-profile
           instanceType: g6e.2xlarge
           kind: AWSMachineProviderConfig
           metadata:
@@ -66,31 +66,31 @@ spec:
           - filters:
             - name: tag:Name
               values:
-              - cluster-xgg8t-nj68g-node
+              - cluster-qt67m-xmnfl-node
           - filters:
             - name: tag:Name
               values:
-              - cluster-xgg8t-nj68g-lb
+              - cluster-qt67m-xmnfl-lb
           subnet:
             filters:
             - name: tag:Name
               values:
-              - cluster-xgg8t-nj68g-subnet-private-us-east-2b
+              - cluster-qt67m-xmnfl-subnet-private-us-east-2b
           tags:
-          - name: kubernetes.io/cluster/cluster-xgg8t-nj68g
+          - name: kubernetes.io/cluster/cluster-qt67m-xmnfl
             value: owned
           - name: Stack
-            value: project ocp4-cluster-xgg8t
+            value: project ocp4-cluster-qt67m
           - name: env_type
             value: ocp4-cluster
           - name: guid
-            value: xgg8t
+            value: qt67m
           - name: owner
             value: unknown
           - name: platform
             value: RHPDS
           - name: uuid
-            value: 18faed6b-6826-52cc-8a4f-ff1df82a66cc
+            value: c4638a65-f2cd-5d79-9385-723b5f86e695
           userDataSecret:
             name: worker-user-data
       taints:
