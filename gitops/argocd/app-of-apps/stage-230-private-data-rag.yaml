@@ -59,3 +59,15 @@ spec:
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec
+    # RHOAI notebook-controller injects the auth proxy sidecar and backing
+    # volumes for Gateway API workbench access when inject-auth is enabled.
+    # Keep those generated operands operator-owned rather than pinning the
+    # controller-selected image digest in Git.
+    - group: kubeflow.org
+      kind: Notebook
+      name: enterprise-rag-workbench
+      namespace: enterprise-rag
+      jqPathExpressions:
+        - .spec.template.spec.containers[] | select(.name == "kube-rbac-proxy")
+        - .spec.template.spec.volumes[] | select(.name == "kube-rbac-proxy-config")
+        - .spec.template.spec.volumes[] | select(.name == "kube-rbac-proxy-tls-certificates")

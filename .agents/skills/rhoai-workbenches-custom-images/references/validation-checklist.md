@@ -102,10 +102,15 @@ oc describe notebook <name> -n <project>
 Check:
 
 - Target project exists.
-- `notebooks.opendatahub.io/inject-oauth: "true"` is present unless there is an
-  explicit exception.
+- `notebooks.opendatahub.io/inject-auth: "true"` is present unless there is an
+  explicit, documented exception.
+- `notebooks.opendatahub.io/inject-oauth` is not used for RHOAI 3.x
+  Gateway API workbenches.
+- `notebooks.opendatahub.io/last-image-version-git-commit-selection` matches
+  the selected ImageStream tag build commit when the workbench uses a
+  RHOAI-managed workbench ImageStream.
 - Workbench `metadata.name`, `openshift.io/display-name`, dashboard URL,
-  logout URL, and `NOTEBOOK_ARGS` base URL agree.
+  Gateway path, and `NOTEBOOK_ARGS` base URL agree.
 - `JUPYTER_IMAGE` and container `image` use the same intended image URL.
 - Workbench resource requests and limits are explicit.
 - PVC name exists or is created in the same GitOps layer.
@@ -113,8 +118,12 @@ Check:
 - Custom CA env vars and mounts align with `rhoai-certificate-management`.
 - Kueue queue label is used only when the target project has the referenced
   `LocalQueue`.
-- OAuth proxy service account, cookie secret, TLS secret, and SAR settings are
-  present when OAuth injection/proxy configuration is used.
+- For migrated workbenches, the generated HTTPRoute backend targets
+  `<workbench-name>-kube-rbac-proxy:8443`, not the Jupyter container service
+  directly.
+- Controller-injected auth-proxy operands are not pinned as static GitOps
+  desired state unless Red Hat documentation exposes them as supported user
+  configuration.
 
 ## GitOps Review
 

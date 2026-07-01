@@ -157,6 +157,31 @@ workbench_queue=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.la
   && check "Enterprise RAG Workbench uses CPU LocalQueue" "pass" \
   || check "Enterprise RAG Workbench uses CPU LocalQueue" "${workbench_queue:-missing}"
 
+workbench_auth=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.notebooks\\.opendatahub\\.io/inject-auth}")
+[[ "$workbench_auth" == "true" ]] \
+  && check "Enterprise RAG Workbench uses RHOAI inject-auth" "pass" \
+  || check "Enterprise RAG Workbench uses RHOAI inject-auth" "${workbench_auth:-missing}"
+
+workbench_oauth=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.notebooks\\.opendatahub\\.io/inject-oauth}")
+[[ -z "$workbench_oauth" ]] \
+  && check "Enterprise RAG Workbench does not use legacy inject-oauth" "pass" \
+  || check "Enterprise RAG Workbench does not use legacy inject-oauth" "$workbench_oauth"
+
+workbench_image_commit=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.notebooks\\.opendatahub\\.io/last-image-version-git-commit-selection}")
+imagestream_commit=$(jsonpath "imagestream/s2i-generic-data-science-notebook" "redhat-ods-applications" "{.spec.tags[?(@.name==\"3.4\")].annotations.opendatahub\\.io/notebook-build-commit}")
+[[ -n "$workbench_image_commit" && "$workbench_image_commit" == "$imagestream_commit" ]] \
+  && check "Enterprise RAG Workbench image commit matches RHOAI 3.4 ImageStream" "pass" \
+  || check "Enterprise RAG Workbench image commit matches RHOAI 3.4 ImageStream" "workbench=${workbench_image_commit:-missing},imagestream=${imagestream_commit:-missing}"
+
+resource_exists "service/${WORKBENCH_NAME}-kube-rbac-proxy" "$RAG_NS" \
+  && check "Enterprise RAG Workbench auth-proxy Service exists" "pass" \
+  || check "Enterprise RAG Workbench auth-proxy Service exists" "missing"
+
+workbench_backend=$(jsonpath "httproute/nb-${RAG_NS}-${WORKBENCH_NAME}" "redhat-ods-applications" "{.spec.rules[0].backendRefs[0].name}:{.spec.rules[0].backendRefs[0].port}")
+[[ "$workbench_backend" == "${WORKBENCH_NAME}-kube-rbac-proxy:8443" ]] \
+  && check "Enterprise RAG Workbench HTTPRoute targets auth proxy" "pass" \
+  || check "Enterprise RAG Workbench HTTPRoute targets auth proxy" "${workbench_backend:-missing}"
+
 workbench_ready=$(condition_status "notebook/${WORKBENCH_NAME}" "$RAG_NS" "Ready")
 if [[ "$workbench_ready" == "True" ]]; then
   check "Enterprise RAG Workbench reports Ready" "pass"

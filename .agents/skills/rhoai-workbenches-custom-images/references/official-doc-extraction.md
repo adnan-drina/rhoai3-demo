@@ -187,15 +187,20 @@ Prerequisites:
 Important `Notebook` details:
 
 - API group and kind: `kubeflow.org/v1`, `Notebook`.
-- `notebooks.opendatahub.io/inject-oauth: "true"` enables OAuth-based access
-  configuration, including an OAuth proxy container.
+- `notebooks.opendatahub.io/inject-auth: "true"` marks the workbench as
+  migrated to the OpenShift AI 3.x Gateway API access model. The RHOAI
+  notebook controller uses this annotation to inject the `kube-rbac-proxy`
+  sidecar, create the `*-kube-rbac-proxy` Service, and target that service
+  from the generated HTTPRoute.
 - `opendatahub.io/image-display-name` controls the image name visible in the
   dashboard.
 - `openshift.io/display-name` controls the workbench display name.
-- `notebooks.opendatahub.io/oauth-logout-url` must reference the dashboard URL,
-  project, and workbench name.
 - `notebooks.opendatahub.io/last-image-selection` records the selected image
   name and tag.
+- `notebooks.opendatahub.io/last-image-version-git-commit-selection` records
+  the selected workbench image build commit. The dashboard uses this annotation
+  to decide whether the selected image version is current for the ImageStream
+  tag.
 - `opendatahub.io/connections` annotations can reference workbench
   connections.
 - Optional Kueue scheduling uses `kueue.x-k8s.io/queue-name` with the name of
@@ -210,13 +215,16 @@ Important `Notebook` details:
 - Workbench storage is mounted at `/opt/app-root/src`.
 - `/dev/shm` is backed by an in-memory `emptyDir`.
 - The custom CA bundle can be mounted from a ConfigMap and marked optional.
-- The OAuth proxy container uses the OpenShift OAuth provider, service account,
-  TLS secrets, cookie secret, upstream, SAR check, and logout URL.
+- The controller-injected `kube-rbac-proxy` container and related Service,
+  ConfigMap, Secret, and HTTPRoute backend are generated operands. Do not copy
+  generated image digests into Git; GitOps should own the supported Notebook
+  annotations and core workbench spec.
 
 Official verification:
 
 ```bash
 oc describe notebook -n <project-name>
+oc get httproute -n redhat-ods-applications -l notebook-name=<workbench-name>
 ```
 
 ## Unresolved Items

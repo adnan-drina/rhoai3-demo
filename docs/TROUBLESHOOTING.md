@@ -1311,6 +1311,17 @@ steps unless those components are intentionally reintroduced.
   RHOAI also injects workbench trusted-CA and pipeline runtime mounts; keep the
   GitOps Notebook manifest aligned with those controller-managed defaults to
   avoid persistent Argo CD drift.
+  In RHOAI 3.x, workbench access uses Gateway API path-based routing. A
+  GitOps-created Notebook must use
+  `notebooks.opendatahub.io/inject-auth: "true"` so the notebook controller
+  injects the `kube-rbac-proxy` sidecar,
+  creates the `*-kube-rbac-proxy` Service, and points the HTTPRoute backend to
+  that service. The older `notebooks.opendatahub.io/inject-oauth` annotation
+  leaves the dashboard in migration-required mode and the Open link falls back
+  to legacy Route lookup. The dashboard also uses
+  `notebooks.opendatahub.io/last-image-version-git-commit-selection` to decide
+  whether a selected workbench image is current for the selected ImageStream
+  tag.
 - **GitOps note:** the Notebook and its PVC must be in the same Argo CD sync
   wave when the storage class uses `WaitForFirstConsumer`; otherwise Argo can
   wait on the PVC before creating the consumer pod.
@@ -1322,6 +1333,8 @@ steps unless those components are intentionally reintroduced.
   oc get pvc enterprise-rag-workbench -n enterprise-rag
   oc get pods -n enterprise-rag | grep enterprise-rag-workbench
   oc describe notebook enterprise-rag-workbench -n enterprise-rag
+  oc get svc enterprise-rag-workbench-kube-rbac-proxy -n enterprise-rag
+  oc get httproute nb-enterprise-rag-enterprise-rag-workbench -n redhat-ods-applications -o yaml
   oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
   ```
 

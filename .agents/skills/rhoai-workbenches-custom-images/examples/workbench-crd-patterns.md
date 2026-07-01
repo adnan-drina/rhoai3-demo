@@ -49,9 +49,10 @@ metadata:
   name: team-workbench
   namespace: team-project
   annotations:
-    notebooks.opendatahub.io/inject-oauth: "true"
-    notebooks.opendatahub.io/oauth-logout-url: "https://<dashboard>/projects/team-project?notebookLogout=team-workbench"
+    notebooks.opendatahub.io/inject-auth: "true"
     notebooks.opendatahub.io/last-image-selection: "custom-workbench:1.0"
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: "<image-build-commit>"
+    opendatahub.io/connections: ""
     opendatahub.io/image-display-name: Custom Workbench
     openshift.io/display-name: Team Workbench
   labels:

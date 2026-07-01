@@ -47,11 +47,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "14"
-    notebooks.opendatahub.io/inject-oauth: "true"
+    notebooks.opendatahub.io/inject-auth: "true"
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:3.4
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
+    opendatahub.io/connections: ""
     opendatahub.io/hardware-profile-name: cpu-default
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
+    opendatahub.io/user: ai-2dadmin
     opendatahub.io/username: ai-admin
     openshift.io/display-name: "Enterprise RAG Workbench"
     openshift.io/description: "AG News enterprise RAG ingestion, retrieval, reranking, and grounded answer validation."
