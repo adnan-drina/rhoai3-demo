@@ -198,7 +198,9 @@ data:
       annotation_prompt_params:
         annotation_instruction_template: "Do not emit opaque file-id citation markers in demo answers."
         chunk_annotation_template: |
-          [{index}] {metadata_text}
+          [{index}] file_search result from {file_id}
+
+          {metadata_text}
 
           {chunk_text}
         enable_annotations: true
@@ -228,6 +230,6 @@ data:
         footer_template: |
           END of knowledge_search tool results.
         header_template: |
-          knowledge_search tool found {num_chunks} chunks:
+          file_search knowledge_search tool found {num_chunks} chunks:
 
           BEGIN of knowledge_search tool results.
