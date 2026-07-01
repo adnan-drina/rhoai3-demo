@@ -67,7 +67,10 @@ metadata:
     app.kubernetes.io/component: observability
     demo.rhoai.io/stage: "110"
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # Manual InstallPlans keep the Subscription unhealthy until approved.
+    # Keep the approver in the same wave as the Subscription so Argo CD does
+    # not wait forever before creating the hook.
+    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
 spec:

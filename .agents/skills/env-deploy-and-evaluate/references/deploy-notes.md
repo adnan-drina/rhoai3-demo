@@ -108,6 +108,11 @@ environment:
   `statefulset/maas-postgres` in the same Argo CD sync wave. If the Service is
   in an earlier wave, Argo CD can wait for endpoints before the StatefulSet has
   been created.
+- **Stage 110 manual InstallPlan ordering**: If a pinned Operator
+  `Subscription` uses `installPlanApproval: Manual`, the generated InstallPlan
+  approval hook must be created in the same Argo CD sync wave as the
+  Subscription. A later-wave hook can deadlock because Argo CD waits for the
+  manual-pending Subscription to become healthy before creating the approver.
 - **Stage 220 local model readiness**: MaaS CRs and Gateway routes can be
   healthy before the generated Nemotron `LLMInferenceService` reaches
   `Ready=True`. Validate local MaaS inference only after the
