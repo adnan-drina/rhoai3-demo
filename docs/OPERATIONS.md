@@ -1119,6 +1119,19 @@ This flow is useful for explaining the setup to a demo audience from official
 RHOAI 3.4 docs. It does not replace implementation validation for AutoRAG,
 EvalHub, guardrails, AI Pipelines, or later Docling/DSPA work.
 
+If `docs.redhat.com` blocks programmatic GET requests from the OpenShift pod,
+prepare the JSONL locally from the official PDFs and ask `validate.sh` to copy
+the prepared sample into the workbench before indexing:
+
+```bash
+python stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py \
+  --source-dir /tmp/rhoai-product-docs-source \
+  --output /tmp/rhoai-product-docs-chunks.jsonl
+RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
+RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE=/tmp/rhoai-product-docs-chunks.jsonl \
+./stage-230-private-data-rag/validate.sh
+```
+
 The command must fail if metadata extraction, hybrid metadata filtering,
 reranking, or final grounded answer generation is broken. Use `--reset` after
 a provider migration or fresh redeploy when the vector store should be

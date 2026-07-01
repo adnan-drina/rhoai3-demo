@@ -71,6 +71,20 @@ requests, the helper falls back to the matching official `html-single` guide.
 It is an audience explainer corpus, not a claim that every referenced product
 capability is implemented in Stage 230.
 
+If the OpenShift pod cannot fetch `docs.redhat.com` because the Red Hat edge
+blocks programmatic GET requests from the demo environment, prepare the JSONL
+on your workstation and stage it into the workbench before running the smoke
+helper:
+
+```bash
+python stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py \
+  --source-dir /tmp/rhoai-product-docs-source \
+  --output /tmp/rhoai-product-docs-chunks.jsonl
+oc cp /tmp/rhoai-product-docs-chunks.jsonl \
+  enterprise-rag/enterprise-rag-workbench-0:/opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+  -c enterprise-rag-workbench
+```
+
 The notebook flow validates AG News ingestion, LLM-driven metadata extraction,
 filtered retrieval, Qwen3 reranking, and final Nemotron answer generation. The
 Stage 230 acceptance gate uses `--search-mode hybrid` and must fail if
