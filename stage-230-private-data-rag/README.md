@@ -75,6 +75,10 @@ Red Hat-supported product operand.
 The reranker resource request is intentionally smaller than the article-linked
 example so it can schedule on the demo CPU worker pool without using GPU
 capacity.
+Retrieval can return broad candidate sets, but notebooks and smoke scripts
+bound reranker input to the top candidates and trim candidate text so requests
+fit the CPU reranker's configured context window. Do not pass full long PDF
+chunks directly to the reranker acceptance path.
 
 The RHOAI product-document explainer corpus downloads official PDFs at runtime
 from `docs.redhat.com`, prepares focused chunks with source metadata, and

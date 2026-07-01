@@ -1323,6 +1323,31 @@ steps unless those components are intentionally reintroduced.
   `InferenceService` only after recording the artifact decision in
   `stage-230-private-data-rag/PLAN.md`.
 
+### Stage 230 RAG smoke fails with reranker 502
+
+- **Symptom:** product-document or larger-corpus RAG smoke reaches retrieval
+  but fails at reranking with a Llama Stack 502 such as
+  `Failed to connect to vLLM rerank API`.
+- **Likely cause:** the Qwen3 CPU reranker is healthy but the helper sent too
+  many or too-large candidate chunks for the reranker's configured sequence
+  limit. The active reranker is intentionally sized for demo CPU workers and
+  uses a constrained `--max-model-len`.
+- **Fix:** verify the reranker itself first, then keep the acceptance helper's
+  reranker input bounded:
+
+  ```bash
+  oc exec -n enterprise-rag deploy/lsd-enterprise-rag -- \
+    curl -s http://localhost:8321/v1/models
+  oc logs -n enterprise-rag deploy/qwen3-reranker-predictor \
+    -c kserve-container --tail=120
+  ```
+
+  Use the provider-listed Llama Stack model ID
+  `vllm-reranker/qwen3-reranker` from `/v1/models`. Do not call the KServe
+  vLLM endpoint directly from notebooks unless the stage plan explicitly
+  records a fallback. For long PDF corpora, retrieval may return many large
+  chunks, but reranking should operate on a small trimmed candidate set.
+
 ### Stage 230 Enterprise RAG Workbench does not start
 
 - **Symptom:** the `Enterprise RAG Workbench` remains Starting, the Notebook

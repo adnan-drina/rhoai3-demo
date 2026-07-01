@@ -344,7 +344,7 @@ def item_text(item: Any) -> str:
 
 
 def rerank(base_url: str, model: str, query: str, candidates: list[Any]) -> tuple[list[dict[str, Any]], str]:
-    documents = [item_text(item) for item in candidates]
+    documents = [item_text(item)[:1200] for item in candidates[:4]]
     typed_items = [{"type": "text", "text": document} for document in documents]
     payloads = [
         (

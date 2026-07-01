@@ -131,6 +131,12 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Reranking is invoked through Llama Stack `/v1alpha/inference/rerank`, not
   directly against the KServe/vLLM endpoint, unless the stage plan explicitly
   records a temporary fallback.
+- Reranker validation uses the provider-listed Llama Stack model ID, such as
+  `vllm-reranker/qwen3-reranker`, while recognizing that the underlying vLLM
+  server may expose a shorter served model name.
+- Reranker helper scripts bound candidate count and candidate text length to
+  fit the served reranker's configured maximum sequence length. Keep retrieval
+  broad, but do not send every long PDF chunk directly to the reranker.
 - Final answer uses retrieved context and does not claim unsupported citations.
 - Validation includes a negative or out-of-scope query.
 
