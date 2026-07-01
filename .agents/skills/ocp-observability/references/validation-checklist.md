@@ -27,6 +27,10 @@ or live operations.
   GitOps desired state.
 - `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `AlertmanagerConfig`, and
   related monitoring resources use verified API versions and fields.
+- Core platform Alertmanager notification routing is configured through the
+  documented `openshift-monitoring/alertmanager-main` Secret or console
+  workflow; receivers must contain an actual supported integration, not only a
+  receiver name.
 - User workload monitoring ConfigMaps and namespace assumptions are verified
   before authoring.
 - Log collector, log store, log forwarder, output, retention, and visualization
@@ -56,6 +60,7 @@ oc get prometheusrule -A
 oc get servicemonitor -A
 oc get podmonitor -A
 oc get alertmanagerconfig -A
+oc get secret alertmanager-main -n openshift-monitoring -o yaml
 oc get subscription -A | grep -Ei 'logging|observability|monitoring'
 oc get csv -A | grep -Ei 'logging|observability|monitoring'
 oc api-resources | grep -Ei 'monitoring|observability|logging|loki|opentelemetry'
@@ -73,6 +78,16 @@ oc explain alertmanagerconfig.spec
 
 Use component-specific `oc explain` commands only after the relevant CRDs are
 confirmed on the cluster.
+
+For platform Alertmanager notification routing, validate the rendered config
+with Alertmanager tooling and verify the integration count:
+
+```bash
+oc -n openshift-monitoring exec alertmanager-main-0 -c alertmanager -- \
+  amtool config routes show --alertmanager.url http://localhost:9093
+oc -n openshift-monitoring exec prometheus-k8s-0 -c prometheus -- \
+  curl -s 'http://localhost:9090/api/v1/query?query=cluster%3Aalertmanager_integrations%3Amax' | jq
+```
 
 ## Live Operation Review
 

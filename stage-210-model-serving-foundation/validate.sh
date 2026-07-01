@@ -146,6 +146,57 @@ else
 fi
 check "User workload monitoring config present" "$R"
 
+ALERT_WEBHOOK_READY=$(oc get deployment rhoai-demo-alert-webhook -n openshift-monitoring \
+  -o jsonpath='{.status.readyReplicas}' --insecure-skip-tls-verify=true 2>/dev/null || echo "")
+if [[ "${ALERT_WEBHOOK_READY:-0}" -ge 1 ]]; then
+  R="pass"
+else
+  R="readyReplicas=${ALERT_WEBHOOK_READY:-0}"
+fi
+check "Alertmanager demo webhook receiver is Ready" "$R"
+
+if resource_exists "service/rhoai-demo-alert-webhook" "openshift-monitoring"; then
+  R="pass"
+else
+  R="missing"
+fi
+check "Alertmanager demo webhook Service present" "$R"
+
+ALERTMANAGER_CONFIG=$(oc get secret alertmanager-main -n openshift-monitoring \
+  -o jsonpath='{.data.alertmanager\.yaml}' --insecure-skip-tls-verify=true 2>/dev/null \
+  | base64 -d 2>/dev/null || true)
+if grep -q 'webhook_configs:' <<<"$ALERTMANAGER_CONFIG" \
+  && grep -q 'rhoai-demo-alert-webhook.openshift-monitoring.svc' <<<"$ALERTMANAGER_CONFIG"; then
+  R="pass"
+else
+  R="missing configured webhook receiver"
+fi
+check "Alertmanager notification receivers configured" "$R"
+
+ALERTMANAGER_INTEGRATIONS_QUERY=$(oc -n openshift-monitoring exec prometheus-k8s-0 -c prometheus \
+  --insecure-skip-tls-verify=true -- \
+  curl -s 'http://localhost:9090/api/v1/query?query=cluster%3Aalertmanager_integrations%3Amax' \
+  2>/dev/null || echo "{}")
+ALERTMANAGER_INTEGRATIONS=$(jq -r '.data.result[0].value[1] // "0"' \
+  <<<"$ALERTMANAGER_INTEGRATIONS_QUERY" 2>/dev/null || echo "0")
+if awk "BEGIN {exit !(${ALERTMANAGER_INTEGRATIONS:-0} >= 1)}"; then
+  R="pass"
+else
+  R="integrations=${ALERTMANAGER_INTEGRATIONS:-0}"
+fi
+check "Alertmanager configured integrations metric is nonzero" "$R"
+
+ALERTMANAGER_RECEIVER_ALERTS=$(oc -n openshift-monitoring exec prometheus-k8s-0 -c prometheus \
+  --insecure-skip-tls-verify=true -- \
+  curl -s 'http://localhost:9090/api/v1/query?query=ALERTS%7Balertname%3D%22AlertmanagerReceiversNotConfigured%22%2Calertstate%3D%22firing%22%7D' \
+  2>/dev/null | jq -r '.data.result | length' 2>/dev/null || echo "unknown")
+if [[ "$ALERTMANAGER_RECEIVER_ALERTS" == "0" ]]; then
+  R="pass"
+else
+  R="firing=${ALERTMANAGER_RECEIVER_ALERTS}"
+fi
+check "AlertmanagerReceiversNotConfigured is not firing" "$R"
+
 if crd_exists inferenceservices.serving.kserve.io; then
   R="pass"
 else

@@ -64,6 +64,17 @@ The Observability overview adds that monitoring stack components are deployed
 and managed by the Cluster Monitoring Operator, and that default components
 include Prometheus, Alertmanager, Thanos Querier, and others.
 
+The official alert notification documentation states that default platform
+alerts are visible in the console after installation but are not configured to
+send notifications to external systems by default. Red Hat documents supported
+receiver types including webhook, email, Slack, PagerDuty, and Microsoft Teams.
+The Monitoring Stack documentation shows the supported CLI path for core
+platform monitoring: extract, edit, and replace the
+`openshift-monitoring/alertmanager-main` Secret that contains
+`alertmanager.yaml`, then validate the routing tree with `amtool`. Receiver
+names alone are not enough; at least one receiver must define a real
+integration for `AlertmanagerReceiversNotConfigured` to clear.
+
 ## Logging
 
 The official Logging page says logging is used to collect, visualize, forward,

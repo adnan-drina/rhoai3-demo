@@ -373,8 +373,9 @@ Stage 210 has two GitOps ownership surfaces:
 - `stage-210-model-serving-foundation` patches the shared `DataScienceCluster`
   KServe component through a GitOps hook.
 - `stage-210-model-serving-foundation` owns observability resources:
-  OpenShift user workload monitoring configuration, Grafana Operator, Grafana
-  instance, Prometheus datasource, and the vLLM model-serving dashboard.
+  OpenShift user workload monitoring configuration, Alertmanager notification
+  receiver configuration, Grafana Operator, Grafana instance, Prometheus
+  datasource, and the vLLM model-serving dashboard.
 
 Do not create a second `DataScienceCluster` for Stage 210. In Argo CD, inspect
 the Stage 210 Application hook for KServe enablement and the Stage 110
@@ -457,13 +458,22 @@ than requiring the same manual actions in every fresh environment.
 
 Stage 210 enables OpenShift user workload monitoring so the RHOAI/KServe
 generated `ServiceMonitor` for the Nemotron endpoint can be scraped. It also
-installs a demo Grafana instance through the community Grafana Operator.
+configures Alertmanager receivers through the documented
+`openshift-monitoring/alertmanager-main` Secret, using a demo-local webhook
+receiver in place of external Slack, email, PagerDuty, or Microsoft Teams
+credentials. The receiver is intentionally simple: it acknowledges alert
+notifications and logs the alert count so the cluster no longer runs with an
+unconfigured notification path. It also installs a demo Grafana instance
+through the community Grafana Operator.
 
 Verify the monitoring path:
 
 ```bash
 oc get configmap cluster-monitoring-config -n openshift-monitoring \
   -o jsonpath='{.data.config\.yaml}'
+oc get deployment rhoai-demo-alert-webhook -n openshift-monitoring
+oc get secret alertmanager-main -n openshift-monitoring \
+  -o jsonpath='{.data.alertmanager\.yaml}' | base64 -d
 oc get servicemonitor nvidia-nemotron-3-nano-30b-a3b-metrics -n demo-sandbox
 oc get grafana,grafanadatasource,grafanadashboard -n rhoai-demo-grafana
 oc get grafanadatasource prometheus -n rhoai-demo-grafana \
