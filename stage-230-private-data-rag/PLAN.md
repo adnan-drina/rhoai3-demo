@@ -232,6 +232,8 @@ Deferred implementation inventory:
 - Confirm the AG News smoke-test helper compiles.
 - Keep storage consumers in the same Argo CD sync wave as PVCs when the
   cluster storage class uses `WaitForFirstConsumer`.
+- Expose Llama Stack through a GitOps-managed OpenShift Route to the
+  operator-managed Service; do not patch generated Ingress resources.
 - Next gate: run AG News ingestion for the deterministic sample, resolve the
   vector store by metadata, run category-targeted hybrid search, and generate a
   final Nemotron answer using retrieved context.

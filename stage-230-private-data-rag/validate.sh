@@ -103,8 +103,8 @@ done
   && check "Milvus vector store service is available" "pass" \
   || check "Milvus vector store service is available" "availableReplicas=$(available_replicas deployment/private-rag-milvus "$RAG_NS")"
 
-lls_ready=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.conditions[?(@.type==\"Ready\")].status}")
-[[ "$lls_ready" == "True" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_ready:-missing}"
+lls_phase=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.phase}")
+[[ "$lls_phase" == "Ready" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_phase:-missing}"
 
 route_host=$(jsonpath "route/lsd-enterprise-rag" "$RAG_NS" "{.spec.host}")
 if [[ -n "$route_host" ]]; then

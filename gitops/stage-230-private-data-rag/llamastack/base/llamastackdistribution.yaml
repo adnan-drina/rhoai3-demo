@@ -15,7 +15,7 @@ spec:
     allowedFrom:
       namespaces:
         - "*"
-    exposeRoute: true
+    exposeRoute: false
   replicas: 1
   server:
     containerSpec:

@@ -39,6 +39,9 @@ GitOps changes.
 - `spec.server.distribution.name` is sourced from official docs or installed
   distribution resources.
 - Server port matches the selected distribution and route/service setup.
+- On OpenShift, prefer a GitOps-managed `Route` to the operator-managed
+  Llama Stack `Service` when the installed operator creates a hostless Ingress;
+  do not patch generated Ingress resources.
 - Provider environment variables match enabled providers.
 - Secrets are used for passwords and API keys.
 - PostgreSQL metadata storage is configured.

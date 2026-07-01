@@ -1226,6 +1226,19 @@ steps unless those components are intentionally reintroduced.
   `stage-230-private-data-rag/deploy.sh` so it refreshes the Llama Stack Secret
   from the current `MaaSModelRef.status.endpoint` and API-key flow.
 
+### Llama Stack is Ready but no OpenShift Route exists
+
+- **Symptom:** `LlamaStackDistribution.status.phase` is `Ready`, but no Route
+  is created and the namespace has an operator-owned Ingress with a wildcard or
+  missing host.
+- **Likely cause:** the installed Llama Stack operator exposes
+  `network.exposeRoute` as an Ingress toggle. On OpenShift, a hostless Ingress
+  is not converted to a Route by the ingress-to-route controller.
+- **Fix:** keep `LlamaStackDistribution.spec.network.exposeRoute: false` and
+  manage an explicit OpenShift `Route` in GitOps that points to the
+  operator-managed `lsd-enterprise-rag-service` Service. Do not patch the
+  generated Ingress.
+
 ---
 
 Legacy troubleshooting content is backed up at:

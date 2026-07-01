@@ -1,0 +1,20 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: lsd-enterprise-rag
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: lsd-enterprise-rag
+    app.kubernetes.io/component: orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+spec:
+  to:
+    kind: Service
+    name: lsd-enterprise-rag-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
