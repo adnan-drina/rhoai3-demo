@@ -123,17 +123,7 @@ data:
       benchmarks: []
       connectors: []
       datasets: []
-      models:
-        - model_id: nemotron-3-nano-30b-a3b
-          provider_id: vllm-inference
-          provider_model_id: nemotron-3-nano-30b-a3b
-          model_type: llm
-          metadata: {}
-        - model_id: qwen3-reranker
-          provider_id: vllm-reranker
-          provider_model_id: qwen3-reranker
-          model_type: rerank
-          metadata: {}
+      models: []
       scoring_fns: []
       shields: []
       tool_groups: []
