@@ -97,9 +97,11 @@ Use this checklist before accepting Stage 230 RAG changes.
   been implemented unless their own stage manifests and validation exist.
 - Local extraction helpers such as `pypdf` may validate article detection for
   a readable PDF, but they do not prove the supported Docling path.
-- KFP source must compile before DSPA execution is introduced.
-- KFP automation is accepted only after the Docling component has run and the
-  converted Markdown/Docling JSON/chunk artifacts have been reviewed.
+- KFP source must compile before DSPA execution.
+- KFP automation is accepted only after the Docling component has run through
+  DSPA, task logs and metrics are reviewed, converted Markdown/Docling
+  JSON/chunk artifacts have been inspected, and the pipeline output passes the
+  RAG smoke helper.
 - Docling KFP implementation declares whether it adapts `docling-standard` or
   `docling-vlm` and why.
 - `docling-vlm` is used only when layout/image complexity or remote VLM

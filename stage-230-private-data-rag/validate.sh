@@ -32,6 +32,11 @@ RAG_BUCKET_OBC="${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-bucket}"
 RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
+RAG_DUTCH_DOCS_PREFIX="${RHOAI_STAGE230_DUTCH_DOCS_PREFIX:-raw/dutch-government}"
+DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-dspa-enterprise-rag}"
+DOCLING_PIPELINE_EVIDENCE_CM="${RHOAI_STAGE230_DOCLING_EVIDENCE_CM:-stage230-docling-pipeline-evidence}"
+DOCLING_PIPELINE_OUTPUT_KEY="${RHOAI_STAGE230_DOCLING_OUTPUT_KEY:-processed/dutch-government/stb-2022-14-docling-kfp-chunks.jsonl}"
+DOCLING_PIPELINE_TIMEOUT_SECONDS="${RHOAI_STAGE230_DOCLING_TIMEOUT_SECONDS:-1800}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -144,6 +149,41 @@ pipeline_s3_prefix=$(jsonpath "secret/${PIPELINE_S3_SECRET}" "$RAG_NS" "{.data.S
 [[ "$pipeline_s3_prefix" == "$RAG_PRODUCT_DOCS_PREFIX" ]] \
   && check "Enterprise RAG pipeline S3 prefix targets RHOAI product docs" "pass" \
   || check "Enterprise RAG pipeline S3 prefix targets RHOAI product docs" "${pipeline_s3_prefix:-missing}"
+
+obc_bucket_name=$(jsonpath "configmap/${RAG_BUCKET_OBC}" "$RAG_NS" "{.data.BUCKET_NAME}")
+[[ "$obc_bucket_name" == "enterprise-rag" ]] \
+  && check "Enterprise RAG OBC uses deterministic bucket name" "pass" \
+  || check "Enterprise RAG OBC uses deterministic bucket name" "${obc_bucket_name:-missing}"
+
+dsc_aipipelines=$(jsonpath "datasciencecluster/default-dsc" "" "{.spec.components.aipipelines.managementState}")
+[[ "$dsc_aipipelines" == "Managed" ]] \
+  && check "DataScienceCluster AI Pipelines component is Managed" "pass" \
+  || check "DataScienceCluster AI Pipelines component is Managed" "${dsc_aipipelines:-missing}"
+
+resource_exists "dspa/${DSPA_NAME}" "$RAG_NS" \
+  && check "Enterprise RAG DSPA exists" "pass" \
+  || check "Enterprise RAG DSPA exists" "missing"
+
+dspa_ready=$(condition_status "dspa/${DSPA_NAME}" "$RAG_NS" "Ready")
+if [[ "$dspa_ready" == "True" ]]; then
+  check "Enterprise RAG DSPA reports Ready" "pass"
+else
+  warn "Enterprise RAG DSPA reports Ready" "${dspa_ready:-not reported yet}"
+fi
+
+dspa_object_storage=$(condition_status "dspa/${DSPA_NAME}" "$RAG_NS" "ObjectStorageAvailable")
+if [[ "$dspa_object_storage" == "True" || -z "$dspa_object_storage" ]]; then
+  [[ "$dspa_object_storage" == "True" ]] \
+    && check "Enterprise RAG DSPA object storage is available" "pass" \
+    || warn "Enterprise RAG DSPA object storage condition" "not reported yet"
+else
+  check "Enterprise RAG DSPA object storage is available" "$dspa_object_storage"
+fi
+
+dspa_route_host=$(jsonpath "route/ds-pipeline-${DSPA_NAME}" "$RAG_NS" "{.spec.host}")
+[[ -n "$dspa_route_host" ]] \
+  && check "Enterprise RAG DSPA route exists" "pass" \
+  || check "Enterprise RAG DSPA route exists" "missing"
 
 rhoai_pdf_dir="$SCRIPT_DIR/data/rhoai-product-docs/source"
 if [[ -d "$rhoai_pdf_dir" ]]; then
@@ -424,6 +464,7 @@ fi
 
 if python3 - <<'PY' >/dev/null 2>&1
 import kfp
+from kfp import kubernetes
 PY
 then
   kfp_compile_dir=$(mktemp -d)
@@ -436,7 +477,74 @@ then
   fi
   rm -rf "$kfp_compile_dir"
 else
-  warn "Dutch publication Docling KFP pipeline compile was not run" "local python3 cannot import kfp"
+  warn "Dutch publication Docling KFP pipeline compile was not run" "local python3 cannot import kfp and kfp-kubernetes"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_DSPA_PIPELINE:-false}" == "true" ]]; then
+  dspa_out=$(mktemp)
+  dspa_err=$(mktemp)
+  if "$SCRIPT_DIR/run-docling-pipeline.sh" \
+    --timeout-seconds="${DOCLING_PIPELINE_TIMEOUT_SECONDS}" \
+    --output-s3-key="${DOCLING_PIPELINE_OUTPUT_KEY}" >"$dspa_out" 2>"$dspa_err"; then
+    check "Dutch publication Docling DSPA/KFP run passes" "pass"
+    if [[ -n "${workbench_pod:-}" ]]; then
+      kfp_rag_out=$(mktemp)
+      kfp_rag_err=$(mktemp)
+      if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+        "cd /opt/app-root/src/workspace &&
+         OUTPUT_S3_KEY='${DOCLING_PIPELINE_OUTPUT_KEY}' python - <<'PY'
+import os
+from pathlib import Path
+
+import boto3
+from botocore.config import Config
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
+
+disable_warnings(InsecureRequestWarning)
+target = Path('.stage230/data/dutch-government/processed/stb-2022-14-docling-kfp-chunks.jsonl')
+target.parent.mkdir(parents=True, exist_ok=True)
+client = boto3.client(
+    's3',
+    endpoint_url=os.environ['S3_ENDPOINT_URL'],
+    aws_access_key_id=os.environ['S3_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['S3_SECRET_KEY'],
+    region_name=os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'),
+    verify=False,
+    config=Config(signature_version='s3v4'),
+)
+body = client.get_object(Bucket=os.environ['S3_BUCKET'], Key=os.environ['OUTPUT_S3_KEY'])['Body'].read()
+target.write_bytes(body)
+print(f'downloaded {len(body)} bytes from s3://{os.environ[\"S3_BUCKET\"]}/{os.environ[\"OUTPUT_S3_KEY\"]}')
+PY
+         python .stage230/scripts/dutch_publication_rag_smoke.py \
+           --reset \
+           --sample .stage230/data/dutch-government/processed/stb-2022-14-docling-kfp-chunks.jsonl \
+           --vector-store stage230-dutch-woo-kfp-demo \
+           --search-mode hybrid \
+           --query \"Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?\" \
+           --expected-topic openbaarmaking_op_verzoek \
+           --expected-term \"vier weken\"" >"$kfp_rag_out" 2>"$kfp_rag_err"; then
+        check "Dutch publication KFP output RAG smoke passes" "pass"
+      else
+        check "Dutch publication KFP output RAG smoke passes" "$(head -c 300 "$kfp_rag_err" | tr '\n' ' ')"
+      fi
+      rm -f "$kfp_rag_out" "$kfp_rag_err"
+    else
+      check "Dutch publication KFP output RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
+    fi
+  else
+    check "Dutch publication Docling DSPA/KFP run passes" "$(head -c 500 "$dspa_err" | tr '\n' ' ')"
+  fi
+  rm -f "$dspa_out" "$dspa_err"
+else
+  warn "Dutch publication Docling DSPA/KFP run was not run" "set RHOAI_STAGE230_RUN_DSPA_PIPELINE=true"
+fi
+
+if resource_exists "configmap/${DOCLING_PIPELINE_EVIDENCE_CM}" "$RAG_NS"; then
+  check "Docling pipeline run evidence ConfigMap exists" "pass"
+else
+  warn "Docling pipeline run evidence ConfigMap exists" "run the DSPA/KFP gate"
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then

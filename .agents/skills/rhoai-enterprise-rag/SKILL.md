@@ -151,15 +151,17 @@ AG News documents
   -> final Nemotron answer through MaaS
 ```
 
-When the Dutch government publication use case starts, keep the same retrieval
-pipeline and replace the corpus, metadata taxonomy, ingestion source, and
-domain prompts. Add Docling and KFP automation at that point:
+For Dutch government publication ingestion, keep the same retrieval pipeline
+and replace the corpus, metadata taxonomy, ingestion source, and domain
+prompts. Validate each processing step in the workbench first, then automate
+the same contract through DSPA/KFP:
 
 ```text
 Dutch government PDFs / HTML / Office documents
   -> Docling conversion and chunking
   -> optional extraction or subset selection
-  -> KFP automation for repeatable processing
+  -> DSPA/KFP automation for repeatable processing
+  -> reviewed S3 pipeline artifacts
   -> Files API upload
   -> Vector Stores API attachment with metadata
   -> same hybrid retrieval, rerank, and Nemotron answer path

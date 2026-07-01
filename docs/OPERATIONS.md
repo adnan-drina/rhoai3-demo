@@ -953,8 +953,9 @@ implementation. The current first slice:
   `dutch_publication_docling_prepare.ipynb` and
   `rhoai_product_docs_rag_smoke.ipynb`. Generated helper content is
   stored under hidden `.stage230` workspace content.
-- adds a Dutch publication metadata contract, preparation helper, and
-  compile-ready Docling-standard KFP source adapted from the Red Hat-documented
+- adds a Dutch publication metadata contract, preparation helper, modular
+  Docling-standard KFP source, GitOps-managed DSPA pipeline server, and
+  `run-docling-pipeline.sh` runner adapted from the Red Hat-documented
   `opendatahub-io/data-processing` stable branch.
 - adds a focused official RHOAI 3.4 product-document explainer corpus for
   demo-audience Q&A about Llama Stack RAG, AutoRAG, RAGAS, EvalHub,
@@ -968,9 +969,11 @@ Files and Vector Stores APIs, validate metadata-filtered hybrid retrieval,
 rerank candidates, and then generate a Nemotron answer from retrieved context.
 
 The first Dutch government publication development corpus uses a single public
-Staatsblad PDF for deterministic smoke tests. A larger Dutch publication corpus
-should use the RHOAI 3.4 Docling and KFP data-preparation guidance through
-DSPA/S3-backed execution instead of resurrecting the old whoami pipeline.
+Staatsblad PDF for deterministic smoke tests. The notebook validates each data
+processing step interactively; the DSPA/KFP runner automates the same contract
+from S3 PDF input through Docling conversion, chunk generation, artifact
+review, and RAG smoke validation. A larger Dutch publication corpus must reuse
+this path instead of resurrecting the old whoami pipeline.
 
 ### Operational Status
 
@@ -986,8 +989,8 @@ Current status:
   project bucket from an in-cluster Job.
 - `stage-230-private-data-rag/validate.sh` checks the Stage 230 Application,
   runtime resources, Llama Stack readiness, model listing, Qwen3 reranker
-  readiness, workbench resources, helper syntax, and KFP compilation when the
-  local Python environment has `kfp`.
+  readiness, workbench resources, helper syntax, DSPA readiness, and KFP
+  compilation when the local Python environment has `kfp`.
 - `stage-230-private-data-rag/scripts/agnews_rag_smoke.py` is the first
   deterministic ingestion/search helper and requires `llama-stack-client` in
   the execution environment.
@@ -1006,8 +1009,11 @@ Current status:
   path is Docling; `--converter pypdf` is only a local/workbench validation
   helper for the current single-PDF smoke document.
 - `stage-230-private-data-rag/kfp/dutch_publication_docling_pipeline.py`
-  compiles the first Docling-standard KFP source for the single PDF. DSPA
-  execution and S3-backed larger-corpus processing are still the next gate.
+  compiles the first Docling-standard KFP source for the single PDF.
+- `stage-230-private-data-rag/run-docling-pipeline.sh` compiles the KFP source,
+  imports a pipeline version into `dspa-enterprise-rag`, starts a run, waits
+  for completion, reviews the generated S3 artifact, and stores evidence in
+  the `stage230-docling-pipeline-evidence` ConfigMap.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py`
   prepares focused product-doc chunks with source metadata from the selected
   official RHOAI 3.4 PDFs stored in the stage folder. Use `--force-download`
@@ -1034,9 +1040,9 @@ Current status:
   Job that clones the same Git branch as Argo CD
 - refresh the Application after Secret creation
 - leave ingestion to validation or an explicit user-triggered smoke run
-- run Docling/KFP compilation and local prepared-chunk validation only when
-  explicitly requested; later, add DSPA/S3 execution before larger-corpus
-  indexing
+- leave Docling/KFP execution to an explicit gate: run
+  `run-docling-pipeline.sh` directly or set
+  `RHOAI_STAGE230_RUN_DSPA_PIPELINE=true` for `validate.sh`
 
 `validate.sh` currently proves the runtime foundation and prepares the next
 gate:
@@ -1052,6 +1058,10 @@ gate:
 - the Stage 230 ObjectBucketClaim is `Bound`
 - the `enterprise-rag-s3` dashboard S3 connection and
   `data-processing-docling-pipeline` Secret exist
+- the shared `default-dsc` has AI Pipelines enabled by the Stage 230 DSC patch
+  job
+- the `dspa-enterprise-rag` DSPA exists, reports Ready, and exposes the
+  pipeline-server route
 - the repo contains the selected RHOAI product source PDFs and deterministic
   prepared chunks
 - the Enterprise RAG Workbench receives the S3 connection environment
@@ -1064,7 +1074,7 @@ gate:
 - the Docling-standard KFP pipeline compiles when local `python3` can import
   `kfp`
 
-The next validation expansion should prove the user-visible RAG outcome:
+Optional validation gates prove the user-visible RAG outcome:
 
 - vector store is created with expected metadata
 - files are uploaded and attached with document metadata
@@ -1078,9 +1088,8 @@ The next validation expansion should prove the user-visible RAG outcome:
 - the RHOAI product-document explainer corpus can be prepared from the
   repo-stored PDFs and indexed through the same RAG path when
   `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`
-- later, actual Docling output, DSPA/KFP run status, task logs, metrics, and
-  processed artifacts are validated before larger Dutch publication content is
-  indexed
+- actual Docling output, DSPA/KFP run status, task logs, metrics, and processed
+  artifacts are validated before larger Dutch publication content is indexed
 
 Run the workbench-equivalent validated flow:
 
@@ -1112,8 +1121,13 @@ python .stage230/scripts/dutch_publication_prepare.py \
 ```
 
 The `pypdf` converter validates article detection and metadata for the current
-PDF in the workbench image. The supported larger-corpus path must run the
-Docling KFP component and review produced artifacts before indexing.
+PDF in the workbench image. The supported automation path runs Docling through
+DSPA/KFP and reviews the produced S3 artifact before indexing:
+
+```bash
+./stage-230-private-data-rag/run-docling-pipeline.sh
+RHOAI_STAGE230_RUN_DSPA_PIPELINE=true ./stage-230-private-data-rag/validate.sh
+```
 
 Run the official RHOAI product-document explainer corpus from the staged PDFs:
 

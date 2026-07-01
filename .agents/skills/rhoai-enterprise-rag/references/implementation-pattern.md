@@ -75,11 +75,12 @@
    - Add a metadata contract and preparation helper for the single document.
      A local/workbench converter such as `pypdf` can validate article
      detection only; the supported pipeline path should use Docling.
-   - Add compile-ready `docling-standard` KFP source once the document contract
-     is clear, and validate compilation before introducing DSPA execution.
-   - Do not present this single-PDF smoke path as the final Docling/KFP
-     ingestion architecture until the Docling component has run and artifacts
-     have been reviewed.
+   - Add `docling-standard` KFP source once the document contract is clear,
+     validate compilation, run it through the project DSPA, and review S3
+     output artifacts before indexing pipeline output.
+   - Do not present this single-PDF smoke path as accepted until the Docling
+     component has run, task logs/metrics have been checked, artifacts have
+     been reviewed, and the pipeline output passes the RAG smoke helper.
 8. Add a focused RHOAI product-document explainer corpus when the demo needs
    source-grounded answers about platform capabilities.
    - Use a manifest of official RHOAI PDFs from the active baseline, such as
@@ -97,8 +98,8 @@
    - Preserve product version, guide title, documentation category, page,
      topic, source URL, tenant, and version metadata on each uploaded chunk.
    - Keep this corpus scoped to audience explanation. It does not by itself
-     implement AutoRAG optimization, EvalHub jobs, guardrails, or DSPA/KFP
-     execution.
+     implement AutoRAG optimization, EvalHub jobs, guardrails, or new product
+     capabilities beyond the active RAG and pipeline data-preparation path.
 9. Replace the corpus with a larger Dutch government publication set.
    - Define Dutch metadata: source authority, publication type, ministry,
      publication date, jurisdiction, language, topic, version, and access tier.

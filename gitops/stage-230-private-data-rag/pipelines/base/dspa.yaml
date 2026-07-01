@@ -1,0 +1,38 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa-enterprise-rag
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: dspa-enterprise-rag
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/component: pipeline-server
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: "Enterprise RAG Pipelines"
+spec:
+  apiServer:
+    cacheEnabled: false
+    enableSamplePipeline: false
+    pipelineStore: kubernetes
+  database:
+    mariaDB:
+      deploy: true
+      pipelineDBName: enterprise_rag_pipelines
+      pvcSize: 5Gi
+      username: dspa
+  objectStorage:
+    externalStorage:
+      bucket: enterprise-rag
+      host: s3.openshift-storage.svc
+      port: "443"
+      scheme: https
+      secure: true
+      region: us-east-1
+      basePath: pipelines
+      s3CredentialsSecret:
+        secretName: enterprise-rag-bucket
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY

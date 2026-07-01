@@ -31,8 +31,8 @@ accurate assistant experience than a model-only prompt can provide.
 | Kueue-backed CPU hardware profile | Schedules the workbench through the Stage 120 `CPU Default` hardware profile and `lq-cpu-default` LocalQueue | [RHOAI 3.4 workload management with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) |
 | Qwen3 reranker | CPU-hosted neural reranking layer adapted from the article-linked reference implementation and sized for the demo worker nodes | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
 | Staatsblad 2022 no. 14 smoke corpus | First Dutch government publication development corpus with recommended enterprise metadata, based on the Wet open overheid text placement PDF | [Official publication PDF](https://zoek.officielebekendmakingen.nl/stb-2022-14.pdf) |
-| Docling | Data-preparation layer for unstructured Dutch government publications; the current slice includes a Docling-standard preparation helper and compile-ready KFP source for the single PDF smoke corpus | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
-| Red Hat OpenShift AI Pipelines | Automation target for repeatable Docling conversion, chunking, extraction, and subset selection; the current slice compiles the KFP definition, while DSPA execution and S3-backed larger-corpus runs remain the next gate | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
+| Docling | Data-preparation layer for unstructured Dutch government publications; notebooks validate each processing step and the DSPA/KFP pipeline automates S3-backed Docling conversion plus chunk generation for the single PDF corpus | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
+| Red Hat OpenShift AI Pipelines | Repeatable automation for Docling conversion, chunking, artifact storage, task logs, metrics, and reviewed pipeline output before indexing larger corpora | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
 | Official RHOAI 3.4 product PDFs | Audience explainer corpus for querying the same documentation that describes Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling | [RHOAI 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
@@ -49,11 +49,12 @@ environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
 News acceptance sample. AG News is already structured text and should not be
 used to claim Docling validation. The first Dutch development smoke corpus is
 `stb-2022-14.pdf`, the Staatsblad publication for the Wet open overheid text
-placement, preprocessed into article-level chunks with metadata for repeatable
-development tests. Docling and KFP source now exist for the single-document
-preparation contract; DSPA execution, S3-backed input, and larger-corpus
-ingestion remain the next gate before expanding to a broader set of
-unstructured Dutch government publications.
+placement. The notebook path validates the preparation contract step by step;
+the DSPA/KFP path automates the same contract from S3 input through Docling
+conversion, reviewed artifacts, metrics, and S3 chunk output before those
+chunks are indexed into the RAG smoke path. A broader set of unstructured
+Dutch government publications must reuse that pipeline pattern rather than
+manual preprocessing.
 The workbench opens into a curated notebook workspace under
 `/opt/app-root/src/workspace`, following the article-linked AG News flow and
 the first Dutch smoke flow:
@@ -91,8 +92,8 @@ from `docs.redhat.com` only when run with `--force-download`. This lets the
 demo audience ask why the stage uses Llama Stack, pgvector, RAGAS, AutoRAG,
 EvalHub, guardrails, AI Pipelines, and Docling vocabulary from committed,
 reviewable source material. It is documentation grounding only; it does not
-mean Stage 230 implements AutoRAG optimization, EvalHub jobs, AI safety
-guardrails, or DSPA/KFP execution yet.
+mean Stage 230 implements AutoRAG optimization, EvalHub jobs, or AI safety
+guardrails.
 
 ## Architecture
 
@@ -113,7 +114,8 @@ flowchart LR
   nemotron["Nemotron"]
   nl_docs["Dutch government publications"]
   docling["Docling"]
-  kfp["AI Pipelines / KFP"]
+  kfp["DSPA / AI Pipelines / KFP"]
+  s3["Stage 230 S3 bucket"]
 
   user --> workbench
   workbench --> stack
@@ -127,9 +129,11 @@ flowchart LR
   stack --> reranker
   stack --> maas
   maas --> nemotron
-  nl_docs -. "next corpus" .-> docling
-  docling -. "compiled preparation pipeline" .-> kfp
-  kfp -. "future DSPA run output" .-> files
+  nl_docs --> s3
+  s3 --> kfp
+  kfp --> docling
+  docling --> s3
+  s3 --> files
 ```
 
 - New in this stage: metadata-aware RAG runtime, PostgreSQL-backed pgvector
@@ -174,6 +178,23 @@ python .stage230/scripts/dutch_publication_prepare.py \
 
 `--converter pypdf` is only the local/workbench validation path. The supported
 pipeline path uses Docling through the KFP component runtime.
+
+Run the automated DSPA/KFP pipeline from the repository after deployment:
+
+```bash
+./stage-230-private-data-rag/run-docling-pipeline.sh
+```
+
+The runner compiles the KFP definition, uploads a new pipeline version to the
+`dspa-enterprise-rag` pipeline server, creates a run in the
+`stage-230-private-data-rag` experiment, waits for completion, reviews the
+prepared JSONL artifact in S3, and stores run evidence in the
+`stage230-docling-pipeline-evidence` ConfigMap. The full validation gate also
+indexes that pipeline output through the Dutch RAG smoke path:
+
+```bash
+RHOAI_STAGE230_RUN_DSPA_PIPELINE=true ./stage-230-private-data-rag/validate.sh
+```
 
 The RHOAI product-document explainer flow reads the staged official PDFs,
 creates focused chunks, and validates three default questions:

@@ -25,6 +25,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "14"
     openshift.io/display-name: enterprise-rag-workbench
 spec:
+  storageClassName: gp3-csi
   accessModes:
     - ReadWriteOnce
   resources:
@@ -50,7 +51,7 @@ metadata:
     notebooks.opendatahub.io/inject-auth: "true"
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:3.4
     notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
-    opendatahub.io/connections: enterprise-rag-s3
+    opendatahub.io/connections: enterprise-rag/enterprise-rag-s3
     opendatahub.io/hardware-profile-name: cpu-default
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"

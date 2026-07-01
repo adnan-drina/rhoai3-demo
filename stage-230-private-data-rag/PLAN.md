@@ -39,6 +39,9 @@
     Docling-standard KFP source for the single-document smoke corpus
   - workbench notebook for compiling the Docling preparation pipeline and
     validating prepared chunks before indexing
+  - GitOps-managed DSPA pipeline server backed by the Stage 230 NooBaa bucket
+  - KFP runner that imports a pipeline version, starts a run, waits for
+    completion, reviews task output in S3, and records run evidence
   - RHOAI 3.4 product-document explainer corpus with repo-stored source PDFs,
     deterministic prepared chunks, preparation helper, RAG smoke helper, and
     workbench notebook for official-doc-grounded demo audience Q&A
@@ -52,8 +55,6 @@
   - Docling document processing for AG News text rows
   - full Dutch publication corpus processing before the initial single-PDF
     smoke path is validated
-  - DSPA execution and larger-corpus indexing before the single-document
-    data-preparation contract and S3 source staging work
   - guardrails and MCP
   - implementing the product capabilities described by the RHOAI
     product-document explainer corpus beyond the Stage 230 RAG runtime itself
@@ -90,10 +91,10 @@ is measured by:
 Dutch government publication quality metrics, RAGAS, citation scoring, and
 evaluation dashboards are deferred until the reference pattern works. For the
 current single-document Dutch smoke path, the quality gate is that the
-metadata contract, prepared chunks, KFP compilation, filtered hybrid search,
-reranking, and final Dutch answer all pass. DSPA run evidence becomes required
-before the corpus shifts from one public PDF to a larger unstructured
-publication set.
+metadata contract, notebook preparation checks, DSPA/KFP Docling run, reviewed
+pipeline artifacts, filtered hybrid search, reranking, and final Dutch answer
+all pass. DSPA run evidence is required before Stage 230 is accepted; a larger
+Dutch publication corpus remains the scale-out follow-up.
 
 The RHOAI 3.4 product-document corpus is the main audience explainer dataset.
 It validates that the same RAG runtime can ground answers in official Red Hat
@@ -122,7 +123,7 @@ Stage 230 implementation scope.
 | Deployment style | Re-author reference Helm resources into Kustomize/GitOps | This repo uses Argo CD and local curation, not direct Helm installs |
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` instead of requiring `%pip` cells | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
 | Ingestion interface | Notebook plus deterministic validation job/script | Keeps the Red Hat demo feel while allowing repeatable redeploy validation |
-| Data preparation automation | Add a Docling-standard preparation helper and compile-ready KFP source for the single-PDF smoke corpus; add DSPA/S3 execution before indexing the larger Dutch corpus | RHOAI 3.4 documents Docling for unstructured data and KFP for automating multi-step Docling processing |
+| Data preparation automation | Validate each processing step in the workbench, then run the same contract through DSPA/KFP with S3 input and output before indexing | RHOAI 3.4 documents Docling for unstructured data and KFP for automating multi-step Docling processing |
 | Old implementation | Remove active whoami/Docling/DSPA/chatbot resources during implementation | Avoids mixed architectures and stale claims |
 
 ## Source Capture
@@ -192,9 +193,11 @@ RAG runtime. The Dutch government publication phase should adopt Docling and
 KFP from this source instead of resurrecting the old whoami pipeline design.
 The default branch for implementation is `stable`; the `main/kubeflow-pipelines`
 tree is a useful newer reference and must be recorded explicitly if selected.
-The current implementation adapts the `docling-standard` shape into a
-single-document KFP source under `stage-230-private-data-rag/kfp/`, compiles it
-locally and from the workbench, and keeps DSPA execution for the next gate.
+The current implementation adapts the `docling-standard` shape into a modular
+single-document KFP source under `stage-230-private-data-rag/kfp/`. The
+notebook path validates the steps interactively; the DSPA path reads the same
+PDF from the Stage 230 S3 bucket, converts it with Docling, writes reviewed
+chunk JSONL back to S3, and feeds that output into the RAG smoke path.
 
 Docling KFP adoption rules:
 
@@ -238,6 +241,8 @@ Docling KFP adoption rules:
 - Shared resources touched:
   - Llama Stack Operator enablement belongs to the shared RHOAI DSC owner if
     not already enabled
+  - AI Pipelines enablement belongs to the shared RHOAI DSC owner and is
+    enabled by the Stage 230 DSC patch job
   - Nemotron model access belongs to Stage 220 MaaS resources
 - Secret handling:
   - PostgreSQL password, MaaS token, and S3/OBC credentials must be generated
@@ -259,19 +264,16 @@ Planned first implementation inventory:
 | `gitops/stage-230-private-data-rag/workbench/` | Project workbench `Notebook`, ServiceAccount, and PVC | RHOAI project workbench and Notebook CR docs | Workbench resource exists, pod starts, and the visible workspace contains the AG News notebooks, Dutch smoke notebook, and hidden generated helper content |
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/dutch-government/` | Source `stb-2022-14.pdf`, article-level JSONL chunks, and smoke-test questions | User-provided official Dutch government publication, locally extracted for deterministic development smoke tests | Metadata fields present, JSON parses, Files API upload succeeds, filtered hybrid search and answer generation pass |
-| `gitops/stage-230-private-data-rag/project/base/obc-enterprise-rag.yaml` | Project-scoped NooBaa `ObjectBucketClaim` for Stage 230 source documents and future pipeline artifacts | ODF object bucket claim pattern and RHOAI S3-compatible object storage docs | OBC reaches `Bound`; deploy script creates dashboard and pipeline S3 Secrets from generated credentials |
+| `gitops/stage-230-private-data-rag/project/base/obc-enterprise-rag.yaml` | Project-scoped NooBaa `ObjectBucketClaim` for Stage 230 source documents, pipeline artifacts, and Docling output | ODF object bucket claim pattern and RHOAI S3-compatible object storage docs | OBC reaches `Bound`; deterministic bucket name is `enterprise-rag`; deploy script creates dashboard and pipeline S3 Secrets from generated credentials |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, and deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy script uploads PDFs to the project bucket |
 | `stage-230-private-data-rag/scripts/` | AG News smoke and acceptance helpers | RHOAI Llama Stack APIs and Red Hat article-linked notebook pattern | Python compile now; full ingestion/search/rerank/answer run after runtime is deployed |
 | `stage-230-private-data-rag/scripts/dutch_publication_rag_smoke.py` | Dutch publication smoke helper | RHOAI Llama Stack APIs, Stage 230 RAG runtime pattern, and user-provided `stb-2022-14.pdf` | Python compile now; optional workbench smoke run with `RHOAI_STAGE230_RUN_DUTCH_SMOKE=true` |
 | `stage-230-private-data-rag/scripts/dutch_publication_prepare.py` | Dutch publication preparation helper with Docling runtime path and pypdf local validation path | RHOAI data-preparation chapter and `opendatahub-io/data-processing` `docling-standard` pattern | Python compile, local pypdf contract validation, and workbench prepared-chunk smoke with `RHOAI_STAGE230_RUN_DOCLING_PREP=true` |
 | `stage-230-private-data-rag/scripts/rhoai_product_docs_*.py` | Repo-staged PDF preparation, focused product-doc chunking, vector-store ingest, filtered hybrid retrieval, reranking, and final answer smoke helper | Official RHOAI 3.4 PDFs and the active Stage 230 Llama Stack RAG path | Python compile, local PDF preparation, and optional workbench smoke run with `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true` |
-| `stage-230-private-data-rag/kfp/` | Compile-ready KFP v2 Docling-standard preparation source for `stb-2022-14.pdf` | RHOAI AI Pipelines docs, RHOAI data-preparation chapter, and reviewed `opendatahub-io/data-processing` stable branch | Local KFP compile, workbench compile, branch choice recorded, and image posture documented |
-
-Deferred implementation inventory:
-
-| Path | Kind | Source authority | Validation |
-|------|------|------------------|------------|
-| `gitops/stage-230-private-data-rag/pipelines/` | Later DSPA, S3 Secret contract, Pipeline/PipelineVersion import, and run automation | RHOAI AI Pipelines docs, RHOAI data-preparation chapter, and `opendatahub-io/data-processing` examples | Pipeline server readiness, imported pipeline/version, successful run, task logs, metrics, and artifact review |
+| `gitops/stage-230-private-data-rag/rhoai-dsc/` | Shared DSC patch job enabling `aipipelines` and Argo Workflows controllers | RHOAI DSC component configuration and AI Pipelines docs | `default-dsc.spec.components.aipipelines.managementState=Managed` |
+| `gitops/stage-230-private-data-rag/pipelines/` | DSPA pipeline server backed by the deterministic Stage 230 NooBaa bucket and Kubernetes API pipeline store | RHOAI AI Pipelines docs | DSPA Ready, route exists, object storage condition passes, pipeline definitions appear after runner import |
+| `stage-230-private-data-rag/kfp/` | Modular KFP v2 Docling-standard pipeline for `stb-2022-14.pdf`: S3 fetch, Docling conversion, chunk generation, S3 output | RHOAI AI Pipelines docs, RHOAI data-preparation chapter, and reviewed `opendatahub-io/data-processing` stable branch | Local KFP compile, workbench compile, branch choice recorded, image posture documented, DSPA run succeeds, metrics/logs/artifacts reviewed |
+| `stage-230-private-data-rag/run-docling-pipeline.sh` | KFP lifecycle runner | RHOAI AI Pipelines docs and repo KFP runner standards | Uploads pipeline/version, creates experiment/run, waits for completion, reviews S3 output, records evidence ConfigMap |
 
 ## Script Plan
 
@@ -297,6 +299,9 @@ Deferred implementation inventory:
 - Confirm environment-local Secrets exist.
 - Confirm the Stage 230 OBC is bound.
 - Confirm the dashboard S3 connection and pipeline S3 Secrets exist.
+- Confirm the shared DSC has AI Pipelines enabled.
+- Confirm the `dspa-enterprise-rag` pipeline server exists, reports ready, and
+  exposes a route.
 - Confirm repo-stored RHOAI product source PDFs and prepared chunks exist.
 - Confirm PostgreSQL availability and `pgvector` extension installation.
 - Confirm Llama Stack readiness and model list.
@@ -311,8 +316,8 @@ Deferred implementation inventory:
 - Confirm the Dutch publication smoke helper compiles.
 - Confirm the Dutch publication preparation helper and KFP source compile.
 - Confirm the RHOAI product-document preparation and smoke helpers compile.
-- Confirm the Docling-standard KFP pipeline compiles locally when `kfp` is
-  available.
+- Confirm the Docling-standard KFP pipeline compiles locally when `kfp` and
+  `kfp-kubernetes` are available.
 - Keep storage consumers in the same Argo CD sync wave as PVCs when the
   cluster storage class uses `WaitForFirstConsumer`.
 - Expose Llama Stack through a GitOps-managed OpenShift Route to the
@@ -336,13 +341,19 @@ Deferred implementation inventory:
   RAG Workbench when `RHOAI_STAGE230_RUN_DOCLING_PREP=true`: compile the KFP
   source, prepare article-level chunks with the local validation converter,
   and index those prepared chunks through the same RAG smoke helper.
+- The automated Docling DSPA/KFP path is run with
+  `RHOAI_STAGE230_RUN_DSPA_PIPELINE=true`: compile the modular KFP source,
+  upload a pipeline version to `dspa-enterprise-rag`, run the pipeline against
+  `raw/dutch-government/stb-2022-14.pdf`, review the produced JSONL artifact
+  under `processed/dutch-government/`, and index that pipeline output through
+  the Dutch RAG smoke path.
 - The RHOAI product-document explainer smoke is run from the Enterprise RAG
   Workbench when `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`: read staged
   official PDFs, prepare focused chunks, create the
   `stage230-rhoai-34-product-docs` vector store, and answer selected audience
   questions from retrieved context.
-- Before indexing a larger corpus, validate actual Docling conversion output,
-  chunk quality, extracted metadata, DSPA/KFP run status, S3 Secret contract,
+- Before indexing a larger corpus, repeat the same DSPA/KFP evidence review at
+  corpus scale: Docling conversion output, chunk quality, extracted metadata,
   task logs, metrics, and artifact output.
 
 ## Operations And Troubleshooting
@@ -362,10 +373,10 @@ Deferred implementation inventory:
 | Nemotron tool calling for metadata extraction | finding | Tool-call requests returned HTTP 500 in the current MaaS/Llama Stack path; use structured JSON chat completion for metadata extraction until a supported tool-call path is verified |
 | Hugging Face dataset egress | risk | Include a small deterministic AG News sample for validation; make full dataset download optional |
 | Embedding provider mismatch | risk | List active Llama Stack models and capture embedding dimension before vector store creation |
-| Dutch publication ingestion | in progress | Single-document smoke corpus added from `stb-2022-14.pdf`; metadata, preparation helper, KFP source, and workbench notebook added for the preparation contract; larger corpus ingestion requires DSPA/S3 execution before indexing |
+| Dutch publication ingestion | in progress | Single-document smoke corpus added from `stb-2022-14.pdf`; metadata, preparation helper, KFP source, DSPA server, and runner added for the preparation contract; acceptance requires the DSPA/KFP gate to pass before indexing a larger corpus |
 | RHOAI product-document ingestion | in progress | Focused official RHOAI 3.4 PDF corpus added for demo-audience Q&A; source PDFs and deterministic prepared chunks are committed stage data and mirrored to the project S3 bucket during deployment |
 | RAGAS / evaluation | deferred | Keep for a later evaluation-focused stage |
-| Docling/KFP data preparation | in progress | Compile-ready `docling-standard` KFP source and local/workbench preparation validation are added for the single PDF. Next: execute through DSPA with S3-backed input and review artifacts before larger-corpus indexing |
+| Docling/KFP data preparation | in progress | Modular `docling-standard` KFP source, DSPA server, S3-backed input/output, runner automation, artifact review, and evidence ConfigMap are implemented. Next: run the live gate and fix any DSPA/task-level findings. |
 | Guardrails and MCP | deferred | Keep for later safety and agentic stages |
 
 ## Review Needed

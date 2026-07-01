@@ -9,7 +9,9 @@ labels:
 
 resources:
   - project/base
+  - rhoai-dsc/base
   - postgresql/base
+  - pipelines/base
   - reranker/base
   - llamastack/base
   - workbench/base

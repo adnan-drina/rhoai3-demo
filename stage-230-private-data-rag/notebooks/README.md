@@ -34,7 +34,8 @@ python .stage230/scripts/dutch_publication_rag_smoke.py \
   --search-mode hybrid
 ```
 
-Compile and validate the first Dutch publication data-preparation contract:
+Validate the Dutch publication data-preparation steps in the notebook or from
+a workbench terminal:
 
 ```bash
 cd /opt/app-root/src/workspace
@@ -45,8 +46,13 @@ python .stage230/scripts/dutch_publication_prepare.py \
 ```
 
 The `pypdf` converter is a local/workbench validation helper for the current
-single-PDF smoke document. The KFP source is prepared for Docling-standard
-execution in the component runtime before larger-corpus indexing.
+single-PDF smoke document. The supported automation path runs the same
+contract with Docling through DSPA/KFP from the repository:
+
+```bash
+./stage-230-private-data-rag/run-docling-pipeline.sh
+RHOAI_STAGE230_RUN_DSPA_PIPELINE=true ./stage-230-private-data-rag/validate.sh
+```
 
 Prepare and query the focused RHOAI 3.4 product-document explainer corpus:
 
@@ -64,26 +70,12 @@ python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
   --search-mode hybrid
 ```
 
-The RHOAI product-document flow downloads official Red Hat PDFs at runtime and
-indexes focused chunks about Llama Stack RAG, AutoRAG, RAGAS, EvalHub,
-guardrails, AI Pipelines, and Docling. If a runtime blocks programmatic PDF GET
-requests, the helper falls back to the matching official `html-single` guide.
-It is an audience explainer corpus, not a claim that every referenced product
-capability is implemented in Stage 230.
-
-If the OpenShift pod cannot fetch `docs.redhat.com` because the Red Hat edge
-blocks programmatic GET requests from the demo environment, prepare the JSONL
-on your workstation and stage it into the workbench before running the smoke
-helper:
-
-```bash
-python stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py \
-  --source-dir /tmp/rhoai-product-docs-source \
-  --output /tmp/rhoai-product-docs-chunks.jsonl
-oc cp /tmp/rhoai-product-docs-chunks.jsonl \
-  enterprise-rag/enterprise-rag-workbench-0:/opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-  -c enterprise-rag-workbench
-```
+The RHOAI product-document flow reads official Red Hat PDFs committed under
+the stage data folder and mirrored to the Stage 230 S3 bucket during
+deployment. It indexes focused chunks about Llama Stack RAG, AutoRAG, RAGAS,
+EvalHub, guardrails, AI Pipelines, and Docling. It is an audience explainer
+corpus, not a claim that every referenced product capability is implemented in
+Stage 230.
 
 The notebook flow validates AG News ingestion, LLM-driven metadata extraction,
 filtered retrieval, Qwen3 reranking, and final Nemotron answer generation. The
