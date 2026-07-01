@@ -42,8 +42,6 @@ Thumbs.db
 /tmp/
 /.tmp/
 /output/
-/stage-230-private-data-rag/data/rhoai-product-docs/source/
-/stage-230-private-data-rag/data/rhoai-product-docs/processed/
 
 # Backup-local residual files preserved outside version control
 /backup/**/local-untracked/

@@ -4,8 +4,9 @@
 The supported product-document path is the same Stage 230 RAG ingestion path:
 official source capture, PDF conversion, metadata-rich chunks, Files API upload,
 Vector Stores API attachment, hybrid retrieval, reranking, and MaaS-backed
-Nemotron answers. This helper prepares the chunks. It downloads the PDFs from
-docs.redhat.com when they are not already present.
+Nemotron answers. This helper prepares chunks from the repo-stored product
+PDFs. Use --force-download only when intentionally refreshing the active
+baseline from docs.redhat.com.
 """
 
 from __future__ import annotations
@@ -91,8 +92,16 @@ def download_html(url: str, destination: Path, force: bool) -> None:
 
 def download_source(document: dict[str, Any], source_dir: Path, force: bool) -> tuple[Path, str, str]:
     pdf_path = source_dir / document["source_file"]
+    if is_pdf(pdf_path) and not force:
+        return pdf_path, "pdf", document["source_url"]
+    if not force:
+        raise FileNotFoundError(
+            f"missing staged product PDF: {pdf_path}. "
+            "Restore the repo-stored source file or run with --force-download "
+            "when intentionally refreshing the corpus."
+        )
     try:
-        download_pdf(document["source_url"], pdf_path, force)
+        download_pdf(document["source_url"], pdf_path, force=True)
         return pdf_path, "pdf", document["source_url"]
     except Exception as exc:  # noqa: BLE001 - fallback keeps official Red Hat content usable.
         html_url = document.get("html_single_url")
@@ -243,7 +252,11 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--max-chars", type=int, default=4500)
     parser.add_argument("--include-all", action="store_true", help="Keep non-focused chunks too.")
-    parser.add_argument("--force-download", action="store_true")
+    parser.add_argument(
+        "--force-download",
+        action="store_true",
+        help="Refresh staged source PDFs from docs.redhat.com before preparing chunks.",
+    )
     args = parser.parse_args()
 
     manifest = load_manifest(args.manifest)

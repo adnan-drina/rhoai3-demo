@@ -6,3 +6,4 @@ resources:
   - localqueue-cpu-default.yaml
   - rolebinding-developer-edit.yaml
   - rolebinding-admins-admin.yaml
+  - obc-enterprise-rag.yaml

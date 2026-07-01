@@ -82,11 +82,16 @@ Use this checklist before accepting Stage 230 RAG changes.
   smoke query that proves filtered hybrid retrieval and answer generation from
   the prepared output.
 - Official product-document explainer corpora use active-baseline Red Hat PDF
-  guide URLs in a manifest, download PDFs at runtime when possible, fall back
-  only to matching official `html-single` guides when PDF GET is blocked, keep
-  generated PDFs or HTML and processed chunks out of Git, and attach source URL, guide title,
-  documentation category, product version, page, topic, tenant, and version
-  metadata to every chunk.
+  guide URLs in a manifest, store the selected PDFs under the stage data
+  folder, store deterministic prepared chunks under the stage data folder, and
+  attach source URL, guide title, documentation category, product version,
+  page, topic, tenant, and version metadata to every chunk.
+- Product-document source refreshes use `--force-download` only when the
+  product baseline or source manifest intentionally changes; review the
+  resulting source PDF and prepared chunk diffs before committing.
+- Stage deployment mirrors repo-stored source PDFs into a project-scoped S3
+  bucket under `raw/rhoai-product-docs/` and creates both dashboard/workbench
+  and pipeline S3 Secrets from OBC-generated credentials.
 - Product-document explainer corpora must not imply that adjacent capabilities
   such as AutoRAG, EvalHub, guardrails, AI Pipelines, or RAGAS evaluation have
   been implemented unless their own stage manifests and validation exist.

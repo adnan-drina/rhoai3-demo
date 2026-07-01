@@ -1,0 +1,15 @@
+# Project-scoped S3 bucket for Stage 230 private RAG source documents and
+# pipeline artifacts. NooBaa generates a Secret and ConfigMap named
+# enterprise-rag-bucket in this namespace at runtime; deploy.sh reads those
+# generated credentials to create dashboard and pipeline secrets and to upload
+# repo-owned source PDFs. Generated credentials are never committed.
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: enterprise-rag-bucket
+  namespace: enterprise-rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  generateBucketName: enterprise-rag
+  storageClassName: openshift-storage.noobaa.io

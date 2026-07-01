@@ -958,10 +958,10 @@ implementation. The current first slice:
   `opendatahub-io/data-processing` stable branch.
 - adds a focused official RHOAI 3.4 product-document explainer corpus for
   demo-audience Q&A about Llama Stack RAG, AutoRAG, RAGAS, EvalHub,
-  guardrails, AI Pipelines, and Docling. The PDFs are downloaded from
-  `docs.redhat.com` at runtime and are not committed to Git. If a runtime
-  blocks programmatic PDF GET requests, the helper falls back to the matching
-  official `html-single` guide.
+  guardrails, AI Pipelines, and Docling. The selected official PDFs and
+  deterministic prepared chunks are committed under
+  `stage-230-private-data-rag/data/rhoai-product-docs/` so fresh demo
+  environments use the same reviewed corpus.
 
 The validation gate is to ingest the deterministic AG News sample through
 Files and Vector Stores APIs, validate metadata-filtered hybrid retrieval,
@@ -979,7 +979,11 @@ Current status:
 - `stage-230-private-data-rag/PLAN.md` is the authoritative Stage 230 design
   document.
 - `stage-230-private-data-rag/deploy.sh` applies the Argo CD Application,
-  waits for the namespace, and creates non-committed runtime Secrets.
+  waits for the namespace and Stage 230 ObjectBucketClaim, creates
+  non-committed runtime Secrets, creates the `enterprise-rag-s3` dashboard
+  connection and `data-processing-docling-pipeline` S3 Secret from
+  OBC-generated credentials, and uploads repo-stored source PDFs to the
+  project bucket from an in-cluster Job.
 - `stage-230-private-data-rag/validate.sh` checks the Stage 230 Application,
   runtime resources, Llama Stack readiness, model listing, Qwen3 reranker
   readiness, workbench resources, helper syntax, and KFP compilation when the
@@ -1005,8 +1009,9 @@ Current status:
   compiles the first Docling-standard KFP source for the single PDF. DSPA
   execution and S3-backed larger-corpus processing are still the next gate.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py`
-  downloads selected official RHOAI 3.4 PDFs and prepares focused product-doc
-  chunks with source metadata.
+  prepares focused product-doc chunks with source metadata from the selected
+  official RHOAI 3.4 PDFs stored in the stage folder. Use `--force-download`
+  only when intentionally refreshing the corpus from `docs.redhat.com`.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_rag_smoke.py` indexes
   those chunks into the `stage230-rhoai-34-product-docs` vector store and
   validates metadata-filtered hybrid retrieval, reranking, and a final
@@ -1021,7 +1026,12 @@ Current status:
 - load `.env` and enforce the OpenShift safety guard
 - apply the Stage 230 Argo CD Application first
 - create non-committed runtime Secrets for PostgreSQL, MaaS access, and
-  optional dataset access
+  project-scoped S3 access
+- create the `enterprise-rag-s3` dashboard S3 connection Secret and
+  `data-processing-docling-pipeline` Secret from OBC-generated credentials
+- upload repo-stored source PDFs to the project bucket under
+  `raw/rhoai-product-docs/` and `raw/dutch-government/` using an in-cluster
+  Job that clones the same Git branch as Argo CD
 - refresh the Application after Secret creation
 - leave ingestion to validation or an explicit user-triggered smoke run
 - run Docling/KFP compilation and local prepared-chunk validation only when
@@ -1039,6 +1049,12 @@ gate:
 - the Enterprise RAG Workbench exposes the curated AG News and Dutch smoke
   notebook workspace, the RHOAI product-doc explainer notebook, and
   does not expose the full `rhoai3-demo` repository checkout
+- the Stage 230 ObjectBucketClaim is `Bound`
+- the `enterprise-rag-s3` dashboard S3 connection and
+  `data-processing-docling-pipeline` Secret exist
+- the repo contains the selected RHOAI product source PDFs and deterministic
+  prepared chunks
+- the Enterprise RAG Workbench receives the S3 connection environment
 - the `enterprise-rag` namespace is Kueue-managed and has the
   `lq-cpu-default` LocalQueue
 - the AG News smoke and acceptance helpers compile
@@ -1059,8 +1075,8 @@ The next validation expansion should prove the user-visible RAG outcome:
 - the single-document data-preparation contract can compile the KFP source,
   generate prepared article chunks, and index those chunks through the same
   RAG smoke path when `RHOAI_STAGE230_RUN_DOCLING_PREP=true`
-- the RHOAI product-document explainer corpus can be downloaded, prepared, and
-  indexed through the same RAG path when
+- the RHOAI product-document explainer corpus can be prepared from the
+  repo-stored PDFs and indexed through the same RAG path when
   `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`
 - later, actual Docling output, DSPA/KFP run status, task logs, metrics, and
   processed artifacts are validated before larger Dutch publication content is
@@ -1099,7 +1115,7 @@ The `pypdf` converter validates article detection and metadata for the current
 PDF in the workbench image. The supported larger-corpus path must run the
 Docling KFP component and review produced artifacts before indexing.
 
-Run the official RHOAI product-document explainer corpus:
+Run the official RHOAI product-document explainer corpus from the staged PDFs:
 
 ```bash
 cd /opt/app-root/src/workspace
@@ -1119,18 +1135,17 @@ This flow is useful for explaining the setup to a demo audience from official
 RHOAI 3.4 docs. It does not replace implementation validation for AutoRAG,
 EvalHub, guardrails, AI Pipelines, or later Docling/DSPA work.
 
-If `docs.redhat.com` blocks programmatic GET requests from the OpenShift pod,
-prepare the JSONL locally from the official PDFs and ask `validate.sh` to copy
-the prepared sample into the workbench before indexing:
+To intentionally refresh the committed prepared JSONL from the official PDFs,
+run the preparation helper locally and review the diff before committing:
 
 ```bash
 python stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py \
-  --source-dir /tmp/rhoai-product-docs-source \
-  --output /tmp/rhoai-product-docs-chunks.jsonl
-RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
-RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE=/tmp/rhoai-product-docs-chunks.jsonl \
-./stage-230-private-data-rag/validate.sh
+  --source-dir stage-230-private-data-rag/data/rhoai-product-docs/source \
+  --output stage-230-private-data-rag/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl
 ```
+
+Use `--force-download` only when the active product baseline changes or the
+source manifest is intentionally updated.
 
 The command must fail if metadata extraction, hybrid metadata filtering,
 reranking, or final grounded answer generation is broken. Use `--reset` after

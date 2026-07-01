@@ -50,7 +50,7 @@ metadata:
     notebooks.opendatahub.io/inject-auth: "true"
     notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:3.4
     notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
-    opendatahub.io/connections: ""
+    opendatahub.io/connections: enterprise-rag-s3
     opendatahub.io/hardware-profile-name: cpu-default
     opendatahub.io/hardware-profile-namespace: redhat-ods-applications
     opendatahub.io/image-display-name: "Jupyter | Data Science | CPU | Python 3.12"
@@ -171,6 +171,66 @@ spec:
               value: nemotron-3-nano-30b-a3b
             - name: RHOAI_STAGE230_RERANKER_MODEL
               value: vllm-reranker/qwen3-reranker
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: AWS_S3_ENDPOINT
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: AWS_S3_BUCKET
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: AWS_DEFAULT_REGION
+            - name: S3_ENDPOINT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: S3_ENDPOINT_URL
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: S3_SECRET_KEY
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: S3_BUCKET
+            - name: S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: S3_PREFIX
+            - name: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
+            - name: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-rag-s3
+                  key: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
             - name: PIP_CERT
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: REQUESTS_CA_BUNDLE

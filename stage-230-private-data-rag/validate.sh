@@ -28,6 +28,10 @@ if [[ "$ACTUAL_SERVER" != *"$RHOAI_EXPECTED_API_SERVER"* ]]; then
 fi
 
 RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
+RAG_BUCKET_OBC="${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-bucket}"
+RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
+PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
+RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
@@ -114,6 +118,53 @@ for secret in "$POSTGRES_SECRET" "$LLAMA_SECRET"; do
   resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
 done
 
+obc_phase=$(jsonpath "obc/${RAG_BUCKET_OBC}" "$RAG_NS" "{.status.phase}")
+[[ "$obc_phase" == "Bound" ]] \
+  && check "Enterprise RAG ObjectBucketClaim is Bound" "pass" \
+  || check "Enterprise RAG ObjectBucketClaim is Bound" "${obc_phase:-missing}"
+resource_exists "secret/${RAG_BUCKET_OBC}" "$RAG_NS" \
+  && check "Enterprise RAG OBC credential Secret exists" "pass" \
+  || check "Enterprise RAG OBC credential Secret exists" "missing"
+resource_exists "configmap/${RAG_BUCKET_OBC}" "$RAG_NS" \
+  && check "Enterprise RAG OBC ConfigMap exists" "pass" \
+  || check "Enterprise RAG OBC ConfigMap exists" "missing"
+resource_exists "secret/${RAG_S3_CONNECTION_SECRET}" "$RAG_NS" \
+  && check "Enterprise RAG dashboard S3 connection Secret exists" "pass" \
+  || check "Enterprise RAG dashboard S3 connection Secret exists" "missing"
+resource_exists "secret/${PIPELINE_S3_SECRET}" "$RAG_NS" \
+  && check "Enterprise RAG pipeline S3 Secret exists" "pass" \
+  || check "Enterprise RAG pipeline S3 Secret exists" "missing"
+
+s3_connection_type=$(jsonpath "secret/${RAG_S3_CONNECTION_SECRET}" "$RAG_NS" "{.metadata.annotations.opendatahub\\.io/connection-type-ref}")
+[[ "$s3_connection_type" == "s3" ]] \
+  && check "Enterprise RAG S3 connection uses the dashboard S3 connection type" "pass" \
+  || check "Enterprise RAG S3 connection uses the dashboard S3 connection type" "${s3_connection_type:-missing}"
+
+pipeline_s3_prefix=$(jsonpath "secret/${PIPELINE_S3_SECRET}" "$RAG_NS" "{.data.S3_PREFIX}" | base64 --decode 2>/dev/null || true)
+[[ "$pipeline_s3_prefix" == "$RAG_PRODUCT_DOCS_PREFIX" ]] \
+  && check "Enterprise RAG pipeline S3 prefix targets RHOAI product docs" "pass" \
+  || check "Enterprise RAG pipeline S3 prefix targets RHOAI product docs" "${pipeline_s3_prefix:-missing}"
+
+rhoai_pdf_dir="$SCRIPT_DIR/data/rhoai-product-docs/source"
+if [[ -d "$rhoai_pdf_dir" ]]; then
+  rhoai_pdf_count=$(find "$rhoai_pdf_dir" -maxdepth 1 -type f -name '*.pdf' | wc -l | tr -d ' ')
+else
+  rhoai_pdf_count=0
+fi
+[[ "$rhoai_pdf_count" -ge 6 ]] \
+  && check "Repo stores RHOAI product documentation source PDFs" "pass" \
+  || check "Repo stores RHOAI product documentation source PDFs" "found=${rhoai_pdf_count}"
+
+rhoai_chunks_file="$SCRIPT_DIR/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl"
+if [[ -s "$rhoai_chunks_file" ]]; then
+  rhoai_chunk_count=$(wc -l < "$rhoai_chunks_file" | tr -d ' ')
+else
+  rhoai_chunk_count=0
+fi
+[[ "$rhoai_chunk_count" -ge 1 ]] \
+  && check "Repo stores prepared RHOAI product documentation chunks" "pass" \
+  || check "Repo stores prepared RHOAI product documentation chunks" "${rhoai_chunk_count:-missing}"
+
 vllm_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
 [[ "$vllm_url" == */v1 ]] && check "Llama Stack MaaS base URL ends with /v1" "pass" || check "Llama Stack MaaS base URL ends with /v1" "${vllm_url:-missing}"
 
@@ -173,6 +224,11 @@ workbench_auth=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.ann
 [[ "$workbench_auth" == "true" ]] \
   && check "Enterprise RAG Workbench uses RHOAI inject-auth" "pass" \
   || check "Enterprise RAG Workbench uses RHOAI inject-auth" "${workbench_auth:-missing}"
+
+workbench_connection=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.opendatahub\\.io/connections}")
+[[ "$workbench_connection" == *"$RAG_S3_CONNECTION_SECRET"* ]] \
+  && check "Enterprise RAG Workbench references the S3 connection" "pass" \
+  || check "Enterprise RAG Workbench references the S3 connection" "${workbench_connection:-missing}"
 
 workbench_oauth=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.notebooks\\.opendatahub\\.io/inject-oauth}")
 [[ -z "$workbench_oauth" ]] \
@@ -238,6 +294,8 @@ if [[ -n "$workbench_pod" ]]; then
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-chunks.jsonl &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-questions.json &&
      test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json &&
+     test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/source/Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf &&
+     test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl &&
      test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
@@ -252,6 +310,24 @@ PY' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench can import llama-stack-client" "pass"
   else
     check "Enterprise RAG Workbench can import llama-stack-client" "missing from active notebook Python environment"
+  fi
+  if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+    'python - <<'"'"'PY'"'"'
+import os
+required = [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_S3_ENDPOINT",
+    "AWS_S3_BUCKET",
+    "RHOAI_STAGE230_PRODUCT_DOCS_PREFIX",
+]
+missing = [name for name in required if not os.environ.get(name)]
+if missing:
+    raise SystemExit(f"missing S3 environment variables: {missing}")
+PY' >/dev/null 2>&1; then
+    check "Enterprise RAG Workbench exposes S3 connection environment" "pass"
+  else
+    check "Enterprise RAG Workbench exposes S3 connection environment" "missing required S3 environment variables"
   fi
 else
   check "Enterprise RAG Workbench pod exists" "missing"

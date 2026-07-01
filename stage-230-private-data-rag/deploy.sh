@@ -42,6 +42,12 @@ require_cmd python3
 GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/adnan-drina/rhoai3-demo.git}"
 GIT_REPO_BRANCH="${GIT_REPO_BRANCH:-main}"
 RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
+RAG_BUCKET_OBC="${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-bucket}"
+RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
+PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
+SOURCE_UPLOAD_JOB="${RHOAI_STAGE230_SOURCE_UPLOAD_JOB:-stage230-source-upload}"
+RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
+RAG_DUTCH_DOCS_PREFIX="${RHOAI_STAGE230_DUTCH_DOCS_PREFIX:-raw/dutch-government}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
 POSTGRES_DB="${RHOAI_STAGE230_POSTGRES_DATABASE:-llamastack}"
@@ -89,12 +95,272 @@ wait_for_namespace() {
   exit 1
 }
 
+wait_for_object_bucket() {
+  echo "   Waiting for ObjectBucketClaim ${RAG_BUCKET_OBC} to bind …"
+  local phase
+  for _ in $(seq 1 60); do
+    phase=$(oc get obc "$RAG_BUCKET_OBC" -n "$RAG_NS" -o jsonpath='{.status.phase}' \
+      --insecure-skip-tls-verify=true 2>/dev/null || true)
+    [[ "$phase" == "Bound" ]] && return 0
+    sleep 5
+  done
+  echo "ERROR: ObjectBucketClaim ${RAG_BUCKET_OBC} is not Bound (phase=${phase:-missing})." >&2
+  exit 1
+}
+
 jsonpath() {
   local resource="$1"
   local namespace="$2"
   local path="$3"
   oc get "$resource" -n "$namespace" -o jsonpath="$path" \
     --insecure-skip-tls-verify=true 2>/dev/null || true
+}
+
+ensure_object_storage() {
+  local akid sak bucket host port endpoint
+
+  wait_for_object_bucket
+
+  akid=$(oc get secret "$RAG_BUCKET_OBC" -n "$RAG_NS" \
+    -o go-template='{{.data.AWS_ACCESS_KEY_ID | base64decode}}' \
+    --insecure-skip-tls-verify=true)
+  sak=$(oc get secret "$RAG_BUCKET_OBC" -n "$RAG_NS" \
+    -o go-template='{{.data.AWS_SECRET_ACCESS_KEY | base64decode}}' \
+    --insecure-skip-tls-verify=true)
+  bucket=$(oc get configmap "$RAG_BUCKET_OBC" -n "$RAG_NS" \
+    -o jsonpath='{.data.BUCKET_NAME}' --insecure-skip-tls-verify=true)
+  host=$(oc get configmap "$RAG_BUCKET_OBC" -n "$RAG_NS" \
+    -o jsonpath='{.data.BUCKET_HOST}' --insecure-skip-tls-verify=true)
+  port=$(oc get configmap "$RAG_BUCKET_OBC" -n "$RAG_NS" \
+    -o jsonpath='{.data.BUCKET_PORT}' --insecure-skip-tls-verify=true)
+  endpoint="https://${host}:${port}"
+
+  oc apply -f - --insecure-skip-tls-verify=true <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${RAG_S3_CONNECTION_SECRET}
+  namespace: ${RAG_NS}
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/part-of: rag
+    demo.rhoai.io/stage: "230"
+  annotations:
+    opendatahub.io/connection-type-ref: s3
+    openshift.io/display-name: "enterprise-rag object storage"
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "${akid}"
+  AWS_SECRET_ACCESS_KEY: "${sak}"
+  AWS_S3_ENDPOINT: "${endpoint}"
+  AWS_S3_BUCKET: "${bucket}"
+  AWS_DEFAULT_REGION: "us-east-1"
+  S3_ENDPOINT_URL: "${endpoint}"
+  S3_ACCESS_KEY: "${akid}"
+  S3_SECRET_KEY: "${sak}"
+  S3_BUCKET: "${bucket}"
+  S3_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
+  RHOAI_STAGE230_PRODUCT_DOCS_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
+  RHOAI_STAGE230_DUTCH_DOCS_PREFIX: "${RAG_DUTCH_DOCS_PREFIX}"
+EOF
+
+  oc apply -f - --insecure-skip-tls-verify=true <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${PIPELINE_S3_SECRET}
+  namespace: ${RAG_NS}
+  labels:
+    app.kubernetes.io/part-of: rag
+    demo.rhoai.io/stage: "230"
+type: Opaque
+stringData:
+  S3_ENDPOINT_URL: "${endpoint}"
+  S3_ACCESS_KEY: "${akid}"
+  S3_SECRET_KEY: "${sak}"
+  S3_BUCKET: "${bucket}"
+  S3_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
+  AWS_ACCESS_KEY_ID: "${akid}"
+  AWS_SECRET_ACCESS_KEY: "${sak}"
+  AWS_S3_ENDPOINT: "${endpoint}"
+  AWS_S3_BUCKET: "${bucket}"
+  AWS_DEFAULT_REGION: "us-east-1"
+  RHOAI_STAGE230_PRODUCT_DOCS_PREFIX: "${RAG_PRODUCT_DOCS_PREFIX}"
+  RHOAI_STAGE230_DUTCH_DOCS_PREFIX: "${RAG_DUTCH_DOCS_PREFIX}"
+EOF
+
+  oc delete job "$SOURCE_UPLOAD_JOB" -n "$RAG_NS" --ignore-not-found \
+    --insecure-skip-tls-verify=true >/dev/null
+  for _ in $(seq 1 30); do
+    if ! oc get job "$SOURCE_UPLOAD_JOB" -n "$RAG_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      break
+    fi
+    sleep 2
+  done
+
+  oc apply -f - --insecure-skip-tls-verify=true <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${SOURCE_UPLOAD_JOB}
+  namespace: ${RAG_NS}
+  labels:
+    app.kubernetes.io/part-of: rag
+    demo.rhoai.io/stage: "230"
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: upload
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.4
+          imagePullPolicy: Always
+          command:
+            - /bin/bash
+            - -ec
+          args:
+            - |
+              python - <<'PY'
+              import os
+              import shutil
+              import subprocess
+              from pathlib import Path
+
+              import boto3
+              from botocore.config import Config
+              from urllib3 import disable_warnings
+              from urllib3.exceptions import InsecureRequestWarning
+
+              disable_warnings(InsecureRequestWarning)
+
+              repo = Path("/tmp/rhoai3-demo")
+              if repo.exists():
+                  shutil.rmtree(repo)
+              subprocess.run(
+                  [
+                      "git",
+                      "clone",
+                      "--depth",
+                      "1",
+                      "--filter=blob:none",
+                      "--sparse",
+                      "--single-branch",
+                      "--branch",
+                      os.environ["GIT_REPO_BRANCH"],
+                      os.environ["GIT_REPO_URL"],
+                      str(repo),
+                  ],
+                  check=True,
+              )
+              subprocess.run(
+                  [
+                      "git",
+                      "-C",
+                      str(repo),
+                      "sparse-checkout",
+                      "set",
+                      "stage-230-private-data-rag/data/rhoai-product-docs/source",
+                      "stage-230-private-data-rag/data/dutch-government/source",
+                  ],
+                  check=True,
+              )
+
+              stage_dir = repo / "stage-230-private-data-rag"
+              bucket = os.environ["AWS_S3_BUCKET"]
+              client = boto3.client(
+                  "s3",
+                  endpoint_url=os.environ["AWS_S3_ENDPOINT"],
+                  aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+                  aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+                  region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+                  verify=False,
+                  config=Config(signature_version="s3v4"),
+              )
+
+              uploads = [
+                  (
+                      stage_dir / "data/rhoai-product-docs/source",
+                      os.environ["RHOAI_STAGE230_PRODUCT_DOCS_PREFIX"],
+                  ),
+                  (
+                      stage_dir / "data/dutch-government/source",
+                      os.environ["RHOAI_STAGE230_DUTCH_DOCS_PREFIX"],
+                  ),
+              ]
+              uploaded = 0
+              for source_dir, prefix in uploads:
+                  if not source_dir.exists():
+                      continue
+                  for path in sorted(source_dir.glob("*.pdf")):
+                      key = f"{prefix.rstrip('/')}/{path.name}"
+                      client.upload_file(str(path), bucket, key)
+                      client.head_object(Bucket=bucket, Key=key)
+                      uploaded += 1
+                      print(f"uploaded s3://{bucket}/{key}", flush=True)
+              if uploaded == 0:
+                  raise SystemExit("no source PDFs found to upload from checked-out stage data")
+              print(f"uploaded {uploaded} source PDFs", flush=True)
+              PY
+          env:
+            - name: GIT_REPO_URL
+              value: "${GIT_REPO_URL}"
+            - name: GIT_REPO_BRANCH
+              value: "${GIT_REPO_BRANCH}"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: AWS_S3_ENDPOINT
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: AWS_S3_BUCKET
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: AWS_DEFAULT_REGION
+            - name: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
+            - name: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: ${RAG_S3_CONNECTION_SECRET}
+                  key: RHOAI_STAGE230_DUTCH_DOCS_PREFIX
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+EOF
+
+  if ! oc wait -n "$RAG_NS" --for=condition=complete "job/${SOURCE_UPLOAD_JOB}" \
+    --timeout=10m --insecure-skip-tls-verify=true >/dev/null; then
+    oc logs -n "$RAG_NS" "job/${SOURCE_UPLOAD_JOB}" --insecure-skip-tls-verify=true >&2 || true
+    echo "ERROR: source PDF upload Job did not complete." >&2
+    exit 1
+  fi
+  oc logs -n "$RAG_NS" "job/${SOURCE_UPLOAD_JOB}" --insecure-skip-tls-verify=true || true
+
+  echo "✓ Stage 230 object storage is ready and source PDFs are uploaded to bucket ${bucket}"
 }
 
 get_maas_endpoint() {
@@ -225,6 +491,7 @@ ensure_runtime_secrets() {
 
 apply_argocd_application
 wait_for_namespace
+ensure_object_storage
 ensure_runtime_secrets
 
 oc annotate applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \

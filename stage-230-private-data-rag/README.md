@@ -80,18 +80,19 @@ bound reranker input to the top candidates and trim candidate text so requests
 fit the CPU reranker's configured context window. Do not pass full long PDF
 chunks directly to the reranker acceptance path.
 
-The RHOAI product-document explainer corpus downloads official PDFs at runtime
-from `docs.redhat.com`, prepares focused chunks with source metadata, and
-indexes them through the same Files API and Vector Stores API path. PDF text
-extraction sanitizes non-printing control characters before upload so code
-sample pages do not create failed vector-store file attachments. If a runtime
-blocks programmatic PDF GET requests, the helper falls back to the
-matching official `html-single` guide for the same product content. This lets
-the demo audience ask why the stage uses Llama Stack, pgvector, RAGAS,
-AutoRAG, EvalHub, guardrails, AI Pipelines, and Docling vocabulary without
-copying product-document binaries into Git. It is documentation grounding only;
-it does not mean Stage 230 implements AutoRAG optimization, EvalHub jobs, AI
-safety guardrails, or DSPA/KFP execution yet.
+The RHOAI product-document explainer corpus is now the primary audience Q&A
+dataset for this stage. The selected official RHOAI 3.4 PDFs are stored under
+`stage-230-private-data-rag/data/rhoai-product-docs/source/`, the deterministic
+prepared chunks are stored under
+`stage-230-private-data-rag/data/rhoai-product-docs/processed/`, and
+`deploy.sh` mirrors the source PDFs into the Stage 230 NooBaa bucket under
+`raw/rhoai-product-docs/`. The preparation helper can refresh the local corpus
+from `docs.redhat.com` only when run with `--force-download`. This lets the
+demo audience ask why the stage uses Llama Stack, pgvector, RAGAS, AutoRAG,
+EvalHub, guardrails, AI Pipelines, and Docling vocabulary from committed,
+reviewable source material. It is documentation grounding only; it does not
+mean Stage 230 implements AutoRAG optimization, EvalHub jobs, AI safety
+guardrails, or DSPA/KFP execution yet.
 
 ## Architecture
 
@@ -174,7 +175,7 @@ python .stage230/scripts/dutch_publication_prepare.py \
 `--converter pypdf` is only the local/workbench validation path. The supported
 pipeline path uses Docling through the KFP component runtime.
 
-The RHOAI product-document explainer flow downloads selected official PDFs,
+The RHOAI product-document explainer flow reads the staged official PDFs,
 creates focused chunks, and validates three default questions:
 
 ```bash

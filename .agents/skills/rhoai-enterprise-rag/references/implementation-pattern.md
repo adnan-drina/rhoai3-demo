@@ -14,7 +14,7 @@
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; start with a compile-ready single-document contract before DSPA/S3 larger-corpus execution |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
 | First Dutch development corpus | Single public Staatsblad PDF smoke corpus | Use a deterministic source PDF, article-level chunks, and recommended metadata to validate the Dutch path before a larger corpus is available |
-| Product-document explainer corpus | Runtime-downloaded official RHOAI 3.4 PDFs | Use the same Files API, Vector Stores API, filtered hybrid retrieval, rerank, and final-answer path to answer demo-audience questions about official product capabilities. Do not commit downloaded PDFs or treat adjacent product topics as implemented stage scope. |
+| Product-document explainer corpus | Repo-stored official RHOAI 3.4 PDFs plus deterministic prepared chunks | Use the same Files API, Vector Stores API, filtered hybrid retrieval, rerank, and final-answer path to answer demo-audience questions about official product capabilities. Mirror source PDFs into the project S3 bucket during deployment, but do not treat adjacent product topics as implemented stage scope. |
 | Future corpus | Larger Dutch government publication set | Replace AG News metadata taxonomy and automate processing after the single-document smoke path works |
 
 ## Implementation Phases
@@ -85,9 +85,15 @@
    - Use a manifest of official RHOAI PDFs from the active baseline, such as
      Llama Stack, AutoRAG, evaluating AI systems, guardrails, AI Pipelines, and
      model-customization/data-preparation guides.
-   - Download PDFs at runtime from `docs.redhat.com`; if programmatic PDF GET
-     is blocked, fall back to the matching official `html-single` guide. Do
-     not commit large product-document binaries.
+   - Store the selected official PDFs under the stage data folder together
+     with deterministic prepared JSONL chunks so fresh environments use the
+     same reviewed source corpus.
+   - Use `--force-download` only when intentionally refreshing the active
+     baseline from `docs.redhat.com`; review source PDF and prepared chunk
+     diffs before committing.
+   - Mirror source PDFs to the project ObjectBucketClaim during deployment so
+     future Docling/KFP and workbench flows can use S3 input without losing
+     the repo-owned source of truth.
    - Preserve product version, guide title, documentation category, page,
      topic, source URL, tenant, and version metadata on each uploaded chunk.
    - Keep this corpus scoped to audience explanation. It does not by itself
@@ -142,6 +148,13 @@
 - Do not duplicate shared `DataScienceCluster` ownership from Stage 110.
 - Use Argo CD for long-lived resources; use scripts/jobs only for ingestion and
   validation actions that are naturally procedural.
+- Use a project-scoped ObjectBucketClaim for private RAG source documents and
+  future pipeline artifacts. Generate dashboard/workbench and pipeline S3
+  Secrets from the OBC-generated credentials; never commit access keys.
+- For the Stage 230 product-document corpus, keep official source PDFs and
+  deterministic prepared chunks in the stage folder and upload source PDFs to
+  S3 at deployment time. Do not make runtime download from `docs.redhat.com`
+  the normal validation path.
 - Keep RHOAI workbench `Notebook`, PVC, and ServiceAccount resources
   GitOps-managed when the workbench is part of the repeatable demo.
 - Keep the data scientist's visible workbench workspace curated. For the AG

@@ -16,8 +16,9 @@ description: >
   RAG notebooks or ingestion jobs, Docling data preparation for unstructured
   documents, Kubeflow Pipeline automation for repeatable document processing,
   and Nemotron generation through the demo MaaS layer. Use for Stage 230
-  private-data RAG, AG News reference replication, future Dutch government
-  publication ingestion, and RAG architecture reviews.
+  private-data RAG, AG News reference replication, official RHOAI product
+  documentation Q&A, future Dutch government publication ingestion, and RAG
+  architecture reviews.
   Do NOT use for AutoRAG optimization runs (use rhoai-autorag), generic Llama
   Stack platform configuration (use rhoai-llama-stack), model-serving runtime
   details (use rhoai-model-serving-platform), MaaS policy details (use
@@ -57,6 +58,8 @@ This skill covers:
 - neural reranking with a cross-encoder reranker
 - Nemotron generation through the governed Stage 220 MaaS endpoint
 - AG News reference replication as the first validation corpus
+- official RHOAI product-document corpora stored under the stage data folder
+  and mirrored into project-scoped S3 during deployment
 - Docling-based conversion, chunking, extraction, and subset selection for
   unstructured enterprise documents
 - Kubeflow Pipeline automation for repeatable Docling data processing
@@ -89,6 +92,9 @@ For this repo:
   Llama model just because an example uses one.
 - Start with the Red Hat AG News enterprise RAG pattern to prove metadata,
   hybrid retrieval, reranking, and end-to-end answer generation.
+- Treat repo-stored official RHOAI 3.4 PDFs as the primary audience Q&A corpus
+  for this stage. Refresh them from `docs.redhat.com` only when the active
+  product baseline or source manifest changes.
 - Do not drop the AG News pattern's reranking or metadata extraction steps
   without explicit user agreement and a recorded stage-plan decision.
 - Keep AG News as a compatibility validation corpus. Do not add Docling to AG
