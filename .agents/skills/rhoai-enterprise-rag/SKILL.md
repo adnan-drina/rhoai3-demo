@@ -1,0 +1,158 @@
+---
+name: rhoai-enterprise-rag
+metadata:
+  author: rhoai3-demo
+  version: 1.0.0
+  platform-family: "rhoai"
+  platform-baseline: "repo"
+  ocp-baseline: "repo"
+  skill-group: "RHOAI Platform"
+description: >
+  Use when planning, documenting, implementing, or reviewing enterprise RAG on
+  Red Hat OpenShift AI with Llama Stack or OGX: metadata-aware retrieval,
+  OpenAI-compatible Files and Vector Stores APIs, remote Milvus vector stores,
+  PostgreSQL Llama Stack metadata storage, hybrid search, neural reranking,
+  RAG notebooks or ingestion jobs, Docling data preparation for unstructured
+  documents, Kubeflow Pipeline automation for repeatable document processing,
+  and Nemotron generation through the demo MaaS layer. Use for Stage 230
+  private-data RAG, AG News reference replication, future Dutch government
+  publication ingestion, and RAG architecture reviews.
+  Do NOT use for AutoRAG optimization runs (use rhoai-autorag), generic Llama
+  Stack platform configuration (use rhoai-llama-stack), model-serving runtime
+  details (use rhoai-model-serving-platform), MaaS policy details (use
+  rhoai-maas-governance), chatbot UI changes (use
+  rhoai-chatbot-customization), or live cluster work without the environment
+  safety guard.
+---
+
+# RHOAI Enterprise RAG
+
+Use this skill for metadata-aware enterprise RAG implementations on the active
+OpenShift AI baseline in `docs/PLATFORM_BASELINE.md`.
+
+## Source Grounding
+
+Read these references before authoring RAG GitOps, notebooks, scripts, README
+content, or validation:
+
+- `references/source-capture.md`
+- `references/implementation-pattern.md`
+- `references/validation-checklist.md`
+
+Official Red Hat documentation is product authority. Red Hat Developer
+articles and linked GitHub repositories are implementation evidence, not API
+or support-posture authority.
+
+## Scope
+
+This skill covers:
+
+- enterprise RAG architecture using OpenShift AI Llama Stack / OGX
+- metadata at vector-store, document, and chunk levels
+- file ingestion with OpenAI-compatible Files and Vector Stores APIs
+- remote Milvus as the first Stage 230 vector-store target
+- PostgreSQL as required Llama Stack metadata storage
+- hybrid retrieval with metadata filters
+- neural reranking with a cross-encoder reranker
+- Nemotron generation through the governed Stage 220 MaaS endpoint
+- AG News reference replication as the first validation corpus
+- Docling-based conversion, chunking, extraction, and subset selection for
+  unstructured enterprise documents
+- Kubeflow Pipeline automation for repeatable Docling data processing
+- future Dutch government publication ingestion using the same retrieval pattern
+
+Adjacent skills:
+
+- `rhoai-llama-stack`: Llama Stack Operator activation, `LlamaStackDistribution`
+  fields, provider configuration, API base URL rules, OAuth, ABAC, and HA.
+- `rhoai-maas-governance`: governed model access, subscriptions, auth policy,
+  API keys, and MaaS telemetry.
+- `rhoai-model-serving-platform`: KServe, vLLM, `InferenceService`, and
+  serving runtime configuration.
+- `rhoai-model-customization-training`: official Docling data-preparation
+  workflow, Red Hat Python index posture, and data-processing example
+  repositories.
+- `rhoai-ai-pipelines` and `rhoai-kfp-pipeline-authoring`: AI Pipelines
+  product behavior and repo KFP implementation when ingestion moves from
+  notebooks/jobs into DSPA/KFP.
+- `rhoai-autorag`: product AutoRAG experiments and leaderboard review.
+- `rhoai-chatbot-customization`: Streamlit or custom RAG UI behavior.
+
+## Demo Policy
+
+For this repo:
+
+- Treat Llama Stack / OGX features as Technology Preview unless the active
+  baseline changes.
+- Use Nemotron from Stage 220 MaaS for generation. Do not deploy a duplicate
+  Llama model just because an example uses one.
+- Start with the Red Hat AG News enterprise RAG pattern to prove metadata,
+  hybrid retrieval, reranking, and end-to-end answer generation.
+- Keep AG News as a compatibility validation corpus. Do not add Docling to AG
+  News text rows.
+- Move the audience demo to Dutch government publications only after the
+  reference pattern works. Use Docling and KFP automation for that unstructured
+  corpus.
+- Prefer remote Milvus for the rebuilt Stage 230 because the target Red Hat
+  article and official Llama Stack guide both support that path.
+- Keep PostgreSQL metadata storage separate from the vector store decision.
+- Do not commit Hugging Face tokens, Milvus tokens, database passwords, MaaS API
+  keys, or OpenAI keys.
+- Do not copy Helm output blindly. Re-author example resources into local
+  Kustomize/GitOps manifests and validate fields against official docs or live
+  schema.
+- Record non-Red Hat images or model artifacts as demo exceptions unless a Red
+  Hat source validates or supports them.
+
+## Workflow
+
+1. Confirm active product versions in `docs/PLATFORM_BASELINE.md`.
+2. Read `references/source-capture.md`.
+3. Route product details through:
+   - `rhoai-llama-stack` for Llama Stack provider and API behavior
+   - `rhoai-maas-governance` for Nemotron access through MaaS
+   - `rhoai-model-serving-platform` for reranker serving if deployed with
+     KServe/vLLM
+   - `rhoai-model-customization-training` for Docling and data-processing
+     examples
+   - `rhoai-ai-pipelines` and `rhoai-kfp-pipeline-authoring` for KFP
+     automation
+   - `project-demo-stage-authoring` for Stage 230 lifecycle
+4. Use `references/implementation-pattern.md` to choose the stage architecture.
+5. Validate all RAG changes with `references/validation-checklist.md`.
+
+## Stage 230 Target Pattern
+
+The rebuilt Stage 230 should prove this flow before adding custom corpora:
+
+```text
+AG News documents
+  -> Files API upload
+  -> Vector Stores API attachment with metadata
+  -> Llama Stack chunking and embedding
+  -> remote Milvus indexing
+  -> query metadata extraction with Nemotron
+  -> hybrid vector-store search
+  -> reranker scoring
+  -> final Nemotron answer through MaaS
+```
+
+When the Dutch government publication use case starts, keep the same retrieval
+pipeline and replace the corpus, metadata taxonomy, ingestion source, and
+domain prompts. Add Docling and KFP automation at that point:
+
+```text
+Dutch government PDFs / HTML / Office documents
+  -> Docling conversion and chunking
+  -> optional extraction or subset selection
+  -> KFP automation for repeatable processing
+  -> Files API upload
+  -> Vector Stores API attachment with metadata
+  -> same hybrid retrieval, rerank, and Nemotron answer path
+```
+
+## References
+
+- `references/source-capture.md`
+- `references/implementation-pattern.md`
+- `references/validation-checklist.md`

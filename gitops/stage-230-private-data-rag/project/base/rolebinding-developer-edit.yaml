@@ -3,6 +3,10 @@ kind: RoleBinding
 metadata:
   name: rhoai-developers-edit
   namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: rhoai-developers-edit
+    app.kubernetes.io/component: access-control
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 subjects:

@@ -67,6 +67,7 @@ configuration, pipelines, chatbot behavior, and evaluation workflows:
 - `.agents/skills/rhoai-model-catalog-workflows/SKILL.md`
 - `.agents/skills/rhoai-gen-ai-playground/SKILL.md`
 - `.agents/skills/rhoai-autorag/SKILL.md`
+- `.agents/skills/rhoai-enterprise-rag/SKILL.md`
 - `.agents/skills/rhoai-model-registry/SKILL.md`
 - `.agents/skills/rhoai-model-registry-workflows/SKILL.md`
 - `.agents/skills/rhoai-llama-stack/SKILL.md`

@@ -13,7 +13,7 @@ Active implementation areas:
 - `stage-120-gpu-as-a-service/` - GPU worker, NFD, NVIDIA GPU Operator, Kueue, hardware profiles
 - `stage-210-model-serving-foundation/` - KServe/vLLM foundation, Nemotron endpoint, Grafana, GuideLLM
 - `stage-220-models-as-a-service/` - MaaS governance for Nemotron and external GPT
-- `stage-230-private-data-rag/` - whoami private RAG with DSPA/KFP ingestion, Docling, Llama Stack, pgvector, ODF S3, and MaaS Nemotron
+- `stage-230-private-data-rag/` - metadata-aware enterprise RAG foundation with Llama Stack/OGX, Milvus, AG News smoke data, and MaaS Nemotron
 - `gitops/` - active GitOps source tree
 - `scripts/` - shared project automation
 - `.agents/` and `AGENTS.md` - active shared agent guidance

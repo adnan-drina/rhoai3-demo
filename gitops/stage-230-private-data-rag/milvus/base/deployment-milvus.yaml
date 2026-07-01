@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: private-rag-milvus
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: private-rag-milvus
+    app.kubernetes.io/component: database
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: private-rag-milvus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: rag
+        app.kubernetes.io/name: private-rag-milvus
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: milvus
+          image: milvusdb/milvus:v2.6.0
+          args:
+            - milvus
+            - run
+            - standalone
+          env:
+            - name: DEPLOY_MODE
+              value: standalone
+            - name: ETCD_ENDPOINTS
+              value: private-rag-etcd:2379
+            - name: COMMON_STORAGETYPE
+              value: local
+            - name: MILVUS_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: private-rag-milvus-secret
+                  key: root-password
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - -f
+                - http://localhost:9091/healthz
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 20
+            failureThreshold: 5
+          ports:
+            - containerPort: 19530
+              name: grpc
+              protocol: TCP
+            - containerPort: 9091
+              name: metrics
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/milvus
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: private-rag-milvus-data

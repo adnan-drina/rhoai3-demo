@@ -1,0 +1,98 @@
+apiVersion: llamastack.io/v1alpha1
+kind: LlamaStackDistribution
+metadata:
+  name: lsd-enterprise-rag
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: lsd-enterprise-rag
+    app.kubernetes.io/component: orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  network:
+    allowedFrom:
+      namespaces:
+        - "*"
+    exposeRoute: true
+  replicas: 1
+  server:
+    containerSpec:
+      name: llama-stack
+      port: 8321
+      env:
+        - name: POSTGRES_HOST
+          value: private-rag-postgres.enterprise-rag.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_DATABASE
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-postgres-credentials
+              key: POSTGRESQL_PASSWORD
+        - name: ENABLE_SENTENCE_TRANSFORMERS
+          value: "true"
+        - name: EMBEDDING_PROVIDER
+          value: sentence-transformers
+        - name: INFERENCE_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: INFERENCE_MODEL
+        - name: VLLM_URL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: VLLM_URL
+        - name: VLLM_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: VLLM_API_TOKEN
+        - name: VLLM_TLS_VERIFY
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: VLLM_TLS_VERIFY
+        - name: VLLM_MAX_TOKENS
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: VLLM_MAX_TOKENS
+        - name: MILVUS_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_ENDPOINT
+        - name: MILVUS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_TOKEN
+        - name: MILVUS_CONSISTENCY_LEVEL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_CONSISTENCY_LEVEL
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "4"
+          memory: 12Gi
+    distribution:
+      name: rh-dev
+    storage:
+      size: 5Gi

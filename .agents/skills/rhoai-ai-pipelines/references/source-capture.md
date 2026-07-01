@@ -23,6 +23,14 @@
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_resources/managing-storage-classes | Storage class behavior for pipeline workspaces |
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_machine_learning_features/index | ML feature workflows that can consume pipeline outputs |
 
+## Red Hat Narrative And Implementation Sources
+
+| Source | Role |
+|--------|------|
+| https://developers.redhat.com/articles/2026/06/03/build-modular-ai-pipelines-openshift-ai-and-reusable-components | Red Hat Developer guidance for modular AI pipelines, reusable KFP components, component catalog selection, repository structure, and contribution quality practices |
+| https://github.com/kubeflow/pipelines-components | Primary upstream catalog for generic reusable Kubeflow components and pipelines |
+| https://github.com/red-hat-data-services/pipelines-components | Red Hat/OpenShift AI-aligned component catalog for components with Red Hat Data Services dependencies or OpenShift AI release alignment |
+
 ## Supporting Project Sources
 
 | Source | Role |
@@ -52,6 +60,11 @@
   Pipeline/PipelineVersion resources, KFP SDK compile output, authenticated
   KFP client list calls, dashboard pipeline/version visibility, cache markers,
   experiment/run state, logs, workspace task output, and DSPA conditions.
+- The reusable-components blog and component repositories do not override the
+  official OpenShift AI pipeline server, storage, run, experiment, log, or
+  dashboard lifecycle. Use them as implementation guidance for composing and
+  authoring reusable KFP components, then validate runtime behavior through the
+  official AI Pipelines guide.
 
 ## Unresolved Or Environment-Specific Items
 

@@ -47,6 +47,29 @@ notebooks, KFP code, runbooks, or demo examples.
 - FIPS-mode custom pipeline images are based on UBI 9 or RHEL 9.
 - Migration from database to Kubernetes API storage is treated as exceptional
   and unsupported by Red Hat.
+- If a pipeline is assembled from reusable components, source catalogs are
+  recorded and product lifecycle validation stays in OpenShift AI Pipelines.
+
+## Reusable Component Pipeline Review
+
+- Existing component catalogs were searched before custom code was introduced:
+  `kubeflow/pipelines-components` for generic components and
+  `red-hat-data-services/pipelines-components` for OpenShift AI-aligned
+  components.
+- Selected component stability is recorded: `alpha`, `beta`, `stable`, or
+  local demo-only.
+- Component README, metadata, inputs, outputs, limitations, base image posture,
+  and last verification status were reviewed before adoption.
+- A single-component or minimal two-step run was validated before the full
+  workflow.
+- Small fixture or sampled data was used before scaling to full data, long
+  training, or GPU-backed workloads.
+- Run evidence is visible in OpenShift AI: graph, parameters, artifacts,
+  metrics where applicable, task logs, and experiment grouping.
+- Parallel or conditional pipeline behavior is visible and intentional, not
+  hidden inside a monolithic component.
+- Component image and dependency posture is reviewed through
+  `rhoai-kfp-pipeline-authoring`; this product skill verifies runtime behavior.
 
 ## SDK And Token Review
 

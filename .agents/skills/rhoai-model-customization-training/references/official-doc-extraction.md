@@ -81,6 +81,50 @@ Docling processing can run interactively in notebooks or as KFP components in
 AI Pipelines. Custom runtime images can be required when pipeline execution
 needs Docling dependencies.
 
+The focused data-preparation chapter points to the `opendatahub-io/data-processing`
+repository on the `stable` branch. Its examples are the preferred starting
+point when this demo needs to process unstructured documents before RAG
+ingestion. Treat them as Red Hat-documented examples, then adapt them into the
+repo's GitOps, scripts, and validation model.
+
+The `kubeflow-pipelines` tree provides two Docling KFP starting points:
+
+- `docling-standard`: first choice for ordinary PDFs and documents that need
+  OCR, table structure, image export control, Markdown output, Docling JSON
+  output, and optional HybridChunker chunk JSONL output.
+- `docling-vlm`: use only for complex layouts, scanned or image-heavy
+  documents, remote VLM conversion, custom instructions, or image descriptors.
+
+Both pipelines support HTTP/S input and S3-compatible input. S3 runs mount a
+Secret named `data-processing-docling-pipeline` with endpoint, access key,
+secret key, bucket, and prefix keys. Remote VLM runs use the same Secret name
+with endpoint URL, API key, and model name keys. These values must be generated
+from environment-local connection data and not committed.
+
+Use case mapping:
+
+- Convert: PDF or other unstructured documents to structured formats such as
+  Markdown, with or without a vision-language model.
+- Chunk: split documents into smaller semantically meaningful pieces before
+  indexing or training.
+- Extract information: template-based extraction for structured fields from
+  documents such as invoices, forms, or regulatory publications.
+- Select subsets: reduce corpus size while preserving diversity and coverage.
+- RAG preparation: end-to-end document processing before vector-store ingestion.
+
+KFP automation mapping:
+
+- Standard pipeline: use for normal documents containing text and structured
+  elements.
+- VLM pipeline: use for complex or difficult layouts, custom instructions, or
+  image descriptors.
+- Custom runtime image: use when pipeline execution requires Docling
+  dependencies that are not present in the base runtime image.
+- Branch policy: prefer the official-doc-linked `stable` branch. Use `main`
+  only when a newer KFP implementation is intentionally selected and recorded.
+- Output policy: inspect converted Markdown and Docling JSON before indexing;
+  inspect chunk JSONL before sending data to Files API or Vector Stores API.
+
 ## Synthetic Data Generation With SDG Hub
 
 SDG Hub provides modular synthetic data generation workflows. The guide points

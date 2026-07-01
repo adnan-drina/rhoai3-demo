@@ -36,6 +36,32 @@ Review points:
 - Verify the generated YAML includes `pipelineSpec`.
 - Pair with `rhoai-kfp-pipeline-authoring` when editing repo pipeline code.
 
+## Reusable Component Adoption Pattern
+
+```text
+Pipeline goal: <business or demo capability>
+Existing component search:
+  - kubeflow/pipelines-components: <match | none>
+  - red-hat-data-services/pipelines-components: <match | none>
+Selected component stability: alpha | beta | stable | local demo-only
+Input mode: artifact | S3 URL | local/workspace path | parameter
+Validation data set: small fixture | sampled corpus | full corpus
+First run: single component | minimal two-step pipeline | full workflow
+```
+
+Review points:
+
+- Search reusable component catalogs before writing custom pipeline code.
+- Prefer components whose README, metadata, stability, inputs, limitations, and
+  last verification status match the demo need.
+- Treat alpha or unverified components as implementation references, not
+  production-ready building blocks.
+- Start with a small run in the OpenShift AI Pipelines UI before scaling to a
+  full data set or GPU-backed workload.
+- Keep run names, parameters, artifacts, logs, and experiment grouping clear
+  enough to compare later.
+- Route component code adaptation to `rhoai-kfp-pipeline-authoring`.
+
 ## Kubernetes API Storage Pattern
 
 ```yaml

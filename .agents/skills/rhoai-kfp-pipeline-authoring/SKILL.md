@@ -13,7 +13,9 @@ description: >
   use this skill to rebuild KFP standards from legacy references. Use when
   editing stage-*/**/kfp/**/*.py, KFP components, pipeline runner scripts, DSPA
   client code, pipeline PVC/RBAC integration, Output[Metrics]/Output[Model]/
-  Output[HTML] artifacts, caching behavior, or RHOAI Dashboard pipeline
+  Output[HTML] artifacts, caching behavior, Docling data-processing pipeline
+  code adapted from Red Hat-documented examples, reusable component catalog
+  adoption, modular KFP component anatomy, or RHOAI Dashboard pipeline
   visibility. Do NOT use for AI Pipelines product lifecycle, pipeline server
   setup, dashboard import/version/run/schedule operations, Elyra runtime
   configuration, or DSPA troubleshooting (use rhoai-ai-pipelines). Do NOT use
@@ -29,6 +31,18 @@ servers, KFP SDK prerequisites, Kubernetes API storage, pipeline versions,
 caching, experiments, runs, schedules, logs, Elyra, workspaces, and DSPA
 troubleshooting. Use this skill when the task reaches repo-specific pipeline
 Python, components, compiled artifacts, or runner scripts.
+
+Before authoring a new KFP component, check whether an existing component in
+the Kubeflow or Red Hat Data Services component catalogs can be reused or
+adapted. Capture why a local component is needed when no reusable component
+fits.
+
+For Docling data-preparation pipelines, use
+`rhoai-model-customization-training` for the official RHOAI
+data-preparation chapter and the `opendatahub-io/data-processing` stable
+branch examples before adapting code into this repo. Compare the current
+`main/kubeflow-pipelines` tree when a newer reference implementation is
+intentionally selected, and record the branch decision in the stage plan.
 
 ## Reimplementation Status
 
@@ -47,11 +61,16 @@ unless the user explicitly asks to restore or inspect the legacy implementation.
    exists, use
    `backup/legacy-implementation-2026-06-09/steps/step-12-mlops-pipeline/kfp/`
    only as a legacy reference.
-3. Read `references/kfp-patterns.md` before editing pipeline definitions,
+3. For Docling pipelines, read `rhoai-model-customization-training` first and
+   capture whether the standard or VLM data-processing example is being
+   adapted.
+4. Read `references/kfp-patterns.md` before editing pipeline definitions,
    components, runner scripts, artifacts, or DSPA client code.
-4. Keep pipeline infrastructure in GitOps and compiled/uploaded pipeline
+5. For reusable component work, record selected catalog source, stability
+   level, input modes, image posture, and validation data set.
+6. Keep pipeline infrastructure in GitOps and compiled/uploaded pipeline
    definitions in stage scripts.
-5. Keep component functions hermetic, typed, Dashboard-visible where possible,
+7. Keep component functions hermetic, typed, Dashboard-visible where possible,
    and aligned with `rhoai-ai-pipelines` and the active official documentation.
 
 ## Validation

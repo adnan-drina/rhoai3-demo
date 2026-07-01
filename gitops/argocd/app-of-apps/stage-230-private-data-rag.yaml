@@ -36,10 +36,16 @@ spec:
         maxDuration: 5m
   ignoreDifferences:
     # Environment-local secrets are created by stage-230 deploy.sh because they
-    # contain generated database passwords and MaaS API keys.
+    # contain generated database passwords, Milvus credentials, and MaaS API keys.
     - group: ""
       kind: Secret
       name: private-rag-postgres-credentials
+      namespace: enterprise-rag
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: private-rag-milvus-secret
       namespace: enterprise-rag
       jsonPointers:
         - /data
@@ -49,39 +55,7 @@ spec:
       namespace: enterprise-rag
       jsonPointers:
         - /data
-    - group: datasciencepipelinesapplications.opendatahub.io
-      kind: DataSciencePipelinesApplication
-      name: private-rag-pipelines
-      namespace: enterprise-rag
+    - group: ""
+      kind: PersistentVolumeClaim
       jsonPointers:
-        - /status
-    - group: console.openshift.io
-      kind: ConsoleLink
-      name: rhoai-demo-rag-chatbot
-      jsonPointers:
-        # The chatbot route hostname is cluster-specific. Stage 230 deploy.sh
-        # and the sync hook patch the ConsoleLink after the route exists.
-        - /spec/href
-    # Kueue injects bookkeeping fields into admitted long-running controllers.
-    # Keep the queue label in Git, but ignore controller-owned admission state.
-    - group: apps
-      kind: Deployment
-      name: private-rag-docling
-      namespace: enterprise-rag
-      jsonPointers:
-        - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
-        - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
-    - group: apps
-      kind: Deployment
-      name: private-rag-chatbot
-      namespace: enterprise-rag
-      jsonPointers:
-        - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
-        - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
-    - group: apps
-      kind: StatefulSet
-      name: private-rag-postgres
-      namespace: enterprise-rag
-      jsonPointers:
-        - /spec/template/metadata/annotations/kueue.x-k8s.io~1pod-suspending-parent
-        - /spec/template/metadata/labels/kueue.x-k8s.io~1managed
+        - /spec

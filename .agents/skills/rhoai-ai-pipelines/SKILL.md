@@ -12,17 +12,14 @@ description: >
   Pipelines from the Working with AI pipelines guide: pipeline server
   configuration, S3-compatible artifact storage, default versus external
   MySQL/MariaDB metadata databases, Kubernetes API pipeline definition storage,
-  KFP 2.0 SDK compilation, Pipeline and PipelineVersion custom resources,
-  pipeline import/delete/version lifecycle, caching controls, experiments,
-  active/scheduled/archived runs, run workspaces, pipeline logs, Elyra
-  JupyterLab pipeline workflows, and DSPA component troubleshooting. Do NOT use
-  for repo-specific KFP component code edits (use rhoai-kfp-pipeline-authoring),
-  generic project/workbench lifecycle (use rhoai-project-workflows), IDE usage
-  outside pipelines (use rhoai-data-science-ide-workflows), S3 notebook data
-  operations (use rhoai-s3-object-storage-data), certificate trust changes
-  outside pipeline context (use rhoai-certificate-management), Spark data
-  processing applications (use rhoai-kubeflow-spark-operator), or live cluster
-  changes without the OpenShift safety guard.
+  KFP 2.0 SDK compilation, Pipeline/PipelineVersion custom resources,
+  import/version lifecycle, caching, experiments, runs, workspaces, logs,
+  Elyra, DSPA troubleshooting, and reusable component pipeline lifecycle. Do
+  NOT use for repo KFP component code edits (use
+  rhoai-kfp-pipeline-authoring), project/workbench lifecycle, IDE usage outside
+  pipelines, S3 notebook operations, certificate trust outside pipeline
+  context, Spark applications, or live cluster changes without the OpenShift
+  safety guard.
 ---
 
 # RHOAI AI Pipelines
@@ -58,6 +55,9 @@ This skill covers:
 - pipeline step logs and download behavior
 - Elyra JupyterLab pipeline editor runtime configuration, run, and export
 - DSPA component error interpretation and troubleshooting handoff
+- product-side lifecycle for modular pipelines assembled from reusable
+  components, including import, versioning, experiments, runs, logs, and
+  artifact review
 
 Use other skills for adjacent work:
 
@@ -74,6 +74,8 @@ Use other skills for adjacent work:
   naming, leaderboard review, and generated indexing/inference notebooks
 - `rhoai-model-customization-training` for Docling, SDG Hub, Training Hub, and
   end-to-end model customization pipeline patterns
+- `rhoai-enterprise-rag` for deciding whether a RAG stage should use Docling
+  and KFP automation for unstructured corpus ingestion
 - `rhoai-evaluation` for EvalHub risk assessment KFP orchestration and
   official LM-Eval or EvalHub evaluation workflows
 - `rhoai-certificate-management` for DSCI trusted CA bundle changes
@@ -109,6 +111,16 @@ For this repo:
   support for code-server, RStudio, Minimal Python, or CUDA-based workbenches.
 - If an official example uses placeholder or mutable model artifacts, replace
   them with verified demo artifacts before committing demo content.
+- For Docling data-processing automation, use the official model customization
+  data-preparation chapter plus `rhoai-model-customization-training` for the
+  example source. This skill governs the pipeline server, runs, artifacts,
+  logs, versions, and dashboard lifecycle once the Docling pipeline exists.
+- When a Red Hat Developer article or component catalog suggests reusable KFP
+  components, treat it as implementation guidance. Verify the pipeline server,
+  storage, run, experiment, artifact, and log behavior through this skill, then
+  route component code selection or authoring to `rhoai-kfp-pipeline-authoring`.
+- Prefer small validation runs before scaling pipeline workloads to full data
+  sets or expensive GPU-backed steps.
 
 ## Workflow
 
@@ -124,6 +136,7 @@ For this repo:
    - scheduling and duplicate-run workflow
    - workspace or external artifact use
    - logs, Elyra, or DSPA troubleshooting
+   - reusable component catalog adoption and pipeline run lifecycle
 4. Use `examples/ai-pipelines-patterns.md` for focused review patterns.
 5. For repo KFP code edits, pair with `rhoai-kfp-pipeline-authoring`.
 6. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.

@@ -1,8 +1,9 @@
 # KFP Pipeline Patterns
 
 Use active `stage-*/kfp/` content as the project reference for KFP v2 pipeline
-authoring. `stage-230-private-data-rag/kfp/` is the first active KFP v2
-implementation in the rewritten demo. Treat
+authoring once a stage has been rebuilt. Stage 230 is being reset; do not treat
+the old `stage-230-private-data-rag/kfp/` content as the preferred design.
+Treat
 `backup/legacy-implementation-2026-06-09/steps/step-12-mlops-pipeline/kfp/` and
 old `steps/step-07-rag/kfp/` content as legacy examples only.
 
@@ -37,17 +38,99 @@ not committed as continuously reconciled GitOps state unless explicitly required
 - Pin minimum package versions in `packages_to_install`.
 - Add `pip_index_urls` only when required by packages unavailable from the Red
   Hat Python index; remember that KFP replaces, not appends, default index URLs.
+- Search reusable component catalogs before authoring a new local component:
+  - `kubeflow/pipelines-components` for generic, cross-platform components
+  - `red-hat-data-services/pipelines-components` for OpenShift AI-aligned or
+    Red Hat Data Services-dependent components
+- If a catalog component is reused or adapted, record source repository,
+  component path, stability level, last verification posture, input/output
+  contract, base image posture, and reason for any local modifications.
+
+## Reusable Component Anatomy
+
+Use the upstream component catalog layout as the reference when a component
+should be reusable beyond one stage:
+
+```text
+components/<category>/<subcategory>/
+  __init__.py
+  OWNERS
+  README.md
+  shared/
+  <component_name>/
+    __init__.py
+    component.py
+    metadata.yaml
+    OWNERS
+    README.md
+    tests/
+```
+
+Pipeline catalog examples follow the same idea:
+
+```text
+pipelines/<category>/<subcategory>/
+  __init__.py
+  OWNERS
+  README.md
+  shared/
+  <pipeline_name>/
+    __init__.py
+    pipeline.py
+    metadata.yaml
+    OWNERS
+    README.md
+    tests/
+```
+
+This repo does not need to copy that directory structure for every stage-local
+pipeline. Use it when building a component that is meant to become a reusable
+asset. For stage-local components, keep the same discipline: clear metadata in
+comments or docs, typed inputs/outputs, owners implied by the stage, and tests
+or smoke validation where practical.
 
 ## Hermetic Components
 
 Lightweight Python Components must be self-contained:
 
+- only standard library and KFP imports should appear at module top level in
+  reusable component files
 - imports inside the function body
+- heavy dependencies such as `pandas`, `torch`, `datasets`, model clients, or
+  cloud SDKs imported inside the component function body
 - constants used by the component defined inside the function
 - no references to module-level helper symbols unless passed through
   `additional_funcs`
 - utility helpers passed through `additional_funcs` must themselves be
   self-contained
+
+## Reusable Component Design Rules
+
+- Validate inputs at the start of the component so bad paths, credentials,
+  incompatible parameters, missing checkpoints, or unsupported formats fail
+  quickly.
+- Use descriptive parameter names and common prefixes for related fields, such
+  as `model_name`, `model_path`, `model_version`, `s3_bucket`, and
+  `s3_prefix`.
+- For reusable data components, support the input modes that make sense for the
+  task: KFP artifacts, S3 URLs or object-storage references, and workspace or
+  file paths.
+- Keep each component focused on one task. Compose multi-step behavior in a
+  pipeline rather than hiding it in one large component.
+- Use component stability labels in docs or metadata when a component becomes
+  reusable: `alpha` for early/demo use, `beta` for working but evolving
+  behavior, and `stable` only after repeated validation.
+- Revalidate reusable components periodically. Treat components without recent
+  validation as candidates for review before reuse.
+- Start with small fixtures or sampled data before running full corpora,
+  long-running training, or GPU-backed tasks.
+- Prefer one-component or two-step smoke pipelines before assembling the full
+  workflow.
+- Use KFP control flow intentionally:
+  - `dsl.ParallelFor` for independent items or splits
+  - `dsl.If` / `dsl.Else` for optional work such as preprocessing already done
+  - nested pipelines only when a subworkflow is itself reusable and tested
+- Compile with the current KFP compiler before running in OpenShift AI.
 
 ## Types And Artifacts
 
@@ -61,6 +144,20 @@ Lightweight Python Components must be self-contained:
 - Use `typing.NamedTuple` for multiple named outputs.
 - Use `.output` for single unnamed outputs and `.outputs["name"]` for named
   outputs.
+
+## Image And Dependency Posture
+
+- KFP component `base_image` is an explicit runtime dependency. It is not an
+  operator-managed operand image.
+- For OpenShift AI-aligned or Red Hat Data Services-derived components, prefer
+  approved Red Hat images or images explicitly allowed by the source repository.
+- For generic upstream components, review custom image guidance and record any
+  non-Red Hat image as a demo exception before adopting it into this repo.
+- Use `packages_to_install` for small, deliberate runtime dependencies.
+- Use a custom image when dependencies are heavy, slow to install, require
+  system packages, or must be pre-scanned.
+- Do not present a component image as Red Hat-supported unless the Red Hat
+  source says so.
 
 ## Runtime Data Flow
 
@@ -133,6 +230,23 @@ Runner scripts should:
 Keep runner behavior idempotent: repeated runs should create new versions/runs
 without corrupting existing pipeline or experiment objects.
 
+## Modular Pipeline Assembly
+
+When building a pipeline from reusable components:
+
+1. Write the pipeline goal and unique business logic in the stage plan.
+2. Search reusable catalogs before creating new code.
+3. Select the smallest component set that proves the workflow.
+4. Pass outputs from one component into the next through KFP outputs/artifacts,
+   not ad hoc shared global state.
+5. Parallelize only independent work and validate resource limits first.
+6. Use conditional logic for optional steps such as skip preprocessing,
+   evaluate only if training passes, or deploy only if metrics meet a gate.
+7. Run the smallest fixture first, then scale the same compiled pipeline to the
+   full data set.
+8. Preserve pipeline run evidence: parameters, artifacts, metrics, logs, and
+   experiment grouping.
+
 ## GitOps Integration
 
 Pipeline infrastructure such as PVCs, RBAC, and supporting services belongs in
@@ -141,25 +255,49 @@ scripts. They are not continuously reconciled resources by default.
 
 ## RAG / Docling Reuse Pattern
 
-The active Stage 230 KFP pipeline is the preferred implementation reference for
-document ingestion shape:
+For the rebuilt Stage 230, the preferred Docling KFP implementation reference
+is the Red Hat-documented
+`opendatahub-io/data-processing/kubeflow-pipelines` tree, not the previous
+whoami pipeline. Use the official-doc-linked `stable` branch by default and
+compare `main` only when a newer reference implementation is intentionally
+selected.
+
+The target ingestion shape is:
 
 ```text
-ODF/NooBaa source OBC -> download -> Docling PDF conversion -> vector DB
-registration -> Llama Stack insertion -> metrics summary and RAG validation
+ODF/NooBaa source OBC
+  -> data-processing import_pdfs
+  -> docling-standard or docling-vlm conversion
+  -> optional docling_chunk HybridChunker output
+  -> Files API / Vector Stores API ingestion
+  -> Llama Stack hybrid retrieval validation
 ```
 
 Apply these rules:
 
-- keep Docling as a standalone document-preparation service called from a
-  component or deploy-time ingestion step
-- keep `ParallelFor(..., parallelism=1)` when components share one RWO PVC
+- start with `docling-standard` for ordinary PDFs, OCR, table structure,
+  Markdown output, Docling JSON output, and optional chunk JSONL output
+- use `docling-vlm` only for complex layouts, scanned or image-heavy
+  documents, remote VLM conversion, or custom page-level instructions
+- preserve the upstream `ParallelFor` split pattern for scale-out conversion;
+  adjust parallelism to the workspace PVC access mode and project resources
 - keep Dashboard-visible `Output[Metrics]` summaries for ingestion counts
-- use a fixed DSPA artifact bucket when the `DataSciencePipelinesApplication`
-  spec needs a stable `objectStorage.externalStorage.bucket` value
-- read source corpus objects from the active project `ObjectBucketClaim` Secret
-  and ConfigMap generated by ODF/NooBaa; discover generated bucket names at
-  runner time, not in committed GitOps manifests
+- use the `data-processing-docling-pipeline` Secret pattern for S3 and remote
+  VLM configuration, but generate the Secret from local environment values or
+  project connection data instead of committing credentials
+- for S3 input, provide `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
+  `S3_BUCKET`, and `S3_PREFIX`
+- for remote VLM conversion, provide `REMOTE_MODEL_ENDPOINT_URL`,
+  `REMOTE_MODEL_API_KEY`, and `REMOTE_MODEL_NAME`
+- use a fixed DSPA artifact bucket only when the
+  `DataSciencePipelinesApplication` spec needs a stable
+  `objectStorage.externalStorage.bucket` value
+- read source corpus objects from the active project `ObjectBucketClaim`
+  Secret and ConfigMap generated by ODF/NooBaa; discover generated bucket names
+  at runner time, not in committed GitOps manifests
+- review upstream component base images before adoption. KFP component images
+  are explicit runtime dependencies; classify them as Red Hat image, reviewed
+  custom image, or demo exception
 - use the active Llama Stack client/API shape from `rhoai-llama-stack` and the
   live client. For the current RHOAI 3.4 line, create stores through
   `client.vector_stores.create(...)`, upload source text through
@@ -175,22 +313,29 @@ Apply these rules:
   model output. In Stage 230, `sentence-transformers/all-MiniLM-L6-v2` uses a
   384-dimensional vector store; a 768-dimensional store causes file attachment
   failures during vectorization.
-- start with the `whoami` corpus before adding larger ACME or enterprise
-  document sets
+- keep AG News as the non-Docling compatibility corpus. Introduce Docling/KFP
+  when the stage moves to Dutch government publications or another
+  unstructured corpus
 
 ## New Pipeline Checklist
 
 - [ ] module docstring with KFP version, purpose, and docs reference
+- [ ] reusable component catalog search recorded
+- [ ] selected component stability and source recorded when reused
 - [ ] module constants for wiring values
 - [ ] helper for resource requests and limits
 - [ ] typed pipeline parameters with defaults
+- [ ] descriptive parameter names and common prefixes
 - [ ] explicit task ordering
+- [ ] small-fixture test path before full data
 - [ ] caching disabled for demo freshness
 - [ ] components split into separate files
 - [ ] component imports inside function bodies
+- [ ] heavy dependencies imported only inside component functions
+- [ ] input validation at component start
 - [ ] typed component inputs and outputs
 - [ ] Dashboard-visible artifacts where useful
-- [ ] supported Red Hat/RHOAI base image
+- [ ] base image and dependency posture recorded
 - [ ] runner script sources repo helper library
 - [ ] pipeline infrastructure in GitOps
 
@@ -198,3 +343,6 @@ Apply these rules:
 
 - KFP v2 docs: https://www.kubeflow.org/docs/components/pipelines/
 - Current RHOAI baseline AI pipelines docs: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/working_with_ai_pipelines/
+- Red Hat Developer reusable components article: https://developers.redhat.com/articles/2026/06/03/build-modular-ai-pipelines-openshift-ai-and-reusable-components
+- Generic component catalog: https://github.com/kubeflow/pipelines-components
+- Red Hat Data Services component catalog: https://github.com/red-hat-data-services/pipelines-components

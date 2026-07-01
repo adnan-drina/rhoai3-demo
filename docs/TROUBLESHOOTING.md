@@ -1144,331 +1144,73 @@ endpoints and API keys, not direct namespace access.
 
 ## Stage 230: Private Data RAG
 
-### Stage 230 deploy refuses to run
+Stage 230 is being reimplemented. The previous whoami/Docling/DSPA/pgvector
+troubleshooting entries no longer describe the intended target design and
+should not be used as active recovery guidance for the new RAG stage.
 
-- **Symptom:** `stage-230-private-data-rag/deploy.sh` exits before applying
-  the Argo CD Application.
-- **Likely causes:** one of the required prior-stage resources is not ready:
-  Llama Stack CRD, Nemotron `MaaSModelRef`, MaaS subscription, or MaaS Gateway
-  hostname.
-- **Confirm:**
+### Old Stage 230 resources exist in a live cluster
 
-```bash
-oc get crd llamastackdistributions.llamastack.io
-oc get maasmodelref nemotron-3-nano-30b-a3b -n models-as-a-service
-oc get maassubscription rhoai-developers-gpt-4o-mini -n models-as-a-service
-oc get gateway maas-default-gateway -n openshift-ingress
-```
+- **Symptom:** `enterprise-rag` contains resources such as
+  `private-rag-chatbot`, `private-rag-docling`, `private-rag-pipelines`,
+  `private-rag-postgres`, `whoami` vector-store references, or pgvector-related
+  Secrets.
+- **Likely cause:** the previous Stage 230 implementation was deployed before
+  the AG News/Milvus reset.
+- **Fix:** do not patch those resources into the new design. Remove or replace
+  them as part of the Stage 230 reset implementation, then let Argo CD recreate
+  only the new desired resources.
 
-- **Fix:** validate and repair the earlier stage first. Do not bypass MaaS by
-  pointing Llama Stack directly at a non-governed model endpoint.
+### Old Stage 230 scripts are about to be run
 
-### Enterprise RAG project or source bucket is missing
+- **Symptom:** a command path references `run-whoami-ingestion-pipeline.sh`,
+  Docling, DSPA, pgvector, or `private-rag-chatbot`.
+- **Fix:** stop and use `stage-230-private-data-rag/PLAN.md` instead. The old
+  scripts are stale until they are rewritten for the new metadata-aware AG News
+  RAG flow and the later Docling/KFP Dutch publication phase.
 
-- **Likely causes:** the Stage 230 Argo CD Application has not synced the
-  project resources, ODF/NooBaa is not ready, or the `enterprise-rag-bucket`
-  ObjectBucketClaim is still binding.
-- **Confirm:**
+### New Stage 230 implementation fails during development
 
-```bash
-oc get namespace enterprise-rag --show-labels
-oc get rolebinding -n enterprise-rag
-oc get objectbucketclaim enterprise-rag-bucket -n enterprise-rag
-oc get secret enterprise-rag-s3 -n enterprise-rag \
-  -o jsonpath='{.metadata.labels.opendatahub\.io/dashboard}{"\n"}'
-```
+Use `rhoai-enterprise-rag` and `rhoai-llama-stack` first, then add concrete
+symptoms here after live validation creates repeatable failure modes. The first
+new troubleshooting entries should cover:
 
-- **Fix:** rerun `stage-230-private-data-rag/deploy.sh` after Stage 110 ODF MCG
-  validates. The deploy wrapper applies the Stage 230 Application, waits for
-  `enterprise-rag-bucket`, and creates the runtime S3 connection secret from
-  generated OBC credentials.
+- Llama Stack provider registration failures
+- PostgreSQL metadata connection failures
+- Milvus gRPC or token failures
+- embedding model and vector dimension mismatches
+- Files API upload or vector-store attachment errors
+- metadata filter extraction failures
+- hybrid search returning empty results
+- reranker endpoint failures
+- MaaS-backed Nemotron authorization failures
+- Docling conversion output missing or malformed after the Dutch corpus is
+  introduced
+- KFP run failures after Docling automation is introduced
 
-### DSPA is missing or not Ready
+Do not carry forward old pgvector, DSPA, Docling, or whoami-specific recovery
+steps unless those components are intentionally reintroduced.
 
-- **Likely causes:** the shared `default-dsc` still has
-  `aipipelines.managementState=Removed`, the DSPA CRD is still installing, the
-  fixed NooBaa artifact bucket is not Bound, or the DSPA cannot reach object
-  storage.
-- **Confirm:**
+### Stage 230 deploy cannot create the Llama Stack MaaS token
 
-```bash
-oc get datasciencecluster default-dsc \
-  -o jsonpath='{.spec.components.aipipelines.managementState}{" "}{.status.conditions[?(@.type=="AIPipelinesReady")].status}{"\n"}'
-oc get crd datasciencepipelinesapplications.datasciencepipelinesapplications.opendatahub.io
-oc get objectbucketclaim private-rag-pipelines-bucket -n enterprise-rag
-oc get dspa private-rag-pipelines -n enterprise-rag -o yaml
-oc get route ds-pipeline-private-rag-pipelines -n enterprise-rag
-```
+- **Symptom:** `deploy.sh` fails with a message asking for
+  `RHOAI_STAGE230_MAAS_API_KEY` or `AI_DEVELOPER_PASSWORD`.
+- **Likely cause:** the script could not create a MaaS API key for the
+  Stage 220 subscription. Llama Stack needs a MaaS API key because the RAG
+  runtime calls the governed Nemotron endpoint through MaaS.
+- **Fix:** either set `AI_DEVELOPER_PASSWORD` in `.env` so the script can log
+  in as `ai-developer` and create the key, or create a MaaS API key manually
+  for the configured subscription and store it locally as
+  `RHOAI_STAGE230_MAAS_API_KEY`. Do not commit the key.
 
-- **Fix:** rerun `stage-230-private-data-rag/deploy.sh` after the Stage 230
-  Argo CD Application has refreshed from the branch containing the DSPA
-  manifests. The stage patch job enables AI Pipelines and waits for the DSPA
-  CRD before the pipeline server resources reconcile.
+### Llama Stack starts but does not list Nemotron
 
-### Stage 230 Argo CD Application is Healthy but OutOfSync on the DSPA
-
-- **Likely cause:** RHOAI defaulted `DataSciencePipelinesApplication.spec`
-  fields after creation. GitOps should declare stable CRD-backed DSPA defaults
-  instead of leaving the Application permanently OutOfSync.
-- **Confirm:**
-
-```bash
-oc get dspa private-rag-pipelines -n enterprise-rag -o yaml
-oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
-  -o jsonpath='{range .status.resources[*]}{.kind}{"/"}{.name}{"\t"}{.namespace}{"\t"}{.status}{"\n"}{end}'
-```
-
-- **Fix:** compare the live DSPA spec to
-  `gitops/stage-230-private-data-rag/pipelines/base/dspa-private-rag.yaml`,
-  verify fields against the active CRD schema, and commit the stable defaults
-  to GitOps. Use a narrow ignore only for fields that are operator-owned and
-  not safe to declare.
-
-### Stage 230 Argo CD Application stays Progressing on a pipeline workspace PVC
-
-- **Likely cause:** an old GitOps-managed `private-rag-pipeline-workspace` PVC
-  exists from an earlier design. AWS EBS uses `WaitForFirstConsumer`, so Argo
-  CD can block later sync waves while waiting for a PVC that is only useful
-  after a KFP task pod starts.
-- **Confirm:**
-
-```bash
-oc get pvc private-rag-pipeline-workspace -n enterprise-rag
-oc get applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
-  -o jsonpath='{.status.sync.status}{" "}{.status.health.status}{"\n"}'
-```
-
-- **Fix:** remove the static PVC from GitOps and use the KFP per-run workspace
-  from `dsl.PipelineConfig(workspace=...)`. After the branch is pushed, refresh
-  the Stage 230 Application so Argo CD prunes the old PVC and can advance to
-  the later Llama Stack wave.
-
-### Stage 230 Argo CD Application stays OutOfSync on Kueue labels
-
-- **Likely cause:** the `enterprise-rag` namespace is Kueue-managed. Kueue
-  injects controller-owned labels and annotations into long-running
-  controllers such as `private-rag-docling` and `private-rag-postgres`.
-  Controller queue labels are immutable after admission.
-- **Confirm:**
-
-```bash
-oc get deployment private-rag-docling -n enterprise-rag \
-  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{" "}{.spec.template.metadata.labels.kueue\.x-k8s\.io/managed}{"\n"}'
-oc get statefulset private-rag-postgres -n enterprise-rag \
-  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{"\n"}'
-```
-
-- **Fix:** keep the Stage 230 runtime controllers on the RHOAI-created
-  `default` local queue and keep narrow Argo CD `ignoreDifferences` entries
-  only for Kueue-injected bookkeeping fields. Do not patch an admitted
-  controller from `default` to `lq-cpu-default`; the Kueue webhook rejects that
-  immutable queue-label change. Use custom `lq-*` queues only when the target
-  namespace has a matching LocalQueue.
-
-### Stage 230 helper job stays SchedulingGated
-
-- **Likely cause:** the helper job requested a LocalQueue that does not exist
-  in `enterprise-rag`. Fresh deployments create the RHOAI-managed `default`
-  LocalQueue in the project, but do not create `lq-cpu-default`.
-- **Confirm:**
-
-```bash
-oc get localqueue -n enterprise-rag
-oc get workload -n enterprise-rag
-oc get pod -n enterprise-rag | grep SchedulingGated
-```
-
-- **Fix:** generated Stage 230 helper jobs must use
-  `kueue.x-k8s.io/queue-name: default` unless the stage also creates and
-  validates another LocalQueue in `enterprise-rag`. Delete the stuck job and
-  rerun `stage-230-private-data-rag/deploy.sh` after the script fix is pushed.
-
-### Whoami ingestion pipeline fails
-
-- **Likely causes:** DSPA route authentication failed, the KFP package could
-  not compile, the per-run KFP workspace could not bind, the enterprise RAG OBC
-  credentials are missing, Docling is not ready, or
-  Llama Stack is not reachable from pipeline pods.
-- **Specific error:** `workspace PVC spec must specify accessModes` means the
-  compiled KFP IR has an empty workspace `pvcSpecPatch`. Stage 230 must compile
-  the pipeline with `dsl.KubernetesWorkspaceConfig(pvcSpecPatch={"accessModes":
-  ["ReadWriteOnce"]})`.
-- **Confirm:**
-
-```bash
-oc get configmap private-rag-pipeline-last-run -n enterprise-rag -o yaml
-oc get workflow,pods -n enterprise-rag | grep -E 'whoami|private-rag|pipeline'
-oc get events -n enterprise-rag --sort-by=.lastTimestamp | tail -n 40
-oc logs deployment/private-rag-docling -n enterprise-rag --since=20m
-```
-
-- **Fix:** rerun `stage-230-private-data-rag/run-whoami-ingestion-pipeline.sh
-  --wait` after correcting the failed dependency. Do not use the direct
-  ingestion fallback unless you explicitly set
-  `RHOAI_STAGE230_ALLOW_DIRECT_INGEST_FALLBACK=true` for break-glass recovery.
-
-### private-rag-postgres CrashLoopBackOff
-
-- **Likely cause:** the pgvector image needs to initialize PostgreSQL data
-  ownership and can fail under restricted SCC.
-- **Fix:** rerun the Stage 230 deploy wrapper. It grants `anyuid` only to the
-  dedicated `private-rag-postgres` service account:
-
-```bash
-./stage-230-private-data-rag/deploy.sh
-oc adm policy who-can use scc anyuid | grep private-rag-postgres
-```
-
-Do not grant `anyuid` to the namespace default service account. That can break
-model-serving and modelcar mount assumptions elsewhere in the demo.
-
-### Llama Stack is ready but vector store registration fails
-
-- **Symptom:** deploy or validate output reports `No vector_io provider`,
-  missing pgvector provider, or a KFP component error such as
-  `LlamaStackClient object has no attribute vector_dbs`.
-- **Likely causes:** `PGVECTOR_*` Secret keys are missing, pgvector is not
-  reachable, the Llama Stack pod started before the database was ready, or the
-  pipeline code is using an older Llama Stack client path.
-- **Confirm:**
-
-```bash
-oc get secret private-rag-postgres-credentials -n enterprise-rag -o yaml
-oc logs deployment/lsd-private-rag -n enterprise-rag --since=10m
-oc exec -i deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
-from llama_stack_client import LlamaStackClient
-client = LlamaStackClient(base_url="http://127.0.0.1:8321")
-print(client.providers.list())
-print([name for name in dir(client) if "vector" in name])
-PY
-```
-
-- **Fix:** rerun `stage-230-private-data-rag/deploy.sh`. It recreates the
-  runtime secrets and recreates the `whoami` vector store through
-  `client.vector_stores`, not the removed `client.vector_dbs` API.
-  `sentence-transformers/all-MiniLM-L6-v2` must use a 384-dimensional vector
-  store in this demo; if the vector store expects 768 dimensions, delete it and
-  rerun the stage so it is recreated from current defaults.
-
-### Llama Stack RAG answer reports Nemotron model not found
-
-- **Symptom:** the whoami ingestion summary fails after vector-store search
-  succeeds with `Model 'nemotron-3-nano-30b-a3b' not found`.
-- **Likely cause:** the pipeline passed the MaaS Kubernetes resource name
-  instead of the provider-qualified Llama Stack model ID.
-- **Confirm:**
-
-```bash
-oc exec -i deployment/lsd-private-rag -n enterprise-rag -- python3 - <<'PY'
-from llama_stack_client import LlamaStackClient
-client = LlamaStackClient(base_url="http://127.0.0.1:8321")
-print(client.models.list())
-PY
-```
-
-- **Fix:** set `RHOAI_STAGE230_INFERENCE_MODEL_ID` to the model ID returned by
-  the Stage 230 Llama Stack runtime. The default is
-  `vllm-inference/nemotron-3-nano-30b-a3b`. Keep
-  `RHOAI_MAAS_NEMOTRON_MODEL_NAME` as the short MaaS resource name
+- **Symptom:** `validate.sh` reports that `/v1/models` does not include
   `nemotron-3-nano-30b-a3b`.
-
-### Docling conversion fails or times out
-
-- **Likely causes:** the `private-rag-docling` pod is still downloading
-  runtime assets, the KFP task cannot reach the in-cluster service, or the
-  source PDF is missing from `stage-230-private-data-rag/documents/`.
-- **Confirm:**
-
-```bash
-oc get deployment private-rag-docling -n enterprise-rag
-oc logs deployment/private-rag-docling -n enterprise-rag --since=20m
-ls -l stage-230-private-data-rag/documents/
-```
-
-- **Fix:** wait for the deployment to become ready and rerun the deploy script.
-  Increase `RHOAI_STAGE230_DOCLING_TIMEOUT` if the first conversion in a fresh
-  environment needs more time.
-
-### RAG query returns no useful context
-
-- **Likely causes:** the vector DB was not seeded, document upload failed, or
-  the vector store was deleted during testing.
-- **Confirm:**
-
-```bash
-oc get job private-rag-s3-seed -n enterprise-rag
-oc logs job/private-rag-s3-seed -n enterprise-rag
-./stage-230-private-data-rag/validate.sh
-```
-
-- **Fix:** rerun the deploy script. The ingestion logic converts the whoami PDF
-  through the KFP pipeline, unregisters and recreates the `whoami` vector
-  database, and re-ingests the converted Markdown so the demo corpus is
-  deterministic.
-
-### Private RAG chatbot route is unavailable or shows connection errors
-
-- **Likely causes:** the Streamlit deployment is not ready, the repo-owned
-  chatbot image was not built, the `LLAMA_STACK_ENDPOINT` environment variable
-  does not point at the Stage 230 Llama Stack service, or the chatbot
-  `llama-stack-client` version does not match the deployed Llama Stack server.
-- **Confirm:**
-
-```bash
-oc get deployment,svc,route private-rag-chatbot -n enterprise-rag
-oc logs deployment/private-rag-chatbot -n enterprise-rag --tail=120
-oc get deployment private-rag-chatbot -n enterprise-rag \
-  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="LLAMA_STACK_ENDPOINT")].value}{"\n"}'
-oc get svc lsd-private-rag-service -n enterprise-rag
-oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
-  python -c 'import importlib.metadata as md; print(md.version("llama-stack-client"))'
-oc exec deployment/private-rag-chatbot -n enterprise-rag -- \
-  python -c 'import rhoai_rag_chatbot; print(rhoai_rag_chatbot.__version__)'
-```
-
-- **Fix:** rerun Stage 230 deploy after Argo CD has synced the latest GitOps
-  revision. The deploy script starts an OpenShift binary build from
-  `stage-230-private-data-rag/chatbot/` and the deployment should use
-  `image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest`.
-  The chatbot must report a `0.7.x` `llama-stack-client` for the RHOAI 3.4
-  Llama Stack server and import the `rhoai_rag_chatbot` package. If the app
-  starts but no document collection appears, rerun the ingestion pipeline so
-  the `whoami` vector store exists. If MCP or guardrails show as `deferred`,
-  that is expected for Stage 230; those features must remain disabled until the
-  later product-backed stages deploy and validate their resources.
-
-### Private RAG chatbot build remains Pending or SchedulingGated
-
-- **Likely cause:** the OpenShift Build pod was accidentally Kueue-managed.
-  Build pods should not carry `kueue.x-k8s.io/queue-name` in Stage 230; keep
-  Kueue labels on long-running runtime pods and generated helper jobs instead.
-- **Confirm:**
-
-```bash
-oc get build -n enterprise-rag -l buildconfig=private-rag-chatbot
-oc get pod -n enterprise-rag -l openshift.io/build.name=<build-name> -o yaml \
-  | grep -A3 schedulingGates
-oc get buildconfig private-rag-chatbot -n enterprise-rag \
-  -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}{"\n"}'
-```
-
-- **Fix:** rerun Stage 230 deploy after the latest GitOps revision has synced.
-  The deploy script cancels stale incomplete chatbot builds before starting a
-  fresh binary build.
-
-### Llama Stack RAG answer gets 401 from MaaS
-
-- **Likely cause:** the stored MaaS API key expired, was revoked, or the Llama
-  Stack pod still has an old Secret value.
-- **Fix:** rerun Stage 230 deploy. It creates a fresh MaaS API key as
-  `ai-developer`, stores it in `private-rag-llama-stack-secret`, revokes the
-  old key when known, and lets the `LlamaStackDistribution` restart from the
-  updated Secret.
-
-```bash
-./stage-230-private-data-rag/deploy.sh
-./stage-230-private-data-rag/validate.sh
-```
+- **Likely cause:** the `private-rag-llama-stack-secret` contains a stale MaaS
+  endpoint, invalid API key, or mismatched `INFERENCE_MODEL`.
+- **Fix:** confirm Stage 220 passes, then rerun
+  `stage-230-private-data-rag/deploy.sh` so it refreshes the Llama Stack Secret
+  from the current `MaaSModelRef.status.endpoint` and API-key flow.
 
 ---
 

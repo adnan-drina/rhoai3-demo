@@ -47,8 +47,13 @@ Review points:
 ```text
 Docling data processing:
   repository: https://github.com/opendatahub-io/data-processing.git
-  branch: stable
-  directory: notebooks/
+  branch: stable by default; main only with explicit stage decision
+  directories:
+    notebooks/
+    kubeflow-pipelines/common
+    kubeflow-pipelines/docling-standard
+    kubeflow-pipelines/docling-vlm
+    scripts/subset_selection
 
 SDG Hub:
   repository: https://github.com/Red-Hat-AI-Innovation-Team/sdg_hub.git
@@ -74,6 +79,36 @@ Review points:
   credentials, data, model choices, and validation.
 
 ## Training Hub Algorithm Review
+
+## Docling And KFP Data Preparation Review
+
+```text
+Corpus: <AG News | Dutch government publications | other>
+Input format: plain text | PDF | HTML | Office document | scanned image | mixed
+Docling needed: yes | no
+Docling task: convert | chunk | extract | subset-select | RAG preparation
+Execution mode: notebook | Kubernetes Job | KFP standard pipeline | KFP VLM pipeline
+Runtime image: Red Hat image | reviewed custom image | demo exception
+Input source: HTTP/S | S3-compatible object storage
+Secret contract: none | data-processing-docling-pipeline
+Output target: Files API | Vector Stores API | object storage | training dataset
+Validation: converted Markdown exists | chunks inspected | metadata extracted | vector store populated
+```
+
+Review points:
+
+- Do not add Docling to already-structured text examples unless it validates a
+  real data-preparation need.
+- Use the standard KFP pipeline for ordinary documents and the VLM pipeline for
+  complex layouts, scanned content, or image descriptors.
+- For S3 input, generate the `data-processing-docling-pipeline` Secret from
+  local object-storage connection data; do not commit S3 or remote VLM
+  credentials.
+- Enable chunking only after conversion output is good enough for retrieval.
+- Inspect converted output before embedding; bad conversion quality becomes
+  bad retrieval quality.
+- Keep source documents and converted outputs out of Git unless they are public
+  fixtures approved for the demo.
 
 ```text
 SFT:

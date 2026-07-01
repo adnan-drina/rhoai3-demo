@@ -9,9 +9,6 @@ labels:
 
 resources:
   - project/base
-  - rhoai-dsc/base
-  - pipelines/base
-  - runtime/base
-  - app/build
-  - app/base
-  - app/console-link
+  - postgresql/base
+  - milvus/base
+  - llamastack/base

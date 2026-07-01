@@ -17,10 +17,9 @@ The active implementation follows this sequence:
 4. `stage-220-models-as-a-service` - MaaS prerequisite enablement, local
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
-5. `stage-230-private-data-rag` - whoami private document grounding in the
-   dedicated `enterprise-rag` OpenShift AI project, with ODF/NooBaa buckets,
-   Docling conversion, DSPA/KFP ingestion, a stage-owned pgvector database,
-   RHOAI Llama Stack, and Nemotron consumed through Stage 220 MaaS.
+5. `stage-230-private-data-rag` - planned metadata-aware enterprise RAG reset
+   with RHOAI Llama Stack / OGX, remote Milvus, AG News validation, and
+   Nemotron consumed through Stage 220 MaaS.
 
 ## Operator Lifecycle And Image Ownership
 
@@ -918,151 +917,82 @@ oc logs deployment/openshift-mcp -n rhoai-mcp --since=10m
 
 ## Stage 230: Private Data RAG
 
-Stage 230 adds an internal-only private RAG path on top of Stage 220 MaaS. It
-creates a dedicated OpenShift AI project named `Enterprise RAG`
-(`enterprise-rag`) as the private knowledge boundary. The stage owns an
-ODF/NooBaa source bucket (`enterprise-rag-bucket`), a dashboard-visible S3
-connection (`enterprise-rag-s3`), a Docling service for PDF-to-Markdown
-conversion, a DSPA/KFP pipeline server for repeatable ingestion, a
-PostgreSQL/pgvector database as the durable vector store, and a
-`LlamaStackDistribution` named `lsd-private-rag`.
+Stage 230 has started its rebuilt implementation. Do not treat the old
+whoami/Docling/DSPA/pgvector deploy and validation flow as the active operating
+model.
 
-### Deploy And Validate
+### Current Intent
 
-Stage 230 depends on Stages 110, 120, 210, and 220:
+The rebuilt Stage 230 demonstrates metadata-aware enterprise RAG based on
+the Red Hat Developer OGX/Llama Stack article and its linked AG News reference
+implementation. The current first slice:
 
-```bash
-./stage-110-rhoai-base-platform/validate.sh
-./stage-120-gpu-as-a-service/validate.sh
-./stage-210-model-serving-foundation/validate.sh
-./stage-220-models-as-a-service/validate.sh
-./stage-230-private-data-rag/deploy.sh
-./stage-230-private-data-rag/validate.sh
-```
+- creates the `enterprise-rag` OpenShift AI project
+- deploys PostgreSQL for Llama Stack metadata
+- deploys a demo-local Milvus endpoint for the documented remote Milvus
+  provider
+- deploys a `LlamaStackDistribution` configured for RAG
+- consume Nemotron through the Stage 220 MaaS gateway
+- provides a deterministic AG News sample and client-side smoke helper
 
-The deploy script:
+The next validation gate is to ingest the deterministic AG News sample through
+Files and Vector Stores APIs, validate metadata filtering and hybrid retrieval,
+and then generate a Nemotron answer from retrieved context.
 
-- verifies the target cluster through `RHOAI_EXPECTED_API_SERVER`
-- verifies the Llama Stack CRD, Stage 220 Nemotron `MaaSModelRef`, and a
-  Stage 220 MaaS subscription that grants access to the Nemotron model
-- applies the Stage 230 Argo CD Application
-- waits for the `enterprise-rag` OpenShift AI project and
-  `enterprise-rag-bucket` ObjectBucketClaim
-- creates runtime-local `private-rag-postgres-credentials`
-- creates a runtime-local MaaS API key as `ai-developer` and stores it in
-  `private-rag-llama-stack-secret`
-- creates the dashboard-visible `enterprise-rag-s3` connection from generated
-  OBC credentials
-- grants `anyuid` only to the dedicated `private-rag-postgres` service account
-- enables the RHOAI AI Pipelines component through the shared
-  `default-dsc` patch pattern
-- waits for `private-rag-postgres` and `lsd-private-rag`
-- waits for `private-rag-docling`
-- builds the repo-owned `private-rag-chatbot` image from
-  `stage-230-private-data-rag/chatbot/` with OpenShift Builds
-- waits for the `private-rag-chatbot` Streamlit UI
-- waits for the `private-rag-pipelines` DSPA route and Ready condition
-- uploads the whoami PDF corpus to the ODF/NooBaa bucket under
-  `private-rag/whoami/`
-- compiles and submits the `whoami-rag-ingestion` KFP pipeline
-- has the KFP run convert the PDF through Docling, register the `whoami`
-  vector store, ingest into Llama Stack pgvector, and record run evidence
+The Dutch government publication corpus will be added only after the AG News
+reference path is working. That phase should use the RHOAI 3.4 Docling and KFP
+data-preparation guidance instead of resurrecting the old whoami pipeline.
 
-The validator checks Argo CD state, object bucket readiness, MaaS readiness,
-AI Pipelines and DSPA readiness, runtime secrets, pgvector readiness, Docling
-readiness, Llama Stack readiness, object storage upload, latest pipeline run
-success, vector store presence, whoami RAG retrieval, a Nemotron-backed
-answer, and the Streamlit chatbot route.
+### Operational Status
 
-Get the chatbot URL:
+Current status:
 
-```bash
-oc get route private-rag-chatbot -n enterprise-rag -o jsonpath='https://{.spec.host}{"\n"}'
-```
+- `stage-230-private-data-rag/PLAN.md` is the authoritative Stage 230 design
+  document.
+- `stage-230-private-data-rag/deploy.sh` applies the Argo CD Application,
+  waits for the namespace, and creates non-committed runtime Secrets.
+- `stage-230-private-data-rag/validate.sh` checks the Stage 230 Application,
+  runtime resources, Llama Stack readiness, model listing, and the AG News
+  smoke helper syntax.
+- `stage-230-private-data-rag/scripts/agnews_rag_smoke.py` is the first
+  deterministic ingestion/search helper and requires `llama-stack-client` in
+  the execution environment.
+- Old `run-whoami-*`, chatbot, DSPA/KFP, Docling, and pgvector artifacts are
+  removed from the active stage.
 
-The OpenShift/RHOAI console application menu also includes a `Private RAG
-Chatbot` link under the `RHOAI Demo` section. Stage 230 creates the
-`ConsoleLink` through GitOps and patches its href to the generated route for
-the active cluster through the deploy script and sync hook, using the same
-cluster-neutral pattern as the Stage 210 Grafana shortcut.
+### Deployment Contract
 
-Use the Chat tab, select the `whoami` document collection, and ask one of the
-suggested questions. The chatbot searches the Llama Stack vector store and
-sends retrieved context to the MaaS-backed Nemotron model. Use the Inspect tab
-to confirm the active Llama Stack endpoint, model ids, vector stores, MCP
-connector discovery state, tools, shields, and guardrails status.
+`deploy.sh`:
 
-### Design Notes
+- load `.env` and enforce the OpenShift safety guard
+- apply the Stage 230 Argo CD Application first
+- create non-committed runtime Secrets for PostgreSQL, Milvus, MaaS access, and
+  optional dataset access
+- refresh the Application after Secret creation
+- leave ingestion to validation or an explicit user-triggered smoke run
+- later, run Docling conversion and KFP automation only after AG News validates
+  the base RAG runtime
 
-- Nemotron remains the response-generation model and is consumed through MaaS;
-  Stage 230 does not deploy or bypass a model endpoint.
-- Keep the MaaS Kubernetes resource name and the Llama Stack model ID separate.
-  `RHOAI_MAAS_NEMOTRON_MODEL_NAME` identifies the MaaS resources
-  (`nemotron-3-nano-30b-a3b`), while
-  `RHOAI_STAGE230_INFERENCE_MODEL_ID` is the provider-qualified model ID
-  returned by the Stage 230 Llama Stack `/v1/models` API
-  (`vllm-inference/nemotron-3-nano-30b-a3b` by default).
-- `sentence-transformers/all-MiniLM-L6-v2` is used for embeddings because it is the Red Hat RAG
-  quickstart baseline and is supported by the documented Llama Stack
-  `inline::sentence-transformers` path. The stage configures a 384-dimensional
-  vector store for this embedding model. Nemotron is not an embedding model.
-- `docker.io/pgvector/pgvector:pg16` is an explicit demo exception. RHOAI docs
-  recommend PostgreSQL with pgvector for durable vector storage, but the active
-  RHOAI baseline does not provide a product image containing the pgvector
-  extension.
-- The Streamlit chatbot is a repo-owned Stage 230 app informed by the Red Hat
-  Enterprise RAG quickstart and the legacy whoami app. Do not switch back to
-  `quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` for the RHOAI 3.4
-  baseline; that image carries `llama-stack-client==0.6.0`, while the deployed
-  Llama Stack server requires the `0.7.x` client line.
-- MCP and guardrails are intentionally disabled in Stage 230. The chatbot code
-  exposes `mcp.py` and `guardrails.py` integration boundaries plus ConfigMap
-  flags (`MCP_ENABLED`, `GUARDRAILS_ENABLED`, and `GUARDRAILS_ENDPOINT`) so
-  later stages can add product-backed tool calling and safety controls without
-  replacing the RAG app. The guardrails adapter fails closed if it is enabled
-  before a reviewed product API payload is implemented.
-- The previous implementation's MinIO server is not reused. Stage 230 uses the
-  stage-owned ODF/NooBaa `enterprise-rag-bucket` ObjectBucketClaim. The old
-  whoami PDF and Docling conversion boundary are reused because they still
-  match the RHOAI 3.4 RAG documentation pattern.
-- DSPA artifacts use a separate fixed NooBaa bucket
-  `enterprise-rag-pipelines`, because the
-  `DataSciencePipelinesApplication` object-storage spec needs a stable bucket
-  name. The KFP source-document steps read from the stage-owned generated
-  `enterprise-rag-bucket`.
-- The DSPA manifest declares the stable RHOAI-defaulted spec fields observed
-  from the active CRD and reconciled object. Keeping these defaults in GitOps
-  prevents a Healthy-but-OutOfSync Argo CD state after the operator fills in
-  omitted fields.
-- KFP task-to-task file exchange uses the AI Pipelines per-run workspace
-  configured in `dsl.PipelineConfig(workspace=...)` with an explicit
-  Kubernetes PVC `accessModes: [ReadWriteOnce]` patch. Do not pre-create a
-  GitOps-managed EBS PVC for this path; Argo CD waits on Pending
-  `WaitForFirstConsumer` PVCs and can block later sync waves.
-- The DSPA uses the in-cluster NooBaa `s3.openshift-storage.svc:80` HTTP
-  service for pipeline artifacts. This avoids self-signed TLS trust issues
-  inside DSPA while keeping traffic within the cluster network for the demo.
-- Because `enterprise-rag` is Kueue-managed, long-running runtime controllers
-  and generated helper jobs use the RHOAI-created `default` LocalQueue unless
-  the stage explicitly creates another LocalQueue in that namespace. Stable
-  Kueue template metadata is committed on long-running Deployments when needed
-  to keep Argo CD server-side diff clean.
-- OpenShift Build pods for `private-rag-chatbot` are not Kueue-managed. The
-  BuildConfig intentionally does not carry `kueue.x-k8s.io/queue-name` because
-  build pods can remain `SchedulingGated` after Kueue admission in this demo
-  environment.
-- `quay.io/docling-project/docling-serve:latest` remains a demo/reference
-  dependency from the previous implementation and quickstart pattern. Pin or
-  replace it before making production-support claims.
-- External search, AutoRAG, enabled MCP tool calling, and enabled guardrails are
-  deferred. This stage proves the private internal RAG foundation first with a
-  product-visible DSPA/KFP ingestion workflow for the whoami PDF.
+`validate.sh` currently proves the runtime foundation and prepares the next
+gate:
 
----
+- Llama Stack model list includes the configured Nemotron provider
+- PostgreSQL, etcd, Milvus, and the `LlamaStackDistribution` are ready
+- the AG News smoke helper compiles
 
-Legacy operations content is backed up at:
+The next validation expansion should prove the user-visible RAG outcome:
 
-- `../backup/legacy-implementation-2026-06-09/docs/OPERATIONS.md`
+- vector store is created with expected metadata
+- files are uploaded and attached with document metadata
+- hybrid search returns expected AG News candidates
+- reranker scores are present when reranker is enabled
+- final answer is generated by Nemotron using retrieved context
+- later, Docling output, KFP run status, and processed artifacts are validated
+  before Dutch publication content is indexed
+
+Legacy Stage 230 operations content remains available in Git history and in the
+pre-reset commits. The old backup tree under
+`backup/legacy-implementation-2026-06-09/` is for historical reference only.
 
 ## Operator Lifecycle And Upgrades
 

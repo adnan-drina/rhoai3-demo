@@ -85,30 +85,30 @@ OpenAI inference, and Gen AI Playground responses for both models.
 | API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output for both models, checks token usage, and validates Gen AI Playground responses. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
-## Stage 230: Status — IMPLEMENTATION ADDED
+## Stage 230: Status — REPLANNING
 
-Stage 230 implements the private enterprise RAG baseline: the whoami PDF corpus
-from the previous implementation, Stage 110 object storage, Docling conversion,
-a stage-owned DSPA/KFP ingestion pipeline, a stage-owned pgvector database,
-RHOAI Llama Stack, a repo-owned Streamlit RAG chatbot informed by the Red Hat
-quickstart and legacy whoami app, and Nemotron consumed through Stage 220 MaaS.
-The stage is designed for
-fresh-environment deployment through
-`stage-230-private-data-rag/deploy.sh` and validation through
-`stage-230-private-data-rag/validate.sh`.
+Stage 230 is being reset from the earlier whoami/Docling/DSPA/pgvector design
+to a metadata-aware enterprise RAG implementation based on the Red Hat
+Developer OGX/Llama Stack article and its linked `agnews-rag-demo` repository.
+The first rebuilt version should reproduce the AG News pattern with Nemotron
+through Stage 220 MaaS, remote Milvus, PostgreSQL Llama Stack metadata,
+metadata filtering, hybrid search, and optional reranking. Once that reference
+flow is proven, the corpus will shift to Dutch government publications.
 
 ### Open / deferred from Stage 230
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Fresh-environment rollout | high | Static render and server-side dry-run passed on cluster-xgg8t; run the full Stage 230 deploy after the branch is pushed so Argo CD can fetch the new GitOps path. |
-| Production embedding posture | medium | First implementation uses the quickstart `sentence-transformers/all-MiniLM-L6-v2` inline sentence-transformers provider; consider a separately served embedding model for a more production-like enterprise RAG stage. |
-| Docling image posture | medium | Stage 230 uses `quay.io/docling-project/docling-serve:latest` as a demo/reference dependency inherited from the previous implementation and quickstart pattern; replace with a Red Hat-advised source or keep the demo exception explicit before production-positioned delivery. |
-| Streamlit app image posture | medium | Stage 230 now builds a repo-owned chatbot image from `stage-230-private-data-rag/chatbot/` with `llama-stack-client==0.7.2`; scan, document the base image source, and publish through a controlled registry before production-positioned delivery. |
-| Pipeline hardening | medium | DSPA/KFP ingestion is now active; hardening work remains around pipeline component image provenance, Red Hat-advised image/version handling, artifact retention policy, run cleanup, and richer dashboard evidence. |
-| MCP integration | medium | Chatbot code now has a disabled-by-default MCP adapter; implement connector registration, agent/Responses API execution, scoped tool selection, and validation in a later agentic stage. |
-| AutoRAG comparison | low | Keep AutoRAG as a later optimization path because it is Technology Preview and Milvus-oriented in the current skill baseline. |
-| Guardrails | high | Chatbot code now has a disabled-by-default guardrails adapter; deploy and validate product-backed NeMo or FMS resources before enabling safety shields and prompt-injection controls. |
+| Remove stale active implementation | high | Remove or replace old whoami, Docling, DSPA/KFP, pgvector, and previous Streamlit chatbot artifacts during the Stage 230 rebuild so the stage has one coherent architecture. |
+| AG News compatibility implementation | high | Re-author the Red Hat article-linked Helm/notebook pattern into local GitOps, notebooks/jobs, and validation scripts; do not apply the reference Helm chart directly. |
+| Nemotron through MaaS | high | Replace the reference Llama generation model with the governed Stage 220 Nemotron MaaS endpoint. |
+| Remote Milvus posture | high | Use the RHOAI 3.4 Llama Stack remote Milvus provider pattern; document any non-Red Hat Milvus/etcd image choices as demo exceptions. |
+| Embedding provider and dimension | high | Select the embedding provider from installed Llama Stack capabilities, capture the model ID and vector dimension, and validate before indexing. |
+| Reranker artifact review | medium | The article uses a Qwen3 reranker pattern; validate model artifact provenance and serving configuration before making it mandatory. |
+| Dutch government publication corpus | high | After AG News validates, define metadata taxonomy and ingestion path for Dutch government publications. Use Docling for unstructured documents and keep AG News as the compatibility corpus. |
+| Docling/KFP data preparation | high | Use the RHOAI 3.4 "Prepare your data for AI consumption" chapter and `opendatahub-io/data-processing` stable branch, with the `main/kubeflow-pipelines` tree as a newer reference to compare. Start from notebooks or jobs, then automate with `docling-standard` for ordinary PDFs and `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
+| RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
+| Guardrails and MCP | medium | Add product-backed guardrails and MCP after base RAG works. |
 
 ## Candidate Future Stages
 

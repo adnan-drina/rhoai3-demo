@@ -1,0 +1,110 @@
+# Source Capture
+
+## Official Product Sources
+
+| Source | Role |
+|--------|------|
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index | Product authority for Llama Stack / OGX support posture, API behavior, `LlamaStackDistribution`, provider configuration, vector stores, ingestion, query, PostgreSQL metadata, Milvus, and RAG examples |
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index | Product authority for consuming Nemotron through governed MaaS access |
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index | Product authority for model deployment and endpoint behavior when a reranker is served through OpenShift AI |
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index | Product authority if the ingestion workflow later moves into DSPA/KFP |
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models | Product authority for preparing unstructured data with Docling and automating Docling processing with Kubeflow Pipelines |
+
+## Red Hat Narrative And Implementation Sources
+
+| Source | Role |
+|--------|------|
+| https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx | Red Hat Developer article for the enterprise RAG pattern: metadata filtering, hybrid search, neural reranking, AG News, Milvus, Llama Stack / OGX |
+| https://github.com/abdelhamidfg/agnews-rag-demo | GitHub reference implementation linked from the Red Hat Developer article; use as example notebooks and Helm-chart evidence, not product authority |
+| https://github.com/opendatahub-io/data-processing/tree/stable | Official-doc-linked data processing examples for Docling notebooks and KFP pipelines; use as implementation evidence for unstructured document processing |
+| https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines | Current Docling Kubeflow Pipeline reference implementation; compare with the official-doc-linked `stable` branch before adopting newer pipeline code |
+
+## Reference Repository Snapshot Reviewed
+
+Repository: `abdelhamidfg/agnews-rag-demo`
+
+Relevant paths:
+
+- `chart/templates/llamastack.yaml`
+- `chart/templates/milvus.yaml`
+- `chart/templates/postgresql.yaml`
+- `chart/templates/llama32.yaml`
+- `chart/templates/qwen3-reranker.yaml`
+- `notebooks/Ingestion_pipeline_ag_news.ipynb`
+- `notebooks/retrieval_pipeline_ag_news.ipynb`
+
+Patterns reused:
+
+- AG News as the first compatibility corpus
+- vector-store metadata such as `tenant_id` and `version_no`
+- file-level metadata such as `category` and document type
+- Files API upload followed by Vector Stores API attachment
+- remote Milvus vector store provider
+- hybrid vector-store search
+- LLM tool/function call to extract metadata filters
+- reranker endpoint before final answer generation
+
+Patterns not copied directly:
+
+- direct Llama generation model deployment; this repo uses Stage 220 Nemotron
+  through MaaS instead
+- direct `helm install`; this repo uses local GitOps/Kustomize and Argo CD
+- hardcoded sample passwords; this repo uses generated or environment-local
+  Secrets
+- user-facing claims that example images or model artifacts are Red
+  Hat-supported unless a Red Hat source says so
+
+Repository: `opendatahub-io/data-processing`
+
+Relevant paths:
+
+- `kubeflow-pipelines/README.md`
+- `kubeflow-pipelines/common/components.py`
+- `kubeflow-pipelines/common/constants.py`
+- `kubeflow-pipelines/docling-standard/standard_convert_pipeline.py`
+- `kubeflow-pipelines/docling-standard/standard_components.py`
+- `kubeflow-pipelines/docling-vlm/vlm_convert_pipeline.py`
+- `kubeflow-pipelines/docling-vlm/vlm_components.py`
+
+Patterns reused for the Dutch government publication phase:
+
+- choose `docling-standard` first for normal PDF conversion, OCR, table
+  structure, enrichments, Markdown output, Docling JSON output, and optional
+  HybridChunker chunk output
+- reserve `docling-vlm` for complex layouts, scanned/image-heavy documents,
+  custom page-level instructions, or remote VLM conversion needs
+- use KFP `ParallelFor` over PDF splits for scale-out conversion
+- support both HTTP/S and S3-compatible input sources
+- mount S3 and remote VLM configuration through a Kubernetes Secret named
+  `data-processing-docling-pipeline` when adapting the reference pattern
+- enable `docling_chunk_enabled` only when the converted output is ready to
+  feed RAG ingestion directly
+- tune `num_splits`, `num_threads`, timeout, OCR, table mode, and chunk size
+  as pipeline parameters rather than hardcoding them in manifests
+
+Patterns not copied directly:
+
+- remote import of compiled YAML from the upstream repository without local
+  review and branch selection
+- base images from `common/constants.py` without image provenance review; KFP
+  component images are explicit pipeline runtime choices and must be recorded
+  as Red Hat image, reviewed custom image, or demo exception
+- default sample PDFs as proof of the Dutch government publication use case
+- direct S3 credentials or remote VLM API keys in committed manifests
+
+## Source Boundaries
+
+- The official Llama Stack guide defines product behavior and support posture.
+- The official model customization guide defines the Docling and KFP
+  data-preparation workflow for unstructured documents.
+- The article and GitHub repo define a useful demo pattern.
+- The GitHub repo does not define our GitOps layout, secret handling, image
+  posture, model choice, or production support claims.
+- AutoRAG is a separate product workflow and should not be mixed into the first
+  rebuilt Stage 230 implementation.
+- The `opendatahub-io/data-processing` examples are Red Hat-documented
+  examples, but this repo must still review images, dependencies, credentials,
+  pipeline parameters, and generated YAML before adopting them.
+- Prefer the official-doc-linked `stable` branch for baseline-aligned demo
+  implementation. Use `main` only when a specific pipeline fix or feature is
+  needed and the branch choice is recorded in the stage plan.

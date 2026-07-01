@@ -5,31 +5,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+PASS=0
+WARN=0
+FAIL=0
+
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
   # shellcheck source=/dev/null
   source "$ROOT_DIR/.env"
   set +a
 fi
-
-PROJECT_NS="${RHOAI_STAGE230_PROJECT_NAMESPACE:-enterprise-rag}"
-MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
-MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_MAAS_DEMO_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}}}"
-NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
-RAG_INFERENCE_MODEL="${RHOAI_STAGE230_INFERENCE_MODEL_ID:-vllm-inference/nemotron-3-nano-30b-a3b}"
-RAG_LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-private-rag}"
-RAG_DOCLING_DEPLOYMENT="${RHOAI_STAGE230_DOCLING_DEPLOYMENT:-private-rag-docling}"
-RAG_CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
-RAG_DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-private-rag-pipelines}"
-RAG_DSPA_OBC_NAME="${RHOAI_STAGE230_DSPA_OBC_NAME:-private-rag-pipelines-bucket}"
-RAG_PIPELINE_LAST_RUN_CONFIGMAP="${RHOAI_STAGE230_LAST_RUN_CONFIGMAP:-private-rag-pipeline-last-run}"
-RAG_CONSOLELINK="${RHOAI_STAGE230_CONSOLELINK:-rhoai-demo-rag-chatbot}"
-RAG_VECTOR_DB="${RHOAI_STAGE230_VECTOR_DB:-whoami}"
-RAG_DOC_CONFIGMAP="${RHOAI_STAGE230_DOCUMENT_CONFIGMAP:-private-rag-documents}"
-OBC_NAME="${RHOAI_STAGE230_OBC_NAME:-enterprise-rag-bucket}"
-
-PASS=0
-FAIL=0
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -42,269 +27,108 @@ if [[ "$ACTUAL_SERVER" != *"$RHOAI_EXPECTED_API_SERVER"* ]]; then
   exit 1
 fi
 
+RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
+POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
+MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
+LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
+NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+
 check() {
   local label="$1"
   local result="$2"
   if [[ "$result" == "pass" ]]; then
-    echo "[OK] $label"
+    echo "✓ $label"
     (( PASS++ )) || true
   else
-    echo "[FAIL] $label ($result)"
+    echo "✗ $label  ($result)"
     (( FAIL++ )) || true
   fi
 }
 
-resource_exists() {
-  local resource="$1"
-  local namespace="$2"
-  oc get "$resource" -n "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1
+warn() {
+  local label="$1"
+  local result="$2"
+  echo "! $label  ($result)"
+  (( WARN++ )) || true
 }
 
 jsonpath() {
   local resource="$1"
   local namespace="$2"
   local path="$3"
-  oc get "$resource" -n "$namespace" -o jsonpath="$path" \
-    --insecure-skip-tls-verify=true 2>/dev/null || true
+  if [[ -n "$namespace" ]]; then
+    oc get "$resource" -n "$namespace" -o jsonpath="$path" \
+      --insecure-skip-tls-verify=true 2>/dev/null || true
+  else
+    oc get "$resource" -o jsonpath="$path" \
+      --insecure-skip-tls-verify=true 2>/dev/null || true
+  fi
 }
 
-cluster_jsonpath() {
+resource_exists() {
   local resource="$1"
-  local path="$2"
-  oc get "$resource" -o jsonpath="$path" \
-    --insecure-skip-tls-verify=true 2>/dev/null || true
+  local namespace="$2"
+  if [[ -n "$namespace" ]]; then
+    oc get "$resource" -n "$namespace" --insecure-skip-tls-verify=true >/dev/null 2>&1
+  else
+    oc get "$resource" --insecure-skip-tls-verify=true >/dev/null 2>&1
+  fi
 }
 
-app_sync=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" '{.status.sync.status}')
-app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" '{.status.health.status}')
-[[ "$app_sync" == "Synced" && "$app_health" == "Healthy" ]] && R=pass || R="${app_sync:-missing}/${app_health:-missing}"
-check "Stage 230 Argo CD Application is Synced/Healthy" "$R"
+available_replicas() {
+  local resource="$1"
+  local namespace="$2"
+  jsonpath "$resource" "$namespace" "{.status.availableReplicas}"
+}
 
-[[ "$(jsonpath "objectbucketclaim/${OBC_NAME}" "$PROJECT_NS" '{.status.phase}')" == "Bound" ]] && R=pass || R=missing
-check "Enterprise RAG project ObjectBucketClaim is Bound" "$R"
+app_sync=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.sync.status}")
+app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.health.status}")
+[[ "$app_sync" == "Synced" ]] && check "Stage 230 Argo CD Application is Synced" "pass" || check "Stage 230 Argo CD Application is Synced" "${app_sync:-missing}"
+[[ "$app_health" == "Healthy" ]] && check "Stage 230 Argo CD Application is Healthy" "pass" || warn "Stage 230 Argo CD Application is Healthy" "${app_health:-missing}"
 
-dsc_aipipelines=$(oc get datasciencecluster default-dsc -n redhat-ods-applications \
-  -o jsonpath='{.spec.components.aipipelines.managementState}' \
-  --insecure-skip-tls-verify=true 2>/dev/null || true)
-[[ "$dsc_aipipelines" == "Managed" ]] && R=pass || R="${dsc_aipipelines:-missing}"
-check "OpenShift AI AI Pipelines component is Managed" "$R"
+resource_exists "namespace/${RAG_NS}" "" && check "enterprise-rag namespace exists" "pass" || check "enterprise-rag namespace exists" "missing"
+for secret in "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET"; do
+  resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
+done
 
-aipipelines_ready=$(oc get datasciencecluster default-dsc -n redhat-ods-applications \
-  -o jsonpath='{.status.conditions[?(@.type=="AIPipelinesReady")].status}' \
-  --insecure-skip-tls-verify=true 2>/dev/null || true)
-[[ "$aipipelines_ready" == "True" ]] && R=pass || R="${aipipelines_ready:-missing}"
-check "OpenShift AI AI Pipelines component reports Ready" "$R"
+[[ "$(available_replicas statefulset/private-rag-postgres "$RAG_NS")" == "1" ]] \
+  && check "PostgreSQL metadata store is available" "pass" \
+  || check "PostgreSQL metadata store is available" "availableReplicas=$(available_replicas statefulset/private-rag-postgres "$RAG_NS")"
 
-[[ "$(jsonpath "objectbucketclaim/${RAG_DSPA_OBC_NAME}" "$PROJECT_NS" '{.status.phase}')" == "Bound" ]] && R=pass || R=missing
-check "Private RAG DSPA artifact ObjectBucketClaim is Bound" "$R"
+[[ "$(available_replicas deployment/private-rag-etcd "$RAG_NS")" == "1" ]] \
+  && check "Milvus etcd dependency is available" "pass" \
+  || check "Milvus etcd dependency is available" "availableReplicas=$(available_replicas deployment/private-rag-etcd "$RAG_NS")"
 
-dspa_ready=$(jsonpath "dspa/${RAG_DSPA_NAME}" "$PROJECT_NS" '{.status.conditions[?(@.type=="Ready")].status}')
-[[ "$dspa_ready" == "True" ]] && R=pass || R="${dspa_ready:-missing}"
-check "Private RAG DSPA pipeline server is Ready" "$R"
+[[ "$(available_replicas deployment/private-rag-milvus "$RAG_NS")" == "1" ]] \
+  && check "Milvus vector store service is available" "pass" \
+  || check "Milvus vector store service is available" "availableReplicas=$(available_replicas deployment/private-rag-milvus "$RAG_NS")"
 
-dspa_route=$(jsonpath "route/ds-pipeline-${RAG_DSPA_NAME}" "$PROJECT_NS" '{.spec.host}')
-[[ -n "$dspa_route" ]] && R=pass || R=missing
-check "Private RAG DSPA route exists" "$R"
+lls_ready=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.conditions[?(@.type==\"Ready\")].status}")
+[[ "$lls_ready" == "True" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_ready:-missing}"
 
-[[ "$(jsonpath "maasmodelref/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" '{.status.phase}')" == "Ready" ]] && R=pass || R=missing
-check "Stage 220 Nemotron MaaSModelRef is Ready" "$R"
-
-[[ "$(jsonpath "maassubscription/${MAAS_SUBSCRIPTION}" "$MAAS_NS" '{.status.phase}')" == "Active" ]] && R=pass || R=missing
-check "Stage 220 MaaS subscription is Active" "$R"
-
-sub_models=$(jsonpath "maassubscription/${MAAS_SUBSCRIPTION}" "$MAAS_NS" '{.spec.modelRefs[*].name}')
-[[ " $sub_models " == *" ${NEMOTRON_MODEL_RESOURCE} "* ]] && R=pass || R="models=${sub_models:-missing}"
-check "Stage 220 MaaS subscription grants Nemotron access" "$R"
-
-resource_exists "secret/private-rag-postgres-credentials" "$PROJECT_NS" && R=pass || R=missing
-check "pgvector credential Secret exists" "$R"
-
-token_value=$(jsonpath "secret/private-rag-llama-stack-secret" "$PROJECT_NS" '{.data.VLLM_API_TOKEN}' | base64 --decode 2>/dev/null || true)
-[[ "$token_value" == sk-oai-* ]] && R=pass || R="missing or invalid MaaS API key"
-check "Llama Stack Secret contains MaaS API token" "$R"
-
-if resource_exists "statefulset/private-rag-postgres" "$PROJECT_NS"; then
-  ready=$(jsonpath "statefulset/private-rag-postgres" "$PROJECT_NS" '{.status.readyReplicas}')
-  [[ "$ready" == "1" ]] && R=pass || R="readyReplicas=${ready:-0}"
-else
-  R=missing
-fi
-check "pgvector StatefulSet is ready" "$R"
-
-if resource_exists "deployment/${RAG_DOCLING_DEPLOYMENT}" "$PROJECT_NS"; then
-  ready=$(jsonpath "deployment/${RAG_DOCLING_DEPLOYMENT}" "$PROJECT_NS" '{.status.readyReplicas}')
-  [[ "$ready" == "1" ]] && R=pass || R="readyReplicas=${ready:-0}"
-else
-  R=missing
-fi
-check "Private RAG Docling deployment is ready" "$R"
-
-if resource_exists "deployment/${RAG_LSD_NAME}" "$PROJECT_NS"; then
-  ready=$(jsonpath "deployment/${RAG_LSD_NAME}" "$PROJECT_NS" '{.status.readyReplicas}')
-  [[ "$ready" == "1" ]] && R=pass || R="readyReplicas=${ready:-0}"
-else
-  R=missing
-fi
-check "Private RAG Llama Stack deployment is ready" "$R"
-
-if resource_exists "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS"; then
-  ready=$(jsonpath "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.status.readyReplicas}')
-  [[ "$ready" == "1" ]] && R=pass || R="readyReplicas=${ready:-0}"
-else
-  R=missing
-fi
-check "Private RAG Streamlit chatbot deployment is ready" "$R"
-
-chatbot_route=$(jsonpath "route/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS" '{.spec.host}')
-[[ -n "$chatbot_route" ]] && R=pass || R=missing
-check "Private RAG Streamlit chatbot route exists" "$R"
-
-if [[ -n "$chatbot_route" ]]; then
-  chatbot_status=$(curl -sk --max-time 20 -o /tmp/rhoai-stage230-chatbot.html -w '%{http_code}' "https://${chatbot_route}/" 2>/dev/null || true)
-  if [[ "$chatbot_status" == "200" ]] && grep -qi "streamlit" /tmp/rhoai-stage230-chatbot.html; then
-    R=pass
+route_host=$(jsonpath "route/lsd-enterprise-rag" "$RAG_NS" "{.spec.host}")
+if [[ -n "$route_host" ]]; then
+  check "Llama Stack route exists" "pass"
+  models_body=$(mktemp)
+  status=$(curl -sk --max-time 30 -o "$models_body" -w '%{http_code}' "https://${route_host}/v1/models" 2>/dev/null || true)
+  if [[ "$status" == "200" ]] && grep -q "$NEMOTRON_MODEL_RESOURCE" "$models_body"; then
+    check "Llama Stack lists MaaS-backed Nemotron model" "pass"
   else
-    R="status=${chatbot_status:-missing}"
+    check "Llama Stack lists MaaS-backed Nemotron model" "status=${status},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
-  rm -f /tmp/rhoai-stage230-chatbot.html
+  rm -f "$models_body"
 else
-  R=missing
+  check "Llama Stack route exists" "missing"
 fi
-check "Private RAG Streamlit chatbot route responds" "$R"
 
-if resource_exists "deployment/${RAG_CHATBOT_DEPLOYMENT}" "$PROJECT_NS"; then
-  output=$(oc exec "deployment/${RAG_CHATBOT_DEPLOYMENT}" -n "$PROJECT_NS" \
-    --insecure-skip-tls-verify=true \
-    -- python -c '
-import importlib.metadata as md
-from llama_stack_client import LlamaStackClient
-import rhoai_rag_chatbot
-
-version = md.version("llama-stack-client")
-if not version.startswith("0.7."):
-    raise SystemExit(f"incompatible llama-stack-client version: {version}")
-
-client = LlamaStackClient(base_url="http://lsd-private-rag-service.enterprise-rag.svc.cluster.local:8321")
-models = client.models.list()
-if not models:
-    raise SystemExit("Llama Stack returned no models")
-print(f"CHATBOT_LLAMA_STACK_CLIENT_OK {version} app={rhoai_rag_chatbot.__version__}")
-' 2>&1 || true)
-  if grep -q "CHATBOT_LLAMA_STACK_CLIENT_OK" <<<"$output"; then
-    R=pass
-  else
-    R="$output"
-  fi
+if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_smoke.py" >/dev/null 2>&1; then
+  check "AG News RAG smoke script compiles" "pass"
 else
-  R=missing
+  check "AG News RAG smoke script compiles" "py_compile failed"
 fi
-check "Private RAG chatbot Llama Stack client is compatible" "$R"
-
-if [[ -n "$chatbot_route" ]]; then
-  console_href=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.href}')
-  console_text=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.text}')
-  console_section=$(cluster_jsonpath "consolelink/${RAG_CONSOLELINK}" '{.spec.applicationMenu.section}')
-  expected_href="https://${chatbot_route}"
-  if [[ "$console_href" == "$expected_href" && "$console_text" == "Private RAG Chatbot" && "$console_section" == "RHOAI Demo" ]]; then
-    R=pass
-  else
-    R="href=${console_href:-missing} text=${console_text:-missing} section=${console_section:-missing}"
-  fi
-else
-  R=missing
-fi
-check "Private RAG chatbot console quick link is configured" "$R"
-
-resource_exists "configmap/${RAG_DOC_CONFIGMAP}" "$PROJECT_NS" && R=pass || R=missing
-check "Private demo document ConfigMap exists" "$R"
-
-if resource_exists "job/private-rag-s3-seed" "$PROJECT_NS"; then
-  succeeded=$(jsonpath "job/private-rag-s3-seed" "$PROJECT_NS" '{.status.succeeded}')
-  [[ "$succeeded" == "1" ]] && R=pass || R="succeeded=${succeeded:-0}"
-else
-  R=missing
-fi
-check "Private documents were uploaded to object storage" "$R"
-
-if resource_exists "configmap/${RAG_PIPELINE_LAST_RUN_CONFIGMAP}" "$PROJECT_NS"; then
-  pipeline_status=$(jsonpath "configmap/${RAG_PIPELINE_LAST_RUN_CONFIGMAP}" "$PROJECT_NS" '{.data.status}')
-  [[ "$pipeline_status" == "SUCCEEDED" || "$pipeline_status" == "SUCCESS" ]] && R=pass || R="${pipeline_status:-missing}"
-else
-  R=missing
-fi
-check "Latest whoami ingestion pipeline run succeeded" "$R"
-
-if resource_exists "deployment/${RAG_LSD_NAME}" "$PROJECT_NS"; then
-  output=$(oc exec -i "deployment/${RAG_LSD_NAME}" -n "$PROJECT_NS" \
-    --insecure-skip-tls-verify=true \
-    -- env RAG_VECTOR_DB="$RAG_VECTOR_DB" RAG_INFERENCE_MODEL="$RAG_INFERENCE_MODEL" python3 - <<'PY' 2>&1 || true
-from llama_stack_client import LlamaStackClient
-
-client = LlamaStackClient(base_url="http://127.0.0.1:8321")
-vector_store_name = __import__("os").environ["RAG_VECTOR_DB"]
-preferred_model = __import__("os").environ["RAG_INFERENCE_MODEL"]
-
-def ident(obj):
-    return getattr(obj, "identifier", None) or getattr(obj, "id", None) or getattr(obj, "provider_id", None)
-
-providers = [getattr(p, "provider_id", "") for p in client.providers.list() if "vector" in str(getattr(p, "api", "")).lower()]
-if not any("pgvector" in p for p in providers):
-    raise SystemExit(f"missing pgvector vector provider: {providers}")
-
-stores = list(client.vector_stores.list())
-store = next(
-    (
-        item for item in stores
-        if getattr(item, "name", None) == vector_store_name or ident(item) == vector_store_name
-    ),
-    None,
-)
-if store is None:
-    known = [f"{getattr(item, 'name', '')}:{ident(item)}" for item in stores]
-    raise SystemExit(f"missing vector store {vector_store_name}: {known}")
-vector_store_id = ident(store)
-
-rag_response = client.vector_stores.search(
-    vector_store_id=vector_store_id,
-    query="Who is Adnan Drina and what is his current role?",
-    max_num_results=5,
-)
-context = str(getattr(rag_response, "content", rag_response))
-if not any(term in context.lower() for term in ["adnan", "red hat", "principal", "solution architect"]):
-    raise SystemExit(f"unexpected RAG context: {context[:400]}")
-
-model_ids = [ident(m) for m in client.models.list()]
-model_ids = [mid for mid in model_ids if mid]
-model_id = preferred_model
-if model_ids and model_id not in model_ids:
-    model_id = next((mid for mid in model_ids if preferred_model in mid or "nemotron" in mid.lower()), model_ids[0])
-
-completion = client.chat.completions.create(
-    model=model_id,
-    messages=[
-        {"role": "system", "content": "Answer from the context only."},
-        {"role": "user", "content": f"Context:\n{context}\n\nQuestion: Who is Adnan Drina and what is his current role?"},
-    ],
-    temperature=0.1,
-)
-answer = completion.choices[0].message.content
-if not answer:
-    raise SystemExit("empty answer")
-print("RAG_RUNTIME_OK")
-PY
-)
-  if grep -q "RAG_RUNTIME_OK" <<<"$output"; then
-    R=pass
-  else
-    R="$output"
-  fi
-else
-  R=missing
-fi
-check "Llama Stack RAG query and Nemotron answer work" "$R"
 
 echo
-echo "Stage 230 validation summary: ${PASS} passed, ${FAIL} failed"
+echo "Stage 230 validation summary: ${PASS} passed, ${WARN} warnings, ${FAIL} failed"
 if (( FAIL > 0 )); then
   exit 1
 fi

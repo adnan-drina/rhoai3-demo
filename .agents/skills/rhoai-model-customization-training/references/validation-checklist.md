@@ -44,6 +44,24 @@ notebooks, KFP pipelines, runbooks, GitOps manifests, or demo scripts.
   committed artifacts.
 - KFP data processing examples use reviewed runtime images with required
   dependencies.
+- The `opendatahub-io/data-processing` stable branch is used as the first
+  example source when implementing Docling notebooks or Docling KFP pipelines.
+- Use of the `main` branch KFP examples is recorded as an explicit stage
+  decision when a newer reference implementation is needed.
+- Standard versus VLM Docling pipeline choice is documented.
+- Standard Docling KFP is used first for ordinary PDFs and text-heavy
+  documents; VLM KFP is reserved for complex layouts, scanned/image-heavy
+  content, custom page instructions, or remote VLM conversion.
+- S3 KFP runs use a generated `data-processing-docling-pipeline` Secret with
+  `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, and
+  `S3_PREFIX`.
+- Remote VLM KFP runs use a generated `data-processing-docling-pipeline`
+  Secret with `REMOTE_MODEL_ENDPOINT_URL`, `REMOTE_MODEL_API_KEY`, and
+  `REMOTE_MODEL_NAME`.
+- Pipeline output is inspected before it is attached to a vector store,
+  training dataset, or evaluation dataset.
+- If a Red Hat container image is required by the official example, the image
+  source is verified and the pipeline is recompiled after replacement.
 
 ## Synthetic Data Review
 
