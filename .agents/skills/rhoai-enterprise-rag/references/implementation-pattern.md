@@ -5,7 +5,7 @@
 | Layer | Preferred Stage 230 choice | Notes |
 |-------|----------------------------|-------|
 | RHOAI project | `enterprise-rag` | Dedicated project for the RAG runtime and notebooks/jobs |
-| Generation model | Stage 220 Nemotron through MaaS | Reuse governed model access and policies instead of deploying a duplicate LLM |
+| Generation model | Stage 220 Nemotron through MaaS | Reuse governed model access and policies instead of deploying a duplicate LLM. For Stage 230 notebook and acceptance helpers, pass the MaaS OpenAI-compatible base URL, API key, and unqualified provider model name separately from the Llama Stack base URL. |
 | Embedding provider | Use the embedding model listed by the active RHOAI Llama Stack server, currently `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` with dimension 768 | The article notebook defaults to Granite, but the demo must use a model returned by `/v1/models` unless a supported registration path is validated |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
@@ -128,6 +128,14 @@
   `llama-stack-client`; for this repo, a GitOps-managed workbench should be
   ready when opened and validation must import `llama_stack_client` inside the
   running workbench container.
+- Use checked Python subprocess cells, not unchecked `!python ...` shell
+  escapes, for notebook validation helpers. IPython shell escapes can print a
+  traceback while `nbconvert --execute` still exits successfully.
+- Keep the workbench notebook path runnable with the current supported
+  retrieval mode. If filtered `hybrid` search is still a hard acceptance gate
+  but fails in the active Llama Stack/Milvus path, run the notebook with
+  filtered `vector` search and keep the stricter hybrid command documented as
+  an unresolved acceptance gate.
 - Pin notebook dependencies to versions available from the active RHOAI Python
   package index; verify the Llama Stack client version against the active
   server and package index before committing.

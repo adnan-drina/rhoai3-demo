@@ -38,6 +38,11 @@ Use this checklist before accepting Stage 230 RAG changes.
   from the same Python environment used by Jupyter kernels. Validate
   `llama_stack_client` from the running workbench container before asking a
   user to run the ingestion notebook.
+- Enterprise RAG Workbench passes MaaS generation settings to notebook helpers
+  through environment variables sourced from a Kubernetes Secret. Do not print
+  or commit the MaaS API key.
+- Notebook helper cells use `subprocess.run(..., check=True)` or an equivalent
+  checked execution path so `nbconvert --execute` fails when the helper fails.
 - If the workbench selects a Kueue-enabled hardware profile, the target
   namespace is labeled `kueue.openshift.io/managed=true`, the referenced
   `LocalQueue` exists in the same namespace, and the Notebook includes
@@ -92,6 +97,9 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Metadata filters narrow results for category-specific queries. Validate this
   per search mode; do not assume `hybrid`, `vector`, and `keyword` enforce
   filters identically.
+- If the current `hybrid` path ignores filters, keep the user-facing notebook
+  on the verified filtered mode and keep the hybrid path as a documented
+  unresolved acceptance gate.
 - Qwen3 reranker scores are present for AG News compatibility validation.
 - Reranking is invoked through Llama Stack `/v1alpha/inference/rerank`, not
   directly against the KServe/vLLM endpoint, unless the stage plan explicitly

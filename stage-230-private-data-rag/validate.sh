@@ -282,6 +282,9 @@ else
   check "Llama Stack route exists" "missing"
 fi
 
+generation_base_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
+generation_api_key=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_API_TOKEN}" | base64 --decode 2>/dev/null || true)
+
 if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_smoke.py" >/dev/null 2>&1; then
   check "AG News RAG smoke script compiles" "pass"
 else
@@ -295,10 +298,13 @@ else
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
-  if [[ -n "$route_host" && -n "$reranker_route_host" ]]; then
+  if [[ -n "$route_host" && -n "$reranker_route_host" && -n "$generation_base_url" && -n "$generation_api_key" ]]; then
     if python3 "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" \
       --base-url "https://${route_host}" \
       --reranker-base-url "https://${route_host}" \
+      --generation-base-url "$generation_base_url" \
+      --generation-api-key "$generation_api_key" \
+      --generation-model "$NEMOTRON_MODEL_RESOURCE" \
       --reranker-model "$RERANKER_MODEL" \
       --reset >/tmp/stage230-agnews-acceptance.json 2>/tmp/stage230-agnews-acceptance.err; then
       check "AG News full RAG acceptance passes" "pass"
@@ -306,7 +312,7 @@ if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
       check "AG News full RAG acceptance passes" "$(head -c 300 /tmp/stage230-agnews-acceptance.err | tr '\n' ' ')"
     fi
   else
-    check "AG News full RAG acceptance passes" "missing Llama Stack or reranker route"
+    check "AG News full RAG acceptance passes" "missing Llama Stack route, reranker route, MaaS base URL, or MaaS API key"
   fi
 else
   warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"

@@ -109,20 +109,21 @@ flowchart LR
   metadata-filtered enterprise knowledge instead of relying only on general
   model memory.
 
-The deterministic acceptance flow is available from the workbench:
+The deterministic workbench flow is available from the workbench:
 
 ```bash
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
-  --search-mode hybrid
+  --search-mode vector
 ```
 
-The acceptance flow intentionally fails if metadata extraction, hybrid
-metadata filtering, reranking, or final grounded answer generation is broken.
-Current live findings show that filtered `vector` and `keyword` search work,
-but the remote Milvus `hybrid` path still needs a supported fix before Stage
-230 is considered complete.
+The stricter Stage 230 acceptance gate uses `--search-mode hybrid` and
+intentionally fails if metadata extraction, hybrid metadata filtering,
+reranking, or final grounded answer generation is broken. Current live findings
+show that filtered `vector` and `keyword` search work, but the remote Milvus
+`hybrid` path still needs a supported fix before Stage 230 hybrid acceptance
+is considered complete.
 
 ## References
 

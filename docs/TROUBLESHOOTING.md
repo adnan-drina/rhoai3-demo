@@ -1251,6 +1251,28 @@ steps unless those components are intentionally reintroduced.
 - **Fix:** use the exact identifier returned by `/v1/models`, currently
   `vllm-inference/nemotron-3-nano-30b-a3b`.
 
+### Stage 230 notebook reports MaaS `/v1/v1/chat/completions`
+
+- **Symptom:** the retrieval notebook fails with a MaaS URL containing
+  `/v1/v1/chat/completions`.
+- **Likely cause:** the helper received a MaaS OpenAI-compatible base URL that
+  already ends with `/v1` and appended a second `/v1` path segment.
+- **Fix:** normalize OpenAI-compatible generation URLs before appending
+  endpoint paths. Stage 230 helpers must accept the MaaS generation base URL
+  separately from the Llama Stack base URL because the workbench uses Llama
+  Stack for vector stores and reranking, and MaaS directly for governed
+  Nemotron generation.
+
+### Stage 230 notebook hides helper failures
+
+- **Symptom:** `jupyter nbconvert --execute` exits successfully even though a
+  notebook cell printed a Python traceback from an AG News helper script.
+- **Likely cause:** the notebook used an unchecked IPython shell escape such as
+  `!python ...`. The command output is displayed, but the non-zero process
+  status is not raised as a notebook execution error.
+- **Fix:** use `subprocess.run([...], check=True)` in notebook helper cells so
+  failed smoke or acceptance scripts fail the notebook run.
+
 ### Stage 230 hybrid search ignores metadata filters
 
 - **Symptom:** `vector_stores.search` with `search_mode: hybrid` and an
@@ -1262,8 +1284,9 @@ steps unless those components are intentionally reintroduced.
   native hybrid search does not enforce the translated filter expression,
   although the same expression works directly against Milvus.
 - **Fix:** use filtered `vector` search for the current deterministic smoke
-  validation. Do not claim hybrid metadata filtering until this behavior is
-  resolved through a supported Llama Stack/RHOAI path.
+  validation and user-facing workbench notebook. Keep `hybrid` as the stricter
+  Stage 230 acceptance gate, and do not claim hybrid metadata filtering until
+  this behavior is resolved through a supported Llama Stack/RHOAI path.
 
 ### Stage 230 Qwen3 reranker does not become Ready
 

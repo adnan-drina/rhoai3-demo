@@ -12,16 +12,17 @@ hidden `/opt/app-root/src/workspace/.stage230` directory so the visible
 JupyterLab file browser matches the Red Hat article-style notebook flow
 instead of exposing the full `rhoai3-demo` implementation repository.
 
-Run the acceptance flow from a workbench terminal if you need a CLI check:
+Run the same working flow from a workbench terminal if you need a CLI check:
 
 ```bash
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
-  --search-mode hybrid
+  --search-mode vector
 ```
 
-The script validates AG News ingestion, LLM-driven metadata extraction, hybrid
-retrieval, Qwen3 reranking, and final Nemotron answer generation. It is a real
-acceptance gate, not a demo-only notebook helper: it fails if hybrid metadata
-filtering, reranking, or grounded answer generation is broken.
+The notebook flow validates AG News ingestion, LLM-driven metadata extraction,
+filtered retrieval, Qwen3 reranking, and final Nemotron answer generation. The
+stricter Stage 230 acceptance gate still uses `--search-mode hybrid` and must
+continue to fail until remote Milvus hybrid search enforces metadata filters
+through a supported RHOAI/Llama Stack path.

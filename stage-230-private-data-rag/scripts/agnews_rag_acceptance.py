@@ -21,7 +21,7 @@ from llama_stack_client import LlamaStackClient
 
 DEFAULT_VECTOR_STORE = "stage230-agnews-acceptance"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
-DEFAULT_GENERATION_MODEL = "vllm-inference/nemotron-3-nano-30b-a3b"
+DEFAULT_GENERATION_MODEL = "nemotron-3-nano-30b-a3b"
 DEFAULT_RERANKER_MODEL = "vllm-reranker/qwen3-reranker"
 VALID_CATEGORIES = {"world", "sports", "business", "sci_tech"}
 
@@ -34,16 +34,26 @@ def api_url(base_url: str, path: str) -> str:
     base = normalize_base_url(base_url)
     if path.startswith("/"):
         path = path[1:]
+    if base.endswith("/v1") and path.startswith("v1/"):
+        path = path[3:]
     return f"{base}/{path}"
 
 
-def http_json(method: str, url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def http_json(
+    method: str,
+    url: str,
+    payload: dict[str, Any] | None = None,
+    api_key: str | None = None,
+) -> dict[str, Any]:
     data = None if payload is None else json.dumps(payload).encode()
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(
         url,
         data=data,
         method=method,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
     )
     context = ssl._create_unverified_context()
     try:
@@ -174,7 +184,12 @@ def extract_json(text: str) -> dict[str, Any]:
     return json.loads(match.group(0))
 
 
-def extract_metadata_filter(base_url: str, model: str, query: str) -> tuple[dict[str, Any], str]:
+def extract_metadata_filter(
+    base_url: str,
+    model: str,
+    query: str,
+    api_key: str | None,
+) -> tuple[dict[str, Any], str]:
     payload = {
         "model": model,
         "messages": [
@@ -191,7 +206,7 @@ def extract_metadata_filter(base_url: str, model: str, query: str) -> tuple[dict
         "temperature": 0,
         "max_tokens": 64,
     }
-    response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload)
+    response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload, api_key=api_key)
     content = response["choices"][0]["message"].get("content") or ""
     parsed = extract_json(content)
     category = parsed.get("category")
@@ -324,7 +339,13 @@ def rerank(base_url: str, model: str, query: str, candidates: list[Any]) -> tupl
     raise RuntimeError("reranker endpoint failed: " + " | ".join(errors[:4]))
 
 
-def final_answer(base_url: str, model: str, query: str, ranked: list[dict[str, Any]]) -> str:
+def final_answer(
+    base_url: str,
+    model: str,
+    query: str,
+    ranked: list[dict[str, Any]],
+    api_key: str | None,
+) -> str:
     context = "\n\n".join(f"[{idx + 1}] {item['text']}" for idx, item in enumerate(ranked))
     payload = {
         "model": model,
@@ -341,7 +362,7 @@ def final_answer(base_url: str, model: str, query: str, ranked: list[dict[str, A
         "temperature": 0,
         "max_tokens": 192,
     }
-    response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload)
+    response = http_json("POST", api_url(base_url, "/v1/chat/completions"), payload, api_key=api_key)
     answer = response["choices"][0]["message"].get("content") or ""
     if len(answer.strip()) < 10:
         raise RuntimeError(f"final answer was empty or too short: {answer!r}")
@@ -354,6 +375,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default=os.environ.get("LLAMA_STACK_BASE_URL"))
     parser.add_argument("--reranker-base-url", default=os.environ.get("RHOAI_STAGE230_RERANKER_BASE_URL"))
+    parser.add_argument(
+        "--generation-base-url",
+        default=os.environ.get("RHOAI_STAGE230_GENERATION_BASE_URL") or os.environ.get("RHOAI_STAGE230_MAAS_BASE_URL"),
+    )
+    parser.add_argument(
+        "--generation-api-key",
+        default=os.environ.get("RHOAI_STAGE230_GENERATION_API_KEY") or os.environ.get("RHOAI_STAGE230_MAAS_API_KEY"),
+    )
     parser.add_argument("--sample", type=Path, default=Path(__file__).parents[1] / "data/agnews-sample/agnews-sample.jsonl")
     parser.add_argument("--vector-store", default=os.environ.get("RHOAI_STAGE230_VECTOR_STORE", DEFAULT_VECTOR_STORE))
     parser.add_argument("--embedding-model", default=os.environ.get("RHOAI_STAGE230_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL))
@@ -368,8 +397,13 @@ def main() -> None:
         raise SystemExit("LLAMA_STACK_BASE_URL or --base-url is required")
     if not args.reranker_base_url:
         raise SystemExit("RHOAI_STAGE230_RERANKER_BASE_URL or --reranker-base-url is required")
+    if not args.generation_base_url:
+        raise SystemExit("RHOAI_STAGE230_GENERATION_BASE_URL or --generation-base-url is required")
+    if not args.generation_api_key:
+        raise SystemExit("RHOAI_STAGE230_GENERATION_API_KEY or --generation-api-key is required")
 
     base_url = normalize_base_url(args.base_url)
+    generation_base_url = normalize_base_url(args.generation_base_url)
     client = LlamaStackClient(base_url=base_url)
     records = load_records(args.sample)
     vector_store_id, uploaded_count = ensure_vector_store(
@@ -379,12 +413,17 @@ def main() -> None:
         records,
         args.reset,
     )
-    filters, extraction_method = extract_metadata_filter(base_url, args.generation_model, args.query)
+    filters, extraction_method = extract_metadata_filter(
+        generation_base_url,
+        args.generation_model,
+        args.query,
+        args.generation_api_key,
+    )
     if not filters:
         raise RuntimeError("metadata extraction returned no filter for category-specific query")
     candidates = search(client, vector_store_id, args.query, filters, args.search_mode, max_results=5)
     ranked, reranker_path = rerank(args.reranker_base_url, args.reranker_model, args.query, candidates)
-    answer = final_answer(base_url, args.generation_model, args.query, ranked)
+    answer = final_answer(generation_base_url, args.generation_model, args.query, ranked, args.generation_api_key)
     print(
         json.dumps(
             {

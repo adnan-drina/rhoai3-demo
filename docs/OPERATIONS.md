@@ -1017,20 +1017,28 @@ The next validation expansion should prove the user-visible RAG outcome:
 - later, Docling output, KFP run status, and processed artifacts are validated
   before Dutch publication content is indexed
 
-Run the workbench acceptance flow:
+Run the workbench-equivalent validated flow:
 
 ```bash
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
+  --search-mode vector
+```
+
+The current hard gate is hybrid metadata filtering:
+
+```bash
+python .stage230/scripts/agnews_rag_acceptance.py \
+  --vector-store stage230-agnews-demo \
   --search-mode hybrid
 ```
 
-The current hard gate is hybrid metadata filtering. The script must fail if
-remote Milvus hybrid search ignores the metadata filter. Use filtered `vector`
-or `keyword` search only for diagnostics; do not claim Stage 230 acceptance
-until the hybrid path is fixed through a supported RHOAI/Llama Stack route or
-the user explicitly changes the stage acceptance contract.
+The hybrid command must fail if remote Milvus hybrid search ignores the
+metadata filter. Use filtered `vector` search for the user-facing notebook and
+smoke validation; do not claim Stage 230 hybrid acceptance until the hybrid
+path is fixed through a supported RHOAI/Llama Stack route or the user
+explicitly changes the stage acceptance contract.
 
 Legacy Stage 230 operations content remains available in Git history and in the
 pre-reset commits. The old backup tree under

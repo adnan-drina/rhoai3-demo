@@ -146,8 +146,18 @@ spec:
               value: http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321
             - name: RHOAI_STAGE230_EMBEDDING_MODEL
               value: sentence-transformers/nomic-ai/nomic-embed-text-v1.5
+            - name: RHOAI_STAGE230_GENERATION_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: private-rag-llama-stack-secret
+                  key: VLLM_URL
+            - name: RHOAI_STAGE230_GENERATION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: private-rag-llama-stack-secret
+                  key: VLLM_API_TOKEN
             - name: RHOAI_STAGE230_GENERATION_MODEL
-              value: vllm-inference/nemotron-3-nano-30b-a3b
+              value: nemotron-3-nano-30b-a3b
             - name: RHOAI_STAGE230_RERANKER_MODEL
               value: vllm-reranker/qwen3-reranker
             - name: PIP_CERT
