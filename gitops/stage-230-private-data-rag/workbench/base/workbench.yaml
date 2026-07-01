@@ -125,6 +125,12 @@ spec:
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: SSL_CERT_FILE
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: KF_PIPELINES_SSL_SA_CERTS
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+            - name: GIT_SSL_CAINFO
+              value: /etc/pki/tls/custom-certs/ca-bundle.crt
           ports:
             - containerPort: 8888
               name: notebook-port
@@ -160,9 +166,10 @@ spec:
             - name: shm
               mountPath: /dev/shm
             - name: trusted-ca
-              mountPath: /etc/pki/tls/custom-certs/ca-bundle.crt
-              subPath: ca-bundle.crt
+              mountPath: /etc/pki/tls/custom-certs
               readOnly: true
+            - name: runtime-images
+              mountPath: /opt/app-root/pipeline-runtimes/
       volumes:
         - name: workbench-storage
           persistentVolumeClaim:
@@ -172,8 +179,9 @@ spec:
             medium: Memory
         - name: trusted-ca
           configMap:
-            name: odh-trusted-ca-bundle
+            name: workbench-trusted-ca-bundle
             optional: true
-            items:
-              - key: ca-bundle.crt
-                path: ca-bundle.crt
+        - name: runtime-images
+          configMap:
+            name: pipeline-runtime-images
+            optional: true

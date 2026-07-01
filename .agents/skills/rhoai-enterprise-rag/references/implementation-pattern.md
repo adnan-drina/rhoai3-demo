@@ -119,6 +119,9 @@
 - Keep workbench `Notebook` resources in the same Argo CD sync wave as their
   PVCs when the storage class binds on `WaitForFirstConsumer`; placing the PVC
   in an earlier wave can deadlock sync because no consumer pod exists yet.
+- Include the RHOAI workbench trusted-CA and pipeline-runtime environment and
+  volume shape in the GitOps `Notebook` manifest once verified live, rather
+  than fighting the notebook controller's injected defaults.
 
 ## Demo Exceptions To Record
 

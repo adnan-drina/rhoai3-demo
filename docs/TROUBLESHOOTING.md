@@ -1308,6 +1308,9 @@ steps unless those components are intentionally reintroduced.
   The RHOAI 3.4 Python package index might not publish every upstream patch
   version; pin notebook dependencies to versions available from that index and
   compatible with the active server.
+  RHOAI also injects workbench trusted-CA and pipeline runtime mounts; keep the
+  GitOps Notebook manifest aligned with those controller-managed defaults to
+  avoid persistent Argo CD drift.
 - **GitOps note:** the Notebook and its PVC must be in the same Argo CD sync
   wave when the storage class uses `WaitForFirstConsumer`; otherwise Argo can
   wait on the PVC before creating the consumer pod.
