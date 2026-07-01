@@ -46,6 +46,13 @@ Every new stage must pass the same phase gates:
 Do not start the next demo stage until the current stage has an explicit
 definition of done and the user accepts any deferred work.
 
+Do not silently defer or remove components from an agreed stage scope, Red Hat
+reference implementation pattern, source-derived acceptance criteria, or user
+requirement. If a component is blocked, risky, expensive, or better suited for
+a later stage, stop and discuss the tradeoff with the user before marking it
+`deferred`, `future`, `non-goal`, or backlog. Record the accepted decision in
+the stage `PLAN.md` or `docs/BACKLOG.md`.
+
 ## Stage Artifact Contract
 
 Prefer this artifact set for a normal independent stage:

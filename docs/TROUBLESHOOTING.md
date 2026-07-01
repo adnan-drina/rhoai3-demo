@@ -1183,6 +1183,7 @@ new troubleshooting entries should cover:
 - metadata filter extraction failures
 - hybrid search returning empty results
 - reranker endpoint failures
+- Enterprise RAG Workbench startup failures
 - MaaS-backed Nemotron authorization failures
 - Docling conversion output missing or malformed after the Dutch corpus is
   introduced
@@ -1263,6 +1264,52 @@ steps unless those components are intentionally reintroduced.
 - **Fix:** use filtered `vector` search for the current deterministic smoke
   validation. Do not claim hybrid metadata filtering until this behavior is
   resolved through a supported Llama Stack/RHOAI path.
+
+### Stage 230 Qwen3 reranker does not become Ready
+
+- **Symptom:** `validate.sh` reports that `InferenceService/qwen3-reranker`
+  is missing or not Ready, or the `qwen3-reranker` Route has no backend.
+- **Likely cause:** the CPU vLLM runtime image, modelcar pull, or resource
+  request is not accepted by the current cluster. The Qwen3 reranker modelcar
+  is a demo exception adapted from the Red Hat article-linked implementation,
+  not an operator-managed product operand.
+- **Fix:** inspect the KServe predictor pod, init container, and events:
+
+  ```bash
+  oc get inferenceservice qwen3-reranker -n enterprise-rag
+  oc get pods -n enterprise-rag | grep qwen3-reranker
+  oc describe inferenceservice qwen3-reranker -n enterprise-rag
+  oc logs -n enterprise-rag deploy/qwen3-reranker-predictor --all-containers --tail=100
+  ```
+
+  Do not patch generated KServe operand images. If the runtime image or
+  modelcar no longer works, update the GitOps-managed `ServingRuntime` or
+  `InferenceService` only after recording the artifact decision in
+  `stage-230-private-data-rag/PLAN.md`.
+
+### Stage 230 Enterprise RAG Workbench does not start
+
+- **Symptom:** the `Enterprise RAG Workbench` remains Starting, the Notebook
+  does not report Ready, or the user cannot open JupyterLab from the
+  `enterprise-rag` project.
+- **Likely cause:** missing project access, an unavailable workbench image,
+  missing `lq-cpu-default` LocalQueue for the `cpu-default` hardware profile,
+  PVC binding delay, failed repository clone, or package install failure in the
+  bootstrap init container.
+- **Fix:** inspect the Notebook, PVC, pod events, and bootstrap logs:
+
+  ```bash
+  oc get notebook enterprise-rag-workbench -n enterprise-rag
+  oc get localqueue lq-cpu-default -n enterprise-rag
+  oc get pvc enterprise-rag-workbench -n enterprise-rag
+  oc get pods -n enterprise-rag | grep enterprise-rag-workbench
+  oc describe notebook enterprise-rag-workbench -n enterprise-rag
+  oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
+  ```
+
+  Keep the workbench image, Notebook fields, and PVC in GitOps. Do not commit
+  Git credentials or package tokens into the notebook, `requirements.txt`, or
+  manifests.
 
 ---
 

@@ -88,6 +88,8 @@ For this repo:
   Llama model just because an example uses one.
 - Start with the Red Hat AG News enterprise RAG pattern to prove metadata,
   hybrid retrieval, reranking, and end-to-end answer generation.
+- Do not drop the AG News pattern's reranking or metadata extraction steps
+  without explicit user agreement and a recorded stage-plan decision.
 - Keep AG News as a compatibility validation corpus. Do not add Docling to AG
   News text rows.
 - Move the audience demo to Dutch government publications only after the

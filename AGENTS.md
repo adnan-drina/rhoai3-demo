@@ -99,6 +99,12 @@ failure recovery in `docs/TROUBLESHOOTING.md`.
 Do not claim capabilities that are not implemented. Future or deferred
 capabilities must be clearly labeled.
 
+Do not silently defer or remove components that are part of an agreed stage
+scope, source pattern, or acceptance contract. Before moving such a component
+to `deferred`, `future`, `non-goal`, or backlog status, discuss it with the
+user, capture the user's explicit acceptance, and record the decision in the
+stage `PLAN.md` or `docs/BACKLOG.md`.
+
 ## Self-Signed Certs
 
 Use `--insecure-skip-tls-verify=true` (oc) and `-k` (curl) freely. Do not

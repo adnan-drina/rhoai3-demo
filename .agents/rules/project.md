@@ -85,6 +85,12 @@ Argo CD Application, manifests, deploy script, validation script, and review
 evidence as one atomic stage. Do not let README claims, GitOps manifests, and
 validation scripts drift apart.
 
+Do not silently defer or remove components from an agreed stage scope, Red Hat
+reference pattern, or acceptance contract. If a component is too risky, blocked,
+or better suited for a later stage, pause and discuss the tradeoff with the
+user before changing its status. Record the accepted decision in the stage
+`PLAN.md` or `docs/BACKLOG.md`.
+
 Stage READMEs should be concise Why/What documents: introduce the business
 concept, ground European enterprise value in Red Hat narrative sources from
 `rh-brain`, map the concept to official Red Hat product documentation, and show

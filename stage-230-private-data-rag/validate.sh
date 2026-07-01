@@ -32,6 +32,8 @@ POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credenti
 MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
+WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 
 check() {
   local label="$1"
@@ -81,12 +83,26 @@ available_replicas() {
   jsonpath "$resource" "$namespace" "{.status.availableReplicas}"
 }
 
+condition_status() {
+  local resource="$1"
+  local namespace="$2"
+  local condition_type="$3"
+  jsonpath "$resource" "$namespace" "{.status.conditions[?(@.type==\"${condition_type}\")].status}"
+}
+
 app_sync=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.sync.status}")
 app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.health.status}")
 [[ "$app_sync" == "Synced" ]] && check "Stage 230 Argo CD Application is Synced" "pass" || check "Stage 230 Argo CD Application is Synced" "${app_sync:-missing}"
 [[ "$app_health" == "Healthy" ]] && check "Stage 230 Argo CD Application is Healthy" "pass" || warn "Stage 230 Argo CD Application is Healthy" "${app_health:-missing}"
 
 resource_exists "namespace/${RAG_NS}" "" && check "enterprise-rag namespace exists" "pass" || check "enterprise-rag namespace exists" "missing"
+namespace_kueue=$(jsonpath "namespace/${RAG_NS}" "" "{.metadata.labels.kueue\\.openshift\\.io/managed}")
+[[ "$namespace_kueue" == "true" ]] \
+  && check "enterprise-rag namespace is Kueue-managed" "pass" \
+  || check "enterprise-rag namespace is Kueue-managed" "${namespace_kueue:-missing}"
+resource_exists "localqueue/lq-cpu-default" "$RAG_NS" \
+  && check "enterprise-rag CPU LocalQueue exists" "pass" \
+  || check "enterprise-rag CPU LocalQueue exists" "missing"
 for secret in "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET"; do
   resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
 done
@@ -109,6 +125,35 @@ vllm_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base
 lls_phase=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.phase}")
 [[ "$lls_phase" == "Ready" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_phase:-missing}"
 
+reranker_ready=$(condition_status "inferenceservice/${RERANKER_NAME}" "$RAG_NS" "Ready")
+[[ "$reranker_ready" == "True" ]] \
+  && check "Qwen3 reranker InferenceService is Ready" "pass" \
+  || check "Qwen3 reranker InferenceService is Ready" "${reranker_ready:-missing}"
+
+reranker_route_host=$(jsonpath "route/${RERANKER_NAME}" "$RAG_NS" "{.spec.host}")
+[[ -n "$reranker_route_host" ]] \
+  && check "Qwen3 reranker route exists" "pass" \
+  || check "Qwen3 reranker route exists" "missing"
+
+resource_exists "serviceaccount/${WORKBENCH_NAME}" "$RAG_NS" \
+  && check "Enterprise RAG Workbench ServiceAccount exists" "pass" \
+  || check "Enterprise RAG Workbench ServiceAccount exists" "missing"
+
+resource_exists "pvc/${WORKBENCH_NAME}" "$RAG_NS" \
+  && check "Enterprise RAG Workbench PVC exists" "pass" \
+  || check "Enterprise RAG Workbench PVC exists" "missing"
+
+resource_exists "notebook/${WORKBENCH_NAME}" "$RAG_NS" \
+  && check "Enterprise RAG Workbench Notebook exists" "pass" \
+  || check "Enterprise RAG Workbench Notebook exists" "missing"
+
+workbench_ready=$(condition_status "notebook/${WORKBENCH_NAME}" "$RAG_NS" "Ready")
+if [[ "$workbench_ready" == "True" ]]; then
+  check "Enterprise RAG Workbench reports Ready" "pass"
+else
+  warn "Enterprise RAG Workbench reports Ready" "${workbench_ready:-not reported yet}"
+fi
+
 route_host=$(jsonpath "route/lsd-enterprise-rag" "$RAG_NS" "{.spec.host}")
 if [[ -n "$route_host" ]]; then
   check "Llama Stack route exists" "pass"
@@ -128,6 +173,29 @@ if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_smoke.py" >/dev/null 2>
   check "AG News RAG smoke script compiles" "pass"
 else
   check "AG News RAG smoke script compiles" "py_compile failed"
+fi
+
+if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" >/dev/null 2>&1; then
+  check "AG News RAG acceptance script compiles" "pass"
+else
+  check "AG News RAG acceptance script compiles" "py_compile failed"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
+  if [[ -n "$route_host" && -n "$reranker_route_host" ]]; then
+    if python3 "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" \
+      --base-url "https://${route_host}" \
+      --reranker-base-url "https://${reranker_route_host}" \
+      --reset >/tmp/stage230-agnews-acceptance.json 2>/tmp/stage230-agnews-acceptance.err; then
+      check "AG News full RAG acceptance passes" "pass"
+    else
+      check "AG News full RAG acceptance passes" "$(head -c 300 /tmp/stage230-agnews-acceptance.err | tr '\n' ' ')"
+    fi
+  else
+    check "AG News full RAG acceptance passes" "missing Llama Stack or reranker route"
+  fi
+else
+  warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
 fi
 
 echo

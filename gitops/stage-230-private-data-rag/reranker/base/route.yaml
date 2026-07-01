@@ -1,0 +1,20 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: qwen3-reranker
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: qwen3-reranker
+    app.kubernetes.io/component: reranker
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  to:
+    kind: Service
+    name: qwen3-reranker-predictor
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

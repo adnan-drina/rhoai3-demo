@@ -27,6 +27,9 @@ accurate assistant experience than a model-only prompt can provide.
 | PostgreSQL | Required metadata store for Llama Stack deployments | [RHOAI 3.4 Llama Stack PostgreSQL guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Models-as-a-Service | Governed access to the existing Nemotron model | [RHOAI 3.4 MaaS docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) |
 | AG News reference implementation | Initial compatibility corpus and implementation pattern for metadata, hybrid retrieval, and reranking | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
+| RHOAI project workbench | Notebook-driven ingestion, retrieval inspection, reranker testing, and acceptance runs in the `enterprise-rag` project | [RHOAI 3.4 working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index) |
+| Kueue-backed CPU hardware profile | Schedules the workbench through the Stage 120 `CPU Default` hardware profile and `lq-cpu-default` LocalQueue | [RHOAI 3.4 workload management with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) |
+| Qwen3 reranker | CPU-hosted neural reranking layer adapted from the article-linked reference implementation | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
 | Docling | Planned data-preparation layer for unstructured Dutch government publications | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | Red Hat OpenShift AI Pipelines | Planned automation layer for repeatable Docling conversion, chunking, extraction, and subset selection using the Red Hat `opendatahub-io/data-processing` KFP examples | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 
@@ -37,11 +40,15 @@ and configuration.
 
 The current implementation is the first rebuilt slice: `enterprise-rag`,
 PostgreSQL metadata storage, a demo-local Milvus endpoint for the documented
-remote Milvus provider, `LlamaStackDistribution`, environment-local Secrets,
-and a deterministic AG News smoke-test sample. AG News is already structured
-text and should not be used to claim Docling validation. Docling and KFP become
-part of this stage when the corpus changes to unstructured Dutch government
-publications.
+remote Milvus provider, `LlamaStackDistribution`, a CPU Qwen3 reranker,
+environment-local Secrets, an Enterprise RAG Workbench, and a deterministic AG
+News acceptance sample. AG News is already structured text and should not be
+used to claim Docling validation. Docling and KFP become part of this stage
+when the corpus changes to unstructured Dutch government publications.
+
+Demo exceptions are explicit: the demo-local Milvus/etcd images and the Qwen3
+reranker modelcar are implementation artifacts adapted from the Red Hat
+article-linked reference path, not Red Hat-supported product operands.
 
 ## Architecture
 
@@ -54,20 +61,22 @@ flowchart LR
   stack["Llama Stack / OGX"]
   milvus["Remote Milvus"]
   pg["PostgreSQL metadata"]
-  reranker["Optional reranker"]
+  reranker["Qwen3 reranker"]
+  workbench["Enterprise RAG Workbench"]
   maas["MaaS gateway"]
   nemotron["Nemotron"]
   nl_docs["Dutch government publications"]
   docling["Docling"]
   kfp["AI Pipelines / KFP"]
 
-  user --> stack
+  user --> workbench
+  workbench --> stack
   corpus --> files
   files --> vectors
   vectors --> stack
   stack --> milvus
   stack --> pg
-  stack -. "later precision layer" .-> reranker
+  stack --> reranker
   stack --> maas
   maas --> nemotron
   nl_docs -. "next corpus" .-> docling
@@ -76,15 +85,26 @@ flowchart LR
 ```
 
 - New in this stage: metadata-aware RAG runtime, a remote-Milvus-compatible
-  vector store endpoint, PostgreSQL Llama Stack metadata, and an AG News
-  compatibility sample. Planned next in this stage: full AG News
-  ingestion/query validation, then Docling and KFP automation for unstructured
-  Dutch government publications.
+  vector store endpoint, PostgreSQL Llama Stack metadata, CPU reranking, an
+  RHOAI workbench, and an AG News compatibility sample.
 - Already available: GPU platform, model serving, Nemotron, and governed MaaS
   access from earlier stages.
 - Value of the integration: a governed model can answer from private,
   metadata-filtered enterprise knowledge instead of relying only on general
   model memory.
+
+The deterministic acceptance flow is available from the workbench:
+
+```bash
+cd /opt/app-root/src/rhoai3-demo/stage-230-private-data-rag
+python scripts/agnews_rag_acceptance.py --reset
+```
+
+The acceptance flow intentionally fails if metadata extraction, hybrid
+metadata filtering, reranking, or final grounded answer generation is broken.
+Current live findings show that filtered `vector` and `keyword` search work,
+but the remote Milvus `hybrid` path still needs a supported fix before Stage
+230 is considered complete.
 
 ## References
 

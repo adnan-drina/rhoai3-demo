@@ -1,0 +1,48 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: qwen3-reranker
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: qwen3-reranker
+    app.kubernetes.io/component: reranker
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+    openshift.io/display-name: qwen3-reranker
+    opendatahub.io/model-type: generative
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: RawDeployment
+    serving.kserve.io/stop: "false"
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    minReplicas: 1
+    maxReplicas: 1
+    deploymentStrategy:
+      type: RollingUpdate
+    model:
+      runtime: qwen3-reranker
+      modelFormat:
+        name: vLLM
+      storageUri: oci://quay.io/asoliman/qwen3-reranker-0.6b-seq-cls-modelcar:latest
+      args:
+        - --model=/mnt/models
+        - --runner=pooling
+        - --convert=classify
+        - --dtype=float32
+        - --max-model-len=1024
+        - --served-model-name=qwen3-reranker
+        - --max-num-seqs=8
+        - --max-num-batched-tokens=1024
+      env:
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "4"
+      resources:
+        requests:
+          cpu: "8"
+          memory: 16Gi
+        limits:
+          cpu: "12"
+          memory: 20Gi

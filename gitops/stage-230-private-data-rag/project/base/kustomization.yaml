@@ -3,5 +3,6 @@ kind: Kustomization
 
 resources:
   - namespace-enterprise-rag.yaml
+  - localqueue-cpu-default.yaml
   - rolebinding-developer-edit.yaml
   - rolebinding-admins-admin.yaml

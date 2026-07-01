@@ -24,11 +24,20 @@ Use this checklist before accepting Stage 230 RAG changes.
 - `LlamaStackDistribution` is Ready.
 - PostgreSQL metadata storage is reachable from Llama Stack.
 - Milvus gRPC endpoint and token are configured when using `milvus-remote`.
+- Qwen3 reranker `InferenceService` is Ready when AG News compatibility is in
+  scope.
+- Enterprise RAG Workbench exists and can open JupyterLab when notebook-driven
+  ingestion or inspection is in scope.
+- If the workbench selects a Kueue-enabled hardware profile, the target
+  namespace is labeled `kueue.openshift.io/managed=true`, the referenced
+  `LocalQueue` exists in the same namespace, and the Notebook includes
+  `kueue.x-k8s.io/queue-name`.
 - Secrets contain no committed real values.
 - Llama Stack `/v1/models` and `LlamaStackClient.models.list()` show:
   - Nemotron generation model
   - embedding model
-  - reranker model if enabled
+  - reranker model if Llama Stack registration is supported; otherwise the
+    direct reranker endpoint is validated separately and the gap is recorded
 
 ## Ingestion
 
@@ -64,11 +73,14 @@ Use this checklist before accepting Stage 230 RAG changes.
 ## Retrieval
 
 - Metadata extraction returns no invented filters.
+- If tool/function calling is used for metadata extraction, validate it against
+  the active MaaS/Llama Stack model path. If tool calling fails, use structured
+  JSON chat completion only with an explicit recorded finding.
 - Hybrid search is used for the main retrieval path.
 - Metadata filters narrow results for category-specific queries. Validate this
   per search mode; do not assume `hybrid`, `vector`, and `keyword` enforce
   filters identically.
-- Reranker scores are present when reranker is enabled.
+- Qwen3 reranker scores are present for AG News compatibility validation.
 - Final answer uses retrieved context and does not claim unsupported citations.
 - Validation includes a negative or out-of-scope query.
 
@@ -80,6 +92,8 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Deploy script applies Argo CD Application first and uses the environment
   safety guard.
 - Validate script proves end-to-end RAG, not only pod readiness.
+- Workbench notebook or terminal flow can run the same acceptance script as
+  automated validation.
 - Deferred Dutch government publication ingestion is tracked in
   `docs/BACKLOG.md` until implemented.
 - If KFP is used, pipeline server readiness, compiled pipeline artifact,

@@ -9,8 +9,8 @@
 | Embedding provider | Start with the reference `sentence-transformers/ibm-granite/granite-embedding-125m-english` path if compatible with installed Llama Stack; otherwise select a documented embedding provider and record dimensions | Embedding dimension must match vector-store registration |
 | Vector store | Remote Milvus | Matches the Red Hat article and official Llama Stack remote Milvus pattern |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
-| Reranker | Qwen3 reranker reference model or a later Red Hat-validated reranker | Treat non-Red Hat model artifacts as demo exceptions until validated |
-| Ingestion | Notebook and/or Kubernetes Job derived from AG News reference notebook | Use Files API and Vector Stores API; avoid manual-only success criteria |
+| Reranker | CPU-hosted Qwen3 reranker reference model | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU |
+| Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
 | Future corpus | Dutch government publications | Replace AG News metadata taxonomy after the reference pattern works |
@@ -30,7 +30,8 @@
    - Register Nemotron generation through the MaaS endpoint returned by the
      active Stage 220 setup.
    - Register the embedding provider and capture model ID plus dimension.
-   - Register the reranker model if the artifact and runtime are accepted.
+   - Deploy the Qwen3 reranker through GitOps-managed KServe/vLLM CPU resources
+     after recording the modelcar/runtime image posture as a demo exception.
 4. Ingest AG News.
    - Prefer a deterministic small AG News sample checked into the repo or
      stored as a ConfigMap for validation.
@@ -42,7 +43,10 @@
 5. Validate retrieval quality mechanically.
    - Resolve vector store by name plus metadata.
    - Ask category-targeted questions.
-   - Verify metadata filters are extracted.
+   - Verify metadata filters are extracted. Prefer the reference repo's
+     tool-call pattern only after the active MaaS/Llama Stack model path
+     supports it; otherwise use structured JSON chat completion and record the
+     tool-call gap.
    - Verify `search_mode="hybrid"` is used.
    - Verify reranker scores are present.
    - Verify the final answer uses retrieved context.
@@ -96,6 +100,10 @@
 - Do not duplicate shared `DataScienceCluster` ownership from Stage 110.
 - Use Argo CD for long-lived resources; use scripts/jobs only for ingestion and
   validation actions that are naturally procedural.
+- Keep RHOAI workbench `Notebook`, PVC, and ServiceAccount resources
+  GitOps-managed when the workbench is part of the repeatable demo. The
+  workbench may clone the repo and install a pinned `requirements.txt`, but it
+  must not carry committed credentials.
 
 ## Demo Exceptions To Record
 
@@ -103,7 +111,8 @@ Record these before claiming support:
 
 - Milvus and etcd images if deployed directly rather than provided by a Red Hat
   product or operator.
-- Reranker model artifact and serving image.
+- Qwen3 reranker model artifact and any serving/runtime image that is not a
+  Red Hat product image or operator-owned operand.
 - Hugging Face dataset download dependency.
 - Inline embedding provider if used beyond development or validation.
 

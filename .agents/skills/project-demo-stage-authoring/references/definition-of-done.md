@@ -7,7 +7,11 @@ Use this checklist before declaring a stage ready.
 - Stage identifier, slug, title, concept, audience, dependencies, and non-goals are
   recorded in `PLAN.md`.
 - The stage introduces one coherent capability or clearly bounded integration.
-- Deferred work is listed in `PLAN.md` or `docs/BACKLOG.md`.
+- Deferred work is listed in `PLAN.md` or `docs/BACKLOG.md` only after the user
+  explicitly accepts the deferral.
+- No component from an agreed stage scope, Red Hat reference pattern,
+  source-derived acceptance criteria, or user requirement has been silently
+  removed, downgraded, or moved to future work.
 
 ## Sources
 

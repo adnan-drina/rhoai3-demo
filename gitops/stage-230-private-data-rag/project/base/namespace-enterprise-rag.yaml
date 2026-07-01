@@ -5,6 +5,8 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
     kubernetes.io/metadata.name: enterprise-rag
+    kueue-managed: "true"
+    kueue.openshift.io/managed: "true"
     app.kubernetes.io/part-of: rag
     app.kubernetes.io/name: enterprise-rag
     app.kubernetes.io/component: namespace
