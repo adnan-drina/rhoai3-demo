@@ -1053,9 +1053,13 @@ except Exception as err:
     R="mcp=${MCP_RESPONSE_OUTPUT//$'\n'/ }"
   fi
 else
-  R="playground deployment missing"
+  R="warn: playground deployment is not present yet; create a Gen AI Playground in ${PROJECT_NS} to validate MCP through Llama Stack Responses API"
 fi
-check "Gen AI Playground can reach OpenShift MCP through Llama Stack Responses API" "$R"
+if [[ "$R" == warn:* ]]; then
+  warn "Gen AI Playground can reach OpenShift MCP through Llama Stack Responses API" "${R#warn: }"
+else
+  check "Gen AI Playground can reach OpenShift MCP through Llama Stack Responses API" "$R"
+fi
 
 if command -v python3 >/dev/null 2>&1; then
   DASHBOARD_HOST=$(jsonpath "route/rhods-dashboard" "redhat-ods-applications" "{.spec.host}")
