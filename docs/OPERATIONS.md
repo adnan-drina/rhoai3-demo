@@ -974,8 +974,8 @@ Current status:
   the execution environment.
 - `stage-230-private-data-rag/scripts/agnews_rag_acceptance.py` is the full
   AG News acceptance helper. Run it from the Enterprise RAG Workbench, or set
-  `RHOAI_STAGE230_RUN_ACCEPTANCE=true` before `validate.sh` to run it from a
-  local environment with `llama-stack-client`.
+  `RHOAI_STAGE230_RUN_ACCEPTANCE=true` before `validate.sh` to run the same
+  helper inside the Enterprise RAG Workbench container.
 - Old `run-whoami-*`, chatbot, DSPA/KFP, and Docling artifacts are
   removed from the active stage.
 

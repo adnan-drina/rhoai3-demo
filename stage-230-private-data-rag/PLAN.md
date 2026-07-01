@@ -261,10 +261,11 @@ Deferred implementation inventory:
   search and final Nemotron answer generation. Use the provider-qualified
   Llama Stack model ID `vllm-inference/nemotron-3-nano-30b-a3b` for Responses
   API calls.
-- Full acceptance is run with
-  `stage-230-private-data-rag/scripts/agnews_rag_acceptance.py --reset`; it
-  must fail if metadata extraction, hybrid filtering, reranking, or grounded
-  answer generation is broken.
+- Full acceptance is run from the Enterprise RAG Workbench with
+  `.stage230/scripts/agnews_rag_acceptance.py --reset --search-mode hybrid`;
+  `validate.sh` uses the same workbench execution path when
+  `RHOAI_STAGE230_RUN_ACCEPTANCE=true`. It must fail if metadata extraction,
+  hybrid filtering, reranking, or grounded answer generation is broken.
 - When Dutch publications are introduced, validate Docling conversion output,
   chunk quality, extracted metadata, KFP run status, branch choice, Secret
   contract, and artifact output before indexing.

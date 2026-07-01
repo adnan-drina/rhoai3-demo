@@ -302,21 +302,22 @@ else
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
-  if [[ -n "$route_host" && -n "$reranker_route_host" && -n "$generation_base_url" && -n "$generation_api_key" ]]; then
-    if python3 "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" \
-      --base-url "https://${route_host}" \
-      --reranker-base-url "https://${route_host}" \
-      --generation-base-url "$generation_base_url" \
-      --generation-api-key "$generation_api_key" \
-      --generation-model "$NEMOTRON_MODEL_RESOURCE" \
-      --reranker-model "$RERANKER_MODEL" \
-      --reset >/tmp/stage230-agnews-acceptance.json 2>/tmp/stage230-agnews-acceptance.err; then
+  if [[ -n "${workbench_pod:-}" ]]; then
+    acceptance_out=$(mktemp)
+    acceptance_err=$(mktemp)
+    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+      'cd /opt/app-root/src/workspace &&
+       python .stage230/scripts/agnews_rag_acceptance.py \
+         --reset \
+         --vector-store stage230-agnews-demo \
+         --search-mode hybrid' >"$acceptance_out" 2>"$acceptance_err"; then
       check "AG News full RAG acceptance passes" "pass"
     else
-      check "AG News full RAG acceptance passes" "$(head -c 300 /tmp/stage230-agnews-acceptance.err | tr '\n' ' ')"
+      check "AG News full RAG acceptance passes" "$(head -c 300 "$acceptance_err" | tr '\n' ' ')"
     fi
+    rm -f "$acceptance_out" "$acceptance_err"
   else
-    check "AG News full RAG acceptance passes" "missing Llama Stack route, reranker route, MaaS base URL, or MaaS API key"
+    check "AG News full RAG acceptance passes" "missing ready Enterprise RAG Workbench pod"
   fi
 else
   warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
