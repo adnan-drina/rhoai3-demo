@@ -73,7 +73,15 @@ Use this checklist before accepting Stage 230 RAG changes.
   ready, but the stage must label it as a deterministic development smoke path,
   include the raw PDF plus extracted chunks and questions, and keep Docling/KFP
   automation as a required gate before indexing the larger corpus.
-- KFP automation is validated only after the Docling notebook/job path works.
+- A single-document preparation contract should include central metadata,
+  deterministic article or chunk extraction, a prepared JSONL output, and a
+  smoke query that proves filtered hybrid retrieval and answer generation from
+  the prepared output.
+- Local extraction helpers such as `pypdf` may validate article detection for
+  a readable PDF, but they do not prove the supported Docling path.
+- KFP source must compile before DSPA execution is introduced.
+- KFP automation is accepted only after the Docling component has run and the
+  converted Markdown/Docling JSON/chunk artifacts have been reviewed.
 - Docling KFP implementation declares whether it adapts `docling-standard` or
   `docling-vlm` and why.
 - `docling-vlm` is used only when layout/image complexity or remote VLM
@@ -130,9 +138,13 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Dutch government publication ingestion status is tracked in
   `docs/BACKLOG.md`: single-document smoke path, larger-corpus Docling/KFP
   automation, and any deferred evaluation work must be distinguished.
-- If KFP is used, pipeline server readiness, compiled pipeline artifact,
-  pipeline run status, task logs, and artifact output are checked through
-  `rhoai-ai-pipelines` and `rhoai-kfp-pipeline-authoring`.
+- If KFP source is introduced, compile it locally or from the workbench and
+  record the selected `opendatahub-io/data-processing` branch and image
+  posture.
+- If DSPA/KFP execution is introduced, pipeline server readiness, compiled
+  pipeline artifact, imported pipeline/version, pipeline run status, task logs,
+  metrics, and artifact output are checked through `rhoai-ai-pipelines` and
+  `rhoai-kfp-pipeline-authoring`.
 
 ## Fail Conditions
 

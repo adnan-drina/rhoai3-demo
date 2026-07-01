@@ -224,10 +224,14 @@ if [[ -n "$workbench_pod" ]]; then
     'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/dutch_publication_rag_smoke.ipynb &&
+     test -f /opt/app-root/src/workspace/dutch_publication_docling_prepare.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_rag_smoke.py &&
+     test -f /opt/app-root/src/workspace/.stage230/scripts/dutch_publication_prepare.py &&
+     test -f /opt/app-root/src/workspace/.stage230/kfp/dutch_publication_docling_pipeline.py &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/source/stb-2022-14.pdf &&
+     test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/metadata/stb-2022-14-metadata.json &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-chunks.jsonl &&
      test -f /opt/app-root/src/workspace/.stage230/data/dutch-government/processed/stb-2022-14-questions.json &&
      test ! -d /opt/app-root/src/workspace/rhoai3-demo &&
@@ -312,6 +316,37 @@ else
   check "Dutch publication RAG smoke script compiles" "py_compile failed"
 fi
 
+if python3 -m py_compile "$SCRIPT_DIR/scripts/dutch_publication_prepare.py" >/dev/null 2>&1; then
+  check "Dutch publication preparation script compiles" "pass"
+else
+  check "Dutch publication preparation script compiles" "py_compile failed"
+fi
+
+if python3 -m py_compile \
+  "$SCRIPT_DIR/kfp/components/dutch_docling_components.py" \
+  "$SCRIPT_DIR/kfp/dutch_publication_docling_pipeline.py" >/dev/null 2>&1; then
+  check "Dutch publication Docling KFP source compiles" "pass"
+else
+  check "Dutch publication Docling KFP source compiles" "py_compile failed"
+fi
+
+if python3 - <<'PY' >/dev/null 2>&1
+import kfp
+PY
+then
+  kfp_compile_dir=$(mktemp -d)
+  if python3 "$SCRIPT_DIR/kfp/dutch_publication_docling_pipeline.py" \
+    --output "$kfp_compile_dir/stage-230-dutch-publication-docling.yaml" >/dev/null 2>&1 \
+    && [[ -s "$kfp_compile_dir/stage-230-dutch-publication-docling.yaml" ]]; then
+    check "Dutch publication Docling KFP pipeline compiles" "pass"
+  else
+    check "Dutch publication Docling KFP pipeline compiles" "compile failed"
+  fi
+  rm -rf "$kfp_compile_dir"
+else
+  warn "Dutch publication Docling KFP pipeline compile was not run" "local python3 cannot import kfp"
+fi
+
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   if [[ -n "${workbench_pod:-}" ]]; then
     acceptance_out=$(mktemp)
@@ -332,6 +367,42 @@ if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   fi
 else
   warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_DOCLING_PREP:-false}" == "true" ]]; then
+  if [[ -n "${workbench_pod:-}" ]]; then
+    docling_prep_out=$(mktemp)
+    docling_prep_err=$(mktemp)
+    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+      'cd /opt/app-root/src/workspace &&
+       mkdir -p .stage230/compiled &&
+       python .stage230/kfp/dutch_publication_docling_pipeline.py \
+         --output .stage230/compiled/stage-230-dutch-publication-docling.yaml &&
+       test -s .stage230/compiled/stage-230-dutch-publication-docling.yaml &&
+       python .stage230/scripts/dutch_publication_prepare.py \
+         --converter pypdf \
+         --source-pdf .stage230/data/dutch-government/source/stb-2022-14.pdf \
+         --metadata .stage230/data/dutch-government/metadata/stb-2022-14-metadata.json \
+         --output .stage230/data/dutch-government/processed/stb-2022-14-docling-chunks.jsonl \
+         --converted-dir .stage230/data/dutch-government/processed/docling &&
+       python .stage230/scripts/dutch_publication_rag_smoke.py \
+         --reset \
+         --sample .stage230/data/dutch-government/processed/stb-2022-14-docling-chunks.jsonl \
+         --vector-store stage230-dutch-woo-docling-demo \
+         --search-mode hybrid \
+         --query "Binnen welke termijn moet een bestuursorgaan beslissen op een verzoek om informatie?" \
+         --expected-topic openbaarmaking_op_verzoek \
+         --expected-term "vier weken"' >"$docling_prep_out" 2>"$docling_prep_err"; then
+      check "Dutch publication prepared-chunk RAG smoke passes" "pass"
+    else
+      check "Dutch publication prepared-chunk RAG smoke passes" "$(head -c 300 "$docling_prep_err" | tr '\n' ' ')"
+    fi
+    rm -f "$docling_prep_out" "$docling_prep_err"
+  else
+    check "Dutch publication prepared-chunk RAG smoke passes" "missing ready Enterprise RAG Workbench pod"
+  fi
+else
+  warn "Dutch publication prepared-chunk RAG smoke was not run" "set RHOAI_STAGE230_RUN_DOCLING_PREP=true"
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_DUTCH_SMOKE:-false}" == "true" ]]; then

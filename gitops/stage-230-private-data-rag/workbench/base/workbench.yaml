@@ -86,6 +86,7 @@ spec:
               git -C "${source_dir}" sparse-checkout set \
                 stage-230-private-data-rag/notebooks \
                 stage-230-private-data-rag/scripts \
+                stage-230-private-data-rag/kfp \
                 stage-230-private-data-rag/data
 
               rm -rf "${pvc_root}/rhoai3-demo" "${pvc_root}/.stage230" "${workspace}"
@@ -97,10 +98,13 @@ spec:
               cp "${stage_dir}/notebooks/Ingestion_pipeline_ag_news.ipynb" "${workspace}/"
               cp "${stage_dir}/notebooks/retrieval_pipeline_ag_news.ipynb" "${workspace}/"
               cp "${stage_dir}/notebooks/dutch_publication_rag_smoke.ipynb" "${workspace}/"
+              cp "${stage_dir}/notebooks/dutch_publication_docling_prepare.ipynb" "${workspace}/"
               cp "${stage_dir}/notebooks/requirements.txt" "${workspace}/.stage230/requirements.txt"
               cp "${stage_dir}/scripts/agnews_rag_smoke.py" "${workspace}/.stage230/scripts/"
               cp "${stage_dir}/scripts/agnews_rag_acceptance.py" "${workspace}/.stage230/scripts/"
               cp "${stage_dir}/scripts/dutch_publication_rag_smoke.py" "${workspace}/.stage230/scripts/"
+              cp "${stage_dir}/scripts/dutch_publication_prepare.py" "${workspace}/.stage230/scripts/"
+              cp -R "${stage_dir}/kfp" "${workspace}/.stage230/"
               cp -R "${stage_dir}/data/agnews-sample" "${workspace}/.stage230/data/"
               cp -R "${stage_dir}/data/dutch-government" "${workspace}/.stage230/data/"
 

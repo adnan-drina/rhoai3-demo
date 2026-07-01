@@ -2,11 +2,12 @@
 
 Open the `enterprise-rag` project in Red Hat OpenShift AI and start the
 `Enterprise RAG Workbench`. The workbench startup creates a curated JupyterLab
-workspace under `/opt/app-root/src/workspace` with three visible notebooks:
+workspace under `/opt/app-root/src/workspace` with four visible notebooks:
 
 - `Ingestion_pipeline_ag_news.ipynb`
 - `retrieval_pipeline_ag_news.ipynb`
 - `dutch_publication_rag_smoke.ipynb`
+- `dutch_publication_docling_prepare.ipynb`
 
 Generated helper scripts, sample data, and dependencies are stored under the
 hidden `/opt/app-root/src/workspace/.stage230` directory so the visible
@@ -31,6 +32,20 @@ python .stage230/scripts/dutch_publication_rag_smoke.py \
   --vector-store stage230-dutch-woo-demo \
   --search-mode hybrid
 ```
+
+Compile and validate the first Dutch publication data-preparation contract:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/kfp/dutch_publication_docling_pipeline.py \
+  --output .stage230/compiled/stage-230-dutch-publication-docling.yaml
+python .stage230/scripts/dutch_publication_prepare.py \
+  --converter pypdf
+```
+
+The `pypdf` converter is a local/workbench validation helper for the current
+single-PDF smoke document. The KFP source is prepared for Docling-standard
+execution in the component runtime before larger-corpus indexing.
 
 The notebook flow validates AG News ingestion, LLM-driven metadata extraction,
 filtered retrieval, Qwen3 reranking, and final Nemotron answer generation. The

@@ -31,8 +31,8 @@ accurate assistant experience than a model-only prompt can provide.
 | Kueue-backed CPU hardware profile | Schedules the workbench through the Stage 120 `CPU Default` hardware profile and `lq-cpu-default` LocalQueue | [RHOAI 3.4 workload management with Kueue](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/managing_openshift_ai/managing-workloads-with-kueue) |
 | Qwen3 reranker | CPU-hosted neural reranking layer adapted from the article-linked reference implementation and sized for the demo worker nodes | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
 | Staatsblad 2022 no. 14 smoke corpus | First Dutch government publication development corpus with recommended enterprise metadata, based on the Wet open overheid text placement PDF | [Official publication PDF](https://zoek.officielebekendmakingen.nl/stb-2022-14.pdf) |
-| Docling | Planned data-preparation layer for unstructured Dutch government publications | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
-| Red Hat OpenShift AI Pipelines | Planned automation layer for repeatable Docling conversion, chunking, extraction, and subset selection using the Red Hat `opendatahub-io/data-processing` KFP examples | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
+| Docling | Data-preparation layer for unstructured Dutch government publications; the current slice includes a Docling-standard preparation helper and compile-ready KFP source for the single PDF smoke corpus | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
+| Red Hat OpenShift AI Pipelines | Automation target for repeatable Docling conversion, chunking, extraction, and subset selection; the current slice compiles the KFP definition, while DSPA execution and S3-backed larger-corpus runs remain the next gate | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
 baseline. The Red Hat article and GitHub repository guide the demo shape; the
@@ -49,13 +49,16 @@ News acceptance sample. AG News is already structured text and should not be
 used to claim Docling validation. The first Dutch development smoke corpus is
 `stb-2022-14.pdf`, the Staatsblad publication for the Wet open overheid text
 placement, preprocessed into article-level chunks with metadata for repeatable
-development tests. Docling and KFP become required before the corpus expands
-to a larger set of unstructured Dutch government publications.
+development tests. Docling and KFP source now exist for the single-document
+preparation contract; DSPA execution, S3-backed input, and larger-corpus
+ingestion remain the next gate before expanding to a broader set of
+unstructured Dutch government publications.
 The workbench opens into a curated notebook workspace under
 `/opt/app-root/src/workspace`, following the article-linked AG News flow and
 the first Dutch smoke flow:
 `Ingestion_pipeline_ag_news.ipynb`, `retrieval_pipeline_ag_news.ipynb`, and
-`dutch_publication_rag_smoke.ipynb`.
+`dutch_publication_rag_smoke.ipynb`, plus
+`dutch_publication_docling_prepare.ipynb` for the data-preparation contract.
 Runtime helper scripts and sample data are generated under hidden `.stage230`
 workspace content rather than showing the full implementation repository to the
 data scientist.
@@ -103,8 +106,8 @@ flowchart LR
   stack --> maas
   maas --> nemotron
   nl_docs -. "next corpus" .-> docling
-  docling -. "converted chunks and metadata" .-> kfp
-  kfp -. "future ingestion path" .-> files
+  docling -. "compiled preparation pipeline" .-> kfp
+  kfp -. "future DSPA run output" .-> files
 ```
 
 - New in this stage: metadata-aware RAG runtime, PostgreSQL-backed pgvector
@@ -135,6 +138,20 @@ python .stage230/scripts/dutch_publication_rag_smoke.py \
   --vector-store stage230-dutch-woo-demo \
   --search-mode hybrid
 ```
+
+The data-preparation notebook validates the single-document preparation
+contract and compiles the Docling KFP source:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/kfp/dutch_publication_docling_pipeline.py \
+  --output .stage230/compiled/stage-230-dutch-publication-docling.yaml
+python .stage230/scripts/dutch_publication_prepare.py \
+  --converter pypdf
+```
+
+`--converter pypdf` is only the local/workbench validation path. The supported
+pipeline path uses Docling through the KFP component runtime.
 
 The Stage 230 acceptance gate uses `--search-mode hybrid` and intentionally
 fails if metadata extraction, hybrid metadata filtering, reranking, or final

@@ -11,7 +11,7 @@
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
 | Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
-| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; not needed for AG News text rows |
+| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Required for Dutch government PDFs, HTML, Office documents, images, or complex layouts; start with a compile-ready single-document contract before DSPA/S3 larger-corpus execution |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
 | First Dutch development corpus | Single public Staatsblad PDF smoke corpus | Use a deterministic source PDF, article-level chunks, and recommended metadata to validate the Dutch path before a larger corpus is available |
 | Future corpus | Larger Dutch government publication set | Replace AG News metadata taxonomy and automate processing after the single-document smoke path works |
@@ -71,8 +71,14 @@
      `jurisdiction`, `access_tier`, `source_url`, and `version`.
    - Use this smoke corpus to validate metadata extraction, filtered hybrid
      search, reranking, language-following answers, and expected legal terms.
-   - Do not present this preprocessed single-PDF smoke path as the final
-     Docling/KFP ingestion architecture.
+   - Add a metadata contract and preparation helper for the single document.
+     A local/workbench converter such as `pypdf` can validate article
+     detection only; the supported pipeline path should use Docling.
+   - Add compile-ready `docling-standard` KFP source once the document contract
+     is clear, and validate compilation before introducing DSPA execution.
+   - Do not present this single-PDF smoke path as the final Docling/KFP
+     ingestion architecture until the Docling component has run and artifacts
+     have been reviewed.
 8. Replace the corpus with a larger Dutch government publication set.
    - Define Dutch metadata: source authority, publication type, ministry,
      publication date, jurisdiction, language, topic, version, and access tier.
@@ -107,6 +113,9 @@
      dependencies, and record image provenance before committing manifests.
      The upstream `DOCLING_BASE_IMAGE` is an implementation reference, not a
      product-supported image claim until reviewed.
+   - Add DSPA, S3 Secret generation, pipeline import/version handling, run
+     submission, task-log checks, metrics checks, and artifact review before
+     indexing larger-corpus output.
 
 ## GitOps Translation Rules
 
