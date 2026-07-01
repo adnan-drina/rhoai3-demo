@@ -1306,8 +1306,8 @@ steps unless those components are intentionally reintroduced.
   branch head; the bootstrap should reset the repo copy to the fetched branch
   rather than relying on `git pull --ff-only`.
   The RHOAI 3.4 Python package index might not publish every upstream patch
-  version; pin the Llama Stack client to a version available from that index
-  and compatible with the active server.
+  version; pin notebook dependencies to versions available from that index and
+  compatible with the active server.
 - **GitOps note:** the Notebook and its PVC must be in the same Argo CD sync
   wave when the storage class uses `WaitForFirstConsumer`; otherwise Argo can
   wait on the PVC before creating the consumer pod.
