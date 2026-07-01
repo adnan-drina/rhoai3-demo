@@ -90,6 +90,12 @@ condition_status() {
   jsonpath "$resource" "$namespace" "{.status.conditions[?(@.type==\"${condition_type}\")].status}"
 }
 
+contains_word() {
+  local haystack=" $1 "
+  local needle="$2"
+  [[ "$haystack" == *" ${needle} "* ]]
+}
+
 app_sync=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.sync.status}")
 app_health=$(jsonpath "applications.argoproj.io/stage-230-private-data-rag" "openshift-gitops" "{.status.health.status}")
 [[ "$app_sync" == "Synced" ]] && check "Stage 230 Argo CD Application is Synced" "pass" || check "Stage 230 Argo CD Application is Synced" "${app_sync:-missing}"
@@ -181,6 +187,46 @@ workbench_backend=$(jsonpath "httproute/nb-${RAG_NS}-${WORKBENCH_NAME}" "redhat-
 [[ "$workbench_backend" == "${WORKBENCH_NAME}-kube-rbac-proxy:8443" ]] \
   && check "Enterprise RAG Workbench HTTPRoute targets auth proxy" "pass" \
   || check "Enterprise RAG Workbench HTTPRoute targets auth proxy" "${workbench_backend:-missing}"
+
+workbench_notebook_containers=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.spec.template.spec.containers[*].name}")
+contains_word "$workbench_notebook_containers" "kube-rbac-proxy" \
+  && check "Enterprise RAG Workbench Notebook template includes auth proxy sidecar" "pass" \
+  || check "Enterprise RAG Workbench Notebook template includes auth proxy sidecar" "${workbench_notebook_containers:-missing}"
+
+workbench_update_pending=$(jsonpath "notebook/${WORKBENCH_NAME}" "$RAG_NS" "{.metadata.annotations.notebooks\\.opendatahub\\.io/update-pending}")
+[[ -z "$workbench_update_pending" ]] \
+  && check "Enterprise RAG Workbench has no pending controller migration" "pass" \
+  || check "Enterprise RAG Workbench has no pending controller migration" "$workbench_update_pending"
+
+workbench_statefulset_containers=$(jsonpath "statefulset/${WORKBENCH_NAME}" "$RAG_NS" "{.spec.template.spec.containers[*].name}")
+contains_word "$workbench_statefulset_containers" "kube-rbac-proxy" \
+  && check "Enterprise RAG Workbench StatefulSet includes auth proxy sidecar" "pass" \
+  || check "Enterprise RAG Workbench StatefulSet includes auth proxy sidecar" "${workbench_statefulset_containers:-missing}"
+
+workbench_pod=$(oc get pods -n "$RAG_NS" -l "statefulset=${WORKBENCH_NAME}" \
+  -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+if [[ -n "$workbench_pod" ]]; then
+  workbench_pod_containers=$(jsonpath "pod/${workbench_pod}" "$RAG_NS" "{.spec.containers[*].name}")
+  workbench_pod_ready=$(jsonpath "pod/${workbench_pod}" "$RAG_NS" "{.status.containerStatuses[*].ready}")
+  contains_word "$workbench_pod_containers" "kube-rbac-proxy" \
+    && check "Enterprise RAG Workbench pod includes auth proxy sidecar" "pass" \
+    || check "Enterprise RAG Workbench pod includes auth proxy sidecar" "${workbench_pod_containers:-missing}"
+  [[ -n "$workbench_pod_ready" && "$workbench_pod_ready" != *"false"* ]] \
+    && check "Enterprise RAG Workbench pod has ready containers" "pass" \
+    || check "Enterprise RAG Workbench pod has ready containers" "${workbench_pod_ready:-missing}"
+else
+  check "Enterprise RAG Workbench pod exists" "missing"
+fi
+
+workbench_proxy_endpoint=$(oc get endpointslice -n "$RAG_NS" \
+  -l "kubernetes.io/service-name=${WORKBENCH_NAME}-kube-rbac-proxy" \
+  -o jsonpath='{range .items[*]}{range .endpoints[?(@.conditions.ready==true)]}{.addresses[0]}{" "}{end}{range .ports[?(@.port==8443)]}{.port}{" "}{end}{end}' \
+  --insecure-skip-tls-verify=true 2>/dev/null || true)
+if [[ "$workbench_proxy_endpoint" == *"8443"* && "$workbench_proxy_endpoint" =~ [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+  check "Enterprise RAG Workbench auth-proxy Service has a ready 8443 endpoint" "pass"
+else
+  check "Enterprise RAG Workbench auth-proxy Service has a ready 8443 endpoint" "${workbench_proxy_endpoint:-missing}"
+fi
 
 workbench_ready=$(condition_status "notebook/${WORKBENCH_NAME}" "$RAG_NS" "Ready")
 if [[ "$workbench_ready" == "True" ]]; then

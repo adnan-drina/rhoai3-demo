@@ -121,6 +121,14 @@ Check:
 - For migrated workbenches, the generated HTTPRoute backend targets
   `<workbench-name>-kube-rbac-proxy:8443`, not the Jupyter container service
   directly.
+- For migrated workbenches, the Notebook template, generated StatefulSet, and
+  running pod all include the controller-injected `kube-rbac-proxy` sidecar.
+- For migrated workbenches, the generated `*-kube-rbac-proxy` Service has a
+  ready EndpointSlice endpoint on port `8443`; a Service and HTTPRoute without
+  a ready proxy endpoint can still produce `no healthy upstream`.
+- Migrating an existing workbench from `inject-oauth` to `inject-auth` can
+  require deleting only the generated StatefulSet so the controller recreates
+  it from the corrected Notebook spec. Preserve the Notebook and PVC.
 - Controller-injected auth-proxy operands are not pinned as static GitOps
   desired state unless Red Hat documentation exposes them as supported user
   configuration.
@@ -151,3 +159,5 @@ Check:
 - Private credentials or connection secrets are committed.
 - Dashboard-generated runtime annotations are treated as authoritative desired
   state without a reason.
+- A Gateway-backed workbench is marked ready while its auth-proxy Service has
+  no ready `8443` endpoint.

@@ -69,6 +69,10 @@ HTTP/1.1 200 OK
 Also verify:
 
 - workbench opens from the project Workbenches tab
+- generated `*-kube-rbac-proxy` Service has a ready EndpointSlice endpoint on
+  port `8443`
+- Notebook, generated StatefulSet, and running pod include the
+  `kube-rbac-proxy` sidecar for migrated Gateway-backed workbenches
 - page loads with styling and static assets
 - navigation and redirects remain under the workbench prefix
 - interactive functions work
@@ -80,5 +84,6 @@ Also verify:
 - Application emits absolute paths that bypass `NB_PREFIX`.
 - Health check only works at `/api`, not at the prefixed path.
 - Idle culling endpoints are missing when culling is expected.
+- HTTPRoute targets a proxy Service with no ready `8443` endpoint.
 - Gateway logs show `No route matched` for workbench interactions.
 - NGINX strips or redirects away from the required prefix.

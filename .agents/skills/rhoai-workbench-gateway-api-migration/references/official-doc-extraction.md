@@ -126,6 +126,10 @@ Gateway diagnostics:
 - review Gateway Controller logs for `No route matched`
 - treat that message as evidence that the application is sending responses or
   redirects without the required prefix
+- if the browser shows `no healthy upstream`, first verify that the generated
+  `*-kube-rbac-proxy` Service has a ready EndpointSlice endpoint on port
+  `8443`; this is a backend health problem, not proof of an application
+  `NB_PREFIX` problem
 
 ## Out Of Scope For This Chapter
 

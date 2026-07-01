@@ -1334,6 +1334,8 @@ steps unless those components are intentionally reintroduced.
   oc get pods -n enterprise-rag | grep enterprise-rag-workbench
   oc describe notebook enterprise-rag-workbench -n enterprise-rag
   oc get svc enterprise-rag-workbench-kube-rbac-proxy -n enterprise-rag
+  oc get endpointslice -n enterprise-rag \
+    -l kubernetes.io/service-name=enterprise-rag-workbench-kube-rbac-proxy
   oc get httproute nb-enterprise-rag-enterprise-rag-workbench -n redhat-ods-applications -o yaml
   oc logs -n enterprise-rag <workbench-pod> -c bootstrap-stage-230 --tail=100
   ```
@@ -1341,6 +1343,46 @@ steps unless those components are intentionally reintroduced.
   Keep the workbench image, Notebook fields, and PVC in GitOps. Do not commit
   Git credentials or package tokens into the notebook, `requirements.txt`, or
   manifests.
+
+### Stage 230 Workbench opens to `no healthy upstream`
+
+- **Symptom:** the OpenShift AI dashboard Open link resolves to the Gateway URL,
+  but the browser shows `no healthy upstream`.
+- **Likely cause:** the generated `HTTPRoute` points to
+  `enterprise-rag-workbench-kube-rbac-proxy:8443`, but the generated
+  `StatefulSet` or running pod does not include the `kube-rbac-proxy` sidecar,
+  so the proxy Service has no ready endpoint. This can happen when an existing
+  GitOps-created Notebook is migrated from legacy `inject-oauth` to
+  `notebooks.opendatahub.io/inject-auth: "true"` after the StatefulSet already
+  exists. The notebook controller can update the Notebook template, but the
+  Kubernetes StatefulSet pod template container list is immutable.
+- **Checks:**
+
+  ```bash
+  oc get notebook enterprise-rag-workbench -n enterprise-rag \
+    -o jsonpath='{.spec.template.spec.containers[*].name}{"\n"}'
+  oc get statefulset enterprise-rag-workbench -n enterprise-rag \
+    -o jsonpath='{.spec.template.spec.containers[*].name}{"\n"}'
+  oc get pods -n enterprise-rag -l statefulset=enterprise-rag-workbench \
+    -o jsonpath='{.items[0].spec.containers[*].name}{" "}{.items[0].status.containerStatuses[*].ready}{"\n"}'
+  oc get endpointslice -n enterprise-rag \
+    -l kubernetes.io/service-name=enterprise-rag-workbench-kube-rbac-proxy \
+    -o jsonpath='{range .items[*]}{range .endpoints[*]}{.addresses[0]}{" ready="}{.conditions.ready}{" "}{end}{range .ports[*]}{.port}{" "}{end}{"\n"}{end}'
+  ```
+
+- **Fix:** keep the Notebook and PVC. Delete only the generated StatefulSet so
+  the RHOAI notebook controller recreates it from the corrected Notebook spec:
+
+  ```bash
+  oc delete statefulset enterprise-rag-workbench -n enterprise-rag \
+    --wait=true --timeout=90s
+  ./stage-230-private-data-rag/validate.sh
+  ```
+
+  Do not copy the generated proxy container image, generated volumes, generated
+  Service, or generated HTTPRoute into GitOps. GitOps owns the supported
+  Notebook annotations and workbench template; the notebook controller owns the
+  generated access operands.
 
 ---
 

@@ -219,12 +219,24 @@ Important `Notebook` details:
   ConfigMap, Secret, and HTTPRoute backend are generated operands. Do not copy
   generated image digests into Git; GitOps should own the supported Notebook
   annotations and core workbench spec.
+- A Gateway-backed workbench is not proven reachable by the presence of a
+  Service and HTTPRoute alone. Verify that the Notebook template, generated
+  StatefulSet, and running pod include the injected `kube-rbac-proxy` sidecar,
+  and that the generated `*-kube-rbac-proxy` Service has a ready EndpointSlice
+  endpoint on port `8443`.
+- When an already-created workbench is migrated to `inject-auth`, the generated
+  StatefulSet might still lack the sidecar because the StatefulSet container
+  list is immutable. Preserve the Notebook and PVC, and let the notebook
+  controller recreate the generated StatefulSet from the corrected Notebook
+  spec.
 
 Official verification:
 
 ```bash
 oc describe notebook -n <project-name>
 oc get httproute -n redhat-ods-applications -l notebook-name=<workbench-name>
+oc get endpointslice -n <project-name> \
+  -l kubernetes.io/service-name=<workbench-name>-kube-rbac-proxy
 ```
 
 ## Unresolved Items
