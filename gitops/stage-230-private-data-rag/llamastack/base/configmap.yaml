@@ -15,7 +15,6 @@ data:
     image_name: rh
 
     apis:
-      - agents
       - batches
       - datasetio
       - eval
@@ -27,19 +26,6 @@ data:
       - files
 
     providers:
-      agents:
-        - provider_id: meta-reference
-          provider_type: inline::meta-reference
-          config:
-            persistence:
-              agent_state:
-                backend: kv_default
-                namespace: agents::meta_reference
-              responses:
-                backend: sql_default
-                max_write_queue_size: 10000
-                num_writers: 4
-                table_name: agents_responses
       batches:
         - provider_id: reference
           provider_type: inline::reference
