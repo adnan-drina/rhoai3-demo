@@ -8,7 +8,7 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Llama Stack / OGX is labeled Technology Preview.
 - Official Llama Stack docs are used for product fields and API behavior.
 - Red Hat Developer article and `agnews-rag-demo` are labeled as implementation
-  evidence only.
+  evidence only, not the active demo pattern.
 - AutoRAG, Docling, KFP, guardrails, and MCP are not claimed unless actually
   implemented and validated.
 - If Docling or KFP is introduced, the official RHOAI 3.4 "Prepare your data
@@ -30,19 +30,19 @@ Use this checklist before accepting Stage 230 RAG changes.
   `PGVECTOR_PASSWORD`.
 - Milvus gRPC endpoint and token are configured only when a future revision
   intentionally uses `milvus-remote`.
-- Qwen3 reranker `InferenceService` is Ready when AG News compatibility is in
-  scope.
+- Qwen3 reranker `InferenceService` is Ready.
 - Qwen3 reranker `ServingRuntime` version and image match the installed RHOAI
   `vllm-cpu-x86-runtime-template` in `redhat-ods-applications`; otherwise the
   dashboard can flag the deployment as `Outdated`.
 - Enterprise RAG Workbench exists and can open JupyterLab when notebook-driven
   ingestion or inspection is in scope.
 - Enterprise RAG Workbench exposes the curated notebook workspace expected by
-  the stage. For the AG News compatibility phase, the visible workspace should
-  show `Ingestion_pipeline_ag_news.ipynb` and
-  `retrieval_pipeline_ag_news.ipynb`, with helper scripts and sample data kept
-  in hidden generated workspace content, and JupyterLab should be rooted at
-  the curated workspace directory rather than the PVC root or full repo clone.
+  the stage. The visible workspace should show
+  `Ingestion_pipeline_rhoai_docs.ipynb` and
+  `Retrieval_pipeline_rhoai_docs.ipynb`, with helper scripts and sample data
+  kept in hidden generated workspace content, and JupyterLab should be rooted
+  at the curated workspace directory rather than the PVC root or full repo
+  clone.
 - Enterprise RAG Workbench can import the required notebook client libraries
   from the same Python environment used by Jupyter kernels. Validate
   `llama_stack_client` from the running workbench container before asking a
@@ -69,7 +69,6 @@ Use this checklist before accepting Stage 230 RAG changes.
 
 - Vector store is created with expected name and metadata.
 - Embedding model ID and dimension are captured.
-- For AG News, raw text ingestion does not pretend to validate Docling.
 - For RHOAI product-document PDFs or other unstructured corpora, Docling
   conversion output is validated before vector-store attachment.
 - PDF extraction output is sanitized before Files API upload. Remove NUL and
@@ -155,7 +154,7 @@ Use this checklist before accepting Stage 230 RAG changes.
 - In the active Stage 230 pgvector path, filtered `hybrid` search must pass.
   If a provider returns mixed metadata categories, treat it as a blocking
   provider/configuration issue rather than weakening the acceptance gate.
-- Qwen3 reranker scores are present for AG News compatibility validation.
+- Qwen3 reranker scores are present in retrieval validation.
 - Reranking is invoked through Llama Stack `/v1alpha/inference/rerank`, not
   directly against the KServe/vLLM endpoint, unless the stage plan explicitly
   records a temporary fallback.

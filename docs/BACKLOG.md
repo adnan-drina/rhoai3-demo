@@ -89,13 +89,12 @@ OpenAI inference, and Gen AI Playground responses for both models.
 
 Stage 230 has been reset from the earlier whoami/Docling/DSPA/chatbot design
 to a metadata-aware enterprise RAG implementation based on the Red Hat
-Developer OGX/Llama Stack article and its linked `agnews-rag-demo` repository.
-The first rebuilt version reproduces the AG News pattern with Nemotron through
+Developer OGX/Llama Stack article. The implementation uses Nemotron through
 Stage 220 MaaS, PostgreSQL with pgvector for Llama Stack metadata and vector
 retrieval, metadata filtering, hybrid search, CPU-hosted Qwen3 reranking, and
-an Enterprise RAG Workbench. The active audience corpus is the focused
-official RHOAI 3.4 product-document explainer corpus, which lets the demo
-answer questions about the product docs behind the stage design. The selected
+an Enterprise RAG Workbench. The primary corpus is the focused official
+RHOAI 3.4 product-document explainer corpus, which lets the demo answer
+questions about the product docs behind the stage design. The selected
 official RHOAI PDFs and deterministic prepared chunks are stored under the
 stage data folder and mirrored to the project S3 bucket during deployment. The
 Docling KFP runner now uses a modular upstream-shaped Docling standard
@@ -108,8 +107,6 @@ Validated in `cluster-qt67m` on 2026-07-02:
 - DSPA/KFP pipeline evidence from the previous implementation passed for the
   full six-document Docling run. The modular upstream-shaped Docling pipeline
   must replace that evidence on the next Stage 230 validation run.
-- AG News compatibility acceptance passed with metadata extraction, filtered
-  hybrid retrieval, reranking, and Nemotron answer generation.
 - RHOAI product-document RAG smoke over pipeline-generated chunks passed with
   hybrid search, reranking, and Nemotron answers.
 

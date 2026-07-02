@@ -70,11 +70,11 @@ Generation model: nemotron-3-nano-30b-a3b through Stage 220 MaaS and Stage 230 L
 Reranker: vllm-reranker/qwen3-reranker via /v1alpha/inference/rerank (enabled by default)
 ```
 
-The chatbot uses a simplified RAG path compared to the AG News acceptance
+The chatbot uses a simplified RAG path compared to the full acceptance
 scripts: it searches the vector store and optionally reranks, but does not
-perform query-time LLM metadata extraction or category-based filtering. The
+perform query-time LLM metadata extraction or topic-based filtering. The
 full metadata-aware pipeline is exercised by
-`scripts/agnews_rag_acceptance.py` and validated by `validate.sh`.
+`scripts/rhoai_product_docs_rag_smoke.py` and validated by `validate.sh`.
 
 ## When To Use
 

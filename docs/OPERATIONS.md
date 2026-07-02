@@ -18,8 +18,8 @@ The active implementation follows this sequence:
    Nemotron `LLMInferenceService` publication in `models-as-a-service`,
    external OpenAI model publication, and governed access to both models.
 5. `stage-230-private-data-rag` - metadata-aware enterprise RAG with RHOAI
-   Llama Stack / OGX, PostgreSQL with pgvector, AG News validation, official
-   RHOAI product-document Q&A, and Nemotron consumed through Stage 220 MaaS.
+   Llama Stack / OGX, PostgreSQL with pgvector, official RHOAI
+   product-document Q&A, and Nemotron consumed through Stage 220 MaaS.
 
 ## Operator Lifecycle And Image Ownership
 
@@ -924,8 +924,7 @@ model.
 ### Current Intent
 
 The rebuilt Stage 230 demonstrates metadata-aware enterprise RAG based on
-the Red Hat Developer OGX/Llama Stack article and its linked AG News reference
-implementation. The current active slice:
+the Red Hat Developer OGX/Llama Stack article. The current active slice:
 
 - creates the `enterprise-rag` OpenShift AI project
 - labels `enterprise-rag` for Kueue management and creates `lq-cpu-default`
@@ -934,21 +933,18 @@ implementation. The current active slice:
 - enables the PostgreSQL `vector` extension and configures the documented
   `remote::pgvector` Llama Stack provider
 - deploys a `LlamaStackDistribution` configured for RAG with a GitOps-managed
-  `userConfig` ConfigMap adapted from the Red Hat article-linked AG News
-  reference implementation
+  `userConfig` ConfigMap adapted from the Red Hat Developer OGX article
 - consumes Nemotron through the Stage 220 MaaS gateway
-- deploys a CPU Qwen3 reranker adapted from the Red Hat article-linked
-  reference implementation, exposes it through Llama Stack as
+- deploys a CPU Qwen3 reranker adapted from the Red Hat Developer OGX article,
+  exposes it through Llama Stack as
   `vllm-reranker/qwen3-reranker`, and sizes it for the current demo CPU worker
   pool
 - uses `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` for
   indexing
-- provides an Enterprise RAG Workbench, deterministic AG News sample, full AG
-  News acceptance helper, and a focused official RHOAI 3.4 product-document
-  explainer corpus for
-  demo-audience Q&A about Llama Stack RAG, AutoRAG, RAGAS, EvalHub,
-  guardrails, AI Pipelines, and Docling. The selected official PDFs and
-  deterministic prepared chunks are committed under
+- provides an Enterprise RAG Workbench and a focused official RHOAI 3.4
+  product-document corpus for demo-audience Q&A about Llama Stack RAG, AutoRAG,
+  RAGAS, EvalHub, guardrails, AI Pipelines, and Docling. The selected official
+  PDFs and deterministic prepared chunks are committed under
   `stage-230-private-data-rag/data/rhoai-product-docs/` so fresh demo
   environments use the same reviewed corpus.
 - runs a Docling KFP pipeline through the GitOps-managed DSPA server to process
@@ -978,13 +974,6 @@ Current status:
 - `stage-230-private-data-rag/validate.sh` checks the Stage 230 Application,
   runtime resources, Llama Stack readiness, model listing, Qwen3 reranker
   readiness, workbench resources, helper syntax, and DSPA readiness.
-- `stage-230-private-data-rag/scripts/agnews_rag_smoke.py` is the first
-  deterministic ingestion/search helper and requires `llama-stack-client` in
-  the execution environment.
-- `stage-230-private-data-rag/scripts/agnews_rag_acceptance.py` is the full
-  AG News acceptance helper. Run it from the Enterprise RAG Workbench, or set
-  `RHOAI_STAGE230_RUN_ACCEPTANCE=true` before `validate.sh` to run the same
-  helper inside the Enterprise RAG Workbench container.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_prepare.py`
   prepares focused product-doc chunks with source metadata from the selected
   official RHOAI 3.4 PDFs stored in the stage folder. Use `--force-download`
@@ -1066,10 +1055,9 @@ gate:
   name (optional run gate: `RHOAI_STAGE230_RUN_AUTORAG=true`)
 - Qwen3 reranker `InferenceService` and Route exist and are ready
 - the Enterprise RAG Workbench `Notebook`, PVC, and ServiceAccount exist
-- the Enterprise RAG Workbench exposes five curated notebooks (AG News
-  ingestion/retrieval reference pair, and RHOAI product documentation
-  Docling data preparation, ingestion, and retrieval) and does not expose
-  the full `rhoai3-demo` repository checkout
+- the Enterprise RAG Workbench exposes three curated notebooks (RHOAI product
+  documentation Docling data preparation, ingestion, and retrieval) and does
+  not expose the full `rhoai3-demo` repository checkout
 - the Stage 230 ObjectBucketClaim is `Bound`
 - the `enterprise-rag-s3` dashboard S3 connection and
   `data-processing-docling-pipeline` Secret exist
@@ -1082,7 +1070,6 @@ gate:
 - the Enterprise RAG Workbench receives the S3 connection environment
 - the `enterprise-rag` namespace is Kueue-managed and has the
   `lq-cpu-default` LocalQueue
-- the AG News smoke and acceptance helpers compile
 - the RHOAI product-document preparation and smoke helpers compile
 - the RHOAI product-document Docling KFP source compiles
 - optional KFP validation can run the DSPA pipeline and check
@@ -1097,12 +1084,6 @@ gate:
 
 Optional validation gates prove the user-visible RAG outcome:
 
-- vector store is created with expected metadata
-- files are uploaded and attached with document metadata
-- metadata-filtered hybrid search returns expected AG News candidates
-- Qwen3 reranker scores are returned through Llama Stack
-  `/v1alpha/inference/rerank`
-- final answer is generated by Nemotron using retrieved context
 - the RHOAI product-document explainer corpus can be prepared from the
   repo-stored PDFs and indexed through the same RAG path when
   `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`
@@ -1111,16 +1092,7 @@ Optional validation gates prove the user-visible RAG outcome:
 - when both RHOAI product-document gates are enabled, validation downloads the
   pipeline-generated JSONL output and uses it for the RAG smoke vector store
 
-Run the workbench-equivalent validated flow:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/scripts/agnews_rag_acceptance.py \
-  --vector-store stage230-agnews-demo \
-  --search-mode hybrid
-```
-
-Run the official RHOAI product-document explainer corpus from the staged PDFs:
+Run the RHOAI product-document explainer corpus from the staged PDFs:
 
 ```bash
 cd /opt/app-root/src/workspace

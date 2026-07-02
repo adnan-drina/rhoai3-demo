@@ -29,7 +29,7 @@ stage-110-rhoai-base-platform/    # GitOps bootstrap, ODF MCG, RHOAI base
 stage-120-gpu-as-a-service/       # GPU node, NFD, NVIDIA GPU Operator, Kueue, hardware profiles
 stage-210-model-serving-foundation/ # KServe model serving foundation via shared Stage 110 DSC owner
 stage-220-models-as-a-service/    # MaaS governance, local Nemotron, external GPT model access
-stage-230-private-data-rag/        # Metadata-aware enterprise RAG foundation with Llama Stack/OGX, Milvus, AG News, and MaaS Nemotron
+stage-230-private-data-rag/        # Metadata-aware enterprise RAG foundation with Llama Stack/OGX, Milvus, RHOAI product docs, and MaaS Nemotron
 gitops/                            # Active GitOps source tree
 scripts/                           # Shared project automation, currently minimal
 docs/                              # Active project docs and product baseline

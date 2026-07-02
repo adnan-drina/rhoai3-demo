@@ -27,8 +27,7 @@ accurate assistant experience than a model-only prompt can provide.
 | PostgreSQL with pgvector | Llama Stack metadata store and active remote vector provider for metadata-filtered vector, keyword, and hybrid search | [RHOAI 3.4 Llama Stack vector store guidance](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Nomic embedding model | Active RHOAI Llama Stack inline sentence-transformers embedding model used for indexing | [RHOAI Llama Stack models API](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index) |
 | Models-as-a-Service | Governed access to the existing Nemotron model | [RHOAI 3.4 MaaS docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) |
-| AG News reference implementation | Compatibility corpus and implementation pattern for metadata, hybrid retrieval, and reranking | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
-| Official RHOAI 3.4 product PDFs | Primary audience corpus for querying the same documentation that explains Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling | [RHOAI 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) |
+| Official RHOAI 3.4 product PDFs | Primary corpus for querying the same documentation that explains Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling | [RHOAI 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) |
 | Docling | Converts the committed official RHOAI PDFs into text and structured artifacts before RAG chunk creation | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | RHOAI project workbench | Notebook-driven ingestion, retrieval inspection, reranker testing, and acceptance runs in the `enterprise-rag` project | [RHOAI 3.4 working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index) |
 | Red Hat OpenShift AI Pipelines | GitOps-managed DSPA pipeline server runs the Docling product-document processing pipeline from S3 input to reviewed JSONL output | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
@@ -44,8 +43,8 @@ The current implementation provides `enterprise-rag`, PostgreSQL metadata
 storage with the `pgvector` extension, a documented `remote::pgvector` Llama
 Stack provider, `LlamaStackDistribution` with curated `userConfig`, a CPU
 Qwen3 reranker exposed as `vllm-reranker/qwen3-reranker`, environment-local
-Secrets, an Enterprise RAG Workbench, deterministic AG News acceptance data,
-and the official RHOAI product-document corpus. The selected RHOAI PDFs are
+Secrets, an Enterprise RAG Workbench, and the official RHOAI product-document
+corpus. The selected RHOAI PDFs are
 stored under `data/rhoai-product-docs/source/`, deterministic prepared chunks
 are stored under `data/rhoai-product-docs/processed/`, and `deploy.sh` mirrors
 the source PDFs into the Stage 230 NooBaa bucket under `raw/rhoai-product-docs/`.
@@ -73,7 +72,6 @@ jobs, guardrails, or RAGAS evaluation; those remain future stages.
 ```mermaid
 flowchart LR
   user["Data scientist or app user"]
-  agnews["AG News reference corpus"]
   rhoai_docs["RHOAI 3.4 product PDFs"]
   workbench["Enterprise RAG Workbench"]
   files["Files API"]
@@ -93,7 +91,6 @@ flowchart LR
 
   user --> workbench
   workbench --> files
-  agnews --> files
   rhoai_docs --> s3
   rhoai_docs --> files
   s3 --> dspa
@@ -114,9 +111,8 @@ flowchart LR
 
 - New in this stage: metadata-aware RAG runtime, PostgreSQL-backed pgvector
   retrieval, PostgreSQL Llama Stack metadata, CPU reranking, an RHOAI
-  workbench, the AG News compatibility sample, the RHOAI product-doc
-  audience corpus, and AutoRAG (Technology Preview) optimization with a
-  remote Milvus vector database.
+  workbench, the RHOAI product-document corpus, and AutoRAG (Technology
+  Preview) optimization with a remote Milvus vector database.
 - Already available: GPU platform, model serving, Nemotron, and governed MaaS
   access from earlier stages.
 - Value of the integration: a governed model can answer from private,
@@ -128,40 +124,17 @@ flowchart LR
 The workbench opens into a curated notebook workspace under
 `/opt/app-root/src/workspace`:
 
-**AG News reference** (from the Red Hat OGX blog post):
-
-- `Ingestion_pipeline_ag_news.ipynb`
-- `retrieval_pipeline_ag_news.ipynb`
-
-**RHOAI product documentation** (main demo use case):
-
 - `Docling_data_preparation_rhoai_docs.ipynb` -- S3 PDF read, Docling
   conversion and chunking, metadata enrichment, JSONL output to S3
 - `Ingestion_pipeline_rhoai_docs.ipynb` -- vector store creation, Files API
-  upload, metadata attachment (mirrors the AG News ingestion pattern)
+  upload, metadata attachment
 - `Retrieval_pipeline_rhoai_docs.ipynb` -- metadata extraction, hybrid search,
-  reranking, grounded answer generation (mirrors the AG News retrieval pattern)
+  reranking, grounded answer generation
 
 The data preparation and ingestion notebook steps are automated by the KFP
 pipeline. The retrieval notebook demonstrates interactive query-time behavior.
 Runtime helper scripts and sample data are generated under hidden
 `.stage230` workspace content rather than showing the full repository.
-
-Run the Red Hat article-aligned AG News acceptance path from CLI:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/scripts/agnews_rag_acceptance.py \
-  --vector-store stage230-agnews-demo \
-  --search-mode hybrid
-```
-
-The CLI smoke helper reads the full prepared JSONL, then indexes a bounded
-per-topic subset for the selected smoke questions by default. This keeps
-redeploy validation fast while still proving Files API upload, Vector Stores
-metadata, hybrid retrieval, reranking, and Nemotron answer generation from the
-current corpus. Use `--full-corpus` only for a deeper validation run that
-intentionally indexes every generated chunk.
 
 ## Chatbot Flow
 
@@ -306,7 +279,6 @@ RHOAI_STAGE230_RUN_AUTORAG=true \
 ## References
 
 - [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx)
-- [AG News RAG demo repository](https://github.com/abdelhamidfg/agnews-rag-demo)
 - [Red Hat AI RAG quickstart repository](https://github.com/rh-ai-quickstart/RAG)
 - [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
 - [RHOAI 3.4: Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index)

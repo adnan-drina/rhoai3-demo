@@ -391,9 +391,7 @@ if [[ -n "$workbench_pod" ]]; then
     && check "Enterprise RAG Workbench pod has ready containers" "pass" \
     || check "Enterprise RAG Workbench pod has ready containers" "${workbench_pod_ready:-missing}"
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-    'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
-     test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
-     test -f /opt/app-root/src/workspace/Docling_data_preparation_rhoai_docs.ipynb &&
+    'test -f /opt/app-root/src/workspace/Docling_data_preparation_rhoai_docs.ipynb &&
      test -f /opt/app-root/src/workspace/Ingestion_pipeline_rhoai_docs.ipynb &&
      test -f /opt/app-root/src/workspace/Retrieval_pipeline_rhoai_docs.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
@@ -409,7 +407,7 @@ if [[ -n "$workbench_pod" ]]; then
      test ! -d /opt/app-root/src/rhoai3-demo' >/dev/null 2>&1; then
     check "Enterprise RAG Workbench exposes curated notebook workspace" "pass"
   else
-    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected AG News notebooks, RHOAI product docs notebook, and hidden .stage230 helper content"
+    check "Enterprise RAG Workbench exposes curated notebook workspace" "expected RHOAI product docs notebooks and hidden .stage230 helper content"
   fi
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'python - <<'"'"'PY'"'"'
@@ -642,18 +640,6 @@ fi
 generation_base_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
 generation_api_key=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_API_TOKEN}" | base64 --decode 2>/dev/null || true)
 
-if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_smoke.py" >/dev/null 2>&1; then
-  check "AG News RAG smoke script compiles" "pass"
-else
-  check "AG News RAG smoke script compiles" "py_compile failed"
-fi
-
-if python3 -m py_compile "$SCRIPT_DIR/scripts/agnews_rag_acceptance.py" >/dev/null 2>&1; then
-  check "AG News RAG acceptance script compiles" "pass"
-else
-  check "AG News RAG acceptance script compiles" "py_compile failed"
-fi
-
 if python3 -m py_compile "$SCRIPT_DIR/scripts/rhoai_product_docs_prepare.py" >/dev/null 2>&1; then
   check "RHOAI product docs preparation script compiles" "pass"
 else
@@ -750,28 +736,6 @@ if resource_exists "configmap/${AUTORAG_EVIDENCE_CM}" "$RAG_NS"; then
   fi
 else
   warn "AutoRAG optimization run evidence is present" "missing ${AUTORAG_EVIDENCE_CM}"
-fi
-
-if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
-  if [[ -n "${workbench_pod:-}" ]]; then
-    acceptance_out=$(mktemp)
-    acceptance_err=$(mktemp)
-    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
-      'cd /opt/app-root/src/workspace &&
-       python .stage230/scripts/agnews_rag_acceptance.py \
-         --reset \
-         --vector-store stage230-agnews-demo \
-         --search-mode hybrid' >"$acceptance_out" 2>"$acceptance_err"; then
-      check "AG News full RAG acceptance passes" "pass"
-    else
-      check "AG News full RAG acceptance passes" "$(head -c 300 "$acceptance_err" | tr '\n' ' ')"
-    fi
-    rm -f "$acceptance_out" "$acceptance_err"
-  else
-    check "AG News full RAG acceptance passes" "missing ready Enterprise RAG Workbench pod"
-  fi
-else
-  warn "AG News full RAG acceptance was not run" "set RHOAI_STAGE230_RUN_ACCEPTANCE=true"
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then

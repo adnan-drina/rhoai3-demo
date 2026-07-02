@@ -16,8 +16,8 @@ description: >
   RAG notebooks or ingestion jobs, Docling data preparation for unstructured
   documents, Kubeflow Pipeline automation for repeatable document processing,
   and Nemotron generation through the demo MaaS layer. Use for Stage 230
-  private-data RAG, AG News reference replication, official RHOAI product
-  documentation Q&A, and RAG architecture reviews.
+  private-data RAG, official RHOAI product documentation Q&A, and RAG
+  architecture reviews.
   Do NOT use for AutoRAG optimization runs (use rhoai-autorag), generic Llama
   Stack platform configuration (use rhoai-llama-stack), model-serving runtime
   details (use rhoai-model-serving-platform), MaaS policy details (use
@@ -56,7 +56,6 @@ This skill covers:
 - hybrid retrieval with metadata filters
 - neural reranking with a cross-encoder reranker
 - Nemotron generation through the governed Stage 220 MaaS endpoint
-- AG News reference replication as the first validation corpus
 - official RHOAI product-document corpora stored under the stage data folder
   and mirrored into project-scoped S3 during deployment
 - Docling-based conversion, chunking, extraction, and subset selection for
@@ -88,22 +87,20 @@ For this repo:
   baseline changes.
 - Use Nemotron from Stage 220 MaaS for generation. Do not deploy a duplicate
   Llama model just because an example uses one.
-- Start with the Red Hat AG News enterprise RAG pattern to prove metadata,
+- Start with the RHOAI product documentation corpus to prove metadata,
   hybrid retrieval, reranking, and end-to-end answer generation.
 - Treat repo-stored official RHOAI 3.4 PDFs as the primary audience Q&A corpus
   for this stage. Refresh them from `docs.redhat.com` only when the active
   product baseline or source manifest changes.
-- Do not drop the AG News pattern's reranking or metadata extraction steps
+- Do not drop the reranking or metadata extraction steps
   without explicit user agreement and a recorded stage-plan decision.
-- Keep AG News as a compatibility validation corpus. Do not add Docling to AG
-  News text rows.
 - Keep the audience demo focused on repo-stored official RHOAI product
   documentation unless the stage plan is explicitly changed.
 - Prefer remote PostgreSQL with pgvector for rebuilt Stage 230 because the
   active environment must prove metadata-filtered hybrid search and the
   installed pgvector provider enforces filters for vector, keyword, and hybrid
   search paths.
-- Treat the Red Hat AG News article's Milvus path as implementation evidence,
+- Treat the Red Hat Developer article's Milvus path as implementation evidence,
   not the active Stage 230 provider, unless a future RHOAI/Llama Stack version
   proves filtered hybrid search works with the selected Milvus path.
 - Keep PostgreSQL metadata storage separate from the vector store decision.
@@ -134,10 +131,14 @@ For this repo:
 
 ## Stage 230 Target Pattern
 
-The rebuilt Stage 230 proves this flow before additional corpora are added:
+The rebuilt Stage 230 proves this flow:
 
 ```text
-AG News documents
+RHOAI product PDFs
+  -> Docling conversion and chunking
+  -> optional extraction or subset selection
+  -> DSPA/KFP automation for repeatable processing
+  -> reviewed S3 pipeline artifacts
   -> Files API upload
   -> Vector Stores API attachment with metadata
   -> Llama Stack chunking and embedding
@@ -148,32 +149,15 @@ AG News documents
   -> final Nemotron answer through MaaS
 ```
 
-For the RHOAI product-document corpus, keep the same retrieval pipeline and
-replace the corpus, metadata taxonomy, ingestion source, and product-doc
-prompts. Validate each processing step in the workbench first, then automate
-the same contract through DSPA/KFP:
-
-```text
-RHOAI product PDFs
-  -> Docling conversion and chunking
-  -> optional extraction or subset selection
-  -> DSPA/KFP automation for repeatable processing
-  -> reviewed S3 pipeline artifacts
-  -> Files API upload
-  -> Vector Stores API attachment with metadata
-  -> same hybrid retrieval, rerank, and Nemotron answer path
-```
-
 ## RAG Depth: Scripts vs Chatbot
 
-The acceptance and smoke scripts (`agnews_rag_acceptance.py`,
-`rhoai_product_docs_rag_smoke.py`) exercise the full metadata-aware pipeline:
-LLM-based query metadata extraction, category-filtered hybrid search, neural
-reranking, and grounded answer generation.
+The acceptance and smoke scripts (`rhoai_product_docs_rag_smoke.py`) exercise
+the full metadata-aware pipeline: LLM-based query metadata extraction,
+topic-filtered hybrid search, neural reranking, and grounded answer generation.
 
 The Streamlit chatbot uses a simplified RAG path: vector-store search with
 optional reranking, but without query-time LLM metadata extraction or
-category-based filtering. This is intentional -- the chatbot serves
+topic-based filtering. This is intentional -- the chatbot serves
 general-purpose product-doc Q&A where users do not specify metadata categories.
 
 ## Vector Store Naming

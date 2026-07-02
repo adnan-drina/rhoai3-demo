@@ -345,9 +345,8 @@ Apply these rules:
   model output. In Stage 230, `sentence-transformers/all-MiniLM-L6-v2` uses a
   384-dimensional vector store; a 768-dimensional store causes file attachment
   failures during vectorization.
-- keep AG News as the non-Docling compatibility corpus. Introduce Docling/KFP
-  when the stage moves to RHOAI product-document PDFs or another unstructured
-  corpus
+- introduce Docling/KFP when the stage processes RHOAI product-document PDFs
+  or another unstructured corpus
 
 ## New Pipeline Checklist
 

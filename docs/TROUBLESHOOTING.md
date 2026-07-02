@@ -1192,7 +1192,7 @@ should not be used as active recovery guidance for the new RAG stage.
   `whoami` vector-store references, old DSPA resources, or old chatbot
   resources.
 - **Likely cause:** the previous Stage 230 implementation was deployed before
-  the AG News reset.
+  the current RHOAI product docs RAG reset.
 - **Fix:** do not patch those resources into the new design. Remove or replace
   them as part of the Stage 230 reset implementation, then let Argo CD recreate
   only the new desired resources.
@@ -1202,8 +1202,8 @@ should not be used as active recovery guidance for the new RAG stage.
 - **Symptom:** a command path references `run-whoami-ingestion-pipeline.sh`,
   a removed corpus-specific pipeline, or `private-rag-chatbot`.
 - **Fix:** stop and use `stage-230-private-data-rag/PLAN.md` instead. The old
-  scripts are stale. The active path is metadata-aware RAG with the AG News
-  compatibility corpus and RHOAI product-document audience corpus.
+  scripts are stale. The active path is metadata-aware RAG with the RHOAI
+  product-document corpus.
 
 ### New Stage 230 implementation fails during development
 
@@ -1395,12 +1395,12 @@ steps unless those components are intentionally reintroduced.
 ### Stage 230 notebook hides helper failures
 
 - **Symptom:** `jupyter nbconvert --execute` exits successfully even though a
-  notebook cell printed a Python traceback from an AG News helper script.
+  notebook cell printed a Python traceback from a helper script.
 - **Likely cause:** the notebook used an unchecked IPython shell escape such as
   `!python ...`. The command output is displayed, but the non-zero process
   status is not raised as a notebook execution error.
 - **Fix:** use `subprocess.run([...], check=True)` in notebook helper cells so
-  failed smoke or acceptance scripts fail the notebook run.
+  failed smoke scripts fail the notebook run.
 
 ### Stage 230 hybrid search ignores metadata filters
 
@@ -1484,7 +1484,7 @@ steps unless those components are intentionally reintroduced.
   dependencies into the shared workspace path
   `/opt/app-root/src/workspace/.stage230/python` and exposes that path through
   `PYTHONPATH`.
-  The workbench bootstrap intentionally copies only the two AG News notebooks
+  The workbench bootstrap copies the three RHOAI docs notebooks
   into `/opt/app-root/src/workspace` and keeps helper scripts/sample data under
   hidden `.stage230` content. If the full `rhoai3-demo` repository appears in
   JupyterLab, the bootstrap cleanup did not run against a reused PVC or

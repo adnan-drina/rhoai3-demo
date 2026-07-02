@@ -16,8 +16,8 @@
 
 | Source | Role |
 |--------|------|
-| https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx | Red Hat Developer article for the enterprise RAG pattern: metadata filtering, hybrid search, neural reranking, AG News, Milvus, Llama Stack / OGX |
-| https://github.com/abdelhamidfg/agnews-rag-demo | GitHub reference implementation linked from the Red Hat Developer article; use as example notebooks and Helm-chart evidence, not product authority |
+| https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx | Red Hat Developer article for the enterprise RAG pattern: metadata filtering, hybrid search, neural reranking, Llama Stack / OGX |
+| https://github.com/abdelhamidfg/agnews-rag-demo | GitHub reference implementation linked from the Red Hat Developer article; use as example notebooks and Helm-chart evidence for RAG API patterns, not product authority |
 | https://github.com/opendatahub-io/data-processing/tree/stable | Official-doc-linked data processing examples for Docling notebooks and KFP pipelines; use as baseline implementation evidence for unstructured document processing |
 | https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines | Current Docling Kubeflow Pipeline reference implementation; active Stage 230 intentionally follows this tree for the modular standard/VLM layout, Secret-mounted S3 input, `ParallelFor` conversion, and HybridChunker output |
 
@@ -37,7 +37,6 @@ Relevant paths:
 
 Patterns reused:
 
-- AG News as the first compatibility corpus
 - vector-store metadata such as `tenant_id` and `version_no`
 - file-level metadata such as `category` and document type
 - Files API upload followed by Vector Stores API attachment
