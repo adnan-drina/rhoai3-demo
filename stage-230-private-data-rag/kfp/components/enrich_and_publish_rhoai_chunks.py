@@ -1,4 +1,10 @@
-"""Normalize S3-staged Docling chunk artifacts into the Stage 230 RAG contract."""
+"""Enrich Docling chunk artifacts with RHOAI product-document metadata and
+publish the final RAG JSONL handoff to S3.
+
+Reads per-split converted Markdown/JSON and chunk JSONL artifacts from S3,
+applies metadata enrichment (topic rules, focus terms, corpus fields), and
+writes a single combined JSONL file to S3 for downstream RAG ingestion.
+"""
 
 from kfp import dsl
 from kfp.dsl import Dataset, Metrics, Output
@@ -10,7 +16,7 @@ from .constants import PYTHON_BASE_IMAGE
     base_image=PYTHON_BASE_IMAGE,
     packages_to_install=["boto3==1.42.54"],
 )
-def normalize_rhoai_product_doc_chunks(
+def enrich_and_publish_rhoai_chunks(
     output_chunks: Output[Dataset],
     output_metrics: Output[Metrics],
     manifest_json: str,

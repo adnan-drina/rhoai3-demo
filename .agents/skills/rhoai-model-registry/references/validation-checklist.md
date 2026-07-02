@@ -28,6 +28,9 @@ manifests, runbooks, or live operations plans.
 - Resource name follows the official constraints and is unique.
 - The default database is labeled non-production when used.
 - Production-oriented content uses an external PostgreSQL or MySQL database.
+- When the default database is used on AWS EBS storage, the generated
+  PostgreSQL Deployment rollout is checked for an RWO PVC rolling-update stall
+  before declaring the registry operational.
 - External database hostname format matches the namespace location.
 - Database password handling avoids committed secrets.
 - TLS-enforcing external databases include a CA certificate option.

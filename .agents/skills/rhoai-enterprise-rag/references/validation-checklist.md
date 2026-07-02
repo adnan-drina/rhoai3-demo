@@ -109,7 +109,7 @@ Use this checklist before accepting Stage 230 RAG changes.
   not the project `Deployments` page, for Docling. The pipeline display name
   should be `RHOAI Product Docs Docling Pipeline`; nested run-graph tasks
   should include `download-docling-models`, `docling-convert-standard`,
-  `docling-chunk`, and `publish-docling-split-outputs`.
+  `docling-chunk-and-upload`, and `ingest-to-vector-store`.
 - A missing Docling `InferenceService` is expected in the active Stage 230
   design. Treat only served endpoints such as `qwen3-reranker` as Deployment
   tab resources unless the stage plan explicitly adds Docling API serving.

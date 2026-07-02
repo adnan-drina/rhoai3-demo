@@ -91,11 +91,10 @@ Patterns reused for the RHOAI product-document pipeline phase:
 - adapt the reviewed upstream `docling-standard` shape into local KFP source,
   validate compilation, run through DSPA, review S3 artifacts, and then pass
   the generated chunk output to the same RAG smoke helper
-- preserve the modular upstream task graph in Stage 230: source selection,
-  `import-pdfs`, `create-pdf-splits`, `download-docling-models`,
-  `docling-convert-standard`, `docling-chunk`,
-  `publish-docling-split-outputs`, and a final repo-specific normalization
-  task
+- preserve the end-to-end task graph in Stage 230: `import-pdfs`,
+  `create-pdf-splits`, `download-docling-models`, `docling-convert-standard`,
+  `docling-chunk-and-upload`, `enrich-and-publish-rhoai-chunks`, and
+  `ingest-to-vector-store`
 - for routine redeploy validation, let the RAG smoke helper index a bounded
   per-topic subset from the generated chunk output; use full-corpus indexing
   only as an explicit deeper validation run

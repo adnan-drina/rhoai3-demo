@@ -90,11 +90,11 @@
      branch choice in the stage plan and KFP README.
    - Start from the standard Docling KFP pipeline for ordinary PDFs, OCR, table
      structure, Markdown output, Docling JSON output, and HybridChunker output.
-   - Preserve modular, dashboard-visible KFP tasks: source selection,
-     `import-pdfs`, `create-pdf-splits`, `download-docling-models`,
-     `docling-convert-standard`, `docling-chunk`,
-     `publish-docling-split-outputs`, and one repo-specific normalizer for the
-     RHOAI product-document metadata contract.
+   - Preserve modular, dashboard-visible KFP tasks: `import-pdfs`,
+     `create-pdf-splits`, `download-docling-models`,
+     `docling-convert-standard`, `docling-chunk-and-upload`,
+     `enrich-and-publish-rhoai-chunks` (metadata enrichment), and
+     `ingest-to-vector-store` (Llama Stack Files API ingestion).
    - Evaluate the VLM Docling KFP pipeline only for complex layouts, scanned
      or image-heavy documents, custom page-level instructions, remote VLM
      conversion, or documents that require image descriptors.

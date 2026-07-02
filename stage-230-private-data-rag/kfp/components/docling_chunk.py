@@ -1,4 +1,9 @@
-"""Chunk Docling JSON artifacts with Docling HybridChunker."""
+"""Chunk Docling JSON artifacts with Docling HybridChunker.
+
+Reference component kept for alignment with opendatahub-io/data-processing.
+The active pipeline uses ``docling_chunk_and_upload`` which combines chunking
+with per-split S3 artifact publishing in a single step.
+"""
 
 from kfp import dsl
 

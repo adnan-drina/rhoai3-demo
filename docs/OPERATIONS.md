@@ -1161,25 +1161,34 @@ RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT=true \
 ```
 
 The KFP implementation uses the modular `docling-standard` path for
-text-native PDFs, with OCR disabled by default and accurate table mode enabled.
-Pipeline runs should show separate tasks for source selection, `import-pdfs`,
-`create-pdf-splits`, `download-docling-models`,
-`docling-convert-standard`, `docling-chunk`,
-`publish-docling-split-outputs`, and
-`normalize-rhoai-product-doc-chunks`. The split publisher uploads converted
-Markdown, Docling JSON, and HybridChunker JSONL artifacts under
-`processed/rhoai-product-docs/`; the final normalizer writes the JSONL RAG
-handoff to the configured output key. The selected Docling component image is
-a repo-owned KFP runtime dependency and is recorded as a demo exception until
-replaced with a reviewed Red Hat or custom image.
+text-native PDFs, with OCR disabled by default and accurate table mode enabled,
+and extends it with Llama Stack vector store ingestion to produce a query-ready
+RAG corpus end-to-end. Source selection (manifest filtering, PDF filename
+computation) is handled at compile time via `--max-documents`, eliminating the
+runtime select component. Pipeline runs should show six top-level nodes:
+`import-pdfs`, `create-pdf-splits`, `download-docling-models`, a
+`process-pdf-splits` ParallelFor loop (containing `docling-convert-standard`
+and `docling-chunk-and-upload`), `enrich-and-publish-rhoai-chunks`, and
+`ingest-to-vector-store`. The chunk-and-upload step combines Docling
+HybridChunker chunking with per-split S3 artifact publishing; the post-loop
+enricher reads those artifacts, applies RHOAI metadata enrichment, and writes
+the combined JSONL to S3; the ingest step reads that JSONL, creates a
+pgvector-backed vector store via Llama Stack, uploads each chunk through the
+Files API with per-chunk metadata attributes, and verifies queryability. The
+selected Docling component image is a repo-owned KFP runtime dependency and is
+recorded as a demo exception until replaced with a reviewed Red Hat or custom
+image.
 
 Dashboard visibility: in OpenShift AI, select project `Enterprise RAG` and
-open `Pipelines`, then choose `RHOAI Product Docs Docling Pipeline`. The
-Docling conversion and chunking work is visible in the run graph; some tasks
-are nested inside the `ParallelFor` split loop. Docling is not expected in the
-project `Deployments` tab for this stage. `Deployments` shows KServe-served
-endpoints such as `qwen3-reranker`; Docling follows the Red Hat-documented
-data-preparation pattern as a KFP component.
+open `Pipelines`, then choose `RHOAI Product Docs Docling Pipeline`. The run
+graph shows six top-level nodes with a clean linear flow: `import-pdfs`,
+`create-pdf-splits`, `download-docling-models`, `process-pdf-splits`
+(ParallelFor), `enrich-and-publish-rhoai-chunks`, and
+`ingest-to-vector-store`. Inside the loop, each split runs
+`docling-convert-standard` followed by `docling-chunk-and-upload`. Docling is
+not expected in the project `Deployments` tab for this stage. `Deployments`
+shows KServe-served endpoints such as `qwen3-reranker`; Docling follows the
+Red Hat-documented data-preparation pattern as a KFP component.
 
 To intentionally refresh the committed prepared JSONL from the official PDFs,
 run the preparation helper locally and review the diff before committing:

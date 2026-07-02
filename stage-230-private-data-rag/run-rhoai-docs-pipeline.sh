@@ -54,8 +54,10 @@ DOCLING_TIMEOUT_PER_DOCUMENT="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_PER_D
 DOCLING_OCR="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OCR:-false}"
 DOCLING_FORCE_OCR="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_FORCE_OCR:-false}"
 DOCLING_OCR_ENGINE="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OCR_ENGINE:-tesseract_cli}"
-DOCLING_CHUNK_MAX_TOKENS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_CHUNK_MAX_TOKENS:-512}"
-DOCLING_CHUNK_MERGE_PEERS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_CHUNK_MERGE_PEERS:-true}"
+LLAMA_STACK_BASE_URL="${RHOAI_STAGE230_LLAMA_STACK_BASE_URL:-http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321}"
+VECTOR_STORE_NAME="${RHOAI_STAGE230_RHOAI_DOCS_VECTOR_STORE:-stage230-rhoai-34-product-docs}"
+EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
+VECTOR_PROVIDER="${RHOAI_STAGE230_VECTOR_PROVIDER:-pgvector}"
 TIMEOUT_SECONDS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS:-3600}"
 EVIDENCE_CM="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_EVIDENCE_CM:-stage230-rhoai-docs-pipeline-evidence}"
 WAIT_FOR_RUN=true
@@ -78,11 +80,17 @@ for arg in "$@"; do
       OUTPUT_S3_KEY="${arg#*=}"
       ;;
     --max-chars=*)
-      echo "ERROR: --max-chars is no longer supported. Use --chunk-max-tokens for the Docling HybridChunker." >&2
+      echo "ERROR: --max-chars is no longer supported." >&2
       exit 1
       ;;
-    --chunk-max-tokens=*)
-      DOCLING_CHUNK_MAX_TOKENS="${arg#*=}"
+    --vector-store-name=*)
+      VECTOR_STORE_NAME="${arg#*=}"
+      ;;
+    --llama-stack-base-url=*)
+      LLAMA_STACK_BASE_URL="${arg#*=}"
+      ;;
+    --embedding-model=*)
+      EMBEDDING_MODEL="${arg#*=}"
       ;;
     --max-documents=*)
       MAX_DOCUMENTS="${arg#*=}"
@@ -164,7 +172,11 @@ compile_pipeline() {
   "$venv_path/bin/pip" install -q kfp==2.14.6 kfp-kubernetes==2.14.6
 
   mkdir -p "$ROOT_DIR/artifacts"
-  "$venv_path/bin/python" "$SCRIPT_DIR/kfp/rhoai_product_docs_docling_pipeline.py" --output "$output" >/dev/null
+  local max_doc_flag=""
+  if [[ "${MAX_DOCUMENTS:-0}" -gt 0 ]]; then
+    max_doc_flag="--max-documents=${MAX_DOCUMENTS}"
+  fi
+  "$venv_path/bin/python" "$SCRIPT_DIR/kfp/rhoai_product_docs_docling_pipeline.py" --output "$output" $max_doc_flag >/dev/null
   if [[ ! -s "$output" ]]; then
     echo "ERROR: KFP compile did not produce ${output}." >&2
     exit 1
@@ -343,7 +355,7 @@ export EXPERIMENT_NAME OC_TOKEN WAIT_FOR_RUN TIMEOUT_SECONDS
 export SOURCE_PREFIX OUTPUT_S3_KEY PIPELINE_S3_SECRET MAX_DOCUMENTS NUM_SPLITS FOCUS_ONLY
 export DOCLING_PDF_BACKEND DOCLING_IMAGE_EXPORT_MODE DOCLING_TABLE_MODE DOCLING_NUM_THREADS
 export DOCLING_TIMEOUT_PER_DOCUMENT DOCLING_OCR DOCLING_FORCE_OCR DOCLING_OCR_ENGINE
-export DOCLING_CHUNK_MAX_TOKENS DOCLING_CHUNK_MERGE_PEERS RUN_EVIDENCE_JSON
+export LLAMA_STACK_BASE_URL VECTOR_STORE_NAME EMBEDDING_MODEL VECTOR_PROVIDER RUN_EVIDENCE_JSON
 EXPECTED_GUIDES_JSON="$(expected_guides_json)"
 export EXPECTED_GUIDES_JSON
 
@@ -515,7 +527,6 @@ experiment_id = item_id(experiment, "experiment_id", "id")
 params = {
     "output_s3_key": os.environ["OUTPUT_S3_KEY"],
     "pipeline_s3_secret_name": os.environ["PIPELINE_S3_SECRET"],
-    "max_documents": int(os.environ["MAX_DOCUMENTS"]),
     "num_splits": int(os.environ["NUM_SPLITS"]),
     "pdf_from_s3": True,
     "pdf_base_url": "",
@@ -528,8 +539,10 @@ params = {
     "docling_ocr": os.environ["DOCLING_OCR"].lower() == "true",
     "docling_force_ocr": os.environ["DOCLING_FORCE_OCR"].lower() == "true",
     "docling_ocr_engine": os.environ["DOCLING_OCR_ENGINE"],
-    "docling_chunk_max_tokens": int(os.environ["DOCLING_CHUNK_MAX_TOKENS"]),
-    "docling_chunk_merge_peers": os.environ["DOCLING_CHUNK_MERGE_PEERS"].lower() == "true",
+    "llama_stack_base_url": os.environ["LLAMA_STACK_BASE_URL"],
+    "vector_store_name": os.environ["VECTOR_STORE_NAME"],
+    "embedding_model": os.environ["EMBEDDING_MODEL"],
+    "vector_provider": os.environ["VECTOR_PROVIDER"],
 }
 run_name = f"rhoai-product-docs-docling-{int(time.time())}"
 run = kfp_client.run_pipeline(

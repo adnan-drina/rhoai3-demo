@@ -64,7 +64,7 @@ Out of scope for this stage unless explicitly added later:
 | Reranker | Use the article's Qwen3 reranker pattern on CPU | Reranker improves precision; the non-Red-Hat modelcar remains a documented demo exception |
 | Reranker registration | Register Qwen3 in Llama Stack as `vllm-reranker/qwen3-reranker` and call `/v1alpha/inference/rerank` | Matches the reference notebook flow better than calling the KServe/vLLM endpoint directly |
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
-| KFP posture | Use a modular `docling-standard` KFP pipeline for the committed RHOAI product PDFs | Follows the OpenDataHub data-processing pattern with dashboard-visible import, split, model-download, convert, chunk, and Stage-specific normalization tasks without mixing in AutoRAG, RAGAS, or guardrails scope |
+| KFP posture | Use an end-to-end `docling-standard` KFP pipeline for the committed RHOAI product PDFs with Llama Stack vector store ingestion | Follows the OpenDataHub data-processing pattern for data preparation (import, split, model-download, convert, chunk, enrich) and extends it with Llama Stack ingestion to produce a query-ready vector store in a single pipeline run, without mixing in AutoRAG, RAGAS, or guardrails scope |
 | Docling dashboard placement | Show Docling in the OpenShift AI Pipelines run graph, not the project Deployments tab | The Red Hat-documented and OpenDataHub reference pattern uses Docling as a KFP data-preparation component. The Deployments tab is reserved here for served endpoints such as the Qwen3 reranker. |
 | Docling workbench pre-install | Pre-install Docling and pre-cache layout models and HybridChunker tokenizer in the workbench init container | Follows the official RHOAI 3.4 data preparation pattern (Docling as a library in notebooks) while ensuring zero runtime downloads during demos. Docling layout models and `sentence-transformers/all-MiniLM-L6-v2` tokenizer are cached on the PVC. PVC increased to 20Gi to accommodate Docling dependencies and model cache. |
 
@@ -172,13 +172,13 @@ Out of scope for this stage unless explicitly added later:
 - Submit a DSPA run against `dspa-enterprise-rag`.
 - Process source PDFs from the `data-processing-docling-pipeline` Secret's
   S3 prefix, normally `raw/rhoai-product-docs/`.
-- Run modular KFP tasks matching the upstream `docling-standard` flow:
-  source selection, `import-pdfs`, `create-pdf-splits`,
-  `download-docling-models`, `ParallelFor(docling-convert-standard ->
-  docling-chunk -> publish-docling-split-outputs)`, and
-  `normalize-rhoai-product-doc-chunks`.
+- Run end-to-end KFP tasks: `import-pdfs`, `create-pdf-splits`,
+  `download-docling-models`,
+  `process-pdf-splits(docling-convert-standard -> docling-chunk-and-upload)`,
+  `enrich-and-publish-rhoai-chunks`, and `ingest-to-vector-store`.
 - Write Docling Markdown/JSON evidence and JSONL chunks under
   `processed/rhoai-product-docs/`.
+- Ingest the enriched chunks into a Llama Stack vector store via Files API.
 - Review the S3 output and store run evidence in
   `stage230-rhoai-docs-pipeline-evidence`.
 

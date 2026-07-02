@@ -147,6 +147,16 @@ environment:
   as `runPolicy`, build history limits, `postCommit`, `resources`, and
   `nodeSelector` explicit in GitOps so Argo CD remains synced after the build
   controller initializes the resource.
+- **Model registry default Postgres rolling update**: The RHOAI-generated
+  `demo-registry-postgres` Deployment uses a single AWS EBS `ReadWriteOnce` PVC
+  for the default non-production registry database. During an operator-driven
+  image digest update, a one-replica RollingUpdate can leave revision 1 running
+  with the PVC attached and revision 2 stuck in `ContainerCreating` on another
+  node, with `ProgressDeadlineExceeded` on the Deployment. Recover by scaling
+  only `deploy/demo-registry-postgres` in `rhoai-model-registries` to 0, waiting
+  for its pods to delete, scaling back to 1, and verifying rollout status. Do
+  not patch generated images or templates as GitOps state; production registry
+  guidance should use the documented external PostgreSQL/MySQL database path.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".

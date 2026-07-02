@@ -604,7 +604,7 @@ then
     --output "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" >/dev/null 2>&1 \
     && [[ -s "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" ]]; then
     check "RHOAI product docs Docling KFP pipeline compiles locally" "pass"
-    if grep -Eq "docling-convert-standard|docling-chunk|publish-docling-split-outputs|normalize-rhoai-product-doc-chunks" \
+    if grep -Eq "docling-convert-standard|docling-chunk-and-upload|enrich-and-publish-rhoai-chunks|ingest-to-vector-store" \
       "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml"; then
       check "RHOAI product docs Docling KFP pipeline exposes modular dashboard tasks" "pass"
     else

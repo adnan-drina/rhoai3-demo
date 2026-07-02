@@ -56,7 +56,7 @@ dashboard, KServe-served endpoints such as the Qwen3 reranker appear under the
 project `Deployments` tab. Docling appears under `Pipelines` as the
 `RHOAI Product Docs Docling Pipeline`, and the Docling work is visible in the
 run graph as `download-docling-models`, `docling-convert-standard`,
-`docling-chunk`, and `publish-docling-split-outputs` tasks. Creating a
+`docling-chunk-and-upload`, and `ingest-to-vector-store` tasks. Creating a
 dashboard model deployment for Docling would be a separate serving design, not
 the Red Hat-documented data-preparation pattern followed here.
 
@@ -131,8 +131,9 @@ The workbench opens into a curated notebook workspace under
 - `Retrieval_pipeline_rhoai_docs.ipynb` -- metadata extraction, hybrid search,
   reranking, grounded answer generation (mirrors the AG News retrieval pattern)
 
-Each RHOAI docs notebook step maps to a KFP pipeline component for later
-automation. Runtime helper scripts and sample data are generated under hidden
+The data preparation and ingestion notebook steps are automated by the KFP
+pipeline. The retrieval notebook demonstrates interactive query-time behavior.
+Runtime helper scripts and sample data are generated under hidden
 `.stage230` workspace content rather than showing the full repository.
 
 Run the Red Hat article-aligned AG News acceptance path from CLI:
@@ -198,18 +199,17 @@ Markdown and Docling JSON artifacts exist, and stores evidence in
 `enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
 
 Dashboard path: select the `Enterprise RAG` project, open `Pipelines`, choose
-`RHOAI Product Docs Docling Pipeline`, then open the latest run. The top-level
-pipeline shows source selection, import, split, model download, and final
-normalization. The Docling conversion and chunking tasks are nested inside the
-parallel split loop in the run graph.
+`RHOAI Product Docs Docling Pipeline`, then open the latest run. The run graph
+shows a clean end-to-end flow from PDF import through vector store ingestion.
 
-The OpenShift AI Pipelines run graph shows Docling as modular tasks instead of
-one opaque stage-specific component:
+The OpenShift AI Pipelines run graph:
 
 ```text
-select sources -> import PDFs -> split PDFs -> download Docling models
-  -> ParallelFor(convert with Docling -> chunk with HybridChunker -> publish split outputs)
-  -> normalize Stage 230 RAG chunks
+import-pdfs -> create-pdf-splits -> download-docling-models
+  -> process-pdf-splits (ParallelFor):
+       docling-convert-standard -> docling-chunk-and-upload
+  -> enrich-and-publish-rhoai-chunks
+  -> ingest-to-vector-store
 ```
 
 To make validation run both the pipeline and the RAG smoke over the generated

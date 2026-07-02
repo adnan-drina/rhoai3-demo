@@ -1,9 +1,9 @@
-# Stage 230 KFP Data Preparation
+# Stage 230 KFP End-to-End RAG Pipeline
 
 Stage 230 uses this DSPA/KFP automation to process the committed RHOAI 3.4
-product PDF corpus from the Stage 230 S3 bucket and produce reviewed JSONL
-chunks for the same Files API / Vector Stores API ingestion path used by the
-workbench.
+product PDF corpus from S3, enrich the chunks with RHOAI product-document
+metadata, and ingest them into a Llama Stack vector store -- producing a
+query-ready RAG corpus in a single pipeline run.
 
 ## Source Alignment
 
@@ -43,9 +43,7 @@ In the OpenShift AI dashboard, select the `Enterprise RAG` project and open
 `Pipelines`. The pipeline display name is `RHOAI Product Docs Docling
 Pipeline`. Docling does not appear in the project `Deployments` tab because
 this stage uses Docling as a KFP data-preparation component, not as a KServe
-model-serving endpoint. In the run graph, `docling-convert-standard`,
-`docling-chunk`, and `publish-docling-split-outputs` are nested under the
-parallel split loop.
+model-serving endpoint.
 
 Useful development options:
 
@@ -56,24 +54,32 @@ Useful development options:
 ```
 
 The pipeline adapts the `docling-standard` pattern for ordinary text-native
-PDFs as separate dashboard-visible KFP tasks:
+PDFs and extends it with Llama Stack vector store ingestion. Source selection
+is handled at compile time via `--max-documents`, producing a clean six-node
+top-level DAG:
 
 ```text
-select-rhoai-product-doc-sources
-  -> import-pdfs
+import-pdfs
   -> create-pdf-splits
   -> download-docling-models
-  -> ParallelFor(docling-convert-standard -> docling-chunk -> publish-docling-split-outputs)
-  -> normalize-rhoai-product-doc-chunks
+  -> process-pdf-splits (ParallelFor):
+       docling-convert-standard -> docling-chunk-and-upload
+  -> enrich-and-publish-rhoai-chunks
+  -> ingest-to-vector-store
 ```
 
 `docling-convert-standard` writes converted Markdown and Docling JSON artifacts
-as KFP artifacts. `docling-chunk` uses Docling HybridChunker to create JSONL
-chunk artifacts. `publish-docling-split-outputs` stores each split's converted
-Markdown, Docling JSON, and HybridChunker JSONL under deterministic S3 keys.
-`normalize-rhoai-product-doc-chunks` is the final Stage-specific adapter: it
-maps the staged upstream chunk artifacts to the RHOAI product-document metadata
-contract and writes the final JSONL RAG handoff to:
+as KFP artifacts. `docling-chunk-and-upload` combines Docling HybridChunker
+chunking with per-split S3 artifact publishing in a single step, writing
+converted Markdown, Docling JSON, and HybridChunker JSONL under deterministic
+S3 keys. `enrich-and-publish-rhoai-chunks` reads those S3 artifacts, maps them
+to the RHOAI product-document metadata contract, and writes the combined JSONL
+to S3. `ingest-to-vector-store` reads the enriched JSONL, creates a pgvector-
+backed Llama Stack vector store, uploads each chunk via the Files API with
+per-chunk metadata attributes, verifies ingestion file counts, and runs a
+search smoke test.
+
+The final JSONL is written to:
 
 ```text
 processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-chunks.jsonl
@@ -83,13 +89,8 @@ The Docling component image is an explicit KFP runtime dependency, not an
 operator-managed operand. The currently selected image is a documented demo
 exception until replaced by a reviewed Red Hat image or custom image.
 
-The split publisher intentionally mounts the GitOps-owned deterministic
-`data-processing-docling-pipeline` Secret by literal name. In the active RHOAI
-3.4 KFP runtime, Kubernetes Secret mounts on tasks nested inside
-`dsl.ParallelFor` are resolved from the parent DAG and cannot safely use the
-pipeline-level `pipeline_s3_secret_name` parameter.
-
-Downstream RAG validation reads this full JSONL output. Normal redeploy
-validation indexes a bounded per-topic subset for the selected smoke questions
-so that the gate remains fast and repeatable. Use the smoke helper's
-`--full-corpus` flag only when intentionally validating full-corpus indexing.
+The chunk-and-upload step inside the ParallelFor loop intentionally mounts the
+GitOps-owned deterministic `data-processing-docling-pipeline` Secret by literal
+name. In the active RHOAI 3.4 KFP runtime, Kubernetes Secret mounts on tasks
+nested inside `dsl.ParallelFor` are resolved from the parent DAG and cannot
+safely use the pipeline-level `pipeline_s3_secret_name` parameter.

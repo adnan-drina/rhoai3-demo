@@ -1,4 +1,4 @@
-"""Shared KFP runtime image constants for Stage 230 Docling components."""
+"""Shared KFP runtime image constants for Stage 230 components."""
 
 import os
 
@@ -6,6 +6,10 @@ import os
 PYTHON_BASE_IMAGE = os.getenv(
     "PYTHON_BASE_IMAGE",
     "registry.access.redhat.com/ubi9/python-311:9.6-1755074620",
+)
+PYTHON312_BASE_IMAGE = os.getenv(
+    "PYTHON312_BASE_IMAGE",
+    "registry.access.redhat.com/ubi9/python-312:9.6-1754502698",
 )
 DOCLING_BASE_IMAGE = os.getenv(
     "DOCLING_BASE_IMAGE",

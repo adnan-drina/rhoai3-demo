@@ -478,6 +478,43 @@ oc get pods,deploy,route -n rhoai-model-registries
 The expected demo state is `Available=True` on
 `modelregistries.modelregistry.opendatahub.io/demo-registry`.
 
+### demo-registry-postgres is stuck ContainerCreating
+
+- **Symptom:** `demo-registry-postgres` has one old running pod and one new pod
+  stuck in `ContainerCreating`, the Deployment reports
+  `ProgressDeadlineExceeded`, and the new pod has no pod IP or container ID.
+- **Cause observed on cluster-qt67m:** the operator-generated default registry
+  PostgreSQL Deployment rolled from one image digest to another while using a
+  single AWS EBS `ReadWriteOnce` PVC. The old pod kept the PVC attached to its
+  node, while the new ReplicaSet scheduled a replacement pod on a different
+  node and waited for the same volume.
+- **Checks:**
+
+```bash
+oc get deploy,rs,pod -n rhoai-model-registries -l app.kubernetes.io/name=demo-registry-postgres
+oc get pvc demo-registry-postgres-storage -n rhoai-model-registries
+oc get volumeattachment | grep "$(oc get pvc demo-registry-postgres-storage \
+  -n rhoai-model-registries -o jsonpath='{.spec.volumeName}')"
+oc rollout status deploy/demo-registry-postgres -n rhoai-model-registries --timeout=10s
+```
+
+- **Recovery:** perform a controlled restart of only the generated PostgreSQL
+  Deployment so the EBS volume detaches and the current ReplicaSet starts with
+  the existing PVC data:
+
+```bash
+oc scale deploy/demo-registry-postgres -n rhoai-model-registries --replicas=0
+oc wait pod -n rhoai-model-registries \
+  -l app.kubernetes.io/name=demo-registry-postgres --for=delete --timeout=180s
+oc scale deploy/demo-registry-postgres -n rhoai-model-registries --replicas=1
+oc rollout status deploy/demo-registry-postgres -n rhoai-model-registries --timeout=300s
+```
+
+Do not patch generated image fields or replace the operator-generated database
+template as desired GitOps state. For production-oriented registry narratives,
+use the Red Hat-documented external PostgreSQL or MySQL database path instead
+of the default demo database.
+
 ### Nemotron registry metadata is missing
 
 - **Likely causes:** `stage-210-model-serving-foundation/deploy.sh` has not run
