@@ -118,12 +118,12 @@ spec:
               export DOCLING_MODELS_PATH="${workspace}/.stage230/docling-models"
               mkdir -p "$HF_HOME" "$DOCLING_MODELS_PATH"
               PYTHONPATH="${workspace}/.stage230/python" python -c "
-from docling.utils.model_downloader import download_models
-download_models(output_dir='${DOCLING_MODELS_PATH}', progress=True,
-    with_layout=True, with_tableformer=True, with_easyocr=False)
-from huggingface_hub import snapshot_download
-snapshot_download('sentence-transformers/all-MiniLM-L6-v2', cache_dir='${HF_HOME}')
-print('Model pre-download complete')
+              from docling.utils.model_downloader import download_models
+              download_models(output_dir='${DOCLING_MODELS_PATH}', progress=True,
+                  with_layout=True, with_tableformer=True, with_easyocr=False)
+              from huggingface_hub import snapshot_download
+              snapshot_download('sentence-transformers/all-MiniLM-L6-v2', cache_dir='${HF_HOME}')
+              print('Model pre-download complete')
               " 2>&1 || echo 'Model pre-download skipped (non-fatal)'
           env:
             - name: GIT_REPO_URL
