@@ -382,6 +382,8 @@ if [[ -n "$workbench_pod" ]]; then
      test -f /opt/app-root/src/workspace/Retrieval_pipeline_rhoai_docs.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
+     test -d /opt/app-root/src/workspace/.stage230/docling-models &&
+     test -d /opt/app-root/src/workspace/.stage230/hf-cache &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_prepare.py &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_rag_smoke.py &&
      test -f /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json &&

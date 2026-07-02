@@ -66,6 +66,7 @@ Out of scope for this stage unless explicitly added later:
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
 | KFP posture | Use a modular `docling-standard` KFP pipeline for the committed RHOAI product PDFs | Follows the OpenDataHub data-processing pattern with dashboard-visible import, split, model-download, convert, chunk, and Stage-specific normalization tasks without mixing in AutoRAG, RAGAS, or guardrails scope |
 | Docling dashboard placement | Show Docling in the OpenShift AI Pipelines run graph, not the project Deployments tab | The Red Hat-documented and OpenDataHub reference pattern uses Docling as a KFP data-preparation component. The Deployments tab is reserved here for served endpoints such as the Qwen3 reranker. |
+| Docling workbench pre-install | Pre-install Docling and pre-cache layout models and HybridChunker tokenizer in the workbench init container | Follows the official RHOAI 3.4 data preparation pattern (Docling as a library in notebooks) while ensuring zero runtime downloads during demos. Docling layout models and `sentence-transformers/all-MiniLM-L6-v2` tokenizer are cached on the PVC. PVC increased to 20Gi to accommodate Docling dependencies and model cache. |
 
 ## Source Capture
 
