@@ -406,6 +406,17 @@ PY' >/dev/null 2>&1; then
   fi
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'python - <<'"'"'PY'"'"'
+from importlib.metadata import version
+from docling.document_converter import DocumentConverter
+from docling.chunking import HybridChunker
+print("docling " + version("docling"))
+PY' >/dev/null 2>&1; then
+    check "Enterprise RAG Workbench can import Docling" "pass"
+  else
+    check "Enterprise RAG Workbench can import Docling" "missing from active notebook Python environment"
+  fi
+  if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
+    'python - <<'"'"'PY'"'"'
 import os
 required = [
     "AWS_ACCESS_KEY_ID",
