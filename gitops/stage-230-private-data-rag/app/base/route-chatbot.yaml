@@ -1,0 +1,20 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: private-rag-chatbot
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: chatbot-ui
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "23"
+spec:
+  to:
+    kind: Service
+    name: private-rag-chatbot
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

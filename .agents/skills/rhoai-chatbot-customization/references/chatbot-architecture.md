@@ -15,10 +15,12 @@ stage-230-private-data-rag/chatbot/
     └── guardrails.py           # Future guardrails decision boundary
 ```
 
-The active chatbot is intentionally smaller than the legacy Step 07 UI. It is
-not a full copy of the Red Hat quickstart frontend. The quickstart and legacy
-app remain references for useful behavior, especially direct RAG, agent tool
-calling, Inspect pages, and prompt tuning.
+The active chatbot is intentionally smaller than the legacy Step 07 UI and the
+Red Hat AI RAG quickstart frontend. The quickstart is the selected Streamlit
+reference for direct chat layout, vector-store selection, suggested-question
+configuration, and Inspect-style runtime visibility. Stage 230 reuses those
+patterns without copying upload workflows, outdated client pins, or agent/tool
+flows that belong to later stages.
 
 ## Active Modes
 
@@ -27,8 +29,8 @@ calling, Inspect pages, and prompt tuning.
 | API | `client.chat.completions.create()` | `client.chat.completions.create()` |
 | Retrieval | `client.vector_stores.search()` against selected vector store | skipped |
 | Context | retrieved chunks are injected into the user message | none |
-| Default model | `vllm-inference/nemotron-3-nano-30b-a3b` | `vllm-inference/nemotron-3-nano-30b-a3b` |
-| Default vector store | `whoami` | not used |
+| Default model | `nemotron-3-nano-30b-a3b` | `nemotron-3-nano-30b-a3b` |
+| Default vector store | `stage230-rhoai-34-product-docs-kfp` | not used |
 | Guardrails | disabled-by-default adapter in `guardrails.py` | disabled-by-default adapter in `guardrails.py` |
 | MCP | connector discovery/tool contract in `mcp.py`, disabled by default | connector discovery/tool contract in `mcp.py`, disabled by default |
 
@@ -86,10 +88,16 @@ Deployment: private-rag-chatbot
 Image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest
 BuildConfig: private-rag-chatbot
 Route: private-rag-chatbot
+OpenShift AI dashboard tile: redhat-ods-applications/rhoai-demo-private-rag-chatbot
 
 Dependencies:
-- lsd-private-rag LlamaStackDistribution
+- lsd-enterprise-rag LlamaStackDistribution
 - private-rag-postgres pgvector database
-- whoami vector store populated by the Stage 230 KFP ingestion pipeline
+- stage230-rhoai-34-product-docs-kfp vector store populated by the Stage 230 KFP ingestion pipeline
 - Stage 220 MaaS-backed Nemotron model
 ```
+
+The dashboard tile is an `OdhApplication`, not an OpenShift `ConsoleLink`. Keep
+it in `redhat-ods-applications`, point `spec.route` at
+`enterprise-rag/private-rag-chatbot`, and preserve the documented dashboard
+labels `app: odh-dashboard` and `app.kubernetes.io/part-of: odh-dashboard`.

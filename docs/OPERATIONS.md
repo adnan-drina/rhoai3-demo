@@ -998,8 +998,14 @@ Current status:
   the DSPA namespace, submits a run, reviews S3 output, checks converted
   Markdown and Docling JSON artifacts, and stores evidence in
   `enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
-- Old `run-whoami-*`, chatbot, prior non-product-document corpus, and prior
-  Docling/KFP artifacts are removed from the active stage.
+- `private-rag-chatbot` is the Stage 230 Streamlit chatbot. It is built from
+  `stage-230-private-data-rag/chatbot/` by the deploy script through a binary
+  OpenShift BuildConfig and uses the Stage 230 Llama Stack service, the
+  product-document vector store, hybrid search, reranking, and governed
+  Nemotron access. The app includes a RAG on/off toggle so the same question
+  can be compared against model-only behavior.
+- Old `run-whoami-*`, prior chatbot, prior non-product-document corpus, and
+  prior Docling/KFP artifacts are removed from the active stage.
 
 ### Deployment Contract
 
@@ -1014,6 +1020,8 @@ Current status:
 - upload repo-stored source PDFs to the project bucket under
   `raw/rhoai-product-docs/` using an in-cluster Job that clones the same Git
   branch as Argo CD
+- start the `private-rag-chatbot` binary build from the local checked-out
+  chatbot source and restart the Deployment after the image is available
 - refresh the Application after Secret creation
 - leave ingestion to validation or an explicit user-triggered smoke run
 - do not run removed corpus-specific pipelines
@@ -1054,6 +1062,12 @@ gate:
 - the RHOAI product-document Docling KFP source compiles
 - optional KFP validation can run the DSPA pipeline and check
   `stage230-rhoai-docs-pipeline-evidence`
+- the Stage 230 chatbot source compiles, image is built, Deployment is
+  available, route health responds, and configuration points at the Enterprise
+  RAG Llama Stack service plus the RHOAI product-document vector store
+- the Stage 230 OpenShift AI dashboard application tile exists in
+  `redhat-ods-applications` and points at the `private-rag-chatbot` Route in
+  `enterprise-rag`
 
 Optional validation gates prove the user-visible RAG outcome:
 

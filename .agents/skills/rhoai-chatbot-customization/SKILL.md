@@ -25,8 +25,9 @@ description: >
 
 Structured workflow for modifying the active Stage 230 private RAG chatbot. The
 chatbot is a small Streamlit app backed by the Stage 230
-`LlamaStackDistribution`. It implements direct RAG over the `whoami` vector
-store, model-only comparison against the same governed model, and explicit,
+`LlamaStackDistribution`. It implements direct RAG over the RHOAI
+product-document vector store, model-only comparison against the same governed
+model, and explicit,
 disabled-by-default integration boundaries for future MCP tool calling and
 product guardrails.
 
@@ -42,7 +43,7 @@ those controls after the product resources exist.
 ## Active Implementation Status
 
 - source: `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/`
-- build resources: `gitops/stage-230-private-data-rag/app/build/`
+- build resources: `gitops/stage-230-private-data-rag/app/base/build.yaml`
 - deployment resources: `gitops/stage-230-private-data-rag/app/base/`
 - validation: `stage-230-private-data-rag/validate.sh`
 
@@ -62,9 +63,9 @@ private-rag-chatbot (Streamlit)
   mcp.py                  future MCP connector discovery/tool contract
   guardrails.py           future guardrails decision boundary
 
-Llama Stack service: lsd-private-rag-service.enterprise-rag.svc:8321
-Vector store: whoami, backed by PostgreSQL + pgvector
-Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
+Llama Stack service: lsd-enterprise-rag-service.enterprise-rag.svc:8321
+Default vector store: stage230-rhoai-34-product-docs-kfp, backed by PostgreSQL + pgvector
+Generation model: nemotron-3-nano-30b-a3b through Stage 220 MaaS and Stage 230 Llama Stack
 ```
 
 ## When To Use
@@ -90,6 +91,7 @@ Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
 | `stage-230-private-data-rag/chatbot/pyproject.toml` | Pinned `llama-stack-client` dependency |
 | `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml` | Chatbot feature flags and suggested questions |
 | `gitops/stage-230-private-data-rag/app/base/deployment-chatbot.yaml` | Image, endpoint, probes, resources, env wiring |
+| `gitops/stage-230-private-data-rag/dashboard/base/odhapplication-rag-chatbot.yaml` | OpenShift AI dashboard application tile pointing at the chatbot Route |
 
 ## Instructions
 
@@ -117,9 +119,13 @@ Generation model: vllm-inference/nemotron-3-nano-30b-a3b through Stage 220 MaaS
 
 ### Change Suggested Questions
 
+The active Stage 230 app intentionally does not render large suggested-question
+buttons on the main chat page. If a later stage reintroduces suggestions:
+
 1. Edit `RAG_QUESTION_SUGGESTIONS` in
    `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml`.
-2. Keys must match vector store names or ids, such as `whoami`.
+2. Keys must match vector store names or ids, such as
+   `stage230-rhoai-34-product-docs-kfp`.
 3. Argo CD applies the ConfigMap. Restart the deployment if the running pod does
    not pick up the new environment:
 
@@ -156,7 +162,8 @@ Stage 230 does not deploy safety resources. Future guardrails work should:
 ### Build And Deploy Cycle
 
 Code changes require `stage-230-private-data-rag/deploy.sh` so OpenShift Builds
-rebuilds the namespace-local image from `stage-230-private-data-rag/chatbot/`.
+rebuilds the namespace-local image from `stage-230-private-data-rag/chatbot/`
+using the GitOps-managed binary `BuildConfig`.
 Env-only changes may need only an Argo CD sync plus a deployment restart.
 
 Do not switch the active RHOAI 3.4 demo back to

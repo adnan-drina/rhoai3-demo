@@ -1,0 +1,13 @@
+apiVersion: builtin
+kind: PatchTransformer
+metadata:
+  name: stage-230-odhapplication-dashboard-labels
+patch: |-
+  - op: replace
+    path: /metadata/labels/app.kubernetes.io~1part-of
+    value: odh-dashboard
+target:
+  group: dashboard.opendatahub.io
+  version: v1
+  kind: OdhApplication
+  name: rhoai-demo-private-rag-chatbot

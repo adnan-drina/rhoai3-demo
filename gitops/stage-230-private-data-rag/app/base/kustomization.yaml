@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: enterprise-rag
+
+resources:
+  - build.yaml
+  - configmap-chatbot.yaml
+  - rbac.yaml
+  - deployment-chatbot.yaml
+  - service-chatbot.yaml
+  - route-chatbot.yaml

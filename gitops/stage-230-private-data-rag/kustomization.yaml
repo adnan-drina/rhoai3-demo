@@ -15,3 +15,8 @@ resources:
   - reranker/base
   - llamastack/base
   - workbench/base
+  - app/base
+  - dashboard/base
+
+transformers:
+  - transformers/odhapplication-dashboard-labels.yaml

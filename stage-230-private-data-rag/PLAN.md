@@ -38,6 +38,9 @@ Active Stage 230 scope:
   workbench notebook
 - GitOps-managed DSPA pipeline server, generated S3 Secret, and Docling KFP
   runner for repeatable RHOAI product-document data preparation
+- Streamlit product-document RAG chatbot adapted from the Red Hat AI RAG
+  quickstart direct-chat pattern, using the Stage 230 Llama Stack service,
+  product-doc vector store, reranker, and Nemotron through MaaS
 
 Out of scope for this stage unless explicitly added later:
 
@@ -73,6 +76,7 @@ Out of scope for this stage unless explicitly added later:
 | Product config | [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | Product authority for governed Nemotron access |
 | Product config | [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) | `rhoai-model-customization-training`, `rhoai-ai-pipelines`, `rhoai-kfp-pipeline-authoring` | Product authority for Docling data preparation and future KFP automation |
 | Reference implementation | [abdelhamidfg/agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) | `rhoai-enterprise-rag` | Red Hat article-linked repo; example-only source for chart and notebooks |
+| Reference implementation | [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG) | `rhoai-chatbot-customization` | Best matching Streamlit UI reference; reuse direct-RAG chat, vector-store selection, runtime inspection, and ConfigMap-driven app settings while avoiding outdated client pins and upload flows |
 | Reference implementation | [opendatahub-io/data-processing stable branch](https://github.com/opendatahub-io/data-processing/tree/stable) | `rhoai-model-customization-training`, `rhoai-kfp-pipeline-authoring` | Red Hat-documented Docling notebook and KFP examples for the next RHOAI product-doc automation pass |
 
 ## Manifest Inventory
@@ -86,9 +90,11 @@ Out of scope for this stage unless explicitly added later:
 | `gitops/stage-230-private-data-rag/workbench/` | Project workbench `Notebook`, ServiceAccount, and PVC | RHOAI project workbench and Notebook CR docs | Workbench resource exists, pod starts, and visible workspace contains AG News notebooks plus RHOAI product docs notebook |
 | `gitops/stage-230-private-data-rag/rhoai-dsc/` | Shared DSC patch job enabling `aipipelines` | RHOAI DSC component configuration and AI Pipelines docs | `default-dsc.spec.components.aipipelines.managementState=Managed` |
 | `gitops/stage-230-private-data-rag/pipelines/` | DSPA pipeline server backed by Stage 230 NooBaa bucket | RHOAI AI Pipelines docs | DSPA Ready, route exists, object storage condition passes |
+| `gitops/stage-230-private-data-rag/dashboard/` | OpenShift AI dashboard `OdhApplication` tile for the RAG chatbot | RHOAI dashboard application docs | Tile exists in `redhat-ods-applications`, uses documented dashboard labels, and points at the chatbot Route |
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy uploads PDFs to project bucket |
 | `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` stable branch | KFP source compiles and pipeline runs through DSPA |
+| `stage-230-private-data-rag/chatbot/` | Streamlit RAG chatbot source | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; OpenShift binary build; route health |
 | `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` | KFP compile/upload/run/evidence helper | RHOAI AI Pipelines docs and repo KFP standards | PipelineVersion created, run succeeds, S3 artifacts reviewed |
 | `stage-230-private-data-rag/scripts/` | AG News and RHOAI product-doc preparation/smoke helpers | RHOAI Llama Stack APIs and official RHOAI PDFs | Python compile; optional workbench smoke runs |
 
@@ -108,6 +114,9 @@ Out of scope for this stage unless explicitly added later:
 - Create or update non-committed Secrets from local environment values,
   generated database credentials, and the Stage 220 MaaS API-key flow.
 - Refresh the Argo CD Application after Secret creation.
+- Start the `private-rag-chatbot` binary BuildConfig from the local
+  `stage-230-private-data-rag/chatbot/` source and wait for the Deployment to
+  become available.
 - Leave ingestion to validation or explicit user-triggered smoke runs.
 
 ### `validate.sh`
@@ -126,6 +135,13 @@ Out of scope for this stage unless explicitly added later:
 - Confirm the Enterprise RAG Workbench exists, reports Ready when available,
   exposes the curated AG News and RHOAI product-doc workspace, and does not
   expose the full implementation repository.
+- Confirm the Streamlit chatbot source compiles, BuildConfig/ImageStream exist,
+  the image tag has been built, the Deployment is available, the route health
+  endpoint responds, and config points at the Stage 230 Llama Stack service and
+  product-document vector store.
+- Confirm the OpenShift AI dashboard `OdhApplication` tile exists in
+  `redhat-ods-applications`, preserves the documented `odh-dashboard` labels,
+  and points at `enterprise-rag/private-rag-chatbot`.
 - Confirm the AG News and RHOAI product-document helpers compile.
 - Optional gate: run AG News full acceptance with
   `RHOAI_STAGE230_RUN_ACCEPTANCE=true`.
@@ -168,9 +184,6 @@ Out of scope for this stage unless explicitly added later:
 
 ## Review Needed
 
-- Confirm whether the first user-visible surface should remain notebooks only
-  or add a small Streamlit app after API validation passes.
-- Validate the RHOAI product-document smoke path in a fresh environment before
-  claiming the stage complete.
-- Implement the RHOAI product-document DSPA/KFP automation path before using
-  pipeline automation as the demo's main processing story.
+- Validate the Streamlit chatbot in a fresh environment after the next deploy,
+  including RAG-on and RAG-off questions against the RHOAI product-document
+  vector store.

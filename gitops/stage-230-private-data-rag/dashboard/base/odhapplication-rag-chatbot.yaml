@@ -1,0 +1,37 @@
+apiVersion: dashboard.opendatahub.io/v1
+kind: OdhApplication
+metadata:
+  name: rhoai-demo-private-rag-chatbot
+  namespace: redhat-ods-applications
+  labels:
+    app: odh-dashboard
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: dashboard-tile
+    app.kubernetes.io/part-of: odh-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "24"
+spec:
+  displayName: RHOAI Demo RAG Chatbot
+  description: Query the Stage 230 private RAG corpus with governed Nemotron access.
+  provider: rhoai3-demo
+  support: Self-managed by the demo team
+  category: Self-managed
+  docsLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-230-private-data-rag
+  getStartedLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-230-private-data-rag
+  getStartedMarkDown: |-
+    # RHOAI Demo RAG Chatbot
+
+    Use this self-managed demo application to compare model-only answers with
+    RAG-grounded answers over the Stage 230 RHOAI product-document corpus.
+  img: |-
+    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RAG chatbot">
+      <rect width="48" height="48" rx="8" fill="#ee0000"/>
+      <path d="M14 15h20a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4H24l-7 5v-5h-3a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z" fill="#ffffff"/>
+      <circle cx="20" cy="23.5" r="2" fill="#ee0000"/>
+      <circle cx="28" cy="23.5" r="2" fill="#ee0000"/>
+    </svg>
+  route: private-rag-chatbot
+  routeNamespace: enterprise-rag
+  kfdefApplications: []
+  csvName: ""
+  quickStart: ""

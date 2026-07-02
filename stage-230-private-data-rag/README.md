@@ -147,6 +147,29 @@ metadata, hybrid retrieval, reranking, and Nemotron answer generation from the
 current corpus. Use `--full-corpus` only for a deeper validation run that
 intentionally indexes every generated chunk.
 
+## Chatbot Flow
+
+Stage 230 also provides a small Streamlit chatbot deployed as
+`private-rag-chatbot` in the `enterprise-rag` project. The implementation uses
+the Red Hat AI RAG quickstart's direct-chat pattern as a reference, but it is
+not a copied quickstart UI:
+
+- the product-document corpus is populated by the GitOps/DSPA/KFP path, not by
+  ad hoc browser uploads
+- the default model is the governed Stage 220 Nemotron endpoint exposed through
+  Llama Stack
+- the default knowledge store is the RHOAI product-document vector store
+  generated from the pipeline output
+- users can switch between RAG-grounded answers and model-only answers for
+  comparison
+- retrieved context is visible in an expander so demo users can inspect source
+  document metadata
+- reranking is enabled by default through the Stage 230 Qwen3 reranker
+- the OpenShift AI dashboard exposes a self-managed `RHOAI Demo RAG Chatbot`
+  application tile that opens the chatbot Route
+- MCP and guardrails are visible as disabled extension points for later stages,
+  not active Stage 230 claims
+
 ## AI Pipelines Flow
 
 Run the product-document Docling pipeline through the Stage 230 DSPA server:
@@ -196,6 +219,7 @@ nice-to-have.
 
 - [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx)
 - [AG News RAG demo repository](https://github.com/abdelhamidfg/agnews-rag-demo)
+- [Red Hat AI RAG quickstart repository](https://github.com/rh-ai-quickstart/RAG)
 - [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
 - [RHOAI 3.4: Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index)
 - [RHOAI 3.4: Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/evaluating_ai_systems/index)

@@ -120,6 +120,7 @@ Validated in `cluster-qt67m` on 2026-07-02:
 | Hybrid metadata filtering | done | Resolved by selecting the active pgvector provider path. Keep this as a recurring validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted in each fresh environment. |
 | RHOAI product-document explainer corpus | done | Source manifest, repo-stored official RHOAI 3.4 PDFs, deterministic prepared chunks, preparation helper, smoke helper, and workbench notebook added for Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling audience Q&A. Deployment mirrors the source PDFs to the Stage 230 project bucket. This is documentation grounding, not implementation scope for those adjacent capabilities. |
 | RHOAI product-document KFP automation | done | Docling KFP source and runner compile, run through DSPA, review S3 artifacts, and feed the pipeline-generated JSONL into the RAG smoke helper. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
+| Product-document RAG chatbot | implementation ready | Streamlit app added from the Red Hat AI RAG quickstart direct-chat pattern, adapted to the Stage 230 product-doc vector store, reranker, and Nemotron through Llama Stack. Validate route health and RAG on/off behavior during the next Stage 230 deploy. |
 
 ### Open / deferred from Stage 230
 

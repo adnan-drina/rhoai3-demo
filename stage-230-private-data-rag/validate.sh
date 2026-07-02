@@ -44,6 +44,10 @@ RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
 RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
 EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
+CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
+CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
+RHOAI_DASHBOARD_NS="${RHOAI_DASHBOARD_APPLICATIONS_NAMESPACE:-redhat-ods-applications}"
+CHATBOT_DASHBOARD_APP="${RHOAI_STAGE230_CHATBOT_DASHBOARD_APP:-rhoai-demo-private-rag-chatbot}"
 
 check() {
   local label="$1"
@@ -405,6 +409,78 @@ if [[ -n "$route_host" ]]; then
 else
   check "Llama Stack route exists" "missing"
 fi
+
+if python3 -m compileall -q "$SCRIPT_DIR/chatbot" >/dev/null 2>&1; then
+  check "Stage 230 chatbot source compiles" "pass"
+else
+  check "Stage 230 chatbot source compiles" "compileall failed"
+fi
+
+resource_exists "imagestream/${CHATBOT_BUILD}" "$RAG_NS" \
+  && check "Stage 230 chatbot ImageStream exists" "pass" \
+  || check "Stage 230 chatbot ImageStream exists" "missing"
+
+resource_exists "buildconfig/${CHATBOT_BUILD}" "$RAG_NS" \
+  && check "Stage 230 chatbot BuildConfig exists" "pass" \
+  || check "Stage 230 chatbot BuildConfig exists" "missing"
+
+resource_exists "imagestreamtag/${CHATBOT_BUILD}:latest" "$RAG_NS" \
+  && check "Stage 230 chatbot image tag exists" "pass" \
+  || check "Stage 230 chatbot image tag exists" "run deploy.sh to start the binary build"
+
+chatbot_config_endpoint=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.LLAMA_STACK_ENDPOINT}")
+[[ "$chatbot_config_endpoint" == "http://lsd-enterprise-rag-service.${RAG_NS}.svc.cluster.local:8321" ]] \
+  && check "Stage 230 chatbot points at the Enterprise RAG Llama Stack service" "pass" \
+  || check "Stage 230 chatbot points at the Enterprise RAG Llama Stack service" "${chatbot_config_endpoint:-missing}"
+
+chatbot_config_model=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.INFERENCE_MODEL}")
+[[ "$chatbot_config_model" == "$NEMOTRON_MODEL_RESOURCE" ]] \
+  && check "Stage 230 chatbot defaults to Nemotron" "pass" \
+  || check "Stage 230 chatbot defaults to Nemotron" "${chatbot_config_model:-missing}"
+
+chatbot_config_store=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.DEFAULT_VECTOR_STORE}")
+[[ "$chatbot_config_store" == "stage230-rhoai-34-product-docs-kfp" ]] \
+  && check "Stage 230 chatbot defaults to the product-document vector store" "pass" \
+  || check "Stage 230 chatbot defaults to the product-document vector store" "${chatbot_config_store:-missing}"
+
+chatbot_config_rag=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.RAG_RERANK_ENABLED}")
+[[ "$chatbot_config_rag" == "true" ]] \
+  && check "Stage 230 chatbot enables reranking by default" "pass" \
+  || check "Stage 230 chatbot enables reranking by default" "${chatbot_config_rag:-missing}"
+
+[[ "$(available_replicas deployment/${CHATBOT_DEPLOYMENT} "$RAG_NS")" == "1" ]] \
+  && check "Stage 230 chatbot Deployment is available" "pass" \
+  || check "Stage 230 chatbot Deployment is available" "availableReplicas=$(available_replicas deployment/${CHATBOT_DEPLOYMENT} "$RAG_NS")"
+
+chatbot_route_host=$(jsonpath "route/${CHATBOT_DEPLOYMENT}" "$RAG_NS" "{.spec.host}")
+if [[ -n "$chatbot_route_host" ]]; then
+  check "Stage 230 chatbot route exists" "pass"
+  chatbot_health=$(curl -sk --max-time 15 -o /dev/null -w '%{http_code}' "https://${chatbot_route_host}/_stcore/health" 2>/dev/null || true)
+  [[ "$chatbot_health" == "200" ]] \
+    && check "Stage 230 chatbot health route responds" "pass" \
+    || check "Stage 230 chatbot health route responds" "status=${chatbot_health:-missing}"
+else
+  check "Stage 230 chatbot route exists" "missing"
+fi
+
+resource_exists "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" \
+  && check "Stage 230 RHOAI dashboard chatbot tile exists" "pass" \
+  || check "Stage 230 RHOAI dashboard chatbot tile exists" "missing"
+
+chatbot_dashboard_route=$(jsonpath "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" "{.spec.route}")
+[[ "$chatbot_dashboard_route" == "$CHATBOT_DEPLOYMENT" ]] \
+  && check "Stage 230 RHOAI dashboard chatbot tile points at the chatbot route" "pass" \
+  || check "Stage 230 RHOAI dashboard chatbot tile points at the chatbot route" "${chatbot_dashboard_route:-missing}"
+
+chatbot_dashboard_route_ns=$(jsonpath "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" "{.spec.routeNamespace}")
+[[ "$chatbot_dashboard_route_ns" == "$RAG_NS" ]] \
+  && check "Stage 230 RHOAI dashboard chatbot tile points at enterprise-rag" "pass" \
+  || check "Stage 230 RHOAI dashboard chatbot tile points at enterprise-rag" "${chatbot_dashboard_route_ns:-missing}"
+
+chatbot_dashboard_label=$(jsonpath "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" "{.metadata.labels.app\\.kubernetes\\.io/part-of}")
+[[ "$chatbot_dashboard_label" == "odh-dashboard" ]] \
+  && check "Stage 230 RHOAI dashboard chatbot tile keeps dashboard label" "pass" \
+  || check "Stage 230 RHOAI dashboard chatbot tile keeps dashboard label" "${chatbot_dashboard_label:-missing}"
 
 generation_base_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
 generation_api_key=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_API_TOKEN}" | base64 --decode 2>/dev/null || true)

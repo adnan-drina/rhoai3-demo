@@ -1,0 +1,16 @@
+[project]
+name = "rhoai-rag-chatbot"
+version = "0.1.0"
+description = "Stage 230 Streamlit RAG chatbot for Red Hat OpenShift AI product documentation"
+requires-python = ">=3.12"
+dependencies = [
+    "llama-stack-client==0.7.2",
+    "streamlit>=1.45,<2",
+]
+
+[tool.setuptools]
+packages = ["rhoai_rag_chatbot"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -47,6 +47,8 @@ RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 SOURCE_UPLOAD_JOB="${RHOAI_STAGE230_SOURCE_UPLOAD_JOB:-stage230-source-upload}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
+CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
+CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
 POSTGRES_DB="${RHOAI_STAGE230_POSTGRES_DATABASE:-llamastack}"
@@ -477,10 +479,59 @@ ensure_runtime_secrets() {
   echo "✓ Stage 230 runtime Secrets are present in ${RAG_NS}"
 }
 
+ensure_chatbot_build() {
+  if [[ ! -f "$SCRIPT_DIR/chatbot/Containerfile" ]]; then
+    echo "ERROR: Stage 230 chatbot source is missing: ${SCRIPT_DIR}/chatbot/Containerfile" >&2
+    exit 1
+  fi
+
+  echo "   Waiting for chatbot BuildConfig ${CHATBOT_BUILD} …"
+  for _ in $(seq 1 60); do
+    if oc get buildconfig "$CHATBOT_BUILD" -n "$RAG_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      break
+    fi
+    sleep 5
+  done
+  if ! oc get buildconfig "$CHATBOT_BUILD" -n "$RAG_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "ERROR: chatbot BuildConfig ${CHATBOT_BUILD} was not created by Argo CD." >&2
+    exit 1
+  fi
+
+  oc start-build "$CHATBOT_BUILD" -n "$RAG_NS" \
+    --from-dir="$SCRIPT_DIR/chatbot" \
+    --wait \
+    --follow \
+    --insecure-skip-tls-verify=true
+
+  echo "   Waiting for chatbot Deployment ${CHATBOT_DEPLOYMENT} …"
+  for _ in $(seq 1 60); do
+    if oc get deployment "$CHATBOT_DEPLOYMENT" -n "$RAG_NS" \
+      --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+      break
+    fi
+    sleep 5
+  done
+  if ! oc get deployment "$CHATBOT_DEPLOYMENT" -n "$RAG_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "ERROR: chatbot Deployment ${CHATBOT_DEPLOYMENT} was not created by Argo CD." >&2
+    exit 1
+  fi
+
+  oc rollout restart "deployment/${CHATBOT_DEPLOYMENT}" -n "$RAG_NS" \
+    --insecure-skip-tls-verify=true >/dev/null
+  oc rollout status "deployment/${CHATBOT_DEPLOYMENT}" -n "$RAG_NS" \
+    --timeout=5m \
+    --insecure-skip-tls-verify=true
+  echo "✓ Stage 230 chatbot image is built and the Deployment is available"
+}
+
 apply_argocd_application
 wait_for_namespace
 ensure_object_storage
 ensure_runtime_secrets
+ensure_chatbot_build
 
 oc annotate applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
   argocd.argoproj.io/refresh=hard --overwrite \
