@@ -86,7 +86,7 @@ def as_items(response: Any) -> list[Any]:
         if value is not None:
             return value
         if isinstance(response, dict) and key in response:
-            return value
+            return response[key]
     return []
 
 

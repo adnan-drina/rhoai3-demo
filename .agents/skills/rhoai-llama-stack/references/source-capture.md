@@ -57,9 +57,9 @@
 - Active demo Llama Stack model and embedding provider IDs.
   Verification: list models from the deployed Llama Stack server and align
   with the active model-serving implementation.
-- Active vector store choice for the clean-slate implementation.
-  Verification: decide per demo step and document why inline or remote storage
-  is used.
+- Active vector store choice for Stage 230: resolved to remote PostgreSQL with
+  pgvector. Validated with metadata-filtered hybrid search in `cluster-qt67m`.
+  Inline Milvus and FAISS remain options for development or future stages.
 - GitOps representation for Keycloak/OIDC or another identity provider.
   Verification: define only after the demo authentication model is chosen.
 - Production database topology for PostgreSQL metadata and pgvector.

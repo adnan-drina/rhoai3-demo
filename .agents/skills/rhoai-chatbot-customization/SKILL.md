@@ -59,7 +59,7 @@ run backup scripts unless the user explicitly asks for legacy restoration.
 private-rag-chatbot (Streamlit)
   app.py                  UI: Chat and Inspect tabs
   config.py               environment-backed app contract
-  llama_stack_gateway.py  models, vector stores, search, chat completions
+  llama_stack_gateway.py  models, vector stores, search, rerank, chat completions
   prompts.py              RAG and model-only prompt and context formatting
   mcp.py                  future MCP connector discovery/tool contract
   guardrails.py           future guardrails decision boundary
@@ -67,7 +67,14 @@ private-rag-chatbot (Streamlit)
 Llama Stack service: lsd-enterprise-rag-service.enterprise-rag.svc:8321
 Default vector store: stage230-rhoai-34-product-docs-kfp, backed by PostgreSQL + pgvector
 Generation model: nemotron-3-nano-30b-a3b through Stage 220 MaaS and Stage 230 Llama Stack
+Reranker: vllm-reranker/qwen3-reranker via /v1alpha/inference/rerank (enabled by default)
 ```
+
+The chatbot uses a simplified RAG path compared to the AG News acceptance
+scripts: it searches the vector store and optionally reranks, but does not
+perform query-time LLM metadata extraction or category-based filtering. The
+full metadata-aware pipeline is exercised by
+`scripts/agnews_rag_acceptance.py` and validated by `validate.sh`.
 
 ## When To Use
 

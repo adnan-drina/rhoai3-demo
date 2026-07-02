@@ -521,6 +521,9 @@ PY
 RUN_ID="$(jq -r '.run_id' "$RUN_EVIDENCE_JSON")"
 if [[ "$WAIT_FOR_RUN" == "true" ]]; then
   review_s3_artifact "$RUN_ID" "$REVIEW_LOGS"
+else
+  printf '{"status": "pending", "run_id": "%s", "note": "run submitted with --no-wait; rerun without --no-wait or review artifacts manually"}\n' \
+    "$RUN_ID" > "$REVIEW_LOGS"
 fi
 
 oc create configmap "$EVIDENCE_CM" \

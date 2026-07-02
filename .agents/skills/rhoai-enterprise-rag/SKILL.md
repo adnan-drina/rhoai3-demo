@@ -164,6 +164,30 @@ RHOAI product PDFs
   -> same hybrid retrieval, rerank, and Nemotron answer path
 ```
 
+## RAG Depth: Scripts vs Chatbot
+
+The acceptance and smoke scripts (`agnews_rag_acceptance.py`,
+`rhoai_product_docs_rag_smoke.py`) exercise the full metadata-aware pipeline:
+LLM-based query metadata extraction, category-filtered hybrid search, neural
+reranking, and grounded answer generation.
+
+The Streamlit chatbot uses a simplified RAG path: vector-store search with
+optional reranking, but without query-time LLM metadata extraction or
+category-based filtering. This is intentional -- the chatbot serves
+general-purpose product-doc Q&A where users do not specify metadata categories.
+
+## Vector Store Naming
+
+Stage 230 uses two naming conventions for the product-document vector store:
+
+- `stage230-rhoai-34-product-docs` -- used by scripts when indexing from the
+  repo-committed prepared JSONL
+- `stage230-rhoai-34-product-docs-kfp` -- used by the chatbot and by scripts
+  when indexing from DSPA/KFP pipeline-generated output
+
+The `-kfp` suffix distinguishes pipeline-generated content from locally
+prepared content so both can coexist during development and validation.
+
 ## References
 
 - `references/source-capture.md`

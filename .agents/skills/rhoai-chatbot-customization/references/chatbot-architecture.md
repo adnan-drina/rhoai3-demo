@@ -63,6 +63,9 @@ implemented, the adapter must fail closed rather than silently allowing traffic.
 | `RAG_MAX_CONTEXT_CHARS` | maximum context injected into the prompt |
 | `RAG_MAX_OUTPUT_TOKENS` | maximum completion tokens |
 | `RAG_TEMPERATURE` | completion temperature |
+| `RAG_SEARCH_MODE` | default search mode: `hybrid`, `vector`, or `keyword` |
+| `RAG_RERANK_ENABLED` | enable Qwen3 reranking of search results |
+| `RAG_RERANKER_MODEL` | Llama Stack reranker model id |
 | `RAG_QUESTION_SUGGESTIONS` | JSON object keyed by vector-store name/id |
 | `MCP_ENABLED` | future MCP feature flag |
 | `GUARDRAILS_ENABLED` | future guardrails feature flag |

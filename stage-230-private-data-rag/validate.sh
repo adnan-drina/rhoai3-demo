@@ -607,28 +607,26 @@ if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then
   if [[ -n "${workbench_pod:-}" ]]; then
     rhoai_docs_out=$(mktemp)
     rhoai_docs_err=$(mktemp)
+    rhoai_docs_command=""
     if [[ -n "${RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE:-}" ]]; then
       if [[ ! -s "$RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE" ]]; then
         check "RHOAI product documentation RAG smoke passes" "local sample not found: $RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE"
-        rm -f "$rhoai_docs_out" "$rhoai_docs_err"
-        echo
-        echo "Stage 230 validation summary: ${PASS} passed, ${WARN} warnings, ${FAIL} failed"
-        exit 1
+      else
+        oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- \
+          mkdir -p /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed >/dev/null
+        oc --insecure-skip-tls-verify=true cp \
+          "$RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE" \
+          "${RAG_NS}/${workbench_pod}:/opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl" \
+          -c "$WORKBENCH_NAME" >/dev/null
+        rhoai_docs_command='cd /opt/app-root/src/workspace &&
+         python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
+           --reset \
+           --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+           --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+           --vector-store stage230-rhoai-34-product-docs \
+           --max-questions 3 \
+           --search-mode hybrid'
       fi
-      oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- \
-        mkdir -p /opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed >/dev/null
-      oc --insecure-skip-tls-verify=true cp \
-        "$RHOAI_STAGE230_RHOAI_DOCS_LOCAL_SAMPLE" \
-        "${RAG_NS}/${workbench_pod}:/opt/app-root/src/workspace/.stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl" \
-        -c "$WORKBENCH_NAME" >/dev/null
-      rhoai_docs_command='cd /opt/app-root/src/workspace &&
-       python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
-         --reset \
-         --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
-         --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-         --vector-store stage230-rhoai-34-product-docs \
-         --max-questions 3 \
-         --search-mode hybrid'
     elif [[ "${RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT:-${RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE:-false}}" == "true" ]]; then
       rhoai_docs_command=$(cat <<EOF
 cd /opt/app-root/src/workspace &&
@@ -694,11 +692,13 @@ EOF
          --max-questions 3 \
          --search-mode hybrid'
     fi
-    if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- \
-      bash -lc "$rhoai_docs_command" >"$rhoai_docs_out" 2>"$rhoai_docs_err"; then
-      check "RHOAI product documentation RAG smoke passes" "pass"
-    else
-      check "RHOAI product documentation RAG smoke passes" "$(head -c 300 "$rhoai_docs_err" | tr '\n' ' ')"
+    if [[ -n "$rhoai_docs_command" ]]; then
+      if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- \
+        bash -lc "$rhoai_docs_command" >"$rhoai_docs_out" 2>"$rhoai_docs_err"; then
+        check "RHOAI product documentation RAG smoke passes" "pass"
+      else
+        check "RHOAI product documentation RAG smoke passes" "$(head -c 300 "$rhoai_docs_err" | tr '\n' ' ')"
+      fi
     fi
     rm -f "$rhoai_docs_out" "$rhoai_docs_err"
   else

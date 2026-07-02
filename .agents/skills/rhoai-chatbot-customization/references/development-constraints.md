@@ -6,7 +6,7 @@ Use these constraints when changing
 ## Architecture Constraints
 
 The active chatbot is a Streamlit app that talks to the Stage 230
-`lsd-private-rag` Llama Stack service. Stage 230 implements direct RAG only:
+`lsd-enterprise-rag` Llama Stack service. Stage 230 implements direct RAG only:
 search vector store, inject context, call chat completions. MCP and guardrails
 are explicit extension points but are not active product capabilities in this
 stage.
