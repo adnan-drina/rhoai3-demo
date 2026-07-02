@@ -45,6 +45,7 @@ RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
 EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
+CHATBOT_BUILD_NS="${RHOAI_STAGE230_CHATBOT_BUILD_NAMESPACE:-enterprise-rag-build}"
 CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 RHOAI_DASHBOARD_NS="${RHOAI_DASHBOARD_APPLICATIONS_NAMESPACE:-redhat-ods-applications}"
 CHATBOT_DASHBOARD_APP="${RHOAI_STAGE230_CHATBOT_DASHBOARD_APP:-rhoai-demo-private-rag-chatbot}"
@@ -416,15 +417,19 @@ else
   check "Stage 230 chatbot source compiles" "compileall failed"
 fi
 
-resource_exists "imagestream/${CHATBOT_BUILD}" "$RAG_NS" \
+resource_exists "namespace/${CHATBOT_BUILD_NS}" "" \
+  && check "Stage 230 chatbot build namespace exists" "pass" \
+  || check "Stage 230 chatbot build namespace exists" "missing"
+
+resource_exists "imagestream/${CHATBOT_BUILD}" "$CHATBOT_BUILD_NS" \
   && check "Stage 230 chatbot ImageStream exists" "pass" \
   || check "Stage 230 chatbot ImageStream exists" "missing"
 
-resource_exists "buildconfig/${CHATBOT_BUILD}" "$RAG_NS" \
+resource_exists "buildconfig/${CHATBOT_BUILD}" "$CHATBOT_BUILD_NS" \
   && check "Stage 230 chatbot BuildConfig exists" "pass" \
   || check "Stage 230 chatbot BuildConfig exists" "missing"
 
-resource_exists "imagestreamtag/${CHATBOT_BUILD}:latest" "$RAG_NS" \
+resource_exists "imagestreamtag/${CHATBOT_BUILD}:latest" "$CHATBOT_BUILD_NS" \
   && check "Stage 230 chatbot image tag exists" "pass" \
   || check "Stage 230 chatbot image tag exists" "run deploy.sh to start the binary build"
 

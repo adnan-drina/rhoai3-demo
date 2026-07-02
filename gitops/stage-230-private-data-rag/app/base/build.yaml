@@ -2,7 +2,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: private-rag-chatbot
-  namespace: enterprise-rag
+  namespace: enterprise-rag-build
   labels:
     app.kubernetes.io/name: private-rag-chatbot
     app.kubernetes.io/component: chatbot-ui
@@ -14,7 +14,7 @@ apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: private-rag-chatbot
-  namespace: enterprise-rag
+  namespace: enterprise-rag-build
   labels:
     app.kubernetes.io/name: private-rag-chatbot
     app.kubernetes.io/component: chatbot-ui
@@ -34,3 +34,23 @@ spec:
       kind: ImageStreamTag
       name: private-rag-chatbot:latest
   triggers: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: private-rag-chatbot-image-puller
+  namespace: enterprise-rag-build
+  labels:
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: image-pull
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+  - kind: ServiceAccount
+    name: private-rag-chatbot
+    namespace: enterprise-rag

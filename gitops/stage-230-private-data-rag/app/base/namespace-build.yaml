@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: enterprise-rag-build
+  labels:
+    app.kubernetes.io/name: enterprise-rag-build
+    app.kubernetes.io/component: build
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "19"
+    openshift.io/display-name: "Enterprise RAG Build"
+    openshift.io/description: "Build namespace for the Stage 230 private RAG chatbot image."

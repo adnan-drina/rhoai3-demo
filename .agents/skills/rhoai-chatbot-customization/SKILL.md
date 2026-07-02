@@ -44,6 +44,7 @@ those controls after the product resources exist.
 
 - source: `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/`
 - build resources: `gitops/stage-230-private-data-rag/app/base/build.yaml`
+  in `enterprise-rag-build`
 - deployment resources: `gitops/stage-230-private-data-rag/app/base/`
 - validation: `stage-230-private-data-rag/validate.sh`
 
@@ -162,8 +163,10 @@ Stage 230 does not deploy safety resources. Future guardrails work should:
 ### Build And Deploy Cycle
 
 Code changes require `stage-230-private-data-rag/deploy.sh` so OpenShift Builds
-rebuilds the namespace-local image from `stage-230-private-data-rag/chatbot/`
-using the GitOps-managed binary `BuildConfig`.
+rebuilds the image from `stage-230-private-data-rag/chatbot/` using the
+GitOps-managed binary `BuildConfig` in `enterprise-rag-build`. Keep build
+resources out of the Kueue-managed `enterprise-rag` runtime namespace; build
+pods are infrastructure, not AI workloads.
 Env-only changes may need only an Argo CD sync plus a deployment restart.
 
 Do not switch the active RHOAI 3.4 demo back to

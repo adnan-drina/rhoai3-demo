@@ -149,8 +149,10 @@ intentionally indexes every generated chunk.
 
 ## Chatbot Flow
 
-Stage 230 also provides a small Streamlit chatbot deployed as
-`private-rag-chatbot` in the `enterprise-rag` project. The implementation uses
+Stage 230 also provides a small Streamlit chatbot. The runtime Deployment and
+Route run as `private-rag-chatbot` in the `enterprise-rag` project; the
+OpenShift BuildConfig and ImageStream live in `enterprise-rag-build` so build
+pods are not admitted as Kueue-managed RAG workloads. The implementation uses
 the Red Hat AI RAG quickstart's direct-chat pattern as a reference, but it is
 not a copied quickstart UI:
 

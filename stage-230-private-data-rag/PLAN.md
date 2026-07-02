@@ -94,6 +94,7 @@ Out of scope for this stage unless explicitly added later:
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy uploads PDFs to project bucket |
 | `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` stable branch | KFP source compiles and pipeline runs through DSPA |
+| `gitops/stage-230-private-data-rag/app/` | Streamlit RAG chatbot build and runtime resources | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; BuildConfig in `enterprise-rag-build`; Deployment and route health in `enterprise-rag` |
 | `stage-230-private-data-rag/chatbot/` | Streamlit RAG chatbot source | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; OpenShift binary build; route health |
 | `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` | KFP compile/upload/run/evidence helper | RHOAI AI Pipelines docs and repo KFP standards | PipelineVersion created, run succeeds, S3 artifacts reviewed |
 | `stage-230-private-data-rag/scripts/` | AG News and RHOAI product-doc preparation/smoke helpers | RHOAI Llama Stack APIs and official RHOAI PDFs | Python compile; optional workbench smoke runs |
@@ -114,9 +115,9 @@ Out of scope for this stage unless explicitly added later:
 - Create or update non-committed Secrets from local environment values,
   generated database credentials, and the Stage 220 MaaS API-key flow.
 - Refresh the Argo CD Application after Secret creation.
-- Start the `private-rag-chatbot` binary BuildConfig from the local
-  `stage-230-private-data-rag/chatbot/` source and wait for the Deployment to
-  become available.
+- Start the `private-rag-chatbot` binary BuildConfig in `enterprise-rag-build`
+  from the local `stage-230-private-data-rag/chatbot/` source and wait for the
+  runtime Deployment in `enterprise-rag` to become available.
 - Leave ingestion to validation or explicit user-triggered smoke runs.
 
 ### `validate.sh`
@@ -135,10 +136,11 @@ Out of scope for this stage unless explicitly added later:
 - Confirm the Enterprise RAG Workbench exists, reports Ready when available,
   exposes the curated AG News and RHOAI product-doc workspace, and does not
   expose the full implementation repository.
-- Confirm the Streamlit chatbot source compiles, BuildConfig/ImageStream exist,
-  the image tag has been built, the Deployment is available, the route health
-  endpoint responds, and config points at the Stage 230 Llama Stack service and
-  product-document vector store.
+- Confirm the Streamlit chatbot source compiles, the build namespace exists,
+  BuildConfig/ImageStream exist there, the image tag has been built, the
+  runtime Deployment is available, the route health endpoint responds, and
+  config points at the Stage 230 Llama Stack service and product-document
+  vector store.
 - Confirm the OpenShift AI dashboard `OdhApplication` tile exists in
   `redhat-ods-applications`, preserves the documented `odh-dashboard` labels,
   and points at `enterprise-rag/private-rag-chatbot`.

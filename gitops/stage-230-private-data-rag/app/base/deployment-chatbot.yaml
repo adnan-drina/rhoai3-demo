@@ -24,7 +24,7 @@ spec:
       serviceAccountName: private-rag-chatbot
       containers:
         - name: chatbot
-          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest
+          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag-build/private-rag-chatbot:latest
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

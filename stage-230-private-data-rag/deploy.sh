@@ -48,6 +48,7 @@ PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling
 SOURCE_UPLOAD_JOB="${RHOAI_STAGE230_SOURCE_UPLOAD_JOB:-stage230-source-upload}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
 CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
+CHATBOT_BUILD_NS="${RHOAI_STAGE230_CHATBOT_BUILD_NAMESPACE:-enterprise-rag-build}"
 CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
@@ -487,19 +488,19 @@ ensure_chatbot_build() {
 
   echo "   Waiting for chatbot BuildConfig ${CHATBOT_BUILD} …"
   for _ in $(seq 1 60); do
-    if oc get buildconfig "$CHATBOT_BUILD" -n "$RAG_NS" \
+    if oc get buildconfig "$CHATBOT_BUILD" -n "$CHATBOT_BUILD_NS" \
       --insecure-skip-tls-verify=true >/dev/null 2>&1; then
       break
     fi
     sleep 5
   done
-  if ! oc get buildconfig "$CHATBOT_BUILD" -n "$RAG_NS" \
+  if ! oc get buildconfig "$CHATBOT_BUILD" -n "$CHATBOT_BUILD_NS" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then
-    echo "ERROR: chatbot BuildConfig ${CHATBOT_BUILD} was not created by Argo CD." >&2
+    echo "ERROR: chatbot BuildConfig ${CHATBOT_BUILD} was not created by Argo CD in ${CHATBOT_BUILD_NS}." >&2
     exit 1
   fi
 
-  oc start-build "$CHATBOT_BUILD" -n "$RAG_NS" \
+  oc start-build "$CHATBOT_BUILD" -n "$CHATBOT_BUILD_NS" \
     --from-dir="$SCRIPT_DIR/chatbot" \
     --wait \
     --follow \

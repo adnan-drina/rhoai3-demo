@@ -85,7 +85,8 @@ The Inspect tab should remain lightweight and operational:
 ```text
 Namespace: enterprise-rag
 Deployment: private-rag-chatbot
-Image: image-registry.openshift-image-registry.svc:5000/enterprise-rag/private-rag-chatbot:latest
+Image: image-registry.openshift-image-registry.svc:5000/enterprise-rag-build/private-rag-chatbot:latest
+Build namespace: enterprise-rag-build
 BuildConfig: private-rag-chatbot
 Route: private-rag-chatbot
 OpenShift AI dashboard tile: redhat-ods-applications/rhoai-demo-private-rag-chatbot
@@ -101,3 +102,9 @@ The dashboard tile is an `OdhApplication`, not an OpenShift `ConsoleLink`. Keep
 it in `redhat-ods-applications`, point `spec.route` at
 `enterprise-rag/private-rag-chatbot`, and preserve the documented dashboard
 labels `app: odh-dashboard` and `app.kubernetes.io/part-of: odh-dashboard`.
+
+The OpenShift BuildConfig and ImageStream live in `enterprise-rag-build`
+instead of `enterprise-rag`. The runtime service account has
+`system:image-puller` on that build namespace. This prevents Kueue from
+admitting OpenShift build pods as plain RAG workload pods while preserving
+queue enforcement for the RAG runtime project.
