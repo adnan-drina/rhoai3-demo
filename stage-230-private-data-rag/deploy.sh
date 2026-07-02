@@ -53,7 +53,10 @@ CHATBOT_DEPLOYMENT="${RHOAI_STAGE230_CHATBOT_DEPLOYMENT:-private-rag-chatbot}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 POSTGRES_USER="${RHOAI_STAGE230_POSTGRES_USER:-rag}"
 POSTGRES_DB="${RHOAI_STAGE230_POSTGRES_DATABASE:-llamastack}"
+MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
+AUTORAG_CONNECTION_SECRET="${RHOAI_STAGE230_AUTORAG_CONNECTION_SECRET:-autorag-llama-stack-connection}"
+AUTORAG_BENCHMARK_PREFIX="${RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX:-autorag/rhoai-product-docs}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}}"
@@ -263,6 +266,7 @@ spec:
                       "sparse-checkout",
                       "set",
                       "stage-230-private-data-rag/data/rhoai-product-docs/source",
+                      "stage-230-private-data-rag/data/rhoai-product-docs/autorag",
                   ],
                   check=True,
               )
@@ -283,21 +287,27 @@ spec:
                   (
                       stage_dir / "data/rhoai-product-docs/source",
                       os.environ["RHOAI_STAGE230_PRODUCT_DOCS_PREFIX"],
+                      "*.pdf",
+                  ),
+                  (
+                      stage_dir / "data/rhoai-product-docs/autorag",
+                      os.environ["RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX"],
+                      "*.json",
                   ),
               ]
               uploaded = 0
-              for source_dir, prefix in uploads:
+              for source_dir, prefix, pattern in uploads:
                   if not source_dir.exists():
                       continue
-                  for path in sorted(source_dir.glob("*.pdf")):
+                  for path in sorted(source_dir.glob(pattern)):
                       key = f"{prefix.rstrip('/')}/{path.name}"
                       client.upload_file(str(path), bucket, key)
                       client.head_object(Bucket=bucket, Key=key)
                       uploaded += 1
                       print(f"uploaded s3://{bucket}/{key}", flush=True)
               if uploaded == 0:
-                  raise SystemExit("no source PDFs found to upload from checked-out stage data")
-              print(f"uploaded {uploaded} source PDFs", flush=True)
+                  raise SystemExit("no source files found to upload from checked-out stage data")
+              print(f"uploaded {uploaded} source files", flush=True)
               PY
           env:
             - name: GIT_REPO_URL
@@ -334,6 +344,8 @@ spec:
                 secretKeyRef:
                   name: ${RAG_S3_CONNECTION_SECRET}
                   key: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
+            - name: RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX
+              value: "${AUTORAG_BENCHMARK_PREFIX}"
           resources:
             requests:
               cpu: 250m
@@ -447,7 +459,7 @@ ensure_maas_api_key() {
 }
 
 ensure_runtime_secrets() {
-  local postgres_password maas_endpoint maas_token
+  local postgres_password milvus_password maas_endpoint maas_token llama_stack_base_url autorag_api_key
 
   postgres_password=$(jsonpath "secret/${POSTGRES_SECRET}" "$RAG_NS" "{.data.POSTGRESQL_PASSWORD}" | base64 --decode 2>/dev/null || true)
   if [[ -z "$postgres_password" ]]; then
@@ -461,6 +473,41 @@ ensure_runtime_secrets() {
     --from-literal=POSTGRESQL_DATABASE="$POSTGRES_DB" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
+  milvus_password=$(jsonpath "secret/${MILVUS_SECRET}" "$RAG_NS" "{.data.root-password}" | base64 --decode 2>/dev/null || true)
+  if [[ -z "$milvus_password" ]]; then
+    milvus_password="${RHOAI_STAGE230_MILVUS_PASSWORD:-$(openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 32)}"
+  fi
+
+  oc create secret generic "$MILVUS_SECRET" \
+    -n "$RAG_NS" \
+    --from-literal=root-password="$milvus_password" \
+    --from-literal=MILVUS_URL="http://private-rag-milvus.${RAG_NS}.svc.cluster.local:19530" \
+    --from-literal=MILVUS_TOKEN="root:${milvus_password}" \
+    --from-literal=MILVUS_CONSISTENCY_LEVEL=Strong \
+    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+
+  llama_stack_base_url="${RHOAI_STAGE230_LLAMA_STACK_BASE_URL:-http://lsd-enterprise-rag-service.${RAG_NS}.svc.cluster.local:8321}"
+  autorag_api_key="${RHOAI_STAGE230_AUTORAG_API_KEY:-none}"
+
+  oc apply -f - --insecure-skip-tls-verify=true <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${AUTORAG_CONNECTION_SECRET}
+  namespace: ${RAG_NS}
+  labels:
+    opendatahub.io/dashboard: "true"
+    app.kubernetes.io/part-of: rag
+    demo.rhoai.io/stage: "230"
+  annotations:
+    opendatahub.io/connection-type-ref: llama-stack-connection
+    openshift.io/display-name: "AutoRAG Llama Stack connection"
+type: Opaque
+stringData:
+  LLAMA_STACK_CLIENT_BASE_URL: "${llama_stack_base_url}"
+  LLAMA_STACK_CLIENT_API_KEY: "${autorag_api_key}"
+EOF
+
   maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint)}")"
   maas_token="$(ensure_maas_api_key)"
 
@@ -473,7 +520,7 @@ ensure_runtime_secrets() {
     --from-literal=VLLM_MAX_TOKENS="$VLLM_MAX_TOKENS" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
-  oc label secret "$POSTGRES_SECRET" "$LLAMA_SECRET" -n "$RAG_NS" --overwrite \
+  oc label secret "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET" -n "$RAG_NS" --overwrite \
     app.kubernetes.io/part-of=rag \
     demo.rhoai.io/stage=230 \
     --insecure-skip-tls-verify=true >/dev/null

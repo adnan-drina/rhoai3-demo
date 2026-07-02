@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: private-rag-etcd
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: private-rag-etcd
+    app.kubernetes.io/component: database
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+spec:
+  ports:
+    - name: client
+      port: 2379
+      protocol: TCP
+      targetPort: client
+  selector:
+    app.kubernetes.io/name: private-rag-etcd

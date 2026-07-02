@@ -1269,6 +1269,50 @@ steps unless those components are intentionally reintroduced.
   remove expected terms just because the model rendered product names with
   non-ASCII spacing.
 
+### Stage 230 AutoRAG run fails or is not visible on the AutoRAG page
+
+- **Symptom:** `run-autorag-pipeline.sh` fails, the run never appears on the
+  Gen AI studio `AutoRAG` page, or the run fails inside
+  `search-space-preparation` or `rag-templates-optimization`.
+- **Likely cause:** the vendored pipeline was renamed (the AutoRAG page only
+  lists runs of a pipeline named `documents-rag-optimization-pipeline`), the
+  `autorag-llama-stack-connection` Secret is missing or points at the wrong
+  Llama Stack URL, the requested embedding or generation model identifiers do
+  not match the Llama Stack `/v1/models` listing, or the `milvus` vector_io
+  provider is not registered because the Milvus Deployment or Secret is not
+  ready.
+- **Fix:** check each prerequisite in order:
+
+  ```bash
+  oc get pipeline,pipelineversion -n enterprise-rag | grep documents-rag-optimization
+  oc get secret autorag-llama-stack-connection -n enterprise-rag
+  oc get deployment private-rag-milvus private-rag-etcd -n enterprise-rag
+  ROUTE=$(oc get route lsd-enterprise-rag -n enterprise-rag -o jsonpath='{.spec.host}')
+  curl -sk "https://${ROUTE}/v1/models" | jq -r '.data[].id'
+  curl -sk "https://${ROUTE}/v1/providers" | jq -r '.data[] | select(.api=="vector_io").provider_id'
+  ```
+
+  Rerun `deploy.sh` for missing Secrets. Keep the documented pipeline name.
+  AutoRAG is Technology Preview; record run-blocking product issues in the
+  stage plan instead of patching the vendored pipeline.
+
+### Stage 230 AutoRAG first run is very slow or embedding calls time out
+
+- **Symptom:** the first AutoRAG optimization run spends a long time before
+  producing patterns, or embedding requests to Llama Stack time out.
+- **Likely cause:** `BAAI/bge-m3` (~2.3 GiB) downloads to the Llama Stack PVC
+  on first use through the inline sentence-transformers provider, and CPU
+  embedding of the product-document corpus is slow.
+- **Fix:** let the first run finish (the model cache persists on the PVC), or
+  pre-warm the model with a single embeddings call before the run. If PVC
+  space is short, confirm the `LlamaStackDistribution` storage size is 10Gi
+  and that the old 5Gi PVC expanded successfully:
+
+  ```bash
+  oc get pvc -n enterprise-rag | grep lsd-enterprise-rag
+  oc exec -n enterprise-rag deploy/lsd-enterprise-rag -- df -h /opt/app-root/src/.llama
+  ```
+
 ### Stage 230 PostgreSQL pgvector extension is missing
 
 - **Symptom:** Stage 230 validation reports that

@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - odhapplication-rag-chatbot.yaml
+  - connectiontype-llama-stack.yaml

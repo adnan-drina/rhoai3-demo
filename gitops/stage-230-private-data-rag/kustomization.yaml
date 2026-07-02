@@ -11,6 +11,7 @@ resources:
   - project/base
   - rhoai-dsc/base
   - postgresql/base
+  - milvus/base
   - pipelines/base
   - reranker/base
   - llamastack/base

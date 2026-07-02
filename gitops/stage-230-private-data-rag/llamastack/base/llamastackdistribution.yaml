@@ -97,6 +97,21 @@ spec:
           value: http://qwen3-reranker-predictor.enterprise-rag.svc.cluster.local:8080/v1
         - name: VLLM_RERANKER_TLS_VERIFY
           value: "false"
+        - name: MILVUS_URL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_URL
+        - name: MILVUS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_TOKEN
+        - name: MILVUS_CONSISTENCY_LEVEL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-milvus-secret
+              key: MILVUS_CONSISTENCY_LEVEL
       resources:
         requests:
           cpu: 250m
@@ -109,4 +124,4 @@ spec:
     userConfig:
       configMapName: lsd-enterprise-rag-config
     storage:
-      size: 5Gi
+      size: 10Gi

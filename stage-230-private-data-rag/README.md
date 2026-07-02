@@ -32,6 +32,8 @@ accurate assistant experience than a model-only prompt can provide.
 | Docling | Converts the committed official RHOAI PDFs into text and structured artifacts before RAG chunk creation | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | RHOAI project workbench | Notebook-driven ingestion, retrieval inspection, reranker testing, and acceptance runs in the `enterprise-rag` project | [RHOAI 3.4 working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index) |
 | Red Hat OpenShift AI Pipelines | GitOps-managed DSPA pipeline server runs the Docling product-document processing pipeline from S3 input to reviewed JSONL output | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
+| AutoRAG (Technology Preview) | Automated RAG configuration optimization over the product-document corpus: benchmark-driven runs rank RAG patterns by faithfulness/correctness metrics and generate indexing and inference notebooks | [RHOAI 3.4 AutoRAG docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index) |
+| Milvus (remote, demo-grade) | AutoRAG-required remote vector database registered with Llama Stack as the `milvus` vector_io provider; pgvector remains the application retrieval path | [RHOAI 3.4 AutoRAG docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
 baseline. The Red Hat article and GitHub repository guide the demo shape; the
@@ -60,10 +62,11 @@ run graph as `download-docling-models`, `docling-convert-standard`,
 dashboard model deployment for Docling would be a separate serving design, not
 the Red Hat-documented data-preparation pattern followed here.
 
-The product-document corpus is documentation grounding only. It does not mean
-Stage 230 implements AutoRAG optimization, EvalHub jobs, guardrails, RAGAS
-evaluation, or those adjacent product capabilities. Stage 230 does implement
-AI Pipelines only for repeatable RHOAI product-document data preparation.
+The product-document corpus is documentation grounding first, and it now also
+serves as the AutoRAG input corpus. Stage 230 implements AI Pipelines for
+repeatable RHOAI product-document data preparation and for AutoRAG
+optimization runs (Technology Preview). It still does not implement EvalHub
+jobs, guardrails, or RAGAS evaluation; those remain future stages.
 
 ## Architecture
 
@@ -78,12 +81,15 @@ flowchart LR
   stack["Llama Stack / OGX"]
   pgvector["PostgreSQL + pgvector"]
   pg["PostgreSQL metadata"]
+  milvus["Milvus (AutoRAG)"]
   reranker["Qwen3 reranker"]
   maas["MaaS gateway"]
   nemotron["Nemotron"]
   s3["Stage 230 S3 bucket"]
   dspa["DSPA / AI Pipelines Docling run"]
+  autorag["AutoRAG optimization run"]
   chunks["Reviewed JSONL chunks"]
+  leaderboard["Leaderboard + RAG pattern notebooks"]
 
   user --> workbench
   workbench --> files
@@ -97,15 +103,20 @@ flowchart LR
   vectors --> stack
   stack --> pgvector
   stack --> pg
+  stack --> milvus
   stack --> reranker
   stack --> maas
   maas --> nemotron
+  s3 --> autorag
+  autorag --> stack
+  autorag --> leaderboard
 ```
 
 - New in this stage: metadata-aware RAG runtime, PostgreSQL-backed pgvector
   retrieval, PostgreSQL Llama Stack metadata, CPU reranking, an RHOAI
-  workbench, the AG News compatibility sample, and the RHOAI product-doc
-  audience corpus.
+  workbench, the AG News compatibility sample, the RHOAI product-doc
+  audience corpus, and AutoRAG (Technology Preview) optimization with a
+  remote Milvus vector database.
 - Already available: GPU platform, model serving, Nemotron, and governed MaaS
   access from earlier stages.
 - Value of the integration: a governed model can answer from private,
@@ -236,6 +247,62 @@ grounded answer generation is broken. The active pgvector path was selected
 because filtered hybrid search is part of the stage outcome, not a deferred
 nice-to-have.
 
+## AutoRAG Flow (Technology Preview)
+
+AutoRAG is a Technology Preview feature in RHOAI 3.4 and is not supported
+with Red Hat production SLAs. Stage 230 uses it to answer the question every
+RAG team faces: which chunking, embedding, retrieval, and generation
+combination actually works best for this corpus, measured instead of guessed.
+
+Stage 230 provides all AutoRAG prerequisites through GitOps and `deploy.sh`:
+
+- Gen AI studio is enabled in the OpenShift AI dashboard (Stage 110 baseline).
+- A remote Milvus vector database (demo-grade standalone plus etcd) runs in
+  `enterprise-rag` and is registered with Llama Stack as the `milvus`
+  vector_io provider. pgvector remains the application retrieval path; the
+  official AutoRAG guide requires remote Milvus for optimization runs.
+- Two embedding models are registered: the existing nomic model and the
+  officially recommended `BAAI/bge-m3` (the documented per-run maximum),
+  so runs compare embeddings meaningfully.
+- The `autorag-llama-stack-connection` Secret carries the documented
+  `LLAMA_STACK_CLIENT_BASE_URL` and `LLAMA_STACK_CLIENT_API_KEY` keys and
+  shows up as a project connection through the GitOps-managed
+  `llama-stack-connection` dashboard connection type.
+- The committed benchmark data set
+  (`data/rhoai-product-docs/autorag/benchmark_data.json`, 12 questions with
+  expected answers and PDF document IDs) is mirrored to S3 under
+  `autorag/rhoai-product-docs/` by `deploy.sh`.
+
+Run an optimization through the Stage 230 DSPA:
+
+```bash
+./stage-230-private-data-rag/run-autorag-pipeline.sh
+```
+
+The runner imports the vendored Red Hat `documents-rag-optimization-pipeline`
+(compiled on the `rhoai-3.4` branch of `pipelines-components`, using the
+`registry.redhat.io/rhoai/odh-autorag-rhel9` image) with the documented
+pipeline name, so the run is visible both under `Pipelines` and on the
+Gen AI studio `AutoRAG` page. It submits the run against the product-doc
+corpus with Nemotron as the generation model, nomic and bge-m3 as embedding
+models, and the `faithfulness` metric over 4 RAG patterns by default, then
+reviews the S3 artifacts (leaderboard, per-pattern `pattern.json`,
+`evaluation_results.json`, indexing and inference notebooks) and stores
+evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
+
+Dashboard path: open `AutoRAG` in the OpenShift AI sidebar to review the
+leaderboard, compare all three metrics (answer faithfulness, answer
+correctness, context correctness) with their confidence intervals, inspect
+sample Q&A per pattern, and download the generated indexing and inference
+notebooks for the selected pattern into the Enterprise RAG Workbench.
+
+To make validation run the AutoRAG gate:
+
+```bash
+RHOAI_STAGE230_RUN_AUTORAG=true \
+./stage-230-private-data-rag/validate.sh
+```
+
 ## References
 
 - [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx)
@@ -243,6 +310,9 @@ nice-to-have.
 - [Red Hat AI RAG quickstart repository](https://github.com/rh-ai-quickstart/RAG)
 - [RHOAI 3.4: Working with Llama Stack](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_llama_stack/index)
 - [RHOAI 3.4: Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index)
+- [Red Hat AI examples: AutoRAG](https://github.com/red-hat-data-services/red-hat-ai-examples/tree/main/examples/autorag)
+- [pipelines-components: documents_rag_optimization_pipeline (rhoai-3.4)](https://github.com/red-hat-data-services/pipelines-components/tree/rhoai-3.4/pipelines/training/autorag/documents_rag_optimization_pipeline)
+- [Introducing AutoML and AutoRAG (Red Hat blog)](https://www.redhat.com/en/blog/introducing-auto-ml-and-auto-rag-guided-experience-ai-engineers-red-hat-openshift-ai)
 - [RHOAI 3.4: Evaluating AI systems](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/evaluating_ai_systems/index)
 - [RHOAI 3.4: Enabling AI safety with Guardrails](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/enabling_ai_safety_with_guardrails/index)
 - [RHOAI 3.4: Working with AI Pipelines](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index)

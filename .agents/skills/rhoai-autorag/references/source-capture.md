@@ -23,6 +23,23 @@
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_in_your_data_science_ide/index | Generated indexing and inference notebook execution in a workbench |
 | https://access.redhat.com/support/offerings/techpreview | Technology Preview support scope |
 
+## Reference Implementation Sources
+
+| Source | Role | Retrieved |
+|--------|------|-----------|
+| https://github.com/red-hat-data-services/red-hat-ai-examples/tree/main/examples/autorag | Example-only AutoRAG walkthrough: Llama Stack connection type creation, S3 layout, benchmark data example, UI and KFP-native run paths | 2026-07-02 |
+| https://github.com/red-hat-data-services/pipelines-components/tree/rhoai-3.4/pipelines/training/autorag/documents_rag_optimization_pipeline | Authoritative compiled `documents-rag-optimization-pipeline` and parameter contract for the active baseline (`llama_stack_vector_io_provider_id`, S3 secret env keys, `LLAMA_STACK_CLIENT_BASE_URL`/`LLAMA_STACK_CLIENT_API_KEY` secret keys) | 2026-07-02 |
+| https://www.redhat.com/en/blog/introducing-auto-ml-and-auto-rag-guided-experience-ai-engineers-red-hat-openshift-ai | Positioning-only source for AutoRAG next to AutoML | 2026-07-02 |
+
+Recorded source conflict: the red-hat-ai-examples tutorial (older, Developer
+Preview era) states that only `inline::milvus` is supported and names the
+parameter `llama_stack_vector_database_id`. The official RHOAI 3.4 guide
+states that only remote Milvus is supported and inline Milvus is not, and the
+`rhoai-3.4` pipelines-components branch names the parameter
+`llama_stack_vector_io_provider_id`. The official guide and the `rhoai-3.4`
+pipeline source win. Verify the accepted provider id against the live
+pipeline on the first run.
+
 ## Supporting Project Sources
 
 | Source | Role |
@@ -51,20 +68,32 @@
   details, generated notebook download, workbench notebook execution, grounded
   responses, and metric interpretation.
 
+## Active Stage 230 Implementation
+
+Stage 230 (`stage-230-private-data-rag`) implements AutoRAG on the active
+baseline:
+
+- Corpus: committed RHOAI 3.4 product PDFs mirrored to
+  `raw/rhoai-product-docs/` in the project bucket (English, PDF, one folder).
+- Ground-truth data:
+  `stage-230-private-data-rag/data/rhoai-product-docs/autorag/benchmark_data.json`,
+  mirrored to `autorag/rhoai-product-docs/` by `deploy.sh`.
+- Llama Stack: `lsd-enterprise-rag` with Nemotron (MaaS) for generation and
+  nomic plus `BAAI/bge-m3` embedding models; remote Milvus registered as the
+  `milvus` vector_io provider (pgvector remains the app retrieval path).
+- Connection: `autorag-llama-stack-connection` Secret using the GitOps
+  `llama-stack-connection` dashboard connection type.
+- Runner: `stage-230-private-data-rag/run-autorag-pipeline.sh` imports the
+  vendored `rhoai-3.4` compiled pipeline under the documented name and stores
+  evidence in `stage230-autorag-pipeline-evidence`.
+
 ## Unresolved Or Environment-Specific Items
 
-- Active demo document corpus and source ownership.
-  Verification: define in the future demo step README and confirm documents
-  are English and in supported formats before creating runs.
-- Active ground-truth evaluation data set.
-  Verification: review JSON validity, question coverage, expected answers, and
-  document ID mapping before the optimization run.
-- Active Llama Stack distribution, foundation models, embedding models, and
-  remote Milvus registration.
-  Verification: use `rhoai-llama-stack` before running AutoRAG.
-- Active S3-compatible bucket layout.
-  Verification: confirm multi-document S3 inputs live in a single folder when
-  the run selects multiple documents.
+- Placeholder `LLAMA_STACK_CLIENT_API_KEY` acceptance against an
+  unauthenticated Llama Stack service.
+  Verification: first live Stage 230 AutoRAG run.
+- Accepted vector_io provider id for the shipped pipeline.
+  Verification: first live Stage 230 AutoRAG run with provider id `milvus`.
 - Imported AutoRAG pipeline version string.
   Verification: align imported pipeline version names with the active RHOAI
   product version in `docs/PLATFORM_BASELINE.md`.

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-connection
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: llama-stack-connection
+    app.kubernetes.io/component: dashboard
+    opendatahub.io/connection-type: "true"
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+    openshift.io/display-name: "Llama Stack connection"
+    openshift.io/description: >-
+      Connect to a Llama Stack server for AutoRAG optimization runs and other
+      Gen AI studio workflows. Provides the base URL and API key expected by
+      the documents-rag-optimization-pipeline.
+data:
+  category: '["Gen AI"]'
+  fields: '[{"type":"short-text","name":"Llama Stack base URL","envVar":"LLAMA_STACK_CLIENT_BASE_URL","required":true,"properties":{}},{"type":"hidden","name":"Llama Stack API key","envVar":"LLAMA_STACK_CLIENT_API_KEY","required":true,"properties":{"deferInput":true}}]'

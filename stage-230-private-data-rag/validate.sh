@@ -39,11 +39,19 @@ RHOAI_DOCS_PIPELINE_OUTPUT_KEY="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY:
 RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS:-3600}"
 DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-dspa-enterprise-rag}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
+MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
+AUTORAG_CONNECTION_SECRET="${RHOAI_STAGE230_AUTORAG_CONNECTION_SECRET:-autorag-llama-stack-connection}"
+AUTORAG_PIPELINE_NAME="${RHOAI_STAGE230_AUTORAG_PIPELINE_NAME:-documents-rag-optimization-pipeline}"
+AUTORAG_PIPELINE_YAML="${RHOAI_STAGE230_AUTORAG_PIPELINE_YAML:-$SCRIPT_DIR/kfp/vendor/documents-rag-optimization-pipeline-rhoai-3.4.yaml}"
+AUTORAG_BENCHMARK_FILE="${RHOAI_STAGE230_AUTORAG_BENCHMARK_FILE:-$SCRIPT_DIR/data/rhoai-product-docs/autorag/benchmark_data.json}"
+AUTORAG_EVIDENCE_CM="${RHOAI_STAGE230_AUTORAG_EVIDENCE_CM:-stage230-autorag-pipeline-evidence}"
+AUTORAG_TIMEOUT_SECONDS="${RHOAI_STAGE230_AUTORAG_TIMEOUT_SECONDS:-7200}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
 RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
 EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
+AUTORAG_EMBEDDING_MODEL="${RHOAI_STAGE230_AUTORAG_EMBEDDING_MODEL:-sentence-transformers/BAAI/bge-m3}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
 CHATBOT_BUILD_NS="${RHOAI_STAGE230_CHATBOT_BUILD_NAMESPACE:-enterprise-rag-build}"
@@ -125,7 +133,7 @@ namespace_kueue=$(jsonpath "namespace/${RAG_NS}" "" "{.metadata.labels.kueue\\.o
 resource_exists "localqueue/lq-cpu-default" "$RAG_NS" \
   && check "enterprise-rag CPU LocalQueue exists" "pass" \
   || check "enterprise-rag CPU LocalQueue exists" "missing"
-for secret in "$POSTGRES_SECRET" "$LLAMA_SECRET"; do
+for secret in "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET" "$AUTORAG_CONNECTION_SECRET"; do
   resource_exists "secret/${secret}" "$RAG_NS" && check "${secret} Secret exists" "pass" || check "${secret} Secret exists" "missing"
 done
 
@@ -264,6 +272,14 @@ if [[ -n "$postgres_pod" ]]; then
 else
   check "PostgreSQL pod exists for pgvector validation" "missing"
 fi
+
+[[ "$(available_replicas deployment/private-rag-milvus "$RAG_NS")" == "1" ]] \
+  && check "Milvus vector database is available" "pass" \
+  || check "Milvus vector database is available" "availableReplicas=$(available_replicas deployment/private-rag-milvus "$RAG_NS")"
+
+[[ "$(available_replicas deployment/private-rag-etcd "$RAG_NS")" == "1" ]] \
+  && check "Milvus etcd is available" "pass" \
+  || check "Milvus etcd is available" "availableReplicas=$(available_replicas deployment/private-rag-etcd "$RAG_NS")"
 
 lls_phase=$(jsonpath "llamastackdistribution/lsd-enterprise-rag" "$RAG_NS" "{.status.phase}")
 [[ "$lls_phase" == "Ready" ]] && check "LlamaStackDistribution is Ready" "pass" || check "LlamaStackDistribution is Ready" "${lls_phase:-missing}"
@@ -474,7 +490,20 @@ if [[ -n "$route_host" ]]; then
   else
     check "Llama Stack lists Qwen3 reranker model" "status=${status},model=${RERANKER_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
+  if [[ "$status" == "200" ]] && grep -q "$AUTORAG_EMBEDDING_MODEL" "$models_body"; then
+    check "Llama Stack lists bge-m3 AutoRAG embedding model" "pass"
+  else
+    check "Llama Stack lists bge-m3 AutoRAG embedding model" "status=${status},model=${AUTORAG_EMBEDDING_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
+  fi
   rm -f "$models_body"
+  providers_body=$(mktemp)
+  providers_status=$(curl -sk --max-time 30 -o "$providers_body" -w '%{http_code}' "https://${route_host}/v1/providers" 2>/dev/null || true)
+  if [[ "$providers_status" == "200" ]] && grep -q '"milvus"' "$providers_body"; then
+    check "Llama Stack lists remote Milvus vector_io provider" "pass"
+  else
+    check "Llama Stack lists remote Milvus vector_io provider" "status=${providers_status},body=$(head -c 180 "$providers_body" | tr '\n' ' ')"
+  fi
+  rm -f "$providers_body"
 else
   check "Llama Stack route exists" "missing"
 fi
@@ -554,6 +583,61 @@ chatbot_dashboard_label=$(jsonpath "odhapplication/${CHATBOT_DASHBOARD_APP}" "$R
 [[ "$chatbot_dashboard_label" == "odh-dashboard" ]] \
   && check "Stage 230 RHOAI dashboard chatbot tile keeps dashboard label" "pass" \
   || check "Stage 230 RHOAI dashboard chatbot tile keeps dashboard label" "${chatbot_dashboard_label:-missing}"
+
+gen_ai_studio=$(jsonpath "odhdashboardconfig/odh-dashboard-config" "$RHOAI_DASHBOARD_NS" "{.spec.dashboardConfig.genAiStudio}")
+if [[ -z "$gen_ai_studio" ]]; then
+  gen_ai_studio=$(oc get odhdashboardconfig -n "$RHOAI_DASHBOARD_NS" \
+    -o jsonpath='{.items[0].spec.dashboardConfig.genAiStudio}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+fi
+[[ "$gen_ai_studio" == "true" ]] \
+  && check "Gen AI studio is enabled for AutoRAG" "pass" \
+  || check "Gen AI studio is enabled for AutoRAG" "${gen_ai_studio:-missing}"
+
+resource_exists "configmap/llama-stack-connection" "$RHOAI_DASHBOARD_NS" \
+  && check "Llama Stack dashboard connection type exists" "pass" \
+  || check "Llama Stack dashboard connection type exists" "missing"
+
+autorag_connection_type=$(jsonpath "secret/${AUTORAG_CONNECTION_SECRET}" "$RAG_NS" "{.metadata.annotations.opendatahub\\.io/connection-type-ref}")
+[[ "$autorag_connection_type" == "llama-stack-connection" ]] \
+  && check "AutoRAG connection Secret uses the Llama Stack connection type" "pass" \
+  || check "AutoRAG connection Secret uses the Llama Stack connection type" "${autorag_connection_type:-missing}"
+
+autorag_base_url=$(jsonpath "secret/${AUTORAG_CONNECTION_SECRET}" "$RAG_NS" "{.data.LLAMA_STACK_CLIENT_BASE_URL}" | base64 --decode 2>/dev/null || true)
+[[ "$autorag_base_url" == http*"lsd-enterprise-rag"* ]] \
+  && check "AutoRAG connection points at the Enterprise RAG Llama Stack" "pass" \
+  || check "AutoRAG connection points at the Enterprise RAG Llama Stack" "${autorag_base_url:-missing}"
+
+if [[ -s "$AUTORAG_BENCHMARK_FILE" ]]; then
+  if AUTORAG_BENCHMARK_FILE="$AUTORAG_BENCHMARK_FILE" PDF_DIR="$rhoai_pdf_dir" python3 - <<'PY' >/dev/null 2>&1
+import json
+import os
+from pathlib import Path
+
+data = json.loads(Path(os.environ["AUTORAG_BENCHMARK_FILE"]).read_text(encoding="utf-8"))
+assert isinstance(data, list) and data
+pdfs = {p.name for p in Path(os.environ["PDF_DIR"]).glob("*.pdf")}
+for item in data:
+    assert item["question"]
+    assert item["correct_answers"]
+    assert item["correct_answer_document_ids"]
+    for doc_id in item["correct_answer_document_ids"]:
+        assert "/" not in doc_id
+        assert doc_id in pdfs
+PY
+  then
+    check "AutoRAG benchmark data is valid and matches committed PDFs" "pass"
+  else
+    check "AutoRAG benchmark data is valid and matches committed PDFs" "validation failed"
+  fi
+else
+  check "AutoRAG benchmark data is valid and matches committed PDFs" "missing ${AUTORAG_BENCHMARK_FILE}"
+fi
+
+if [[ -s "$AUTORAG_PIPELINE_YAML" ]] && grep -q "^# Name: ${AUTORAG_PIPELINE_NAME}$" "$AUTORAG_PIPELINE_YAML"; then
+  check "Vendored AutoRAG pipeline definition uses documented name" "pass"
+else
+  check "Vendored AutoRAG pipeline definition uses documented name" "missing or renamed ${AUTORAG_PIPELINE_YAML}"
+fi
 
 generation_base_url=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_URL}" | base64 --decode 2>/dev/null || true)
 generation_api_key=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_API_TOKEN}" | base64 --decode 2>/dev/null || true)
@@ -641,6 +725,31 @@ if resource_exists "configmap/${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}" "$RAG_NS"; the
   fi
 else
   warn "RHOAI product docs Docling pipeline evidence is present" "missing ${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_AUTORAG:-false}" == "true" ]]; then
+  if "$SCRIPT_DIR/run-autorag-pipeline.sh" --timeout-seconds="$AUTORAG_TIMEOUT_SECONDS"; then
+    check "AutoRAG documents-rag-optimization run passes" "pass"
+  else
+    check "AutoRAG documents-rag-optimization run passes" "pipeline runner failed"
+  fi
+else
+  if resource_exists "configmap/${AUTORAG_EVIDENCE_CM}" "$RAG_NS"; then
+    check "AutoRAG optimization run evidence is reusable" "pass"
+  else
+    warn "AutoRAG optimization run was not run" "set RHOAI_STAGE230_RUN_AUTORAG=true"
+  fi
+fi
+
+if resource_exists "configmap/${AUTORAG_EVIDENCE_CM}" "$RAG_NS"; then
+  autorag_review=$(jsonpath "configmap/${AUTORAG_EVIDENCE_CM}" "$RAG_NS" "{.data.artifact-review\\.json}")
+  if [[ "$autorag_review" == *'"status": "pass"'* ]]; then
+    check "AutoRAG optimization run evidence is present" "pass"
+  else
+    check "AutoRAG optimization run evidence is present" "artifact review did not report pass"
+  fi
+else
+  warn "AutoRAG optimization run evidence is present" "missing ${AUTORAG_EVIDENCE_CM}"
 fi
 
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
