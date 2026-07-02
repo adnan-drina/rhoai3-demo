@@ -1046,9 +1046,10 @@ gate:
 - PostgreSQL, pgvector extension, and the `LlamaStackDistribution` are ready
 - Qwen3 reranker `InferenceService` and Route exist and are ready
 - the Enterprise RAG Workbench `Notebook`, PVC, and ServiceAccount exist
-- the Enterprise RAG Workbench exposes the curated AG News notebooks and RHOAI
-  product-doc explainer notebook, and does not expose the full `rhoai3-demo`
-  repository checkout
+- the Enterprise RAG Workbench exposes five curated notebooks (AG News
+  ingestion/retrieval reference pair, and RHOAI product documentation
+  Docling data preparation, ingestion, and retrieval) and does not expose
+  the full `rhoai3-demo` repository checkout
 - the Stage 230 ObjectBucketClaim is `Bound`
 - the `enterprise-rag-s3` dashboard S3 connection and
   `data-processing-docling-pipeline` Secret exist
@@ -1196,6 +1197,36 @@ The command must fail if metadata extraction, hybrid metadata filtering,
 reranking, or final grounded answer generation is broken. Use `--reset` after
 a provider migration or fresh redeploy when the vector store should be
 recreated with the active pgvector provider.
+
+### Workbench Init Container And Notebook Controller
+
+The RHOAI `odh-notebook-controller` manages the lifecycle of Notebook CRs. When
+ArgoCD updates a Notebook CR spec (for example, init container args, env vars,
+or resource limits), the controller reconciles the change into the underlying
+StatefulSet. However, the controller may not propagate all init container spec
+changes to the StatefulSet template on its own.
+
+If ArgoCD successfully updates the Notebook CR but the StatefulSet template
+remains stale, delete the StatefulSet to force the controller to recreate it
+from the current Notebook CR:
+
+```bash
+oc delete statefulset enterprise-rag-workbench -n enterprise-rag
+```
+
+The controller recreates the StatefulSet with the updated template. The new pod
+runs the init container with the latest spec, including Docling model
+pre-download and pip dependency installation.
+
+The workbench init container pre-installs Docling, pre-downloads layout models
+and the HybridChunker tokenizer (`sentence-transformers/all-MiniLM-L6-v2`), and
+caches them on the PVC under `.stage230/docling-models` and `.stage230/hf-cache`.
+The main container receives `DOCLING_MODELS_PATH` and `HF_HOME` env vars
+pointing to these cached directories. This ensures zero runtime model downloads
+during demo notebook execution.
+
+The PVC is sized at 20Gi to accommodate Docling dependencies, layout models, and
+the HuggingFace cache alongside the regular workbench content.
 
 Legacy Stage 230 operations content remains available in Git history and in the
 pre-reset commits. The old backup tree under
