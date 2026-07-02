@@ -98,15 +98,16 @@ official RHOAI 3.4 product-document explainer corpus, which lets the demo
 answer questions about the product docs behind the stage design. The selected
 official RHOAI PDFs and deterministic prepared chunks are stored under the
 stage data folder and mirrored to the project S3 bucket during deployment. The
-Docling KFP runner now processes those PDFs through the Stage 230 DSPA server
-and stores reviewed pipeline output in S3.
+Docling KFP runner now uses a modular upstream-shaped Docling standard
+pipeline through the Stage 230 DSPA server and stores reviewed pipeline output
+in S3.
 
 Validated in `cluster-qt67m` on 2026-07-02:
 
 - Stage 230 Argo CD Application synced and healthy.
-- DSPA/KFP pipeline evidence reused from a passing full six-document Docling
-  run: 415 chunks across the selected RHOAI 3.4 guides, with converted
-  Markdown and Docling JSON artifacts in S3.
+- DSPA/KFP pipeline evidence from the previous implementation passed for the
+  full six-document Docling run. The modular upstream-shaped Docling pipeline
+  must replace that evidence on the next Stage 230 validation run.
 - AG News compatibility acceptance passed with metadata extraction, filtered
   hybrid retrieval, reranking, and Nemotron answer generation.
 - RHOAI product-document RAG smoke over pipeline-generated chunks passed with
@@ -116,10 +117,10 @@ Validated in `cluster-qt67m` on 2026-07-02:
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Fresh-environment Stage 230 validation | done | `validate.sh` passed with 63 checks, 0 warnings, and 0 failures in `cluster-qt67m` after the KFP updates. |
+| Fresh-environment Stage 230 validation | active | Re-run `validate.sh` after the modular Docling KFP refactor so the evidence reflects the new dashboard-visible task graph. |
 | Hybrid metadata filtering | done | Resolved by selecting the active pgvector provider path. Keep this as a recurring validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted in each fresh environment. |
 | RHOAI product-document explainer corpus | done | Source manifest, repo-stored official RHOAI 3.4 PDFs, deterministic prepared chunks, preparation helper, smoke helper, and workbench notebook added for Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling audience Q&A. Deployment mirrors the source PDFs to the Stage 230 project bucket. This is documentation grounding, not implementation scope for those adjacent capabilities. |
-| RHOAI product-document KFP automation | done | Docling KFP source and runner compile, run through DSPA, review S3 artifacts, and feed the pipeline-generated JSONL into the RAG smoke helper. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
+| RHOAI product-document KFP automation | active | Docling KFP source and runner now follow the upstream modular `docling-standard` pattern. Revalidate through DSPA, review S3 artifacts, and feed the pipeline-generated JSONL into the RAG smoke helper. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 | Product-document RAG chatbot | implementation ready | Streamlit app added from the Red Hat AI RAG quickstart direct-chat pattern, adapted to the Stage 230 product-doc vector store, reranker, and Nemotron through Llama Stack. Validate route health and RAG on/off behavior during the next Stage 230 deploy. |
 
 ### Open / deferred from Stage 230

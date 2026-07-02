@@ -130,6 +130,13 @@ Lightweight Python Components must be self-contained:
   - `dsl.ParallelFor` for independent items or splits
   - `dsl.If` / `dsl.Else` for optional work such as preprocessing already done
   - nested pipelines only when a subworkflow is itself reusable and tested
+- Validate Kubernetes extension behavior inside control-flow blocks with a live
+  RHOAI run, not compile alone. In the active RHOAI 3.4 runtime, Kubernetes
+  Secret mounts on tasks nested inside `dsl.ParallelFor` are resolved from the
+  parent DAG; a pipeline-level secret-name parameter can compile locally but
+  fail at the nested task driver with `parent DAG does not have input parameter`.
+  Use a GitOps-owned deterministic Secret name for nested loop tasks when the
+  stage owns that Secret.
 - Compile with the current KFP compiler before running in OpenShift AI.
 
 ## Types And Artifacts
@@ -264,7 +271,8 @@ is the Red Hat-documented
 `opendatahub-io/data-processing/kubeflow-pipelines` tree, not the previous
 whoami pipeline. Use the official-doc-linked `stable` branch by default and
 compare `main` only when a newer reference implementation is intentionally
-selected.
+selected. Active Stage 230 intentionally uses `main/kubeflow-pipelines`
+because the user selected the newer modular Docling implementation.
 
 The target ingestion shape is:
 
@@ -281,6 +289,15 @@ Apply these rules:
 
 - start with `docling-standard` for ordinary PDFs, OCR, table structure,
   Markdown output, Docling JSON output, and optional chunk JSONL output
+- preserve the modular task graph in the OpenShift AI Pipelines dashboard:
+  source selection, `import-pdfs`, `create-pdf-splits`,
+  `download-docling-models`, `docling-convert-standard`, `docling-chunk`, and
+  separate publish and final repo-specific normalization components
+- do not expect Docling data-preparation components to appear in the RHOAI
+  project `Deployments` tab. KFP components are validated through the
+  `Pipelines` page, run graph, task logs, metrics, and S3 artifacts. The
+  `Deployments` tab is for served endpoints such as KServe `InferenceService`
+  resources.
 - use `docling-vlm` only for complex layouts, scanned or image-heavy
   documents, remote VLM conversion, or custom page-level instructions
 - preserve the upstream `ParallelFor` split pattern for scale-out conversion;

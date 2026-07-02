@@ -2,39 +2,38 @@
 
 Open the `enterprise-rag` project in Red Hat OpenShift AI and start the
 `Enterprise RAG Workbench`. The workbench startup creates a curated JupyterLab
-workspace under `/opt/app-root/src/workspace` with three visible notebooks:
+workspace under `/opt/app-root/src/workspace` with five visible notebooks:
+
+**AG News reference** (from the Red Hat OGX blog post):
 
 - `Ingestion_pipeline_ag_news.ipynb`
 - `retrieval_pipeline_ag_news.ipynb`
-- `rhoai_product_docs_rag_smoke.ipynb`
+
+**RHOAI product documentation** (main demo use case):
+
+- `Docling_data_preparation_rhoai_docs.ipynb` -- PDF conversion, chunking,
+  metadata enrichment with Docling
+- `Ingestion_pipeline_rhoai_docs.ipynb` -- vector store creation, Files API
+  upload, metadata attachment
+- `Retrieval_pipeline_rhoai_docs.ipynb` -- metadata extraction, hybrid search,
+  reranking, grounded answer generation
+
+The RHOAI docs notebooks read source PDFs from S3 (uploaded during deployment),
+process them with Docling, and follow the same Llama Stack API pattern as the
+AG News notebooks. Each step maps to a future KFP pipeline component.
 
 Generated helper scripts, sample data, and dependencies are stored under the
 hidden `/opt/app-root/src/workspace/.stage230` directory so the visible
 JupyterLab file browser matches the Red Hat article-style notebook flow
 instead of exposing the full `rhoai3-demo` implementation repository.
 
-Run the same working flow from a workbench terminal if you need a CLI check:
+Run the AG News acceptance flow from a workbench terminal if you need a CLI
+check:
 
 ```bash
 cd /opt/app-root/src/workspace
 python .stage230/scripts/agnews_rag_acceptance.py \
   --vector-store stage230-agnews-demo \
-  --search-mode hybrid
-```
-
-Prepare and query the focused RHOAI 3.4 product-document explainer corpus:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/scripts/rhoai_product_docs_prepare.py \
-  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
-  --source-dir .stage230/data/rhoai-product-docs/source \
-  --output .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl
-python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
-  --reset \
-  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
-  --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-  --vector-store stage230-rhoai-34-product-docs \
   --search-mode hybrid
 ```
 

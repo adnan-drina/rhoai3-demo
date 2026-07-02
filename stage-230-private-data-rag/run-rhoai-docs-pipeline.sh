@@ -38,15 +38,24 @@ require_cmd python3
 RAG_NS="${RHOAI_STAGE230_NAMESPACE:-enterprise-rag}"
 DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-dspa-enterprise-rag}"
 PIPELINE_NAME="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_NAME:-stage-230-rhoai-product-docs-docling}"
+PIPELINE_DISPLAY_NAME="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_DISPLAY_NAME:-RHOAI Product Docs Docling Pipeline}"
 EXPERIMENT_NAME="${RHOAI_STAGE230_RHOAI_DOCS_EXPERIMENT_NAME:-stage-230-private-data-rag}"
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 SOURCE_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
 OUTPUT_S3_KEY="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY:-processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-chunks.jsonl}"
-CHUNK_MAX_CHARS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_MAX_CHARS:-1800}"
 MAX_DOCUMENTS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_MAX_DOCUMENTS:-0}"
+NUM_SPLITS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_NUM_SPLITS:-3}"
 FOCUS_ONLY="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_FOCUS_ONLY:-true}"
-DO_OCR="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_DO_OCR:-false}"
-DO_TABLE_STRUCTURE="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_DO_TABLE_STRUCTURE:-true}"
+DOCLING_PDF_BACKEND="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_PDF_BACKEND:-dlparse_v4}"
+DOCLING_IMAGE_EXPORT_MODE="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_IMAGE_EXPORT_MODE:-embedded}"
+DOCLING_TABLE_MODE="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TABLE_MODE:-accurate}"
+DOCLING_NUM_THREADS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_NUM_THREADS:-4}"
+DOCLING_TIMEOUT_PER_DOCUMENT="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_PER_DOCUMENT:-300}"
+DOCLING_OCR="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OCR:-false}"
+DOCLING_FORCE_OCR="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_FORCE_OCR:-false}"
+DOCLING_OCR_ENGINE="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OCR_ENGINE:-tesseract_cli}"
+DOCLING_CHUNK_MAX_TOKENS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_CHUNK_MAX_TOKENS:-512}"
+DOCLING_CHUNK_MERGE_PEERS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_CHUNK_MERGE_PEERS:-true}"
 TIMEOUT_SECONDS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS:-3600}"
 EVIDENCE_CM="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_EVIDENCE_CM:-stage230-rhoai-docs-pipeline-evidence}"
 WAIT_FOR_RUN=true
@@ -69,19 +78,38 @@ for arg in "$@"; do
       OUTPUT_S3_KEY="${arg#*=}"
       ;;
     --max-chars=*)
-      CHUNK_MAX_CHARS="${arg#*=}"
+      echo "ERROR: --max-chars is no longer supported. Use --chunk-max-tokens for the Docling HybridChunker." >&2
+      exit 1
+      ;;
+    --chunk-max-tokens=*)
+      DOCLING_CHUNK_MAX_TOKENS="${arg#*=}"
       ;;
     --max-documents=*)
       MAX_DOCUMENTS="${arg#*=}"
+      ;;
+    --num-splits=*)
+      NUM_SPLITS="${arg#*=}"
       ;;
     --focus-only=*)
       FOCUS_ONLY="${arg#*=}"
       ;;
     --do-ocr=*)
-      DO_OCR="${arg#*=}"
+      DOCLING_OCR="${arg#*=}"
       ;;
-    --do-table-structure=*)
-      DO_TABLE_STRUCTURE="${arg#*=}"
+    --force-ocr=*)
+      DOCLING_FORCE_OCR="${arg#*=}"
+      ;;
+    --table-mode=*)
+      DOCLING_TABLE_MODE="${arg#*=}"
+      ;;
+    --pdf-backend=*)
+      DOCLING_PDF_BACKEND="${arg#*=}"
+      ;;
+    --docling-num-threads=*)
+      DOCLING_NUM_THREADS="${arg#*=}"
+      ;;
+    --docling-timeout-per-document=*)
+      DOCLING_TIMEOUT_PER_DOCUMENT="${arg#*=}"
       ;;
     *)
       echo "ERROR: unknown argument: $arg" >&2
@@ -213,7 +241,7 @@ spec:
               missing_guides = sorted(required_guides - set(guide_slugs))
               if missing_guides:
                   raise SystemExit(f"processed output missing guides: {missing_guides}")
-              if methods != ["docling-standard-kfp"]:
+              if methods != ["docling-standard-hybridchunker-kfp"]:
                   raise SystemExit(f"unexpected preparation methods: {methods}")
               text = "\\n".join(record.get("text", "") for record in records)
               term_rules = {
@@ -310,9 +338,12 @@ RUN_EVIDENCE_JSON="$(mktemp)"
 REVIEW_LOGS="$(mktemp)"
 PIPELINE_CR_YAML="$(mktemp)"
 PIPELINE_VERSION_NAME="v-$(date +%s)"
-export DSPA_URL RAG_NS PIPELINE_YAML PIPELINE_NAME PIPELINE_CR_YAML PIPELINE_VERSION_NAME
+export DSPA_URL RAG_NS PIPELINE_YAML PIPELINE_NAME PIPELINE_DISPLAY_NAME PIPELINE_CR_YAML PIPELINE_VERSION_NAME
 export EXPERIMENT_NAME OC_TOKEN WAIT_FOR_RUN TIMEOUT_SECONDS
-export SOURCE_PREFIX OUTPUT_S3_KEY PIPELINE_S3_SECRET CHUNK_MAX_CHARS MAX_DOCUMENTS FOCUS_ONLY DO_OCR DO_TABLE_STRUCTURE RUN_EVIDENCE_JSON
+export SOURCE_PREFIX OUTPUT_S3_KEY PIPELINE_S3_SECRET MAX_DOCUMENTS NUM_SPLITS FOCUS_ONLY
+export DOCLING_PDF_BACKEND DOCLING_IMAGE_EXPORT_MODE DOCLING_TABLE_MODE DOCLING_NUM_THREADS
+export DOCLING_TIMEOUT_PER_DOCUMENT DOCLING_OCR DOCLING_FORCE_OCR DOCLING_OCR_ENGINE
+export DOCLING_CHUNK_MAX_TOKENS DOCLING_CHUNK_MERGE_PEERS RUN_EVIDENCE_JSON
 EXPECTED_GUIDES_JSON="$(expected_guides_json)"
 export EXPECTED_GUIDES_JSON
 
@@ -325,6 +356,7 @@ import yaml
 
 
 pipeline_name = os.environ["PIPELINE_NAME"]
+pipeline_display_name = os.environ["PIPELINE_DISPLAY_NAME"]
 pipeline_version_name = os.environ["PIPELINE_VERSION_NAME"]
 pipeline_yaml = Path(os.environ["PIPELINE_YAML"])
 pipeline_cr_yaml = Path(os.environ["PIPELINE_CR_YAML"])
@@ -352,7 +384,7 @@ pipeline_resource = {
         "labels": labels,
     },
     "spec": {
-        "displayName": pipeline_name,
+        "displayName": pipeline_display_name,
         "description": "Stage 230 RHOAI product-document Docling preparation pipeline.",
         "tags": tags,
     },
@@ -367,7 +399,7 @@ pipeline_version_resource = {
     },
     "spec": {
         "pipelineName": pipeline_name,
-        "displayName": pipeline_version_name,
+        "displayName": f"{pipeline_display_name} {pipeline_version_name}",
         "description": "Compiled Stage 230 RHOAI product-document Docling KFP IR for the current run.",
         "pipelineSpec": pipeline_spec,
         "tags": tags,
@@ -411,6 +443,7 @@ def item_id(item, *names):
 
 namespace = os.environ["RAG_NS"]
 pipeline_name = os.environ["PIPELINE_NAME"]
+pipeline_display_name = os.environ["PIPELINE_DISPLAY_NAME"]
 pipeline_version_name = os.environ["PIPELINE_VERSION_NAME"]
 experiment_name = os.environ["EXPERIMENT_NAME"]
 
@@ -424,13 +457,24 @@ kfp_client = client.Client(
 
 def find_pipeline():
     pipelines = kfp_client.list_pipelines(page_size=100).pipelines or []
-    return next((candidate for candidate in pipelines if item_name(candidate) == pipeline_name), None)
+    return next(
+        (
+            candidate
+            for candidate in pipelines
+            if item_name(candidate) in {pipeline_name, pipeline_display_name}
+        ),
+        None,
+    )
 
 
 def find_pipeline_version(pipeline_id):
     versions = kfp_client.list_pipeline_versions(pipeline_id=pipeline_id, page_size=100)
     pipeline_versions = versions.pipeline_versions or []
-    return next((candidate for candidate in pipeline_versions if item_name(candidate) == pipeline_version_name), None)
+    expected_version_names = {
+        pipeline_version_name,
+        f"{pipeline_display_name} {pipeline_version_name}",
+    }
+    return next((candidate for candidate in pipeline_versions if item_name(candidate) in expected_version_names), None)
 
 
 pipeline = None
@@ -469,14 +513,23 @@ except Exception:
 experiment_id = item_id(experiment, "experiment_id", "id")
 
 params = {
-    "s3_source_prefix": os.environ["SOURCE_PREFIX"],
     "output_s3_key": os.environ["OUTPUT_S3_KEY"],
     "pipeline_s3_secret_name": os.environ["PIPELINE_S3_SECRET"],
-    "max_chars": int(os.environ["CHUNK_MAX_CHARS"]),
-    "focus_only": os.environ["FOCUS_ONLY"].lower() == "true",
     "max_documents": int(os.environ["MAX_DOCUMENTS"]),
-    "do_ocr": os.environ["DO_OCR"].lower() == "true",
-    "do_table_structure": os.environ["DO_TABLE_STRUCTURE"].lower() == "true",
+    "num_splits": int(os.environ["NUM_SPLITS"]),
+    "pdf_from_s3": True,
+    "pdf_base_url": "",
+    "focus_only": os.environ["FOCUS_ONLY"].lower() == "true",
+    "docling_pdf_backend": os.environ["DOCLING_PDF_BACKEND"],
+    "docling_image_export_mode": os.environ["DOCLING_IMAGE_EXPORT_MODE"],
+    "docling_table_mode": os.environ["DOCLING_TABLE_MODE"],
+    "docling_num_threads": int(os.environ["DOCLING_NUM_THREADS"]),
+    "docling_timeout_per_document": int(os.environ["DOCLING_TIMEOUT_PER_DOCUMENT"]),
+    "docling_ocr": os.environ["DOCLING_OCR"].lower() == "true",
+    "docling_force_ocr": os.environ["DOCLING_FORCE_OCR"].lower() == "true",
+    "docling_ocr_engine": os.environ["DOCLING_OCR_ENGINE"],
+    "docling_chunk_max_tokens": int(os.environ["DOCLING_CHUNK_MAX_TOKENS"]),
+    "docling_chunk_merge_peers": os.environ["DOCLING_CHUNK_MERGE_PEERS"].lower() == "true",
 }
 run_name = f"rhoai-product-docs-docling-{int(time.time())}"
 run = kfp_client.run_pipeline(

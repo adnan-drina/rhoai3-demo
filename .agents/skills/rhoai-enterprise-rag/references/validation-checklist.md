@@ -105,6 +105,14 @@ Use this checklist before accepting Stage 230 RAG changes.
   DSPA, task logs and metrics are reviewed, converted Markdown/Docling
   JSON/chunk artifacts have been inspected, and the pipeline output passes the
   RAG smoke helper.
+- Dashboard validation checks the `Enterprise RAG` project `Pipelines` page,
+  not the project `Deployments` page, for Docling. The pipeline display name
+  should be `RHOAI Product Docs Docling Pipeline`; nested run-graph tasks
+  should include `download-docling-models`, `docling-convert-standard`,
+  `docling-chunk`, and `publish-docling-split-outputs`.
+- A missing Docling `InferenceService` is expected in the active Stage 230
+  design. Treat only served endpoints such as `qwen3-reranker` as Deployment
+  tab resources unless the stage plan explicitly adds Docling API serving.
 - Product-document RAG smoke may index a bounded per-topic subset of the
   generated JSONL for routine redeploy validation, but it must still read the
   current pipeline output, attach file metadata cleanly, use hybrid search,

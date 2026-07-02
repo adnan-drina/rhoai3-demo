@@ -1159,12 +1159,26 @@ RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT=true \
 ./stage-230-private-data-rag/validate.sh
 ```
 
-The KFP component uses the `docling-standard` path for text-native PDFs, with
-OCR disabled by default and table-structure extraction enabled. It writes
-converted Markdown and Docling JSON artifacts under
-`processed/rhoai-product-docs/docling-artifacts/`. The selected Docling
-component image is a repo-owned KFP runtime dependency and is recorded as a
-demo exception until replaced with a reviewed Red Hat or custom image.
+The KFP implementation uses the modular `docling-standard` path for
+text-native PDFs, with OCR disabled by default and accurate table mode enabled.
+Pipeline runs should show separate tasks for source selection, `import-pdfs`,
+`create-pdf-splits`, `download-docling-models`,
+`docling-convert-standard`, `docling-chunk`,
+`publish-docling-split-outputs`, and
+`normalize-rhoai-product-doc-chunks`. The split publisher uploads converted
+Markdown, Docling JSON, and HybridChunker JSONL artifacts under
+`processed/rhoai-product-docs/`; the final normalizer writes the JSONL RAG
+handoff to the configured output key. The selected Docling component image is
+a repo-owned KFP runtime dependency and is recorded as a demo exception until
+replaced with a reviewed Red Hat or custom image.
+
+Dashboard visibility: in OpenShift AI, select project `Enterprise RAG` and
+open `Pipelines`, then choose `RHOAI Product Docs Docling Pipeline`. The
+Docling conversion and chunking work is visible in the run graph; some tasks
+are nested inside the `ParallelFor` split loop. Docling is not expected in the
+project `Deployments` tab for this stage. `Deployments` shows KServe-served
+endpoints such as `qwen3-reranker`; Docling follows the Red Hat-documented
+data-preparation pattern as a KFP component.
 
 To intentionally refresh the committed prepared JSONL from the official PDFs,
 run the preparation helper locally and review the diff before committing:

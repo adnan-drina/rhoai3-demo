@@ -51,6 +51,15 @@ the source PDFs into the Stage 230 NooBaa bucket under `raw/rhoai-product-docs/`
 GitOps-managed DSPA server and writes reviewed output chunks plus converted
 Markdown/Docling JSON artifacts back to S3.
 
+Docling is intentionally not a model deployment in this stage. In the RHOAI
+dashboard, KServe-served endpoints such as the Qwen3 reranker appear under the
+project `Deployments` tab. Docling appears under `Pipelines` as the
+`RHOAI Product Docs Docling Pipeline`, and the Docling work is visible in the
+run graph as `download-docling-models`, `docling-convert-standard`,
+`docling-chunk`, and `publish-docling-split-outputs` tasks. Creating a
+dashboard model deployment for Docling would be a separate serving design, not
+the Red Hat-documented data-preparation pattern followed here.
+
 The product-document corpus is documentation grounding only. It does not mean
 Stage 230 implements AutoRAG optimization, EvalHub jobs, guardrails, RAGAS
 evaluation, or those adjacent product capabilities. Stage 230 does implement
@@ -108,14 +117,25 @@ flowchart LR
 The workbench opens into a curated notebook workspace under
 `/opt/app-root/src/workspace`:
 
+**AG News reference** (from the Red Hat OGX blog post):
+
 - `Ingestion_pipeline_ag_news.ipynb`
 - `retrieval_pipeline_ag_news.ipynb`
-- `rhoai_product_docs_rag_smoke.ipynb`
 
-Runtime helper scripts and sample data are generated under hidden `.stage230`
-workspace content rather than showing the full implementation repository.
+**RHOAI product documentation** (main demo use case):
 
-Run the Red Hat article-aligned AG News acceptance path:
+- `Docling_data_preparation_rhoai_docs.ipynb` -- S3 PDF read, Docling
+  conversion and chunking, metadata enrichment, JSONL output to S3
+- `Ingestion_pipeline_rhoai_docs.ipynb` -- vector store creation, Files API
+  upload, metadata attachment (mirrors the AG News ingestion pattern)
+- `Retrieval_pipeline_rhoai_docs.ipynb` -- metadata extraction, hybrid search,
+  reranking, grounded answer generation (mirrors the AG News retrieval pattern)
+
+Each RHOAI docs notebook step maps to a KFP pipeline component for later
+automation. Runtime helper scripts and sample data are generated under hidden
+`.stage230` workspace content rather than showing the full repository.
+
+Run the Red Hat article-aligned AG News acceptance path from CLI:
 
 ```bash
 cd /opt/app-root/src/workspace
@@ -124,23 +144,7 @@ python .stage230/scripts/agnews_rag_acceptance.py \
   --search-mode hybrid
 ```
 
-Prepare and query the focused RHOAI 3.4 product-document corpus:
-
-```bash
-cd /opt/app-root/src/workspace
-python .stage230/scripts/rhoai_product_docs_prepare.py \
-  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
-  --source-dir .stage230/data/rhoai-product-docs/source \
-  --output .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl
-python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
-  --reset \
-  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
-  --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-  --vector-store stage230-rhoai-34-product-docs \
-  --search-mode hybrid
-```
-
-The smoke helper reads the full prepared JSONL, then indexes a bounded
+The CLI smoke helper reads the full prepared JSONL, then indexes a bounded
 per-topic subset for the selected smoke questions by default. This keeps
 redeploy validation fast while still proving Files API upload, Vector Stores
 metadata, hybrid retrieval, reranking, and Nemotron answer generation from the
@@ -192,6 +196,21 @@ The full runner compiles the KFP v2 pipeline, creates a new
 PipelineVersion, submits a run, reviews the S3 output, confirms converted
 Markdown and Docling JSON artifacts exist, and stores evidence in
 `enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
+
+Dashboard path: select the `Enterprise RAG` project, open `Pipelines`, choose
+`RHOAI Product Docs Docling Pipeline`, then open the latest run. The top-level
+pipeline shows source selection, import, split, model download, and final
+normalization. The Docling conversion and chunking tasks are nested inside the
+parallel split loop in the run graph.
+
+The OpenShift AI Pipelines run graph shows Docling as modular tasks instead of
+one opaque stage-specific component:
+
+```text
+select sources -> import PDFs -> split PDFs -> download Docling models
+  -> ParallelFor(convert with Docling -> chunk with HybridChunker -> publish split outputs)
+  -> normalize Stage 230 RAG chunks
+```
 
 To make validation run both the pipeline and the RAG smoke over the generated
 pipeline output:

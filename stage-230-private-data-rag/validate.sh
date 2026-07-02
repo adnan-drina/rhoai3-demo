@@ -33,6 +33,7 @@ RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
 RHOAI_DOCS_PIPELINE_NAME="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_NAME:-stage-230-rhoai-product-docs-docling}"
+RHOAI_DOCS_PIPELINE_DISPLAY_NAME="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_DISPLAY_NAME:-RHOAI Product Docs Docling Pipeline}"
 RHOAI_DOCS_PIPELINE_EVIDENCE_CM="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_EVIDENCE_CM:-stage230-rhoai-docs-pipeline-evidence}"
 RHOAI_DOCS_PIPELINE_OUTPUT_KEY="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY:-processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-chunks.jsonl}"
 RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS:-3600}"
@@ -190,6 +191,40 @@ dspa_route_host=$(jsonpath "route/ds-pipeline-${DSPA_NAME}" "$RAG_NS" "{.spec.ho
   && check "Enterprise RAG DSPA route exists" "pass" \
   || check "Enterprise RAG DSPA route exists" "missing"
 
+resource_exists "pipeline/${RHOAI_DOCS_PIPELINE_NAME}" "$RAG_NS" \
+  && check "RHOAI product docs Docling Pipeline resource exists" "pass" \
+  || warn "RHOAI product docs Docling Pipeline resource exists" "run stage-230-private-data-rag/run-rhoai-docs-pipeline.sh"
+
+pipeline_display_name=$(jsonpath "pipeline/${RHOAI_DOCS_PIPELINE_NAME}" "$RAG_NS" "{.spec.displayName}")
+[[ "$pipeline_display_name" == "$RHOAI_DOCS_PIPELINE_DISPLAY_NAME" ]] \
+  && check "RHOAI product docs Docling Pipeline has dashboard display name" "pass" \
+  || warn "RHOAI product docs Docling Pipeline has dashboard display name" "${pipeline_display_name:-missing}"
+
+if command -v jq >/dev/null 2>&1; then
+  pipeline_version_summary=$(
+    oc get pipelineversion -n "$RAG_NS" -o json --insecure-skip-tls-verify=true 2>/dev/null \
+      | jq -r --arg pipeline "$RHOAI_DOCS_PIPELINE_NAME" --arg display "$RHOAI_DOCS_PIPELINE_DISPLAY_NAME" '
+          [.items[] | select(.spec.pipelineName == $pipeline)] as $versions
+          | if ($versions | length) == 0 then
+              "0\t"
+            else
+              ($versions | sort_by(.metadata.creationTimestamp) | last) as $latest
+              | "\($versions | length)\t\($latest.spec.displayName // "")"
+            end
+        ' || true
+  )
+  pipeline_version_count="${pipeline_version_summary%%$'\t'*}"
+  latest_pipeline_version_display="${pipeline_version_summary#*$'\t'}"
+  [[ "${pipeline_version_count:-0}" -ge 1 ]] \
+    && check "RHOAI product docs Docling PipelineVersion exists" "pass" \
+    || warn "RHOAI product docs Docling PipelineVersion exists" "run stage-230-private-data-rag/run-rhoai-docs-pipeline.sh"
+  [[ "$latest_pipeline_version_display" == "$RHOAI_DOCS_PIPELINE_DISPLAY_NAME"* ]] \
+    && check "Latest Docling PipelineVersion uses readable display name" "pass" \
+    || warn "Latest Docling PipelineVersion uses readable display name" "${latest_pipeline_version_display:-missing}"
+else
+  warn "RHOAI product docs Docling PipelineVersion visibility check skipped" "install jq"
+fi
+
 rhoai_pdf_dir="$SCRIPT_DIR/data/rhoai-product-docs/source"
 if [[ -d "$rhoai_pdf_dir" ]]; then
   rhoai_pdf_count=$(find "$rhoai_pdf_dir" -maxdepth 1 -type f -name '*.pdf' | wc -l | tr -d ' ')
@@ -259,6 +294,12 @@ reranker_route_host=$(jsonpath "route/${RERANKER_NAME}" "$RAG_NS" "{.spec.host}"
 [[ -n "$reranker_route_host" ]] \
   && check "Qwen3 reranker route exists" "pass" \
   || check "Qwen3 reranker route exists" "missing"
+
+if resource_exists "inferenceservice/docling" "$RAG_NS" || resource_exists "inferenceservice/docling-standard" "$RAG_NS"; then
+  warn "Docling is represented as AI Pipelines tasks, not a model Deployment" "unexpected Docling InferenceService exists"
+else
+  check "Docling is represented as AI Pipelines tasks, not a model Deployment" "pass"
+fi
 
 resource_exists "serviceaccount/${WORKBENCH_NAME}" "$RAG_NS" \
   && check "Enterprise RAG Workbench ServiceAccount exists" "pass" \
@@ -336,7 +377,9 @@ if [[ -n "$workbench_pod" ]]; then
   if oc --insecure-skip-tls-verify=true exec -n "$RAG_NS" "$workbench_pod" -c "$WORKBENCH_NAME" -- bash -lc \
     'test -f /opt/app-root/src/workspace/Ingestion_pipeline_ag_news.ipynb &&
      test -f /opt/app-root/src/workspace/retrieval_pipeline_ag_news.ipynb &&
-     test -f /opt/app-root/src/workspace/rhoai_product_docs_rag_smoke.ipynb &&
+     test -f /opt/app-root/src/workspace/Docling_data_preparation_rhoai_docs.ipynb &&
+     test -f /opt/app-root/src/workspace/Ingestion_pipeline_rhoai_docs.ipynb &&
+     test -f /opt/app-root/src/workspace/Retrieval_pipeline_rhoai_docs.ipynb &&
      test -d /opt/app-root/src/workspace/.stage230 &&
      test -d /opt/app-root/src/workspace/.stage230/python &&
      test -f /opt/app-root/src/workspace/.stage230/scripts/rhoai_product_docs_prepare.py &&
@@ -527,7 +570,7 @@ else
 fi
 
 if python3 -m py_compile \
-  "$SCRIPT_DIR/kfp/components/rhoai_product_docling_components.py" \
+  "$SCRIPT_DIR"/kfp/components/*.py \
   "$SCRIPT_DIR/kfp/rhoai_product_docs_docling_pipeline.py" >/dev/null 2>&1; then
   check "RHOAI product docs Docling KFP source compiles" "pass"
 else
@@ -548,6 +591,12 @@ then
     --output "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" >/dev/null 2>&1 \
     && [[ -s "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" ]]; then
     check "RHOAI product docs Docling KFP pipeline compiles locally" "pass"
+    if grep -Eq "docling-convert-standard|docling-chunk|publish-docling-split-outputs|normalize-rhoai-product-doc-chunks" \
+      "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml"; then
+      check "RHOAI product docs Docling KFP pipeline exposes modular dashboard tasks" "pass"
+    else
+      check "RHOAI product docs Docling KFP pipeline exposes modular dashboard tasks" "missing"
+    fi
   else
     check "RHOAI product docs Docling KFP pipeline compiles locally" "compiler failed"
   fi

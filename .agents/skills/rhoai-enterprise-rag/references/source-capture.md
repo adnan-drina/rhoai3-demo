@@ -18,8 +18,8 @@
 |--------|------|
 | https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx | Red Hat Developer article for the enterprise RAG pattern: metadata filtering, hybrid search, neural reranking, AG News, Milvus, Llama Stack / OGX |
 | https://github.com/abdelhamidfg/agnews-rag-demo | GitHub reference implementation linked from the Red Hat Developer article; use as example notebooks and Helm-chart evidence, not product authority |
-| https://github.com/opendatahub-io/data-processing/tree/stable | Official-doc-linked data processing examples for Docling notebooks and KFP pipelines; use as implementation evidence for unstructured document processing |
-| https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines | Current Docling Kubeflow Pipeline reference implementation; compare with the official-doc-linked `stable` branch before adopting newer pipeline code |
+| https://github.com/opendatahub-io/data-processing/tree/stable | Official-doc-linked data processing examples for Docling notebooks and KFP pipelines; use as baseline implementation evidence for unstructured document processing |
+| https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines | Current Docling Kubeflow Pipeline reference implementation; active Stage 230 intentionally follows this tree for the modular standard/VLM layout, Secret-mounted S3 input, `ParallelFor` conversion, and HybridChunker output |
 
 ## Reference Repository Snapshot Reviewed
 
@@ -88,9 +88,14 @@ Patterns reused for the RHOAI product-document pipeline phase:
 - choose `docling-standard` first for normal PDF conversion, OCR, table
   structure, enrichments, Markdown output, Docling JSON output, and optional
   HybridChunker chunk output
-- adapt the stable branch `docling-standard` shape into local KFP source,
+- adapt the reviewed upstream `docling-standard` shape into local KFP source,
   validate compilation, run through DSPA, review S3 artifacts, and then pass
   the generated chunk output to the same RAG smoke helper
+- preserve the modular upstream task graph in Stage 230: source selection,
+  `import-pdfs`, `create-pdf-splits`, `download-docling-models`,
+  `docling-convert-standard`, `docling-chunk`,
+  `publish-docling-split-outputs`, and a final repo-specific normalization
+  task
 - for routine redeploy validation, let the RAG smoke helper index a bounded
   per-topic subset from the generated chunk output; use full-corpus indexing
   only as an explicit deeper validation run
@@ -134,5 +139,7 @@ Patterns not copied directly:
   examples, but this repo must still review images, dependencies, credentials,
   pipeline parameters, and generated YAML before adopting them.
 - Prefer the official-doc-linked `stable` branch for baseline-aligned demo
-  implementation. Use `main` only when a specific pipeline fix or feature is
-  needed and the branch choice is recorded in the stage plan.
+  implementation unless the stage plan records a different choice. Active
+  Stage 230 intentionally uses `main/kubeflow-pipelines` for the modular
+  Docling standard pipeline graph and HybridChunker task shape requested by
+  the user.

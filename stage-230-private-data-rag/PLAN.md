@@ -64,7 +64,8 @@ Out of scope for this stage unless explicitly added later:
 | Reranker | Use the article's Qwen3 reranker pattern on CPU | Reranker improves precision; the non-Red-Hat modelcar remains a documented demo exception |
 | Reranker registration | Register Qwen3 in Llama Stack as `vllm-reranker/qwen3-reranker` and call `/v1alpha/inference/rerank` | Matches the reference notebook flow better than calling the KServe/vLLM endpoint directly |
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
-| KFP posture | Use a focused `docling-standard` KFP pipeline for the committed RHOAI product PDFs | Proves the product-recommended pipeline automation path without mixing in AutoRAG, RAGAS, or guardrails scope |
+| KFP posture | Use a modular `docling-standard` KFP pipeline for the committed RHOAI product PDFs | Follows the OpenDataHub data-processing pattern with dashboard-visible import, split, model-download, convert, chunk, and Stage-specific normalization tasks without mixing in AutoRAG, RAGAS, or guardrails scope |
+| Docling dashboard placement | Show Docling in the OpenShift AI Pipelines run graph, not the project Deployments tab | The Red Hat-documented and OpenDataHub reference pattern uses Docling as a KFP data-preparation component. The Deployments tab is reserved here for served endpoints such as the Qwen3 reranker. |
 
 ## Source Capture
 
@@ -77,7 +78,7 @@ Out of scope for this stage unless explicitly added later:
 | Product config | [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) | `rhoai-model-customization-training`, `rhoai-ai-pipelines`, `rhoai-kfp-pipeline-authoring` | Product authority for Docling data preparation and future KFP automation |
 | Reference implementation | [abdelhamidfg/agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) | `rhoai-enterprise-rag` | Red Hat article-linked repo; example-only source for chart and notebooks |
 | Reference implementation | [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG) | `rhoai-chatbot-customization` | Best matching Streamlit UI reference; reuse direct-RAG chat, vector-store selection, runtime inspection, and ConfigMap-driven app settings while avoiding outdated client pins and upload flows |
-| Reference implementation | [opendatahub-io/data-processing stable branch](https://github.com/opendatahub-io/data-processing/tree/stable) | `rhoai-model-customization-training`, `rhoai-kfp-pipeline-authoring` | Red Hat-documented Docling notebook and KFP examples for the next RHOAI product-doc automation pass |
+| Reference implementation | [opendatahub-io/data-processing `main` KFP tree](https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines) | `rhoai-model-customization-training`, `rhoai-kfp-pipeline-authoring` | Newer Red Hat-documented Docling KFP example selected for its modular standard/VLM layout, Secret-mounted S3 input, `ParallelFor` conversion, and HybridChunker output |
 
 ## Manifest Inventory
 
@@ -93,7 +94,7 @@ Out of scope for this stage unless explicitly added later:
 | `gitops/stage-230-private-data-rag/dashboard/` | OpenShift AI dashboard `OdhApplication` tile for the RAG chatbot | RHOAI dashboard application docs | Tile exists in `redhat-ods-applications`, uses documented dashboard labels, and points at the chatbot Route |
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy uploads PDFs to project bucket |
-| `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` stable branch | KFP source compiles and pipeline runs through DSPA |
+| `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` `main/kubeflow-pipelines` | KFP source compiles, exposes modular Docling tasks in the Dashboard run graph, and pipeline runs through DSPA |
 | `gitops/stage-230-private-data-rag/app/` | Streamlit RAG chatbot build and runtime resources | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; BuildConfig in `enterprise-rag-build`; Deployment and route health in `enterprise-rag` |
 | `stage-230-private-data-rag/chatbot/` | Streamlit RAG chatbot source | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; OpenShift binary build; route health |
 | `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` | KFP compile/upload/run/evidence helper | RHOAI AI Pipelines docs and repo KFP standards | PipelineVersion created, run succeeds, S3 artifacts reviewed |
@@ -129,10 +130,15 @@ Out of scope for this stage unless explicitly added later:
 - Confirm the shared DSC has AI Pipelines enabled.
 - Confirm the `dspa-enterprise-rag` pipeline server exists, reports Ready, and
   exposes a route.
+- Confirm the `RHOAI Product Docs Docling Pipeline` `Pipeline` and latest
+  `PipelineVersion` are visible to the DSPA/KFP API with readable dashboard
+  display names.
 - Confirm repo-stored RHOAI product source PDFs and prepared chunks exist.
 - Confirm PostgreSQL availability and `pgvector` extension installation.
 - Confirm Llama Stack readiness and model list.
 - Confirm the Qwen3 reranker `InferenceService` and route.
+- Confirm Docling is represented by AI Pipelines tasks and is not expected as a
+  KServe `InferenceService` in the Deployments tab.
 - Confirm the Enterprise RAG Workbench exists, reports Ready when available,
   exposes the curated AG News and RHOAI product-doc workspace, and does not
   expose the full implementation repository.
@@ -163,8 +169,14 @@ Out of scope for this stage unless explicitly added later:
 - Create a reviewed `Pipeline` and timestamped `PipelineVersion` using
   Kubernetes API pipeline storage.
 - Submit a DSPA run against `dspa-enterprise-rag`.
-- Process source PDFs from `raw/rhoai-product-docs/`.
-- Write Docling Markdown/JSON artifacts and JSONL chunks under
+- Process source PDFs from the `data-processing-docling-pipeline` Secret's
+  S3 prefix, normally `raw/rhoai-product-docs/`.
+- Run modular KFP tasks matching the upstream `docling-standard` flow:
+  source selection, `import-pdfs`, `create-pdf-splits`,
+  `download-docling-models`, `ParallelFor(docling-convert-standard ->
+  docling-chunk -> publish-docling-split-outputs)`, and
+  `normalize-rhoai-product-doc-chunks`.
+- Write Docling Markdown/JSON evidence and JSONL chunks under
   `processed/rhoai-product-docs/`.
 - Review the S3 output and store run evidence in
   `stage230-rhoai-docs-pipeline-evidence`.

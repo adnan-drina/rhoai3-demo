@@ -83,13 +83,18 @@
      capabilities beyond the active RAG and pipeline data-preparation path.
 8. Automate RHOAI product-document processing with AI Pipelines.
    - Use the official-doc-linked `opendatahub-io/data-processing` stable branch
-     as the first implementation reference.
-   - Compare the current `main/kubeflow-pipelines` tree when the user asks for
-     that reference implementation, but record any decision to use `main`
-     instead of `stable`.
+     as the baseline implementation reference unless the stage plan records a
+     different choice.
+   - Active Stage 230 intentionally uses the current `main/kubeflow-pipelines`
+     tree because the user selected the newer modular implementation. Keep that
+     branch choice in the stage plan and KFP README.
    - Start from the standard Docling KFP pipeline for ordinary PDFs, OCR, table
-     structure, Markdown output, Docling JSON output, and optional
-     HybridChunker output.
+     structure, Markdown output, Docling JSON output, and HybridChunker output.
+   - Preserve modular, dashboard-visible KFP tasks: source selection,
+     `import-pdfs`, `create-pdf-splits`, `download-docling-models`,
+     `docling-convert-standard`, `docling-chunk`,
+     `publish-docling-split-outputs`, and one repo-specific normalizer for the
+     RHOAI product-document metadata contract.
    - Evaluate the VLM Docling KFP pipeline only for complex layouts, scanned
      or image-heavy documents, custom page-level instructions, remote VLM
      conversion, or documents that require image descriptors.
@@ -98,6 +103,11 @@
      `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, and
      `S3_PREFIX`, generated from the Stage 110/230 object-storage connection
      at deploy or run time.
+   - For tasks nested inside `dsl.ParallelFor`, mount the deterministic
+     GitOps-owned `data-processing-docling-pipeline` Secret by literal name.
+     The active RHOAI 3.4 KFP driver does not resolve a pipeline-level
+     secret-name parameter from the parent DAG for nested Kubernetes Secret
+     mounts, even when local compilation succeeds.
    - Enable `docling_chunk_enabled=True` only after converted Markdown and
      Docling JSON output have been inspected; use chunk JSONL output as the
      handoff to Files API / Vector Stores API ingestion.
@@ -108,6 +118,12 @@
    - Add DSPA, S3 Secret generation, pipeline import/version handling, run
      submission, task-log checks, metrics checks, artifact review, and RAG
      smoke over generated output before indexing larger-corpus output.
+   - Validate dashboard placement explicitly: Docling should appear in the
+     OpenShift AI `Pipelines` run graph for the `RHOAI Product Docs Docling
+     Pipeline`, not in the project `Deployments` tab. The Deployments tab is
+     for KServe-served endpoints such as the Qwen3 reranker. Do not create a
+     Docling `InferenceService` merely for dashboard visibility unless a later
+     stage explicitly designs and documents a Docling API-serving pattern.
    - Keep routine validation bounded: the RAG smoke helper should index a
      small per-topic subset from the generated JSONL while proving metadata,
      hybrid search, reranking, and grounded answer generation. Use full-corpus
