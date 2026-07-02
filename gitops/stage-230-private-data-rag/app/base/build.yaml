@@ -22,6 +22,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
 spec:
+  failedBuildsHistoryLimit: 5
+  nodeSelector: null
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
   source:
     type: Binary
     binary: {}
@@ -33,6 +38,7 @@ spec:
     to:
       kind: ImageStreamTag
       name: private-rag-chatbot:latest
+  successfulBuildsHistoryLimit: 5
   triggers: []
 ---
 apiVersion: rbac.authorization.k8s.io/v1

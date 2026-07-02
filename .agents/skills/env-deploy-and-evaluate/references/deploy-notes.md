@@ -141,6 +141,12 @@ environment:
   injects bookkeeping labels/annotations.
   Keep narrow Argo CD `ignoreDifferences` entries for the injected fields
   instead of patching live controllers to custom `lq-*` queues after admission.
+- **Stage 230 chatbot BuildConfig defaults**: The private RAG chatbot binary
+  `BuildConfig` runs in the non-Kueue `enterprise-rag-build` namespace while the
+  app runs in `enterprise-rag`. Keep OpenShift-defaulted BuildConfig fields such
+  as `runPolicy`, build history limits, `postCommit`, `resources`, and
+  `nodeSelector` explicit in GitOps so Argo CD remains synced after the build
+  controller initializes the resource.
 - **Step 07**: LlamaStack RAG (`lsd-rag`) uses `rh-dev` env vars with pgvector + minimal `userConfig` (overrides `annotation_instruction_template` to prevent `<|file-xxx|>` markers). Key env vars: `ENABLE_PGVECTOR=true`, `PGVECTOR_*` from Secret, `EMBEDDING_PROVIDER=sentence-transformers`, `FMS_ORCHESTRATOR_URL`. Vector stores persist across restarts.
 - **Step 07 — rag-chatbot build**: The `rag-chatbot` BuildConfig may not auto-trigger on first deploy. deploy.sh now triggers `oc start-build` automatically.
 - **Step 07 — Agent-based system prompt**: Grounding, retry, execute_sql hint, OpenShift hint, concise answers, "don't print Sources".
