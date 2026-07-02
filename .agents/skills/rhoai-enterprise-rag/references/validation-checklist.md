@@ -32,6 +32,9 @@ Use this checklist before accepting Stage 230 RAG changes.
   intentionally uses `milvus-remote`.
 - Qwen3 reranker `InferenceService` is Ready when AG News compatibility is in
   scope.
+- Qwen3 reranker `ServingRuntime` version and image match the installed RHOAI
+  `vllm-cpu-x86-runtime-template` in `redhat-ods-applications`; otherwise the
+  dashboard can flag the deployment as `Outdated`.
 - Enterprise RAG Workbench exists and can open JupyterLab when notebook-driven
   ingestion or inspection is in scope.
 - Enterprise RAG Workbench exposes the curated notebook workspace expected by

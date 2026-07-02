@@ -9,7 +9,7 @@
 | Embedding provider | Use the embedding model listed by the active RHOAI Llama Stack server, currently `sentence-transformers/nomic-ai/nomic-embed-text-v1.5` with dimension 768 | The article notebook defaults to Granite, but the demo must use a model returned by `/v1/models` unless a supported registration path is validated |
 | Vector store | Remote PostgreSQL with pgvector | Official RHOAI 3.4 Llama Stack docs document pgvector as a remote vector provider. In the observed Stage 230 RHOAI 3.4 environment, the installed pgvector provider enforces metadata filters for vector, keyword, and hybrid search. |
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
-| Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
+| Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Build the project-scoped `ServingRuntime` from the installed RHOAI `vllm-cpu-x86-runtime-template` version and image for the active cluster, then size the CPU request for the demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
 | Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Target the committed RHOAI product PDFs first; accept only after compile, DSPA run, S3 artifact review, and RAG smoke over pipeline-generated chunks |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
@@ -32,7 +32,9 @@
    - Configure the embedding provider and capture the model ID plus dimension
      returned by `/v1/models`.
    - Deploy the Qwen3 reranker through GitOps-managed KServe/vLLM CPU resources
-     after recording the modelcar/runtime image posture as a demo exception,
+     after recording the non-Red-Hat modelcar posture as a demo exception.
+     The vLLM CPU runtime must match the installed RHOAI
+     `vllm-cpu-x86-runtime-template` version and image for the active baseline,
      and expose it through Llama Stack so notebooks call
      `/v1alpha/inference/rerank` instead of the KServe endpoint directly.
    - Verify the reranker request fits a single schedulable CPU worker node and

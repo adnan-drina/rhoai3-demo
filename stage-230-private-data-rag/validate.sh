@@ -238,6 +238,18 @@ reranker_ready=$(condition_status "inferenceservice/${RERANKER_NAME}" "$RAG_NS" 
   && check "Qwen3 reranker InferenceService is Ready" "pass" \
   || check "Qwen3 reranker InferenceService is Ready" "${reranker_ready:-missing}"
 
+reranker_runtime_version=$(jsonpath "servingruntime/${RERANKER_NAME}" "$RAG_NS" "{.metadata.annotations.opendatahub\\.io/runtime-version}")
+template_runtime_version=$(jsonpath "template/vllm-cpu-x86-runtime-template" "redhat-ods-applications" "{.objects[0].metadata.annotations.opendatahub\\.io/runtime-version}")
+[[ -n "$template_runtime_version" && "$reranker_runtime_version" == "$template_runtime_version" ]] \
+  && check "Qwen3 reranker ServingRuntime matches installed RHOAI CPU vLLM template version" "pass" \
+  || check "Qwen3 reranker ServingRuntime matches installed RHOAI CPU vLLM template version" "runtime=${reranker_runtime_version:-missing},template=${template_runtime_version:-missing}"
+
+reranker_runtime_image=$(jsonpath "servingruntime/${RERANKER_NAME}" "$RAG_NS" "{.spec.containers[0].image}")
+template_runtime_image=$(jsonpath "template/vllm-cpu-x86-runtime-template" "redhat-ods-applications" "{.objects[0].spec.containers[0].image}")
+[[ -n "$template_runtime_image" && "$reranker_runtime_image" == "$template_runtime_image" ]] \
+  && check "Qwen3 reranker ServingRuntime uses installed RHOAI CPU vLLM image" "pass" \
+  || check "Qwen3 reranker ServingRuntime uses installed RHOAI CPU vLLM image" "runtime=${reranker_runtime_image:-missing},template=${template_runtime_image:-missing}"
+
 reranker_queue=$(jsonpath "inferenceservice/${RERANKER_NAME}" "$RAG_NS" "{.metadata.labels.kueue\\.x-k8s\\.io/queue-name}")
 [[ "$reranker_queue" == "lq-cpu-default" ]] \
   && check "Qwen3 reranker uses CPU LocalQueue" "pass" \
