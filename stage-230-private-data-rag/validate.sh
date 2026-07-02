@@ -32,6 +32,10 @@ RAG_BUCKET_OBC="${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-bucket}"
 RAG_S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
 PIPELINE_S3_SECRET="${RHOAI_STAGE230_PIPELINE_S3_SECRET:-data-processing-docling-pipeline}"
 RAG_PRODUCT_DOCS_PREFIX="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
+RHOAI_DOCS_PIPELINE_NAME="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_NAME:-stage-230-rhoai-product-docs-docling}"
+RHOAI_DOCS_PIPELINE_EVIDENCE_CM="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_EVIDENCE_CM:-stage230-rhoai-docs-pipeline-evidence}"
+RHOAI_DOCS_PIPELINE_OUTPUT_KEY="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY:-processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-chunks.jsonl}"
+RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS="${RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS:-3600}"
 DSPA_NAME="${RHOAI_STAGE230_DSPA_NAME:-dspa-enterprise-rag}"
 POSTGRES_SECRET="${RHOAI_STAGE230_POSTGRES_SECRET:-private-rag-postgres-credentials}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
@@ -429,6 +433,61 @@ else
   check "RHOAI product docs RAG smoke script compiles" "py_compile failed"
 fi
 
+if python3 -m py_compile \
+  "$SCRIPT_DIR/kfp/components/rhoai_product_docling_components.py" \
+  "$SCRIPT_DIR/kfp/rhoai_product_docs_docling_pipeline.py" >/dev/null 2>&1; then
+  check "RHOAI product docs Docling KFP source compiles" "pass"
+else
+  check "RHOAI product docs Docling KFP source compiles" "py_compile failed"
+fi
+
+kfp_python="python3"
+if [[ -x "$ROOT_DIR/.venv-kfp/bin/python" ]]; then
+  kfp_python="$ROOT_DIR/.venv-kfp/bin/python"
+fi
+
+if "$kfp_python" - <<'PY' >/dev/null 2>&1
+from kfp import compiler, dsl, kubernetes  # noqa: F401
+PY
+then
+  kfp_compile_dir=$(mktemp -d)
+  if "$kfp_python" "$SCRIPT_DIR/kfp/rhoai_product_docs_docling_pipeline.py" \
+    --output "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" >/dev/null 2>&1 \
+    && [[ -s "$kfp_compile_dir/stage-230-rhoai-product-docs-docling.yaml" ]]; then
+    check "RHOAI product docs Docling KFP pipeline compiles locally" "pass"
+  else
+    check "RHOAI product docs Docling KFP pipeline compiles locally" "compiler failed"
+  fi
+  rm -rf "$kfp_compile_dir"
+else
+  warn "RHOAI product docs Docling KFP pipeline local compile skipped" "install kfp==2.14.6 and kfp-kubernetes==2.14.6"
+fi
+
+if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE:-false}" == "true" ]]; then
+  if "$SCRIPT_DIR/run-rhoai-docs-pipeline.sh" --timeout-seconds="$RHOAI_DOCS_PIPELINE_TIMEOUT_SECONDS"; then
+    check "RHOAI product docs Docling DSPA/KFP run passes" "pass"
+  else
+    check "RHOAI product docs Docling DSPA/KFP run passes" "pipeline runner failed"
+  fi
+else
+  if resource_exists "configmap/${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}" "$RAG_NS"; then
+    check "RHOAI product docs Docling DSPA/KFP run evidence is reusable" "pass"
+  else
+    warn "RHOAI product docs Docling DSPA/KFP run was not run" "set RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE=true"
+  fi
+fi
+
+if resource_exists "configmap/${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}" "$RAG_NS"; then
+  pipeline_review=$(jsonpath "configmap/${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}" "$RAG_NS" "{.data.artifact-review\\.json}")
+  if [[ "$pipeline_review" == *'"status": "pass"'* ]]; then
+    check "RHOAI product docs Docling pipeline evidence is present" "pass"
+  else
+    check "RHOAI product docs Docling pipeline evidence is present" "artifact review did not report pass"
+  fi
+else
+  warn "RHOAI product docs Docling pipeline evidence is present" "missing ${RHOAI_DOCS_PIPELINE_EVIDENCE_CM}"
+fi
+
 if [[ "${RHOAI_STAGE230_RUN_ACCEPTANCE:-false}" == "true" ]]; then
   if [[ -n "${workbench_pod:-}" ]]; then
     acceptance_out=$(mktemp)
@@ -477,6 +536,57 @@ if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then
          --vector-store stage230-rhoai-34-product-docs \
          --max-questions 3 \
          --search-mode hybrid'
+    elif [[ "${RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT:-${RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE:-false}}" == "true" ]]; then
+      rhoai_docs_command=$(cat <<EOF
+cd /opt/app-root/src/workspace &&
+RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY='${RHOAI_DOCS_PIPELINE_OUTPUT_KEY}' python - <<'PY'
+import os
+from pathlib import Path
+
+import boto3
+from botocore.config import Config
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
+
+required = [
+    "AWS_S3_ENDPOINT",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_S3_BUCKET",
+    "RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY",
+]
+missing = [name for name in required if not os.environ.get(name)]
+if missing:
+    raise SystemExit(f"missing S3 environment variables: {missing}")
+
+disable_warnings(InsecureRequestWarning)
+key = os.environ["RHOAI_STAGE230_RHOAI_DOCS_PIPELINE_OUTPUT_KEY"].strip("/")
+client = boto3.client(
+    "s3",
+    endpoint_url=os.environ["AWS_S3_ENDPOINT"],
+    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+    verify=False,
+    config=Config(signature_version="s3v4"),
+)
+target = Path(".stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl")
+target.parent.mkdir(parents=True, exist_ok=True)
+body = client.get_object(Bucket=os.environ["AWS_S3_BUCKET"], Key=key)["Body"].read()
+if not body.strip():
+    raise SystemExit(f"s3://{os.environ['AWS_S3_BUCKET']}/{key} is empty")
+target.write_bytes(body)
+print(f"downloaded s3://{os.environ['AWS_S3_BUCKET']}/{key} to {target}")
+PY
+python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
+  --reset \
+  --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
+  --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
+  --vector-store stage230-rhoai-34-product-docs-kfp \
+  --max-questions 3 \
+  --search-mode hybrid
+EOF
+)
     else
       rhoai_docs_command='cd /opt/app-root/src/workspace &&
        python .stage230/scripts/rhoai_product_docs_prepare.py \

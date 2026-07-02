@@ -102,6 +102,12 @@ Use this checklist before accepting Stage 230 RAG changes.
   DSPA, task logs and metrics are reviewed, converted Markdown/Docling
   JSON/chunk artifacts have been inspected, and the pipeline output passes the
   RAG smoke helper.
+- Product-document RAG smoke may index a bounded per-topic subset of the
+  generated JSONL for routine redeploy validation, but it must still read the
+  current pipeline output, attach file metadata cleanly, use hybrid search,
+  call the reranker, and generate grounded answers with expected terms.
+  Full-corpus indexing is an optional deeper validation path, not the default
+  redeploy gate.
 - Docling KFP implementation declares whether it adapts `docling-standard` or
   `docling-vlm` and why.
 - `docling-vlm` is used only when layout/image complexity or remote VLM
@@ -149,6 +155,9 @@ Use this checklist before accepting Stage 230 RAG changes.
   fit the served reranker's configured maximum sequence length. Keep retrieval
   broad, but do not send every long PDF chunk directly to the reranker.
 - Final answer uses retrieved context and does not claim unsupported citations.
+- Expected-term checks normalize Unicode and whitespace before failing answers.
+  Do not remove expected product terms because a model renders names with
+  non-breaking or narrow no-break spaces.
 - Validation includes a negative or out-of-scope query.
 
 ## GitOps And Operations

@@ -11,7 +11,7 @@
 | Metadata store | PostgreSQL 14+ for Llama Stack metadata | Required for Llama Stack deployments; do not treat vector store and metadata store as interchangeable |
 | Reranker | CPU-hosted Qwen3 reranker reference model exposed through the Llama Stack provider-listed ID `vllm-reranker/qwen3-reranker` | Treat the non-Red-Hat modelcar as a demo exception; the initial reference implementation does not require a GPU. Size the CPU request for the active demo worker pool rather than copying an article-linked request that cannot schedule. |
 | Ingestion | RHOAI project workbench plus deterministic script derived from AG News reference notebooks | Use Files API and Vector Stores API; avoid manual-only success criteria |
-| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Target the committed RHOAI product PDFs first; start with a compile-ready product-document contract before DSPA/S3 larger-corpus execution |
+| Unstructured data preparation | Docling plus KFP automation based on `opendatahub-io/data-processing/kubeflow-pipelines` | Target the committed RHOAI product PDFs first; accept only after compile, DSPA run, S3 artifact review, and RAG smoke over pipeline-generated chunks |
 | Retrieval | Metadata extraction, hybrid search, rerank, final answer | Preserve all four steps in validation |
 | Product-document explainer corpus | Repo-stored official RHOAI 3.4 PDFs plus deterministic prepared chunks | Use the same Files API, Vector Stores API, filtered hybrid retrieval, rerank, and final-answer path to answer demo-audience questions about official product capabilities. Mirror source PDFs into the project S3 bucket during deployment, but do not treat adjacent product topics as implemented stage scope. |
 
@@ -104,8 +104,12 @@
      The upstream `DOCLING_BASE_IMAGE` is an implementation reference, not a
      product-supported image claim until reviewed.
    - Add DSPA, S3 Secret generation, pipeline import/version handling, run
-     submission, task-log checks, metrics checks, and artifact review before
-     indexing larger-corpus output.
+     submission, task-log checks, metrics checks, artifact review, and RAG
+     smoke over generated output before indexing larger-corpus output.
+   - Keep routine validation bounded: the RAG smoke helper should index a
+     small per-topic subset from the generated JSONL while proving metadata,
+     hybrid search, reranking, and grounded answer generation. Use full-corpus
+     indexing only when the stage plan explicitly asks for deeper validation.
 
 ## GitOps Translation Rules
 

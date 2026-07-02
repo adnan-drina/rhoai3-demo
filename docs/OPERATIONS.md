@@ -951,9 +951,9 @@ implementation. The current active slice:
   deterministic prepared chunks are committed under
   `stage-230-private-data-rag/data/rhoai-product-docs/` so fresh demo
   environments use the same reviewed corpus.
-- keeps a GitOps-managed DSPA pipeline server and generated
-  `data-processing-docling-pipeline` S3 Secret as the foundation for the next
-  RHOAI product-document KFP automation pass.
+- runs a Docling KFP pipeline through the GitOps-managed DSPA server to process
+  the same RHOAI product PDFs from S3 and write reviewed JSONL chunks plus
+  converted Markdown/Docling JSON artifacts back to S3.
 
 The validation gate is to ingest deterministic corpus records through Files
 and Vector Stores APIs, validate metadata-filtered hybrid retrieval, rerank
@@ -993,6 +993,11 @@ Current status:
   those chunks into the `stage230-rhoai-34-product-docs` vector store and
   validates metadata-filtered hybrid retrieval, reranking, and a final
   Nemotron answer.
+- `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` compiles the RHOAI
+  product-document Docling KFP source, creates a Pipeline/PipelineVersion in
+  the DSPA namespace, submits a run, reviews S3 output, checks converted
+  Markdown and Docling JSON artifacts, and stores evidence in
+  `enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
 - Old `run-whoami-*`, chatbot, prior non-product-document corpus, and prior
   Docling/KFP artifacts are removed from the active stage.
 
@@ -1011,8 +1016,7 @@ Current status:
   branch as Argo CD
 - refresh the Application after Secret creation
 - leave ingestion to validation or an explicit user-triggered smoke run
-- leave RHOAI product-document DSPA/KFP automation as next work; do not run
-  removed corpus-specific pipelines
+- do not run removed corpus-specific pipelines
 
 If the DSPA object-storage endpoint, scheme, bucket, or credentials are wrong,
 do not live patch the generated workflow-controller ConfigMap. Red Hat
@@ -1047,6 +1051,9 @@ gate:
   `lq-cpu-default` LocalQueue
 - the AG News smoke and acceptance helpers compile
 - the RHOAI product-document preparation and smoke helpers compile
+- the RHOAI product-document Docling KFP source compiles
+- optional KFP validation can run the DSPA pipeline and check
+  `stage230-rhoai-docs-pipeline-evidence`
 
 Optional validation gates prove the user-visible RAG outcome:
 
@@ -1059,8 +1066,10 @@ Optional validation gates prove the user-visible RAG outcome:
 - the RHOAI product-document explainer corpus can be prepared from the
   repo-stored PDFs and indexed through the same RAG path when
   `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`
-- RHOAI product-document DSPA/KFP automation must be implemented separately
-  before pipeline execution is used as the main product-doc processing path
+- the RHOAI product-document Docling pipeline runs through DSPA when
+  `RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE=true`
+- when both RHOAI product-document gates are enabled, validation downloads the
+  pipeline-generated JSONL output and uses it for the RAG smoke vector store
 
 Run the workbench-equivalent validated flow:
 
@@ -1088,8 +1097,55 @@ python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
 ```
 
 This flow is useful for explaining the setup to a demo audience from official
-RHOAI 3.4 docs. It does not replace implementation validation for AutoRAG,
-EvalHub, guardrails, AI Pipelines, or later Docling/DSPA work.
+RHOAI 3.4 docs. It does not implement AutoRAG, EvalHub, guardrails, or RAGAS;
+those remain separate product capabilities and future demo scope.
+
+By default, the product-document RAG smoke reads the full JSONL file and
+indexes a bounded per-topic subset for the selected smoke questions. This is
+the normal redeploy gate because it proves Files API upload, Vector Stores
+metadata, hybrid search, reranking, and Nemotron generation without indexing
+hundreds of chunks on every validation run. Use `--full-corpus` only when you
+intentionally want to index the entire generated corpus.
+
+Run the official RHOAI product-document Docling pipeline through AI Pipelines:
+
+```bash
+./stage-230-private-data-rag/run-rhoai-docs-pipeline.sh
+```
+
+For a one-document pipeline smoke run:
+
+```bash
+./stage-230-private-data-rag/run-rhoai-docs-pipeline.sh \
+  --max-documents=1 \
+  --output-s3-key=processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-smoke.jsonl
+```
+
+Run the full product-document pipeline and RAG smoke gate from validation:
+
+```bash
+RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE=true \
+RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
+./stage-230-private-data-rag/validate.sh
+```
+
+After the pipeline has already passed and
+`ConfigMap/stage230-rhoai-docs-pipeline-evidence` records a passing artifact
+review, validation can reuse that evidence and run only the bounded RAG smoke
+over the generated S3 output:
+
+```bash
+RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
+RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT=true \
+./stage-230-private-data-rag/validate.sh
+```
+
+The KFP component uses the `docling-standard` path for text-native PDFs, with
+OCR disabled by default and table-structure extraction enabled. It writes
+converted Markdown and Docling JSON artifacts under
+`processed/rhoai-product-docs/docling-artifacts/`. The selected Docling
+component image is a repo-owned KFP runtime dependency and is recorded as a
+demo exception until replaced with a reviewed Red Hat or custom image.
 
 To intentionally refresh the committed prepared JSONL from the official PDFs,
 run the preparation helper locally and review the diff before committing:

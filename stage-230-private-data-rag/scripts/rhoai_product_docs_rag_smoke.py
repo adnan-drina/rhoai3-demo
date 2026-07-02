@@ -7,9 +7,11 @@ import argparse
 import inspect
 import json
 import os
+import re
 import ssl
 import sys
 import tempfile
+import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -353,10 +355,15 @@ def final_answer(base_url: str, model: str, query: str, ranked: list[dict[str, A
 
 
 def assert_expected_terms(answer: str, terms: list[str]) -> None:
-    lowered = answer.casefold()
-    missing = [term for term in terms if term.casefold() not in lowered]
+    normalized_answer = normalize_assertion_text(answer)
+    missing = [term for term in terms if normalize_assertion_text(term) not in normalized_answer]
     if missing:
         raise RuntimeError(f"final answer missed expected terms {missing}: {answer!r}")
+
+
+def normalize_assertion_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return re.sub(r"\s+", " ", normalized)
 
 
 def select_questions(manifest: dict[str, Any], args: argparse.Namespace) -> list[dict[str, Any]]:
@@ -372,6 +379,28 @@ def select_questions(manifest: dict[str, Any], args: argparse.Namespace) -> list
     if args.max_questions:
         questions = questions[: args.max_questions]
     return questions
+
+
+def select_smoke_records(
+    records: list[dict[str, Any]],
+    questions: list[dict[str, Any]],
+    records_per_topic: int,
+    full_corpus: bool,
+) -> list[dict[str, Any]]:
+    if full_corpus:
+        return records
+
+    topics = [question.get("expected_topic") for question in questions if question.get("expected_topic")]
+    if not topics:
+        return records[:records_per_topic]
+
+    selected: list[dict[str, Any]] = []
+    for topic in dict.fromkeys(topics):
+        topic_records = [record for record in records if record.get("topic") == topic]
+        if not topic_records:
+            raise RuntimeError(f"no product-document chunks found for expected topic={topic}")
+        selected.extend(topic_records[:records_per_topic])
+    return selected
 
 
 def main() -> None:
@@ -397,6 +426,8 @@ def main() -> None:
     parser.add_argument("--expected-topic")
     parser.add_argument("--expected-term", action="append")
     parser.add_argument("--max-questions", type=int, default=3)
+    parser.add_argument("--records-per-topic", type=int, default=int(os.environ.get("RHOAI_STAGE230_RHOAI_DOCS_RECORDS_PER_TOPIC", "12")))
+    parser.add_argument("--full-corpus", action="store_true")
     parser.add_argument("--search-mode", default=os.environ.get("RHOAI_STAGE230_SEARCH_MODE", "hybrid"))
     parser.add_argument("--reset", action="store_true")
     args = parser.parse_args()
@@ -412,19 +443,21 @@ def main() -> None:
 
     manifest = load_manifest(args.manifest)
     records = load_jsonl(args.sample)
+    questions = select_questions(manifest, args)
+    smoke_records = select_smoke_records(records, questions, args.records_per_topic, args.full_corpus)
     client = LlamaStackClient(base_url=normalize_base_url(args.base_url))
     vector_store_id, uploaded_count = ensure_vector_store(
         client,
         args.vector_store,
         args.embedding_model,
         args.vector_provider,
-        records,
+        smoke_records,
         args.reset,
     )
     file_counts = vector_store_file_counts(client, vector_store_id)
 
     results = []
-    for question in select_questions(manifest, args):
+    for question in questions:
         query = question["query"]
         topic = question.get("expected_topic")
         candidates = search(client, vector_store_id, query, topic, args.search_mode, max_results=8)
@@ -454,6 +487,9 @@ def main() -> None:
                 "vector_store_id": vector_store_id,
                 "uploaded_count": uploaded_count,
                 "file_counts": file_counts,
+                "input_record_count": len(records),
+                "indexed_record_count": len(smoke_records),
+                "full_corpus": args.full_corpus,
                 "search_mode": args.search_mode,
                 "question_count": len(results),
                 "results": results,

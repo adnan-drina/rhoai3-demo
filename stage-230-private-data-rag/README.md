@@ -29,8 +29,9 @@ accurate assistant experience than a model-only prompt can provide.
 | Models-as-a-Service | Governed access to the existing Nemotron model | [RHOAI 3.4 MaaS docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) |
 | AG News reference implementation | Compatibility corpus and implementation pattern for metadata, hybrid retrieval, and reranking | [agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) |
 | Official RHOAI 3.4 product PDFs | Primary audience corpus for querying the same documentation that explains Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling | [RHOAI 3.4 documentation](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4) |
+| Docling | Converts the committed official RHOAI PDFs into text and structured artifacts before RAG chunk creation | [RHOAI 3.4 data preparation docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) |
 | RHOAI project workbench | Notebook-driven ingestion, retrieval inspection, reranker testing, and acceptance runs in the `enterprise-rag` project | [RHOAI 3.4 working on projects](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_on_projects/index) |
-| Red Hat OpenShift AI Pipelines | GitOps-managed DSPA foundation for the next automation pass that will process RHOAI documentation from S3 | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
+| Red Hat OpenShift AI Pipelines | GitOps-managed DSPA pipeline server runs the Docling product-document processing pipeline from S3 input to reviewed JSONL output | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
 baseline. The Red Hat article and GitHub repository guide the demo shape; the
@@ -46,10 +47,14 @@ and the official RHOAI product-document corpus. The selected RHOAI PDFs are
 stored under `data/rhoai-product-docs/source/`, deterministic prepared chunks
 are stored under `data/rhoai-product-docs/processed/`, and `deploy.sh` mirrors
 the source PDFs into the Stage 230 NooBaa bucket under `raw/rhoai-product-docs/`.
+`run-rhoai-docs-pipeline.sh` then runs a Docling KFP pipeline through the
+GitOps-managed DSPA server and writes reviewed output chunks plus converted
+Markdown/Docling JSON artifacts back to S3.
 
 The product-document corpus is documentation grounding only. It does not mean
 Stage 230 implements AutoRAG optimization, EvalHub jobs, guardrails, RAGAS
-evaluation, or AI Pipelines automation beyond the active RAG foundation.
+evaluation, or those adjacent product capabilities. Stage 230 does implement
+AI Pipelines only for repeatable RHOAI product-document data preparation.
 
 ## Architecture
 
@@ -68,7 +73,8 @@ flowchart LR
   maas["MaaS gateway"]
   nemotron["Nemotron"]
   s3["Stage 230 S3 bucket"]
-  dspa["DSPA / AI Pipelines foundation"]
+  dspa["DSPA / AI Pipelines Docling run"]
+  chunks["Reviewed JSONL chunks"]
 
   user --> workbench
   workbench --> files
@@ -76,7 +82,8 @@ flowchart LR
   rhoai_docs --> s3
   rhoai_docs --> files
   s3 --> dspa
-  dspa -. "next automation pass" .-> files
+  dspa --> chunks
+  chunks --> files
   files --> vectors
   vectors --> stack
   stack --> pgvector
@@ -131,6 +138,52 @@ python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
   --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
   --vector-store stage230-rhoai-34-product-docs \
   --search-mode hybrid
+```
+
+The smoke helper reads the full prepared JSONL, then indexes a bounded
+per-topic subset for the selected smoke questions by default. This keeps
+redeploy validation fast while still proving Files API upload, Vector Stores
+metadata, hybrid retrieval, reranking, and Nemotron answer generation from the
+current corpus. Use `--full-corpus` only for a deeper validation run that
+intentionally indexes every generated chunk.
+
+## AI Pipelines Flow
+
+Run the product-document Docling pipeline through the Stage 230 DSPA server:
+
+```bash
+./stage-230-private-data-rag/run-rhoai-docs-pipeline.sh
+```
+
+For a small pipeline smoke run:
+
+```bash
+./stage-230-private-data-rag/run-rhoai-docs-pipeline.sh \
+  --max-documents=1 \
+  --output-s3-key=processed/rhoai-product-docs/rhoai-3.4-product-docs-docling-kfp-smoke.jsonl
+```
+
+The full runner compiles the KFP v2 pipeline, creates a new
+PipelineVersion, submits a run, reviews the S3 output, confirms converted
+Markdown and Docling JSON artifacts exist, and stores evidence in
+`enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
+
+To make validation run both the pipeline and the RAG smoke over the generated
+pipeline output:
+
+```bash
+RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE=true \
+RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
+./stage-230-private-data-rag/validate.sh
+```
+
+For normal redeploy validation after the pipeline has already passed, reuse the
+recorded KFP evidence and run the bounded RAG smoke over the latest S3 output:
+
+```bash
+RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true \
+RHOAI_STAGE230_RHOAI_DOCS_USE_PIPELINE_OUTPUT=true \
+./stage-230-private-data-rag/validate.sh
 ```
 
 The Stage 230 acceptance gate uses `--search-mode hybrid` and intentionally

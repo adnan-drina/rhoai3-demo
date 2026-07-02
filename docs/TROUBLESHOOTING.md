@@ -1186,10 +1186,51 @@ new troubleshooting entries should cover:
 - Enterprise RAG Workbench startup failures
 - MaaS-backed Nemotron authorization failures
 - RHOAI product-document preparation or smoke-test failures
-- KFP run failures after RHOAI product-document automation is introduced
+- RHOAI product-document Docling KFP compile, run, artifact-review, or
+  generated-output smoke failures
 
 Do not carry forward old DSPA, Docling, chatbot, or whoami-specific recovery
 steps unless those components are intentionally reintroduced.
+
+### RHOAI product-document Docling KFP pipeline fails
+
+- **Symptom:** `run-rhoai-docs-pipeline.sh` fails during local compile, DSPA
+  run creation, task execution, or S3 artifact review.
+- **Likely causes:** missing `kfp-kubernetes` in the runner virtual
+  environment, wrong DSPA route/token, missing `data-processing-docling-pipeline`
+  Secret keys, source PDFs not uploaded under `raw/rhoai-product-docs/`,
+  Docling runtime image pull or dependency failure, or generated output missing
+  required guide/topic coverage.
+- **Checks:**
+
+  ```bash
+  bash -n stage-230-private-data-rag/run-rhoai-docs-pipeline.sh
+  .venv-kfp/bin/python stage-230-private-data-rag/kfp/rhoai_product_docs_docling_pipeline.py \
+    --output /tmp/stage-230-rhoai-product-docs-docling.yaml
+  oc get dspa dspa-enterprise-rag -n enterprise-rag
+  oc get secret data-processing-docling-pipeline -n enterprise-rag
+  oc get pipeline,pipelineversion -n enterprise-rag | grep stage-230-rhoai-product-docs-docling
+  oc get runs -n enterprise-rag 2>/dev/null || true
+  oc logs -n enterprise-rag job/stage230-rhoai-docs-artifact-review
+  oc get configmap stage230-rhoai-docs-pipeline-evidence -n enterprise-rag -o yaml
+  ```
+
+- **Fix:** rerun `stage-230-private-data-rag/deploy.sh` if source PDFs or the
+  pipeline S3 Secret are missing. If DSPA object-storage settings are wrong,
+  update GitOps and recreate the DSPA instead of patching generated workflow
+  controller ConfigMaps. If Docling runtime cache writes fail, keep writable
+  cache paths under `/tmp` in the KFP task. Do not weaken the final RAG smoke
+  gate unless the stage plan is explicitly changed.
+
+### Stage 230 product-document smoke fails on an expected term that appears present
+
+- **Symptom:** `rhoai_product_docs_rag_smoke.py` reports a missing expected
+  term, but the generated answer visibly contains that term.
+- **Likely cause:** LLM output used Unicode whitespace or compatibility
+  characters, for example `Llama\u202fStack` instead of `Llama Stack`.
+- **Fix:** keep the smoke assertion Unicode- and whitespace-normalized. Do not
+  remove expected terms just because the model rendered product names with
+  non-ASCII spacing.
 
 ### Stage 230 PostgreSQL pgvector extension is missing
 

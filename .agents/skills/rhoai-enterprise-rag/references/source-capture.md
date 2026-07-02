@@ -88,8 +88,12 @@ Patterns reused for the RHOAI product-document pipeline phase:
 - choose `docling-standard` first for normal PDF conversion, OCR, table
   structure, enrichments, Markdown output, Docling JSON output, and optional
   HybridChunker chunk output
-- adapt the stable branch `docling-standard` shape into local KFP source and
-  validate compilation before adding DSPA/S3 execution
+- adapt the stable branch `docling-standard` shape into local KFP source,
+  validate compilation, run through DSPA, review S3 artifacts, and then pass
+  the generated chunk output to the same RAG smoke helper
+- for routine redeploy validation, let the RAG smoke helper index a bounded
+  per-topic subset from the generated chunk output; use full-corpus indexing
+  only as an explicit deeper validation run
 - reserve `docling-vlm` for complex layouts, scanned/image-heavy documents,
   custom page-level instructions, or remote VLM conversion needs
 - use KFP `ParallelFor` over PDF splits for scale-out conversion

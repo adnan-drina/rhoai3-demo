@@ -36,8 +36,8 @@ Active Stage 230 scope:
 - official RHOAI 3.4 product-document explainer corpus with repo-stored source
   PDFs, deterministic prepared chunks, preparation helper, smoke helper, and
   workbench notebook
-- GitOps-managed DSPA pipeline server and S3 Secret foundation for the next
-  RHOAI product-document KFP automation pass
+- GitOps-managed DSPA pipeline server, generated S3 Secret, and Docling KFP
+  runner for repeatable RHOAI product-document data preparation
 
 Out of scope for this stage unless explicitly added later:
 
@@ -61,7 +61,7 @@ Out of scope for this stage unless explicitly added later:
 | Reranker | Use the article's Qwen3 reranker pattern on CPU | Reranker improves precision; the non-Red-Hat modelcar remains a documented demo exception |
 | Reranker registration | Register Qwen3 in Llama Stack as `vllm-reranker/qwen3-reranker` and call `/v1alpha/inference/rerank` | Matches the reference notebook flow better than calling the KServe/vLLM endpoint directly |
 | Workbench dependencies | Preinstall notebook dependencies into the shared workbench PVC and expose them through `PYTHONPATH` | The reference notebook uses `%pip install`; this demo needs a repeatable ready-to-run workbench after GitOps deployment |
-| KFP posture | Keep DSPA and S3 foundation; rebuild KFP automation for RHOAI product documents next | Keeps the product-recommended pipeline capability available while avoiding corpus-specific implementation drift |
+| KFP posture | Use a focused `docling-standard` KFP pipeline for the committed RHOAI product PDFs | Proves the product-recommended pipeline automation path without mixing in AutoRAG, RAGAS, or guardrails scope |
 
 ## Source Capture
 
@@ -88,6 +88,8 @@ Out of scope for this stage unless explicitly added later:
 | `gitops/stage-230-private-data-rag/pipelines/` | DSPA pipeline server backed by Stage 230 NooBaa bucket | RHOAI AI Pipelines docs | DSPA Ready, route exists, object storage condition passes |
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy uploads PDFs to project bucket |
+| `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` stable branch | KFP source compiles and pipeline runs through DSPA |
+| `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` | KFP compile/upload/run/evidence helper | RHOAI AI Pipelines docs and repo KFP standards | PipelineVersion created, run succeeds, S3 artifacts reviewed |
 | `stage-230-private-data-rag/scripts/` | AG News and RHOAI product-doc preparation/smoke helpers | RHOAI Llama Stack APIs and official RHOAI PDFs | Python compile; optional workbench smoke runs |
 
 ## Script Plan
@@ -129,6 +131,25 @@ Out of scope for this stage unless explicitly added later:
   `RHOAI_STAGE230_RUN_ACCEPTANCE=true`.
 - Optional gate: run RHOAI product-document smoke with
   `RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE=true`.
+- Optional gate: run RHOAI product-document Docling KFP automation with
+  `RHOAI_STAGE230_RUN_RHOAI_DOCS_PIPELINE=true`.
+- When both optional RHOAI product-document gates are enabled, use the
+  pipeline-generated JSONL output for the RAG smoke vector store.
+
+### `run-rhoai-docs-pipeline.sh`
+
+- Load `.env` and enforce the OpenShift safety guard.
+- Create or reuse `.venv-kfp` with `kfp==2.14.6` and
+  `kfp-kubernetes==2.14.6`.
+- Compile `kfp/rhoai_product_docs_docling_pipeline.py`.
+- Create a reviewed `Pipeline` and timestamped `PipelineVersion` using
+  Kubernetes API pipeline storage.
+- Submit a DSPA run against `dspa-enterprise-rag`.
+- Process source PDFs from `raw/rhoai-product-docs/`.
+- Write Docling Markdown/JSON artifacts and JSONL chunks under
+  `processed/rhoai-product-docs/`.
+- Review the S3 output and store run evidence in
+  `stage230-rhoai-docs-pipeline-evidence`.
 
 ## Risks And Deferred Work
 
@@ -141,7 +162,7 @@ Out of scope for this stage unless explicitly added later:
 | Hugging Face dataset egress | risk | Include a small deterministic AG News sample for validation; make full dataset download optional. |
 | Embedding provider mismatch | risk | List active Llama Stack models and capture embedding dimension before vector store creation. |
 | RHOAI product-document ingestion | active | Focused official RHOAI 3.4 PDF corpus is the audience Q&A corpus; source PDFs and deterministic chunks are committed and mirrored to S3. |
-| RHOAI product-document KFP automation | next work | Build DSPA/KFP automation for `data/rhoai-product-docs/` using the Red Hat data-processing Docling examples. |
+| RHOAI product-document KFP automation | validated | Docling KFP source and runner compile, run through DSPA, review S3 artifacts, and feed pipeline-generated chunks into the RAG smoke helper. |
 | RAGAS / evaluation | deferred | Keep for a later evaluation-focused stage. |
 | Guardrails and MCP | deferred | Keep for later safety and agentic stages. |
 

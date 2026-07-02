@@ -85,7 +85,7 @@ OpenAI inference, and Gen AI Playground responses for both models.
 | API key and MaaS inference validation | done | Stage 220 validation creates and revokes a temporary MaaS API key, calls Nemotron and external OpenAI through the MaaS Gateway, verifies structured tool-call output for both models, checks token usage, and validates Gen AI Playground responses. |
 | MaaS observability | medium | Keep Technology Preview/showback language; validate metrics only after request flow works end to end. |
 
-## Stage 230: Status — REPLANNING
+## Stage 230: Status - VALIDATED
 
 Stage 230 has been reset from the earlier whoami/Docling/DSPA/chatbot design
 to a metadata-aware enterprise RAG implementation based on the Red Hat
@@ -97,21 +97,35 @@ an Enterprise RAG Workbench. The active audience corpus is the focused
 official RHOAI 3.4 product-document explainer corpus, which lets the demo
 answer questions about the product docs behind the stage design. The selected
 official RHOAI PDFs and deterministic prepared chunks are stored under the
-stage data folder and mirrored to the project S3 bucket during deployment.
+stage data folder and mirrored to the project S3 bucket during deployment. The
+Docling KFP runner now processes those PDFs through the Stage 230 DSPA server
+and stores reviewed pipeline output in S3.
+
+Validated in `cluster-qt67m` on 2026-07-02:
+
+- Stage 230 Argo CD Application synced and healthy.
+- DSPA/KFP pipeline evidence reused from a passing full six-document Docling
+  run: 415 chunks across the selected RHOAI 3.4 guides, with converted
+  Markdown and Docling JSON artifacts in S3.
+- AG News compatibility acceptance passed with metadata extraction, filtered
+  hybrid retrieval, reranking, and Nemotron answer generation.
+- RHOAI product-document RAG smoke over pipeline-generated chunks passed with
+  hybrid search, reranking, and Nemotron answers.
+
+### Validated Stage 230 Gates
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Fresh-environment Stage 230 validation | done | `validate.sh` passed with 63 checks, 0 warnings, and 0 failures in `cluster-qt67m` after the KFP updates. |
+| Hybrid metadata filtering | done | Resolved by selecting the active pgvector provider path. Keep this as a recurring validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted in each fresh environment. |
+| RHOAI product-document explainer corpus | done | Source manifest, repo-stored official RHOAI 3.4 PDFs, deterministic prepared chunks, preparation helper, smoke helper, and workbench notebook added for Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling audience Q&A. Deployment mirrors the source PDFs to the Stage 230 project bucket. This is documentation grounding, not implementation scope for those adjacent capabilities. |
+| RHOAI product-document KFP automation | done | Docling KFP source and runner compile, run through DSPA, review S3 artifacts, and feed the pipeline-generated JSONL into the RAG smoke helper. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 
 ### Open / deferred from Stage 230
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Remove stale active implementation | high | Remove or replace old whoami, Docling, DSPA/KFP, and previous Streamlit chatbot artifacts during the Stage 230 rebuild so the stage has one coherent architecture. |
-| AG News compatibility implementation | high | Re-author the Red Hat article-linked Helm/notebook pattern into local GitOps, notebooks/jobs, and validation scripts; do not apply the reference Helm chart directly. Current GitOps includes runtime foundation, Qwen3 reranker, workbench, and acceptance helper. |
-| Nemotron through MaaS | high | Replace the reference Llama generation model with the governed Stage 220 Nemotron MaaS endpoint. |
-| pgvector provider posture | high | Use the RHOAI 3.4 Llama Stack `remote::pgvector` provider pattern and validate the PostgreSQL `vector` extension during deploy. |
-| Embedding provider and dimension | high | Select the embedding provider from installed Llama Stack capabilities, capture the model ID and vector dimension, and validate before indexing. |
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
-| Hybrid metadata filtering | high | Resolved by selecting the active pgvector provider path. Keep this as a validation gate: filtered `hybrid` search must return only the expected metadata category before Stage 230 is accepted. |
-| RHOAI product-document explainer corpus | medium | Source manifest, repo-stored official RHOAI 3.4 PDFs, deterministic prepared chunks, preparation helper, smoke helper, and workbench notebook added for Llama Stack RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, and Docling audience Q&A. Deployment mirrors the source PDFs to the Stage 230 project bucket. This is documentation grounding, not implementation scope for those adjacent capabilities. |
-| RHOAI product-document KFP automation | high | DSPA server and project S3 Secret generation exist. Next: implement a Docling/KFP pipeline for `data/rhoai-product-docs/` so the pipeline path processes the same official RHOAI PDFs used by the workbench smoke flow. Use `docling-vlm` only for scanned, image-heavy, or complex-layout documents. |
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
 | Guardrails and MCP | medium | Add product-backed guardrails and MCP after base RAG works. |
 
