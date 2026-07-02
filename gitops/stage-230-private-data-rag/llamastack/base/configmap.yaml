@@ -66,7 +66,7 @@ data:
           provider_type: remote::vllm
           config:
             base_url: ${env.VLLM_URL}
-            api_token: ${env.VLLM_API_TOKEN=''}
+            api_token: ${env.VLLM_API_TOKEN:=}
             max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
             tls_verify: ${env.VLLM_TLS_VERIFY:=false}
             drop_params: true

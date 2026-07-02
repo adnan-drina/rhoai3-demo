@@ -119,6 +119,16 @@ BUCKET_NAME=$(oc get configmap "${RHOAI_STAGE230_BUCKET_OBC:-enterprise-rag-buck
   -o jsonpath='{.data.BUCKET_NAME}' --insecure-skip-tls-verify=true 2>/dev/null || true)
 BUCKET_NAME="${BUCKET_NAME:-enterprise-rag}"
 
+# The vendored pipeline pins the odh-autorag image digest from the
+# pipelines-components rhoai-3.4 branch, which can lag or lead what the
+# installed operator actually ships. Align the image to the installed RHOAI
+# CSV relatedImages entry so the run uses the supported product build.
+AUTORAG_PRODUCT_IMAGE="${RHOAI_STAGE230_AUTORAG_IMAGE:-$(oc get csv -n redhat-ods-operator -o json --insecure-skip-tls-verify=true 2>/dev/null \
+  | jq -r '[.items[].spec.relatedImages[]? | select(.name=="odh_autorag_image")][0].image // empty')}"
+if [[ -z "$AUTORAG_PRODUCT_IMAGE" ]]; then
+  echo "WARNING: could not resolve odh_autorag_image from the installed RHOAI CSV; using the vendored image digest as-is." >&2
+fi
+
 for secret in "$S3_CONNECTION_SECRET" "$AUTORAG_CONNECTION_SECRET"; do
   if ! oc get secret "$secret" -n "$RAG_NS" --insecure-skip-tls-verify=true >/dev/null 2>&1; then
     echo "ERROR: required Secret ${RAG_NS}/${secret} is missing. Run deploy.sh first." >&2
@@ -293,7 +303,7 @@ export DSPA_URL RAG_NS PIPELINE_YAML PIPELINE_NAME PIPELINE_DISPLAY_NAME PIPELIN
 export EXPERIMENT_NAME OC_TOKEN WAIT_FOR_RUN TIMEOUT_SECONDS
 export S3_CONNECTION_SECRET AUTORAG_CONNECTION_SECRET BUCKET_NAME INPUT_DATA_KEY TEST_DATA_KEY
 export VECTOR_IO_PROVIDER_ID GENERATION_MODELS_JSON EMBEDDINGS_MODELS_JSON
-export OPTIMIZATION_METRIC MAX_RAG_PATTERNS RUN_EVIDENCE_JSON
+export OPTIMIZATION_METRIC MAX_RAG_PATTERNS RUN_EVIDENCE_JSON AUTORAG_PRODUCT_IMAGE
 
 "$KFP_PYTHON" - <<'PY'
 import os
@@ -320,6 +330,20 @@ if pipeline_spec["pipelineInfo"].get("name") != pipeline_name:
         f"vendored pipeline name {pipeline_spec['pipelineInfo'].get('name')!r} "
         f"does not match expected {pipeline_name!r}"
     )
+
+product_image = os.environ.get("AUTORAG_PRODUCT_IMAGE", "")
+if product_image:
+    substituted = 0
+    for executor in pipeline_spec.get("deploymentSpec", {}).get("executors", {}).values():
+        container = executor.get("container")
+        if not container:
+            continue
+        image = container.get("image", "")
+        if image.startswith("registry.redhat.io/rhoai/odh-autorag-rhel9@") and image != product_image:
+            container["image"] = product_image
+            substituted += 1
+    if substituted:
+        print(f"aligned {substituted} executor image(s) to installed CSV image {product_image}")
 
 labels = {
     "app.kubernetes.io/part-of": "rag",
@@ -505,6 +529,7 @@ if os.environ["WAIT_FOR_RUN"].lower() == "true":
         raise RuntimeError(f"pipeline run did not succeed: run_id={run_id}, state={state}")
 
 evidence = {
+    "autorag_image": os.environ.get("AUTORAG_PRODUCT_IMAGE", "vendored default"),
     "dspa_url": os.environ["DSPA_URL"],
     "experiment_id": experiment_id,
     "experiment_name": experiment_name,
