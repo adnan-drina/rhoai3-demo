@@ -261,8 +261,10 @@ Out of scope for this stage unless explicitly added later:
   including RAG-on and RAG-off questions against the RHOAI product-document
   vector store.
 - Review the AutoRAG leaderboard and generated notebooks on the dashboard
-  AutoRAG page and confirm the readable pipeline display name does not hide
-  runs from that page.
+  AutoRAG page. Confirmed live: the AutoRAG page matches the pipeline
+  display name against the documented `documents-rag-optimization-pipeline`
+  value, so a readable display name hides runs from that page; the display
+  name stays documented and readability lives in the pipeline description.
 
 ## First Live AutoRAG Run (2026-07-03, resolved)
 
