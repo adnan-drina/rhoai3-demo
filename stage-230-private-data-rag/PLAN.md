@@ -38,9 +38,10 @@ Active Stage 230 scope:
   workbench notebook
 - GitOps-managed DSPA pipeline server, generated S3 Secret, and Docling KFP
   runner for repeatable RHOAI product-document data preparation
-- Streamlit product-document RAG chatbot adapted from the Red Hat AI RAG
-  quickstart direct-chat pattern, using the Stage 230 Llama Stack service,
-  product-doc vector store, reranker, and Nemotron through MaaS
+- Streamlit product-document chatbot adapted from the upstream Llama Stack
+  UI distribution: discovery-driven playground, distribution inspection, and
+  evaluation pages against the Stage 230 Llama Stack service, with
+  per-vector-store demo question suggestions for the product-doc corpus
 - AutoRAG (Technology Preview) optimization over the RHOAI product-document
   corpus: GitOps-managed remote Milvus for the AutoRAG-required vector
   provider, `remote::milvus` registered in Llama Stack alongside pgvector,
@@ -93,7 +94,7 @@ Out of scope for this stage unless explicitly added later:
 | Product config | [RHOAI 3.4: Govern LLM access with Models-as-a-Service](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) | `rhoai-maas-governance` | Product authority for governed Nemotron access |
 | Product config | [RHOAI 3.4: Prepare your data for AI consumption](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/customize_models_for_gen_ai_and_agentic_ai_applications/prepare-your-data-for-ai-consumption_custom-models) | `rhoai-model-customization-training`, `rhoai-ai-pipelines`, `rhoai-kfp-pipeline-authoring` | Product authority for Docling data preparation and future KFP automation |
 | Reference implementation | [abdelhamidfg/agnews-rag-demo](https://github.com/abdelhamidfg/agnews-rag-demo) | `rhoai-enterprise-rag` | Red Hat article-linked repo; example-only source for chart and notebooks |
-| Reference implementation | [rh-ai-quickstart/RAG](https://github.com/rh-ai-quickstart/RAG) | `rhoai-chatbot-customization` | Best matching Streamlit UI reference; reuse direct-RAG chat, vector-store selection, runtime inspection, and ConfigMap-driven app settings while avoiding outdated client pins and upload flows |
+| Reference implementation | [llama-stack UI distribution](https://github.com/llamastack/llama-stack-client-python) and the upstream Llama Stack playground UI | `rhoai-chatbot-customization` | Vendored and adapted as the Stage 230 chatbot: discovery-driven playground, distribution inspection, and evaluation pages with ConfigMap-driven question suggestions |
 | Reference implementation | [opendatahub-io/data-processing `main` KFP tree](https://github.com/opendatahub-io/data-processing/tree/main/kubeflow-pipelines) | `rhoai-model-customization-training`, `rhoai-kfp-pipeline-authoring` | Newer Red Hat-documented Docling KFP example selected for its modular standard/VLM layout, Secret-mounted S3 input, `ParallelFor` conversion, and HybridChunker output |
 | Product config | [RHOAI 3.4: Working with AutoRAG](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index) | `rhoai-autorag` | Product authority for AutoRAG Technology Preview posture, prerequisites, remote Milvus requirement, test data format, metrics, and search space |
 | Reference implementation | [red-hat-ai-examples AutoRAG example](https://github.com/red-hat-data-services/red-hat-ai-examples/tree/main/examples/autorag) | `rhoai-autorag` | Tutorial-grade reference for the Llama Stack connection type, S3 layout, benchmark data shape, and both UI and KFP-native run paths |
@@ -114,8 +115,8 @@ Out of scope for this stage unless explicitly added later:
 | `stage-230-private-data-rag/data/agnews-sample/` | Small deterministic AG News-compatible sample | Red Hat article-linked repo pattern, locally adapted | Stable ingestion smoke input without external dataset dependency |
 | `stage-230-private-data-rag/data/rhoai-product-docs/` | Source manifest, selected official RHOAI 3.4 PDFs, deterministic prepared chunks | RHOAI 3.4 docs landing page and guide PDFs | Manifest JSON parses; source PDFs exist in Git; prepared JSONL parses; deploy uploads PDFs to project bucket |
 | `stage-230-private-data-rag/kfp/` | RHOAI product-doc Docling KFP source | RHOAI data-preparation docs and `opendatahub-io/data-processing` `main/kubeflow-pipelines` | KFP source compiles, exposes modular Docling tasks in the Dashboard run graph, and pipeline runs through DSPA |
-| `gitops/stage-230-private-data-rag/app/` | Streamlit RAG chatbot build and runtime resources | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; BuildConfig in `enterprise-rag-build`; Deployment and route health in `enterprise-rag` |
-| `stage-230-private-data-rag/chatbot/` | Streamlit RAG chatbot source | `rh-ai-quickstart/RAG` direct-chat pattern, adapted to Stage 230 Llama Stack and product-doc corpus | Python compile; OpenShift binary build; route health |
+| `gitops/stage-230-private-data-rag/app/` | Streamlit chatbot build/runtime resources plus the gpt-connection-keepalive CronJob | Upstream Llama Stack UI distribution, adapted to Stage 230 | Python compile; BuildConfig in `enterprise-rag-build`; Deployment and route health in `enterprise-rag` |
+| `stage-230-private-data-rag/chatbot/` | Vendored Llama Stack UI distribution source | Upstream Llama Stack playground UI, adapted to Stage 230 | Python compile; OpenShift binary build; route health; question suggestions target the product-doc store |
 | `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` | KFP compile/upload/run/evidence helper | RHOAI AI Pipelines docs and repo KFP standards | PipelineVersion created, run succeeds, S3 artifacts reviewed |
 | `stage-230-private-data-rag/scripts/` | AG News and RHOAI product-doc preparation/smoke helpers | RHOAI Llama Stack APIs and official RHOAI PDFs | Python compile; optional workbench smoke runs |
 | `gitops/stage-230-private-data-rag/milvus/` | Milvus standalone Deployment, etcd, PVC, Services; Secret generated by deploy script | RHOAI AutoRAG remote Milvus requirement and Llama Stack `remote::milvus` provider docs | Deployments available, Llama Stack lists the `milvus` vector_io provider |
@@ -268,14 +269,16 @@ Out of scope for this stage unless explicitly added later:
 
 ## Review Needed
 
-- Validate the Streamlit chatbot in a fresh environment after the next deploy,
-  including RAG-on and RAG-off questions against the RHOAI product-document
-  vector store.
-- Review the AutoRAG leaderboard and generated notebooks on the dashboard
-  AutoRAG page. Confirmed live: the AutoRAG page matches the pipeline
-  display name against the documented `documents-rag-optimization-pipeline`
-  value, so a readable display name hides runs from that page; the display
-  name stays documented and readability lives in the pipeline description.
+- Validate the Llama Stack UI chatbot in a fresh environment after the next
+  full deploy: playground chat and direct RAG against the product-document
+  vector store, model and vector-store discovery, and the seeded question
+  suggestions.
+- Walk the AutoRAG demo path end to end once in the dashboard: leaderboard
+  for run `f79dab42`, pattern detail with sample Q&A, and the fetched
+  `workspace/autorag/Pattern8/` notebooks in the Enterprise RAG Workbench.
+  (Display-name contract confirmed live: the AutoRAG page matches the
+  documented `documents-rag-optimization-pipeline` display name; readability
+  lives in the pipeline description.)
 
 ## First Live AutoRAG Run (2026-07-03, resolved)
 

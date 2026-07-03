@@ -557,20 +557,15 @@ chatbot_config_endpoint=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_
   && check "Stage 230 chatbot points at the Enterprise RAG Llama Stack service" "pass" \
   || check "Stage 230 chatbot points at the Enterprise RAG Llama Stack service" "${chatbot_config_endpoint:-missing}"
 
-chatbot_config_model=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.INFERENCE_MODEL}")
-[[ "$chatbot_config_model" == "$NEMOTRON_MODEL_RESOURCE" ]] \
-  && check "Stage 230 chatbot defaults to Nemotron" "pass" \
-  || check "Stage 230 chatbot defaults to Nemotron" "${chatbot_config_model:-missing}"
+chatbot_config_suggestions=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.RAG_QUESTION_SUGGESTIONS}")
+[[ "$chatbot_config_suggestions" == *"stage230-rhoai-34-product-docs-kfp"* ]] \
+  && check "Stage 230 chatbot question suggestions target the product-document vector store" "pass" \
+  || check "Stage 230 chatbot question suggestions target the product-document vector store" "missing store key"
 
-chatbot_config_store=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.DEFAULT_VECTOR_STORE}")
-[[ "$chatbot_config_store" == "stage230-rhoai-34-product-docs-kfp" ]] \
-  && check "Stage 230 chatbot defaults to the product-document vector store" "pass" \
-  || check "Stage 230 chatbot defaults to the product-document vector store" "${chatbot_config_store:-missing}"
-
-chatbot_config_rag=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.RAG_RERANK_ENABLED}")
-[[ "$chatbot_config_rag" == "true" ]] \
-  && check "Stage 230 chatbot enables reranking by default" "pass" \
-  || check "Stage 230 chatbot enables reranking by default" "${chatbot_config_rag:-missing}"
+chatbot_config_timeout=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.LLAMA_STACK_TIMEOUT}")
+[[ -n "$chatbot_config_timeout" ]] \
+  && check "Stage 230 chatbot sets a Llama Stack timeout" "pass" \
+  || check "Stage 230 chatbot sets a Llama Stack timeout" "missing"
 
 [[ "$(available_replicas deployment/${CHATBOT_DEPLOYMENT} "$RAG_NS")" == "1" ]] \
   && check "Stage 230 chatbot Deployment is available" "pass" \

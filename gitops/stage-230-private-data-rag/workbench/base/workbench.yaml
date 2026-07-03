@@ -101,6 +101,7 @@ spec:
               cp "${stage_dir}/notebooks/requirements.txt" "${workspace}/.stage230/requirements.txt"
               cp "${stage_dir}/scripts/rhoai_product_docs_prepare.py" "${workspace}/.stage230/scripts/"
               cp "${stage_dir}/scripts/rhoai_product_docs_rag_smoke.py" "${workspace}/.stage230/scripts/"
+              cp "${stage_dir}/scripts/fetch_autorag_pattern.py" "${workspace}/.stage230/scripts/"
               cp -R "${stage_dir}/data/rhoai-product-docs" "${workspace}/.stage230/data/"
 
               rm -rf "${workspace}/.stage230/python"

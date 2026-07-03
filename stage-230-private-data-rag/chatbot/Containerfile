@@ -1,4 +1,5 @@
-# Stage 230 RAG chatbot UI, adapted from the Red Hat AI RAG quickstart pattern.
+# Stage 230 RAG chatbot UI, based on the Red Hat AI RAG quickstart frontend.
+# Package versions updated to match the RHOAI 3.4 Llama Stack server.
 FROM registry.access.redhat.com/ubi9/python-312:latest
 
 WORKDIR /app
@@ -13,10 +14,10 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
     python -c 'import tomllib; print("\n".join(tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]))' > /tmp/requirements.txt && \
     python -m pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY rhoai_rag_chatbot/ /app/rhoai_rag_chatbot/
+COPY . /app/
 
 USER 1001
 
 EXPOSE 8501
 
-ENTRYPOINT ["python", "-m", "streamlit", "run", "/app/rhoai_rag_chatbot/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]
+ENTRYPOINT ["python", "-m", "streamlit", "run", "/app/llama_stack_ui/distribution/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true", "--browser.gatherUsageStats=false"]

@@ -24,8 +24,8 @@ spec:
       serviceAccountName: private-rag-chatbot
       containers:
         - name: chatbot
-          image: quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45
-          imagePullPolicy: IfNotPresent
+          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag-build/private-rag-chatbot:latest
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: private-rag-chatbot-config

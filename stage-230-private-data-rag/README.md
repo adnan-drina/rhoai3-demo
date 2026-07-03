@@ -144,28 +144,28 @@ Runtime helper scripts and sample data are generated under hidden
 
 ## Chatbot Flow
 
-Stage 230 also provides a small Streamlit chatbot. The runtime Deployment and
-Route run as `private-rag-chatbot` in the `enterprise-rag` project; the
-OpenShift BuildConfig and ImageStream live in `enterprise-rag-build` so build
-pods are not admitted as Kueue-managed RAG workloads. The implementation uses
-the Red Hat AI RAG quickstart's direct-chat pattern as a reference, but it is
-not a copied quickstart UI:
+Stage 230 provides a Streamlit UI adapted from the upstream Llama Stack UI
+distribution. The runtime Deployment and Route run as `private-rag-chatbot`
+in the `enterprise-rag` project; the OpenShift BuildConfig and ImageStream
+live in `enterprise-rag-build` so build pods are not admitted as
+Kueue-managed RAG workloads. The UI is discovery-driven against the Stage
+230 Llama Stack service rather than hardcoding a model or store:
 
-- the product-document corpus is populated by the GitOps/DSPA/KFP path, not by
-  ad hoc browser uploads
-- the default model is the governed Stage 220 Nemotron endpoint exposed through
-  Llama Stack
-- the default knowledge store is the RHOAI product-document vector store
-  generated from the pipeline output
-- users can switch between RAG-grounded answers and model-only answers for
-  comparison
-- retrieved context is visible in an expander so demo users can inspect source
-  document metadata
-- reranking is enabled by default through the Stage 230 Qwen3 reranker
+- playground pages cover chat, direct RAG over the Vector Stores API, and an
+  agent flow; models and vector stores are discovered live from Llama Stack,
+  so the governed Nemotron, the governed gpt-4o-mini, and the
+  product-document vector store all appear without UI configuration
+- the product-document corpus is populated by the GitOps/DSPA/KFP path, not
+  by ad hoc browser uploads
+- `RAG_QUESTION_SUGGESTIONS` seeds per-vector-store demo questions for the
+  `stage230-rhoai-34-product-docs-kfp` store, covering the stage themes
+  (Llama Stack RAG, AutoRAG, guardrails, Docling, RAGAS, KFP)
+- distribution pages expose the served models, vector stores, providers, and
+  shields for platform-inspection moments in the demo
+- evaluation pages preview the scoring workflows that the upcoming
+  evaluation stage will formalize
 - the OpenShift AI dashboard exposes a self-managed `RHOAI Demo RAG Chatbot`
   application tile that opens the chatbot Route
-- MCP and guardrails are visible as disabled extension points for later stages,
-  not active Stage 230 claims
 
 ## AI Pipelines Flow
 
@@ -299,6 +299,20 @@ leaderboard, compare all three metrics (answer faithfulness, answer
 correctness, context correctness) with their confidence intervals, inspect
 sample Q&A per pattern, and download the generated indexing and inference
 notebooks for the selected pattern into the Enterprise RAG Workbench.
+
+For the scripted handoff, fetch the winning pattern's artifacts directly
+into the workbench workspace from a workbench terminal:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/fetch_autorag_pattern.py
+```
+
+The helper ranks the latest run's patterns by faithfulness (use `--metric`
+or `--pattern` to choose differently) and downloads `pattern.json`,
+`evaluation_results.json`, and the generated `indexing.ipynb` and
+`inference.ipynb` into `workspace/autorag/<Pattern>/`, ready to run against
+the same Llama Stack service the optimization used.
 
 To make validation run the AutoRAG gate:
 
