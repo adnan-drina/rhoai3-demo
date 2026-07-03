@@ -73,19 +73,32 @@ pipeline on the first run.
 Stage 230 (`stage-230-private-data-rag`) implements AutoRAG on the active
 baseline:
 
-- Corpus: committed RHOAI 3.4 product PDFs mirrored to
-  `raw/rhoai-product-docs/` in the project bucket (English, PDF, one folder).
-- Ground-truth data:
+- Corpus: scoped AutoRAG input under `autorag/rhoai-product-docs/input/`
+  (Evaluating AI systems, Guardrails, and AutoRAG guides); the full 6-guide
+  corpus remains the chatbot/pgvector application path.
+- Ground-truth data: 12-question validate-and-protect benchmark at
   `stage-230-private-data-rag/data/rhoai-product-docs/autorag/benchmark_data.json`,
   mirrored to `autorag/rhoai-product-docs/` by `deploy.sh`.
-- Llama Stack: `lsd-enterprise-rag` with Nemotron (MaaS) for generation and
-  nomic plus `BAAI/bge-m3` embedding models; remote Milvus registered as the
+- Generation: Nemotron plus governed external `gpt-4o-mini`, both through
+  MaaS with quota from the dedicated `enterprise-rag-autorag`
+  MaaSSubscription sized for optimization bursts.
+- Embeddings: `granite-embedding-30m` and `all-minilm-l6-v2` served as vLLM
+  CPU KServe InferenceServices (chunked pooling for long inputs, `Recreate`
+  strategy) registered as `remote::vllm` Llama Stack providers; inline
+  sentence-transformers keeps only the nomic app-path model and the
+  GPU-oriented `BAAI/bge-m3` registration. Remote Milvus registered as the
   `milvus` vector_io provider (pgvector remains the app retrieval path).
 - Connection: `autorag-llama-stack-connection` Secret using the GitOps
   `llama-stack-connection` dashboard connection type.
 - Runner: `stage-230-private-data-rag/run-autorag-pipeline.sh` imports the
-  vendored `rhoai-3.4` compiled pipeline under the documented name and stores
-  evidence in `stage230-autorag-pipeline-evidence`.
+  vendored `rhoai-3.4` compiled pipeline under the documented name (CSV
+  image alignment, `SSL_CERT_FILE` injection, explicit bucket-root
+  `pipeline_root`), pre-warms embedding models, flushes the MaaS
+  external-model gateway connection pool, and stores evidence in
+  `stage230-autorag-pipeline-evidence`.
+- Dashboard contract (verified live): `spec.dashboardConfig.autorag: true`
+  feature flag, documented pipeline display name, HTTPS DSPA object
+  storage, and run artifacts at the KFP default bucket-root layout.
 
 ## Unresolved Or Environment-Specific Items
 

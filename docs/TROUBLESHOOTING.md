@@ -1357,6 +1357,69 @@ steps unless those components are intentionally reintroduced.
 - **Fix:** expected behavior; rerun `run-rhoai-docs-pipeline.sh` and
   `run-autorag-pipeline.sh` to repopulate run history and evidence.
 
+### Stage 230 gpt-4o-mini requests hang or return intermittent 503/504
+
+- **Symptom:** governed `gpt-4o-mini` calls through MaaS intermittently hang
+  for ~60 seconds, return 503 `upstream connect error`, or 504 through
+  routes, while other calls at the same moment succeed sub-second.
+- **Likely cause:** the MaaS gateway (Envoy) pools long-lived TLS
+  connections to the external provider and round-robins across them. AWS
+  NAT silently drops idle mappings without a reset, so a request drawn onto
+  a black-holed connection waits out the 60s route timeout; each failure
+  prunes exactly one dead connection. The `ExternalModel` CRD exposes no
+  connection-pool tuning on the generated DestinationRule.
+- **Fix:** keep the pool warm and flush it before bursts. Stage 230 runs the
+  `gpt-connection-keepalive` CronJob (two-minute governed 1-token
+  completion) and `run-autorag-pipeline.sh` flushes the pool until each
+  generation model answers three times consecutively before submitting.
+  Confirm with the gateway access log: failed requests show `UC` flags and
+  0 response bytes against the `outbound|443||api.openai.com` upstream.
+
+### Stage 230 vLLM flags appear set but have no effect
+
+- **Symptom:** a vLLM serving argument (for example a pooler configuration)
+  is present in the InferenceService and pod args, yet the behavior does not
+  change and no error is logged.
+- **Likely cause:** the vLLM OpenAI server parses unknown flags leniently
+  and silently consumes them as the positional model tag (observed live
+  with `--override-pooler-config`, which this build names
+  `--pooler-config`).
+- **Fix:** verify against the engine startup log, not the pod spec: the
+  `non-default args` and `pooler_config=` lines show what the engine
+  actually applied. Check flag names against
+  `python -m vllm.entrypoints.openai.api_server --help` in the serving
+  image.
+
+### Stage 230 Llama Stack crash-loops after adding a served-model provider
+
+- **Symptom:** `lsd-enterprise-rag` enters CrashLoopBackOff after a new
+  `remote::vllm` provider and registered model are added, with connection
+  errors to the backing InferenceService in the logs.
+- **Likely cause:** startup-time model registration contacts each
+  registered provider backend; if the backing InferenceService is not yet
+  schedulable or Ready, the server exits and retries.
+- **Fix:** make the backing InferenceService Ready first (check Kueue quota
+  and node capacity), then let the server restart or `oc rollout restart`
+  it. Registration itself does not validate model availability by default,
+  but the provider endpoint must accept connections.
+
+### Stage 230 single-replica model servers cannot roll updates
+
+- **Symptom:** an updated InferenceService pod stays SchedulingGated or
+  Pending while the old pod keeps running (possibly crash-looping), and the
+  Argo CD sync operation waits on the InferenceService health.
+- **Likely cause:** single-replica RollingUpdate needs double the CPU
+  request during every update; on quota- or capacity-tight clusters the new
+  pod cannot be admitted while the old one holds its reservation. A stuck
+  sync operation can also deadlock against the very resource its queued
+  revision would fix.
+- **Fix:** Stage 230 InferenceServices use `deploymentStrategy: Recreate`
+  (brief serving gap, no double capacity). Ensure `cq-cpu-default` quota
+  and worker capacity fit the CPU model plane. If an Argo CD sync operation
+  is stuck waiting on the unhealthy resource, terminate the operation
+  (remove `.operation` from the Application) and refresh so the fixed
+  revision applies.
+
 ### Stage 230 AutoRAG run fails with embedding timeouts or an OOMKilled Llama Stack
 
 - **Symptom:** `rag-templates-optimization` fails every iteration with

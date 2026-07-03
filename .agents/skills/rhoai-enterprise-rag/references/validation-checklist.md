@@ -62,7 +62,10 @@ Use this checklist before accepting Stage 230 RAG changes.
 - Secrets contain no committed real values.
 - Llama Stack `/v1/models` and `LlamaStackClient.models.list()` show:
   - Nemotron generation model
-  - embedding model
+  - `vllm-gpt/gpt-4o-mini` governed external generation model
+  - nomic app-path embedding model (inline sentence-transformers)
+  - `vllm-granite/granite-embedding-30m` and `vllm-minilm/all-minilm-l6-v2`
+    served AutoRAG embedding models
   - `vllm-reranker/qwen3-reranker`
 
 ## Ingestion
@@ -110,8 +113,11 @@ Use this checklist before accepting Stage 230 RAG changes.
   should include `download-docling-models`, `docling-convert-standard`,
   `docling-chunk-and-upload`, and `ingest-to-vector-store`.
 - A missing Docling `InferenceService` is expected in the active Stage 230
-  design. Treat only served endpoints such as `qwen3-reranker` as Deployment
-  tab resources unless the stage plan explicitly adds Docling API serving.
+  design. Treat only served endpoints as Deployment tab resources unless
+  the stage plan explicitly adds Docling API serving. The active served set
+  is `qwen3-reranker`, `granite-embedding-30m`, and `all-minilm-l6-v2` —
+  all vLLM CPU KServe InferenceServices with `Recreate` strategy admitted
+  through `lq-cpu-default`.
 - Product-document RAG smoke may index a bounded per-topic subset of the
   generated JSONL for routine redeploy validation, but it must still read the
   current pipeline output, attach file metadata cleanly, use hybrid search,

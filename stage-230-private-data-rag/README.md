@@ -33,6 +33,8 @@ accurate assistant experience than a model-only prompt can provide.
 | Red Hat OpenShift AI Pipelines | GitOps-managed DSPA pipeline server runs the Docling product-document processing pipeline from S3 input to reviewed JSONL output | [RHOAI 3.4 AI Pipelines docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_ai_pipelines/index) |
 | AutoRAG (Technology Preview) | Automated RAG configuration optimization over the product-document corpus: benchmark-driven runs rank RAG patterns by faithfulness/correctness metrics and generate indexing and inference notebooks | [RHOAI 3.4 AutoRAG docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index) |
 | Milvus (remote, demo-grade) | AutoRAG-required remote vector database registered with Llama Stack as the `milvus` vector_io provider; pgvector remains the application retrieval path | [RHOAI 3.4 AutoRAG docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_autorag/index) |
+| vLLM CPU embedding serving | `granite-embedding-30m` and `all-minilm-l6-v2` as KServe `InferenceService`s (reranker pattern) registered as `remote::vllm` Llama Stack embedding providers for AutoRAG throughput | [RHOAI 3.4 model deployment docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index) |
+| Governed external GPT via MaaS | `gpt-4o-mini` through the Stage 220 gateway as a second AutoRAG generation model, measuring the private-vs-external trade-off under governance | [RHOAI 3.4 MaaS docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/govern_llm_access_with_models-as-a-service/index) |
 
 Llama Stack / OGX functionality is Technology Preview in the active RHOAI 3.4
 baseline. The Red Hat article and GitHub repository guide the demo shape; the
@@ -81,8 +83,10 @@ flowchart LR
   pg["PostgreSQL metadata"]
   milvus["Milvus (AutoRAG)"]
   reranker["Qwen3 reranker"]
+  embedders["vLLM CPU embedders (granite-30m, MiniLM)"]
   maas["MaaS gateway"]
   nemotron["Nemotron"]
+  gpt["gpt-4o-mini (external)"]
   s3["Stage 230 S3 bucket"]
   dspa["DSPA / AI Pipelines Docling run"]
   autorag["AutoRAG optimization run"]
@@ -102,8 +106,10 @@ flowchart LR
   stack --> pg
   stack --> milvus
   stack --> reranker
+  stack --> embedders
   stack --> maas
   maas --> nemotron
+  maas --> gpt
   s3 --> autorag
   autorag --> stack
   autorag --> leaderboard
@@ -234,12 +240,23 @@ Stage 230 provides all AutoRAG prerequisites through GitOps and `deploy.sh`:
   `enterprise-rag` and is registered with Llama Stack as the `milvus`
   vector_io provider. pgvector remains the application retrieval path; the
   official AutoRAG guide requires remote Milvus for optimization runs.
-- AutoRAG runs compare two CPU-feasible embedding models
-  (`ibm-granite/granite-embedding-30m-english` and `all-MiniLM-L6-v2`, the
-  documented per-run maximum of two). The doc-recommended `BAAI/bge-m3`
-  stays registered for GPU-capable environments; live measurement showed
-  mid/large embedding models cannot meet the pipeline's fixed 60-second
-  embedding-batch timeout on CPU.
+- AutoRAG runs compare two embedding models served as dedicated vLLM CPU
+  KServe `InferenceService`s (`granite-embedding-30m` and
+  `all-minilm-l6-v2`, the documented per-run maximum of two), following the
+  same serving pattern as the Qwen3 reranker and visible in the project
+  `Deployments` tab. Dedicated vLLM CPU serving delivers ~90 texts/s per
+  model with server-side chunked pooling for long inputs; the inline
+  sentence-transformers provider keeps only the nomic app-path model, and
+  the doc-recommended `BAAI/bge-m3` stays registered for GPU-capable
+  environments.
+- AutoRAG runs compare two governed generation models through MaaS: the
+  local Nemotron and the external `gpt-4o-mini`, so the leaderboard
+  measures the private-vs-external generation trade-off on the same corpus
+  under identical retrieval settings. The corpus is public Red Hat
+  documentation, making governed egress to the external model an explicit
+  demo talking point rather than a data-boundary exception. Optimization
+  runs draw quota from the dedicated `enterprise-rag-autorag`
+  MaaSSubscription sized for evaluation bursts.
 - The `autorag-llama-stack-connection` Secret carries the documented
   `LLAMA_STACK_CLIENT_BASE_URL` and `LLAMA_STACK_CLIENT_API_KEY` keys and
   shows up as a project connection through the GitOps-managed
@@ -267,13 +284,15 @@ The runner imports the vendored Red Hat `documents-rag-optimization-pipeline`
 (compiled on the `rhoai-3.4` branch of `pipelines-components`, with executor
 images aligned to the installed operator's `odh-autorag-rhel9` digest) with
 the documented pipeline name, so the run is visible both under `Pipelines`
-and on the Gen AI studio `AutoRAG` page. It pre-warms the embedding models,
-then submits the run against the scoped validate-and-protect corpus with
-Nemotron as the generation model, granite-embedding-30m and all-MiniLM-L6-v2
-as embedding models, and the `faithfulness` metric over 4 RAG patterns by
-default, then reviews the S3 artifacts (leaderboard, per-pattern
-`pattern.json`, `evaluation_results.json`, indexing and inference notebooks)
-and stores evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
+and on the Gen AI studio `AutoRAG` page. It pre-warms the embedding models
+and flushes the MaaS gateway's external-model connection pool until the
+generation models answer consecutively, then submits the run against the
+scoped validate-and-protect corpus with Nemotron and gpt-4o-mini as
+generation models, granite-embedding-30m and all-minilm-l6-v2 as embedding
+models, and the `faithfulness` metric over 4 RAG patterns by default, then
+reviews the S3 artifacts (leaderboard, per-pattern `pattern.json`,
+`evaluation_results.json`, indexing and inference notebooks) and stores
+evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
 
 Dashboard path: open `AutoRAG` in the OpenShift AI sidebar to review the
 leaderboard, compare all three metrics (answer faithfulness, answer

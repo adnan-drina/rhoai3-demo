@@ -73,6 +73,16 @@ GitOps manifests, or demo scripts.
 ## Evaluation And Notebook Review
 
 - Leaderboard is reviewed only after the run status is Complete.
+- The number of leaderboard patterns is compared against the requested
+  maximum: the underlying engine exports only successful evaluations, so
+  embedding timeouts, input-length rejections, generation errors, and MaaS
+  rate limits remove patterns without any UI trace. When the leaderboard is
+  thinner than the budget, review the `rag-templates-optimization` pod logs
+  for `IndexingError` and `GenerationError` warnings.
+- Embedding serving meets the engine's fixed request shape: batches up to
+  2048 chunks within a 60-second client timeout, and long inputs accepted
+  (served vLLM embedding models need chunked pooling; inline
+  sentence-transformers truncates silently).
 - All metric columns are reviewed, not only the optimization metric.
 - Pattern details are checked for metric confidence intervals.
 - Chunking, embedding, retrieval, and generation settings are captured when

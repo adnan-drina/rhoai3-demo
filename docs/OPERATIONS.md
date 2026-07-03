@@ -997,10 +997,19 @@ Current status:
   artifacts in S3, and stores evidence in
   `enterprise-rag/stage230-autorag-pipeline-evidence`.
   AutoRAG is Technology Preview; runs use the `milvus` vector_io provider
-  (remote Milvus in `enterprise-rag`), Nemotron for generation, and the
-  CPU-feasible granite-embedding-30m plus all-MiniLM-L6-v2 embedding models.
-  The runner pre-warms embedding models so first-use downloads happen outside
-  the pipeline's fixed 60s embeddings timeout.
+  (remote Milvus in `enterprise-rag`), Nemotron plus governed gpt-4o-mini
+  for generation (quota from the dedicated `enterprise-rag-autorag`
+  MaaSSubscription), and the vLLM-served granite-embedding-30m plus
+  all-minilm-l6-v2 embedding InferenceServices. The runner pre-warms
+  embedding models and flushes the MaaS external-model gateway connection
+  pool until generation models answer consecutively before submitting.
+- The Stage 230 CPU model plane comprises three vLLM CPU KServe
+  InferenceServices (`qwen3-reranker`, `granite-embedding-30m`,
+  `all-minilm-l6-v2`) with `Recreate` deployment strategy, admitted through
+  `lq-cpu-default` against the stage-120 `cq-cpu-default` quota (40 CPU /
+  128Gi). Cluster worker capacity is an environment concern: scaling the
+  worker MachineSet is a live-environment action, not GitOps state (the
+  demo environment runs four workers).
 - `private-rag-chatbot` is the Stage 230 Streamlit chatbot. It is built from
   `stage-230-private-data-rag/chatbot/` by the deploy script through a binary
   OpenShift BuildConfig in `enterprise-rag-build`; the runtime Deployment and
@@ -1048,10 +1057,14 @@ pipeline S3 secrets and source uploads match the recreated server.
 `validate.sh` currently proves the runtime foundation and prepares the next
 gate:
 
-- Llama Stack model list includes the configured Nemotron provider, Nomic
-  embedding model, Qwen3 reranker model, and the AutoRAG embedding models
-  (granite-embedding-30m, all-MiniLM-L6-v2, plus the GPU-oriented bge-m3),
-  and the provider list includes the `milvus` vector_io provider
+- Llama Stack model list includes the configured Nemotron provider, the
+  governed gpt-4o-mini generation model, the Nomic embedding model, the
+  Qwen3 reranker model, and the vLLM-served AutoRAG embedding models
+  (vllm-granite/granite-embedding-30m, vllm-minilm/all-minilm-l6-v2, plus
+  the GPU-oriented bge-m3), and the provider list includes the `milvus`
+  vector_io provider
+- the granite-embedding-30m and all-minilm-l6-v2 InferenceServices are
+  Ready and Kueue-queued
 - PostgreSQL, pgvector extension, Milvus, etcd, and the
   `LlamaStackDistribution` are ready
 - Gen AI studio is enabled, the `llama-stack-connection` dashboard connection
