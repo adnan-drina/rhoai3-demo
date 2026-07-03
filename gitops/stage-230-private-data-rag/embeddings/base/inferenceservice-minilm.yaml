@@ -32,7 +32,8 @@ spec:
         - --runner=pooling
         - --convert=embed
         - --dtype=float32
-        - --max-model-len=512
+        # all-MiniLM-L6-v2 has max_position_embeddings=256
+        - --max-model-len=256
         - --max-num-seqs=32
       env:
         - name: VLLM_CPU_KVCACHE_SPACE
