@@ -166,6 +166,19 @@ Check:
   `rate_limit_exceeded`, or `tokens per min`.
 - file citation annotations appear when `file_search` is used
 - authenticated endpoints reject missing or invalid bearer tokens
+- On llama-stack 0.7.x, MCP servers are top-level `connectors:` entries in
+  the run config (`registered_resources` silently ignores unknown keys, and
+  the connector HTTP API is read-only); Responses API MCP tools reference
+  them with `{"type": "mcp", "server_label": ..., "connector_id": ...}`.
+- `POST /v1/responses` handlers mount only when `responses` is in the run
+  config `apis:` list with its `inline::builtin` provider;
+  `/v1/inspect/routes` lists the route either way, so a 404 here is a config
+  gap, not a routing fault.
+- With Postgres-backed kvstore, verify `GET /v1beta/connectors` actually
+  lists registered connectors: kvstore range scans assume bytewise key
+  ordering, and non-C database collations (for example `en_US.utf8`) make
+  registered rows invisible to list calls while direct gets succeed. Pin the
+  key column to `COLLATE "C"`.
 
 ## GitOps Review
 

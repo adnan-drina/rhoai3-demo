@@ -1752,6 +1752,49 @@ steps unless those components are intentionally reintroduced.
   Notebook annotations and workbench template; the notebook controller owns the
   generated access operands.
 
+### Stage 230 registered MCP connector missing from `/v1beta/connectors`
+
+- **Symptom:** the Llama Stack config registers an MCP connector (top-level
+  `connectors:` in `StackConfig`) and
+  `GET /v1beta/connectors/<id>/tools` works, but `GET /v1beta/connectors`
+  returns `{"data":[]}`, so the chatbot never shows the `mcp::` tool.
+- **Likely cause:** llama-stack kvstore range queries compare keys against a
+  `￿` sentinel and assume bytewise ordering. The stage Postgres database
+  uses `en_US.utf8` collation, under which
+  `'connectors:...:openshift' < 'connectors:...:￿'` is false, so the
+  range scan misses the row that direct `get` finds.
+- **Checks:**
+
+  ```bash
+  oc exec -n enterprise-rag private-rag-postgres-0 -- bash -c \
+    "psql -U \$POSTGRESQL_USER -d llamastack -c \
+    \"SELECT key FROM llamastack_kvstore WHERE key LIKE '%connector%';\""
+  ```
+
+- **Fix:** pin the key column to the C (bytewise) collation; `deploy.sh`
+  applies this idempotently in `ensure_kvstore_collation`:
+
+  ```bash
+  oc exec -n enterprise-rag private-rag-postgres-0 -- bash -c \
+    "psql -U \$POSTGRESQL_USER -d llamastack -c \
+    'ALTER TABLE llamastack_kvstore ALTER COLUMN key TYPE text COLLATE \"C\";'"
+  ```
+
+### Stage 230 `POST /v1/responses` returns 404
+
+- **Symptom:** the chatbot agent/direct modes fail and a direct
+  `POST /v1/responses` against the Llama Stack service returns
+  `{"detail":"Not Found"}`, even though `/v1/inspect/routes` lists the route.
+- **Likely cause:** the route catalog lists all known APIs, but the handler
+  is only mounted when the `responses` API is enabled in the run config
+  `apis:` list with its `inline::builtin` provider (llama-stack 0.7.x renamed
+  the `agents` API surface). Registered MCP connectors are only callable
+  through the Responses API, so tool calling breaks silently without it.
+- **Fix:** keep `- responses` in `apis:` and the `responses:` provider block
+  (persistence on the stage Postgres backends) in
+  `gitops/stage-230-private-data-rag/llamastack/base/configmap.yaml`, then
+  restart `deployment/lsd-enterprise-rag` after the ConfigMap syncs.
+
 ---
 
 Legacy troubleshooting content is backed up at:
