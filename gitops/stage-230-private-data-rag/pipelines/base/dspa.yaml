@@ -25,13 +25,16 @@ spec:
       username: dspa
   objectStorage:
     externalStorage:
+      # The AutoRAG dashboard backend requires an HTTPS object-storage
+      # endpoint and expects run artifacts at the KFP default pipeline root
+      # (bucket root, no basePath): the results page lists
+      # <bucket>/documents-rag-optimization-pipeline/<run-id>/... directly.
       bucket: enterprise-rag
       host: s3.openshift-storage.svc
-      port: "80"
-      scheme: http
-      secure: false
+      port: "443"
+      scheme: https
+      secure: true
       region: us-east-1
-      basePath: pipelines
       s3CredentialsSecret:
         secretName: enterprise-rag-bucket
         accessKey: AWS_ACCESS_KEY_ID

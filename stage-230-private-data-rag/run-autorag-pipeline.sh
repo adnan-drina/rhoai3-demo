@@ -225,12 +225,12 @@ spec:
               bucket = os.environ["AWS_S3_BUCKET"]
               run_keys = []
               paginator = client.get_paginator("list_objects_v2")
-              for page in paginator.paginate(Bucket=bucket, Prefix="pipelines/"):
+              for page in paginator.paginate(Bucket=bucket, Prefix="documents-rag-optimization-pipeline/"):
                   for entry in page.get("Contents", []):
                       if run_id in entry["Key"]:
                           run_keys.append(entry["Key"])
               if not run_keys:
-                  raise SystemExit(f"no pipeline artifacts found for run {run_id} under s3://{bucket}/pipelines/")
+                  raise SystemExit(f"no pipeline artifacts found for run {run_id} under s3://{bucket}/documents-rag-optimization-pipeline/")
               leaderboard_keys = [key for key in run_keys if "leaderboard" in key.lower()]
               pattern_keys = [key for key in run_keys if "rag_pattern" in key.lower() or "pattern" in key.lower()]
               notebook_keys = [key for key in run_keys if key.endswith(".ipynb")]
