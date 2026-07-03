@@ -12,14 +12,17 @@ metadata:
 data:
   LLAMA_STACK_ENDPOINT: "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321"
   LLAMA_STACK_TIMEOUT: "600"
+  # The first four render immediately in the chat page grid; the rest sit
+  # behind "Show More". Questions come from the committed AutoRAG
+  # validate-and-protect benchmark so live answers match measured quality.
   RAG_QUESTION_SUGGESTIONS: |
     {
       "stage230-rhoai-34-product-docs-kfp": [
         "How do I set up a RAG pipeline with Llama Stack?",
-        "What is AutoRAG and how does it work in RHOAI?",
-        "How do I configure guardrails for my AI application?",
-        "How does Docling process PDF documents for RAG?",
-        "What evaluation metrics does RAGAS provide?",
-        "How do I create a KFP pipeline in OpenShift AI?"
+        "What is AutoRAG in Red Hat OpenShift AI and what does it produce?",
+        "How can I add safety controls to models deployed on OpenShift AI?",
+        "What is EvalHub in OpenShift AI?",
+        "Which evaluation metrics does AutoRAG use to rank RAG patterns?",
+        "How does Docling process PDF documents for RAG?"
       ]
     }

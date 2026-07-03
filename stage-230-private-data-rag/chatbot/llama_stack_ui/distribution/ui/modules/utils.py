@@ -130,6 +130,31 @@ def get_question_suggestions():
         return {}
 
 
+def fetch_mcp_connectors(client):
+    """
+    Fetch registered MCP connectors from the LlamaStack server.
+
+    llama-stack 0.7.x replaced MCP toolgroups with connectors; the client
+    library does not expose them yet, so query the endpoint directly.
+
+    Args:
+        client: LlamaStack client instance
+
+    Returns:
+        List of connector dicts ({"connector_id", "url", "server_label", ...})
+    """
+    try:
+        import httpx
+
+        base_url = str(client.base_url).rstrip("/")
+        response = httpx.get(f"{base_url}/v1beta/connectors", timeout=10)
+        response.raise_for_status()
+        return response.json().get("data", [])
+    except Exception as e:
+        logger.debug("Failed to fetch MCP connectors: %s", e)
+        return []
+
+
 def fetch_available_shields(client):
     """
     Fetch available safety shields from the LlamaStack server.

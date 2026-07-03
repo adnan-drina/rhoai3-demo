@@ -83,6 +83,7 @@ Out of scope for this stage unless explicitly added later:
 | AutoRAG input corpus and benchmark theme | Scope the AutoRAG input to the Evaluating AI systems, Guardrails, and AutoRAG guides (~1,000 chunks) under `autorag/rhoai-product-docs/input/`, with a 12-question validate-and-protect benchmark | The benchmark theme (how to evaluate and protect RAG) makes optimization results read as enterprise concerns and previews the next demo stages (guardrails, EvalHub evaluation). ~1,000 chunks keep retrieval settings statistically distinguishable while fitting CPU embedding throughput; 1-2 documents would saturate context correctness and blur the leaderboard. The full 6-guide corpus remains the chatbot/pgvector application path. AutoRAG itself samples input (1 GiB cap), so scoping input is aligned product behavior. |
 | AutoRAG pipeline source | Vendor the compiled `documents-rag-optimization-pipeline` from `red-hat-data-services/pipelines-components` branch `rhoai-3.4` | The Red Hat build pins the supported `registry.redhat.io/rhoai/odh-autorag-rhel9` image and the exact 3.4 parameter contract (`llama_stack_vector_io_provider_id`, S3/Llama Stack secret env keys). Importing with the documented pipeline name keeps runs visible on the Gen AI studio AutoRAG page. |
 | AutoRAG run posture | KFP-native runs through the Stage 230 DSPA via `run-autorag-pipeline.sh`, defaulting to 4 RAG patterns and the faithfulness metric | Scriptable, evidence-producing runs match the stage validation pattern; the dashboard AutoRAG UI remains the demo surface for reviewing leaderboards and generated notebooks. |
+| Chatbot demo surface | Suggested questions come from the committed AutoRAG benchmark; the Stage 220 OpenShift MCP server is selectable as `mcp::openshift` in agent mode | Live demo answers match measured pattern quality, and tool calling is demonstrated against a read-only, rate-limited MCP server without adding new privileged components. |
 
 ## Source Capture
 
@@ -265,20 +266,30 @@ Out of scope for this stage unless explicitly added later:
 | ai4rag silent evaluation failures | recorded finding | ai4rag 0.5.4 exports only successful evaluations; embedding timeouts, length rejections, and generation errors remove patterns from the leaderboard without any UI trace, and pattern.json `max_combinations` is the exported count, not the search-space size. Review the rag-templates-optimization pod logs when a leaderboard looks thinner than the requested budget. |
 | Llama Stack startup coupling to registered backends | recorded finding | Startup-time model registration requires each registered provider backend to be reachable; an unschedulable embedding InferenceService crash-looped the server. Order deployments accordingly or expect recovery after backends come up. |
 | RAGAS / evaluation | deferred | Keep for a later evaluation-focused stage. |
-| Guardrails and MCP | deferred | Keep for later safety and agentic stages. |
+| Guardrails | deferred | Keep for later safety stages. |
+| OpenShift MCP tool calling | active (2026-07-03, user request) | Stage 220's read-only OpenShift MCP server (`rhoai-mcp` namespace) is registered as the `openshift` MCP connector in the Stage 230 Llama Stack (`registered_resources.connectors`; llama-stack 0.7.x replaced MCP toolgroups with connectors, and registration is config-only — the HTTP API is read-only). The chatbot agent mode surfaces it as `mcp::openshift` and passes `connector_id` to the Responses API. Broader agentic flows remain deferred. |
 
 ## Review Needed
 
 - Validate the Llama Stack UI chatbot in a fresh environment after the next
   full deploy: playground chat and direct RAG against the product-document
   vector store, model and vector-store discovery, and the seeded question
-  suggestions.
+  suggestions. (Resolved finding, 2026-07-03: the deployed pod was still
+  running the upstream `dist-ui` image with llama-stack-client 0.6.0 and
+  failed with HTTP 426 against server 0.7.2; an Argo refresh plus rollout
+  restart picked up the built image. validate.sh now execs both pods and
+  fails on a client/server llama-stack version mismatch.)
 - Walk the AutoRAG demo path end to end once in the dashboard: leaderboard
   for run `f79dab42`, pattern detail with sample Q&A, and the fetched
   `workspace/autorag/Pattern8/` notebooks in the Enterprise RAG Workbench.
   (Display-name contract confirmed live: the AutoRAG page matches the
   documented `documents-rag-optimization-pipeline` display name; readability
   lives in the pipeline description.)
+- Workbench notebooks aligned and execution-proven (2026-07-03): the three
+  visible notebooks were re-executed headlessly in the live workbench against
+  the `-dev` vector store, and the retrieval notebook now closes with the
+  AutoRAG pattern handoff (`fetch_autorag_pattern.py` →
+  `workspace/autorag/<Pattern>/`).
 
 ## First Live AutoRAG Run (2026-07-03, resolved)
 

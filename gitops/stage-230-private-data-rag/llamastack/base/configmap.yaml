@@ -160,7 +160,15 @@ data:
 
     registered_resources:
       benchmarks: []
-      connectors: []
+      connectors:
+        # Stage 220's read-only OpenShift MCP server (rhoai-mcp namespace).
+        # llama-stack 0.7.x replaced MCP toolgroups with connectors; the
+        # Responses API calls the URL from the Llama Stack pod, so the
+        # in-cluster Service URI is the correct reachability path.
+        - connector_id: openshift
+          connector_type: mcp
+          url: http://openshift-mcp.rhoai-mcp.svc.cluster.local:8080/mcp
+          server_label: openshift
       datasets: []
       models:
         # The MaaS external-model proxy exposes chat completions but not

@@ -526,6 +526,24 @@ if [[ -n "$route_host" ]]; then
     check "Llama Stack lists remote Milvus vector_io provider" "status=${providers_status},body=$(head -c 180 "$providers_body" | tr '\n' ' ')"
   fi
   rm -f "$providers_body"
+  connectors_body=$(mktemp)
+  connectors_status=$(curl -sk --max-time 30 -o "$connectors_body" -w '%{http_code}' "https://${route_host}/v1beta/connectors" 2>/dev/null || true)
+  if [[ "$connectors_status" == "200" ]] && grep -q '"openshift"' "$connectors_body"; then
+    check "Llama Stack lists OpenShift MCP connector" "pass"
+  else
+    check "Llama Stack lists OpenShift MCP connector" "status=${connectors_status},body=$(head -c 180 "$connectors_body" | tr '\n' ' ')"
+  fi
+  rm -f "$connectors_body"
+  # Listing the connector's tools makes Llama Stack call the MCP server, so
+  # this proves LSD-to-MCP connectivity, not just registration.
+  mcp_tools_body=$(mktemp)
+  mcp_tools_status=$(curl -sk --max-time 30 -o "$mcp_tools_body" -w '%{http_code}' "https://${route_host}/v1beta/connectors/openshift/tools" 2>/dev/null || true)
+  if [[ "$mcp_tools_status" == "200" ]] && grep -q 'pods_list_in_namespace' "$mcp_tools_body"; then
+    check "OpenShift MCP connector serves read-only tools" "pass"
+  else
+    check "OpenShift MCP connector serves read-only tools" "status=${mcp_tools_status},body=$(head -c 180 "$mcp_tools_body" | tr '\n' ' ')"
+  fi
+  rm -f "$mcp_tools_body"
 else
   check "Llama Stack route exists" "missing"
 fi
@@ -580,6 +598,23 @@ if [[ -n "$chatbot_route_host" ]]; then
     || check "Stage 230 chatbot health route responds" "status=${chatbot_health:-missing}"
 else
   check "Stage 230 chatbot route exists" "missing"
+fi
+
+# The Streamlit health endpoint stays green even when the Llama Stack client
+# in the image is incompatible with the server (426 on first API call), so
+# compare versions directly.
+chatbot_pod=$(oc get pods -n "$RAG_NS" --insecure-skip-tls-verify=true -o name 2>/dev/null | grep "pod/${CHATBOT_DEPLOYMENT}" | head -1 | sed 's|pod/||')
+lsd_pod_for_version=$(oc get pods -n "$RAG_NS" -l app.kubernetes.io/instance=lsd-enterprise-rag -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+if [[ -n "$chatbot_pod" && -n "$lsd_pod_for_version" ]]; then
+  chatbot_client_version=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- python3 -c 'import llama_stack_client; print(llama_stack_client.__version__)' 2>/dev/null || true)
+  server_version=$(oc exec -n "$RAG_NS" "$lsd_pod_for_version" --insecure-skip-tls-verify=true -- python3 -c 'import importlib.metadata; print(importlib.metadata.version("llama_stack").split("+")[0])' 2>/dev/null || true)
+  if [[ -n "$chatbot_client_version" && "$chatbot_client_version" == "$server_version" ]]; then
+    check "Stage 230 chatbot Llama Stack client matches server version" "pass"
+  else
+    check "Stage 230 chatbot Llama Stack client matches server version" "client=${chatbot_client_version:-missing},server=${server_version:-missing}"
+  fi
+else
+  warn "Stage 230 chatbot client/server version comparison skipped" "pods not found"
 fi
 
 resource_exists "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" \

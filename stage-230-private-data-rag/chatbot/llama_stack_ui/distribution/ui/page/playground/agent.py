@@ -13,7 +13,7 @@ import logging
 import streamlit as st
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
-from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, strip_file_citations, strip_file_citations_streaming, run_input_shields, run_output_shields
+from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, strip_file_citations, strip_file_citations_streaming, run_input_shields, run_output_shields, fetch_mcp_connectors
 
 
 logger = logging.getLogger(__name__)
@@ -52,21 +52,19 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
             # Convert search tools to web_search format
             agent_tools.append({"type": "web_search"})
         elif toolgroup_name.startswith("mcp::"):
-            # For MCP tools, get server info
-            try:
-                toolgroups = client.toolgroups.list()
-                for toolgroup in toolgroups:
-                    if str(toolgroup.identifier) == toolgroup_name:
-                        agent_tools.append({
-                            "type": "mcp",
-                            "server_label": toolgroup.args.get(
-                                "name", str(toolgroup.identifier)
-                            ),
-                            "server_url": toolgroup.mcp_endpoint.uri,
-                        })
-                        break
-            except Exception as e:
-                logger.debug("Failed to get MCP server info for %s: %s", toolgroup_name, e)
+            # MCP servers are registered as connectors on llama-stack 0.7.x;
+            # reference them by connector_id so the server resolves the URL.
+            connector_id = toolgroup_name.split("::", 1)[1]
+            server_label = connector_id
+            for connector in fetch_mcp_connectors(client):
+                if connector.get("connector_id") == connector_id:
+                    server_label = connector.get("server_label") or connector_id
+                    break
+            agent_tools.append({
+                "type": "mcp",
+                "server_label": server_label,
+                "connector_id": connector_id,
+            })
         else:
             # For other toolgroups, get individual tools and convert to function format
             try:

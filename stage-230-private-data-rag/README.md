@@ -158,8 +158,13 @@ Kueue-managed RAG workloads. The UI is discovery-driven against the Stage
 - the product-document corpus is populated by the GitOps/DSPA/KFP path, not
   by ad hoc browser uploads
 - `RAG_QUESTION_SUGGESTIONS` seeds per-vector-store demo questions for the
-  `stage230-rhoai-34-product-docs-kfp` store, covering the stage themes
-  (Llama Stack RAG, AutoRAG, guardrails, Docling, RAGAS, KFP)
+  `stage230-rhoai-34-product-docs-kfp` store, drawn from the committed
+  AutoRAG validate-and-protect benchmark so live answers match measured
+  pattern quality (Llama Stack RAG, AutoRAG, guardrails, EvalHub, Docling)
+- agent mode offers `mcp::openshift` tool calling through Stage 220's
+  read-only OpenShift MCP server, registered as the `openshift` MCP
+  connector in the Llama Stack config (`registered_resources.connectors`);
+  ask about pod status in a known namespace or node usage to demo tools
 - distribution pages expose the served models, vector stores, providers, and
   shields for platform-inspection moments in the demo
 - evaluation pages preview the scoring workflows that the upcoming

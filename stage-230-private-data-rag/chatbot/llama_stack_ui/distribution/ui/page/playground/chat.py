@@ -18,7 +18,8 @@ from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import (
     get_suggestions_for_databases,
     get_vector_db_name,
-    fetch_available_shields, 
+    fetch_available_shields,
+    fetch_mcp_connectors,
 )
 from llama_stack_ui.distribution.ui.page.playground.agent import (
     agent_process_prompt,
@@ -114,6 +115,14 @@ def fetch_models_and_tools():
         logger.debug("toolgroups API not available: %s", e)
 
     mcp_tools_list = [tool for tool in tool_groups_list if tool.startswith("mcp::")]
+    # llama-stack 0.7.x servers expose MCP servers as connectors instead of
+    # toolgroups; surface them under the same mcp:: naming convention.
+    mcp_tools_list += [
+        f"mcp::{connector['connector_id']}"
+        for connector in fetch_mcp_connectors(client)
+        if connector.get("connector_id")
+        and f"mcp::{connector['connector_id']}" not in mcp_tools_list
+    ]
     logger.debug("MCP tools: %s", mcp_tools_list)
 
     builtin_tools_list = [tool for tool in tool_groups_list if not tool.startswith("mcp::")]
