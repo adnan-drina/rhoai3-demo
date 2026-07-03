@@ -596,6 +596,11 @@ fi
   && check "Gen AI studio is enabled for AutoRAG" "pass" \
   || check "Gen AI studio is enabled for AutoRAG" "${gen_ai_studio:-missing}"
 
+autorag_flag=$(jsonpath "odhdashboardconfig/odh-dashboard-config" "$RHOAI_DASHBOARD_NS" "{.spec.dashboardConfig.autorag}")
+[[ "$autorag_flag" == "true" ]] \
+  && check "AutoRAG dashboard page is enabled" "pass" \
+  || check "AutoRAG dashboard page is enabled" "${autorag_flag:-missing}"
+
 resource_exists "configmap/llama-stack-connection" "$RHOAI_DASHBOARD_NS" \
   && check "Llama Stack dashboard connection type exists" "pass" \
   || check "Llama Stack dashboard connection type exists" "missing"
