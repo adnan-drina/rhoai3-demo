@@ -1,0 +1,46 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: all-minilm-l6-v2
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: all-minilm-l6-v2
+    app.kubernetes.io/component: embeddings
+    kueue.x-k8s.io/queue-name: lq-cpu-default
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+    openshift.io/display-name: all-minilm-l6-v2
+    opendatahub.io/model-type: embedding
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: Standard
+    serving.kserve.io/stop: "false"
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    minReplicas: 1
+    maxReplicas: 1
+    deploymentStrategy:
+      type: RollingUpdate
+    model:
+      runtime: all-minilm-l6-v2
+      modelFormat:
+        name: vLLM
+      storageUri: hf://sentence-transformers/all-MiniLM-L6-v2
+      args:
+        - --runner=pooling
+        - --convert=embed
+        - --dtype=float32
+        - --max-model-len=512
+        - --max-num-seqs=32
+      env:
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "2"
+      resources:
+        requests:
+          cpu: "4"
+          memory: 4Gi
+        limits:
+          cpu: "8"
+          memory: 8Gi

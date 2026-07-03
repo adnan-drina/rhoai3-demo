@@ -14,6 +14,7 @@ resources:
   - milvus/base
   - pipelines/base
   - reranker/base
+  - embeddings/base
   - llamastack/base
   - workbench/base
   - app/base

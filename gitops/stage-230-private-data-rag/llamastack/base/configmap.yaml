@@ -75,6 +75,24 @@ data:
           config:
             base_url: ${env.VLLM_RERANKER_URL}
             tls_verify: ${env.VLLM_RERANKER_TLS_VERIFY:=false}
+        - provider_id: vllm-gpt
+          provider_type: remote::vllm
+          config:
+            base_url: ${env.VLLM_GPT_URL}
+            api_token: ${env.VLLM_API_TOKEN:=}
+            max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+            tls_verify: ${env.VLLM_TLS_VERIFY:=false}
+            drop_params: true
+        - provider_id: vllm-granite
+          provider_type: remote::vllm
+          config:
+            base_url: ${env.VLLM_GRANITE_EMBEDDING_URL}
+            tls_verify: false
+        - provider_id: vllm-minilm
+          provider_type: remote::vllm
+          config:
+            base_url: ${env.VLLM_MINILM_EMBEDDING_URL}
+            tls_verify: false
         - provider_id: sentence-transformers
           provider_type: inline::sentence-transformers
           config: {}
@@ -147,15 +165,15 @@ data:
           model_type: embedding
           metadata:
             embedding_dimension: 1024
-        - model_id: sentence-transformers/ibm-granite/granite-embedding-30m-english
-          provider_id: sentence-transformers
-          provider_model_id: ibm-granite/granite-embedding-30m-english
+        - model_id: vllm-granite/granite-embedding-30m
+          provider_id: vllm-granite
+          provider_model_id: granite-embedding-30m
           model_type: embedding
           metadata:
             embedding_dimension: 384
-        - model_id: sentence-transformers/all-MiniLM-L6-v2
-          provider_id: sentence-transformers
-          provider_model_id: all-MiniLM-L6-v2
+        - model_id: vllm-minilm/all-minilm-l6-v2
+          provider_id: vllm-minilm
+          provider_model_id: all-minilm-l6-v2
           model_type: embedding
           metadata:
             embedding_dimension: 384

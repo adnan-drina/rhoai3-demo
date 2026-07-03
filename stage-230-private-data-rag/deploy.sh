@@ -60,8 +60,9 @@ AUTORAG_BENCHMARK_PREFIX="${RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX:-autorag/rho
 AUTORAG_INPUT_PREFIX="${RHOAI_STAGE230_AUTORAG_INPUT_PREFIX:-autorag/rhoai-product-docs/input}"
 AUTORAG_INPUT_FILES="${RHOAI_STAGE230_AUTORAG_INPUT_FILES:-Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+GPT_MODEL_RESOURCE="${RHOAI_STAGE230_MAAS_GPT_MODEL_NAME:-gpt-4o-mini}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
-MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}}"
+MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-enterprise-rag-autorag}"
 MAAS_API_KEY_NAME="${RHOAI_STAGE230_MAAS_API_KEY_NAME:-stage230-rag-runtime}"
 VLLM_MAX_TOKENS="${RHOAI_STAGE230_VLLM_MAX_TOKENS:-1024}"
 VLLM_TLS_VERIFY="${RHOAI_STAGE230_VLLM_TLS_VERIFY:-false}"
@@ -388,10 +389,11 @@ EOF
 }
 
 get_maas_endpoint() {
+  local model="${1:-$NEMOTRON_MODEL_RESOURCE}"
   local endpoint
-  endpoint=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.endpoint}")
+  endpoint=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${model}" "$MAAS_NS" "{.status.endpoint}")
   if [[ -z "$endpoint" ]]; then
-    echo "ERROR: MaaS endpoint for ${NEMOTRON_MODEL_RESOURCE} is not ready in ${MAAS_NS}. Deploy and validate Stage 220 first." >&2
+    echo "ERROR: MaaS endpoint for ${model} is not ready in ${MAAS_NS}. Deploy and validate Stage 220 first." >&2
     exit 1
   fi
   printf '%s' "$endpoint"
@@ -436,10 +438,14 @@ PY
 }
 
 ensure_maas_api_key() {
-  local endpoint gateway_host user_token api_key_body status api_key api_key_id existing
+  local endpoint gateway_host user_token api_key_body status api_key api_key_id existing existing_subscription
 
+  # Reuse the stored key only when it was minted against the currently
+  # configured subscription; a subscription change requires a fresh key so
+  # the new token rate limits apply.
   existing=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.VLLM_API_TOKEN}" | base64 --decode 2>/dev/null || true)
-  if [[ -n "$existing" && "$existing" == sk-oai-* ]]; then
+  existing_subscription=$(jsonpath "secret/${LLAMA_SECRET}" "$RAG_NS" "{.data.MAAS_SUBSCRIPTION}" | base64 --decode 2>/dev/null || true)
+  if [[ -n "$existing" && "$existing" == sk-oai-* && "$existing_subscription" == "$MAAS_SUBSCRIPTION" ]]; then
     printf '%s' "$existing"
     return 0
   fi
@@ -480,7 +486,7 @@ ensure_maas_api_key() {
 }
 
 ensure_runtime_secrets() {
-  local postgres_password milvus_password maas_endpoint maas_token llama_stack_base_url autorag_api_key
+  local postgres_password milvus_password maas_endpoint maas_gpt_endpoint maas_token llama_stack_base_url autorag_api_key
 
   postgres_password=$(jsonpath "secret/${POSTGRES_SECRET}" "$RAG_NS" "{.data.POSTGRESQL_PASSWORD}" | base64 --decode 2>/dev/null || true)
   if [[ -z "$postgres_password" ]]; then
@@ -529,16 +535,19 @@ stringData:
   LLAMA_STACK_CLIENT_API_KEY: "${autorag_api_key}"
 EOF
 
-  maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint)}")"
+  maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint "$NEMOTRON_MODEL_RESOURCE")}")"
+  maas_gpt_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_GPT_URL:-$(get_maas_endpoint "$GPT_MODEL_RESOURCE")}")"
   maas_token="$(ensure_maas_api_key)"
 
   oc create secret generic "$LLAMA_SECRET" \
     -n "$RAG_NS" \
     --from-literal=INFERENCE_MODEL="$INFERENCE_MODEL" \
     --from-literal=VLLM_URL="$maas_endpoint" \
+    --from-literal=VLLM_GPT_URL="$maas_gpt_endpoint" \
     --from-literal=VLLM_API_TOKEN="$maas_token" \
     --from-literal=VLLM_TLS_VERIFY="$VLLM_TLS_VERIFY" \
     --from-literal=VLLM_MAX_TOKENS="$VLLM_MAX_TOKENS" \
+    --from-literal=MAAS_SUBSCRIPTION="$MAAS_SUBSCRIPTION" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
 
   oc label secret "$POSTGRES_SECRET" "$MILVUS_SECRET" "$LLAMA_SECRET" -n "$RAG_NS" --overwrite \

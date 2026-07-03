@@ -97,6 +97,15 @@ spec:
           value: http://qwen3-reranker-predictor.enterprise-rag.svc.cluster.local:8080/v1
         - name: VLLM_RERANKER_TLS_VERIFY
           value: "false"
+        - name: VLLM_GRANITE_EMBEDDING_URL
+          value: http://granite-embedding-30m-predictor.enterprise-rag.svc.cluster.local:8080/v1
+        - name: VLLM_MINILM_EMBEDDING_URL
+          value: http://all-minilm-l6-v2-predictor.enterprise-rag.svc.cluster.local:8080/v1
+        - name: VLLM_GPT_URL
+          valueFrom:
+            secretKeyRef:
+              name: private-rag-llama-stack-secret
+              key: VLLM_GPT_URL
         - name: MILVUS_URL
           valueFrom:
             secretKeyRef:

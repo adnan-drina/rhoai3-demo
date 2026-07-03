@@ -51,7 +51,9 @@ NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
 RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
 EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
-AUTORAG_EMBEDDING_MODELS="${RHOAI_STAGE230_AUTORAG_EMBEDDING_MODELS:-sentence-transformers/ibm-granite/granite-embedding-30m-english,sentence-transformers/all-MiniLM-L6-v2,sentence-transformers/BAAI/bge-m3}"
+AUTORAG_EMBEDDING_MODELS="${RHOAI_STAGE230_AUTORAG_EMBEDDING_MODELS:-vllm-granite/granite-embedding-30m,vllm-minilm/all-minilm-l6-v2,sentence-transformers/BAAI/bge-m3}"
+AUTORAG_GENERATION_MODEL="${RHOAI_STAGE230_AUTORAG_GENERATION_MODEL:-vllm-gpt/gpt-4o-mini}"
+EMBEDDING_ISVCS="${RHOAI_STAGE230_EMBEDDING_ISVCS:-granite-embedding-30m,all-minilm-l6-v2}"
 AUTORAG_INPUT_FILES="${RHOAI_STAGE230_AUTORAG_INPUT_FILES:-Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
@@ -312,6 +314,18 @@ reranker_route_host=$(jsonpath "route/${RERANKER_NAME}" "$RAG_NS" "{.spec.host}"
   && check "Qwen3 reranker route exists" "pass" \
   || check "Qwen3 reranker route exists" "missing"
 
+IFS=',' read -ra embedding_isvcs <<< "$EMBEDDING_ISVCS"
+for isvc in "${embedding_isvcs[@]}"; do
+  isvc_ready=$(condition_status "inferenceservice/${isvc}" "$RAG_NS" "Ready")
+  [[ "$isvc_ready" == "True" ]] \
+    && check "Embedding InferenceService ${isvc} is Ready" "pass" \
+    || check "Embedding InferenceService ${isvc} is Ready" "${isvc_ready:-missing}"
+  isvc_queue=$(jsonpath "inferenceservice/${isvc}" "$RAG_NS" "{.metadata.labels.kueue\\.x-k8s\\.io/queue-name}")
+  [[ "$isvc_queue" == "lq-cpu-default" ]] \
+    && check "Embedding InferenceService ${isvc} uses CPU LocalQueue" "pass" \
+    || check "Embedding InferenceService ${isvc} uses CPU LocalQueue" "${isvc_queue:-missing}"
+done
+
 if resource_exists "inferenceservice/docling" "$RAG_NS" || resource_exists "inferenceservice/docling-standard" "$RAG_NS"; then
   warn "Docling is represented as AI Pipelines tasks, not a model Deployment" "unexpected Docling InferenceService exists"
 else
@@ -498,6 +512,11 @@ if [[ -n "$route_host" ]]; then
       check "Llama Stack lists ${autorag_model_short} embedding model" "status=${status},model=${autorag_model}"
     fi
   done
+  if [[ "$status" == "200" ]] && grep -q "$AUTORAG_GENERATION_MODEL" "$models_body"; then
+    check "Llama Stack lists governed gpt-4o-mini generation model" "pass"
+  else
+    check "Llama Stack lists governed gpt-4o-mini generation model" "status=${status},model=${AUTORAG_GENERATION_MODEL}"
+  fi
   rm -f "$models_body"
   providers_body=$(mktemp)
   providers_status=$(curl -sk --max-time 30 -o "$providers_body" -w '%{http_code}' "https://${route_host}/v1/providers" 2>/dev/null || true)
