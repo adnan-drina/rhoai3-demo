@@ -293,6 +293,32 @@ run `4713d11a`, validate.sh 101/0) settled the recorded verifications:
 - artifacts per pattern: pattern.json, evaluation_results.json, indexing and
   inference notebooks, and /v1/responses request bodies
 
+## Full Comparison Run (2026-07-03, resolved)
+
+The first complete four-way optimization run (`f79dab42`) evaluated and
+exported all 8 requested patterns with zero silent failures, spanning both
+generation models (Nemotron and governed gpt-4o-mini) and both vLLM-served
+embedding models (granite-embedding-30m and all-minilm-l6-v2):
+
+- answer correctness: Nemotron patterns scored 0.60-0.66 vs gpt-4o-mini
+  0.46-0.56 on this corpus — the measured private-vs-external evidence the
+  stage narrative is built on
+- answer faithfulness: best pattern overall was Nemotron with
+  granite-embedding-30m, hybrid top-3 RRF (0.727); gpt-4o-mini patterns
+  clustered at 0.67-0.70
+- context correctness saturated at 1.0 across patterns, as expected for the
+  scoped corpus
+- network hardening required for the governed external model, all verified
+  by measurement: the in-cluster MaaS proxy (load-balancer hairpin dropped
+  ~40% of fresh in-cluster connections), the pool-breadth keepalive
+  (gateway-to-provider connections NAT-black-holed after idle), explicit
+  model registration (no /v1/models on the external-model proxy), and
+  max_tokens: 0 on the provider (adapter default collides with
+  max_completion_tokens at the OpenAI backend)
+- open upstream ask: connection-pool tuning (idle timeout, TCP keepalive)
+  on the ExternalModel-generated DestinationRule; a live patch was
+  intentionally not applied to the operator-owned shared resource
+
 ## Fresh Pipelines Rebuild (2026-07-03, resolved)
 
 At the user's request the pipelines and AutoRAG state were scraped and
