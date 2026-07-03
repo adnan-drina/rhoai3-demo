@@ -165,6 +165,11 @@ Kueue-managed RAG workloads. The UI is discovery-driven against the Stage
   read-only OpenShift MCP server, registered as the `openshift` MCP
   connector in the Llama Stack config (`registered_resources.connectors`);
   ask about pod status in a known namespace or node usage to demo tools
+- RAG answers carry enterprise attribution: a "📚 Sources" panel groups the
+  retrieved chunks per official guide with topic tags, relevance scores, and
+  docs.redhat.com links (from the corpus metadata ingested with every
+  chunk), the raw chunk payloads stay inspectable in a separate expander,
+  and the model is instructed to name its source guides in the answer
 - distribution pages expose the served models, vector stores, providers, and
   shields for platform-inspection moments in the demo
 - evaluation pages preview the scoring workflows that the upcoming

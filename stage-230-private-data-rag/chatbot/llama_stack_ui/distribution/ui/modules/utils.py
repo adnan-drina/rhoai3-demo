@@ -130,6 +130,112 @@ def get_question_suggestions():
         return {}
 
 
+_SLUG_WORD_FIXES = {
+    "rag": "RAG",
+    "autorag": "AutoRAG",
+    "ai": "AI",
+    "genai": "Gen AI",
+    "kfp": "KFP",
+    "llm": "LLM",
+    "llama": "Llama",
+    "evalhub": "EvalHub",
+    "mcp": "MCP",
+    "openshift": "OpenShift",
+    "rhoai": "RHOAI",
+}
+
+_SLUG_SMALL_WORDS = {"with", "and", "for", "in", "of", "to", "the", "a", "an", "on"}
+
+
+def guide_title_from_slug(slug):
+    """Turn a guide slug like 'working-with-autorag' into a display title."""
+    words = [w for w in str(slug).replace("_", "-").split("-") if w]
+    parts = []
+    for index, word in enumerate(words):
+        if word in _SLUG_WORD_FIXES:
+            parts.append(_SLUG_WORD_FIXES[word])
+        elif index > 0 and word in _SLUG_SMALL_WORDS:
+            parts.append(word)
+        else:
+            parts.append(word.capitalize())
+    return " ".join(parts)
+
+
+def _result_attributes(result):
+    if isinstance(result, dict):
+        return result.get("attributes") or {}
+    return getattr(result, "attributes", None) or {}
+
+
+def _result_score(result):
+    if isinstance(result, dict):
+        score = result.get("score")
+    else:
+        score = getattr(result, "score", None)
+    try:
+        return float(score)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def summarize_search_sources(search_results):
+    """
+    Aggregate vector search / file_search results into per-document sources.
+
+    Stage 230 chunks carry corpus metadata (guide_slug, topic, source_url,
+    product, version); group retrieved chunks by guide so the answer can be
+    attributed to the official documents that grounded it.
+
+    Returns:
+        List of source dicts sorted by best relevance score (descending).
+    """
+    docs = {}
+    for result in search_results or []:
+        attrs = _result_attributes(result)
+        slug = attrs.get("guide_slug") or attrs.get("filename") or "unknown"
+        entry = docs.setdefault(slug, {
+            "slug": slug,
+            "title": guide_title_from_slug(slug),
+            "url": attrs.get("source_url"),
+            "product": attrs.get("product"),
+            "version": attrs.get("version"),
+            "topics": set(),
+            "chunks": 0,
+            "best_score": 0.0,
+        })
+        entry["chunks"] += 1
+        entry["best_score"] = max(entry["best_score"], _result_score(result))
+        if attrs.get("topic"):
+            entry["topics"].add(str(attrs["topic"]))
+        if not entry["url"] and attrs.get("source_url"):
+            entry["url"] = attrs["source_url"]
+    sources = sorted(docs.values(), key=lambda d: d["best_score"], reverse=True)
+    for source in sources:
+        source["topics"] = sorted(source["topics"])
+    return sources
+
+
+def format_sources_markdown(sources):
+    """Render aggregated sources as a markdown reference list."""
+    lines = []
+    for index, source in enumerate(sources, start=1):
+        title = source["title"]
+        link = f"[{title}]({source['url']})" if source.get("url") else title
+        details = []
+        if source.get("topics"):
+            details.append("topics: " + ", ".join(f"`{t}`" for t in source["topics"]))
+        if source.get("best_score"):
+            details.append(f"relevance {source['best_score']:.2f}")
+        details.append(f"{source['chunks']} chunk{'s' if source['chunks'] != 1 else ''}")
+        if source.get("product"):
+            product = source["product"]
+            if source.get("version"):
+                product += f" ({source['version']})"
+            details.append(product)
+        lines.append(f"{index}. **{link}** — " + " · ".join(details))
+    return "\n".join(lines)
+
+
 def fetch_mcp_connectors(client):
     """
     Fetch registered MCP connectors from the LlamaStack server.

@@ -14,7 +14,7 @@ import traceback
 import streamlit as st
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
-from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, run_input_shields, run_output_shields
+from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, run_input_shields, run_output_shields, guide_title_from_slug, summarize_search_sources, format_sources_markdown
 
 
 logger = logging.getLogger(__name__)
@@ -85,10 +85,36 @@ def search_vector_store_direct(prompt, vector_db_id, vector_db_name, top_k, stat
         for result in search_results:
             text_content = extract_text_from_search_result(result)
             if text_content:
-                attrs = getattr(result, 'attributes', {})
-                source = attrs.get('source') or getattr(result, 'filename', 'unknown')
-                context_parts.append(f"[Source: {source}]: {text_content}")
-                display_results.append({"source": source, "text": text_content})
+                attrs = getattr(result, 'attributes', {}) or {}
+                slug = attrs.get('guide_slug')
+                title = guide_title_from_slug(slug) if slug else (
+                    attrs.get('source') or getattr(result, 'filename', 'unknown')
+                )
+                topic = attrs.get('topic')
+                label = f"{title} (topic: {topic})" if topic else title
+                context_parts.append(f"[Source: {label}]: {text_content}")
+                display_results.append({
+                    "guide": title,
+                    "topic": topic,
+                    "score": round(getattr(result, 'score', 0) or 0, 3),
+                    "source_url": attrs.get('source_url'),
+                    "text": text_content,
+                })
+
+        # Enterprise attribution: per-document source summary above the raw
+        # chunk payloads, both persisted so chat history replays them.
+        sources = summarize_search_sources(search_results)
+        if sources:
+            sources_md = format_sources_markdown(sources)
+            sources_title = f"📚 Sources from '{vector_db_name}'"
+            state.tool_results.append({
+                'title': sources_title,
+                'type': 'markdown',
+                'content': sources_md
+            })
+            with state.containers.tool_results:
+                with st.expander(sources_title, expanded=False):
+                    st.markdown(sources_md)
 
         state.tool_results.append({
             'title': f"📄 File Search Results from '{vector_db_name}'",
@@ -114,7 +140,9 @@ def build_rag_messages(prompt, context_parts, system_prompt):
         # RAG mode: Format user message with explicit CONTEXT and QUERY sections
         context = "\n\n".join(context_parts)
         extended_prompt = (
-            f"Please answer the following query using the context below.\n\n"
+            f"Please answer the following query using the context below. "
+            f"When your answer draws on the context, name the source guide(s) "
+            f"it came from, e.g. (Source: Working with AutoRAG).\n\n"
             f"CONTEXT:\n{context}\n\n"
             f"QUERY:\n{prompt}"
         )

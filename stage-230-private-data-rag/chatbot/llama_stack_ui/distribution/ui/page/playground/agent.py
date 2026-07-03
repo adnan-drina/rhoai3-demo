@@ -13,7 +13,7 @@ import logging
 import streamlit as st
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
-from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, strip_file_citations, strip_file_citations_streaming, run_input_shields, run_output_shields, fetch_mcp_connectors
+from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, strip_file_citations, strip_file_citations_streaming, run_input_shields, run_output_shields, fetch_mcp_connectors, guide_title_from_slug, summarize_search_sources, format_sources_markdown
 
 
 logger = logging.getLogger(__name__)
@@ -129,8 +129,21 @@ def handle_agent_output_item_done(chunk, state):
     item_type = getattr(item, 'type', None)
 
     if item_type == "file_search_call":
-        # Results are fetched explicitly per-DB after streaming completes
-        pass
+        # The request asks for file_search_call.results, so attribute the
+        # answer to source documents directly from the streamed item.
+        results = getattr(item, 'results', None) or []
+        sources = summarize_search_sources(results)
+        if sources:
+            state.sources_rendered = True
+            sources_md = format_sources_markdown(sources)
+            state.tool_results.append({
+                'title': '📚 Sources',
+                'type': 'markdown',
+                'content': sources_md
+            })
+            with state.containers.tool_results:
+                with st.expander('📚 Sources', expanded=False):
+                    st.markdown(sources_md)
 
     elif item_type == "web_search_call":
         # Web search - API doesn't expose raw results, just status
@@ -233,6 +246,9 @@ def search_vector_stores_fallback(prompt, selected_vector_dbs, state):
     Explicitly search vector stores when the Responses API stream didn't
     include file_search results (common on subsequent conversation turns).
     """
+    if getattr(state, 'sources_rendered', False):
+        return
+
     client = llama_stack_api.client
     vector_dbs = list(client.vector_stores.list() or [])
 
@@ -290,9 +306,31 @@ def search_vector_stores_fallback(prompt, selected_vector_dbs, state):
                 text = result.text
 
             if text:
-                attrs = getattr(result, 'attributes', {})
-                source = attrs.get('source') or getattr(result, 'filename', 'unknown')
-                display_results.append({"source": source, "text": clean_text(text)})
+                attrs = getattr(result, 'attributes', {}) or {}
+                slug = attrs.get('guide_slug')
+                title = guide_title_from_slug(slug) if slug else (
+                    attrs.get('source') or getattr(result, 'filename', 'unknown')
+                )
+                display_results.append({
+                    "guide": title,
+                    "topic": attrs.get('topic'),
+                    "score": round(getattr(result, 'score', 0) or 0, 3),
+                    "source_url": attrs.get('source_url'),
+                    "text": clean_text(text),
+                })
+
+        sources = summarize_search_sources(search_results)
+        if sources:
+            sources_md = format_sources_markdown(sources)
+            sources_title = f"📚 Sources from '{vdb_name}'"
+            state.tool_results.append({
+                'title': sources_title,
+                'type': 'markdown',
+                'content': sources_md
+            })
+            with state.containers.tool_results:
+                with st.expander(sources_title, expanded=False):
+                    st.markdown(sources_md)
 
         if display_results:
             state.tool_results.append({
@@ -455,6 +493,10 @@ def agent_process_prompt(prompt, state, config):
     # Add tools if available
     if tools:
         request_kwargs["tools"] = tools
+        if any(tool.get("type") == "file_search" for tool in tools):
+            # Stream retrieved chunks with their metadata so the UI can
+            # attribute the answer to source documents.
+            request_kwargs["include"] = ["file_search_call.results"]
 
     logger.debug("Request: %s", request_kwargs)
     state.show_thinking()

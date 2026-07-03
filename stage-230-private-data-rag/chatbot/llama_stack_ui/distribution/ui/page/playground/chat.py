@@ -38,6 +38,8 @@ def render_tool_results(tool_results):
         with st.expander(tool_result['title'], expanded=False):
             if tool_result['type'] == 'json':
                 st.json(tool_result['content'])
+            elif tool_result['type'] == 'markdown':
+                st.markdown(tool_result['content'])
             else:
                 st.code(tool_result['content'])
 
@@ -520,6 +522,9 @@ class ResponseState:
         # Tool state
         self.tool_status = None
         self.tool_results = []
+        # Set when streamed file_search results already produced a sources
+        # panel, so the fallback search does not duplicate attribution.
+        self.sources_rendered = False
 
         # Response content
         self.full_response = ""
