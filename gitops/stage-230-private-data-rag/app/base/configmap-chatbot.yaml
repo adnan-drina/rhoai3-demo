@@ -11,25 +11,15 @@ metadata:
     argocd.argoproj.io/sync-wave: "21"
 data:
   LLAMA_STACK_ENDPOINT: "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321"
-  LLAMA_STACK_TIMEOUT: "120"
-  INFERENCE_MODEL: "nemotron-3-nano-30b-a3b"
-  DEFAULT_VECTOR_STORE: "stage230-rhoai-34-product-docs-kfp"
-  RAG_SEARCH_MODE: "hybrid"
-  RAG_TOP_K: "6"
-  RAG_RERANK_ENABLED: "true"
-  RAG_RERANKER_MODEL: "vllm-reranker/qwen3-reranker"
-  RAG_MAX_CONTEXT_CHARS: "8000"
-  RAG_MAX_OUTPUT_TOKENS: "512"
-  RAG_TEMPERATURE: "0.1"
-  RAG_HISTORY_TURNS: "3"
-  MCP_ENABLED: "false"
-  GUARDRAILS_ENABLED: "false"
-  GUARDRAILS_ENDPOINT: ""
+  LLAMA_STACK_TIMEOUT: "600"
   RAG_QUESTION_SUGGESTIONS: |
     {
-      "default": [
+      "stage230-rhoai-34-product-docs-kfp": [
         "How do I set up a RAG pipeline with Llama Stack?",
         "What is AutoRAG and how does it work in RHOAI?",
-        "How do I configure guardrails for my AI application?"
+        "How do I configure guardrails for my AI application?",
+        "How does Docling process PDF documents for RAG?",
+        "What evaluation metrics does RAGAS provide?",
+        "How do I create a KFP pipeline in OpenShift AI?"
       ]
     }

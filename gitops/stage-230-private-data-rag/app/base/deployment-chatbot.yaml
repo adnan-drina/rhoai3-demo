@@ -24,8 +24,8 @@ spec:
       serviceAccountName: private-rag-chatbot
       containers:
         - name: chatbot
-          image: image-registry.openshift-image-registry.svc:5000/enterprise-rag-build/private-rag-chatbot:latest
-          imagePullPolicy: Always
+          image: quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: private-rag-chatbot-config
@@ -34,25 +34,28 @@ spec:
               containerPort: 8501
           readinessProbe:
             httpGet:
-              path: /_stcore/health
+              path: /
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 3
+            timeoutSeconds: 15
           livenessProbe:
             httpGet:
-              path: /_stcore/health
+              path: /
               port: http
-            initialDelaySeconds: 20
+            initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 3
+            timeoutSeconds: 15
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
+              cpu: 200m
               memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /.streamlit
+              name: dot-streamlit
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -61,3 +64,6 @@ spec:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
+      volumes:
+        - emptyDir: {}
+          name: dot-streamlit

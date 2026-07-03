@@ -1,0 +1,13 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: rhoai-demo-rag-chatbot-link
+  annotations:
+    argocd.argoproj.io/sync-wave: "23"
+spec:
+  applicationMenu:
+    section: RHOAI Demo
+    imageURL: data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlJBRyBjaGF0Ym90Ij4KICA8cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHJ4PSI4IiBmaWxsPSIjZWUwMDAwIi8+CiAgPHBhdGggZD0iTTE0IDE1aDIwYTQgNCAwIDAgMSA0IDR2OWE0IDQgMCAwIDEtNCA0SDI0bC03IDV2LTVoLTNhNCA0IDAgMCAxLTQtNHYtOWE0IDQgMCAwIDEgNC00eiIgZmlsbD0iI2ZmZmZmZiIvPgogIDxjaXJjbGUgY3g9IjIwIiBjeT0iMjMuNSIgcj0iMiIgZmlsbD0iI2VlMDAwMCIvPgogIDxjaXJjbGUgY3g9IjI4IiBjeT0iMjMuNSIgcj0iMiIgZmlsbD0iI2VlMDAwMCIvPgo8L3N2Zz4=
+  href: 'https://private-rag-chatbot-enterprise-rag.apps.cluster-qt67m.qt67m.sandbox3357.opentlc.com'
+  location: ApplicationMenu
+  text: 'RHOAI Demo RAG Chatbot'

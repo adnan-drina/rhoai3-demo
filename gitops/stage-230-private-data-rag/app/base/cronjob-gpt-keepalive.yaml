@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gpt-connection-keepalive
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/part-of: rag
+    app.kubernetes.io/name: gpt-connection-keepalive
+    app.kubernetes.io/component: maas-egress-keepalive
+  annotations:
+    argocd.argoproj.io/sync-wave: "13"
+spec:
+  # The MaaS gateway pools long-lived TLS connections to api.openai.com.
+  # AWS NAT silently drops idle mappings (~350s) without RST, leaving Envoy
+  # with black-holed connections that hang requests for the 60s route
+  # timeout (verified live: first-call-after-idle hangs, retries recover).
+  # The ExternalModel CRD exposes no connection-pool tuning, so a tiny
+  # governed completion every two minutes keeps the pool warm instead.
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 110
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/part-of: rag
+            app.kubernetes.io/name: gpt-connection-keepalive
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: keepalive
+              image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+              command:
+                - /bin/bash
+                - -c
+              args:
+                - |
+                  curl -sk --max-time 100 -o /dev/null -w 'keepalive status=%{http_code} time=%{time_total}s\n' \
+                    -H "Authorization: Bearer ${VLLM_API_TOKEN}" \
+                    -H "Content-Type: application/json" \
+                    "${VLLM_GPT_URL}/chat/completions" \
+                    -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"."}],"max_tokens":1}' || true
+              env:
+                - name: VLLM_GPT_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: private-rag-llama-stack-secret
+                      key: VLLM_GPT_URL
+                - name: VLLM_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: private-rag-llama-stack-secret
+                      key: VLLM_API_TOKEN
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi

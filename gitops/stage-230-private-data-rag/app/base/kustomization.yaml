@@ -9,3 +9,5 @@ resources:
   - deployment-chatbot.yaml
   - service-chatbot.yaml
   - route-chatbot.yaml
+  - consolelink-chatbot.yaml
+  - cronjob-gpt-keepalive.yaml
