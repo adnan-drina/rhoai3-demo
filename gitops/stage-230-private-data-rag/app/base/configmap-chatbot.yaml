@@ -21,7 +21,15 @@ data:
   RAG_MAX_CONTEXT_CHARS: "8000"
   RAG_MAX_OUTPUT_TOKENS: "512"
   RAG_TEMPERATURE: "0.1"
+  RAG_HISTORY_TURNS: "3"
   MCP_ENABLED: "false"
   GUARDRAILS_ENABLED: "false"
   GUARDRAILS_ENDPOINT: ""
-  RAG_QUESTION_SUGGESTIONS: "{}"
+  RAG_QUESTION_SUGGESTIONS: |
+    {
+      "default": [
+        "How do I set up a RAG pipeline with Llama Stack?",
+        "What is AutoRAG and how does it work in RHOAI?",
+        "How do I configure guardrails for my AI application?"
+      ]
+    }

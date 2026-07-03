@@ -26,11 +26,15 @@ flows that belong to later stages.
 
 | Aspect | RAG mode | Model-only mode |
 |--------|----------|-----------------|
-| API | `client.chat.completions.create()` | `client.chat.completions.create()` |
-| Retrieval | `client.vector_stores.search()` against selected vector store | skipped |
-| Context | retrieved chunks are injected into the user message | none |
+| API | `client.chat.completions.create(stream=True)` | `client.chat.completions.create(stream=True)` |
+| Retrieval | `client.vector_stores.search()` with optional topic filter | skipped |
+| Context | retrieved chunks injected with numbered citations [1], [2] | none |
+| Conversation memory | last N turns included in prompt (configurable via `RAG_HISTORY_TURNS`) | last N turns included in prompt |
+| Topic detection | keyword-based detection from query, applied as metadata filter | not applicable |
+| Empty retrieval | automatic fallback to model-only with disclaimer | not applicable |
 | Default model | `nemotron-3-nano-30b-a3b` | `nemotron-3-nano-30b-a3b` |
 | Default vector store | `stage230-rhoai-34-product-docs-kfp` | not used |
+| Suggested questions | rendered as clickable chips from `RAG_QUESTION_SUGGESTIONS` | rendered as clickable chips |
 | Guardrails | disabled-by-default adapter in `guardrails.py` | disabled-by-default adapter in `guardrails.py` |
 | MCP | connector discovery/tool contract in `mcp.py`, disabled by default | connector discovery/tool contract in `mcp.py`, disabled by default |
 
@@ -66,7 +70,8 @@ implemented, the adapter must fail closed rather than silently allowing traffic.
 | `RAG_SEARCH_MODE` | default search mode: `hybrid`, `vector`, or `keyword` |
 | `RAG_RERANK_ENABLED` | enable Qwen3 reranking of search results |
 | `RAG_RERANKER_MODEL` | Llama Stack reranker model id |
-| `RAG_QUESTION_SUGGESTIONS` | JSON object keyed by vector-store name/id |
+| `RAG_HISTORY_TURNS` | number of conversation turns to include (default 3) |
+| `RAG_QUESTION_SUGGESTIONS` | JSON object keyed by vector-store name/`default` |
 | `MCP_ENABLED` | future MCP feature flag |
 | `GUARDRAILS_ENABLED` | future guardrails feature flag |
 | `GUARDRAILS_ENDPOINT` | future guardrails endpoint |

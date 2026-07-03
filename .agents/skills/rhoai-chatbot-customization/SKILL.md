@@ -70,11 +70,11 @@ Generation model: nemotron-3-nano-30b-a3b through Stage 220 MaaS and Stage 230 L
 Reranker: vllm-reranker/qwen3-reranker via /v1alpha/inference/rerank (enabled by default)
 ```
 
-The chatbot uses a simplified RAG path compared to the full acceptance
-scripts: it searches the vector store and optionally reranks, but does not
-perform query-time LLM metadata extraction or topic-based filtering. The
-full metadata-aware pipeline is exercised by
-`scripts/rhoai_product_docs_rag_smoke.py` and validated by `validate.sh`.
+The chatbot searches the vector store with optional keyword-based topic
+filtering, reranks results with Qwen3, streams responses token by token,
+maintains multi-turn conversation memory, renders numbered source citations,
+and renders suggested questions from the ConfigMap. When RAG retrieval
+returns no results, it falls back to model-only mode with a visible disclaimer.
 
 ## When To Use
 
@@ -127,13 +127,14 @@ full metadata-aware pipeline is exercised by
 
 ### Change Suggested Questions
 
-The active Stage 230 app intentionally does not render large suggested-question
-buttons on the main chat page. If a later stage reintroduces suggestions:
+Suggested questions are rendered as clickable chips above the chat input when the
+conversation has only the initial greeting message. They are configured via
+`RAG_QUESTION_SUGGESTIONS` in the ConfigMap.
 
 1. Edit `RAG_QUESTION_SUGGESTIONS` in
    `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml`.
-2. Keys must match vector store names or ids, such as
-   `stage230-rhoai-34-product-docs-kfp`.
+2. The JSON object is keyed by vector store name or `default`. The `default`
+   key is used when no store-specific suggestions are found.
 3. Argo CD applies the ConfigMap. Restart the deployment if the running pod does
    not pick up the new environment:
 

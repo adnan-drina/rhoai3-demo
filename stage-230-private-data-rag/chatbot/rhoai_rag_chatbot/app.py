@@ -11,7 +11,12 @@ from rhoai_rag_chatbot.config import AppConfig, load_config
 from rhoai_rag_chatbot.guardrails import check_input, check_output
 from rhoai_rag_chatbot.llama_stack_gateway import LlamaStackGateway, SearchHit
 from rhoai_rag_chatbot.mcp import mcp_status
-from rhoai_rag_chatbot.prompts import build_context, model_only_messages, rag_messages
+from rhoai_rag_chatbot.prompts import (
+    build_context,
+    detect_topic,
+    model_only_messages,
+    rag_messages,
+)
 
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(name)s: %(message)s")
@@ -46,9 +51,8 @@ def initialize_state() -> None:
             {
                 "role": "assistant",
                 "content": (
-                    "Ask a question about the Red Hat OpenShift AI 3.4 RAG, "
-                    "AutoRAG, evaluation, guardrails, AI Pipelines, or Docling "
-                    "documentation corpus."
+                    "Ask a question about the Red Hat OpenShift AI 3.4 documentation "
+                    "-- RAG, AutoRAG, evaluation, guardrails, AI Pipelines, or Docling."
                 ),
             }
         ]
@@ -64,26 +68,26 @@ def choose_index(options: list[str], preferred: str) -> int:
 
 
 def render_sources(hits: list[SearchHit]) -> None:
+    """Render source citations as a clean numbered list with links."""
     if not hits:
         return
-    with st.expander("Retrieved context", expanded=False):
-        for index, hit in enumerate(hits, start=1):
-            st.markdown(f"**{index}. {hit.source}**")
-            metadata = {
-                key: hit.attributes.get(key)
-                for key in (
-                    "topic",
-                    "documentation_category",
-                    "source_url",
-                    "page_start",
-                    "page_end",
-                    "source_file",
-                )
-                if hit.attributes.get(key) is not None
-            }
-            if metadata:
-                st.json(metadata)
-            st.write(hit.text[:1000])
+    st.markdown("---")
+    st.markdown("**Sources**")
+    for index, hit in enumerate(hits, start=1):
+        url = hit.attributes.get("source_url") or ""
+        topic = hit.attributes.get("topic") or ""
+        title = hit.source or "Retrieved document"
+
+        label = f"**[{index}] {title}**"
+        if topic:
+            label += f"  \u2022  `{topic}`"
+        if url:
+            label += f"  \u2022  [view]({url})"
+
+        with st.expander(label, expanded=False):
+            st.caption(hit.text[:800])
+            if hit.score is not None:
+                st.caption(f"Score: {hit.score:.4f}")
 
 
 def render_history() -> None:
@@ -142,6 +146,7 @@ def build_sidebar(config: AppConfig) -> dict[str, object]:
         with st.expander("Runtime", expanded=False):
             st.write(f"Llama Stack: `{config.llama_stack_endpoint}`")
             st.write(f"llama-stack-client: `{package_version('llama-stack-client')}`")
+            st.write(f"History turns: `{config.history_turns}`")
             st.write(f"MCP enabled: `{config.mcp_enabled}`")
             st.write(f"Guardrails enabled: `{config.guardrails_enabled}`")
             st.write(f"Discovered tools: `{len(gw.list_tools())}`")
@@ -168,48 +173,95 @@ def answer_prompt(config: AppConfig, ui_config: dict[str, object], prompt: str) 
         st.session_state.messages.append({"role": "assistant", "content": input_decision.message})
         return
 
+    history = st.session_state.get("messages", [])
+    rag_fallback = False
+
     if ui_config["use_rag"] and ui_config["vector_store_id"]:
         with st.status("Retrieving context", expanded=False):
+            topic = detect_topic(prompt)
+            if topic:
+                st.write(f"Detected topic: `{topic}`")
             hits = gw.search_vector_store(
                 str(ui_config["vector_store_id"]),
                 prompt,
                 int(ui_config["top_k"]),
                 str(ui_config["search_mode"]),
+                topic_filter=topic,
             )
             st.write(f"Retrieved {len(hits)} candidate chunks from {ui_config['vector_store_name']}.")
             if hits and ui_config["rerank_enabled"]:
                 hits = gw.rerank(config.reranker_model, prompt, hits, int(ui_config["top_k"]))
                 st.write("Reranked retrieved chunks.")
             sources = hits
-        if not sources:
-            answer = "The selected knowledge store did not return enough private context to answer this question."
-            st.markdown(answer)
-            st.session_state.messages.append({"role": "assistant", "content": answer})
-            return
-        context = build_context(sources, config.max_context_chars)
-        messages = rag_messages(prompt, context)
-    else:
-        messages = model_only_messages(prompt)
 
-    with st.spinner("Generating answer"):
+        if not sources:
+            st.info(
+                "No relevant context found in the knowledge store. "
+                "Answering from general model knowledge (not grounded in private documents)."
+            )
+            rag_fallback = True
+            messages = model_only_messages(prompt, history, config.history_turns)
+        else:
+            context = build_context(sources, config.max_context_chars)
+            messages = rag_messages(prompt, context, history, config.history_turns)
+    else:
+        messages = model_only_messages(prompt, history, config.history_turns)
+
+    try:
+        stream = gw.chat_completion_stream(
+            str(ui_config["model"]),
+            messages,
+            float(ui_config["temperature"]),
+            int(ui_config["max_tokens"]),
+        )
+        answer = st.write_stream(stream)
+    except Exception:
+        logger.warning("Streaming failed, falling back to non-streaming")
         answer = gw.chat_completion(
             str(ui_config["model"]),
             messages,
             float(ui_config["temperature"]),
             int(ui_config["max_tokens"]),
         )
+        st.markdown(answer)
 
-    output_decision = check_output(config.guardrails_enabled, config.guardrails_endpoint, answer)
+    if not answer:
+        answer = "The model returned an empty response."
+        st.markdown(answer)
+
+    output_decision = check_output(config.guardrails_enabled, config.guardrails_endpoint, str(answer))
     if not output_decision.allowed:
         st.warning(output_decision.message)
         st.session_state.messages.append({"role": "assistant", "content": output_decision.message})
         return
 
-    if not answer:
-        answer = "The model returned an empty response."
-    st.markdown(answer)
+    if rag_fallback:
+        st.caption("*This answer is based on general model knowledge, not private documentation.*")
+
     render_sources(sources)
-    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": str(answer),
+        "sources": sources,
+    })
+
+
+def render_suggestions(config: AppConfig, store_name: str) -> None:
+    """Render clickable suggested question chips."""
+    suggestions = config.question_suggestions.get(store_name, [])
+    if not suggestions:
+        suggestions = config.question_suggestions.get("default", [])
+    if not suggestions or not isinstance(suggestions, list):
+        return
+
+    cols = st.columns(min(len(suggestions), 3))
+    for i, suggestion in enumerate(suggestions):
+        if not isinstance(suggestion, str):
+            continue
+        col = cols[i % len(cols)]
+        if col.button(suggestion, key=f"suggest_{i}", use_container_width=True):
+            st.session_state["_pending_suggestion"] = suggestion
+            st.rerun()
 
 
 def chat_tab(config: AppConfig) -> None:
@@ -219,7 +271,15 @@ def chat_tab(config: AppConfig) -> None:
     initialize_state()
     render_history()
 
-    if prompt := st.chat_input("Ask about RHOAI RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, or Docling"):
+    if len(st.session_state.messages) <= 1:
+        render_suggestions(config, str(ui_config.get("vector_store_name", "")))
+
+    pending = st.session_state.pop("_pending_suggestion", None)
+    prompt = pending or st.chat_input(
+        "Ask about RHOAI RAG, AutoRAG, RAGAS, EvalHub, guardrails, AI Pipelines, or Docling"
+    )
+
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -228,7 +288,7 @@ def chat_tab(config: AppConfig) -> None:
                 answer_prompt(config, ui_config, prompt)
             except Exception as exc:  # noqa: BLE001 - UI should report runtime errors.
                 logger.exception("Chat request failed")
-                message = f"Request failed: {exc}"
+                message = f"Something went wrong while processing your request. Please try again.\n\n`{exc}`"
                 st.error(message)
                 st.session_state.messages.append({"role": "assistant", "content": message})
 

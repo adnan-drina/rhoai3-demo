@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import json
 import os
 
 
@@ -33,6 +34,17 @@ def _float(name: str, default: float) -> float:
         return default
 
 
+def _json_dict(name: str) -> dict:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+        return parsed if isinstance(parsed, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
 @dataclass(frozen=True)
 class AppConfig:
     llama_stack_endpoint: str
@@ -46,9 +58,11 @@ class AppConfig:
     max_context_chars: int
     max_output_tokens: int
     temperature: float
+    history_turns: int
     mcp_enabled: bool
     guardrails_enabled: bool
     guardrails_endpoint: str
+    question_suggestions: dict = field(default_factory=dict)
 
 
 def load_config() -> AppConfig:
@@ -72,7 +86,9 @@ def load_config() -> AppConfig:
         max_context_chars=_int("RAG_MAX_CONTEXT_CHARS", 8000),
         max_output_tokens=_int("RAG_MAX_OUTPUT_TOKENS", 512),
         temperature=_float("RAG_TEMPERATURE", 0.1),
+        history_turns=_int("RAG_HISTORY_TURNS", 3),
         mcp_enabled=_bool("MCP_ENABLED", False),
         guardrails_enabled=_bool("GUARDRAILS_ENABLED", False),
         guardrails_endpoint=os.environ.get("GUARDRAILS_ENDPOINT", ""),
+        question_suggestions=_json_dict("RAG_QUESTION_SUGGESTIONS"),
     )
