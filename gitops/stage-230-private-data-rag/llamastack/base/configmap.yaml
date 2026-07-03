@@ -155,7 +155,7 @@ data:
             embedding_dimension: 384
         - model_id: sentence-transformers/all-MiniLM-L6-v2
           provider_id: sentence-transformers
-          provider_model_id: sentence-transformers/all-MiniLM-L6-v2
+          provider_model_id: all-MiniLM-L6-v2
           model_type: embedding
           metadata:
             embedding_dimension: 384
