@@ -2,185 +2,205 @@
 name: rhoai-chatbot-customization
 metadata:
   author: rhoai3-demo
-  version: 1.1.0
+  version: 2.0.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
   skill-group: "RHOAI Platform"
 description: >
-  Guide changes to the Stage 230 private RAG Streamlit chatbot. Use when the
-  user asks to customize the chatbot, update direct-RAG prompts, change
-  suggested questions, switch between RAG and model-only answer behavior, fix
-  Llama Stack client compatibility, inspect RAG retrieval behavior, or prepare
-  the app for later MCP and guardrails stages.
-  The active app is a repo-owned implementation under
-  stage-230-private-data-rag/chatbot/rhoai_rag_chatbot, not a copied
-  quickstart UI. Do NOT use for Llama Stack server/provider/vector-store
-  configuration (use rhoai-llama-stack), product NeMo/FMS guardrails resources
-  (use rhoai-guardrails-safety), product Gen AI studio workflows (use
-  rhoai-gen-ai-playground), or live troubleshooting without env-troubleshoot.
+  Guide changes to the Stage 230 private RAG chatbot, a vendored Llama Stack
+  UI distribution under stage-230-private-data-rag/chatbot/llama_stack_ui.
+  Use when the user asks to customize the chatbot, change suggested
+  questions, adjust source attribution, tune Direct or Agent-based answer
+  behavior, fix llama-stack-client compatibility, or change MCP tool
+  selection in the UI. Do NOT use for Llama Stack server/provider/
+  vector-store/connector configuration (use rhoai-llama-stack), product
+  NeMo/FMS guardrails resources (use rhoai-guardrails-safety), product Gen AI
+  studio workflows (use rhoai-gen-ai-playground), or live troubleshooting
+  without env-troubleshoot.
 ---
 
 # Chatbot Customization
 
-Structured workflow for modifying the active Stage 230 private RAG chatbot. The
-chatbot is a small Streamlit app backed by the Stage 230
-`LlamaStackDistribution`. It implements direct RAG over the RHOAI
-product-document vector store, model-only comparison against the same governed
-model, and explicit,
-disabled-by-default integration boundaries for future MCP tool calling and
-product guardrails.
+Structured workflow for modifying the active Stage 230 private RAG chatbot.
+The chatbot is a vendored copy of the upstream Llama Stack UI distribution
+(Streamlit), adapted for this demo and backed by the Stage 230
+`LlamaStackDistribution`. It provides playground chat with Direct and
+Agent-based processing, direct RAG over the RHOAI product-document vector
+store with per-guide source attribution, MCP tool calling through registered
+connectors, distribution inspection pages, and evaluation previews.
 
-Use `rhoai-llama-stack` for the Llama Stack platform beneath this chatbot:
-`LlamaStackDistribution`, providers, vector stores, OpenAI-compatible APIs,
-OAuth, ABAC, CA trust, and HA/autoscaling.
+Use `rhoai-llama-stack` for the platform beneath this chatbot:
+`LlamaStackDistribution`, providers, vector stores, MCP connectors
+(top-level `connectors:` in the run config), OpenAI-compatible APIs, CA
+trust, and HA/autoscaling.
 
 Use `rhoai-guardrails-safety` for official NeMo Guardrails, FMS Guardrails,
 TrustyAI guardrails CRs, detector services, guardrails endpoints, and API
-payload validation. This skill only covers how the chatbot calls or presents
-those controls after the product resources exist.
+payload validation. The chatbot only surfaces shields that the server
+exposes.
+
+Do not run scripts from `backup/legacy-implementation-2026-06-09/` unless the
+user explicitly asks to restore or inspect the legacy implementation.
 
 ## Active Implementation Status
 
-- source: `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/`
+- source: `stage-230-private-data-rag/chatbot/llama_stack_ui/` (vendored
+  distribution; the demo-owned changes live mostly under
+  `distribution/ui/page/playground/` and `distribution/ui/modules/`)
 - build resources: `gitops/stage-230-private-data-rag/app/base/build.yaml`
-  in `enterprise-rag-build`
+  (binary `BuildConfig` in `enterprise-rag-build`)
 - deployment resources: `gitops/stage-230-private-data-rag/app/base/`
-- validation: `stage-230-private-data-rag/validate.sh`
+- validation: `stage-230-private-data-rag/validate.sh` (includes a
+  client/server llama-stack version match check)
 
-Legacy Step 07 chatbot paths under
-`backup/legacy-implementation-2026-06-09/steps/step-07-rag/chatbot/` and the
-main-branch Step 07 app are reference material only. Do not copy them blindly or
-run backup scripts unless the user explicitly asks for legacy restoration.
+The previous repo-owned `rhoai_rag_chatbot/` package was replaced by this
+vendored distribution; treat old references to it as historical.
 
 ## Architecture At A Glance
 
 ```text
-private-rag-chatbot (Streamlit)
-  app.py                  UI: Chat and Inspect tabs
-  config.py               environment-backed app contract
-  llama_stack_gateway.py  models, vector stores, search, rerank, chat completions
-  prompts.py              RAG and model-only prompt and context formatting
-  mcp.py                  future MCP connector discovery/tool contract
-  guardrails.py           future guardrails decision boundary
+private-rag-chatbot (Streamlit, vendored Llama Stack UI)
+  distribution/ui/page/playground/chat.py    chat page: model/store/tool selection,
+                                             suggestion grid, history, ResponseState
+  distribution/ui/page/playground/direct.py  Direct mode: vector_stores.search +
+                                             chat completions, sources panel
+  distribution/ui/page/playground/agent.py   Agent mode: Responses API, file_search
+                                             (include=file_search_call.results),
+                                             MCP tools via connector_id
+  distribution/ui/modules/utils.py           suggestions, source aggregation
+                                             (summarize_search_sources), MCP
+                                             connector discovery (/v1beta/connectors)
+  distribution/ui/modules/api.py             LlamaStackClient wiring
 
 Llama Stack service: lsd-enterprise-rag-service.enterprise-rag.svc:8321
-Default vector store: stage230-rhoai-34-product-docs-kfp, backed by PostgreSQL + pgvector
-Generation model: nemotron-3-nano-30b-a3b through Stage 220 MaaS and Stage 230 Llama Stack
-Reranker: vllm-reranker/qwen3-reranker via /v1alpha/inference/rerank (enabled by default)
+Demo vector store: stage230-rhoai-34-product-docs-kfp (pgvector)
+Generation: nemotron-3-nano-30b-a3b and governed gpt-4o-mini through MaaS
+MCP: mcp::openshift toolgroup name in the UI -> `openshift` connector on the server
+Config surface: LLAMA_STACK_ENDPOINT, LLAMA_STACK_TIMEOUT, RAG_QUESTION_SUGGESTIONS
 ```
 
-The chatbot searches the vector store with optional keyword-based topic
-filtering, reranks results with Qwen3, streams responses token by token,
-maintains multi-turn conversation memory, renders numbered source citations,
-and renders suggested questions from the ConfigMap. When RAG retrieval
-returns no results, it falls back to model-only mode with a visible disclaimer.
+Key demo behaviors on top of upstream:
+
+- collections with seeded suggestions are pre-selected on first load, so the
+  suggestion grid renders immediately
+- RAG answers render a per-guide "📚 Sources" panel (topic tags, relevance,
+  docs.redhat.com links) built deterministically from chunk attributes
+  (`guide_slug`, `topic`, `source_url`, `product`, `version`); raw chunks
+  stay in a separate expander and history replays both
+- Direct mode labels context passages with guide titles and instructs the
+  model to name source guides in the answer
+- Agent mode discovers MCP servers through `/v1beta/connectors` (the 0.7.x
+  client has no toolgroups API) and passes
+  `{"type": "mcp", "server_label", "connector_id"}` Responses tools
 
 ## When To Use
 
-- Changing the direct-RAG system prompt, model-only prompt, or context formatting
-- Adding, removing, or editing suggested questions
-- Fixing model or vector-store selection behavior
+- Adding, removing, or editing suggested questions or their default selection
+- Changing source-attribution rendering (sources panel, context labels,
+  citation instruction)
+- Tuning Direct vs Agent-based processing behavior or tool selection UI
 - Fixing `llama-stack-client` compatibility after a RHOAI/Llama Stack update
-- Exposing additional Llama Stack runtime state in the Inspect tab
-- Preparing, but not yet enabling, MCP or guardrails UI/adapter changes
-- Testing chatbot behavior after RAG ingestion or Llama Stack changes
+- Surfacing additional Llama Stack runtime state in distribution pages
 
 ## Key Files
 
 | File | What to edit |
 |------|-------------|
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/app.py` | Streamlit UI, chat flow, Inspect tab, state handling |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/prompts.py` | RAG and model-only system prompts and context message format |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/llama_stack_gateway.py` | Llama Stack client adapter, model list, vector search, completions |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/config.py` | Environment variables and defaults |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/mcp.py` | Future MCP connector discovery and Responses API tool contract |
-| `stage-230-private-data-rag/chatbot/rhoai_rag_chatbot/guardrails.py` | Future guardrails decision boundary |
-| `stage-230-private-data-rag/chatbot/pyproject.toml` | Pinned `llama-stack-client` dependency |
-| `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml` | Chatbot feature flags and suggested questions |
+| `.../ui/page/playground/chat.py` | Selection UI, suggestion grid, defaults, history rendering, `ResponseState` |
+| `.../ui/page/playground/direct.py` | Direct RAG search, context building, citation instruction, sources panel |
+| `.../ui/page/playground/agent.py` | Responses API request, streamed tool handling, MCP tool building, fallback search |
+| `.../ui/modules/utils.py` | `get_question_suggestions`, `summarize_search_sources`, `format_sources_markdown`, `guide_title_from_slug`, `fetch_mcp_connectors` |
+| `stage-230-private-data-rag/chatbot/pyproject.toml` | Pinned `llama-stack-client` (must match the server minor line) |
+| `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml` | `RAG_QUESTION_SUGGESTIONS` and endpoint/timeout env |
 | `gitops/stage-230-private-data-rag/app/base/deployment-chatbot.yaml` | Image, endpoint, probes, resources, env wiring |
-| `gitops/stage-230-private-data-rag/dashboard/base/odhapplication-rag-chatbot.yaml` | OpenShift AI dashboard application tile pointing at the chatbot Route |
+| `gitops/stage-230-private-data-rag/dashboard/base/odhapplication-rag-chatbot.yaml` | Dashboard application tile pointing at the chatbot Route |
 
 ## Instructions
 
 ### Read Before You Write
 
-1. Read `stage-230-private-data-rag/README.md` and
+1. Read `stage-230-private-data-rag/README.md` (Chatbot Flow) and
    `stage-230-private-data-rag/PLAN.md`.
-2. If changing prompts or response style, read `references/prompt-engineering.md`.
-3. If touching code architecture, read `references/chatbot-architecture.md`.
-4. If changing `llama-stack-client`, verify the deployed Llama Stack server
-   version and run the Stage 230 validator. A stale client fails with HTTP 426
-   `Client version ... is not compatible with server version ...`.
-
-### Change Answer Behavior
-
-1. Edit `prompts.py` for RAG prompt, model-only prompt, or context formatting.
-2. Edit `llama_stack_gateway.py` only when Llama Stack response shape or API use
-   changes.
-3. In RAG mode, keep answers grounded in retrieved context. If no context is
-   retrieved, the answer should say so rather than inventing private facts.
-4. In model-only mode, skip vector-store search and do not claim private
-   document grounding or source citations.
-5. Validate by asking the same whoami question in both `RAG` and `Model only`
-   modes.
+2. If touching code architecture, read `references/chatbot-architecture.md`.
+3. If changing prompts or attribution text, read
+   `references/prompt-engineering.md`.
+4. If changing `llama-stack-client`, verify the deployed server version. A
+   stale client fails with HTTP 426 `Client version ... is not compatible
+   with server version ...`; validate.sh checks this by comparing the client
+   version in the chatbot pod with the server version in the LSD pod.
 
 ### Change Suggested Questions
 
-Suggested questions are rendered as clickable chips above the chat input when the
-conversation has only the initial greeting message. They are configured via
-`RAG_QUESTION_SUGGESTIONS` in the ConfigMap.
+Suggestions render in the chat page once a collection with seeded questions
+is selected; suggestion-backed collections are pre-selected on first page
+load. The grid shows four questions, more behind "Show More".
 
 1. Edit `RAG_QUESTION_SUGGESTIONS` in
-   `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml`.
-2. The JSON object is keyed by vector store name or `default`. The `default`
-   key is used when no store-specific suggestions are found.
-3. Argo CD applies the ConfigMap. Restart the deployment if the running pod does
-   not pick up the new environment:
+   `gitops/stage-230-private-data-rag/app/base/configmap-chatbot.yaml`. The
+   JSON object is keyed by vector store NAME (for example
+   `stage230-rhoai-34-product-docs-kfp`).
+2. Prefer questions from the committed AutoRAG benchmark
+   (`stage-230-private-data-rag/data/rhoai-product-docs/autorag/benchmark_data.json`)
+   so live answers match measured pattern quality.
+3. Argo CD applies the ConfigMap; restart the deployment to reload env:
 
    ```bash
    oc rollout restart deployment/private-rag-chatbot -n enterprise-rag
    ```
 
-### Prepare MCP
+4. Browser sessions created before the change keep their old Streamlit
+   session state; reload the page to see new defaults.
 
-Stage 230 does not enable tool-calling by default. Future MCP work should:
+### Change Source Attribution
 
-1. Use `rhoai-llama-stack` to register MCP connectors in Llama Stack.
-2. Keep connector discovery in `mcp.py`.
-3. Enable the feature with `MCP_ENABLED=true` only after the registered
-   connector is visible in the Inspect tab.
-4. Add an agent/Responses API path separately from direct RAG, keeping
-   `tool_choice` and max-token defaults aligned with `references/prompt-engineering.md`.
+1. Chunk metadata is the source of truth: `guide_slug`, `topic`,
+   `source_url`, `product`, `version` travel with every ingested chunk.
+   Aggregation lives in `summarize_search_sources` /
+   `format_sources_markdown` in `modules/utils.py`; guide display names come
+   from `guide_title_from_slug` (extend `_SLUG_WORD_FIXES` for new acronyms).
+2. Direct mode: `search_vector_store_direct` renders the panel and labels
+   context entries; the citation instruction lives in `build_rag_messages`.
+3. Agent mode: the Responses request sets
+   `include=["file_search_call.results"]` and
+   `handle_agent_output_item_done` renders the panel from streamed results;
+   `state.sources_rendered` suppresses the duplicate fallback search.
+4. Relevance figures are raw hybrid-search scores (can exceed 1.0); rank
+   with them, do not present them as percentages.
 
-### Prepare Guardrails
+### Change MCP Tool Selection
 
-Stage 230 does not deploy safety resources. Future guardrails work should:
+The server side (connector registration) belongs to `rhoai-llama-stack`. In
+this UI:
 
-1. Use `rhoai-guardrails-safety` to choose NeMo or FMS product resources and
-   validate official API payloads.
-2. Keep the chatbot integration boundary in `guardrails.py`.
-3. Enable the feature with `GUARDRAILS_ENABLED=true` and
-   `GUARDRAILS_ENDPOINT=<reviewed endpoint>` only after the product endpoint is
-   deployed and validated and `guardrails.py` implements the reviewed request
-   payload. The Stage 230 adapter fails closed if the flag is enabled before
-   that implementation exists.
-4. Treat guardrails as policy controls with known limitations, not proof of
-   compliance or risk-free behavior.
+1. `fetch_mcp_connectors` reads `/v1beta/connectors` directly (the 0.7.x
+   client library has no connectors or toolgroups surface).
+2. The chat page lists connectors as `mcp::<connector_id>` pills;
+   `build_response_tools` maps a selection to
+   `{"type": "mcp", "server_label": ..., "connector_id": ...}`.
+3. A model-driven tool-use claim requires `mcp_list_tools`, `mcp_call`, and
+   a final `message` in the Responses output; a plain answer is not proof.
 
 ### Build And Deploy Cycle
 
-Code changes require `stage-230-private-data-rag/deploy.sh` so OpenShift Builds
-rebuilds the image from `stage-230-private-data-rag/chatbot/` using the
-GitOps-managed binary `BuildConfig` in `enterprise-rag-build`. Keep build
-resources out of the Kueue-managed `enterprise-rag` runtime namespace; build
-pods are infrastructure, not AI workloads.
-Env-only changes may need only an Argo CD sync plus a deployment restart.
+Code changes rebuild the image from `stage-230-private-data-rag/chatbot/`
+with the GitOps-managed binary BuildConfig, then restart the deployment:
+
+```bash
+python3 -m compileall -q stage-230-private-data-rag/chatbot
+oc start-build private-rag-chatbot -n enterprise-rag-build \
+  --from-dir=stage-230-private-data-rag/chatbot --wait
+oc rollout restart deployment/private-rag-chatbot -n enterprise-rag
+```
+
+Keep build resources out of the Kueue-managed `enterprise-rag` runtime
+namespace; build pods are infrastructure, not AI workloads. Env-only changes
+need only an Argo CD sync plus a deployment restart.
 
 Do not switch the active RHOAI 3.4 demo back to
-`quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` without retesting client
-compatibility. That image pins `llama-stack-client==0.6.0`; Stage 230 uses the
-`0.7.x` client line for the observed RHOAI 3.4 Llama Stack server.
+`quay.io/rh-ai-quickstart/llamastack-dist-ui:0.2.45` without retesting
+client compatibility. That image pins `llama-stack-client==0.6.0`; Stage 230
+uses the `0.7.x` client line for the observed RHOAI 3.4 Llama Stack server.
 
 ### Validation
 
@@ -189,14 +209,10 @@ After any code or config change:
 1. Run `python3 -m compileall -q stage-230-private-data-rag/chatbot`.
 2. Run `./stage-230-private-data-rag/validate.sh` against the guarded target
    cluster after deployment.
-3. Test the chatbot route:
-
-   ```bash
-   oc get route private-rag-chatbot -n enterprise-rag -o jsonpath='{.spec.host}'
-   ```
-
-4. Ask a whoami suggested question and confirm retrieved context appears.
-5. Check the Inspect tab for model, vector-store, MCP, and guardrails state.
+3. Ask a seeded suggestion question and confirm the answer names its source
+   guides and the "📚 Sources" panel lists them with docs.redhat.com links.
+4. In Agent-based mode with `mcp::openshift` selected, ask a bounded cluster
+   question and confirm the `mcp_list_tools`/`mcp_call` chain in the output.
 
 For detailed architecture, container constraints, and prompt patterns, read:
 

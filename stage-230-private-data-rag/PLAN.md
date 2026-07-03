@@ -1,5 +1,11 @@
 # Stage 230: Private Data RAG Reimplementation Plan
 
+**Status: COMPLETE (2026-07-03).** validate.sh 108 passed / 0 failed (one
+optional smoke-gate warning). Final scope includes the AutoRAG extension,
+the vendored Llama Stack UI chatbot with benchmark-seeded suggestions,
+per-guide source attribution, and MCP tool calling via the Stage 220
+read-only OpenShift MCP server. Next stages: guardrails, EvalHub.
+
 ## Conceptual Foundation
 
 - Stage identifier: `230`
