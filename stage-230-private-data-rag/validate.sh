@@ -51,7 +51,8 @@ NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a
 RERANKER_NAME="${RHOAI_STAGE230_RERANKER_NAME:-qwen3-reranker}"
 RERANKER_MODEL="${RHOAI_STAGE230_RERANKER_MODEL:-vllm-reranker/qwen3-reranker}"
 EMBEDDING_MODEL="${RHOAI_STAGE230_EMBEDDING_MODEL:-sentence-transformers/nomic-ai/nomic-embed-text-v1.5}"
-AUTORAG_EMBEDDING_MODEL="${RHOAI_STAGE230_AUTORAG_EMBEDDING_MODEL:-sentence-transformers/BAAI/bge-m3}"
+AUTORAG_EMBEDDING_MODELS="${RHOAI_STAGE230_AUTORAG_EMBEDDING_MODELS:-sentence-transformers/ibm-granite/granite-embedding-30m-english,sentence-transformers/all-MiniLM-L6-v2,sentence-transformers/BAAI/bge-m3}"
+AUTORAG_INPUT_FILES="${RHOAI_STAGE230_AUTORAG_INPUT_FILES:-Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf}"
 WORKBENCH_NAME="${RHOAI_STAGE230_WORKBENCH_NAME:-enterprise-rag-workbench}"
 CHATBOT_BUILD="${RHOAI_STAGE230_CHATBOT_BUILD:-private-rag-chatbot}"
 CHATBOT_BUILD_NS="${RHOAI_STAGE230_CHATBOT_BUILD_NAMESPACE:-enterprise-rag-build}"
@@ -488,11 +489,15 @@ if [[ -n "$route_host" ]]; then
   else
     check "Llama Stack lists Qwen3 reranker model" "status=${status},model=${RERANKER_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
   fi
-  if [[ "$status" == "200" ]] && grep -q "$AUTORAG_EMBEDDING_MODEL" "$models_body"; then
-    check "Llama Stack lists bge-m3 AutoRAG embedding model" "pass"
-  else
-    check "Llama Stack lists bge-m3 AutoRAG embedding model" "status=${status},model=${AUTORAG_EMBEDDING_MODEL},body=$(head -c 180 "$models_body" | tr '\n' ' ')"
-  fi
+  IFS=',' read -ra autorag_models <<< "$AUTORAG_EMBEDDING_MODELS"
+  for autorag_model in "${autorag_models[@]}"; do
+    autorag_model_short="${autorag_model##*/}"
+    if [[ "$status" == "200" ]] && grep -q "$autorag_model" "$models_body"; then
+      check "Llama Stack lists ${autorag_model_short} embedding model" "pass"
+    else
+      check "Llama Stack lists ${autorag_model_short} embedding model" "status=${status},model=${autorag_model}"
+    fi
+  done
   rm -f "$models_body"
   providers_body=$(mktemp)
   providers_status=$(curl -sk --max-time 30 -o "$providers_body" -w '%{http_code}' "https://${route_host}/v1/providers" 2>/dev/null || true)
@@ -606,7 +611,7 @@ autorag_base_url=$(jsonpath "secret/${AUTORAG_CONNECTION_SECRET}" "$RAG_NS" "{.d
   || check "AutoRAG connection points at the Enterprise RAG Llama Stack" "${autorag_base_url:-missing}"
 
 if [[ -s "$AUTORAG_BENCHMARK_FILE" ]]; then
-  if AUTORAG_BENCHMARK_FILE="$AUTORAG_BENCHMARK_FILE" PDF_DIR="$rhoai_pdf_dir" python3 - <<'PY' >/dev/null 2>&1
+  if AUTORAG_BENCHMARK_FILE="$AUTORAG_BENCHMARK_FILE" PDF_DIR="$rhoai_pdf_dir" AUTORAG_INPUT_FILES="$AUTORAG_INPUT_FILES" python3 - <<'PY' >/dev/null 2>&1
 import json
 import os
 from pathlib import Path
@@ -614,6 +619,8 @@ from pathlib import Path
 data = json.loads(Path(os.environ["AUTORAG_BENCHMARK_FILE"]).read_text(encoding="utf-8"))
 assert isinstance(data, list) and data
 pdfs = {p.name for p in Path(os.environ["PDF_DIR"]).glob("*.pdf")}
+input_files = {name.strip() for name in os.environ["AUTORAG_INPUT_FILES"].split(",") if name.strip()}
+assert input_files <= pdfs
 for item in data:
     assert item["question"]
     assert item["correct_answers"]
@@ -621,14 +628,15 @@ for item in data:
     for doc_id in item["correct_answer_document_ids"]:
         assert "/" not in doc_id
         assert doc_id in pdfs
+        assert doc_id in input_files
 PY
   then
-    check "AutoRAG benchmark data is valid and matches committed PDFs" "pass"
+    check "AutoRAG benchmark data is valid and matches the AutoRAG input corpus" "pass"
   else
-    check "AutoRAG benchmark data is valid and matches committed PDFs" "validation failed"
+    check "AutoRAG benchmark data is valid and matches the AutoRAG input corpus" "validation failed"
   fi
 else
-  check "AutoRAG benchmark data is valid and matches committed PDFs" "missing ${AUTORAG_BENCHMARK_FILE}"
+  check "AutoRAG benchmark data is valid and matches the AutoRAG input corpus" "missing ${AUTORAG_BENCHMARK_FILE}"
 fi
 
 if [[ -s "$AUTORAG_PIPELINE_YAML" ]] && grep -q "^# Name: ${AUTORAG_PIPELINE_NAME}$" "$AUTORAG_PIPELINE_YAML"; then

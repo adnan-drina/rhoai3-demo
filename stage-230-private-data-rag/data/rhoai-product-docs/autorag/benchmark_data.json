@@ -1,8 +1,80 @@
 [
   {
+    "question": "How can I add safety controls to models deployed on OpenShift AI?",
+    "correct_answers": [
+      "Use NeMo Guardrails to add guardrails and safety controls to deployed models in Red Hat OpenShift AI. The NeMo Guardrails framework controls the input and output of large language models by defining rails for sensitive data detection, content filtering, and custom validation rules. It is underpinned by the open-source NVIDIA NeMo Guardrails project and is deployed through a Custom Resource Definition managed by the TrustyAI Operator."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
+    ]
+  },
+  {
+    "question": "How can I validate content against guardrails without generating a model response?",
+    "correct_answers": [
+      "Use the /v1/guardrail/checks endpoint of the NeMo Guardrails service to validate messages against configured guardrails without generating an LLM response. It helps to test guardrail configurations, validate content safety in advance, and audit messages independently of the chat completion flow. For RAG and agentic workflows, retrieval or tool payloads can be sent to this endpoint for validation, while the /v1/chat/completions endpoint generates responses with guardrails applied to both input and output."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
+    ]
+  },
+  {
+    "question": "How can personally identifiable information be detected in model inputs and outputs?",
+    "correct_answers": [
+      "Presidio is a self-contained detector that identifies personally identifiable information in user input and model output. It runs entirely within the NeMo Guardrails pod without requiring external services or LLM calls, and it can detect entity types such as person names and email addresses. PII can be blocked or masked instead of blocked."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
+    ]
+  },
+  {
+    "question": "How do LLM self-check guardrails work and what attacks can they block?",
+    "correct_answers": [
+      "LLM self-check guardrails use an LLM to evaluate whether input or output is allowed, moderating complex content that requires context and nuance. This LLM-as-a-Judge technique can use a separate judge model or the same LLM being guardrailed. Self-check rails can detect and block jailbreak attacks and prompt injection attempts that try to override system instructions or extract sensitive information."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
+    ]
+  },
+  {
+    "question": "What is EvalHub in OpenShift AI?",
+    "correct_answers": [
+      "EvalHub is an evaluation orchestration service for large language models on Red Hat OpenShift AI. It provides a versioned REST API for submitting evaluation jobs, managing benchmark providers, and tracking results through MLflow experiment tracking. Each evaluation runs as an isolated Job, enabling parallel execution and horizontal scalability across namespaces and tenants."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
+    ]
+  },
+  {
+    "question": "What are providers and benchmarks in EvalHub?",
+    "correct_answers": [
+      "In EvalHub, a provider represents an evaluation framework, such as lm_evaluation_harness, garak, guidellm, or lighteval, and each provider includes a set of benchmarks. A benchmark is a specific evaluation task within a provider, for example mmlu, hellaswag, arc_challenge, or gsm8k, with a category such as math, reasoning, safety, or code, along with metrics and optional pass criteria."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
+    ]
+  },
+  {
+    "question": "How can benchmarks be grouped into reusable evaluation suites?",
+    "correct_answers": [
+      "EvalHub collections group benchmarks from one or more providers into a reusable evaluation suite. For example, a safety-and-fairness collection can combine safety benchmarks from lm_evaluation_harness with vulnerability scans from garak."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
+    ]
+  },
+  {
+    "question": "What is an EvalHub evaluation job and which states can it be in?",
+    "correct_answers": [
+      "An evaluation job represents a single evaluation run against a model. A job references either a list of benchmarks or a collection, a model endpoint, and optional MLflow experiment configuration. Jobs progress through the states pending, running, completed, failed, cancelled, or partially_failed."
+    ],
+    "correct_answer_document_ids": [
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
+    ]
+  },
+  {
     "question": "What is AutoRAG in Red Hat OpenShift AI and what does it produce?",
     "correct_answers": [
-      "AutoRAG is an automated optimization system in Red Hat OpenShift AI that finds the best retrieval-augmented generation (RAG) configuration for your documents and use case. You provide documents and test data, AutoRAG tests different RAG configurations, ranks the results by evaluation metrics, and generates notebooks for running the selected RAG patterns."
+      "AutoRAG is an automated optimization system in Red Hat OpenShift AI that finds the best retrieval-augmented generation (RAG) configuration for your documents and use case. You provide documents and test data, AutoRAG tests different RAG configurations, ranks the results by evaluation metrics on a leaderboard, and generates notebooks for running the selected RAG patterns."
     ],
     "correct_answer_document_ids": [
       "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf"
@@ -27,84 +99,12 @@
     ]
   },
   {
-    "question": "What is Llama Stack on OpenShift AI and who manages its deployment lifecycle?",
+    "question": "Do I need to filter my document set before creating an AutoRAG optimization run?",
     "correct_answers": [
-      "Llama Stack is a unified AI runtime environment designed to simplify the deployment and management of generative AI workloads on OpenShift AI. It integrates model inference, embedding models, vector stores, and retrieval and agentic APIs, and the Llama Stack Operator manages the deployment lifecycle of these components, ensuring scalability, consistency, and integration with OpenShift AI projects."
+      "No. AutoRAG automatically samples up to 1 GiB of relevant documents based on your test data, so you do not need to filter your document set in advance. Documents referenced by the evaluation data are prioritized during sampling."
     ],
     "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf"
-    ]
-  },
-  {
-    "question": "Which search modes are available for Llama Stack vector stores?",
-    "correct_answers": [
-      "Llama Stack supports keyword search, vector search, and hybrid search. Search mode availability depends on the selected vector store provider and its configured capabilities, so not all providers support every search mode; some providers might support vector search only, while keyword or hybrid search might be unavailable or return empty results."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf"
-    ]
-  },
-  {
-    "question": "How can RAG systems be evaluated with Llama Stack on OpenShift AI?",
-    "correct_answers": [
-      "OpenShift AI documents evaluating RAG systems with Llama Stack through RAG evaluation providers, including using Ragas with Llama Stack to measure the quality of retrieval and generated answers."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_Llama_Stack-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What TrustyAI tools does OpenShift AI provide for evaluating AI systems?",
-    "correct_answers": [
-      "OpenShift AI provides TrustyAI tools for evaluating AI systems, including EvalHub and LM-Eval. EvalHub automates, standardizes, and scales LLM evaluation across multiple frameworks and evaluates AI artifacts such as prompts, models, AI agents, datasets, and AI risk. LM-Eval monitors an LLM against a range of evaluation tasks to ensure the accuracy and quality of its output."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What is EvalHub used for in OpenShift AI?",
-    "correct_answers": [
-      "EvalHub is used to automate, standardize, and scale evaluation of large language models across multiple frameworks. It can evaluate AI artifacts such as prompts, models, AI agents, datasets, and AI risk."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What can NeMo Guardrails control for deployed models on OpenShift AI?",
-    "correct_answers": [
-      "NeMo Guardrails adds guardrails and safety controls to deployed models in Red Hat OpenShift AI. With the NeMo Guardrails framework you can control the input and output of large language models by defining rails for sensitive data detection, content filtering, and custom validation rules. It is underpinned by the open-source NVIDIA NeMo Guardrails project."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What is the TrustyAI Guardrails Orchestrator service?",
-    "correct_answers": [
-      "The TrustyAI Guardrails Orchestrator service is a tool to invoke detections on text generation inputs and outputs, as well as perform standalone detections. It is underpinned by the open-source Foundation Model Stack (FMS) Guardrails Orchestrator from IBM and is deployed through a Custom Resource Definition managed by the TrustyAI Operator."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What are AI pipelines in OpenShift AI used for?",
-    "correct_answers": [
-      "AI pipelines let data scientists build portable machine learning workflows with Docker containers, standardizing and automating machine learning workflows to develop and deploy data science models. Steps in a machine learning workflow can include data extraction, data processing, feature extraction, model training, model validation, and model serving."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AI_pipelines-en-US.pdf"
-    ]
-  },
-  {
-    "question": "What does the Red Hat AI model customization workflow involve?",
-    "correct_answers": [
-      "Red Hat AI model customization tailors artificial intelligence models to unique data and operational requirements. The process involves training or fine-tuning pre-existing models with proprietary datasets, followed by their deployment with specific configurations on the Red Hat OpenShift AI platform, facilitated by a suite of integrated toolkits."
-    ],
-    "correct_answer_document_ids": [
-      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Customize_models_to_build_gen_AI_applications-en-US.pdf"
+      "Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf"
     ]
   }
 ]

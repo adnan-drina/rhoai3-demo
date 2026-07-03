@@ -147,6 +147,18 @@ data:
           model_type: embedding
           metadata:
             embedding_dimension: 1024
+        - model_id: sentence-transformers/ibm-granite/granite-embedding-30m-english
+          provider_id: sentence-transformers
+          provider_model_id: ibm-granite/granite-embedding-30m-english
+          model_type: embedding
+          metadata:
+            embedding_dimension: 384
+        - model_id: sentence-transformers/all-MiniLM-L6-v2
+          provider_id: sentence-transformers
+          provider_model_id: sentence-transformers/all-MiniLM-L6-v2
+          model_type: embedding
+          metadata:
+            embedding_dimension: 384
       scoring_fns: []
       shields: []
       tool_groups: []

@@ -1296,17 +1296,25 @@ steps unless those components are intentionally reintroduced.
   AutoRAG is Technology Preview; record run-blocking product issues in the
   stage plan instead of patching the vendored pipeline.
 
-### Stage 230 AutoRAG first run is very slow or embedding calls time out
+### Stage 230 AutoRAG run fails with embedding timeouts or an OOMKilled Llama Stack
 
-- **Symptom:** the first AutoRAG optimization run spends a long time before
-  producing patterns, or embedding requests to Llama Stack time out.
-- **Likely cause:** `BAAI/bge-m3` (~2.3 GiB) downloads to the Llama Stack PVC
-  on first use through the inline sentence-transformers provider, and CPU
-  embedding of the product-document corpus is slow.
-- **Fix:** let the first run finish (the model cache persists on the PVC), or
-  pre-warm the model with a single embeddings call before the run. If PVC
-  space is short, confirm the `LlamaStackDistribution` storage size is 10Gi
-  and that the old 5Gi PVC expanded successfully:
+- **Symptom:** `rag-templates-optimization` fails every iteration with
+  `APITimeoutError` on `/v1/embeddings`, possibly alongside an
+  `APIConnectionError` and a restarted (OOMKilled, exit 137)
+  `lsd-enterprise-rag` pod.
+- **Likely cause:** the ai4rag engine embeds up to 2048 chunks per request
+  with a fixed 60-second client timeout and exposes no timeout or batch-size
+  knobs. CPU inline sentence-transformers cannot absorb that request shape
+  for mid/large embedding models or oversized corpora (measured on 8 CPU:
+  nomic 5.7 texts/s, bge-m3 3.0 texts/s), and an undersized memory limit
+  OOMs the server under bulk load.
+- **Fix:** keep the Stage 230 CPU sizing contract: ~30M-parameter embedding
+  models (granite-embedding-30m, all-MiniLM-L6-v2), the scoped
+  `autorag/rhoai-product-docs/input/` corpus (~1,000 chunks), the
+  `LlamaStackDistribution` at 14 CPU / 24Gi, and the runner's embedding
+  pre-warm step. For full-corpus or large-model optimization, serve
+  embeddings from a GPU-backed vLLM InferenceService instead of the inline
+  provider. Confirm the 10Gi PVC holds the model caches:
 
   ```bash
   oc get pvc -n enterprise-rag | grep lsd-enterprise-rag

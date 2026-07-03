@@ -50,11 +50,11 @@ PIPELINE_YAML="${RHOAI_STAGE230_AUTORAG_PIPELINE_YAML:-$SCRIPT_DIR/kfp/vendor/do
 EXPERIMENT_NAME="${RHOAI_STAGE230_AUTORAG_EXPERIMENT_NAME:-stage-230-private-data-rag}"
 S3_CONNECTION_SECRET="${RHOAI_STAGE230_S3_CONNECTION_SECRET:-enterprise-rag-s3}"
 AUTORAG_CONNECTION_SECRET="${RHOAI_STAGE230_AUTORAG_CONNECTION_SECRET:-autorag-llama-stack-connection}"
-INPUT_DATA_KEY="${RHOAI_STAGE230_PRODUCT_DOCS_PREFIX:-raw/rhoai-product-docs}"
+INPUT_DATA_KEY="${RHOAI_STAGE230_AUTORAG_INPUT_PREFIX:-autorag/rhoai-product-docs/input}"
 TEST_DATA_KEY="${RHOAI_STAGE230_AUTORAG_BENCHMARK_KEY:-autorag/rhoai-product-docs/benchmark_data.json}"
 VECTOR_IO_PROVIDER_ID="${RHOAI_STAGE230_AUTORAG_VECTOR_IO_PROVIDER_ID:-milvus}"
 GENERATION_MODELS_JSON="${RHOAI_STAGE230_AUTORAG_GENERATION_MODELS_JSON:-[\"vllm-inference/${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}\"]}"
-EMBEDDINGS_MODELS_JSON="${RHOAI_STAGE230_AUTORAG_EMBEDDINGS_MODELS_JSON:-[\"sentence-transformers/nomic-ai/nomic-embed-text-v1.5\",\"sentence-transformers/BAAI/bge-m3\"]}"
+EMBEDDINGS_MODELS_JSON="${RHOAI_STAGE230_AUTORAG_EMBEDDINGS_MODELS_JSON:-[\"sentence-transformers/ibm-granite/granite-embedding-30m-english\",\"sentence-transformers/all-MiniLM-L6-v2\"]}"
 OPTIMIZATION_METRIC="${RHOAI_STAGE230_AUTORAG_OPTIMIZATION_METRIC:-faithfulness}"
 MAX_RAG_PATTERNS="${RHOAI_STAGE230_AUTORAG_MAX_RAG_PATTERNS:-4}"
 TIMEOUT_SECONDS="${RHOAI_STAGE230_AUTORAG_TIMEOUT_SECONDS:-7200}"
@@ -290,8 +290,35 @@ EOF
   oc logs -n "$RAG_NS" "job/${review_job}" --insecure-skip-tls-verify=true | tee "$logs_file"
 }
 
+prewarm_embedding_models() {
+  # First use of a sentence-transformers model downloads it to the Llama
+  # Stack PVC. Warm each AutoRAG embedding model with a single request so
+  # the download does not burn the pipeline's fixed 60s embeddings timeout.
+  local lsd_route model status
+  lsd_route=$(oc get route lsd-enterprise-rag -n "$RAG_NS" \
+    -o jsonpath='{.spec.host}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  if [[ -z "$lsd_route" ]]; then
+    echo "WARNING: Llama Stack route not found; skipping embedding model pre-warm." >&2
+    return 0
+  fi
+  while IFS= read -r model; do
+    [[ -n "$model" ]] || continue
+    echo "   Pre-warming embedding model ${model} …"
+    status=$(curl -sk --max-time 600 -o /dev/null -w '%{http_code}' \
+      -H "Content-Type: application/json" \
+      "https://${lsd_route}/v1/embeddings" \
+      -d "{\"model\":\"${model}\",\"input\":[\"warmup\"]}" 2>/dev/null || true)
+    if [[ "$status" != "200" ]]; then
+      echo "ERROR: pre-warm of embedding model ${model} failed (status=${status})." >&2
+      exit 1
+    fi
+  done < <(printf '%s' "$EMBEDDINGS_MODELS_JSON" | jq -r '.[]')
+  echo "✓ AutoRAG embedding models are warm"
+}
+
 ensure_kfp_venv
 KFP_PYTHON="$ROOT_DIR/.venv-kfp/bin/python"
+prewarm_embedding_models
 DSPA_ROUTE="$(wait_for_dspa_route)"
 DSPA_URL="https://${DSPA_ROUTE}"
 OC_TOKEN="$(oc whoami -t --insecure-skip-tls-verify=true)"

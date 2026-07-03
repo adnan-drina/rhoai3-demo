@@ -57,6 +57,8 @@ MILVUS_SECRET="${RHOAI_STAGE230_MILVUS_SECRET:-private-rag-milvus-secret}"
 LLAMA_SECRET="${RHOAI_STAGE230_LLAMA_STACK_SECRET:-private-rag-llama-stack-secret}"
 AUTORAG_CONNECTION_SECRET="${RHOAI_STAGE230_AUTORAG_CONNECTION_SECRET:-autorag-llama-stack-connection}"
 AUTORAG_BENCHMARK_PREFIX="${RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX:-autorag/rhoai-product-docs}"
+AUTORAG_INPUT_PREFIX="${RHOAI_STAGE230_AUTORAG_INPUT_PREFIX:-autorag/rhoai-product-docs/input}"
+AUTORAG_INPUT_FILES="${RHOAI_STAGE230_AUTORAG_INPUT_FILES:-Red_Hat_OpenShift_AI_Self-Managed-3.4-Evaluating_AI_systems-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Enabling_AI_safety_with_Guardrails-en-US.pdf,Red_Hat_OpenShift_AI_Self-Managed-3.4-Working_with_AutoRAG-en-US.pdf}"
 NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-${RHOAI_OPENAI_ACCESS_RESOURCE:-rhoai-developers-gpt-4o-mini}}"
@@ -283,23 +285,38 @@ spec:
                   config=Config(signature_version="s3v4"),
               )
 
+              autorag_input_files = {
+                  name.strip()
+                  for name in os.environ["RHOAI_STAGE230_AUTORAG_INPUT_FILES"].split(",")
+                  if name.strip()
+              }
               uploads = [
                   (
                       stage_dir / "data/rhoai-product-docs/source",
                       os.environ["RHOAI_STAGE230_PRODUCT_DOCS_PREFIX"],
                       "*.pdf",
+                      None,
                   ),
                   (
                       stage_dir / "data/rhoai-product-docs/autorag",
                       os.environ["RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX"],
                       "*.json",
+                      None,
+                  ),
+                  (
+                      stage_dir / "data/rhoai-product-docs/source",
+                      os.environ["RHOAI_STAGE230_AUTORAG_INPUT_PREFIX"],
+                      "*.pdf",
+                      autorag_input_files,
                   ),
               ]
               uploaded = 0
-              for source_dir, prefix, pattern in uploads:
+              for source_dir, prefix, pattern, names in uploads:
                   if not source_dir.exists():
                       continue
                   for path in sorted(source_dir.glob(pattern)):
+                      if names is not None and path.name not in names:
+                          continue
                       key = f"{prefix.rstrip('/')}/{path.name}"
                       client.upload_file(str(path), bucket, key)
                       client.head_object(Bucket=bucket, Key=key)
@@ -346,6 +363,10 @@ spec:
                   key: RHOAI_STAGE230_PRODUCT_DOCS_PREFIX
             - name: RHOAI_STAGE230_AUTORAG_BENCHMARK_PREFIX
               value: "${AUTORAG_BENCHMARK_PREFIX}"
+            - name: RHOAI_STAGE230_AUTORAG_INPUT_PREFIX
+              value: "${AUTORAG_INPUT_PREFIX}"
+            - name: RHOAI_STAGE230_AUTORAG_INPUT_FILES
+              value: "${AUTORAG_INPUT_FILES}"
           resources:
             requests:
               cpu: 250m

@@ -989,14 +989,18 @@ Current status:
   `enterprise-rag/stage230-rhoai-docs-pipeline-evidence`.
 - `stage-230-private-data-rag/run-autorag-pipeline.sh` imports the vendored
   Red Hat `documents-rag-optimization-pipeline` (pipelines-components branch
-  `rhoai-3.4`) with the documented AutoRAG pipeline name, submits an
-  optimization run against the product-document corpus and committed
-  benchmark data, reviews leaderboard and RAG pattern artifacts in S3, and
-  stores evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
+  `rhoai-3.4`, executor images aligned to the installed operator CSV
+  `odh_autorag_image` digest) with the documented AutoRAG pipeline name,
+  submits an optimization run against the scoped
+  `autorag/rhoai-product-docs/input/` corpus and committed
+  validate-and-protect benchmark, reviews leaderboard and RAG pattern
+  artifacts in S3, and stores evidence in
+  `enterprise-rag/stage230-autorag-pipeline-evidence`.
   AutoRAG is Technology Preview; runs use the `milvus` vector_io provider
-  (remote Milvus in `enterprise-rag`), Nemotron for generation, and the nomic
-  plus `BAAI/bge-m3` embedding models. Expect the first run to be slow while
-  bge-m3 downloads to the Llama Stack PVC.
+  (remote Milvus in `enterprise-rag`), Nemotron for generation, and the
+  CPU-feasible granite-embedding-30m plus all-MiniLM-L6-v2 embedding models.
+  The runner pre-warms embedding models so first-use downloads happen outside
+  the pipeline's fixed 60s embeddings timeout.
 - `private-rag-chatbot` is the Stage 230 Streamlit chatbot. It is built from
   `stage-230-private-data-rag/chatbot/` by the deploy script through a binary
   OpenShift BuildConfig in `enterprise-rag-build`; the runtime Deployment and
@@ -1022,9 +1026,10 @@ Current status:
 - create the `enterprise-rag-s3` dashboard S3 connection Secret and
   `data-processing-docling-pipeline` Secret from OBC-generated credentials
 - upload repo-stored source PDFs to the project bucket under
-  `raw/rhoai-product-docs/` and the AutoRAG benchmark JSON under
-  `autorag/rhoai-product-docs/` using an in-cluster Job that clones the same
-  Git branch as Argo CD
+  `raw/rhoai-product-docs/`, the AutoRAG benchmark JSON under
+  `autorag/rhoai-product-docs/`, and the scoped AutoRAG input PDFs under
+  `autorag/rhoai-product-docs/input/` using an in-cluster Job that clones the
+  same Git branch as Argo CD
 - start the `private-rag-chatbot` binary build in `enterprise-rag-build` from
   the local checked-out chatbot source and restart the `enterprise-rag`
   Deployment after the image is available
@@ -1044,8 +1049,9 @@ pipeline S3 secrets and source uploads match the recreated server.
 gate:
 
 - Llama Stack model list includes the configured Nemotron provider, Nomic
-  embedding model, Qwen3 reranker model, and the bge-m3 AutoRAG embedding
-  model, and the provider list includes the `milvus` vector_io provider
+  embedding model, Qwen3 reranker model, and the AutoRAG embedding models
+  (granite-embedding-30m, all-MiniLM-L6-v2, plus the GPU-oriented bge-m3),
+  and the provider list includes the `milvus` vector_io provider
 - PostgreSQL, pgvector extension, Milvus, etcd, and the
   `LlamaStackDistribution` are ready
 - Gen AI studio is enabled, the `llama-stack-connection` dashboard connection

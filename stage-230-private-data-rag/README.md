@@ -234,17 +234,28 @@ Stage 230 provides all AutoRAG prerequisites through GitOps and `deploy.sh`:
   `enterprise-rag` and is registered with Llama Stack as the `milvus`
   vector_io provider. pgvector remains the application retrieval path; the
   official AutoRAG guide requires remote Milvus for optimization runs.
-- Two embedding models are registered: the existing nomic model and the
-  officially recommended `BAAI/bge-m3` (the documented per-run maximum),
-  so runs compare embeddings meaningfully.
+- AutoRAG runs compare two CPU-feasible embedding models
+  (`ibm-granite/granite-embedding-30m-english` and `all-MiniLM-L6-v2`, the
+  documented per-run maximum of two). The doc-recommended `BAAI/bge-m3`
+  stays registered for GPU-capable environments; live measurement showed
+  mid/large embedding models cannot meet the pipeline's fixed 60-second
+  embedding-batch timeout on CPU.
 - The `autorag-llama-stack-connection` Secret carries the documented
   `LLAMA_STACK_CLIENT_BASE_URL` and `LLAMA_STACK_CLIENT_API_KEY` keys and
   shows up as a project connection through the GitOps-managed
   `llama-stack-connection` dashboard connection type.
-- The committed benchmark data set
+- The optimization input is a scoped corpus under
+  `autorag/rhoai-product-docs/input/`: the Evaluating AI systems, Guardrails,
+  and AutoRAG guides (~1,000 chunks — enough distractor mass for retrieval
+  settings to differentiate, sized for CPU embedding throughput). The full
+  6-guide corpus remains the chatbot/pgvector application path.
+- The committed benchmark
   (`data/rhoai-product-docs/autorag/benchmark_data.json`, 12 questions with
-  expected answers and PDF document IDs) is mirrored to S3 under
-  `autorag/rhoai-product-docs/` by `deploy.sh`.
+  expected answers and PDF document IDs, mirrored to S3 by `deploy.sh`)
+  follows a validate-and-protect theme: how RAG systems are evaluated
+  (EvalHub, AutoRAG metrics) and protected (NeMo Guardrails, PII detection,
+  self-check rails). The optimization run therefore both tunes the current
+  stage and previews the upcoming guardrails and evaluation demo stages.
 
 Run an optimization through the Stage 230 DSPA:
 
@@ -253,15 +264,16 @@ Run an optimization through the Stage 230 DSPA:
 ```
 
 The runner imports the vendored Red Hat `documents-rag-optimization-pipeline`
-(compiled on the `rhoai-3.4` branch of `pipelines-components`, using the
-`registry.redhat.io/rhoai/odh-autorag-rhel9` image) with the documented
-pipeline name, so the run is visible both under `Pipelines` and on the
-Gen AI studio `AutoRAG` page. It submits the run against the product-doc
-corpus with Nemotron as the generation model, nomic and bge-m3 as embedding
-models, and the `faithfulness` metric over 4 RAG patterns by default, then
-reviews the S3 artifacts (leaderboard, per-pattern `pattern.json`,
-`evaluation_results.json`, indexing and inference notebooks) and stores
-evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
+(compiled on the `rhoai-3.4` branch of `pipelines-components`, with executor
+images aligned to the installed operator's `odh-autorag-rhel9` digest) with
+the documented pipeline name, so the run is visible both under `Pipelines`
+and on the Gen AI studio `AutoRAG` page. It pre-warms the embedding models,
+then submits the run against the scoped validate-and-protect corpus with
+Nemotron as the generation model, granite-embedding-30m and all-MiniLM-L6-v2
+as embedding models, and the `faithfulness` metric over 4 RAG patterns by
+default, then reviews the S3 artifacts (leaderboard, per-pattern
+`pattern.json`, `evaluation_results.json`, indexing and inference notebooks)
+and stores evidence in `enterprise-rag/stage230-autorag-pipeline-evidence`.
 
 Dashboard path: open `AutoRAG` in the OpenShift AI sidebar to review the
 leaderboard, compare all three metrics (answer faithfulness, answer

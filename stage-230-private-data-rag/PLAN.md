@@ -76,7 +76,8 @@ Out of scope for this stage unless explicitly added later:
 | Docling dashboard placement | Show Docling in the OpenShift AI Pipelines run graph, not the project Deployments tab | The Red Hat-documented and OpenDataHub reference pattern uses Docling as a KFP data-preparation component. The Deployments tab is reserved here for served endpoints such as the Qwen3 reranker. |
 | Docling workbench pre-install | Pre-install Docling and pre-cache layout models and HybridChunker tokenizer in the workbench init container | Follows the official RHOAI 3.4 data preparation pattern (Docling as a library in notebooks) while ensuring zero runtime downloads during demos. Docling layout models and `sentence-transformers/all-MiniLM-L6-v2` tokenizer are cached on the PVC. PVC increased to 20Gi to accommodate Docling dependencies and model cache. |
 | AutoRAG vector database | Re-add the demo-grade remote Milvus (standalone + etcd) alongside pgvector | The official RHOAI 3.4 AutoRAG guide requires a remote Milvus vector database registered with Llama Stack; inline Milvus is unsupported. pgvector remains the application retrieval path because filtered hybrid search is a stage requirement; Milvus serves the AutoRAG search space only, which does not use metadata-filtered retrieval. |
-| AutoRAG embedding models | Register `BAAI/bge-m3` through inline sentence-transformers next to the existing nomic model | `BAAI/bge-m3` is the embedding model recommended by the official AutoRAG guide. Two embedding models are the documented per-run maximum, giving AutoRAG a real embedding comparison while nomic stays untouched for the app path. |
+| AutoRAG embedding models | Run AutoRAG with `ibm-granite/granite-embedding-30m-english` and `all-MiniLM-L6-v2` through inline sentence-transformers; keep `BAAI/bge-m3` registered but out of CPU runs | ai4rag sends embedding batches of up to 2048 chunks per request with a fixed 60s client timeout and no tuning knobs. Live measurement on the 8-CPU server: nomic (137M) 5.7 texts/s, bge-m3 (568M) 3.0 texts/s — an order of magnitude short. Only ~30M-class models clear the window on CPU. bge-m3 remains registered as the doc-recommended option for GPU-capable environments; nomic remains the app-path model. |
+| AutoRAG input corpus and benchmark theme | Scope the AutoRAG input to the Evaluating AI systems, Guardrails, and AutoRAG guides (~1,000 chunks) under `autorag/rhoai-product-docs/input/`, with a 12-question validate-and-protect benchmark | The benchmark theme (how to evaluate and protect RAG) makes optimization results read as enterprise concerns and previews the next demo stages (guardrails, EvalHub evaluation). ~1,000 chunks keep retrieval settings statistically distinguishable while fitting CPU embedding throughput; 1-2 documents would saturate context correctness and blur the leaderboard. The full 6-guide corpus remains the chatbot/pgvector application path. AutoRAG itself samples input (1 GiB cap), so scoping input is aligned product behavior. |
 | AutoRAG pipeline source | Vendor the compiled `documents-rag-optimization-pipeline` from `red-hat-data-services/pipelines-components` branch `rhoai-3.4` | The Red Hat build pins the supported `registry.redhat.io/rhoai/odh-autorag-rhel9` image and the exact 3.4 parameter contract (`llama_stack_vector_io_provider_id`, S3/Llama Stack secret env keys). Importing with the documented pipeline name keeps runs visible on the Gen AI studio AutoRAG page. |
 | AutoRAG run posture | KFP-native runs through the Stage 230 DSPA via `run-autorag-pipeline.sh`, defaulting to 4 RAG patterns and the faithfulness metric | Scriptable, evidence-producing runs match the stage validation pattern; the dashboard AutoRAG UI remains the demo surface for reviewing leaderboards and generated notebooks. |
 
@@ -202,11 +203,14 @@ Out of scope for this stage unless explicitly added later:
   compiled IR) as a reviewed `Pipeline` and timestamped
   `documents-rag-optimization-pipeline-3.4-<ts>` `PipelineVersion` so runs
   appear on the Gen AI studio AutoRAG page.
-- Submit a DSPA run with the Stage 230 parameters: product-doc PDFs as input
-  documents, committed benchmark JSON as test data, `milvus` as
-  `llama_stack_vector_io_provider_id`, Nemotron as the generation model, and
-  nomic plus bge-m3 as embedding models (metric `faithfulness`, 4 patterns by
-  default).
+- Pre-warm each AutoRAG embedding model with a single `/v1/embeddings` call so
+  first-use model downloads do not burn the pipeline's fixed 60s timeout.
+- Submit a DSPA run with the Stage 230 parameters: the scoped
+  `autorag/rhoai-product-docs/input/` document set (Evaluating AI systems,
+  Guardrails, AutoRAG guides), the committed validate-and-protect benchmark
+  JSON as test data, `milvus` as `llama_stack_vector_io_provider_id`, Nemotron
+  as the generation model, and granite-embedding-30m plus all-MiniLM-L6-v2 as
+  embedding models (metric `faithfulness`, 4 patterns by default).
 - Review the run's S3 artifacts for leaderboard and RAG pattern outputs.
 - Store run evidence in `stage230-autorag-pipeline-evidence`.
 
@@ -244,7 +248,8 @@ Out of scope for this stage unless explicitly added later:
 | RHOAI product-document ingestion | active | Focused official RHOAI 3.4 PDF corpus is the audience Q&A corpus; source PDFs and deterministic chunks are committed and mirrored to S3. |
 | RHOAI product-document KFP automation | validated | Docling KFP source and runner compile, run through DSPA, review S3 artifacts, and feed pipeline-generated chunks into the RAG smoke helper. |
 | AutoRAG inline-vs-remote Milvus source conflict | recorded finding | The older red-hat-ai-examples tutorial says only `inline::milvus` is supported; the official RHOAI 3.4 AutoRAG guide says only remote Milvus is supported. The official guide wins per repo policy; Stage 230 registers `remote::milvus`. Verify the accepted provider id on the first live run. |
-| bge-m3 first-use download | risk | `BAAI/bge-m3` (~2.3 GiB) downloads to the Llama Stack PVC on first embedding call; LSD storage was raised to 10Gi. First AutoRAG run is slower; the cache persists afterwards. |
+| CPU embedding throughput vs ai4rag batch contract | resolved finding | ai4rag embeds up to 2048 chunks per request with a fixed 60s client timeout. Measured inline throughput (8 CPU): nomic 5.7 texts/s, bge-m3 3.0 texts/s — the full 6-guide corpus (~2,690 chunks at 1024 chars) cannot pass on CPU with mid/large models; a 12Gi server was also OOMKilled before the sizing fix. Resolution: ~30M-class embedding models, LSD at 14 CPU / 24Gi, scoped ~1,000-chunk AutoRAG input, and runner pre-warm. GPU-served vLLM embeddings are the documented upgrade path for full-corpus optimization. |
+| Embedding model first-use download | mitigated | sentence-transformers models download to the Llama Stack PVC (10Gi) on first embedding call; `run-autorag-pipeline.sh` pre-warms each AutoRAG embedding model so downloads happen outside the pipeline's fixed timeout. |
 | Unauthenticated Llama Stack API key | finding | The Stage 230 LSD has no API auth; the AutoRAG connection Secret carries a placeholder `LLAMA_STACK_CLIENT_API_KEY`. Verify the pipeline accepts it on the first live run. |
 | AutoRAG optimization run duration and sizing | risk | Pipeline tasks request 2 CPU / 8Gi each and the optimization loop drives CPU embedding plus MaaS generation; default gate uses 4 patterns and a 7200s timeout. |
 | RAGAS / evaluation | deferred | Keep for a later evaluation-focused stage. |
