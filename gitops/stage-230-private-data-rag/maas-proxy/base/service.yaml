@@ -14,6 +14,6 @@ spec:
     - name: http
       port: 8080
       protocol: TCP
-      targetPort: http
+      targetPort: 8081
   selector:
     app.kubernetes.io/name: maas-internal-proxy

@@ -499,7 +499,7 @@ ensure_maas_proxy_config() {
   TMP_FILES+=("$proxy_conf")
   cat > "$proxy_conf" <<EOF
 server {
-  listen 8080;
+  listen 8081;
   location = /healthz {
     return 200 'ok';
   }
