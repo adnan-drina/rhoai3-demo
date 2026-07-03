@@ -32,3 +32,21 @@ The Stage 230 acceptance gate uses `--search-mode hybrid` and must fail if
 metadata filters are ignored, reranker scores are missing, or the final
 Nemotron answer is not grounded in retrieved context. The active implementation
 uses pgvector because filtered hybrid search is required for the demo story.
+
+## AutoRAG pattern handoff
+
+After an AutoRAG optimization run completes (see the stage README's AutoRAG
+flow), fetch the winning pattern's artifacts into this workspace from a
+workbench terminal:
+
+```bash
+cd /opt/app-root/src/workspace
+python .stage230/scripts/fetch_autorag_pattern.py
+```
+
+This ranks the latest run's patterns (faithfulness by default) and downloads
+`pattern.json`, `evaluation_results.json`, and the generated `indexing.ipynb`
+and `inference.ipynb` into `workspace/autorag/<Pattern>/`. The generated
+notebooks run against the same Llama Stack service as the hand-built flow, so
+the demo can compare the manual pipeline with the measured-best configuration
+side by side.

@@ -290,6 +290,14 @@ Out of scope for this stage unless explicitly added later:
   the `-dev` vector store, and the retrieval notebook now closes with the
   AutoRAG pattern handoff (`fetch_autorag_pattern.py` →
   `workspace/autorag/<Pattern>/`).
+- MCP tool calling verified live (2026-07-03): the `openshift` connector
+  resolves from the chatbot pod, and a Responses API call with
+  `{"type": "mcp", "connector_id": "openshift"}` produced the full
+  `mcp_list_tools` → `mcp_call pods_list_in_namespace` → grounded answer
+  chain against the read-only Stage 220 MCP server. Direct RAG through
+  `file_search` on the same Responses path answers the seeded benchmark
+  questions. Vector-store cleanup removed 20 stale/unnamed stores; only the
+  three `stage230-rhoai-34-product-docs*` stores remain.
 
 ## First Live AutoRAG Run (2026-07-03, resolved)
 
