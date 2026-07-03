@@ -159,6 +159,13 @@ data:
       connectors: []
       datasets: []
       models:
+        # The MaaS external-model proxy exposes chat completions but not
+        # /v1/models, so the governed GPT model cannot be auto-discovered
+        # and is registered explicitly.
+        - model_id: vllm-gpt/gpt-4o-mini
+          provider_id: vllm-gpt
+          provider_model_id: gpt-4o-mini
+          model_type: llm
         - model_id: sentence-transformers/BAAI/bge-m3
           provider_id: sentence-transformers
           provider_model_id: BAAI/bge-m3
