@@ -22,7 +22,7 @@ spec:
     minReplicas: 1
     maxReplicas: 1
     deploymentStrategy:
-      type: RollingUpdate
+      type: Recreate
     model:
       runtime: granite-embedding-30m
       modelFormat:
