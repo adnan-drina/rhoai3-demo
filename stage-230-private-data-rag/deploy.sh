@@ -605,6 +605,31 @@ EOF
   echo "✓ Stage 230 runtime Secrets are present in ${RAG_NS}"
 }
 
+ensure_kvstore_collation() {
+  # llama-stack kvstore range queries (connector listing among them) compare
+  # keys against a '￿' sentinel and assume bytewise ordering; under the
+  # database default en_US.utf8 collation the comparison fails and registered
+  # connectors disappear from GET /v1beta/connectors. Pin the key column to
+  # the C collation (idempotent; the table is created by llama-stack on
+  # first boot, so this runs after the Llama Stack Deployment exists).
+  if ! oc get statefulset private-rag-postgres -n "$RAG_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1; then
+    echo "   Skipping kvstore collation fix: private-rag-postgres not found"
+    return 0
+  fi
+  for _ in $(seq 1 30); do
+    if oc exec -n "$RAG_NS" private-rag-postgres-0 --insecure-skip-tls-verify=true -- \
+      bash -c "psql -U \$POSTGRESQL_USER -d llamastack -t -c \"SELECT 1 FROM information_schema.tables WHERE table_name='llamastack_kvstore';\"" 2>/dev/null | grep -q 1; then
+      oc exec -n "$RAG_NS" private-rag-postgres-0 --insecure-skip-tls-verify=true -- \
+        bash -c "psql -U \$POSTGRESQL_USER -d llamastack -c 'ALTER TABLE llamastack_kvstore ALTER COLUMN key TYPE text COLLATE \"C\";'" >/dev/null
+      echo "✓ llamastack_kvstore key column uses C collation"
+      return 0
+    fi
+    sleep 10
+  done
+  echo "WARN: llamastack_kvstore table not found; collation fix not applied" >&2
+}
+
 ensure_chatbot_build() {
   if [[ ! -f "$SCRIPT_DIR/chatbot/Containerfile" ]]; then
     echo "ERROR: Stage 230 chatbot source is missing: ${SCRIPT_DIR}/chatbot/Containerfile" >&2
@@ -658,6 +683,7 @@ wait_for_namespace
 ensure_object_storage
 ensure_maas_proxy_config
 ensure_runtime_secrets
+ensure_kvstore_collation
 ensure_chatbot_build
 
 oc annotate applications.argoproj.io stage-230-private-data-rag -n openshift-gitops \
