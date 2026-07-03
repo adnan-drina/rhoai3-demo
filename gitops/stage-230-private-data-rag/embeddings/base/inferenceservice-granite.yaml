@@ -34,6 +34,10 @@ spec:
         - --dtype=float32
         - --max-model-len=512
         - --max-num-seqs=32
+        # ai4rag and app chunks can exceed the model context window; process
+        # long inputs by server-side chunked pooling instead of rejecting
+        # them (matches sentence-transformers truncation tolerance).
+        - '--override-pooler-config={"enable_chunked_processing": true, "max_embed_len": 8192}'
       env:
         - name: VLLM_CPU_KVCACHE_SPACE
           value: "2"
