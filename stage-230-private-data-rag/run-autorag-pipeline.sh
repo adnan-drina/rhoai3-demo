@@ -323,6 +323,34 @@ prewarm_embedding_models() {
     fi
   done < <(printf '%s' "$EMBEDDINGS_MODELS_JSON" | jq -r '.[]')
   echo "✓ AutoRAG embedding models are warm"
+
+  # The MaaS external-model gateway pools multiple upstream connections to
+  # the external provider; idle ones get black-holed by NAT and each failed
+  # request prunes exactly one. Flush the pool with short completions until
+  # the generation models answer consecutively.
+  local gen_model consecutive attempt
+  while IFS= read -r gen_model; do
+    [[ -n "$gen_model" ]] || continue
+    echo "   Pre-warming generation model ${gen_model} …"
+    consecutive=0
+    for attempt in $(seq 1 15); do
+      status=$(curl -sk --max-time 90 -o /dev/null -w '%{http_code}' \
+        -H "Content-Type: application/json" \
+        "https://${lsd_route}/v1/chat/completions" \
+        -d "{\"model\":\"${gen_model}\",\"messages\":[{\"role\":\"user\",\"content\":\".\"}],\"max_tokens\":1}" 2>/dev/null || true)
+      if [[ "$status" == "200" ]]; then
+        consecutive=$((consecutive + 1))
+        [[ "$consecutive" -ge 3 ]] && break
+      else
+        consecutive=0
+      fi
+    done
+    if [[ "$consecutive" -lt 3 ]]; then
+      echo "ERROR: generation model ${gen_model} did not stabilize after pool flush (last status=${status})." >&2
+      exit 1
+    fi
+  done < <(printf '%s' "$GENERATION_MODELS_JSON" | jq -r '.[]')
+  echo "✓ AutoRAG generation models are warm"
 }
 
 ensure_kfp_venv
