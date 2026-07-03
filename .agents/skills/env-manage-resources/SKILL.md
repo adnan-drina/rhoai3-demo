@@ -44,7 +44,11 @@ user explicitly asks to restore or inspect the legacy implementation.
 
 - Logged in with `oc` (cluster-admin)
 - ArgoCD Applications for the GPU infrastructure and shared RHOAI owner have
-  documented `selfHeal` behavior for intentional scale operations
+  documented `selfHeal` behavior for intentional scale operations:
+  `stage-120-gpu-as-a-service` ignores MachineSet `/spec/replicas` and
+  `stage-220-models-as-a-service` ignores the Nemotron `LLMInferenceService`
+  `/spec/replicas`, so live scale-to-zero sticks while everything else
+  self-heals
 
 ## Resource Inventory
 

@@ -47,3 +47,11 @@ spec:
       namespace: redhat-ods-applications
       jsonPointers:
         - /data
+    # Intentional scale operations (cost shutdown per env-manage-resources)
+    # set spec.replicas live; selfHeal must not restart the GPU model.
+    - group: serving.kserve.io
+      kind: LLMInferenceService
+      name: nemotron-3-nano-30b-a3b
+      namespace: models-as-a-service
+      jsonPointers:
+        - /spec/replicas
