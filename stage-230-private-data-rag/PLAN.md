@@ -260,7 +260,22 @@ Out of scope for this stage unless explicitly added later:
 - Validate the Streamlit chatbot in a fresh environment after the next deploy,
   including RAG-on and RAG-off questions against the RHOAI product-document
   vector store.
-- Run the first live AutoRAG optimization run
-  (`RHOAI_STAGE230_RUN_AUTORAG=true`) to verify the Milvus provider id,
-  placeholder API key acceptance, run duration, and leaderboard artifacts,
-  then review the leaderboard and generated notebooks on the AutoRAG page.
+- Review the AutoRAG leaderboard and generated notebooks on the dashboard
+  AutoRAG page and confirm the readable pipeline display name does not hide
+  runs from that page.
+
+## First Live AutoRAG Run (2026-07-03, resolved)
+
+The first successful optimization run (`documents-rag-optimization-pipeline`,
+run `4713d11a`, validate.sh 101/0) settled the recorded verifications:
+
+- placeholder `LLAMA_STACK_CLIENT_API_KEY` accepted end to end
+- vector provider id `milvus` accepted (ai4rag reports `ls_milvus`
+  datasource); Milvus collections created and queried with hybrid search
+- LSD PVC expanded to 10Gi; embedding caches persist
+- leaderboard: two evaluated patterns, both MiniLM at 2048/256 chunking with
+  hybrid top-10 retrieval; weighted ranker scored answer_correctness 0.672
+  vs RRF 0.645, faithfulness ~0.65-0.66 both, context_correctness 1.0
+  (saturated on the scoped corpus, as predicted for small corpora)
+- artifacts per pattern: pattern.json, evaluation_results.json, indexing and
+  inference notebooks, and /v1/responses request bodies
