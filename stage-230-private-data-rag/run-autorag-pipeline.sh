@@ -537,7 +537,11 @@ params = {
     "optimization_metric": os.environ["OPTIMIZATION_METRIC"],
     "optimization_max_rag_patterns": int(os.environ["MAX_RAG_PATTERNS"]),
 }
-run_name = f"autorag-rhoai-product-docs-{int(time.time())}"
+run_name = f"autorag-optimization-run-{int(time.time())}"
+# The AutoRAG results page expects artifacts at the KFP default layout from
+# the bucket root: <bucket>/documents-rag-optimization-pipeline/<run-id>/...
+# The DSP API server otherwise stamps its built-in "<bucket>/pipelines" root
+# into the run, so pass the bucket-root pipeline_root explicitly.
 run = kfp_client.run_pipeline(
     experiment_id=experiment_id,
     job_name=run_name,
@@ -545,6 +549,7 @@ run = kfp_client.run_pipeline(
     version_id=version_id,
     params=params,
     enable_caching=False,
+    pipeline_root=f"s3://{os.environ['BUCKET_NAME']}",
 )
 run_id = item_id(run, "run_id", "id")
 state = getattr(run, "state", "")
@@ -563,6 +568,7 @@ evidence = {
     "autorag_image": os.environ.get("AUTORAG_PRODUCT_IMAGE", "vendored default"),
     "dspa_url": os.environ["DSPA_URL"],
     "experiment_id": experiment_id,
+    "pipeline_root": f"s3://{os.environ['BUCKET_NAME']}",
     "experiment_name": experiment_name,
     "embeddings_models": json.loads(os.environ["EMBEDDINGS_MODELS_JSON"]),
     "generation_models": json.loads(os.environ["GENERATION_MODELS_JSON"]),
