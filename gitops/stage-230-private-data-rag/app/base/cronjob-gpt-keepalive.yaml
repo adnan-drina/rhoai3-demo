@@ -10,13 +10,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "13"
 spec:
-  # The MaaS gateway pools long-lived TLS connections to api.openai.com.
-  # AWS NAT silently drops idle mappings (~350s) without RST, leaving Envoy
-  # with black-holed connections that hang requests for the 60s route
-  # timeout (verified live: first-call-after-idle hangs, retries recover).
-  # The ExternalModel CRD exposes no connection-pool tuning, so a tiny
-  # governed completion every two minutes keeps the pool warm instead.
-  schedule: "*/2 * * * *"
+  # The MaaS gateway pools multiple long-lived TLS connections to
+  # api.openai.com and round-robins across them. AWS NAT silently drops
+  # idle mappings (~350s) without RST, leaving Envoy with black-holed
+  # connections that hang requests for the 60s route timeout (verified
+  # live). The ExternalModel CRD exposes no connection-pool tuning, so
+  # several concurrent governed completions every minute keep the breadth
+  # of the pool warm and prune strays.
+  schedule: "* * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
@@ -39,11 +40,14 @@ spec:
                 - -c
               args:
                 - |
-                  curl -sk --max-time 100 -o /dev/null -w 'keepalive status=%{http_code} time=%{time_total}s\n' \
-                    -H "Authorization: Bearer ${VLLM_API_TOKEN}" \
-                    -H "Content-Type: application/json" \
-                    "${VLLM_GPT_URL}/chat/completions" \
-                    -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"."}],"max_tokens":1}' || true
+                  for i in 1 2 3 4; do
+                    curl -sk --max-time 90 -o /dev/null -w "keepalive[$i] status=%{http_code} time=%{time_total}s\n" \
+                      -H "Authorization: Bearer ${VLLM_API_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      "${VLLM_GPT_URL}/chat/completions" \
+                      -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"."}],"max_tokens":1}' &
+                  done
+                  wait || true
               env:
                 - name: VLLM_GPT_URL
                   valueFrom:
