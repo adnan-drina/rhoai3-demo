@@ -75,14 +75,16 @@ data:
           config:
             base_url: ${env.VLLM_RERANKER_URL}
             tls_verify: ${env.VLLM_RERANKER_TLS_VERIFY:=false}
-        # No max_tokens default here: the provider-level default is injected
-        # alongside caller-supplied max_completion_tokens, and the OpenAI
-        # backend rejects requests that carry both parameters.
+        # max_tokens must be explicitly 0: the adapter injects its config
+        # default (4096 even when omitted) whenever a request only carries
+        # max_completion_tokens, and the OpenAI backend rejects requests
+        # with both parameters set.
         - provider_id: vllm-gpt
           provider_type: remote::vllm
           config:
             base_url: ${env.VLLM_GPT_URL}
             api_token: ${env.VLLM_API_TOKEN:=}
+            max_tokens: 0
             tls_verify: ${env.VLLM_TLS_VERIFY:=false}
             drop_params: true
         - provider_id: vllm-granite
