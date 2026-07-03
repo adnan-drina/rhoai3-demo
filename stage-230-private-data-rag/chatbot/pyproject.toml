@@ -1,15 +1,27 @@
 [project]
-name = "rhoai-rag-chatbot"
-version = "0.1.0"
-description = "Stage 230 Streamlit RAG chatbot for Red Hat OpenShift AI product documentation"
+name = "llama_stack_ui"
+version = "6"
+description = "Local LLM stack with UI for RAG-based applications"
+authors = [
+    { name = "Saurabh Agarwal", email = "sauagarw@redhat.com" }
+]
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "streamlit",
+    "pandas",
     "llama-stack-client==0.7.2",
-    "streamlit>=1.45,<2",
+    "requests",
+    "streamlit-option-menu",
+    "llama-stack==0.7.2",
+    "fire",
+    "asyncpg",
+    "python-docx",
+    "openpyxl",
 ]
 
 [tool.setuptools]
-packages = ["rhoai_rag_chatbot"]
+packages = ["llama_stack_ui"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
