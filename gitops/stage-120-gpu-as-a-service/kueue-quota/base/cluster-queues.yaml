@@ -21,10 +21,15 @@ spec:
       flavors:
         - name: default-flavor
           resources:
+            # Sized for the Stage 230 CPU model plane (Qwen3 reranker plus
+            # the granite-30m and MiniLM embedding InferenceServices,
+            # including rolling-update overlap) and the Enterprise RAG
+            # Workbench. Worker allocatable is ~76 CPU, so the quota stays
+            # a governance ceiling, not a hardware one.
             - name: cpu
-              nominalQuota: "16"
+              nominalQuota: "40"
             - name: memory
-              nominalQuota: "64Gi"
+              nominalQuota: "128Gi"
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
