@@ -16,6 +16,7 @@ import streamlit as st
 
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import (
+    get_question_suggestions,
     get_suggestions_for_databases,
     get_vector_db_name,
     fetch_available_shields,
@@ -376,14 +377,19 @@ def render_vector_db_selector(vector_dbs, processing_mode, on_vector_db_change):
     """Render vector database selector and return selected databases."""
     selected_vector_dbs = []
 
-    # Initialize vector DB selector if not present
-    if "chat_vector_db_selector" not in st.session_state:
-        st.session_state["chat_vector_db_selector"] = []
-
     if not vector_dbs:
+        st.session_state.setdefault("chat_vector_db_selector", [])
         return selected_vector_dbs
 
     vector_db_names = [get_vector_db_name(vector_db) for vector_db in vector_dbs]
+
+    # Default-select collections that have seeded question suggestions so the
+    # demo opens with RAG active and the suggestion grid visible.
+    if "chat_vector_db_selector" not in st.session_state:
+        suggestion_keys = set(get_question_suggestions().keys())
+        st.session_state["chat_vector_db_selector"] = [
+            name for name in vector_db_names if name in suggestion_keys
+        ]
     selected_vector_dbs = st.multiselect(
         label="Select Document Collections for RAG queries",
         options=vector_db_names,
