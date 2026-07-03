@@ -126,9 +126,14 @@ BUCKET_NAME="${BUCKET_NAME:-enterprise-rag}"
 # The vendored pipeline pins the odh-autorag image digest from the
 # pipelines-components rhoai-3.4 branch, which can lag or lead what the
 # installed operator actually ships. Align the image to the installed RHOAI
-# CSV relatedImages entry so the run uses the supported product build.
-AUTORAG_PRODUCT_IMAGE="${RHOAI_STAGE230_AUTORAG_IMAGE:-$(oc get csv -n redhat-ods-operator -o json --insecure-skip-tls-verify=true 2>/dev/null \
-  | jq -r '[.items[].spec.relatedImages[]? | select(.name=="odh_autorag_image")][0].image // empty')}"
+# CSV relatedImages entry so the run uses the supported product build. OLM
+# copies the CSV into every namespace, so read it from the stage namespace
+# where project-admin users have access.
+AUTORAG_PRODUCT_IMAGE="${RHOAI_STAGE230_AUTORAG_IMAGE:-}"
+if [[ -z "$AUTORAG_PRODUCT_IMAGE" ]]; then
+  AUTORAG_PRODUCT_IMAGE=$( { oc get csv -n "$RAG_NS" -o json --insecure-skip-tls-verify=true 2>/dev/null \
+    | jq -r '[.items[].spec.relatedImages[]? | select(.name=="odh_autorag_image")][0].image // empty'; } || true)
+fi
 if [[ -z "$AUTORAG_PRODUCT_IMAGE" ]]; then
   echo "WARNING: could not resolve odh_autorag_image from the installed RHOAI CSV; using the vendored image digest as-is." >&2
 fi
