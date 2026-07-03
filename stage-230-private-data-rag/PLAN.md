@@ -296,8 +296,12 @@ Out of scope for this stage unless explicitly added later:
   `mcp_list_tools` → `mcp_call pods_list_in_namespace` → grounded answer
   chain against the read-only Stage 220 MCP server. Direct RAG through
   `file_search` on the same Responses path answers the seeded benchmark
-  questions. Vector-store cleanup removed 20 stale/unnamed stores; only the
-  three `stage230-rhoai-34-product-docs*` stores remain.
+  questions. Vector-store cleanup removed 20 stale/unnamed stores, and the
+  plain `stage230-rhoai-34-product-docs` store (script-path validation
+  artifact whose name shadowed the demo store) was deleted after renaming
+  the script-path target to `-smoke` (user-approved, 2026-07-03). Store
+  names now state their producer: `-kfp` (pipeline, demo store), `-dev`
+  (notebooks), `-smoke` (validation fallback, recreated on demand).
 
 ## First Live AutoRAG Run (2026-07-03, resolved)
 

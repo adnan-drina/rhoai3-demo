@@ -43,7 +43,7 @@ DEFAULT_PIPELINE_S3_SECRET = "data-processing-docling-pipeline"
 PIPELINE_ROOT = "s3://enterprise-rag/pipelines/stage-230"
 SECRET_MOUNT_PATH = "/mnt/secrets"
 DEFAULT_LLAMA_STACK_BASE_URL = "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321"
-DEFAULT_VECTOR_STORE_NAME = "stage230-rhoai-34-product-docs"
+DEFAULT_VECTOR_STORE_NAME = "stage230-rhoai-34-product-docs-kfp"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_VECTOR_PROVIDER = "pgvector"
 

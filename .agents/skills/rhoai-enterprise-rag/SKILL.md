@@ -162,15 +162,19 @@ general-purpose product-doc Q&A where users do not specify metadata categories.
 
 ## Vector Store Naming
 
-Stage 230 uses two naming conventions for the product-document vector store:
+Stage 230 names each product-document vector store after its producer:
 
-- `stage230-rhoai-34-product-docs` -- used by scripts when indexing from the
-  repo-committed prepared JSONL
-- `stage230-rhoai-34-product-docs-kfp` -- used by the chatbot and by scripts
-  when indexing from DSPA/KFP pipeline-generated output
+- `stage230-rhoai-34-product-docs-kfp` -- the demo store, populated from
+  DSPA/KFP pipeline-generated output; the chatbot question suggestions key
+  on this name
+- `stage230-rhoai-34-product-docs-dev` -- created by the workbench
+  ingestion notebook flow
+- `stage230-rhoai-34-product-docs-smoke` -- disposable validation store
+  used by scripts when indexing from the repo-committed prepared JSONL;
+  it only exists after a script-path smoke run
 
-The `-kfp` suffix distinguishes pipeline-generated content from locally
-prepared content so both can coexist during development and validation.
+The suffixes keep pipeline, notebook, and validation content separate so
+all can coexist during development without ambiguity about provenance.
 
 ## References
 

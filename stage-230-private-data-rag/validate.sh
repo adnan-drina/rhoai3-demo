@@ -820,7 +820,7 @@ if [[ "${RHOAI_STAGE230_RUN_RHOAI_DOCS_SMOKE:-false}" == "true" ]]; then
            --reset \
            --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
            --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-           --vector-store stage230-rhoai-34-product-docs \
+           --vector-store stage230-rhoai-34-product-docs-smoke \
            --max-questions 3 \
            --search-mode hybrid'
       fi
@@ -885,7 +885,7 @@ EOF
          --reset \
          --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
          --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-         --vector-store stage230-rhoai-34-product-docs \
+         --vector-store stage230-rhoai-34-product-docs-smoke \
          --max-questions 3 \
          --search-mode hybrid'
     fi

@@ -23,7 +23,7 @@ from llama_stack_client import LlamaStackClient
 ROOT = Path(__file__).parents[1]
 DEFAULT_MANIFEST = ROOT / "data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json"
 DEFAULT_SAMPLE = ROOT / "data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl"
-DEFAULT_VECTOR_STORE = "stage230-rhoai-34-product-docs"
+DEFAULT_VECTOR_STORE = "stage230-rhoai-34-product-docs-smoke"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_VECTOR_PROVIDER = "pgvector"
 DEFAULT_GENERATION_MODEL = "nemotron-3-nano-30b-a3b"

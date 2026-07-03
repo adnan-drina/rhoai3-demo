@@ -21,7 +21,7 @@ def ingest_to_vector_store(
     output_s3_key: str,
     s3_secret_mount_path: str = "/mnt/secrets",
     llama_stack_base_url: str = "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321",
-    vector_store_name: str = "stage230-rhoai-34-product-docs",
+    vector_store_name: str = "stage230-rhoai-34-product-docs-kfp",
     embedding_model: str = "sentence-transformers/nomic-ai/nomic-embed-text-v1.5",
     vector_provider: str = "pgvector",
 ):

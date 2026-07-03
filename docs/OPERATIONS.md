@@ -979,9 +979,10 @@ Current status:
   official RHOAI 3.4 PDFs stored in the stage folder. Use `--force-download`
   only when intentionally refreshing the corpus from `docs.redhat.com`.
 - `stage-230-private-data-rag/scripts/rhoai_product_docs_rag_smoke.py` indexes
-  those chunks into the `stage230-rhoai-34-product-docs` vector store and
-  validates metadata-filtered hybrid retrieval, reranking, and a final
-  Nemotron answer.
+  those chunks into the `stage230-rhoai-34-product-docs-smoke` vector store
+  and validates metadata-filtered hybrid retrieval, reranking, and a final
+  Nemotron answer. The `-smoke` store is a disposable validation artifact;
+  the demo store is `stage230-rhoai-34-product-docs-kfp`.
 - `stage-230-private-data-rag/run-rhoai-docs-pipeline.sh` compiles the RHOAI
   product-document Docling KFP source, creates a Pipeline/PipelineVersion in
   the DSPA namespace, submits a run, reviews S3 output, checks converted
@@ -1123,7 +1124,7 @@ python .stage230/scripts/rhoai_product_docs_rag_smoke.py \
   --reset \
   --manifest .stage230/data/rhoai-product-docs/metadata/rhoai-3.4-product-docs.json \
   --sample .stage230/data/rhoai-product-docs/processed/rhoai-3.4-product-docs-chunks.jsonl \
-  --vector-store stage230-rhoai-34-product-docs \
+  --vector-store stage230-rhoai-34-product-docs-smoke \
   --search-mode hybrid
 ```
 
