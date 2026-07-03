@@ -299,63 +299,73 @@ EOF
   oc logs -n "$RAG_NS" "job/${review_job}" --insecure-skip-tls-verify=true | tee "$logs_file"
 }
 
-prewarm_embedding_models() {
-  # First use of a sentence-transformers model downloads it to the Llama
-  # Stack PVC. Warm each AutoRAG embedding model with a single request so
-  # the download does not burn the pipeline's fixed 60s embeddings timeout.
-  local lsd_route model status
-  lsd_route=$(oc get route lsd-enterprise-rag -n "$RAG_NS" \
-    -o jsonpath='{.spec.host}' --insecure-skip-tls-verify=true 2>/dev/null || true)
-  if [[ -z "$lsd_route" ]]; then
-    echo "WARNING: Llama Stack route not found; skipping embedding model pre-warm." >&2
-    return 0
+prewarm_models() {
+  # Pre-warm through the Llama Stack pod's localhost — the same in-cluster
+  # service path the pipeline uses. The external route hostname hairpins
+  # through the load balancer and drops a large share of fresh in-cluster
+  # connections, so probing it would gate the run on a path it never takes.
+  # Embedding pre-warm covers first-use model loads; the generation flush
+  # clears NAT-black-holed gateway connections to the external provider
+  # until each model answers consecutively.
+  local lsd_pod
+  lsd_pod=$(oc get pods -n "$RAG_NS" -l app.kubernetes.io/instance=lsd-enterprise-rag \
+    -o jsonpath='{.items[0].metadata.name}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  if [[ -z "$lsd_pod" ]]; then
+    echo "ERROR: Llama Stack pod not found in ${RAG_NS}; cannot pre-warm models." >&2
+    exit 1
   fi
-  while IFS= read -r model; do
-    [[ -n "$model" ]] || continue
-    echo "   Pre-warming embedding model ${model} …"
-    status=$(curl -sk --max-time 600 -o /dev/null -w '%{http_code}' \
-      -H "Content-Type: application/json" \
-      "https://${lsd_route}/v1/embeddings" \
-      -d "{\"model\":\"${model}\",\"input\":[\"warmup\"]}" 2>/dev/null || true)
-    if [[ "$status" != "200" ]]; then
-      echo "ERROR: pre-warm of embedding model ${model} failed (status=${status})." >&2
-      exit 1
-    fi
-  done < <(printf '%s' "$EMBEDDINGS_MODELS_JSON" | jq -r '.[]')
-  echo "✓ AutoRAG embedding models are warm"
+  if EMBEDDINGS_MODELS_JSON="$EMBEDDINGS_MODELS_JSON" GENERATION_MODELS_JSON="$GENERATION_MODELS_JSON" \
+    oc exec -i -n "$RAG_NS" "$lsd_pod" --insecure-skip-tls-verify=true -- python3 - \
+      "$EMBEDDINGS_MODELS_JSON" "$GENERATION_MODELS_JSON" <<'PY'
+import json
+import sys
 
-  # The MaaS external-model gateway pools multiple upstream connections to
-  # the external provider; idle ones get black-holed by NAT and each failed
-  # request prunes exactly one. Flush the pool with short completions until
-  # the generation models answer consecutively.
-  local gen_model consecutive attempt
-  while IFS= read -r gen_model; do
-    [[ -n "$gen_model" ]] || continue
-    echo "   Pre-warming generation model ${gen_model} …"
-    consecutive=0
-    for attempt in $(seq 1 15); do
-      status=$(curl -sk --max-time 90 -o /dev/null -w '%{http_code}' \
-        -H "Content-Type: application/json" \
-        "https://${lsd_route}/v1/chat/completions" \
-        -d "{\"model\":\"${gen_model}\",\"messages\":[{\"role\":\"user\",\"content\":\".\"}],\"max_tokens\":1}" 2>/dev/null || true)
-      if [[ "$status" == "200" ]]; then
-        consecutive=$((consecutive + 1))
-        [[ "$consecutive" -ge 3 ]] && break
-      else
-        consecutive=0
-      fi
-    done
-    if [[ "$consecutive" -lt 3 ]]; then
-      echo "ERROR: generation model ${gen_model} did not stabilize after pool flush (last status=${status})." >&2
-      exit 1
-    fi
-  done < <(printf '%s' "$GENERATION_MODELS_JSON" | jq -r '.[]')
-  echo "✓ AutoRAG generation models are warm"
+import httpx
+
+base = "http://localhost:8321"
+embeddings = json.loads(sys.argv[1])
+generations = json.loads(sys.argv[2])
+
+for model in embeddings:
+    r = httpx.post(f"{base}/v1/embeddings", json={"model": model, "input": ["warmup"]}, timeout=600)
+    print(f"embedding warmup {model}: {r.status_code}", flush=True)
+    if r.status_code != 200:
+        sys.exit(f"embedding pre-warm failed for {model}: {r.status_code}")
+
+for model in generations:
+    consecutive = 0
+    last = None
+    for attempt in range(15):
+        try:
+            r = httpx.post(
+                f"{base}/v1/chat/completions",
+                json={"model": model, "messages": [{"role": "user", "content": "."}], "max_tokens": 1},
+                timeout=90,
+            )
+            last = r.status_code
+        except Exception as exc:
+            last = type(exc).__name__
+        if last == 200:
+            consecutive += 1
+            if consecutive >= 3:
+                break
+        else:
+            consecutive = 0
+    print(f"generation flush {model}: last={last} consecutive={consecutive}", flush=True)
+    if consecutive < 3:
+        sys.exit(f"generation model {model} did not stabilize after pool flush (last={last})")
+PY
+  then
+    echo "✓ AutoRAG embedding and generation models are warm"
+  else
+    echo "ERROR: model pre-warm failed." >&2
+    exit 1
+  fi
 }
 
 ensure_kfp_venv
 KFP_PYTHON="$ROOT_DIR/.venv-kfp/bin/python"
-prewarm_embedding_models
+prewarm_models
 DSPA_ROUTE="$(wait_for_dspa_route)"
 DSPA_URL="https://${DSPA_ROUTE}"
 OC_TOKEN="$(oc whoami -t --insecure-skip-tls-verify=true)"
