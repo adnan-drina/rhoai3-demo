@@ -1292,9 +1292,70 @@ steps unless those components are intentionally reintroduced.
   curl -sk "https://${ROUTE}/v1/providers" | jq -r '.data[] | select(.api=="vector_io").provider_id'
   ```
 
-  Rerun `deploy.sh` for missing Secrets. Keep the documented pipeline name.
-  AutoRAG is Technology Preview; record run-blocking product issues in the
-  stage plan instead of patching the vendored pipeline.
+  Rerun `deploy.sh` for missing Secrets. Keep the documented pipeline name
+  as both the resource name and the display name: the AutoRAG page matches
+  the display name, so a renamed pipeline shows an empty AutoRAG page while
+  still appearing under Pipelines (verified live). Readability belongs in
+  the pipeline description. AutoRAG is Technology Preview; record
+  run-blocking product issues in the stage plan instead of patching the
+  vendored pipeline.
+
+### Stage 230 AutoRAG results page shows "Error loading components"
+
+- **Symptom:** the run is listed as SUCCEEDED on the AutoRAG page, but the
+  results view fails with "Failed to list templates optimization directory"
+  or "No UUID directory found in documents-rag-optimization-pipeline/...".
+- **Likely cause:** the AutoRAG dashboard backend enforces an undocumented
+  storage contract (verified live against the RHOAI 3.4.2 dashboard):
+  it rejects non-HTTPS DSPA object-storage endpoints, and the results page
+  hardcodes the artifact root at
+  `<bucket>/documents-rag-optimization-pipeline/<run-id>/`. The DSP API
+  server additionally stamps its built-in `<bucket>/pipelines` root into
+  runs regardless of the DSPA `basePath` or `kfp-launcher` ConfigMap, so
+  artifacts miss that layout unless the run is submitted with an explicit
+  `pipeline_root`.
+- **Fix:** keep the Stage 230 contract: DSPA external storage on the NooBaa
+  HTTPS endpoint (`https://s3.openshift-storage.svc:443`, `secure: true`,
+  no `basePath`), and submit AutoRAG runs through
+  `run-autorag-pipeline.sh`, which passes `pipeline_root=s3://<bucket>`
+  explicitly. Verify what the page sees with the backend probe:
+
+  ```bash
+  TOKEN=$(oc whoami -t)
+  POD=$(oc get pods -n redhat-ods-applications -l app=rhods-dashboard -o name | head -1)
+  oc exec -n redhat-ods-applications "$POD" -c autorag-ui -- \
+    curl -sk -H "x-forwarded-access-token: $TOKEN" \
+    "https://localhost:8743/api/v1/s3/files?namespace=enterprise-rag&path=documents-rag-optimization-pipeline%2F<run-id>%2Frag-templates-optimization"
+  ```
+
+### Stage 230 pipeline tasks fail with x509 certificate errors on artifact transfers
+
+- **Symptom:** pipeline tasks fail downloading or uploading KFP artifacts
+  with `tls: failed to verify certificate: x509: certificate signed by
+  unknown authority` against `https://s3.openshift-storage.svc:443`.
+- **Likely cause:** with an HTTPS object-storage endpoint, the KFP launcher
+  verifies TLS strictly for artifact transfers but only consults the Go
+  system pool. The DSPA `spec.apiServer.cABundle` places the service CA in
+  the `dsp-trusted-ca` ConfigMap mounted at `/kfp/certs` in every executor
+  pod, but the installed launcher build does not read it for object-store
+  connections.
+- **Fix:** set `SSL_CERT_FILE=/kfp/certs/ca.crt` on every pipeline task.
+  The Docling pipeline sets it in its shared task helper; the AutoRAG
+  runner injects it into the vendored executors at import time. Keep the
+  DSPA `cABundle` pointing at the auto-injected `openshift-service-ca.crt`
+  ConfigMap so the mounted bundle contains the service CA.
+
+### Stage 230 pipeline run history disappears after DSPA changes
+
+- **Symptom:** previously listed pipeline runs (including on the AutoRAG
+  page) vanish after object-storage or other DSPA spec changes.
+- **Likely cause:** DSPA object-storage changes require pipeline server
+  recreation, which resets the run database (MariaDB) and MLMD history.
+  Pipeline and PipelineVersion resources persist independently in the
+  Kubernetes pipeline store; S3 artifacts and Stage 230 evidence ConfigMaps
+  also survive.
+- **Fix:** expected behavior; rerun `run-rhoai-docs-pipeline.sh` and
+  `run-autorag-pipeline.sh` to repopulate run history and evidence.
 
 ### Stage 230 AutoRAG run fails with embedding timeouts or an OOMKilled Llama Stack
 

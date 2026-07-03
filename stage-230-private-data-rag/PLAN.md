@@ -281,3 +281,24 @@ run `4713d11a`, validate.sh 101/0) settled the recorded verifications:
   (saturated on the scoped corpus, as predicted for small corpora)
 - artifacts per pattern: pattern.json, evaluation_results.json, indexing and
   inference notebooks, and /v1/responses request bodies
+
+## Fresh Pipelines Rebuild (2026-07-03, resolved)
+
+At the user's request the pipelines and AutoRAG state were scraped and
+rebuilt fresh with all learnings applied (validate.sh 101/0 on the rebuilt
+stack; Docling run `311fdd04`, AutoRAG run `578a836d`, both SUCCEEDED, and
+the AutoRAG results-page backend listing verified server-side):
+
+- AutoRAG dashboard results contract: HTTPS DSPA object storage, no
+  `basePath`, artifacts at `<bucket>/documents-rag-optimization-pipeline/
+  <run-id>/...` via explicit `pipeline_root=s3://<bucket>` at run
+  submission (the DSP API server otherwise stamps `<bucket>/pipelines`),
+  and the documented pipeline display name.
+- Launcher artifact TLS: `SSL_CERT_FILE=/kfp/certs/ca.crt` on every task
+  plus DSPA `cABundle` from `openshift-service-ca.crt`.
+- Scrape scope: workflows, Pipeline/PipelineVersion resources, evidence
+  ConfigMaps, stale S3 artifact prefixes, and orphaned Milvus vector stores
+  from failed runs; corpus data, benchmark data, and app-path pgvector
+  stores were preserved. DSPA recreation resets run history by design.
+- Runner works for project-admin users (CSV image lookup reads the
+  OLM-copied CSV in the stage namespace).
