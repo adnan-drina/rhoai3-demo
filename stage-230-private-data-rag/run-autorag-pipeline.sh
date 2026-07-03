@@ -363,18 +363,27 @@ if pipeline_spec["pipelineInfo"].get("name") != pipeline_name:
     )
 
 product_image = os.environ.get("AUTORAG_PRODUCT_IMAGE", "")
-if product_image:
-    substituted = 0
-    for executor in pipeline_spec.get("deploymentSpec", {}).get("executors", {}).values():
-        container = executor.get("container")
-        if not container:
-            continue
-        image = container.get("image", "")
-        if image.startswith("registry.redhat.io/rhoai/odh-autorag-rhel9@") and image != product_image:
-            container["image"] = product_image
-            substituted += 1
-    if substituted:
-        print(f"aligned {substituted} executor image(s) to installed CSV image {product_image}")
+substituted = 0
+tls_injected = 0
+for executor in pipeline_spec.get("deploymentSpec", {}).get("executors", {}).values():
+    container = executor.get("container")
+    if not container:
+        continue
+    image = container.get("image", "")
+    if product_image and image.startswith("registry.redhat.io/rhoai/odh-autorag-rhel9@") and image != product_image:
+        container["image"] = product_image
+        substituted += 1
+    # The KFP launcher's artifact client verifies the NooBaa HTTPS endpoint
+    # against Go's system pool only; point SSL_CERT_FILE at the DSP
+    # trusted-CA bundle mounted into every executor pod.
+    env = container.setdefault("env", [])
+    if not any(entry.get("name") == "SSL_CERT_FILE" for entry in env):
+        env.append({"name": "SSL_CERT_FILE", "value": "/kfp/certs/ca.crt"})
+        tls_injected += 1
+if substituted:
+    print(f"aligned {substituted} executor image(s) to installed CSV image {product_image}")
+if tls_injected:
+    print(f"injected SSL_CERT_FILE trusted-CA env into {tls_injected} executor(s)")
 
 labels = {
     "app.kubernetes.io/part-of": "rag",

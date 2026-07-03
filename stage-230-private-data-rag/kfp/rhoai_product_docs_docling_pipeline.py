@@ -93,6 +93,11 @@ def _resources(
     task.set_cpu_limit(cpu_limit)
     task.set_memory_request(memory_request)
     task.set_memory_limit(memory_limit)
+    # The DSPA object store uses the NooBaa HTTPS endpoint with a
+    # service-CA-signed certificate. The KFP launcher's artifact client only
+    # trusts the system pool, so point Go TLS at the DSP trusted-CA bundle
+    # that the workflow controller mounts into every executor pod.
+    task.set_env_variable("SSL_CERT_FILE", "/kfp/certs/ca.crt")
     return task
 
 
