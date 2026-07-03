@@ -12,6 +12,7 @@ resources:
   - rhoai-dsc/base
   - postgresql/base
   - milvus/base
+  - maas-proxy/base
   - pipelines/base
   - reranker/base
   - embeddings/base

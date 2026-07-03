@@ -63,6 +63,7 @@ NEMOTRON_MODEL_RESOURCE="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a
 GPT_MODEL_RESOURCE="${RHOAI_STAGE230_MAAS_GPT_MODEL_NAME:-gpt-4o-mini}"
 MAAS_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
 MAAS_SUBSCRIPTION="${RHOAI_STAGE230_MAAS_SUBSCRIPTION:-enterprise-rag-autorag}"
+MAAS_GATEWAY_SERVICE="${RHOAI_STAGE230_MAAS_GATEWAY_SERVICE:-maas-default-gateway-data-science-gateway-class.openshift-ingress.svc.cluster.local}"
 MAAS_API_KEY_NAME="${RHOAI_STAGE230_MAAS_API_KEY_NAME:-stage230-rag-runtime}"
 VLLM_MAX_TOKENS="${RHOAI_STAGE230_VLLM_MAX_TOKENS:-1024}"
 VLLM_TLS_VERIFY="${RHOAI_STAGE230_VLLM_TLS_VERIFY:-false}"
@@ -485,6 +486,50 @@ ensure_maas_api_key() {
   printf '%s' "$api_key"
 }
 
+ensure_maas_proxy_config() {
+  # In-cluster calls to the MaaS gateway's external hostname hairpin through
+  # the cloud load balancer and drop a large share of fresh connections.
+  # The GitOps-managed maas-internal-proxy reaches the gateway Service
+  # directly while presenting the public hostname (SNI + Host), keeping MaaS
+  # auth and rate limiting enforced. The hostname is environment-specific,
+  # so the nginx server config is generated here.
+  local gateway_host proxy_conf
+  gateway_host=$(get_gateway_host_from_endpoint "$(get_maas_endpoint "$NEMOTRON_MODEL_RESOURCE")")
+  proxy_conf=$(mktemp)
+  TMP_FILES+=("$proxy_conf")
+  cat > "$proxy_conf" <<EOF
+server {
+  listen 8080;
+  location = /healthz {
+    return 200 'ok';
+  }
+  location / {
+    proxy_pass https://${MAAS_GATEWAY_SERVICE}:443;
+    proxy_ssl_server_name on;
+    proxy_ssl_name ${gateway_host};
+    proxy_set_header Host ${gateway_host};
+    proxy_ssl_verify off;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_read_timeout 180s;
+    proxy_connect_timeout 10s;
+    proxy_buffering off;
+  }
+}
+EOF
+  oc create configmap maas-internal-proxy-config \
+    -n "$RAG_NS" \
+    --from-file=maas-proxy.conf="$proxy_conf" \
+    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+  oc label configmap maas-internal-proxy-config -n "$RAG_NS" --overwrite \
+    app.kubernetes.io/part-of=rag \
+    demo.rhoai.io/stage=230 \
+    --insecure-skip-tls-verify=true >/dev/null
+  oc rollout restart deployment/maas-internal-proxy -n "$RAG_NS" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+  echo "✓ MaaS internal proxy config targets ${gateway_host}"
+}
+
 ensure_runtime_secrets() {
   local postgres_password milvus_password maas_endpoint maas_gpt_endpoint maas_token llama_stack_base_url autorag_api_key
 
@@ -535,8 +580,11 @@ stringData:
   LLAMA_STACK_CLIENT_API_KEY: "${autorag_api_key}"
 EOF
 
-  maas_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_URL:-$(get_maas_endpoint "$NEMOTRON_MODEL_RESOURCE")}")"
-  maas_gpt_endpoint="$(normalize_openai_base_url "${RHOAI_STAGE230_VLLM_GPT_URL:-$(get_maas_endpoint "$GPT_MODEL_RESOURCE")}")"
+  # Llama Stack reaches MaaS through the in-cluster proxy to avoid the
+  # load-balancer hairpin; API keys are still minted against the external
+  # gateway endpoint.
+  maas_endpoint="${RHOAI_STAGE230_VLLM_URL:-http://maas-internal-proxy.${RAG_NS}.svc.cluster.local:8080/models-as-a-service/${NEMOTRON_MODEL_RESOURCE}/v1}"
+  maas_gpt_endpoint="${RHOAI_STAGE230_VLLM_GPT_URL:-http://maas-internal-proxy.${RAG_NS}.svc.cluster.local:8080/models-as-a-service/${GPT_MODEL_RESOURCE}/v1}"
   maas_token="$(ensure_maas_api_key)"
 
   oc create secret generic "$LLAMA_SECRET" \
@@ -608,6 +656,7 @@ ensure_chatbot_build() {
 apply_argocd_application
 wait_for_namespace
 ensure_object_storage
+ensure_maas_proxy_config
 ensure_runtime_secrets
 ensure_chatbot_build
 
