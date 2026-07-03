@@ -17,6 +17,12 @@ spec:
     cacheEnabled: false
     enableSamplePipeline: false
     pipelineStore: kubernetes
+    # NooBaa's HTTPS endpoint presents a service-CA-signed certificate. The
+    # KFP launcher verifies TLS strictly during artifact transfers, so the
+    # cluster service CA must be injected into pipeline pods.
+    cABundle:
+      configMapName: openshift-service-ca.crt
+      configMapKey: service-ca.crt
   database:
     mariaDB:
       deploy: true
