@@ -282,19 +282,21 @@ fi
 otel_ok=$(jsonpath "deployment/${OTEL_COLLECTOR}-collector" "$SAFETY_NS" "{.status.availableReplicas}")
 check "OpenTelemetry collector is available" "$([[ "${otel_ok:-0}" -ge 1 ]] 2>/dev/null && echo pass || echo "availableReplicas=${otel_ok:-0}")"
 
-# The tempo container image has no curl, so query the Tempo API from the
-# NeMo pod instead.
+# Multitenant Tempo serves queries only through the gateway with a bearer
+# token (tenant path). The tempo image has no curl, so query from the NeMo
+# pod using the validator's OpenShift token.
 nemo_pod=$(oc get pods -n "$SAFETY_NS" -l app=nemo-guardrails --field-selector=status.phase=Running -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
-if [[ -n "$nemo_pod" ]]; then
+if [[ -n "$nemo_pod" && -n "$TOKEN" ]]; then
   traces=$(oc exec -n "$SAFETY_NS" "$nemo_pod" -c nemo-guardrails --insecure-skip-tls-verify=true -- \
-    curl -s --max-time 20 "http://tempo-${TEMPO_NAME}:3200/api/search?tags=service.name%3Dnemo-guardrails&limit=1" 2>/dev/null || true)
+    curl -sk --max-time 20 -H "Authorization: Bearer ${TOKEN}" \
+    "https://tempo-${TEMPO_NAME}-gateway.${SAFETY_NS}.svc.cluster.local:8080/api/traces/v1/${TEMPO_TENANT:-ai-safety}/tempo/api/search?tags=service.name%3Dnemo-guardrails&limit=1" 2>/dev/null || true)
   if grep -q 'traceID' <<<"$traces"; then
-    check "Tempo has nemo-guardrails trace spans" "pass"
+    check "Tempo has nemo-guardrails trace spans (via gateway tenant ${TEMPO_TENANT:-ai-safety})" "pass"
   else
-    warn "Tempo trace search" "no nemo-guardrails spans yet (indexing may lag)"
+    warn "Tempo trace search" "no nemo-guardrails spans via gateway (indexing may lag)"
   fi
 else
-  warn "Tempo trace search" "no running nemo-guardrails pod to query from"
+  warn "Tempo trace search" "no running nemo-guardrails pod or token to query with"
 fi
 
 echo ""
