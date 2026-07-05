@@ -2,7 +2,7 @@
 name: rhoai-guardrails-safety
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -115,6 +115,49 @@ For this repo:
 - Verify detector images and model artifacts before committing them. Treat
   testing registries or upstream examples as examples only unless product
   provenance is documented.
+
+## Live-Verified Platform Behaviors (RHOAI 3.4, Stage 240, 2026-07-05)
+
+These behaviors were verified on a live cluster and are not documented in
+the official guide; account for them before authoring NeMo configurations:
+
+- The RHOAI NeMo server does not substitute `${VAR}` placeholders in
+  `config.yaml`; it loads the raw YAML and merges `MAIN_MODEL_ENGINE` /
+  `MAIN_MODEL_BASE_URL` environment values over it per request. Never set
+  `api_key` in `config.yaml` — a literal placeholder is sent to the model
+  endpoint as the key (401). The OpenAI client falls back to the
+  `OPENAI_API_KEY` environment variable from the CR Secret, which works.
+- The request `model` field overrides the config main model at runtime, and
+  MaaS-governed endpoints authorize per model. Clients (including the Llama
+  Stack `remote::nvidia` shield provider, which sends `shield_id` as the
+  model) must use the governed model name.
+- The server wraps internal failures as HTTP 200: `status: "error"` on
+  `/v1/guardrail/checks` and an "Internal server error" assistant message
+  on `/v1/chat/completions`. The Llama Stack `remote::nvidia` provider
+  treats any non-"blocked" status as no violation, so LLM-rail failures
+  masquerade as passes. Always validate that a benign message returns
+  `status: "success"` — that is the canary that self-check rails actually
+  run.
+- Reasoning models (for example Nemotron) spend their first completion
+  tokens on the reasoning channel, and the nemoguardrails self-check
+  default of `max_tokens: 3` then yields an empty verdict that fails
+  closed, blocking everything that reaches the LLM rail. Set per-task
+  `max_tokens` (for example 512) in `prompts.yml`; prompt toggles such as
+  `/no_think` do not disable reasoning on the vLLM build tested.
+- With `security.opendatahub.io/enable-auth: 'true'`, the TrustyAI operator
+  fronts the NeMo container (plain HTTP :8000) with a kube-rbac-proxy
+  sidecar (Service 443→8443, bearer token required). Header-less in-cluster
+  consumers need an explicit internal Service targeting the container port;
+  record that as a demo exception and keep the external route
+  authenticated.
+- `/v1/guardrail/checks` with a `[user, assistant]` message pair runs input
+  rails over the user message and output rails over the assistant message —
+  this is how Llama Stack output shields work through the
+  `remote::nvidia` provider.
+- The TrustyAI component flip in the shared `DataScienceCluster` must be
+  protected from the DSC owner's Argo CD selfHeal via an
+  `ignoreDifferences` entry for `/spec/components/trustyai`, like every
+  other later-stage component flip.
 
 ## Workflow
 
