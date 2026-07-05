@@ -1844,12 +1844,27 @@ steps unless those components are intentionally reintroduced.
 
 - **Symptom:** benign prompts return `status: blocked`, or unsafe test
   prompts pass.
-- **Likely cause:** self-check policy prompts are policy-as-code and need
-  tuning; the Presidio `PERSON` entity is aggressive on name-like strings.
+- **Likely causes (observed live 2026-07-05):**
+  - Self-check completions are empty because Nemotron spends its first
+    tokens on the reasoning channel and the nemoguardrails self-check
+    default is `max_tokens: 3`; empty fails closed and blocks everything
+    reaching the LLM rail. Keep per-task `max_tokens` (512) in
+    `prompts.yml`; no prompt toggle disables Nemotron reasoning on this
+    vLLM build.
+  - Self-check LLM calls fail auth: the NeMo server does not substitute
+    `${VAR}` placeholders in `config.yaml`, so a literal
+    `${OPENAI_API_KEY}` is sent to MaaS (401). Never set `api_key` in the
+    config; the client reads the `OPENAI_API_KEY` env var from the CR
+    Secret. Note the server wraps such errors as HTTP 200 responses
+    (`status: error` on checks, an "Internal server error" assistant
+    message on completions), so they hide easily.
+  - Policy prompts or Presidio entities need tuning; the `PERSON` entity is
+    aggressive on name-like strings.
 - **Fix:** adjust `prompts.yml` / detector entities in
   `guardrails/base/configmap-nemo-config.yaml`, sync, and restart the NeMo
-  deployment. Record false positives/negatives as expected tuning work in
-  the stage evidence, not as hidden failures.
+  deployment. Check `oc logs` for `LLM Prompt`/`LLM Completion` pairs to
+  see rail verdicts. Record false positives/negatives as expected tuning
+  work in the stage evidence, not as hidden failures.
 
 ### Chatbot shield selector is empty
 

@@ -211,6 +211,44 @@ Risks:
   separate self-check model declined. `remote::nvidia` availability in the
   rh-dev image verified live (provider list + config schema + request/
   response contract read from the shipped provider source).
+- 2026-07-05: Deployed and validated on cluster-qt67m — **validate.sh
+  29 passed / 0 warnings / 0 failed** (commit 8276b62). Evidence record:
+  guardrails path NeMo; namespace ai-safety; model endpoint MaaS-governed
+  Nemotron via stage-local hairpin proxy; validation endpoints
+  `/v1/guardrail/checks` (benign success; Presidio email, regex credential,
+  custom-action injection blocked with rail attribution) and
+  `/v1/chat/completions` (benign answered, injection refused); Llama Stack
+  shield `nemotron-3-nano-30b-a3b` listed and blocking via run-shield;
+  secrets in `nemo-guardrails-api-token` only; telemetry enabled —
+  `nemo-guardrails` spans queryable in Tempo. Known limitation: Presidio
+  PERSON detector is aggressive; self-check verdicts depend on Nemotron.
+
+### Live findings folded back during deployment
+
+1. The RHOAI NeMo server does not substitute `${VAR}` in `config.yaml`; it
+   merges `MAIN_MODEL_*` env values over the raw YAML per request. A
+   literal `${OPENAI_API_KEY}` reached MaaS as the API key (401 on every
+   LLM rail). Fix: no `api_key` in config — the OpenAI client falls back
+   to the `OPENAI_API_KEY` env var from the CR Secret.
+2. The request `model` overrides the config main model and MaaS authorizes
+   per model, so the Llama Stack `shield_id` must be the governed model
+   name (`nemotron-3-nano-30b-a3b`); `provider_shield_id` stays the NeMo
+   config id (`demo-safety`).
+3. Nemotron is a reasoning model and no prompt toggle disables thinking on
+   this vLLM build; nemoguardrails' self-check default `max_tokens: 3`
+   yielded empty completions that failed closed (blocked everything
+   reaching the LLM rail). Fix: per-task `max_tokens: 512` in prompts.yml.
+4. The NeMo server wraps internal errors as 200 assistant messages, and the
+   `remote::nvidia` provider treats any non-"blocked" status as no
+   violation — both mask LLM-rail failures. validate.sh guards against
+   error-shaped answers; treat "benign passes" as the canary check.
+5. Argo application controller OOM-looped at the operator-default 2Gi on
+   this grown cluster; fixed in the bootstrap ArgoCD CR (4Gi limit).
+6. Stage-110's DSC `ignoreDifferences` must gain
+   `/spec/components/trustyai` or selfHeal reverts the stage-240 flip.
+7. An old shield registration (`nemo-demo-safety`) persists in the LSD
+   Postgres kvstore (no unregister API); harmless, remove via SQL if it
+   clutters the chatbot selector.
 
 ## Retrospective And Skill Updates
 
