@@ -71,22 +71,35 @@ ensure_nemotron_available() {
   # Guarded LLM calls need the local Nemotron model. Scaling the GPU
   # MachineSet costs money and is an env-manage-resources decision, so this
   # script only checks readiness and never scales infrastructure itself.
+  # A parked model (replicas 0) fails immediately; a scaled-up model whose
+  # backend is still warming (GPU node boot, modelcar pull, vLLM start) is
+  # waited on until the MaaS endpoint publishes.
   local replicas endpoint
   replicas=$(jsonpath "llminferenceservice/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.spec.replicas}")
-  endpoint=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.endpoint}")
-  if [[ -z "$replicas" || "$replicas" == "0" || -z "$endpoint" ]]; then
+  if [[ -z "$replicas" || "$replicas" == "0" ]]; then
     cat >&2 <<INSTRUCTIONS
-ERROR: Nemotron (${NEMOTRON_MODEL_RESOURCE}) is parked or not ready in ${MAAS_NS}.
+ERROR: Nemotron (${NEMOTRON_MODEL_RESOURCE}) is parked in ${MAAS_NS}.
 Un-park the environment first (see .agents/skills/env-manage-resources):
   1. oc scale machineset <gpu-machineset> -n openshift-machine-api --replicas=1   (cluster-admin)
   2. wait for the GPU node to become Ready and NVIDIA operator pods to start
   3. oc patch llminferenceservice ${NEMOTRON_MODEL_RESOURCE} -n ${MAAS_NS} \\
        --type=merge -p '{"spec":{"replicas":1}}'
-  4. wait for the model pod to become Ready, then re-run this script.
+  4. re-run this script.
 INSTRUCTIONS
     exit 1
   fi
-  echo "✓ Nemotron is available (replicas=${replicas}, endpoint=${endpoint})"
+
+  echo "   Nemotron is scaled up (replicas=${replicas}); waiting for its MaaS endpoint …"
+  for _ in $(seq 1 120); do
+    endpoint=$(jsonpath "maasmodelrefs.maas.opendatahub.io/${NEMOTRON_MODEL_RESOURCE}" "$MAAS_NS" "{.status.endpoint}")
+    if [[ -n "$endpoint" ]]; then
+      echo "✓ Nemotron is available (replicas=${replicas}, endpoint=${endpoint})"
+      return 0
+    fi
+    sleep 30
+  done
+  echo "ERROR: Nemotron MaaS endpoint did not publish within 60m; check the model pod and GPU node." >&2
+  exit 1
 }
 
 apply_argocd_application() {
