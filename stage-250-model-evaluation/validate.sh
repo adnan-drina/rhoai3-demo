@@ -125,19 +125,22 @@ check "EvalHub deployment is available" "$([[ "${evalhub_ready:-0}" -ge 1 ]] 2>/
 evalhub_pod=$(oc get pods -n "$EVAL_NS" -l app.kubernetes.io/name=evalhub --field-selector=status.phase=Running -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
 [[ -z "$evalhub_pod" ]] && evalhub_pod=$(oc get pods -n "$EVAL_NS" --field-selector=status.phase=Running --insecure-skip-tls-verify=true 2>/dev/null | grep '^evalhub' | awk '{print "pod/"$1}' | head -1)
 if [[ -n "$evalhub_pod" ]]; then
+  # The server listens on HTTPS :8443. /health is unauthenticated; all other
+  # endpoints require a bearer token plus the X-Tenant header. Use the pod's
+  # ServiceAccount token from inside the container.
   health=$(oc exec -n "$EVAL_NS" "$evalhub_pod" --insecure-skip-tls-verify=true -- \
-    curl -sk --max-time 15 http://localhost:8080/api/v1/health 2>/dev/null || true)
-  if grep -qiE 'healthy|ok|"status"' <<<"$health"; then
-    check "EvalHub /health responds" "pass"
+    curl -sk --max-time 15 https://localhost:8443/api/v1/health 2>/dev/null || true)
+  if grep -qiE '"status"\s*:\s*"healthy"|healthy' <<<"$health"; then
+    check "EvalHub /health responds healthy" "pass"
   else
-    warn "EvalHub /health" "no healthy response: $(head -c 80 <<<"$health")"
+    check "EvalHub /health responds healthy" "no healthy response: $(head -c 80 <<<"$health")"
   fi
   providers=$(oc exec -n "$EVAL_NS" "$evalhub_pod" --insecure-skip-tls-verify=true -- \
-    curl -sk --max-time 15 -H "X-Tenant: ${EVAL_NS}" http://localhost:8080/api/v1/evaluations/providers 2>/dev/null || true)
-  if grep -q 'lm-evaluation-harness\|lm_evaluation_harness' <<<"$providers"; then
-    check "EvalHub lists providers" "pass"
+    sh -c 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); curl -sk --max-time 15 -H "Authorization: Bearer ${TOKEN}" -H "X-Tenant: '"${EVAL_NS}"'" https://localhost:8443/api/v1/evaluations/providers' 2>/dev/null || true)
+  if grep -q 'lm_evaluation_harness' <<<"$providers"; then
+    check "EvalHub lists providers (authenticated)" "pass"
   else
-    warn "EvalHub providers" "provider list not returned: $(head -c 80 <<<"$providers")"
+    check "EvalHub lists providers (authenticated)" "provider list not returned: $(head -c 80 <<<"$providers")"
   fi
 else
   warn "EvalHub REST probes" "no running evalhub pod to query from"

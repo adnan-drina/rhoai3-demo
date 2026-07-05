@@ -39,6 +39,10 @@ spec:
   limit: "50"
   batchSize: "1"
   logSamples: true
+  # Required so the lm-eval container can download the public Nemotron
+  # tokenizer (nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8) from Hugging Face;
+  # the job pod is otherwise offline. Documented security-gated field.
+  allowOnline: true
   # The governed MaaS endpoint requires the minted API key; lm-eval's
   # OpenAI-compatible client reads OPENAI_API_KEY. The Secret is created by
   # deploy.sh (never committed).

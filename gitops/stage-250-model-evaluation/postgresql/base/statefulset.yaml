@@ -35,13 +35,25 @@ spec:
             - containerPort: 5432
               name: postgresql
               protocol: TCP
+          # First-boot initdb on a fresh EBS PVC can take several minutes under
+          # load; a startup probe holds off the liveness probe until the
+          # server actually accepts connections, so the slow init is not
+          # killed mid-flight (observed live 2026-07-05).
+          startupProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - pg_isready -U "${POSTGRESQL_USER}" -d "${POSTGRESQL_DATABASE}"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           livenessProbe:
             exec:
               command:
                 - /bin/bash
                 - -c
                 - pg_isready -U "${POSTGRESQL_USER}" -d "${POSTGRESQL_DATABASE}"
-            initialDelaySeconds: 60
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 6
