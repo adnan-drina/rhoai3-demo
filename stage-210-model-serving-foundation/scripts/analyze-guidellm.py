@@ -13,6 +13,9 @@ Latency SLOs are the knobs. Defaults target an interactive assistant:
 Chatbot amplification (guardrail self-check adds LLM calls per turn):
   --calls-per-turn     model calls per chatbot turn (default 3:
                        self-check input + generation + self-check output)
+Cost planning (RHOAI managing-and-monitoring-models lists cost/1M tokens):
+  --gpu-cost-per-hour  hourly cost of the serving GPU (default 0 = disabled;
+                       e.g. an AWS g6e.2xlarge is ~1.86 USD/hr on-demand)
 
 Usage:
   analyze-guidellm.py benchmark-results.json [--output capacity-report.md]
@@ -186,16 +189,18 @@ def render_md(report, res, args):
     lines.append("")
 
     lines.append("## Business planning")
-    if res["chatbot_users_optimal"]:
+    u_opt = res["chatbot_users_optimal"]
+    if u_opt is not None:
+        note = " — this is a single-user demo footprint; relax the TTFT SLO or add a GPU replica for real concurrency" if u_opt < 1 else ""
         lines.append(
             f"- **Recommended concurrent RAG-chatbot users**: "
-            f"~{_fmt(res['chatbot_users_optimal'], nd=0)} at optimal load "
-            f"(one governed answer costs {args.calls_per_turn} model calls)."
+            f"~{_fmt(u_opt, nd=1)} at optimal load "
+            f"(one governed answer costs {args.calls_per_turn} model calls){note}."
         )
-    if res["chatbot_users_max"]:
+    if res["chatbot_users_max"] is not None:
         lines.append(
             f"- **Maximum concurrent chatbot users before SLO breach**: "
-            f"~{_fmt(res['chatbot_users_max'], nd=0)}."
+            f"~{_fmt(res['chatbot_users_max'], nd=1)}."
         )
     if opt and opt["output_tps"]:
         tok_hr = opt["output_tps"] * 3600
@@ -203,6 +208,20 @@ def render_md(report, res, args):
             f"- **Sustained token capacity at optimal load**: "
             f"~{tok_hr/1e6:.1f}M output tokens/hour ({opt['output_tps']*86400/1e6:.0f}M/day)."
         )
+        # Peak throughput sets the best-case cost floor (cost/1M tokens is a
+        # key planning metric in the RHOAI managing-and-monitoring guide).
+        if args.gpu_cost_per_hour > 0:
+            peak_tok_hr = res["peak_output_tps"] * 3600
+            if peak_tok_hr > 0:
+                cost_per_m_best = args.gpu_cost_per_hour / (peak_tok_hr / 1e6)
+                cost_per_m_opt = args.gpu_cost_per_hour / (tok_hr / 1e6)
+                lines.append(
+                    f"- **Cost per 1M output tokens**: "
+                    f"~${cost_per_m_best:.2f} at peak throughput, "
+                    f"~${cost_per_m_opt:.2f} at the interactive optimal load "
+                    f"(GPU at ${args.gpu_cost_per_hour:.2f}/hr; the gap is the "
+                    f"price of low-latency headroom)."
+                )
     if mx and mx["out_tokens_mean"] and mx["throughput_rps"]:
         ans_hr = mx["throughput_rps"] * 3600
         lines.append(
@@ -246,6 +265,7 @@ def main():
     ap.add_argument("--itl-slo-ms", type=float, default=200.0)
     ap.add_argument("--max-error-rate", type=float, default=0.01)
     ap.add_argument("--calls-per-turn", type=int, default=3)
+    ap.add_argument("--gpu-cost-per-hour", type=float, default=0.0)
     args = ap.parse_args()
 
     with open(args.results) as f:

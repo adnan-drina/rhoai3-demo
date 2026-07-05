@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - prometheusrule-vllm-serving-health.yaml
+  - rolebinding-monitoring-rules-view.yaml

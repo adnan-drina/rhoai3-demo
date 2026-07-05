@@ -101,7 +101,9 @@ configurable SLOs (default: TTFT p95 ≤ 2000 ms, ITL p95 ≤ 200 ms, error rate
 capacity per hour/day, answers per hour, and the **concurrent RAG-chatbot
 user** capacity. The chatbot figure discounts guardrail amplification — a
 single governed answer costs three model calls (self-check input, generation,
-self-check output), tunable with `--calls-per-turn`. Un-park the environment
+self-check output), tunable with `--calls-per-turn`. Pass
+`--gpu-cost-per-hour` to add cost per 1M tokens (the cost metric the RHOAI
+managing-and-monitoring-models guide calls out). Un-park the environment
 before running; results land in gitignored `runs/stage-210-guidellm/<id>/`.
 
 ---

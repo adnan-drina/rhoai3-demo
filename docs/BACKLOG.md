@@ -2,6 +2,42 @@
 
 Active backlog for the reimplementation.
 
+## Model Monitoring — RHOAI 3.4 Doc Alignment (audited 2026-07-05)
+
+Audited against the official guides
+`managing_and_monitoring_models` and `monitoring_your_ai_systems` (backed by
+`rhoai-model-management-monitoring` and `rhoai-monitoring-trustyai`).
+
+Aligned: User Workload Monitoring with `enableUserWorkload: true` and 15d
+Prometheus retention; KServe-generated ServiceMonitor scraping `vllm:*`
+(KServe emits no metrics itself — the runtime does, per the guide); Grafana
+dashboards keyed on NAMESPACE + MODEL_NAME covering the guide's metric
+families (TTFT, ITL/TPOT, throughput, KV-cache, running/waiting requests,
+prefix-cache, DCGM GPU); NVIDIA GPU metrics via the GPU operator. Added
+2026-07-05: serving-health `PrometheusRule`, `monitoring-rules-view` for
+demo user groups, and cost-per-1M-tokens in the capacity report (the
+guide's cost metric).
+
+Not applicable to our stack (recorded so it is not mistaken for a gap):
+
+- **TrustyAI bias/data-drift monitoring is OVMS-only** per
+  `monitoring_your_ai_systems`; our models are vLLM, so bias/SPD/DIR and
+  MeanShift/KSTest drift do not apply to the LLM/RAG path. The LLM-relevant
+  parts of that guide reduce to: TrustyAI component `Managed` (already done
+  for guardrails), guardrails observability (Stage 240, done), and formal
+  evaluation (future `stage-420`, EvalHub/LM-Eval).
+- Istio `ServiceMonitor`/`PodMonitor` from the managing guide target the
+  Service Mesh serving path; our KServe RawDeployment / LLMInference
+  Service (llm-d) path does not use Service Mesh.
+
+Deferred (Technology Preview or future-stage):
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Metrics-based autoscaling (KEDA/CMA) | medium | TP in the guide; `serving.kserve.io/autoscalerClass: keda` + `spec.predictor.autoscaling.metrics` on `vllm:num_requests_waiting`. Natural pairing with the capacity benchmark's scale-out signal. |
+| LLM evaluation (EvalHub / LM-Eval) | medium | The LLM quality/safety-measurement half of AI-systems monitoring; belongs in `stage-420-model-evaluation`. |
+| TrustyAI bias/drift demo on an OVMS model | low | Only if the demo adds a predictive OVMS model; out of scope for the GenAI/RAG storyline. |
+
 ## Stage 110: Status — COMPLETE
 
 Deployed and validated 2026-06-11 on cluster-klvxt (OCP 4.20.24); `validate.sh` 17/17. User-validated end to end: login as both personas, workbench with RWO PVC, model registry instance with a registered model, S3 from the workbench.
