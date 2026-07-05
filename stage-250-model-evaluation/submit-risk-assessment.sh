@@ -44,6 +44,14 @@ TARGET_MODEL="${RHOAI_STAGE250_RISK_TARGET_MODEL:-nemotron-3-nano-30b-a3b}"
 # gateway path is provisioned for sustained streaming.
 JUDGE_MODEL="${RHOAI_STAGE250_RISK_JUDGE_MODEL:-nemotron-3-nano-30b-a3b}"
 SDG_MODEL="${RHOAI_STAGE250_RISK_SDG_MODEL:-nemotron-3-nano-30b-a3b}"
+# Benchmark to run. Default to owasp_llm_top10: a standard garak probe suite
+# (probe_tags "owasp:llm") scored by garak's built-in detectors — an
+# industry-recognised OWASP LLM Top 10 scan that runs entirely on the target
+# model. The `intents` benchmark is a richer context-aware scan but hardcodes
+# an SDG + multilingual (Helsinki-NLP translation) + LLM-judge chain that is
+# fragile on constrained/connected demo clusters; select it with
+# RHOAI_STAGE250_RISK_BENCHMARK=intents when that machinery is available.
+BENCHMARK="${RHOAI_STAGE250_RISK_BENCHMARK:-owasp_llm_top10}"
 DSPA_NAME="${RHOAI_STAGE250_DSPA_NAME:-dspa-model-evaluation}"
 PROXY="http://maas-internal-proxy.${EVAL_NS}.svc.cluster.local:8080/models-as-a-service"
 KFP_ENDPOINT="https://ds-pipeline-${DSPA_NAME}.${EVAL_NS}.svc.cluster.local:8443"
@@ -67,6 +75,21 @@ if [[ -z "$EVALHUB_POD" ]]; then
 fi
 TOKEN=$(oc whoami -t --insecure-skip-tls-verify=true)
 
+# The intents benchmark needs SDG + judge model endpoints; standard garak
+# probe suites (owasp_llm_top10, avid*) score with garak's built-in detectors
+# and take only the target model.
+intents_models=""
+if [[ "$BENCHMARK" == "intents" ]]; then
+  intents_models=$(cat <<JSON
+,
+        "intents_models": {
+          "judge": { "url": "${PROXY}/${JUDGE_MODEL}/v1", "name": "${JUDGE_MODEL}" },
+          "sdg":   { "url": "${PROXY}/${SDG_MODEL}/v1", "name": "hosted_vllm/${SDG_MODEL}" }
+        }
+JSON
+)
+fi
+
 request=$(cat <<JSON
 {
   "name": "${JOB_NAME}",
@@ -78,7 +101,7 @@ request=$(cat <<JSON
   "experiment": { "name": "${JOB_NAME}" },
   "benchmarks": [
     {
-      "id": "intents",
+      "id": "${BENCHMARK}",
       "provider_id": "garak-kfp",
       "parameters": {
         "kfp_config": {
@@ -86,11 +109,7 @@ request=$(cat <<JSON
           "namespace": "${EVAL_NS}",
           "s3_secret_name": "${RHOAI_STAGE250_S3_SECRET:-model-evaluation-s3}",
           "verify_ssl": false
-        },
-        "intents_models": {
-          "judge": { "url": "${PROXY}/${JUDGE_MODEL}/v1", "name": "${JUDGE_MODEL}" },
-          "sdg":   { "url": "${PROXY}/${SDG_MODEL}/v1", "name": "hosted_vllm/${SDG_MODEL}" }
-        }
+        }${intents_models}
       }
     }
   ]
@@ -99,7 +118,8 @@ JSON
 )
 
 echo "── Submitting garak-kfp risk assessment ──"
-echo "  target: ${TARGET_MODEL} | judge: ${JUDGE_MODEL} | sdg: ${SDG_MODEL}"
+echo "  benchmark: ${BENCHMARK} | target: ${TARGET_MODEL}"
+[[ "$BENCHMARK" == "intents" ]] && echo "  judge: ${JUDGE_MODEL} | sdg: ${SDG_MODEL}"
 echo "  kfp: ${KFP_ENDPOINT}"
 
 resp=$(oc exec -n "$EVAL_NS" "$EVALHUB_POD" --insecure-skip-tls-verify=true -- \
