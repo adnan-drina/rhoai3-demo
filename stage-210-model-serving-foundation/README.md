@@ -78,10 +78,31 @@ to tune from evidence.
 
 For GuideLLM token accounting, the benchmark script uses the public Hugging
 Face processor ID `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8`, while the served
-model ID remains the RHOAI deployment name
-`nvidia-nemotron-3-nano-30b-a3b`. The benchmark data is a GitOps-managed
-`benchmark-data` PVC populated with a `prompts.csv` file adapted from the Red
-Hat AI services llm-d reference implementation.
+model ID remains `nemotron-3-nano-30b-a3b`. The benchmark data is a
+GitOps-managed `benchmark-data` PVC populated with a `prompts.csv` file adapted
+from the Red Hat AI services llm-d reference implementation.
+
+### Capacity benchmark and business planning
+
+`benchmark-guidellm.sh` targets the live Nemotron `LLMInferenceService`
+workload Service directly (bypassing MaaS quotas so the model itself is
+measured) and, after the run, produces `capacity-report.md` via
+`scripts/analyze-guidellm.py`. Profiles (`RHOAI_GUIDELLM_PROFILE`):
+
+- `users` (default) — stepped concurrent levels `1,2,4,8,16,32,64,128` to find
+  the **maximum stable concurrency** and the **breaking point**.
+- `sweep` — GuideLLM synchronous-to-throughput sweep to find the **optimal-load
+  knee** and the throughput envelope.
+- `custom` — raw `RHOAI_GUIDELLM_RATE_TYPE` / `RHOAI_GUIDELLM_RATE` passthrough.
+
+The report converts raw latency and throughput into planning numbers against
+configurable SLOs (default: TTFT p95 ≤ 2000 ms, ITL p95 ≤ 200 ms, error rate
+≤ 1%): optimal load, max stable concurrency, breaking point, sustained token
+capacity per hour/day, answers per hour, and the **concurrent RAG-chatbot
+user** capacity. The chatbot figure discounts guardrail amplification — a
+single governed answer costs three model calls (self-check input, generation,
+self-check output), tunable with `--calls-per-turn`. Un-park the environment
+before running; results land in gitignored `runs/stage-210-guidellm/<id>/`.
 
 ---
 

@@ -1,27 +1,15 @@
 #!/usr/bin/env bash
-# benchmark-guidellm.sh - Stage 210 vLLM serving baseline
-# Runs GuideLLM in-cluster against the Nemotron endpoint using the llm-d
-# showroom-style prompt PVC and copies results to gitignored runs/ for review.
-# This is intentionally not part of every deploy.
+# benchmark-guidellm.sh - vLLM serving capacity benchmark (GuideLLM)
+# Runs GuideLLM in-cluster against the live Nemotron LLMInferenceService
+# workload Service (direct engine endpoint, bypassing MaaS quotas so the
+# model itself is measured) and copies results to gitignored runs/ for
+# review. scripts/analyze-guidellm.py turns the JSON into a capacity report
+# (optimal load, max stable concurrency, breaking point, business planning
+# metrics). This is intentionally not part of every deploy.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-MODEL_NS="${RHOAI_MODEL_NAMESPACE:-demo-sandbox}"
-MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-nvidia-nemotron-3-nano-30b-a3b}"
-MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_DEPLOYMENT_NAME}"
-GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
-GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-ghcr.io/vllm-project/guidellm:v0.5.0}"
-GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-concurrent}"
-GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-32,64}"
-GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-30}"
-GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-/data/prompts.csv}"
-GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json,benchmark-results.csv}"
-GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-benchmark-data}"
-GUIDELLM_TARGET_SUFFIX="${RHOAI_GUIDELLM_TARGET_SUFFIX:-/v1}"
-GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-20m}"
-KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-false}"
 
 if [[ -f "$ROOT_DIR/.env" ]]; then
   set -a
@@ -30,20 +18,51 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
   set +a
 fi
 
-MODEL_NS="${RHOAI_MODEL_NAMESPACE:-$MODEL_NS}"
-MODEL_DEPLOYMENT_NAME="${RHOAI_NEMOTRON_DEPLOYMENT_NAME:-$MODEL_DEPLOYMENT_NAME}"
-MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_ID}"
-GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-$GUIDELLM_PROCESSOR}"
-GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-$GUIDELLM_IMAGE}"
-GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-$GUIDELLM_RATE_TYPE}"
-GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-$GUIDELLM_RATE}"
-GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-$GUIDELLM_MAX_SECONDS}"
-GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-$GUIDELLM_DATA}"
-GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-$GUIDELLM_OUTPUTS}"
-GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-$GUIDELLM_DATA_PVC}"
-GUIDELLM_TARGET_SUFFIX="${RHOAI_GUIDELLM_TARGET_SUFFIX:-$GUIDELLM_TARGET_SUFFIX}"
-GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-$GUIDELLM_TIMEOUT}"
-KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-$KEEP_RESOURCES}"
+MODEL_NS="${RHOAI_MAAS_NAMESPACE:-models-as-a-service}"
+MODEL_NAME="${RHOAI_MAAS_NEMOTRON_MODEL_NAME:-nemotron-3-nano-30b-a3b}"
+MODEL_ID="${RHOAI_NEMOTRON_GUIDELLM_MODEL_ID:-$MODEL_NAME}"
+GUIDELLM_PROCESSOR="${RHOAI_NEMOTRON_GUIDELLM_PROCESSOR:-nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8}"
+GUIDELLM_IMAGE="${RHOAI_GUIDELLM_IMAGE:-ghcr.io/vllm-project/guidellm:v0.5.0}"
+# Benchmark profiles:
+#   users    - stepped concurrent-user levels; finds max stable concurrency
+#              and the breaking point (default)
+#   sweep    - GuideLLM sweep from synchronous to max throughput; finds the
+#              throughput envelope and the optimal-load knee
+#   custom   - raw RHOAI_GUIDELLM_RATE_TYPE / RHOAI_GUIDELLM_RATE passthrough
+GUIDELLM_PROFILE="${RHOAI_GUIDELLM_PROFILE:-users}"
+GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-}"
+GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-}"
+GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-60}"
+GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-/data/prompts.csv}"
+GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json,benchmark-results.csv}"
+GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-benchmark-data}"
+GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-40m}"
+KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-false}"
+# Direct engine endpoint (LLMInferenceService workload Service). Override
+# RHOAI_GUIDELLM_TARGET to benchmark another path (for example the MaaS
+# gateway, which measures governance quotas rather than the model).
+GUIDELLM_TARGET="${RHOAI_GUIDELLM_TARGET:-http://${MODEL_NAME}-kserve-workload-svc.${MODEL_NS}.svc.cluster.local:8000/v1}"
+
+case "$GUIDELLM_PROFILE" in
+  users)
+    GUIDELLM_RATE_TYPE="${GUIDELLM_RATE_TYPE:-concurrent}"
+    GUIDELLM_RATE="${GUIDELLM_RATE:-1,2,4,8,16,32,64,128}"
+    ;;
+  sweep)
+    GUIDELLM_RATE_TYPE="${GUIDELLM_RATE_TYPE:-sweep}"
+    GUIDELLM_RATE="${GUIDELLM_RATE:-10}"
+    ;;
+  custom)
+    if [[ -z "$GUIDELLM_RATE_TYPE" || -z "$GUIDELLM_RATE" ]]; then
+      echo "ERROR: custom profile needs RHOAI_GUIDELLM_RATE_TYPE and RHOAI_GUIDELLM_RATE." >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "ERROR: unknown RHOAI_GUIDELLM_PROFILE '${GUIDELLM_PROFILE}' (users|sweep|custom)." >&2
+    exit 1
+    ;;
+esac
 
 if [[ -z "${RHOAI_EXPECTED_API_SERVER:-}" ]]; then
   echo "ERROR: RHOAI_EXPECTED_API_SERVER is not set." >&2
@@ -58,44 +77,31 @@ fi
 
 echo "✓ Cluster guard passed: $ACTUAL_SERVER"
 
-for cmd in oc jq; do
+for cmd in oc jq python3; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "ERROR: required command not found: $cmd" >&2
     exit 1
   fi
 done
 
-ISVC_READY=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
+LLMISVC_READY=$(oc get llminferenceservice "$MODEL_NAME" -n "$MODEL_NS" \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
   --insecure-skip-tls-verify=true 2>/dev/null || true)
-if [[ "$ISVC_READY" != "True" ]]; then
-  echo "ERROR: ${MODEL_NS}/${MODEL_DEPLOYMENT_NAME} is not Ready." >&2
+if [[ "$LLMISVC_READY" != "True" ]]; then
+  echo "ERROR: LLMInferenceService ${MODEL_NS}/${MODEL_NAME} is not Ready (un-park the environment first)." >&2
   exit 1
-fi
-
-TARGET_URL=$(oc get inferenceservice "$MODEL_DEPLOYMENT_NAME" -n "$MODEL_NS" \
-  -o jsonpath='{.status.address.url}' --insecure-skip-tls-verify=true)
-if [[ -z "$TARGET_URL" ]]; then
-  echo "ERROR: ${MODEL_DEPLOYMENT_NAME} has no internal status.address.url." >&2
-  exit 1
-fi
-
-if [[ "$GUIDELLM_TARGET_SUFFIX" == "none" ]]; then
-  BENCHMARK_TARGET="$TARGET_URL"
-else
-  BENCHMARK_TARGET="${TARGET_URL%/}${GUIDELLM_TARGET_SUFFIX}"
 fi
 
 if [[ "$GUIDELLM_DATA" == /data/* ]]; then
   if ! oc get pvc "$GUIDELLM_DATA_PVC" -n "$MODEL_NS" --insecure-skip-tls-verify=true >/dev/null 2>&1; then
     echo "ERROR: expected benchmark data PVC ${MODEL_NS}/${GUIDELLM_DATA_PVC} is missing." >&2
-    echo "       Reconcile stage-210-model-serving-foundation before running the workshop benchmark." >&2
+    echo "       Reconcile stage-210-model-serving-foundation before running the benchmark." >&2
     exit 1
   fi
 fi
 
 RUN_ID="$(date -u +%Y%m%d%H%M%S)"
-JOB_NAME="guidellm-stage210-${RUN_ID}"
+JOB_NAME="guidellm-${GUIDELLM_PROFILE}-${RUN_ID}"
 PVC_NAME="guidellm-results-${RUN_ID}"
 COPY_JOB="guidellm-copy-${RUN_ID}"
 RESULTS_DIR="${ROOT_DIR}/runs/stage-210-guidellm/${RUN_ID}"
@@ -122,9 +128,9 @@ spec:
 EOF
 
 echo "── Running GuideLLM benchmark job ──"
-echo "  Target: ${BENCHMARK_TARGET}"
-echo "  Data: ${GUIDELLM_DATA}"
-echo "  Profile: ${GUIDELLM_RATE_TYPE} ${GUIDELLM_RATE} for ${GUIDELLM_MAX_SECONDS}s per level"
+echo "  Target:  ${GUIDELLM_TARGET}"
+echo "  Data:    ${GUIDELLM_DATA}"
+echo "  Profile: ${GUIDELLM_PROFILE} (${GUIDELLM_RATE_TYPE} ${GUIDELLM_RATE}, ${GUIDELLM_MAX_SECONDS}s per level)"
 oc apply -f - --insecure-skip-tls-verify=true <<EOF
 apiVersion: batch/v1
 kind: Job
@@ -161,7 +167,7 @@ spec:
             - benchmark
             - run
             - --target
-            - "${BENCHMARK_TARGET}"
+            - "${GUIDELLM_TARGET}"
             - --model
             - "${MODEL_ID}"
             - --processor
@@ -280,5 +286,14 @@ else
   echo "✓ Temporary resources retained: job/${JOB_NAME}, job/${COPY_JOB}, pvc/${PVC_NAME}"
 fi
 
+if [[ -f "${RESULTS_DIR}/benchmark-results.json" ]]; then
+  echo "── Generating capacity report ──"
+  python3 "${SCRIPT_DIR}/scripts/analyze-guidellm.py" \
+    "${RESULTS_DIR}/benchmark-results.json" \
+    --output "${RESULTS_DIR}/capacity-report.md" || \
+    echo "! capacity report generation failed; raw results remain in ${RESULTS_DIR}" >&2
+fi
+
 echo "✓ GuideLLM benchmark complete"
 echo "  Results: ${RESULTS_DIR}"
+[[ -f "${RESULTS_DIR}/capacity-report.md" ]] && echo "  Capacity report: ${RESULTS_DIR}/capacity-report.md"
