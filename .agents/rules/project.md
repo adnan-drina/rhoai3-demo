@@ -33,6 +33,7 @@ standards, Red Hat source alignment, or shared agent guidance:
 - `.agents/skills/project-documentation-authoring/SKILL.md`
 - `.agents/skills/project-manifest-review/SKILL.md`
 - `.agents/skills/project-red-hat-doc-alignment-review/SKILL.md`
+- `.agents/skills/project-doc-alignment-audit/SKILL.md`
 - `.agents/skills/project-architecture-diagrams/SKILL.md`
 
 Keep the demo coherent as a RHOAI platform story for European enterprises.
