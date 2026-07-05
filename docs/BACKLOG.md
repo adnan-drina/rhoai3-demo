@@ -128,20 +128,25 @@ Validated in `cluster-qt67m` on 2026-07-02:
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
 | Guardrails and MCP | done | MCP landed in Stage 230 (OpenShift MCP connector); product-backed guardrails are Stage 240 (active). |
 
-## Stage 240: Guardrails and Safety (Active)
+## Stage 240: Guardrails and Safety (Complete)
 
 NeMo Guardrails service with an LLM per the RHOAI 3.4 guardrails guide:
 Presidio + regex detectors, custom Colang rails with Python actions, LLM
 self-check input/output rails through MaaS-governed Nemotron, Llama Stack
-shield wiring for the Stage 230 chatbot, and OpenTelemetry traces to a
-stage-local Tempo. Scope, shared-owner touches, and the deferred list are
-recorded in `stage-240-guardrails-and-safety/PLAN.md`.
+shield wiring for the Stage 230 chatbot (guardrail selectors + demo
+suggestion chips), and OpenTelemetry traces to a stage-local Tempo.
+Deployed and validated on cluster-qt67m 2026-07-05: stage-240 validate.sh
+30/0/0 (including live block/pass rail checks and a Tempo span query),
+stage-230 validate.sh 110/1/0 after the chatbot integration. Scope,
+shared-owner touches, live findings, and the retrospective are recorded in
+`stage-240-guardrails-and-safety/PLAN.md`.
 
 ### Open / deferred from Stage 240
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it. |
+| Chatbot fail-closed shield hardening | medium | The vendored UI logs and skips shield errors (fail open), which hid a broken client call for a full session. Production posture should fail closed or at least surface the error in the UI. |
+| Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it (guide recommends Qwen3-14B as judge starting point). |
 | PII masking mode, retrieval rails, library hate/profanity flows | low | Blocking-only demo scope; retrieval rails blocked by the Llama Stack shield API passing messages, not chunks. |
 | Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-420-model-evaluation`. |
 | FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |

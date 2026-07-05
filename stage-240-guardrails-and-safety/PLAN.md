@@ -250,6 +250,62 @@ Risks:
    Postgres kvstore (no unregister API); harmless, remove via SQL if it
    clutters the chatbot selector.
 
+- 2026-07-05 (wrap): chatbot integration hardening after the user's manual
+  run — `run_shield(params=…)` TypeError made every chatbot shield fail
+  open (fixed, verified through the app's own helpers); topic-control
+  false positive on ecosystem questions (fixed by enumerating the domain
+  in `self_check_input`; all 8 suggestion chips regression-tested against
+  live rails); guardrail demo prompts shipped as the last two suggestion
+  chips; `RAG_DEFAULT_MODEL` makes Nemotron the default model; stale
+  `nemo-demo-safety` shield removed from the LSD kvstore. Final gates:
+  stage-240 validate.sh **30/0/0** (now includes an LLM self-check block
+  regression case), stage-230 validate.sh **110/1/0** (now checks
+  `RAG_DEFAULT_MODEL` and the guardrail demo chips).
+- 2026-07-05 (wrap): manifest review checklist executed against the
+  rendered stage — selectors, label compliance, ConfigMap/Secret/SA
+  reference resolution, and NemoGuardrails env completeness all pass
+  mechanically; no credential literals in Git. Known accepted findings:
+  the `nemo-guardrails-internal` Service targets operator-created pods
+  (runtime dependency, documented in-manifest and as a demo exception);
+  `maas-internal-proxy-config` and the token Secret are deploy.sh-created
+  (documented, ignoreDifferences); the OTel collector and Tempo share sync
+  wave 3, so the collector logs transient connection errors until Tempo is
+  ready (self-heals via retry). Doc-alignment posture: CR shape, auth,
+  env-substitution pattern, OTel variable set, self-check prompt format,
+  and endpoint payloads all trace to the official 3.4 guide (repo PDF);
+  deviations (no `api_key` in config.yaml, per-task `max_tokens`, internal
+  Service, `remote::nvidia` shield wiring) are live-verified findings
+  recorded above and in `rhoai-guardrails-safety` v1.1.0.
+
 ## Retrospective And Skill Updates
 
-To be completed at stage wrap.
+What worked: authoring against the official guide extracted from the
+repo's own vendored PDF (docs.redhat.com blocks fetches); verifying
+provider contracts by reading shipped source in the live image before
+authoring; env-with-default (`${env.VAR:=…}`) for operator-created
+endpoints so live corrections need no Git churn; parallelizing GPU warm-up
+with the TrustyAI reconcile.
+
+What to repeat next stage:
+
+1. **Verify through the consumer's code path, not just the API.** The
+   chatbot shields failed open for a whole demo session while the REST API
+   validated perfectly; the fix took minutes once the app's own helpers
+   were exercised via `oc exec` + python. Guardrails especially must be
+   proven through every consumer.
+2. **Treat "benign passes" as the canary.** Fail-open error masking (HTTP
+   200 wrappers, providers that map errors to "no violation") makes broken
+   LLM rails look like passing ones; only a benign message that *passes*
+   proves the LLM rail actually ran.
+3. **Policy prompts need explicit domain enumeration.** The judge model
+   does not know a product's ecosystem; "related to X" blocks legitimate
+   ecosystem questions deterministically.
+4. **Reasoning models need token budgets in judge roles** (`max_tokens`
+   per task); no prompt toggle disables Nemotron thinking on this build.
+
+Skill updates shipped during the stage: `rhoai-guardrails-safety` 1.1.0
+(live-verified platform behaviors), `rhoai-chatbot-customization` 2.1.0
+(RAG_DEFAULT_MODEL, run_shield signature pitfall, guardrail chip
+contract). Platform fixes folded back: Argo controller memory in the
+bootstrap ArgoCD CR; `/spec/components/trustyai` in stage-110
+ignoreDifferences.
