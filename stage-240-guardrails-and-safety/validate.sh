@@ -37,7 +37,7 @@ NEMO_SECRET="${RHOAI_STAGE240_NEMO_SECRET:-nemo-guardrails-api-token}"
 NEMO_CONFIGMAP="${RHOAI_STAGE240_NEMO_CONFIGMAP:-nemo-guardrails-config}"
 NEMO_CONFIG_ID="${RHOAI_STAGE240_NEMO_CONFIG_ID:-demo-safety}"
 LSD_NAME="${RHOAI_STAGE230_LSD_NAME:-lsd-enterprise-rag}"
-SHIELD_ID="${RHOAI_STAGE240_SHIELD_ID:-nemo-demo-safety}"
+SHIELD_ID="${RHOAI_STAGE240_SHIELD_ID:-nemotron-3-nano-30b-a3b}"
 TEMPO_NAME="${RHOAI_STAGE240_TEMPO_NAME:-guardrails}"
 OTEL_COLLECTOR="${RHOAI_STAGE240_OTEL_COLLECTOR:-guardrails}"
 
@@ -155,6 +155,8 @@ TOKEN=$(oc whoami -t --insecure-skip-tls-verify=true 2>/dev/null || true)
 guardrail_check() {
   # Posts one message to /v1/guardrail/checks and prints the response status
   # field ("success" or "blocked"), or the HTTP code on transport failure.
+  # The model must be the real governed model name: the NeMo server overrides
+  # its main model with the request model, and MaaS authorizes per model.
   local content="$1"
   local body http
   body=$(mktemp)
@@ -162,7 +164,7 @@ guardrail_check() {
     -X POST "https://${route_host}/v1/guardrail/checks" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${TOKEN}" \
-    -d "{\"model\": \"test\", \"messages\": [{\"role\": \"user\", \"content\": ${content}}], \"guardrails\": {\"config_id\": \"${NEMO_CONFIG_ID}\"}}" \
+    -d "{\"model\": \"${NEMOTRON_MODEL_RESOURCE}\", \"messages\": [{\"role\": \"user\", \"content\": ${content}}], \"guardrails\": {\"config_id\": \"${NEMO_CONFIG_ID}\"}}" \
     2>/dev/null || true)
   if [[ "$http" == "200" ]]; then
     jq -r '.status // "no-status"' "$body" 2>/dev/null || echo "unparseable"
@@ -200,7 +202,13 @@ if [[ "$NEMOTRON_UP" == "true" && -n "$route_host" && -n "$TOKEN" ]]; then
     -d "{\"model\": \"${NEMOTRON_MODEL_RESOURCE}\", \"messages\": [{\"role\": \"user\", \"content\": \"In one sentence, what is a guardrail in OpenShift AI?\"}], \"guardrails\": {\"config_id\": \"${NEMO_CONFIG_ID}\"}}" \
     2>/dev/null || true)
   answer=$(jq -r '.choices[0].message.content // .messages[-1].content // empty' "$body" 2>/dev/null || true)
-  check "guarded chat completion returns an answer" "$([[ "$http" == "200" && -n "$answer" ]] && echo pass || echo "http=${http}")"
+  # The NeMo server wraps internal failures as a 200 assistant message, so a
+  # non-empty answer is not enough — reject error-shaped answers explicitly.
+  if [[ "$http" == "200" && -n "$answer" ]] && ! grep -qi 'internal server error' <<<"$answer"; then
+    check "guarded chat completion returns an answer" "pass"
+  else
+    check "guarded chat completion returns an answer" "http=${http} answer=$(head -c 60 <<<"$answer")"
+  fi
   rm -f "$body"
 
   body=$(mktemp)

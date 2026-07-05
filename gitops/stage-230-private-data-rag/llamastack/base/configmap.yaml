@@ -226,9 +226,11 @@ data:
       scoring_fns: []
       # Stage 240 registers the NeMo Guardrails demo-safety configuration as
       # a shield; the chatbot guardrail selectors list it for input and
-      # output checks.
+      # output checks. The shield_id must be the governed model name: the
+      # remote::nvidia provider sends shield_id as the request "model", and
+      # the NeMo server forwards it to MaaS, which authorizes per model.
       shields:
-        - shield_id: nemo-demo-safety
+        - shield_id: nemotron-3-nano-30b-a3b
           provider_id: nemo-guardrails
           provider_shield_id: demo-safety
       tool_groups: []
