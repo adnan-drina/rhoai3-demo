@@ -340,7 +340,7 @@ restart_lsd_for_shields() {
   if oc get "deployment/${LSD_DEPLOYMENT}" -n "$RAG_NS" \
     --insecure-skip-tls-verify=true >/dev/null 2>&1; then
     if oc get configmap lsd-enterprise-rag-config -n "$RAG_NS" \
-      -o jsonpath='{.data.run\.yaml}{.data}' --insecure-skip-tls-verify=true 2>/dev/null \
+      -o jsonpath='{.data.config\.yaml}' --insecure-skip-tls-verify=true 2>/dev/null \
       | grep -q 'nemo-guardrails'; then
       oc rollout restart "deployment/${LSD_DEPLOYMENT}" -n "$RAG_NS" \
         --insecure-skip-tls-verify=true >/dev/null 2>&1 || true

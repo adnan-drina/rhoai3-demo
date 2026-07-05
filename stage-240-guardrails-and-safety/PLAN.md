@@ -181,7 +181,7 @@ explicitly declined at question time; others accepted at plan approval):
 
 | Item | Status |
 |------|--------|
-| Separate self-check model (guide 1.2.5) | Deferred — Nemotron self-checks itself |
+| Separate self-check model (guide 1.2.5) | Deferred — Nemotron self-checks itself. If revisited, the guide's industry-examples section notes the Red Hat AI Safety team recommends Qwen3-14B as the judge-model starting point |
 | PII masking mode; library hate/profanity flows | Deferred — blocking-only demo |
 | Retrieval rails (chunk filtering) | Deferred — Llama Stack shield API passes messages, not chunks |
 | Guardrails metrics + formal safety measurement | Deferred → `rhoai-evaluation` (future stage-420) |
