@@ -11,6 +11,8 @@ resources:
   - project/base
   - rhoai-dsc/base
   - postgresql/base
+  - storage/base
+  - pipelines/base
   - mlflow/base
   - maas-proxy/base
   - evalhub/base

@@ -1,0 +1,47 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  # KFP pipeline server for garak-kfp automated risk assessment. The
+  # garak-kfp provider submits its two-phase adversarial pipeline (synthetic
+  # prompt generation + security testing) to this server; artifacts land in
+  # the model-evaluation S3 bucket. aipipelines is already Managed in the DSC.
+  name: dspa-model-evaluation
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/name: dspa-model-evaluation
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/component: pipeline-server
+    opendatahub.io/dashboard: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: "Model Evaluation Pipelines"
+spec:
+  apiServer:
+    cacheEnabled: false
+    enableSamplePipeline: false
+    pipelineStore: kubernetes
+    # NooBaa's HTTPS endpoint presents a service-CA-signed certificate; the
+    # KFP launcher verifies TLS strictly during artifact transfers, so inject
+    # the cluster service CA into pipeline pods (Stage 230 AutoRAG lesson).
+    cABundle:
+      configMapName: openshift-service-ca.crt
+      configMapKey: service-ca.crt
+  database:
+    mariaDB:
+      deploy: true
+      pipelineDBName: model_evaluation_pipelines
+      pvcSize: 5Gi
+      username: dspa
+  objectStorage:
+    externalStorage:
+      bucket: model-evaluation
+      host: s3.openshift-storage.svc
+      port: "443"
+      scheme: https
+      secure: true
+      region: us-east-1
+      s3CredentialsSecret:
+        secretName: model-evaluation-bucket
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY

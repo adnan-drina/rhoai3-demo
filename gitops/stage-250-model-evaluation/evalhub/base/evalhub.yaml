@@ -27,6 +27,11 @@ spec:
     - lm-evaluation-harness
     - garak
     - guidellm
+    # Automated risk assessment: garak-kfp runs a two-phase adversarial
+    # red-team pipeline (synthetic prompt generation + security testing)
+    # through the stage-owned DSPA. Submitted at runtime by
+    # submit-risk-assessment.sh, not as a static CR.
+    - garak-kfp
   # OOTB weighted benchmark collection with pass thresholds; the safety and
   # fairness scorecard is the demo evidence for the governed Nemotron model.
   collections:

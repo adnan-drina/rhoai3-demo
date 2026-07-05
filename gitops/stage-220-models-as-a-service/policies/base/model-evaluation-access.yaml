@@ -28,6 +28,14 @@ spec:
       tokenRateLimits:
         - limit: 2000000
           window: 1h
+    # gpt-4o-mini is the judge / synthetic-data-generation model for
+    # garak-kfp automated risk assessment (a stronger judge than the model
+    # under test). One minted key covers both models on this subscription.
+    - name: gpt-4o-mini
+      namespace: models-as-a-service
+      tokenRateLimits:
+        - limit: 1000000
+          window: 1h
   priority: 100
   tokenMetadata:
     organizationId: rhoai3-demo

@@ -278,15 +278,45 @@ ensure_model_token() {
     token="$api_key"
   fi
 
+  # Keys: `token` (LMEvalJob OPENAI_API_KEY env), `api-key` (EvalHub
+  # model.auth.secret_ref for garak-kfp target/judge models), and
+  # MAAS_SUBSCRIPTION (reuse gate). One key covers Nemotron + gpt-4o-mini
+  # on this subscription.
   oc create secret generic "$MODEL_TOKEN_SECRET" \
     -n "$EVAL_NS" \
     --from-literal=token="$token" \
+    --from-literal=api-key="$token" \
     --from-literal=MAAS_SUBSCRIPTION="$MAAS_SUBSCRIPTION" \
     --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
   oc label secret "$MODEL_TOKEN_SECRET" -n "$EVAL_NS" --overwrite \
     app.kubernetes.io/part-of=evaluation demo.rhoai.io/stage=250 \
     --insecure-skip-tls-verify=true >/dev/null
   echo "✓ Model API token Secret is present in ${EVAL_NS}"
+}
+
+wait_for_object_bucket() {
+  # The garak-kfp pipeline server (DSPA) and risk-assessment artifacts use
+  # the NooBaa-generated S3 bucket. NooBaa creates the Secret/ConfigMap
+  # named model-evaluation-bucket; the DSPA references it directly.
+  local phase
+  for _ in $(seq 1 60); do
+    phase=$(jsonpath "obc/model-evaluation-bucket" "$EVAL_NS" "{.status.phase}")
+    [[ "$phase" == "Bound" ]] && { echo "✓ ObjectBucketClaim model-evaluation-bucket is Bound"; return 0; }
+    sleep 5
+  done
+  echo "! ObjectBucketClaim model-evaluation-bucket is not Bound (phase=${phase:-missing}); garak-kfp risk assessment will not run until it binds." >&2
+}
+
+wait_for_dspa() {
+  # garak-kfp submits to the DSPA KFP API server. aipipelines is already
+  # Managed; wait for the pipeline server to come up.
+  local ready
+  for _ in $(seq 1 60); do
+    ready=$(jsonpath "datasciencepipelinesapplications/dspa-model-evaluation" "$EVAL_NS" "{.status.conditions[?(@.type=='APIServerReady')].status}")
+    [[ "$ready" == "True" ]] && { echo "✓ DSPA pipeline server (dspa-model-evaluation) is ready"; return 0; }
+    sleep 10
+  done
+  echo "! DSPA pipeline server is not ready yet; garak-kfp risk assessment needs it (see submit-risk-assessment.sh)." >&2
 }
 
 wait_for_mlflow() {
@@ -341,6 +371,8 @@ wait_for_maas_subscription
 ensure_db_secrets
 ensure_maas_proxy_config
 ensure_model_token
+wait_for_object_bucket
+wait_for_dspa
 wait_for_mlflow
 wait_for_evalhub
 
