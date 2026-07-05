@@ -47,3 +47,4 @@ spec:
         - /spec/components/llamastackoperator
         - /spec/components/aipipelines
         - /spec/components/trustyai
+        - /spec/components/mlflowoperator

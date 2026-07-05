@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - odhapplication-model-evaluation.yaml
+  - consolelink-evalhub.yaml
+  - consolelink-mlflow.yaml
+  - patch-consolelinks-job.yaml

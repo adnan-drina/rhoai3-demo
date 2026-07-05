@@ -187,6 +187,25 @@ shared-owner touches, live findings, and the retrospective are recorded in
 | Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-250-model-evaluation`. |
 | FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |
 
+## Stage 250: Model Evaluation (Active)
+
+EvalHub evaluation control plane + dashboard LMEvalJob + product-managed
+MLflow, evaluating the governed Nemotron model with the OOTB
+`safety-and-fairness-v1` collection (pass threshold 0.758) and providers
+`lm-evaluation-harness`, `garak`, `guidellm`. MLflow is the minimal dev
+pattern (SQLite + PVC), pulled forward from stage-430; EvalHub uses
+PostgreSQL. Scope, live-verified schemas, and deferrals in
+`stage-250-model-evaluation/PLAN.md`.
+
+### Open / deferred from Stage 250
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Automated risk assessment (garak-kfp) | medium | Adversarial red-teaming through a KFP pipeline + judge model; strongest tie-back to Stage 240 guardrails. Needs a DSPA/pipeline server. |
+| Production MLflow (PostgreSQL + S3, HA) | medium | Minimal SQLite+PVC now; production storage is future `stage-430-mlflow-experiment-tracking`, which now narrows to advanced MLflow lifecycle / model-registry integration since 250 delivers the MLflow foundation. |
+| Multi-model evaluation (Nemotron vs gpt-4o-mini) | low | User chose Nemotron-only; add a model ref + second job for a head-to-head scorecard. |
+| EvalHub OCI result export / S3 custom data | low | Not needed for the core scorecard demo. |
+
 ## Candidate Future Stages
 
 These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-authoring/references/stage-taxonomy.md`.

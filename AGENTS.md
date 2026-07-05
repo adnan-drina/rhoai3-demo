@@ -31,6 +31,7 @@ stage-210-model-serving-foundation/ # KServe model serving foundation via shared
 stage-220-models-as-a-service/    # MaaS governance, local Nemotron, external GPT model access
 stage-230-private-data-rag/        # Metadata-aware enterprise RAG foundation with Llama Stack/OGX, Milvus, RHOAI product docs, and MaaS Nemotron
 stage-240-guardrails-and-safety/   # NeMo Guardrails service with MaaS Nemotron, chatbot shield wiring, OTel/Tempo traces
+stage-250-model-evaluation/        # EvalHub evaluation control plane, LMEval dashboard job, product MLflow tracking
 gitops/                            # Active GitOps source tree
 scripts/                           # Shared project automation, currently minimal
 docs/                              # Active project docs and product baseline

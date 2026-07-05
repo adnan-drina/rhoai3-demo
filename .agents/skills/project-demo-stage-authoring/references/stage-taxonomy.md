@@ -69,7 +69,7 @@ numbers can change before a stage is created.
 | `stage-320-llama-stack-runtime` | Agentic AI & Enterprise Integration | Llama Stack runtime and API integration. |
 | `stage-330-mcp-enterprise-tools` | Agentic AI & Enterprise Integration | MCP-based connection to enterprise tools and services. |
 | `stage-410-ai-pipelines` | AI Operations, Evaluation & MLOps | AI Pipelines and data processing workflows. |
-| `stage-430-mlflow-experiment-tracking` | AI Operations, Evaluation & MLOps | MLflow experiment tracking and model lifecycle evidence. |
+| `stage-430-mlflow-experiment-tracking` | AI Operations, Evaluation & MLOps | Advanced MLflow lifecycle and model-registry integration. The MLflow foundation (product operator, tracking) is delivered in `stage-250-model-evaluation`; 430 extends it to production storage (PostgreSQL + S3, HA) and registry workflows. |
 | `stage-440-observability-and-governance` | AI Operations, Evaluation & MLOps | TrustyAI, monitoring, Grafana dashboards, and operational evidence. |
 | `stage-450-distributed-workload-operations` | AI Operations, Evaluation & MLOps | Kueue, distributed workloads, scheduling, and GPU utilization controls. |
 

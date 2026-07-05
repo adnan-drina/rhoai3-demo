@@ -1,0 +1,39 @@
+apiVersion: dashboard.opendatahub.io/v1
+kind: OdhApplication
+metadata:
+  name: rhoai-demo-model-evaluation
+  namespace: redhat-ods-applications
+  labels:
+    app: odh-dashboard
+    app.kubernetes.io/name: model-evaluation
+    app.kubernetes.io/component: dashboard-tile
+    app.kubernetes.io/part-of: odh-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  displayName: RHOAI Demo Model Evaluation
+  description: Run EvalHub benchmark and safety evaluations against the governed models.
+  provider: rhoai3-demo
+  support: Self-managed by the demo team
+  category: Self-managed
+  docsLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-250-model-evaluation
+  getStartedLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-250-model-evaluation
+  getStartedMarkDown: |-
+    # RHOAI Demo Model Evaluation
+
+    Open the EvalHub API (Swagger UI) to submit standardized evaluations of the
+    governed models and read the pass/fail scorecard, or use the OpenShift AI
+    console Model Evaluation page for the dashboard-driven LMEval job. Results
+    are tracked in MLflow.
+  img: |-
+    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Model evaluation">
+      <rect width="48" height="48" rx="8" fill="#ee0000"/>
+      <rect x="12" y="26" width="6" height="12" rx="1" fill="#ffffff"/>
+      <rect x="21" y="18" width="6" height="20" rx="1" fill="#ffffff"/>
+      <rect x="30" y="12" width="6" height="26" rx="1" fill="#ffffff"/>
+    </svg>
+  route: evalhub
+  routeNamespace: model-evaluation
+  kfdefApplications: []
+  csvName: ""
+  quickStart: ""

@@ -1,0 +1,16 @@
+apiVersion: builtin
+kind: PatchTransformer
+metadata:
+  name: stage-250-odhapplication-dashboard-labels
+# The stage-level label transformer stamps part-of: rhoai3-demo on every
+# resource, but the RHOAI dashboard only lists OdhApplication tiles labeled
+# part-of: odh-dashboard; restore the dashboard-owned value.
+patch: |-
+  - op: replace
+    path: /metadata/labels/app.kubernetes.io~1part-of
+    value: odh-dashboard
+target:
+  group: dashboard.opendatahub.io
+  version: v1
+  kind: OdhApplication
+  name: rhoai-demo-model-evaluation

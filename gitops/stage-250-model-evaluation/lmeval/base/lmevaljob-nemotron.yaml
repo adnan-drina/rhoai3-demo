@@ -1,0 +1,55 @@
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: LMEvalJob
+metadata:
+  # Dashboard-driven evaluation: appears on the RHOAI console Model
+  # Evaluation page (available because TrustyAI is Managed). Evaluates the
+  # governed Nemotron model through the in-cluster MaaS proxy so governance
+  # and rate limits stay enforced.
+  name: nemotron-safety-eval
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: nemotron-safety-eval
+    app.kubernetes.io/component: evaluation
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  model: local-completions
+  modelArgs:
+    - name: model
+      value: nemotron-3-nano-30b-a3b
+    - name: base_url
+      value: http://maas-internal-proxy.model-evaluation.svc.cluster.local:8080/models-as-a-service/nemotron-3-nano-30b-a3b/v1/completions
+    - name: tokenizer
+      value: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8
+    - name: num_concurrent
+      value: "1"
+    - name: max_retries
+      value: "3"
+    - name: tokenized_requests
+      value: "false"
+  taskList:
+    taskNames:
+      # A small, fast capability/safety task set; `limit` keeps a single-GPU
+      # demo run short. truthfulqa_mc1 is the safety collection's primary
+      # signal; arc_easy adds a general-capability read.
+      - truthfulqa_mc1
+      - arc_easy
+  limit: "50"
+  batchSize: "1"
+  logSamples: true
+  # The governed MaaS endpoint requires the minted API key; lm-eval's
+  # OpenAI-compatible client reads OPENAI_API_KEY. The Secret is created by
+  # deploy.sh (never committed).
+  pod:
+    container:
+      env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: model-evaluation-model-token
+              key: token
+  outputs:
+    pvcManaged:
+      size: 2Gi

@@ -1,0 +1,18 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: rhoai-demo-mlflow-link
+  labels:
+    app.kubernetes.io/name: mlflow-link
+    app.kubernetes.io/component: console-link
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  applicationMenu:
+    section: RHOAI Demo
+    imageURL: data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Ik1MZmxvdyB0cmFja2luZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI2VlMDAwMCIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjEyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIvPjxwYXRoIGQ9Ik0yNCAxNiB2OCBsNiA0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+
+  # href carries a placeholder; patch-consolelinks Job injects the MLflow
+  # dashboard route host after the MLflow operator creates it.
+  href: 'https://mlflow-route-pending.local'
+  location: ApplicationMenu
+  text: 'RHOAI Demo MLflow'

@@ -1,0 +1,41 @@
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: EvalHub
+metadata:
+  name: evalhub
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: evalhub
+    app.kubernetes.io/component: evaluation
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  replicas: 1
+  # The server is stateless; evaluation metadata, job status, and result
+  # references live in PostgreSQL. The Secret must hold a single db-url key,
+  # composed by deploy.sh (never committed).
+  database:
+    type: postgresql
+    secret: evalhub-db-credentials
+  # OOTB provider adapters shipped by the TrustyAI Operator (names match the
+  # provider-name label on the operator-namespace ConfigMaps): capability
+  # (lm-evaluation-harness), safety red-teaming (garak), and infrastructure
+  # performance profiling (guidellm, which ties back to the Stage 210
+  # capacity benchmark).
+  providers:
+    - lm-evaluation-harness
+    - garak
+    - guidellm
+  # OOTB weighted benchmark collection with pass thresholds; the safety and
+  # fairness scorecard is the demo evidence for the governed Nemotron model.
+  collections:
+    - safety-and-fairness-v1
+  env:
+    # Record evaluation runs in the product MLflow (SQLite-backed for the
+    # demo). The internal Service URL and namespaced auth are used because
+    # EvalHub job pods authenticate through the mlflow.kubeflow.org RBAC.
+    - name: MLFLOW_TRACKING_URI
+      value: https://mlflow.redhat-ods-applications.svc:8443
+    - name: MLFLOW_TRACKING_AUTH
+      value: kubernetes-namespaced

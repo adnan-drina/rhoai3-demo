@@ -1,0 +1,18 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: rhoai-demo-evalhub-link
+  labels:
+    app.kubernetes.io/name: evalhub-link
+    app.kubernetes.io/component: console-link
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  applicationMenu:
+    section: RHOAI Demo
+    imageURL: data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Ik1vZGVsIGV2YWx1YXRpb24iPjxyZWN0IHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgcng9IjgiIGZpbGw9IiNlZTAwMDAiLz48cmVjdCB4PSIxMiIgeT0iMjYiIHdpZHRoPSI2IiBoZWlnaHQ9IjEyIiByeD0iMSIgZmlsbD0iI2ZmZmZmZiIvPjxyZWN0IHg9IjIxIiB5PSIxOCIgd2lkdGg9IjYiIGhlaWdodD0iMjAiIHJ4PSIxIiBmaWxsPSIjZmZmZmZmIi8+PHJlY3QgeD0iMzAiIHk9IjEyIiB3aWR0aD0iNiIgaGVpZ2h0PSIyNiIgcng9IjEiIGZpbGw9IiNmZmZmZmYiLz48L3N2Zz4=
+  # href carries a placeholder; patch-consolelinks Job injects the EvalHub
+  # route host after the operator creates it.
+  href: 'https://evalhub-route-pending.local'
+  location: ApplicationMenu
+  text: 'RHOAI Demo EvalHub'

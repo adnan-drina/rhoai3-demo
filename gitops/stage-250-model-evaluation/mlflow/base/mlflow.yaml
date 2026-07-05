@@ -1,0 +1,31 @@
+apiVersion: mlflow.opendatahub.io/v1
+kind: MLflow
+metadata:
+  # The MLflow instance is a cluster-scoped singleton and must be named
+  # `mlflow`; the MLflow Operator deploys the server pod, Service (:8443), and
+  # dashboard route (/mlflow) in redhat-ods-applications. Stage 250 owns this
+  # cluster resource as the MLflow foundation; a future stage-430 can extend
+  # it toward production-scale (PostgreSQL + S3) lifecycle tracking.
+  name: mlflow
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: mlflow
+    app.kubernetes.io/component: experiment-tracking
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Minimal demo footprint: SQLite metadata + PVC-backed file artifacts with
+  # server-side artifact serving. EvalHub records experiment runs here through
+  # the operator-provided mlflow.kubeflow.org RBAC. SQLite is single-writer,
+  # so replicas stays at 1 (documented dev/test pattern).
+  replicas: 1
+  backendStoreUri: "sqlite:////mlflow/mlflow.db"
+  serveArtifacts: true
+  artifactsDestination: "file:///mlflow/artifacts"
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 5Gi

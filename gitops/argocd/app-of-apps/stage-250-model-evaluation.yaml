@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stage-250-model-evaluation
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai3-demo
+    demo.rhoai.io/stage: "250"
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/manifest-generate-paths: gitops/stage-250-model-evaluation
+spec:
+  project: rhoai-demo
+  source:
+    # repoURL and targetRevision are set by deploy.sh from .env (GIT_REPO_URL, GIT_REPO_BRANCH)
+    repoURL: https://github.com/adnan-drina/rhoai3-demo.git
+    targetRevision: main
+    path: gitops/stage-250-model-evaluation
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    # The EvalHub DB connection URL and the minted MaaS model API key are
+    # composed by stage-250 deploy.sh and never committed.
+    - group: ""
+      kind: Secret
+      name: evalhub-db-credentials
+      namespace: model-evaluation
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: model-evaluation-model-token
+      namespace: model-evaluation
+      jsonPointers:
+        - /data
+    # The EvalHub/MLflow ConsoleLink hrefs carry env-specific route hosts,
+    # injected by sync-hook Jobs after the routes exist.
+    - group: console.openshift.io
+      kind: ConsoleLink
+      name: rhoai-demo-evalhub-link
+      jsonPointers:
+        - /spec/href
+    - group: console.openshift.io
+      kind: ConsoleLink
+      name: rhoai-demo-mlflow-link
+      jsonPointers:
+        - /spec/href

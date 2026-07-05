@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patch-eval-consolelinks
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: patch-eval-consolelinks
+    app.kubernetes.io/component: job
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rhoai-demo-patch-eval-consolelinks
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: patch-eval-consolelinks
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+rules:
+  - apiGroups:
+      - route.openshift.io
+    resources:
+      - routes
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consolelinks
+    verbs:
+      - get
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhoai-demo-patch-eval-consolelinks
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: patch-eval-consolelinks
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhoai-demo-patch-eval-consolelinks
+subjects:
+  - kind: ServiceAccount
+    name: patch-eval-consolelinks
+    namespace: model-evaluation
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-eval-consolelinks
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: patch-eval-consolelinks
+    app.kubernetes.io/component: job
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 8
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: evaluation
+        app.kubernetes.io/name: patch-eval-consolelinks
+    spec:
+      serviceAccountName: patch-eval-consolelinks
+      restartPolicy: Never
+      containers:
+        - name: patch
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              patch_link() {
+                local link="$1" ns="$2" selector="$3"
+                local host=""
+                for i in $(seq 1 60); do
+                  host=$(oc get route -n "$ns" $selector -o jsonpath='{.items[0].spec.host}' 2>/dev/null || true)
+                  [[ -n "$host" ]] && break
+                  echo "waiting for route ($link) in $ns... ($i/60)"
+                  sleep 10
+                done
+                if [[ -z "$host" ]]; then
+                  echo "WARN: no route found for ${link}; leaving placeholder" >&2
+                  return 0
+                fi
+                oc patch consolelink "$link" --type=merge -p "{\"spec\":{\"href\":\"https://${host}\"}}"
+                echo "${link} -> https://${host}"
+              }
+              patch_link rhoai-demo-evalhub-link model-evaluation "-l app.kubernetes.io/name=evalhub"
+              patch_link rhoai-demo-mlflow-link redhat-ods-applications "-l app.kubernetes.io/created-by=mlflow-operator"
