@@ -397,21 +397,26 @@ spec:
           {
             "current": {
               "selected": true,
-              "text": "nvidia-nemotron-3-nano-30b-a3b",
-              "value": "nvidia-nemotron-3-nano-30b-a3b"
+              "text": "All",
+              "value": "$__all"
             },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "Prometheus"
+            },
+            "definition": "label_values(vllm:num_requests_running, model_name)",
             "hide": 0,
+            "includeAll": true,
             "label": "Model",
             "name": "model",
-            "options": [
-              {
-                "selected": true,
-                "text": "nvidia-nemotron-3-nano-30b-a3b",
-                "value": "nvidia-nemotron-3-nano-30b-a3b"
-              }
-            ],
-            "query": "nvidia-nemotron-3-nano-30b-a3b",
-            "type": "custom"
+            "options": [],
+            "query": {
+              "query": "label_values(vllm:num_requests_running, model_name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "type": "query"
           }
         ]
       },
