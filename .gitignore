@@ -64,6 +64,8 @@ venv/
 !/docs/assets/
 !/docs/assets/architecture/
 !/docs/assets/architecture/*.svg
+!/docs/assets/demos/
+!/docs/assets/demos/**
 
 # Step 11 local notebook data and model downloads
 **/step-11-face-recognition/notebooks/.venv/

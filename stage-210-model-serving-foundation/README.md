@@ -40,8 +40,8 @@ then this stage captures a simple GuideLLM/Grafana serving baseline, and Stage
 | OCI modelcar artifact | Preferred reproducible model artifact pattern for the Nemotron vLLM endpoint and later MaaS deployment. | [RHOAI 3.4 - Deploying models](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/deploying_models/index) |
 | Model Registry | Stores the governed model metadata record, model version, and OCI model artifact pointer used by the demo deployment path. | [RHOAI 3.4 - Managing model registries](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/managing_model_registries/index) |
 | Stage 120 GPU profiles | Provide the governed `nvidia.com/gpu` capacity that the model deployment consumes. | [RHOAI 3.4 - Working with accelerators](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html-single/working_with_accelerators/index) |
-| OpenShift user workload monitoring | Scrapes model-serving metrics exposed through the RHOAI/KServe-generated `ServiceMonitor`. | [OCP 4.20 - Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index) |
-| OpenShift Alertmanager receivers | Configures the platform Alertmanager notification route with a demo-local webhook receiver so core monitoring is not left with unconfigured alert delivery. | [OCP 4.20 - Configuring alert notifications](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/postinstallation_configuration/configuring-alert-notifications) |
+| OpenShift user workload monitoring | Scrapes model-serving metrics exposed through the RHOAI/KServe-generated `ServiceMonitor`. Configures `prometheus.retention: 15d` for the user workload Prometheus instance. | [OCP 4.20 - Monitoring](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index) |
+| OpenShift Alertmanager receivers | Configures the platform Alertmanager with three receivers (Default, Watchdog, Critical) routing to a demo-local webhook Deployment (`rhoai-demo-alert-webhook` in `openshift-monitoring`). Inhibit rules suppress lower-severity duplicates. | [OCP 4.20 - Configuring alert notifications](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/postinstallation_configuration/configuring-alert-notifications) |
 | Grafana Operator | Provides demo dashboards for vLLM latency, queue, throughput, KV cache, and GPU signals. This is a community-operator demo exception, not a Red Hat product dependency. | [Grafana Operator API reference](https://grafana.github.io/grafana-operator/docs/api/) |
 | GuideLLM | Runs an on-demand shared-prefix workload benchmark against the internal vLLM `/v1` endpoint to observe queue saturation and establish a serving baseline. | [Red Hat Developer - GuideLLM: Evaluate LLM deployments](https://developers.redhat.com/articles/2025/06/20/guidellm-evaluate-llm-deployments-real-world-inference) |
 | llm-d showroom Module 2 | Provides the benchmark pattern this stage partially replicates: `benchmark-data` PVC, `prompts.csv`, GuideLLM concurrent `32,64` profile, and `llm-performance` Grafana dashboard. | [llm-d showroom - Observe Single-GPU Behaviour](https://rhpds.github.io/llm-d-showroom/modules/workshop/llm-d/04-module-02.html) |
@@ -118,6 +118,10 @@ GuideLLM benchmark script + Grafana baseline dashboard
         |
         v
 OpenShift Console application menu link to the llm-performance dashboard
+  (ConsoleLink patched at sync time from the live Grafana route via hook Job)
+        |
+        v
+Policy benchmark data (prepare-policy-benchmark-data.sh seeds chat + RAG profiles)
 ```
 
 - New in this stage: KServe model serving platform enablement and the

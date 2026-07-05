@@ -74,9 +74,11 @@ isolation.
 
 Red Hat build of Kueue provides admission control and quota. This stage enables
 RHOAI integration with the standalone Kueue operator by patching the shared
-`DataScienceCluster` to `kueue.managementState: Unmanaged`. The GPU
-`ResourceFlavor` uses the verified GPU node label and GPU-only taint, so users
-do not need to know node placement details.
+`DataScienceCluster` to `kueue.managementState: Unmanaged` via an Argo CD Sync
+hook Job (`job-enable-dsc-kueue`) that uses a dedicated ServiceAccount and
+ClusterRole in `redhat-ods-applications`. The GPU `ResourceFlavor` uses the
+GPU Feature Discovery label (`nvidia.com/gpu.present: "true"`) and GPU-only
+taint, so users do not need to know node placement details.
 
 This stage creates:
 
@@ -85,7 +87,14 @@ This stage creates:
   taint
 - four `ClusterQueue` objects
 - four `LocalQueue` objects in `demo-sandbox`
-- one Kueue `WorkloadPriorityClass` for future priority experiments
+- one Kueue `WorkloadPriorityClass` (`gpu-high-priority`, value 1000) for future priority experiments
+
+The `cq-gpu-shared` and `cq-gpu-priority` queues share a `gpu-pool` cohort,
+enabling future fair-sharing and borrowing between them. The
+`cq-gpu-reserved-demo` queue has no cohort — true isolation for the demo team.
+The `cq-cpu-default` queue provides `cpu: 40`, `memory: 128Gi` — sized for
+Stage 230's CPU model plane (Qwen3 reranker, granite-30m, MiniLM embedding
+InferenceServices, plus the Enterprise RAG Workbench).
 
 The initial queue design is intentionally non-preemptive because RHOAI
 workbenches are not suspendable. The "GPU Priority" profile is a dedicated

@@ -2,7 +2,7 @@
 name: project-documentation-authoring
 metadata:
   author: rhoai3-demo
-  version: 1.4.0
+  version: 1.6.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -15,10 +15,11 @@ description: >
   architecture sections, introducing concepts such as Private AI,
   GPU-as-a-Service, Models-as-a-Service, RAG, guardrails, MCP, or MLOps,
   improving European enterprise messaging, preparing concise Why/What README
-  content for later slide generation, writing implementation plans,
-  documenting deferred capabilities, or routing captured project knowledge to
-  the correct documentation home. Also use when documentation needs to explain
-  implemented GitOps behavior in business and technical terms. Pair with
+  content for later slide generation, adding demo visual evidence (screenshots
+  and animated GIFs), writing implementation plans, documenting deferred
+  capabilities, or routing captured project knowledge to the correct
+  documentation home. Also use when documentation needs to explain implemented
+  GitOps behavior in business and technical terms. Pair with
   project-demo-stage-authoring when creating a new stage end to end. Do NOT use
   for GitOps manifest authoring itself (use project-gitops-authoring) or
   official Red Hat source conformance audits (use
@@ -49,11 +50,19 @@ official Red Hat messaging and the implemented demo story.
    Hat docs first.
 5. For stage README structure and presentation style, read
    `references/readme-standard.md`.
-6. For continuous documentation and troubleshooting knowledge capture, read
+6. For implementation detail boundaries in READMEs, read
+   `references/implementation-detail-boundary.md`.
+7. For demo visual evidence (screenshots, GIFs, `## Demo` section), read
+   the "Demo Visual Evidence" section in `references/readme-standard.md`.
+   Ensure at least one screenshot per key component and one customer-facing
+   demo result per stage.
+8. For continuous documentation and troubleshooting knowledge capture, read
    `references/knowledge-governance.md`.
-7. For `PLAN.md` and planning documents, read `references/plan-documents.md`.
-8. When adding product claims, baseline-specific component details, or official
-   documentation references, pair with `project-red-hat-doc-alignment-review`.
+9. For `PLAN.md` and planning documents, read `references/plan-documents.md`.
+10. When adding product claims, baseline-specific component details, or official
+    documentation references, pair with `project-red-hat-doc-alignment-review`.
+11. After substantive README edits, verify alignment using the
+    `project-doc-alignment-audit` skill's stage-specific checklists.
 
 ## Documentation Principles
 
@@ -62,8 +71,16 @@ official Red Hat messaging and the implemented demo story.
   European-regulated enterprise should care, and cite Red Hat narrative
   material from `rh-brain`; prefer sources that include concrete GitHub
   projects or code examples when available.
-- Stage READMEs should support a future three-slide presentation pattern:
-  concept/value, technology enablers, and architecture delta.
+- Stage READMEs should support a three-part presentation extraction contract:
+  concept/value (Why), technology enablers (What), and architecture delta +
+  demo visual evidence (How).
+- Each stage README must include a `## Demo` section with annotated
+  screenshots (at least one per key component, at least one customer-facing
+  result) and an animated GIF walkthrough. Visual evidence lives in
+  `docs/assets/demos/stage-NNN/`.
+- Implementation details that affect understanding, troubleshooting, or
+  cross-stage dependencies belong in the README. Operational procedures and
+  step-by-step commands do not. See `references/implementation-detail-boundary.md`.
 - Operational runbook detail belongs in `docs/OPERATIONS.md`.
 - Failure recovery detail belongs in `docs/TROUBLESHOOTING.md`.
 - Future or deferred capabilities must be labeled explicitly and tracked in
@@ -76,5 +93,6 @@ official Red Hat messaging and the implemented demo story.
 ## References
 
 - `references/readme-standard.md`
+- `references/implementation-detail-boundary.md`
 - `references/knowledge-governance.md`
 - `references/plan-documents.md`

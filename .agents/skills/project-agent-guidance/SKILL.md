@@ -48,7 +48,7 @@ Ref: [Skills](https://cursor.com/docs/skills), [Hooks](https://cursor.com/docs/h
 | Type | Count | Location |
 |------|-------|----------|
 | Shared rules | 6 | `.agents/rules/*.md` |
-| Shared skills | 100 | `.agents/skills/*/SKILL.md` |
+| Shared skills | 101 | `.agents/skills/*/SKILL.md` |
 | Shared reference maps | 1 | `.agents/references/` |
 | Shared hook scripts | 1 | `.agents/hooks/` |
 | Cursor hook bridge | 1 config, 2 scripts | `.cursor/hooks.json`, `.cursor/hooks/` |
@@ -170,26 +170,18 @@ are authored, keep the product-documentation loop current:
 
 1. Check whether the change affects a GitOps-managed component, ArgoCD app, or
    stage README.
-2. If `scripts/audit-doc-alignment.sh` exists in the active implementation, run
-   the local gate before merge:
-
-   ```bash
-   ./scripts/audit-doc-alignment.sh --base origin/main
-   ```
-
-3. For scoped follow-up, use:
-
-   ```bash
-   ./scripts/audit-doc-alignment.sh --component stage-210-model-serving-foundation
-   ```
-
-4. If the active audit script has not been recreated yet, document the missing
-   gate in the change summary and use the Red Hat source-alignment checklist
-   manually.
-5. Review the script output before merge when the script exists.
-6. Use `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` only for narrative,
+2. For comprehensive audits, use the `project-doc-alignment-audit` skill which
+   provides the full methodology for comparing implementation against
+   documentation. This runs daily via Cursor Automation and can be invoked
+   on-demand.
+3. For scoped follow-up on a single stage, ask the agent to run the audit
+   skill's stage-specific checklist for that stage only.
+4. Use `/Users/adrina/Sandbox/rh-brain/Red Hat Brain` only for narrative,
    customer framing, and Red Hat article alignment. Do not treat it as product
    configuration truth.
+
+The incremental `check-docs-consistency.sh` hook fires on every file edit to
+remind agents about companion documentation changes.
 
 ## Tool Bridges
 

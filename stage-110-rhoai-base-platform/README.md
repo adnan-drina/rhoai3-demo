@@ -76,8 +76,8 @@ The RHOAI operator installs the AI platform control plane. `DSCInitialization` c
 - **API version:** `DataScienceCluster` pinned to `v2` (the served storage version that declares the 3.4 component schema)
 - **DSCI:** pinned to `v2` with predefined namespaces and monitoring managed in
   `redhat-ods-monitoring`
-- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`). Kueue, KServe, MaaS, and Llama Stack are removed until their dedicated stages enable them.
-- **Model Registry database:** the registry instance is created day-2 from the dashboard using the default PostgreSQL (non-production); see `docs/OPERATIONS.md`
+- **DSC (base):** `dashboard: Managed`, `workbenches: Managed`, `modelregistry: Managed` (namespace `rhoai-model-registries`). Components removed until their dedicated stages enable them: `kueue`, `kserve`, `modelmeshserving`, `ray`, `modelcontroller`, `distributedWorkloads`, `maas`, `llamastack`.
+- **Model Registry instance:** a `ModelRegistry` CR (`modelregistry-demo`) is deployed via GitOps in the `rhoai-model-registries` namespace with `postgres.generateDeployment: true` (non-production embedded PostgreSQL). RBAC grants `rhods-admins` admin and `rhoai-developers` edit access to the registry namespace.
 - **Docs:** [RHOAI 3.4 Install](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install)
 
 ### Platform Access and Demo Tenancy
@@ -130,7 +130,8 @@ New in this stage
   ODF operator + Multicloud Object Gateway (NooBaa)
   OpenShift observability prerequisite operators
   RHOAI operator + DSCInitialization + DataScienceCluster (dashboard,
-    workbenches, model registry, observability, shared Kueue integration)
+    workbenches, model registry, observability)
+  Model Registry instance (modelregistry-demo) + namespace RBAC
   htpasswd IdP + ai-admin / ai-developer
   demo-sandbox project + S3 connection (OBC-backed)
 

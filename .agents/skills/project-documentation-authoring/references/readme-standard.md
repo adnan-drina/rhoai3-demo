@@ -27,7 +27,12 @@ Use this shape for stage READMEs:
 2. `## Why This Matters`
 3. `## What Enables It`
 4. `## Architecture`
-5. `## References`
+5. `## Demo`
+6. `## References`
+
+The `## Demo` section is required for all implemented stages with a live
+environment. It provides visual evidence of the stage working on a real
+cluster. See "Demo Visual Evidence" below for format and coverage rules.
 
 Avoid extra sections unless the stage genuinely needs a short known limitation
 or explicit demo boundary. Put operational detail elsewhere.
@@ -61,9 +66,9 @@ Do not use generic market claims when a Red Hat source exists.
 This section is the source for slide 2: technology enablers.
 
 Explain the RHOAI, OpenShift, or Red Hat AI components that make the concept
-real in this demo. Prefer a short table over long prose.
+real in this demo. Two formats are acceptable:
 
-Recommended table:
+**Compact table** (preferred when components need only a one-sentence role):
 
 ```markdown
 | Technology | Role in this stage | Source |
@@ -71,33 +76,54 @@ Recommended table:
 | Red Hat OpenShift AI <component> | <what it enables> | <official Red Hat docs link> |
 ```
 
+**Header + bullets** (preferred when components need multiple detail lines —
+channel versions, lifecycle policies, compatibility guards, RBAC notes):
+
+```markdown
+### Component Name
+
+One-sentence role description.
+
+- **Operator:** name (namespace)
+- **Channel:** `stable-X.Y`
+- **Key implementation detail:** explanation
+- **Docs:** [link](url)
+```
+
 For every RHOAI technical component introduced in the README:
 
 - link to the active-baseline official Red Hat documentation used as the
   configuration source
 - describe the component's role in one sentence
+- name the deployment mechanism when non-obvious (hook Job, overlay, script)
+- state the operator channel and namespace
 - distinguish product capability from custom demo glue
 - state preview, technology-preview, deferred, or demo-only posture when
   relevant
+- document cross-stage dependencies (resources serving downstream stages)
+- include quota/sizing rationale when values have cross-stage implications
 
 If a Red Hat-linked GitHub reference implementation informed the component
 selection or demo shape, mention it in `## References` or `PLAN.md` as an
 example source. Do not use the GitHub example as the authority for product API
 fields or support posture.
 
+For the full boundary between implementation details that belong in READMEs and
+operational content that belongs elsewhere, read
+`references/implementation-detail-boundary.md`.
+
 ## Architecture
 
 This section is the source for slide 3: architecture delta.
 
-Every root or stage README should include a generated SVG capability map once the
-active diagram generator has been recreated.
-
-- Root map: `docs/assets/architecture/rhoai3-demo-capability-map.svg`
-- Stage maps: `../docs/assets/architecture/stage-YXX-capability-map.svg`
-
 The stage diagram must make the current stage components visually distinct from
-previously introduced components. Follow the architecture diagram skill for
-the exact styling and regeneration workflow.
+previously introduced components. Use whichever format communicates the
+architecture delta clearly:
+
+- **ASCII art** — box diagrams and linear flows (Stage 110, 120 pattern)
+- **Mermaid** — relationship graphs with labeled edges (Stage 220 pattern)
+- **Generated SVG** — polished capability maps when the diagram generator is
+  available (future; follow the architecture diagram skill when it exists)
 
 After the diagram, add a short architecture delta list:
 
@@ -107,8 +133,9 @@ After the diagram, add a short architecture delta list:
 - Value of the integration: <why the combined architecture matters>
 ```
 
-Once the active generator exists, change `scripts/generate-readme-visuals.py`
-and regenerate SVGs instead of hand-editing generated diagrams.
+The architecture diagram must accurately reflect all deployed components. If the
+implementation changes, update the diagram in the same commit. The
+`project-doc-alignment-audit` skill checks diagram accuracy.
 
 ## References
 
@@ -122,6 +149,72 @@ References should be short and source-focused:
 - links to `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md` only when the
   reader needs the operational path or recovery procedure
 
+## Demo Visual Evidence
+
+Each stage README includes a `## Demo` section that provides annotated
+screenshots and an animated GIF demonstrating the stage's customer-facing
+outcome. This visual evidence serves the "How" slide in the three-part
+presentation contract and proves the implementation works on a live cluster.
+
+### Coverage Requirements
+
+Screenshots must cover:
+
+1. **At least one screenshot per key component introduced in the stage.**
+   A "key component" is any technology listed in `## What Enables It` that has
+   its own visible surface in the RHOAI dashboard, OpenShift console, Argo CD,
+   Grafana, or a custom application UI. Infrastructure-only components (e.g.
+   an operator running in the background) may be evidenced by their visible
+   effect (e.g. a GPU node appearing, a queue being available).
+
+2. **At least one screenshot showing the final customer-facing demo result.**
+   This is the moment a user (data scientist, AI engineer, platform admin)
+   would see and interact with. Examples: selecting a hardware profile,
+   chatting with a RAG-grounded model, viewing a model serving dashboard,
+   using GenAI Playground.
+
+### Section Format
+
+```markdown
+## Demo
+
+> Animated walkthrough of the main user-facing feature.
+
+![Stage NNN demo](docs/assets/demos/stage-NNN/stage-NNN-demo.gif)
+
+### Key Screens
+
+| Screen | Component | What it shows |
+|--------|-----------|---------------|
+| ![alt](docs/assets/demos/stage-NNN/01-name.png) | Component Name | One-sentence description |
+| ![alt](docs/assets/demos/stage-NNN/02-name.png) | Component Name | One-sentence description |
+| ... | ... | ... |
+```
+
+### Naming Convention
+
+Screenshots live in `docs/assets/demos/stage-NNN/` with zero-padded sequence
+numbers: `01-descriptive-name.png`, `02-descriptive-name.png`, etc. The
+animated GIF is named `stage-NNN-demo.gif`.
+
+### Screenshot Guidance
+
+- Capture from the RHOAI dashboard or relevant application UI (light or dark
+  theme, whichever the stage naturally uses).
+- Show the full browser viewport (1024x576 or similar 16:9) for context.
+- Avoid capturing transient loading states unless they demonstrate a
+  meaningful platform behavior.
+- Annotate only when the screenshot alone is ambiguous; prefer self-evident
+  UI states.
+- When a component is only visible from the OpenShift admin console (e.g.
+  Kueue ClusterQueues, MachineSet status), capture the admin view.
+
+### Animated GIF
+
+The GIF stitches the key screenshots into a ~15-second walkthrough at 2-3
+seconds per frame. It provides the "at a glance" demo experience for
+stakeholders who will not run the live environment.
+
 ## Presentation Extraction Contract
 
 Write READMEs so a future deck-generation skill can create three slides per
@@ -131,7 +224,7 @@ stage without guessing:
 |-------|---------------|---------|
 | 1 | `## Why This Matters` | Define the concept and explain why the audience should care |
 | 2 | `## What Enables It` | Explain the RHOAI and Red Hat technologies used |
-| 3 | `## Architecture` | Show new components in context with previous stages |
+| 3 | `## Architecture` + `## Demo` | Show new components in context; prove with visual evidence |
 
 Keep each section concise enough that the deck generator can lift the main
 message directly instead of summarizing long runbook content.
@@ -164,17 +257,30 @@ message directly instead of summarizing long runbook content.
 
 After editing a README:
 
-- The README follows the Why/What/Architecture/References shape.
+- The README follows the Why/What/Architecture/Demo/References shape.
 - `## Why This Matters` defines the concept and states enterprise value.
 - Concept framing cites Red Hat narrative material from `rh-brain`.
 - When available, selected `rh-brain` sources are preferred because they link
   to concrete GitHub projects or code examples relevant to the stage.
 - `## What Enables It` maps each RHOAI technical component to an official Red
   Hat documentation link for the active baseline.
+- Every GitOps-managed operator states its channel and namespace.
+- Non-obvious deployment mechanisms are named (hook Jobs, overlay patches,
+  imperative scripts).
+- Cross-stage resources document their downstream consumer.
+- Quota/sizing values with cross-stage implications include the reasoning.
+- Compatibility guards explain the specific incompatibility they prevent.
+- RBAC grants are documented at the component level.
 - Product capability, custom demo glue, preview posture, and deferred work are
   clearly separated.
-- `## Architecture` points to the correct SVG and distinguishes current stage
-  components from previously introduced components.
+- `## Architecture` diagram accurately reflects all deployed components and
+  distinguishes current stage from previously introduced components.
+- `## Demo` includes at least one screenshot per key component introduced in
+  `## What Enables It` and at least one screenshot of the final
+  customer-facing demo result.
+- Screenshots live in `docs/assets/demos/stage-NNN/` with sequential naming.
+- An animated GIF stitches the key screens into a walkthrough.
 - Long runbook, demo-scene, validation, and recovery content has been routed to
   `docs/OPERATIONS.md` or `docs/TROUBLESHOOTING.md`.
+- No operational procedures or shell commands appear in the README.
 - Deferred work links to `docs/BACKLOG.md` when it is actionable project work.

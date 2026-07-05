@@ -85,6 +85,12 @@ This stage is implemented in phases:
    giving the model write permissions or access to Secrets, ConfigMaps, or
    RBAC resources.
 
+A dedicated `enterprise-rag-autorag` MaaSSubscription provides elevated token
+rate limits (Nemotron: 2M tokens/h, GPT-4o-mini: 1M tokens/h) for Stage 230
+AutoRAG optimization runs, which evaluate many RAG patterns in a burst and
+would exhaust the interactive developer subscription budgets. This keeps
+governance enforced while sizing quota for the optimization workload.
+
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
 use schemas observed on the current RHOAI 3.4 cluster. Stage 220 pins Red Hat
 Connectivity Link to `rhcl-operator.v1.3.4` with manual InstallPlan approval
