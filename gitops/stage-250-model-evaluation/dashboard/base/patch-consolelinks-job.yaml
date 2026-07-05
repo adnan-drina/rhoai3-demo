@@ -88,21 +88,36 @@ spec:
             - -c
             - |
               set -euo pipefail
-              patch_link() {
-                local link="$1" ns="$2" selector="$3"
-                local host=""
-                for i in $(seq 1 60); do
-                  host=$(oc get route -n "$ns" $selector -o jsonpath='{.items[0].spec.host}' 2>/dev/null || true)
-                  [[ -n "$host" ]] && break
-                  echo "waiting for route ($link) in $ns... ($i/60)"
-                  sleep 10
-                done
-                if [[ -z "$host" ]]; then
-                  echo "WARN: no route found for ${link}; leaving placeholder" >&2
-                  return 0
-                fi
-                oc patch consolelink "$link" --type=merge -p "{\"spec\":{\"href\":\"https://${host}\"}}"
-                echo "${link} -> https://${host}"
-              }
-              patch_link rhoai-demo-evalhub-link model-evaluation "-l app.kubernetes.io/name=evalhub"
-              patch_link rhoai-demo-mlflow-link redhat-ods-applications "-l app.kubernetes.io/created-by=mlflow-operator"
+              # EvalHub: the operator creates a route named `evalhub` in this
+              # namespace; the browsable Swagger UI is at /docs (the route root
+              # 404s, it is a REST API).
+              evalhub_host=""
+              for i in $(seq 1 60); do
+                evalhub_host=$(oc get route evalhub -n model-evaluation -o jsonpath='{.spec.host}' 2>/dev/null || true)
+                [[ -n "$evalhub_host" ]] && break
+                echo "waiting for evalhub route... ($i/60)"; sleep 10
+              done
+              if [[ -n "$evalhub_host" ]]; then
+                oc patch consolelink rhoai-demo-evalhub-link --type=merge \
+                  -p "{\"spec\":{\"href\":\"https://${evalhub_host}/docs\"}}"
+                echo "rhoai-demo-evalhub-link -> https://${evalhub_host}/docs"
+              else
+                echo "WARN: no evalhub route; leaving placeholder" >&2
+              fi
+              # MLflow has no standalone route; it is served on the RHOAI
+              # dashboard host at /mlflow. The MLflow CR exposes that
+              # dashboard URL directly at .status.url (.status.address.url is
+              # the internal Service).
+              mlflow_url=""
+              for i in $(seq 1 60); do
+                mlflow_url=$(oc get mlflow mlflow -o jsonpath='{.status.url}' 2>/dev/null || true)
+                [[ "$mlflow_url" == *".apps."* ]] && break
+                echo "waiting for mlflow dashboard url... ($i/60)"; sleep 10
+              done
+              if [[ "$mlflow_url" == *".apps."* ]]; then
+                oc patch consolelink rhoai-demo-mlflow-link --type=merge \
+                  -p "{\"spec\":{\"href\":\"${mlflow_url}\"}}"
+                echo "rhoai-demo-mlflow-link -> ${mlflow_url}"
+              else
+                echo "WARN: no mlflow dashboard url; leaving placeholder" >&2
+              fi

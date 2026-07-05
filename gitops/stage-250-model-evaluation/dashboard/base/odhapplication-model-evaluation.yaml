@@ -34,6 +34,9 @@ spec:
     </svg>
   route: evalhub
   routeNamespace: model-evaluation
+  # The EvalHub route root is the REST API (404 at /); the browsable Swagger
+  # UI is at /docs, so the tile launch button targets that path.
+  routeSuffix: /docs
   kfdefApplications: []
   csvName: ""
   quickStart: ""
