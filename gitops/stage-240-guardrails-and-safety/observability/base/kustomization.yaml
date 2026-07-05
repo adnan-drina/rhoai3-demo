@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - tempo.yaml
   - otel-collector.yaml
+  - uiplugin-distributed-tracing.yaml

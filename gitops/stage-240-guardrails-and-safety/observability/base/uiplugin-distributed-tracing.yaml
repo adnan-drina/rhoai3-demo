@@ -1,0 +1,19 @@
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  # Cluster-scoped singleton; the API requires this exact name. Owned by
+  # stage 240 because it introduced the first tracing operands; the Cluster
+  # Observability Operator itself is installed by stage 110.
+  name: distributed-tracing
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: distributed-tracing-uiplugin
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # OpenShift console "Observe -> Traces" view backed by the Tempo instance;
+  # the current-recommended trace UI on OCP 4.20 (the in-pod Jaeger UI is
+  # deprecated by the Tempo Operator).
+  type: DistributedTracing

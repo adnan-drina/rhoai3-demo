@@ -346,6 +346,24 @@ wait_for_guardrails() {
   echo "✓ NemoGuardrails ${NEMO_CR} is Ready"
 }
 
+ensure_jaeger_consolelink() {
+  # The ConsoleLink href carries the env-specific Jaeger UI route host. A
+  # GitOps sync-hook Job exists for fresh deployments, but the Argo
+  # controller has been observed omitting late-added hook Jobs from sync
+  # operations on this instance, so the deploy script enforces the href
+  # imperatively as well (idempotent).
+  local jaeger_host
+  jaeger_host=$(jsonpath "route/tempo-guardrails-jaegerui" "$SAFETY_NS" "{.spec.host}")
+  if [[ -z "$jaeger_host" ]]; then
+    echo "! Jaeger UI route not present yet; the ConsoleLink keeps its placeholder until the next deploy run." >&2
+    return 0
+  fi
+  oc patch consolelink rhoai-demo-guardrails-jaeger-link --type=merge \
+    -p "{\"spec\":{\"href\":\"https://${jaeger_host}\"}}" \
+    --insecure-skip-tls-verify=true >/dev/null 2>&1 || true
+  echo "✓ Jaeger ConsoleLink points at https://${jaeger_host}"
+}
+
 restart_lsd_for_shields() {
   # The Stage 230 LSD mounts its run config from a ConfigMap; the operator
   # does not roll the Deployment on ConfigMap content changes, so restart it
@@ -371,6 +389,7 @@ wait_for_maas_subscription
 ensure_maas_proxy_config
 ensure_nemo_secret
 wait_for_guardrails
+ensure_jaeger_consolelink
 restart_lsd_for_shields
 
 oc annotate applications.argoproj.io stage-240-guardrails-and-safety -n openshift-gitops \
