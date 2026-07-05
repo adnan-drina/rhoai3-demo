@@ -129,7 +129,7 @@ data:
         - provider_id: nemo-guardrails
           provider_type: remote::nvidia
           config:
-            guardrails_service_url: ${env.GUARDRAILS_SERVICE_URL:=http://nemo-guardrails.ai-safety.svc.cluster.local:8000}
+            guardrails_service_url: ${env.GUARDRAILS_SERVICE_URL:=http://nemo-guardrails-internal.ai-safety.svc.cluster.local:8000}
             config_id: demo-safety
       scoring:
         - provider_id: basic

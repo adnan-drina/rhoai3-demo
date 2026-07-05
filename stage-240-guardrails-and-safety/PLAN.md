@@ -189,15 +189,14 @@ explicitly declined at question time; others accepted at plan approval):
 
 Risks:
 
-- The `remote::nvidia` provider sends no Authorization header; with
-  enable-auth on the service, the in-cluster LSD→NeMo path may 401. Resolve
-  at deploy: verify whether auth wraps only the route or also the Service;
-  if the Service is wrapped, add an internal auth-exempt Service or record
-  a demo exception in the skill. **Open until live validation.**
-- The operator-created NeMo Service name/port is assumed
-  `nemo-guardrails:8000`; the LSD provider URL uses
-  `${env.GUARDRAILS_SERVICE_URL:=…}` so a live correction needs no Git
-  churn. Verify at deploy and align the committed default.
+- **Resolved 2026-07-05 (live):** the TrustyAI operator fronts the NeMo
+  container (plain HTTP :8000) with a kube-rbac-proxy sidecar — Service
+  `nemo-guardrails` is 443→8443 and requires a bearer token, which the
+  `remote::nvidia` provider cannot send. Demo exception: stage-240 adds
+  `Service nemo-guardrails-internal` (8000→8000, cluster-internal,
+  unauthenticated) as the LSD provider path; the external route stays
+  bearer-authenticated. The LSD provider default URL points at the internal
+  Service.
 - Self-check triples token spend per guarded turn; dedicated 500k/h quota,
   tune after live testing.
 - TrustyAI Managed changes the shared DSC for all stages (precedent:

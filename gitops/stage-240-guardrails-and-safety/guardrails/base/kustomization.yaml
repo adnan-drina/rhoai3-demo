@@ -6,3 +6,4 @@ resources:
   - rolebinding-view.yaml
   - configmap-nemo-config.yaml
   - nemoguardrails.yaml
+  - service-internal.yaml
