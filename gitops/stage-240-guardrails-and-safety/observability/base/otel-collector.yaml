@@ -11,11 +11,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  # Receives OTLP spans from the NeMo Guardrails service and forwards them to
-  # the demo-scale TempoMonolithic instance in this namespace.
+  # Receives OTLP spans from the NeMo Guardrails service and forwards them
+  # through the multitenant Tempo gateway (tenant ai-safety) with the
+  # collector ServiceAccount token; the gateway authorizes the write via
+  # SubjectAccessReview (tempo-tenant-rbac.yaml).
   mode: deployment
   replicas: 1
   config:
+    extensions:
+      bearertokenauth:
+        filename: /var/run/secrets/kubernetes.io/serviceaccount/token
     receivers:
       otlp:
         protocols:
@@ -27,10 +32,16 @@ spec:
       batch: {}
     exporters:
       otlp:
-        endpoint: tempo-guardrails:4317
+        endpoint: tempo-guardrails-gateway.ai-safety.svc.cluster.local:4317
+        auth:
+          authenticator: bearertokenauth
+        headers:
+          X-Scope-OrgID: ai-safety
         tls:
-          insecure: true
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
     service:
+      extensions:
+        - bearertokenauth
       pipelines:
         traces:
           receivers:

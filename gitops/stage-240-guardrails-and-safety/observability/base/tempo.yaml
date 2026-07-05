@@ -18,6 +18,17 @@ spec:
     traces:
       backend: pv
       size: 5Gi
+  # Gateway multitenancy (openshift mode) is required for the Cluster
+  # Observability Operator distributed-tracing console plugin to list this
+  # instance; readers/writers authorize via SubjectAccessReview against
+  # apiGroup tempo.grafana.com, resource "ai-safety", resourceName "traces"
+  # (see tempo-tenant-rbac.yaml).
+  multitenancy:
+    enabled: true
+    mode: openshift
+    authentication:
+      - tenantName: ai-safety
+        tenantId: ai-safety
   ingestion:
     otlp:
       grpc:

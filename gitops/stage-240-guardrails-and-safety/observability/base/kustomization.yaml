@@ -3,5 +3,6 @@ kind: Kustomization
 
 resources:
   - tempo.yaml
+  - tempo-tenant-rbac.yaml
   - otel-collector.yaml
   - uiplugin-distributed-tracing.yaml

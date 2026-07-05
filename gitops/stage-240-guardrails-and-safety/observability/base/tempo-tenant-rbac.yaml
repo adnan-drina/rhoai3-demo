@@ -1,0 +1,85 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tempo-guardrails-traces-write
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: tempo-guardrails-traces-write
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+rules:
+  # Tempo gateway (openshift mode) authorizes trace ingestion with a
+  # SubjectAccessReview: create on the tenant resource named traces.
+  - apiGroups:
+      - tempo.grafana.com
+    resources:
+      - ai-safety
+    resourceNames:
+      - traces
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tempo-guardrails-traces-write
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: tempo-guardrails-traces-write
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tempo-guardrails-traces-write
+subjects:
+  # The OTel operator names the collector ServiceAccount <name>-collector.
+  - kind: ServiceAccount
+    name: guardrails-collector
+    namespace: ai-safety
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tempo-guardrails-traces-read
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: tempo-guardrails-traces-read
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+rules:
+  # Console distributed-tracing plugin readers; cluster-admins pass the
+  # SubjectAccessReview implicitly.
+  - apiGroups:
+      - tempo.grafana.com
+    resources:
+      - ai-safety
+    resourceNames:
+      - traces
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tempo-guardrails-traces-read
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: tempo-guardrails-traces-read
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tempo-guardrails-traces-read
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: rhoai-developers
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: rhods-admins
