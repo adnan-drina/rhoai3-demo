@@ -33,11 +33,16 @@ done
 EVAL_NS="${RHOAI_STAGE250_NAMESPACE:-model-evaluation}"
 MODEL_TOKEN_SECRET="${RHOAI_STAGE250_MODEL_TOKEN_SECRET:-model-evaluation-model-token}"
 TARGET_MODEL="${RHOAI_STAGE250_RISK_TARGET_MODEL:-nemotron-3-nano-30b-a3b}"
-JUDGE_MODEL="${RHOAI_STAGE250_RISK_JUDGE_MODEL:-gpt-4o-mini}"
-# SDG (synthetic adversarial-prompt generation) is the high-volume role and
-# hits a hard 120s per-call timeout. Default it to the local on-GPU model so
-# it does not depend on external-gateway latency; the judge stays external
-# and independent. Override to gpt-4o-mini when external latency is reliable.
+# Both the SDG (synthetic adversarial-prompt generation) and the judge
+# (detector scoring) roles make many model calls with no scan-level timeout.
+# Routing them to the external gpt-4o-mini through the MaaS gateway failed
+# the run: SDG hit a 120s per-call timeout, and the detector looped forever
+# on truncated responses (httpx incomplete chunked read — the gateway closes
+# streaming bodies early). Default both to the local on-GPU Nemotron so the
+# whole assessment runs in-cluster and completes reliably. An independent
+# external judge stays available via RHOAI_STAGE250_RISK_JUDGE_MODEL when the
+# gateway path is provisioned for sustained streaming.
+JUDGE_MODEL="${RHOAI_STAGE250_RISK_JUDGE_MODEL:-nemotron-3-nano-30b-a3b}"
 SDG_MODEL="${RHOAI_STAGE250_RISK_SDG_MODEL:-nemotron-3-nano-30b-a3b}"
 DSPA_NAME="${RHOAI_STAGE250_DSPA_NAME:-dspa-model-evaluation}"
 PROXY="http://maas-internal-proxy.${EVAL_NS}.svc.cluster.local:8080/models-as-a-service"
