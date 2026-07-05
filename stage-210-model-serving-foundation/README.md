@@ -184,6 +184,8 @@ them whenever the model, runtime, GPU shape, or prompt profile changes.
 
 ## Demo
 
+![Stage 210 walkthrough](docs/assets/demos/stage-210/stage-210-demo.gif)
+
 | Screenshot | What it shows |
 |------------|---------------|
 | ![Grafana folder](../docs/assets/demos/stage-210/01-grafana-dashboards.png) | RHOAI Demo Grafana folder with LLM Performance and vLLM Baseline dashboards |

@@ -129,6 +129,8 @@ flow.
 
 ## Demo
 
+![Stage 220 walkthrough](docs/assets/demos/stage-220/stage-220-demo.gif)
+
 | Screenshot | What it shows |
 |------------|---------------|
 | ![Playground](../docs/assets/demos/stage-220/01-playground-demo-sandbox.png) | GenAI Playground entry — project-scoped model interaction surface |

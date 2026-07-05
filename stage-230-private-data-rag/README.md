@@ -333,6 +333,8 @@ RHOAI_STAGE230_RUN_AUTORAG=true \
 
 ## Demo
 
+![Stage 230 walkthrough](docs/assets/demos/stage-230/stage-230-demo.gif)
+
 | Screenshot | What it shows |
 |------------|---------------|
 | ![Chatbot home](../docs/assets/demos/stage-230/01-rag-chatbot-home.png) | Llama Stack RAG chatbot (Streamlit) ready for questions |

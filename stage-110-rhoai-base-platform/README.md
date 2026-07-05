@@ -152,6 +152,8 @@ Extended by later stages
 
 ## Demo
 
+![Stage 110 walkthrough](docs/assets/demos/stage-110/stage-110-demo.gif)
+
 | Screenshot | What it shows |
 |------------|---------------|
 | ![Login](../docs/assets/demos/stage-110/01-login-identity-providers.png) | OpenShift login with htpasswd identity providers (ai-developer, ai-admin) |

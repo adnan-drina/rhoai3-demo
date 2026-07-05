@@ -148,6 +148,8 @@ access through Models-as-a-Service.
 
 ## Demo
 
+![Stage 120 walkthrough](docs/assets/demos/stage-120/stage-120-demo.gif)
+
 | Screenshot | What it shows |
 |------------|---------------|
 | ![Workbench form](../docs/assets/demos/stage-120/01-create-workbench-form.png) | Create workbench form with deployment size section |
