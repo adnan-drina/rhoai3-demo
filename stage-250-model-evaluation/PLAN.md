@@ -133,7 +133,102 @@ Risks:
   names, EvalHub↔MLflow operator RBAC, KServe RawDeployment prereq met,
   MLflow deploys in redhat-ods-applications (Service :8443, dashboard route
   /mlflow).
+- 2026-07-05: Deployed and validated on cluster-qt67m — **validate.sh
+  22 passed / 0 warnings / 0 failed**. Evidence: EvalHub `/health` healthy
+  (build 0.3.0) and `/providers` lists lm_evaluation_harness/garak/guidellm
+  (authenticated with the pod SA token + X-Tenant); MLflow Available with a
+  dashboard route; the `nemotron-safety-eval` LMEvalJob **completed** with a
+  real scorecard — arc_easy acc 0.76 / acc_norm 0.84, truthfulqa_mc1 0.36.
+
+### Live findings folded back during deployment
+
+1. **LMEval online access is a cluster-global gate.** The per-job
+   `allowOnline: true` is insufficient — the operator still injects
+   `HF_HUB_OFFLINE=1`/`TRANSFORMERS_OFFLINE=1` unless online is permitted
+   globally. Live patches of the operator ConfigMap
+   (`trustyai-service-operator-config`) and the `TrustyAI` CR both revert
+   (both owned up the chain by the DSC). The supported path is the DSC
+   field `spec.components.trustyai.eval.lmeval.permitOnline: allow`
+   (+ `permitCodeExecution`); it propagates and sticks. Now set by the
+   stage DSC patch Job. LMEval needs online to fetch the public tokenizer
+   *and* the benchmark datasets from Hugging Face.
+2. **EvalHub server is HTTPS :8443 and authenticated** — not http :8080.
+   `/health` is open; everything else needs a bearer token *and* the
+   `X-Tenant` header. validate.sh uses the pod's ServiceAccount token.
+3. **MLflow deploys in `redhat-ods-applications`** (cluster-scoped
+   singleton), not the tenant namespace; Service `mlflow:8443`, dashboard
+   route at `/mlflow`. Minimal SQLite+PVC per the "deploy now" choice.
+4. **PostgreSQL first-boot `initdb` on a fresh EBS PVC is slow** and the
+   liveness probe killed it once; added a `startupProbe`
+   (failureThreshold 60) so the slow init is not interrupted.
+5. EvalHub→MLflow auth is operator-provided `mlflow.kubeflow.org`
+   pseudo-resource RBAC; bind the EvalHub job SA to
+   `mlflow-operator-mlflow-integration`.
 
 ## Retrospective And Skill Updates
 
-To be completed at stage wrap.
+What worked: cloning the Stage 240 template (DSC hook Job, MaaS proxy,
+dashboard tiles, deploy/validate framework) made the bulk of the stage
+mechanical; probing the MLflow operator live (apply → observe → delete)
+before authoring resolved the deployment-namespace and CR-shape unknowns;
+choosing minimal SQLite MLflow avoided a cross-namespace S3/backend secret
+dance the "deploy now" scope did not need.
+
+What to repeat next stage:
+
+1. **Operator config gates live above the obvious knob.** A per-resource
+   flag (`allowOnline`) can be overridden by a cluster-global setting that
+   only the DSC can change and that reverts on any lower-level patch — the
+   same lesson as the Stage 240 `trustyai` selfHeal and the MaaS/no-auth
+   surprises. Trace the ownership chain to the DSC before patching.
+2. **Verify through the real execution path.** The EvalHub REST auth and
+   the LMEval offline env were only visible by exec'ing the pod / reading
+   the rendered Job, not from the CR spec.
+3. **Slow first-boot storage needs a startupProbe**, not just a longer
+   liveness delay.
+
+Skill updates to ship at wrap: `rhoai-evaluation` should record the
+DSC-level `eval.lmeval.permitOnline/permitCodeExecution` gate, the EvalHub
+HTTPS :8443 + bearer + X-Tenant auth, and the OOTB provider/collection
+label names.
+
+## Automated Risk Assessment (garak-kfp) — Implementation Assessment
+
+Deferred from this stage; assessed 2026-07-05. What it needs on top of the
+current stage:
+
+- **A KFP pipeline server (DSPA).** `aipipelines` is already `Managed`.
+  Either reuse the Stage 230 `dspa-enterprise-rag` (endpoint
+  `https://ds-pipeline-dspa-enterprise-rag.enterprise-rag.svc:8443`,
+  cross-namespace + its S3 secret) or stand up a stage-250-owned DSPA in
+  `model-evaluation` (DSPA CR + a MariaDB + an OBC). A stage-owned DSPA is
+  cleaner but adds surface.
+- **S3 for pipeline artifacts** — the ObjectBucketClaim deferred here;
+  add it back plus a deploy.sh step to compose the DSPA/garak S3 secret.
+- **Provider** — add `garak-kfp` to the EvalHub CR `providers` (OOTB image
+  already present).
+- **Models for the intents roles** — target (Nemotron) plus judge and SDG
+  (and optionally attacker/evaluator) OpenAI-compatible endpoints. Reuse
+  the governed models: Nemotron as target, `gpt-4o-mini` as judge/SDG
+  (stronger); add `gpt-4o-mini` to the `model-evaluation` MaaSSubscription
+  or a second minted key. Model auth uses `model.auth.secret_ref` → a
+  Secret with keys `api-key` and (for self-signed) `ca_cert`, mounted at
+  `/var/run/secrets/model/`.
+- **Submission** — a runtime EvalHub REST job (benchmark `intents`,
+  `provider_id: garak-kfp`) carrying `parameters.kfp_config`
+  (endpoint/namespace/s3_secret_name/verify_ssl) and `intents_models`
+  (judge, sdg). Not a static manifest like the LMEvalJob — it orchestrates
+  a KFP run.
+- **Runtime + cost** — two phases (SDG prompt generation across harm
+  categories, then adversarial security testing) hit the models heavily;
+  size the subscription quota up and expect a long run on a single GPU.
+- **Optional translation-attack cache** — the translation strategy needs
+  Helsinki-NLP models; on a connected cluster it downloads (online gate
+  already enabled), otherwise disable that strategy.
+
+Risk: KFP execution carries the same live-gotcha surface the Stage 230
+AutoRAG KFP work hit (launcher artifact TLS `SSL_CERT_FILE`, DSPA
+`cABundle`, image-pin/compile issues). Budget a debug pass. Effort:
+roughly a focused day — the pieces are known, the KFP integration is the
+uncertain part. Strongest narrative payoff: adversarially proving the Stage
+240 guardrails hold, closing the guard→prove loop.

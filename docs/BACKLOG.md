@@ -187,14 +187,17 @@ shared-owner touches, live findings, and the retrospective are recorded in
 | Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-250-model-evaluation`. |
 | FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |
 
-## Stage 250: Model Evaluation (Active)
+## Stage 250: Model Evaluation (Complete)
 
 EvalHub evaluation control plane + dashboard LMEvalJob + product-managed
 MLflow, evaluating the governed Nemotron model with the OOTB
 `safety-and-fairness-v1` collection (pass threshold 0.758) and providers
 `lm-evaluation-harness`, `garak`, `guidellm`. MLflow is the minimal dev
 pattern (SQLite + PVC), pulled forward from stage-430; EvalHub uses
-PostgreSQL. Scope, live-verified schemas, and deferrals in
+PostgreSQL. Deployed and validated on cluster-qt67m 2026-07-05:
+`validate.sh` 22/0/0, with a real LMEval scorecard (arc_easy acc 0.76 /
+acc_norm 0.84, truthfulqa_mc1 0.36). Scope, live findings, retrospective,
+and the garak-kfp implementation assessment are in
 `stage-250-model-evaluation/PLAN.md`.
 
 ### Open / deferred from Stage 250
