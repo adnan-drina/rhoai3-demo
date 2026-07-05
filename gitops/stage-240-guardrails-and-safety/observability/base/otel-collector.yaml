@@ -13,7 +13,7 @@ metadata:
 spec:
   # Receives OTLP spans from the NeMo Guardrails service, forwards them to
   # the multitenant Tempo gateway (tenant ai-safety) for trace storage, AND
-  # derives RED metrics (rate/errors/duration) per span with the spanmetrics
+  # derives RED metrics (rate/errors/duration) per span with the span_metrics
   # connector so guardrail rail decisions are queryable in Prometheus and
   # Grafana, not only in traces. The collector token authorizes the Tempo
   # write via SubjectAccessReview (tempo-tenant-rbac.yaml); User Workload
@@ -37,7 +37,7 @@ spec:
           http:
             endpoint: 0.0.0.0:4318
     connectors:
-      spanmetrics:
+      span_metrics:
         # Keep the rail/action name and outcome as metric dimensions so a
         # dashboard can break blocks down by which rail fired.
         dimensions:
@@ -73,9 +73,9 @@ spec:
             - batch
           exporters:
             - otlp
-            - spanmetrics
+            - span_metrics
         metrics:
           receivers:
-            - spanmetrics
+            - span_metrics
           exporters:
             - prometheus
