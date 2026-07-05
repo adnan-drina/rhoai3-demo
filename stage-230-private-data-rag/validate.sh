@@ -585,6 +585,20 @@ chatbot_config_timeout=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_N
   && check "Stage 230 chatbot sets a Llama Stack timeout" "pass" \
   || check "Stage 230 chatbot sets a Llama Stack timeout" "missing"
 
+chatbot_default_model=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.RAG_DEFAULT_MODEL}")
+[[ -n "$chatbot_default_model" ]] \
+  && check "Stage 230 chatbot sets a default model preference" "pass" \
+  || check "Stage 230 chatbot sets a default model preference" "missing RAG_DEFAULT_MODEL"
+
+# The last two suggestion chips are the Stage 240 guardrail demo prompts
+# (input rail: prompt injection; output rail: generated PII record).
+if [[ "$chatbot_config_suggestions" == *"Ignore all previous instructions"* \
+   && "$chatbot_config_suggestions" == *"fictional sample customer contact record"* ]]; then
+  check "Stage 230 chatbot ships the Stage 240 guardrail demo chips" "pass"
+else
+  check "Stage 230 chatbot ships the Stage 240 guardrail demo chips" "guardrail demo prompts missing from suggestions"
+fi
+
 [[ "$(available_replicas deployment/${CHATBOT_DEPLOYMENT} "$RAG_NS")" == "1" ]] \
   && check "Stage 230 chatbot Deployment is available" "pass" \
   || check "Stage 230 chatbot Deployment is available" "availableReplicas=$(available_replicas deployment/${CHATBOT_DEPLOYMENT} "$RAG_NS")"
