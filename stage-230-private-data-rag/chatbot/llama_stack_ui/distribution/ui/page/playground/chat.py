@@ -10,6 +10,7 @@ Provides both Direct mode (manual RAG) and Agent-based mode (automatic tool call
 """
 
 import logging
+import os
 from dataclasses import dataclass
 
 import streamlit as st
@@ -106,6 +107,12 @@ def fetch_models_and_tools():
         _get_model_id(model) for model in models
         if _get_model_type(model) == "llm" and _get_model_id(model) not in shields_set
     ]
+
+    # Put the preferred model first so the sidebar selectbox defaults to it
+    # (RAG_DEFAULT_MODEL is a substring match, e.g. "nemotron").
+    preferred = os.environ.get("RAG_DEFAULT_MODEL", "").strip().lower()
+    if preferred:
+        model_list.sort(key=lambda model_id: preferred not in model_id.lower())
 
     # Fetch and categorize toolgroups (gracefully handle servers without this API)
     tool_groups_list = []

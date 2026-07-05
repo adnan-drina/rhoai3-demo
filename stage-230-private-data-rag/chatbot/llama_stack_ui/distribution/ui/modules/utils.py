@@ -298,10 +298,11 @@ def run_input_shields(client, shield_ids, user_message):
     for shield_id in shield_ids:
         try:
             logger.debug("Running input shield: %s", shield_id)
+            # llama_stack_client 0.7.x run_shield() has no params argument;
+            # passing one raises TypeError and the shield silently fails open.
             shield_response = client.safety.run_shield(
                 shield_id=shield_id,
                 messages=[{"role": "user", "content": user_message}],
-                params={},
             )
             logger.debug("Input shield %s response: %s", shield_id, shield_response)
             if hasattr(shield_response, "violation") and shield_response.violation:
@@ -335,13 +336,14 @@ def run_output_shields(client, shield_ids, user_message, assistant_response):
     for shield_id in shield_ids:
         try:
             logger.debug("Running output shield: %s", shield_id)
+            # llama_stack_client 0.7.x run_shield() has no params argument;
+            # passing one raises TypeError and the shield silently fails open.
             shield_response = client.safety.run_shield(
                 shield_id=shield_id,
                 messages=[
                     {"role": "user", "content": user_message},
                     {"role": "assistant", "content": assistant_response},
                 ],
-                params={},
             )
             logger.debug("Output shield %s response: %s", shield_id, shield_response)
             if hasattr(shield_response, "violation") and shield_response.violation:

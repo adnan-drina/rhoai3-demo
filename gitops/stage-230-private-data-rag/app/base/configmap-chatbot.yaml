@@ -12,6 +12,9 @@ metadata:
 data:
   LLAMA_STACK_ENDPOINT: "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321"
   LLAMA_STACK_TIMEOUT: "600"
+  # Substring match against Llama Stack model ids; the matching model is
+  # sorted first so the sidebar selectbox defaults to it.
+  RAG_DEFAULT_MODEL: "nemotron"
   # The first four render immediately in the chat page grid; the rest sit
   # behind "Show More". Questions come from the committed AutoRAG
   # validate-and-protect benchmark so live answers match measured quality.
