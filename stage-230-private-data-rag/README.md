@@ -160,7 +160,15 @@ Kueue-managed RAG workloads. The UI is discovery-driven against the Stage
 - `RAG_QUESTION_SUGGESTIONS` seeds per-vector-store demo questions for the
   `stage230-rhoai-34-product-docs-kfp` store, drawn from the committed
   AutoRAG validate-and-protect benchmark so live answers match measured
-  pattern quality (Llama Stack RAG, AutoRAG, guardrails, EvalHub, Docling)
+  pattern quality (Llama Stack RAG, AutoRAG, guardrails, EvalHub, Docling);
+  chips 2 and 3 are Stage 240 guardrail demo prompts that trigger a live
+  input-rail and output-rail block when the `nemotron-3-nano-30b-a3b`
+  shield is selected
+- `RAG_DEFAULT_MODEL` (substring match, `nemotron`) puts the local governed
+  model first in the sidebar model selectbox
+- guardrail selectors in the sidebar run the Stage 240 NeMo shield on user
+  input and assistant output (see
+  `stage-240-guardrails-and-safety/README.md` for the demo script)
 - agent mode offers `mcp::openshift` tool calling through Stage 220's
   read-only OpenShift MCP server, registered as the `openshift` MCP
   connector in the Llama Stack config (`registered_resources.connectors`);
