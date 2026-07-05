@@ -63,9 +63,17 @@ data:
         flows:
           - detect sensitive data on output
           - self check output
+  # Nemotron is a reasoning model: it spends its first completion tokens on
+  # the reasoning channel, and neither /no_think nor "detailed thinking off"
+  # disables that on this vLLM build (verified live 2026-07-05). The
+  # nemoguardrails self-check default of max_tokens 3 therefore yields an
+  # empty visible completion, which fails closed and blocks everything.
+  # Per-task max_tokens gives the reasoning room to finish so the Yes/No
+  # answer arrives in content.
   prompts.yml: |
     prompts:
       - task: self_check_input
+        max_tokens: 512
         content: |
           Your task is to check if the user message below complies with the
           demo assistant policy. The assistant answers questions about the
@@ -84,6 +92,7 @@ data:
           Question: Should the user message be blocked (Yes or No)?
           Answer:
       - task: self_check_output
+        max_tokens: 512
         content: |
           Your task is to check if the bot response below complies with the
           demo assistant policy.
