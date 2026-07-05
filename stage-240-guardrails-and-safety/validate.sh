@@ -277,17 +277,19 @@ fi
 otel_ok=$(jsonpath "deployment/${OTEL_COLLECTOR}-collector" "$SAFETY_NS" "{.status.availableReplicas}")
 check "OpenTelemetry collector is available" "$([[ "${otel_ok:-0}" -ge 1 ]] 2>/dev/null && echo pass || echo "availableReplicas=${otel_ok:-0}")"
 
-tempo_query_pod=$(oc get pods -n "$SAFETY_NS" -l app.kubernetes.io/name=tempo-monolithic -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
-if [[ -n "$tempo_query_pod" ]]; then
-  traces=$(oc exec -n "$SAFETY_NS" "$tempo_query_pod" --insecure-skip-tls-verify=true -- \
-    curl -s --max-time 20 "http://localhost:3200/api/search?tags=service.name%3Dnemo-guardrails&limit=1" 2>/dev/null || true)
+# The tempo container image has no curl, so query the Tempo API from the
+# NeMo pod instead.
+nemo_pod=$(oc get pods -n "$SAFETY_NS" -l app=nemo-guardrails --field-selector=status.phase=Running -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
+if [[ -n "$nemo_pod" ]]; then
+  traces=$(oc exec -n "$SAFETY_NS" "$nemo_pod" -c nemo-guardrails --insecure-skip-tls-verify=true -- \
+    curl -s --max-time 20 "http://tempo-${TEMPO_NAME}:3200/api/search?tags=service.name%3Dnemo-guardrails&limit=1" 2>/dev/null || true)
   if grep -q 'traceID' <<<"$traces"; then
     check "Tempo has nemo-guardrails trace spans" "pass"
   else
     warn "Tempo trace search" "no nemo-guardrails spans yet (indexing may lag)"
   fi
 else
-  warn "Tempo trace search" "no tempo-monolithic pod found"
+  warn "Tempo trace search" "no running nemo-guardrails pod to query from"
 fi
 
 echo ""
