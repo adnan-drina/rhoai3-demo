@@ -236,7 +236,7 @@ lsd_config=$(oc get configmap lsd-enterprise-rag-config -n "$RAG_NS" -o json --i
 check "Stage 230 LSD config declares the NeMo safety provider" "$(grep -q 'remote::nvidia' <<<"$lsd_config" && echo pass || echo missing)"
 check "Stage 230 LSD config registers shield ${SHIELD_ID}" "$(grep -q "$SHIELD_ID" <<<"$lsd_config" && echo pass || echo missing)"
 
-lsd_pod=$(oc get pods -n "$RAG_NS" -l app.kubernetes.io/instance="$LSD_NAME" -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
+lsd_pod=$(oc get pods -n "$RAG_NS" -l app.kubernetes.io/instance="$LSD_NAME" --field-selector=status.phase=Running -o name --insecure-skip-tls-verify=true 2>/dev/null | head -1)
 if [[ -n "$lsd_pod" ]]; then
   shields_json=$(oc exec -n "$RAG_NS" "$lsd_pod" --insecure-skip-tls-verify=true -- \
     curl -s --max-time 20 http://localhost:8321/v1/shields 2>/dev/null || true)
