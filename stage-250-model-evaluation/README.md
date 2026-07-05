@@ -78,9 +78,13 @@ gains the `model-evaluation` subscription.
    `nemotron-safety-eval` LMEvalJob results (truthfulqa / arc_easy).
 4. Open **MLflow** and show the evaluation run recorded with its metrics —
    the reproducible evidence artifact.
-5. Frame it: this is what turns a governed, guarded model into a
-   *deployable* one — a scorecard, a threshold, and a tracked run, not a
-   spot check.
+5. Run `./submit-risk-assessment.sh` to launch the garak-kfp adversarial
+   red-team pipeline (visible as a KFP run in the dashboard) and show the
+   vulnerability findings — proving the Stage 240 guardrails hold under
+   attack.
+6. Frame it: this is what turns a governed, guarded model into a
+   *deployable* one — a scorecard, a threshold, a tracked run, and an
+   adversarial red-team, not a spot check.
 
 ## Scope And Limitations
 
@@ -90,10 +94,12 @@ gains the `model-evaluation` subscription.
 - MLflow is the **minimal dev pattern** (SQLite + PVC, single writer);
   production-scale MLflow (PostgreSQL + S3, HA) is the future
   `stage-430` scope. EvalHub metadata itself uses PostgreSQL.
-- **Automated risk assessment** (garak-kfp adversarial red-teaming through a
-  KFP pipeline) is deferred — it needs a pipeline server and judge model. It
-  would be the strongest tie-back to Stage 240 guardrails and is recorded in
-  the backlog.
+- **Automated risk assessment** (garak-kfp) is implemented: a stage-owned
+  DSPA pipeline server runs the two-phase adversarial red-team (synthetic
+  prompt generation via gpt-4o-mini, then garak attack probes against
+  Nemotron, judged by gpt-4o-mini). Run it on demand with
+  `./submit-risk-assessment.sh`. This is the guard→prove closure — it
+  adversarially tests the model the Stage 240 guardrails protect.
 - Evaluation is bursty; the demo uses small per-task `limit`s and a generous
   MaaSSubscription quota so a single-GPU run completes without 429s.
 

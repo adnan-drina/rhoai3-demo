@@ -112,7 +112,7 @@ errors, model-endpoint 401/429, MLflow auth, LMEvalJob stuck pending.
 
 | Item | Status |
 |------|--------|
-| Automated risk assessment (garak-kfp) | Deferred — needs a KFP pipeline server + judge model; strongest guardrails tie-back, backlog |
+| Automated risk assessment (garak-kfp) | **Implemented** — stage-owned DSPA + OBC, garak-kfp provider, gpt-4o-mini judge/SDG, submit-risk-assessment.sh. See the section below. |
 | Production MLflow (PostgreSQL + S3, HA) | Deferred — minimal SQLite+PVC now; future stage-430 |
 | Multi-model comparison (Nemotron vs gpt-4o-mini) | Deferred — user chose Nemotron-only; add a model ref + job later |
 | EvalHub OCI result export / S3 custom data | Deferred — not needed for the core scorecard demo |
@@ -192,10 +192,33 @@ DSC-level `eval.lmeval.permitOnline/permitCodeExecution` gate, the EvalHub
 HTTPS :8443 + bearer + X-Tenant auth, and the OOTB provider/collection
 label names.
 
-## Automated Risk Assessment (garak-kfp) — Implementation Assessment
+## Automated Risk Assessment (garak-kfp) — Implemented
 
-Deferred from this stage; assessed 2026-07-05. What it needs on top of the
-current stage:
+Added 2026-07-05. A stage-owned DSPA (`dspa-model-evaluation`, MariaDB +
+NooBaa S3) runs the two-phase adversarial pipeline; `garak-kfp` is in the
+EvalHub providers; `gpt-4o-mini` is the judge/SDG model (added to the
+`model-evaluation` MaaSSubscription); `submit-risk-assessment.sh` POSTs the
+`intents` benchmark to `/api/v1/evaluations/jobs` and polls. Live findings
+resolved during bring-up:
+
+1. **EvalHub REST job endpoint is `/api/v1/evaluations/jobs`** (POST/GET),
+   not `/api/v1/evaluations`.
+2. **KFP API RBAC**: the adapter runs as the operator-provisioned tenant SA
+   `evalhub-model-evaluation-job` and is `403`'d on the DSPA unless bound to
+   the operator-created `ds-pipeline-user-access-dspa-model-evaluation` Role
+   (SAR on `datasciencepipelinesapplications/api`, scoped to the DSPA name).
+3. **Full S3 connection Secret**: the garak pipeline needs
+   `AWS_S3_ENDPOINT`/`AWS_S3_BUCKET`/`AWS_DEFAULT_REGION`, richer than the
+   NooBaa access-key-only Secret — deploy.sh composes `model-evaluation-s3`.
+4. **HTTP S3, not HTTPS**: the KFP launcher's S3 client does not read the
+   injected service CA (x509 "unknown authority"), and garak is an
+   operator-generated pipeline that cannot carry a per-task `SSL_CERT_FILE`.
+   The DSPA object storage and the garak S3 Secret use the NooBaa HTTP
+   endpoint (port 80) — the same resolution as the Stage 230 AutoRAG
+   pipeline S3.
+
+Original assessment (retained for reference) — what it needs on top of the
+core stage:
 
 - **A KFP pipeline server (DSPA).** `aipipelines` is already `Managed`.
   Either reuse the Stage 230 `dspa-enterprise-rag` (endpoint
