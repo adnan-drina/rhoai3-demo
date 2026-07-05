@@ -1253,6 +1253,46 @@ Legacy Stage 230 operations content remains available in Git history and in the
 pre-reset commits. The old backup tree under
 `backup/legacy-implementation-2026-06-09/` is for historical reference only.
 
+## Monitoring And Demo Warm-Up
+
+The serving dashboards (`vLLM Model Serving Baseline`, `LLM Inference
+Performance` in the RHOAI Demo Grafana) are driven by live `vllm:*` metrics
+scraped through User Workload Monitoring from the KServe-generated monitor in
+`models-as-a-service`. Most panels are `rate()`-based, so **they read "No
+data" when the model is idle or parked** — this is expected, not a fault.
+
+Before demoing the dashboards:
+
+1. Confirm the model is un-parked (see the stage 220/240 un-park steps).
+2. Generate a short burst of traffic ~2–5 minutes before showing the panels,
+   for example by clicking a few chatbot suggestion chips, or:
+
+   ```bash
+   ROUTE=$(oc get route nemo-guardrails -n ai-safety -o jsonpath='{.status.ingress[0].host}')
+   for i in $(seq 1 5); do
+     curl -sk -X POST "https://${ROUTE}/v1/chat/completions" \
+       -H "Content-Type: application/json" \
+       -H "Authorization: Bearer $(oc whoami -t)" \
+       -d '{"model":"nemotron-3-nano-30b-a3b","messages":[{"role":"user","content":"Describe OpenShift AI in two sentences."}],"guardrails":{"config_id":"demo-safety"}}' \
+       -o /dev/null -w "warm-up %{http_code}\n"
+   done
+   ```
+
+3. In the `vLLM Model Serving Baseline` dashboard, the model variable is a
+   dynamic query (defaults to All); pick `nemotron-3-nano-30b-a3b` or leave
+   All. Set the time range to Last 15 minutes so the burst is in view.
+
+Serving-health alerts (`vllm-serving-health` PrometheusRule in
+`models-as-a-service`, evaluated by UWM) fire on sustained high TTFT, request
+queue backlog, and KV-cache pressure — the same signals the capacity
+benchmark measures. `VLLMModelServingDown` is informational and expected
+while the model is intentionally parked.
+
+Guardrail RED metrics: the stage 240 OTel collector runs a spanmetrics
+connector, so guardrail rail rate/latency/blocks are available in Prometheus
+as `traces_span_metrics_*` (scraped via the `guardrails-spanmetrics`
+PodMonitor) in addition to the raw traces in Tempo.
+
 ## Stage 240: Guardrails and Safety
 
 Stage 240 runs the NeMo Guardrails service (`nemo-guardrails` in `ai-safety`)

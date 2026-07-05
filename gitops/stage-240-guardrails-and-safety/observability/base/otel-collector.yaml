@@ -11,12 +11,20 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  # Receives OTLP spans from the NeMo Guardrails service and forwards them
-  # through the multitenant Tempo gateway (tenant ai-safety) with the
-  # collector ServiceAccount token; the gateway authorizes the write via
-  # SubjectAccessReview (tempo-tenant-rbac.yaml).
+  # Receives OTLP spans from the NeMo Guardrails service, forwards them to
+  # the multitenant Tempo gateway (tenant ai-safety) for trace storage, AND
+  # derives RED metrics (rate/errors/duration) per span with the spanmetrics
+  # connector so guardrail rail decisions are queryable in Prometheus and
+  # Grafana, not only in traces. The collector token authorizes the Tempo
+  # write via SubjectAccessReview (tempo-tenant-rbac.yaml); User Workload
+  # Monitoring scrapes the Prometheus exporter (podmonitor-guardrails.yaml).
   mode: deployment
   replicas: 1
+  observability:
+    metrics:
+      # Do not let the operator create a ServiceMonitor for the collector's
+      # own telemetry; the stage owns the guardrails-metrics PodMonitor.
+      enableMetrics: false
   config:
     extensions:
       bearertokenauth:
@@ -28,6 +36,17 @@ spec:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
+    connectors:
+      spanmetrics:
+        # Keep the rail/action name and outcome as metric dimensions so a
+        # dashboard can break blocks down by which rail fired.
+        dimensions:
+          - name: rail.name
+          - name: action.name
+        histogram:
+          explicit:
+            buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s]
+        metrics_flush_interval: 15s
     processors:
       batch: {}
     exporters:
@@ -39,6 +58,10 @@ spec:
           X-Scope-OrgID: ai-safety
         tls:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+      prometheus:
+        endpoint: 0.0.0.0:8889
+        resource_to_telemetry_conversion:
+          enabled: true
     service:
       extensions:
         - bearertokenauth
@@ -50,3 +73,9 @@ spec:
             - batch
           exporters:
             - otlp
+            - spanmetrics
+        metrics:
+          receivers:
+            - spanmetrics
+          exporters:
+            - prometheus

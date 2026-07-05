@@ -20,3 +20,4 @@ resources:
   - policies/base
   - mcp/base
   - jobs/base
+  - monitoring/base

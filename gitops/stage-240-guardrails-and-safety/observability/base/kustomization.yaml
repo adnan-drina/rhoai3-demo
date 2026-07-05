@@ -5,4 +5,5 @@ resources:
   - tempo.yaml
   - tempo-tenant-rbac.yaml
   - otel-collector.yaml
+  - podmonitor-guardrails.yaml
   - uiplugin-distributed-tracing.yaml

@@ -33,15 +33,23 @@ GUIDELLM_PROFILE="${RHOAI_GUIDELLM_PROFILE:-users}"
 GUIDELLM_RATE_TYPE="${RHOAI_GUIDELLM_RATE_TYPE:-}"
 GUIDELLM_RATE="${RHOAI_GUIDELLM_RATE:-}"
 GUIDELLM_MAX_SECONDS="${RHOAI_GUIDELLM_MAX_SECONDS:-60}"
-GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-/data/prompts.csv}"
+# Default to GuideLLM synthetic data: controlled, reproducible token shapes
+# are the right load model for capacity planning and remove any dependency
+# on a namespace-local prompt PVC. RAG-chatbot-shaped prompts (~1200 input
+# tokens of retrieved context, ~256 output tokens) approximate a guarded
+# answer turn. Override RHOAI_GUIDELLM_DATA with /data/prompts.csv (plus
+# RHOAI_GUIDELLM_DATA_PVC) to replay a fixed corpus instead.
+GUIDELLM_DATA="${RHOAI_GUIDELLM_DATA:-prompt_tokens=1200,output_tokens=256}"
 GUIDELLM_OUTPUTS="${RHOAI_GUIDELLM_OUTPUTS:-benchmark-results.json,benchmark-results.csv}"
 GUIDELLM_DATA_PVC="${RHOAI_GUIDELLM_DATA_PVC:-benchmark-data}"
 GUIDELLM_TIMEOUT="${RHOAI_GUIDELLM_TIMEOUT:-40m}"
 KEEP_RESOURCES="${RHOAI_GUIDELLM_KEEP_RESOURCES:-false}"
-# Direct engine endpoint (LLMInferenceService workload Service). Override
+# Direct engine endpoint (LLMInferenceService workload Service). The KServe
+# workload Service terminates TLS on 8000 (self-signed), so the target is
+# https and the job disables cert verification. Override
 # RHOAI_GUIDELLM_TARGET to benchmark another path (for example the MaaS
 # gateway, which measures governance quotas rather than the model).
-GUIDELLM_TARGET="${RHOAI_GUIDELLM_TARGET:-http://${MODEL_NAME}-kserve-workload-svc.${MODEL_NS}.svc.cluster.local:8000/v1}"
+GUIDELLM_TARGET="${RHOAI_GUIDELLM_TARGET:-https://${MODEL_NAME}-kserve-workload-svc.${MODEL_NS}.svc.cluster.local:8000/v1}"
 
 case "$GUIDELLM_PROFILE" in
   users)
@@ -127,6 +135,23 @@ spec:
       storage: 5Gi
 EOF
 
+# The prompt data PVC is mounted only when replaying a /data/* file corpus;
+# synthetic data (the default) needs no volume.
+DATA_MOUNT=""
+DATA_VOLUME=""
+if [[ "$GUIDELLM_DATA" == /data/* ]]; then
+  DATA_MOUNT=$'            - name: data\n              mountPath: /data\n              readOnly: true'
+  DATA_VOLUME=$'        - name: data\n          persistentVolumeClaim:\n            claimName: '"${GUIDELLM_DATA_PVC}"
+fi
+
+# The KServe workload Service uses a self-signed cert; disable GuideLLM's
+# httpx verification for https targets (demo self-signed policy). Passed as
+# an extra arg pair only when needed so http targets stay unaffected.
+BACKEND_ARGS_MOUNT=""
+if [[ "$GUIDELLM_TARGET" == https://* ]]; then
+  BACKEND_ARGS_MOUNT=$'            - --backend-args\n            - \'{"verify": false}\''
+fi
+
 echo "── Running GuideLLM benchmark job ──"
 echo "  Target:  ${GUIDELLM_TARGET}"
 echo "  Data:    ${GUIDELLM_DATA}"
@@ -172,6 +197,7 @@ spec:
             - "${MODEL_ID}"
             - --processor
             - "${GUIDELLM_PROCESSOR}"
+${BACKEND_ARGS_MOUNT}
             - --data
             - '${GUIDELLM_DATA}'
             - --rate-type
@@ -189,18 +215,14 @@ spec:
               mountPath: /tmp/hf-cache
             - name: results
               mountPath: /results
-            - name: data
-              mountPath: /data
-              readOnly: true
+${DATA_MOUNT}
       volumes:
         - name: cache
           emptyDir: {}
         - name: results
           persistentVolumeClaim:
             claimName: ${PVC_NAME}
-        - name: data
-          persistentVolumeClaim:
-            claimName: ${GUIDELLM_DATA_PVC}
+${DATA_VOLUME}
 EOF
 
 if ! oc wait -n "$MODEL_NS" --for=condition=complete "job/${JOB_NAME}" \

@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: guardrails-spanmetrics
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: guardrails-spanmetrics
+    app.kubernetes.io/component: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # User Workload Monitoring scrapes the collector's spanmetrics Prometheus
+  # exporter so guardrail RED metrics (traces_span_metrics_*) land in Thanos
+  # alongside the vLLM serving metrics.
+  namespaceSelector:
+    matchNames:
+      - ai-safety
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: opentelemetry-collector
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 30s
+      path: /metrics
