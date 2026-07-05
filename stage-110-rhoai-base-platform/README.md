@@ -150,6 +150,19 @@ Extended by later stages
 
 ---
 
+## Demo
+
+| Screenshot | What it shows |
+|------------|---------------|
+| ![Login](../docs/assets/demos/stage-110/01-login-identity-providers.png) | OpenShift login with htpasswd identity providers (ai-developer, ai-admin) |
+| ![Dashboard](../docs/assets/demos/stage-110/02-dashboard-home.png) | RHOAI Dashboard home after first login |
+| ![Project](../docs/assets/demos/stage-110/03-demo-sandbox-project.png) | Demo Sandbox data science project overview |
+| ![Connections](../docs/assets/demos/stage-110/04-connections-tab.png) | S3 object storage connection (OBC-sourced) |
+| ![Model Registry](../docs/assets/demos/stage-110/05-model-registry.png) | AI Hub Models catalog with validated models |
+| ![Argo CD](../docs/assets/demos/stage-110/06-argocd-applications.png) | Argo CD applications managing GitOps state |
+
+---
+
 ## References
 
 | Source | Role |

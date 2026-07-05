@@ -182,6 +182,17 @@ them whenever the model, runtime, GPU shape, or prompt profile changes.
 
 ---
 
+## Demo
+
+| Screenshot | What it shows |
+|------------|---------------|
+| ![Grafana folder](../docs/assets/demos/stage-210/01-grafana-dashboards.png) | RHOAI Demo Grafana folder with LLM Performance and vLLM Baseline dashboards |
+| ![LLM Performance](../docs/assets/demos/stage-210/02-llm-performance-dashboard.png) | Live LLM Inference Performance: TTFT (P50 ~67ms), ITL (P50 ~5ms), KV Cache metrics |
+| ![Nemotron pods](../docs/assets/demos/stage-210/03-nemotron-pods-running.png) | Nemotron 3 Nano 30B pods running in models-as-a-service (7.5 GiB VRAM) |
+| ![Deployments](../docs/assets/demos/stage-210/04-model-deployments.png) | RHOAI AI Hub Deployments tab showing active KServe model serving |
+
+---
+
 ## References
 
 | Source | Role |

@@ -331,6 +331,16 @@ RHOAI_STAGE230_RUN_AUTORAG=true \
 ./stage-230-private-data-rag/validate.sh
 ```
 
+## Demo
+
+| Screenshot | What it shows |
+|------------|---------------|
+| ![Chatbot home](../docs/assets/demos/stage-230/01-rag-chatbot-home.png) | Llama Stack RAG chatbot (Streamlit) ready for questions |
+| ![RAG response](../docs/assets/demos/stage-230/02-rag-question-and-response.png) | Contextual answer to RHOAI platform question with source citations |
+| ![Sources](../docs/assets/demos/stage-230/03-rag-answer-with-sources.png) | Expanded source document references from RHOAI product docs |
+| ![Project](../docs/assets/demos/stage-230/04-enterprise-rag-project.png) | Enterprise RAG data science project overview |
+| ![Deployments](../docs/assets/demos/stage-230/05-deployments-reranker-embedders.png) | Reranker and embedder model deployments powering the RAG pipeline |
+
 ## References
 
 - [Build an enterprise RAG system with OGX](https://developers.redhat.com/articles/2026/05/26/build-enterprise-rag-system-ogx)

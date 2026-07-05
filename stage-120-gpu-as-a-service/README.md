@@ -146,6 +146,18 @@ access through Models-as-a-Service.
 
 ---
 
+## Demo
+
+| Screenshot | What it shows |
+|------------|---------------|
+| ![Workbench form](../docs/assets/demos/stage-120/01-create-workbench-form.png) | Create workbench form with deployment size section |
+| ![Hardware profiles](../docs/assets/demos/stage-120/02-hardware-profiles-dropdown.png) | Hardware profile dropdown showing GPU options |
+| ![GPU selected](../docs/assets/demos/stage-120/03-gpu-shared-selected.png) | GPU Shared Time-Slicing profile selected |
+| ![MachineSet](../docs/assets/demos/stage-120/04-machineset-gpu-node.png) | GPU MachineSet managing the g5.2xlarge node |
+| ![Kueue](../docs/assets/demos/stage-120/05-kueue-clusterqueues.png) | Kueue ClusterQueues for GPU quota management |
+
+---
+
 ## References
 
 | Source | Role |

@@ -124,3 +124,14 @@ automation. External GPT can complete tightly bounded MCP calls, but broad
 OpenShift MCP prompts can send large tool schemas or results to the external
 provider and hit provider token limits; use Nemotron for the standard MCP demo
 flow.
+
+---
+
+## Demo
+
+| Screenshot | What it shows |
+|------------|---------------|
+| ![Playground](../docs/assets/demos/stage-220/01-playground-demo-sandbox.png) | GenAI Playground entry — project-scoped model interaction surface |
+| ![Gateway](../docs/assets/demos/stage-220/02-maas-gateway.png) | MaaS default Gateway (data-science-gateway-class) with AWS ELB address |
+| ![HTTPRoutes](../docs/assets/demos/stage-220/03-maas-httproutes.png) | HTTPRoutes: local Nemotron + external GPT-4o-mini path-based routing |
+| ![AuthPolicy](../docs/assets/demos/stage-220/04-authpolicy-nemotron.png) | Kuadrant AuthPolicy enforcing API-key and token authentication |
