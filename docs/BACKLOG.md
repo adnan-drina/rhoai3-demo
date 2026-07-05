@@ -199,12 +199,25 @@ PostgreSQL. Scope, live-verified schemas, and deferrals in
 
 ### Open / deferred from Stage 250
 
+Enhancement themes are backed by the Red Hat Developer EvalHub series
+(2026-05/06): evaluation-driven development, collections, BYOF, CI/CD, OCI
+immutable records, Kueue-at-scale, and protected model servers.
+
 | Item | Priority | Notes |
 |------|----------|-------|
 | Automated risk assessment (garak-kfp) | medium | Adversarial red-teaming through a KFP pipeline + judge model; strongest tie-back to Stage 240 guardrails. Needs a DSPA/pipeline server. |
+| Custom evaluation collection for the RAG assistant | medium | Author a `user`-scoped collection (weighted benchmarks + per-benchmark and collection pass thresholds) tuned to the demo's assistant use case, via ConfigMap/CLI — "understanding evaluation collections". |
+| EvalHub OCI immutable evaluation records | medium | Export weighted results to an OCI registry with SHA256 tags, embedding the evaluation record in the ModelCar — tamper-evident governance evidence ("store immutable AI evaluation records"). Needs the S3/OCI surface deferred here. |
+| EvalHub in CI/CD | medium | Gate model promotion on a collection pass in a pipeline — "add automated AI evaluations to your CI/CD pipeline". |
+| Kueue-managed evaluation workloads at scale | low | Route EvalHub jobs through the Stage 120 Kueue quotas for fair scheduling — "manage LLM evaluation workloads at scale with EvalHub and Kueue". |
+| Bring-your-own evaluation framework (BYOF) | low | Custom adapter via the EvalHub SDK `FrameworkAdapter` — "bring your own evaluation framework". |
 | Production MLflow (PostgreSQL + S3, HA) | medium | Minimal SQLite+PVC now; production storage is future `stage-430-mlflow-experiment-tracking`, which now narrows to advanced MLflow lifecycle / model-registry integration since 250 delivers the MLflow foundation. |
 | Multi-model evaluation (Nemotron vs gpt-4o-mini) | low | User chose Nemotron-only; add a model ref + second job for a head-to-head scorecard. |
-| EvalHub OCI result export / S3 custom data | low | Not needed for the core scorecard demo. |
+
+Aligned with the series already: protected model servers (EvalHub reaches the
+governed Nemotron through the MaaS proxy + minted key / job SA token);
+evaluation-driven development (README framing); the OOTB
+`safety-and-fairness-v1` collection with pass thresholds.
 
 ## Candidate Future Stages
 

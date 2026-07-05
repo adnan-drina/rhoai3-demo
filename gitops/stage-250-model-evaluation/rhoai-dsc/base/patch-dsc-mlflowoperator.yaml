@@ -72,7 +72,14 @@ spec:
             - -c
             - |
               set -euo pipefail
+              # Enable the MLflow operator, and permit LMEval online access +
+              # code execution (needed to download public tokenizers and
+              # benchmark datasets from Hugging Face; the job pods are offline
+              # by default). This is the supported DSC-level toggle
+              # (spec.components.trustyai.eval.lmeval); trustyai itself is
+              # already Managed from Stage 240.
               oc patch datasciencecluster default-dsc --type=merge -p \
-                '{"spec":{"components":{"mlflowoperator":{"managementState":"Managed"}}}}'
-              oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.mlflowoperator.managementState}'
+                '{"spec":{"components":{"mlflowoperator":{"managementState":"Managed"},"trustyai":{"eval":{"lmeval":{"permitOnline":"allow","permitCodeExecution":"allow"}}}}}}'
+              oc get datasciencecluster default-dsc \
+                -o jsonpath='mlflow={.spec.components.mlflowoperator.managementState} online={.spec.components.trustyai.eval.lmeval.permitOnline}'
               echo
