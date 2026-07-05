@@ -104,9 +104,9 @@ Key demo behaviors on top of upstream:
   a log warning — invisible in the UI. Verify shield behavior through the
   app's own helpers (`run_input_shields` / `run_output_shields` via
   `oc exec` + python), not just the server REST API
-- suggestion chips 2 and 3 are Stage 240 guardrail demo prompts (input
-  rail: prompt injection; output rail: generated PII record) — keep them
-  aligned with the demo script in
+- the last two suggestion chips are Stage 240 guardrail demo prompts
+  (input rail: prompt injection; output rail: generated PII record) — keep
+  them aligned with the demo script in
   `stage-240-guardrails-and-safety/README.md`
 
 ## When To Use
@@ -158,7 +158,7 @@ load. The grid shows four questions, more behind "Show More".
 2. Prefer questions from the committed AutoRAG benchmark
    (`stage-230-private-data-rag/data/rhoai-product-docs/autorag/benchmark_data.json`)
    so live answers match measured pattern quality. Keep the two Stage 240
-   guardrail demo chips (positions 2–3: prompt-injection input block and
+   guardrail demo chips (last two entries: prompt-injection input block and
    generated-PII output block) unless the guardrails demo is retired with
    them.
 3. Argo CD applies the ConfigMap; restart the deployment to reload env:

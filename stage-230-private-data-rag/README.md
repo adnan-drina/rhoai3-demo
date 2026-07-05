@@ -161,8 +161,8 @@ Kueue-managed RAG workloads. The UI is discovery-driven against the Stage
   `stage230-rhoai-34-product-docs-kfp` store, drawn from the committed
   AutoRAG validate-and-protect benchmark so live answers match measured
   pattern quality (Llama Stack RAG, AutoRAG, guardrails, EvalHub, Docling);
-  chips 2 and 3 are Stage 240 guardrail demo prompts that trigger a live
-  input-rail and output-rail block when the `nemotron-3-nano-30b-a3b`
+  the last two chips are Stage 240 guardrail demo prompts that trigger a
+  live input-rail and output-rail block when the `nemotron-3-nano-30b-a3b`
   shield is selected
 - `RAG_DEFAULT_MODEL` (substring match, `nemotron`) puts the local governed
   model first in the sidebar model selectbox

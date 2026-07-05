@@ -127,11 +127,11 @@ against the deployed stage on 2026-07-05 through the chatbot's own shield
 code path; beat 6 generates the record (and gets blocked) in both Direct
 and Agent mode, with or without a collection selected.
 
-Beats 2 and 6 also ship as the second and third **predefined suggestion
-chips** on the chat page (with the product-docs collection selected), so
-the guardrail demo is one click each: chip 1 asks the assistant *about*
-safety controls (benign RAG answer from the guardrails guide), chip 2
-triggers the input rail, chip 3 triggers the output rail.
+Beats 2 and 6 also ship as the **last two predefined suggestion chips** on
+the chat page (behind "Show More", with the product-docs collection
+selected), so the guardrail demo is one click each after the passing
+benchmark questions: the injection chip triggers the input rail, the
+customer-record chip triggers the output rail.
 
 Follow-up material for questions:
 
