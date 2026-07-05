@@ -46,3 +46,4 @@ spec:
         - /spec/components/kserve
         - /spec/components/llamastackoperator
         - /spec/components/aipipelines
+        - /spec/components/trustyai
