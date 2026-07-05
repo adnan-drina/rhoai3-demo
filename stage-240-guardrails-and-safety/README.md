@@ -147,9 +147,10 @@ Follow-up material for questions:
 
 Honesty notes for the presenter: detector verdicts have false positives
 (Presidio person-name detection is aggressive; the self-check verdict is an
-LLM judgment), and the chatbot fails open if the guardrails service is
-unreachable (shield errors are logged and skipped) — production hardening
-would fail closed.
+LLM judgment). If the guardrails service is unreachable the chatbot **fails
+closed** — it blocks the turn with a "guardrail check unavailable" message
+rather than answering unscreened (`RAG_SHIELD_FAIL_MODE=open` reverts to
+answer-anyway for availability-first demos).
 
 ## Limitations And Expectations
 

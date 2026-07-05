@@ -16,6 +16,17 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+# When a shield call errors (guardrails service unreachable, protocol
+# mismatch, etc.), fail closed by default: block the turn with a visible
+# message rather than letting unscreened content through. Set
+# RAG_SHIELD_FAIL_MODE=open to keep the demo answering when guardrails are
+# down. A silent fail-open once hid a broken client call for a whole session.
+SHIELD_FAIL_CLOSED = os.environ.get("RAG_SHIELD_FAIL_MODE", "closed").strip().lower() != "open"
+SHIELD_ERROR_MESSAGE = (
+    "Guardrail check unavailable, so this message was blocked for safety. "
+    "Retry shortly or contact an administrator if this persists."
+)
+
 """
 Utility functions for file processing and data conversion in the UI.
 """
@@ -314,6 +325,8 @@ def run_input_shields(client, shield_ids, user_message):
             logger.debug("Input shield %s passed (no violation)", shield_id)
         except Exception as e:
             logger.warning("Error running input shield %s: %s", shield_id, e)
+            if SHIELD_FAIL_CLOSED:
+                return True, SHIELD_ERROR_MESSAGE, shield_id
     return False, None, None
 
 
@@ -355,6 +368,8 @@ def run_output_shields(client, shield_ids, user_message, assistant_response):
             logger.debug("Output shield %s passed (no violation)", shield_id)
         except Exception as e:
             logger.warning("Error running output shield %s: %s", shield_id, e)
+            if SHIELD_FAIL_CLOSED:
+                return True, SHIELD_ERROR_MESSAGE, shield_id
     return False, None, None
 
 

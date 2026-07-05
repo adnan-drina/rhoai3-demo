@@ -77,8 +77,8 @@ Llama Stack service: lsd-enterprise-rag-service.enterprise-rag.svc:8321
 Demo vector store: stage230-rhoai-34-product-docs-kfp (pgvector)
 Generation: nemotron-3-nano-30b-a3b and governed gpt-4o-mini through MaaS
 MCP: mcp::openshift toolgroup name in the UI -> `openshift` connector on the server
-Config surface: LLAMA_STACK_ENDPOINT, LLAMA_STACK_TIMEOUT, RAG_QUESTION_SUGGESTIONS, RAG_DEFAULT_MODEL
-Guardrails: shield nemotron-3-nano-30b-a3b (Stage 240 NeMo via remote::nvidia)
+Config surface: LLAMA_STACK_ENDPOINT, LLAMA_STACK_TIMEOUT, RAG_QUESTION_SUGGESTIONS, RAG_DEFAULT_MODEL, RAG_SHIELD_FAIL_MODE
+Guardrails: shield nemotron-3-nano-30b-a3b (Stage 240 NeMo via remote::nvidia); fail-closed on shield error by default
 ```
 
 Key demo behaviors on top of upstream:
@@ -100,10 +100,11 @@ Key demo behaviors on top of upstream:
 - guardrail selectors run the Stage 240 shield around every turn.
   `client.safety.run_shield()` in llama_stack_client 0.7.x accepts only
   `shield_id` and `messages`; passing the older `params` argument raises
-  TypeError before any network call and the shield **fails open** with only
-  a log warning — invisible in the UI. Verify shield behavior through the
-  app's own helpers (`run_input_shields` / `run_output_shields` via
-  `oc exec` + python), not just the server REST API
+  TypeError before any network call. On a shield error the helpers **fail
+  closed** by default (block the turn with a visible message);
+  `RAG_SHIELD_FAIL_MODE=open` restores the answer-anyway behavior. Verify
+  shield behavior through the app's own helpers (`run_input_shields` /
+  `run_output_shields` via `oc exec` + python), not just the server REST API
 - the last two suggestion chips are Stage 240 guardrail demo prompts
   (input rail: prompt injection; output rail: generated PII record) — keep
   them aligned with the demo script in

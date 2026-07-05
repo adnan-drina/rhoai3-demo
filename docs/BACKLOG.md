@@ -181,7 +181,7 @@ shared-owner touches, live findings, and the retrospective are recorded in
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Chatbot fail-closed shield hardening | medium | The vendored UI logs and skips shield errors (fail open), which hid a broken client call for a full session. Production posture should fail closed or at least surface the error in the UI. |
+| Chatbot fail-closed shield hardening | done 2026-07-05 | The vendored UI now fails closed on a shield error (blocks with a visible "guardrail unavailable" message); `RAG_SHIELD_FAIL_MODE=open` restores answer-anyway. Earlier a silent fail-open hid a broken client call for a full session. |
 | Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it (guide recommends Qwen3-14B as judge starting point). |
 | PII masking mode, retrieval rails, library hate/profanity flows | low | Blocking-only demo scope; retrieval rails blocked by the Llama Stack shield API passing messages, not chunks. |
 | Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-250-model-evaluation`. |
