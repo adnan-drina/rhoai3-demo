@@ -93,7 +93,7 @@ echo "  target: ${TARGET_MODEL} | judge/sdg: ${JUDGE_MODEL}"
 echo "  kfp: ${KFP_ENDPOINT}"
 
 resp=$(oc exec -n "$EVAL_NS" "$EVALHUB_POD" --insecure-skip-tls-verify=true -- \
-  curl -sk --max-time 60 -X POST https://localhost:8443/api/v1/evaluations \
+  curl -sk --max-time 60 -X POST https://localhost:8443/api/v1/evaluations/jobs \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "X-Tenant: ${EVAL_NS}" \
   -H "Content-Type: application/json" \
@@ -112,7 +112,7 @@ elapsed=0
 while (( elapsed < POLL_TIMEOUT )); do
   status=$(oc exec -n "$EVAL_NS" "$EVALHUB_POD" --insecure-skip-tls-verify=true -- \
     curl -sk --max-time 30 -H "Authorization: Bearer ${TOKEN}" -H "X-Tenant: ${EVAL_NS}" \
-    "https://localhost:8443/api/v1/evaluations/${job_id}" 2>/dev/null || true)
+    "https://localhost:8443/api/v1/evaluations/jobs/${job_id}" 2>/dev/null || true)
   state=$(jq -r '.status // .resource.status // .state // empty' <<<"$status" 2>/dev/null || true)
   echo "  [$elapsed s] state=${state:-unknown}"
   case "$state" in
