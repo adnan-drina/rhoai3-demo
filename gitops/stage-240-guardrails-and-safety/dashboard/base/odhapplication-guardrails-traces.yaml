@@ -1,0 +1,38 @@
+apiVersion: dashboard.opendatahub.io/v1
+kind: OdhApplication
+metadata:
+  name: rhoai-demo-guardrails-traces
+  namespace: redhat-ods-applications
+  labels:
+    app: odh-dashboard
+    app.kubernetes.io/name: guardrails-traces
+    app.kubernetes.io/component: dashboard-tile
+    app.kubernetes.io/part-of: odh-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  displayName: RHOAI Demo Guardrails Traces
+  description: Inspect NeMo Guardrails rail execution and LLM latency in Jaeger.
+  provider: rhoai3-demo
+  support: Self-managed by the demo team
+  category: Self-managed
+  docsLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-240-guardrails-and-safety
+  getStartedLink: https://github.com/adnan-drina/rhoai3-demo/tree/main/stage-240-guardrails-and-safety
+  getStartedMarkDown: |-
+    # RHOAI Demo Guardrails Traces
+
+    Open the Jaeger UI for the Stage 240 TempoMonolithic instance and search
+    for the `nemo-guardrails` service to inspect rail execution order,
+    self-check LLM call latency, and block decisions for guarded requests.
+  img: |-
+    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Guardrails traces">
+      <rect width="48" height="48" rx="8" fill="#ee0000"/>
+      <rect x="10" y="14" width="22" height="4" rx="2" fill="#ffffff"/>
+      <rect x="14" y="22" width="18" height="4" rx="2" fill="#ffffff" opacity="0.85"/>
+      <rect x="18" y="30" width="20" height="4" rx="2" fill="#ffffff" opacity="0.7"/>
+    </svg>
+  route: tempo-guardrails-jaegerui
+  routeNamespace: ai-safety
+  kfdefApplications: []
+  csvName: ""
+  quickStart: ""

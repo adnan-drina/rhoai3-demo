@@ -43,3 +43,11 @@ spec:
       namespace: ai-safety
       jsonPointers:
         - /data
+    # The Jaeger UI route hostname is cluster-specific and created by the
+    # Tempo Operator; the patch-jaeger-consolelink sync Job injects it after
+    # the route exists (stage-210 Grafana ConsoleLink pattern).
+    - group: console.openshift.io
+      kind: ConsoleLink
+      name: rhoai-demo-guardrails-jaeger-link
+      jsonPointers:
+        - /spec/href

@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patch-jaeger-consolelink
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: job
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patch-jaeger-consolelink-route-reader
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups:
+      - route.openshift.io
+    resources:
+      - routes
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patch-jaeger-consolelink-route-reader
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patch-jaeger-consolelink-route-reader
+subjects:
+  - kind: ServiceAccount
+    name: patch-jaeger-consolelink
+    namespace: ai-safety
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rhoai-demo-patch-jaeger-consolelink
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consolelinks
+    verbs:
+      - get
+      - patch
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhoai-demo-patch-jaeger-consolelink
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhoai-demo-patch-jaeger-consolelink
+subjects:
+  - kind: ServiceAccount
+    name: patch-jaeger-consolelink
+    namespace: ai-safety
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-jaeger-consolelink
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: patch-jaeger-consolelink
+    app.kubernetes.io/component: job
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 8
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: guardrails
+        app.kubernetes.io/name: patch-jaeger-consolelink
+    spec:
+      serviceAccountName: patch-jaeger-consolelink
+      restartPolicy: Never
+      containers:
+        - name: patch
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              route_host=""
+              for i in $(seq 1 60); do
+                route_host=$(oc get route tempo-guardrails-jaegerui -n ai-safety -o jsonpath='{.spec.host}' 2>/dev/null || true)
+                if [[ -n "${route_host}" ]]; then
+                  break
+                fi
+                echo "Waiting for the Jaeger UI route... (${i}/60)"
+                sleep 10
+              done
+              if [[ -z "${route_host}" ]]; then
+                echo "ERROR: route tempo-guardrails-jaegerui did not appear in ai-safety." >&2
+                exit 1
+              fi
+
+              oc patch consolelink rhoai-demo-guardrails-jaeger-link --type=merge \
+                -p "{\"spec\":{\"href\":\"https://${route_host}\"}}"
+              oc get consolelink rhoai-demo-guardrails-jaeger-link -o jsonpath='{.spec.href}'
+              echo

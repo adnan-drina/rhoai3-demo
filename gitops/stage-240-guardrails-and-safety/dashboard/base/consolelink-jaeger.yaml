@@ -1,0 +1,19 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: rhoai-demo-guardrails-jaeger-link
+  labels:
+    app.kubernetes.io/name: guardrails-jaeger-link
+    app.kubernetes.io/component: console-link
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  applicationMenu:
+    section: RHOAI Demo
+    imageURL: data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Ikd1YXJkcmFpbHMgdHJhY2VzIj4KICA8cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHJ4PSI4IiBmaWxsPSIjZWUwMDAwIi8+CiAgPHJlY3QgeD0iMTAiIHk9IjE0IiB3aWR0aD0iMjIiIGhlaWdodD0iNCIgcng9IjIiIGZpbGw9IiNmZmZmZmYiLz4KICA8cmVjdCB4PSIxNCIgeT0iMjIiIHdpZHRoPSIxOCIgaGVpZ2h0PSI0IiByeD0iMiIgZmlsbD0iI2ZmZmZmZiIgb3BhY2l0eT0iMC44NSIvPgogIDxyZWN0IHg9IjE4IiB5PSIzMCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjQiIHJ4PSIyIiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIwLjciLz4KPC9zdmc+
+  # href carries a placeholder; the patch-jaeger-consolelink Job injects the
+  # environment-specific Jaeger UI route host after the Tempo operator
+  # creates it (stage-210 Grafana ConsoleLink pattern).
+  href: 'https://jaeger-ui-route-pending.local'
+  location: ApplicationMenu
+  text: 'RHOAI Demo Guardrails Traces (Jaeger)'

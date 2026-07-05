@@ -13,3 +13,7 @@ resources:
   - maas-proxy/base
   - guardrails/base
   - observability/base
+  - dashboard/base
+
+transformers:
+  - transformers/odhapplication-dashboard-labels.yaml
