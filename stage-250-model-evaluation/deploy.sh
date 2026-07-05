@@ -307,6 +307,34 @@ wait_for_object_bucket() {
   echo "! ObjectBucketClaim model-evaluation-bucket is not Bound (phase=${phase:-missing}); garak-kfp risk assessment will not run until it binds." >&2
 }
 
+ensure_s3_secret() {
+  # The garak-kfp pipeline needs a full S3 connection Secret (endpoint +
+  # bucket + keys), richer than the NooBaa-generated model-evaluation-bucket
+  # Secret (access keys only). Compose it from the OBC Secret + ConfigMap.
+  local akid sak host port bucket
+  akid=$(oc get secret model-evaluation-bucket -n "$EVAL_NS" -o go-template='{{.data.AWS_ACCESS_KEY_ID | base64decode}}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  sak=$(oc get secret model-evaluation-bucket -n "$EVAL_NS" -o go-template='{{.data.AWS_SECRET_ACCESS_KEY | base64decode}}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  host=$(oc get configmap model-evaluation-bucket -n "$EVAL_NS" -o jsonpath='{.data.BUCKET_HOST}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  port=$(oc get configmap model-evaluation-bucket -n "$EVAL_NS" -o jsonpath='{.data.BUCKET_PORT}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  bucket=$(oc get configmap model-evaluation-bucket -n "$EVAL_NS" -o jsonpath='{.data.BUCKET_NAME}' --insecure-skip-tls-verify=true 2>/dev/null || true)
+  if [[ -z "$akid" || -z "$host" ]]; then
+    echo "! OBC credentials not ready; skipping S3 connection Secret (garak-kfp risk assessment needs it)." >&2
+    return 0
+  fi
+  oc create secret generic "${RHOAI_STAGE250_S3_SECRET:-model-evaluation-s3}" \
+    -n "$EVAL_NS" \
+    --from-literal=AWS_ACCESS_KEY_ID="$akid" \
+    --from-literal=AWS_SECRET_ACCESS_KEY="$sak" \
+    --from-literal=AWS_S3_ENDPOINT="http://${host}:80" \
+    --from-literal=AWS_S3_BUCKET="$bucket" \
+    --from-literal=AWS_DEFAULT_REGION="us-east-1" \
+    --dry-run=client -o yaml | oc apply -f - --insecure-skip-tls-verify=true >/dev/null
+  oc label secret "${RHOAI_STAGE250_S3_SECRET:-model-evaluation-s3}" -n "$EVAL_NS" --overwrite \
+    app.kubernetes.io/part-of=evaluation demo.rhoai.io/stage=250 \
+    --insecure-skip-tls-verify=true >/dev/null
+  echo "✓ garak-kfp S3 connection Secret is present in ${EVAL_NS}"
+}
+
 wait_for_dspa() {
   # garak-kfp submits to the DSPA KFP API server. aipipelines is already
   # Managed; wait for the pipeline server to come up.
@@ -372,6 +400,7 @@ ensure_db_secrets
 ensure_maas_proxy_config
 ensure_model_token
 wait_for_object_bucket
+ensure_s3_secret
 wait_for_dspa
 wait_for_mlflow
 wait_for_evalhub

@@ -74,7 +74,7 @@ request=$(cat <<JSON
         "kfp_config": {
           "endpoint": "${KFP_ENDPOINT}",
           "namespace": "${EVAL_NS}",
-          "s3_secret_name": "model-evaluation-bucket",
+          "s3_secret_name": "${RHOAI_STAGE250_S3_SECRET:-model-evaluation-s3}",
           "verify_ssl": false
         },
         "intents_models": {

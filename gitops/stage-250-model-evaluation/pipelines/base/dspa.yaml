@@ -35,11 +35,17 @@ spec:
       username: dspa
   objectStorage:
     externalStorage:
+      # Use the NooBaa HTTP endpoint (port 80). The KFP launcher's S3 client
+      # does not read the injected service CA, so HTTPS artifact transfers
+      # fail with x509 "unknown authority" — and garak-kfp is an
+      # operator-generated pipeline whose task pods cannot carry a per-task
+      # SSL_CERT_FILE. HTTP over the in-cluster Service avoids TLS entirely
+      # (Stage 230 AutoRAG pipeline-S3 lesson).
       bucket: model-evaluation
       host: s3.openshift-storage.svc
-      port: "443"
-      scheme: https
-      secure: true
+      port: "80"
+      scheme: http
+      secure: false
       region: us-east-1
       s3CredentialsSecret:
         secretName: model-evaluation-bucket
