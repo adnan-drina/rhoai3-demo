@@ -256,6 +256,7 @@ Phase-one deploy and validation commands:
 | External provider | `ExternalModel` and `MaaSModelRef` named `gpt-4o-mini` with `spec.targetModel: gpt-4o-mini`, provider Secret supplied locally | OpenAI model availability, DNS-1035 resource-name compatibility, and Secret reference |
 | Access governance | `rhods-admins` namespace admin RoleBinding, `MaaSSubscription`, `MaaSAuthPolicy`, group/user mapping, token limits, cost metadata | Allowed and denied inference tests |
 | Observability | Tenant telemetry, MaaS/Kuadrant metrics, dashboard flag | Usage/rate-limit metrics visible; TP label in docs |
+| Serving-health monitoring | `monitoring/base/`: `vllm-serving-health` PrometheusRule (UWM recording rules for TTFT/ITL p95 and KV-cache utilization; alerts for high TTFT, request-queue backlog, KV-cache pressure, parked-model info) and `monitoring-rules-view` RoleBinding for the demo user groups | Rules/alerts visible in Thanos; recording-rule series present after serving traffic (added 2026-07-05, aligns with the RHOAI managing-and-monitoring-models guide) |
 | Gen AI Playground | Dashboard flags, Llama Stack Operator if required, AI asset endpoint visibility | `ai-developer` sees and uses MaaS models from AI asset endpoints/playground without MaaS namespace admin rights |
 
 ## Risks And Deferred Decisions

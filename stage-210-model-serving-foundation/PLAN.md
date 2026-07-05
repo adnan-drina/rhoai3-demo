@@ -199,23 +199,32 @@
   - enables user workload monitoring and installs Grafana resources through
     GitOps
 
-### `benchmark-guidellm.sh`
+### `benchmark-guidellm.sh` and `scripts/analyze-guidellm.py`
 
 - Guard behavior: loads `.env`, verifies `RHOAI_EXPECTED_API_SERVER`, and exits
   on mismatch.
-- Benchmark behavior:
-  - discovers the internal KServe endpoint from
-    `InferenceService.status.address.url`
+- Capacity benchmark behavior (retargeted 2026-07-05 from the retired
+  `demo-sandbox` InferenceService to the live model):
+  - targets the Nemotron `LLMInferenceService` workload Service directly
+    (`<model>-kserve-workload-svc.models-as-a-service.svc:8000`, HTTPS
+    self-signed → GuideLLM `--backend-args '{"verify": false}'`), bypassing
+    MaaS quotas so the model itself is measured; override
+    `RHOAI_GUIDELLM_TARGET` for the governed gateway path
   - runs `ghcr.io/vllm-project/guidellm:v0.5.0` as a Kubernetes Job in
-    `demo-sandbox`
-  - uses `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8` as the GuideLLM processor
-    for token accounting
-  - defaults to the llm-d showroom-style profile:
-    `/data/prompts.csv` from the `benchmark-data` PVC, concurrent rates
-    `32,64`, and 30 seconds per rate
-  - writes JSON and CSV results to `runs/stage-210-guidellm/<timestamp>/`
-  - uses a temporary copy Job to read results from the benchmark PVC
-  - deletes temporary benchmark Job, copy Job, and PVC unless
+    `models-as-a-service`, using the FP8 processor for token accounting
+  - profiles (`RHOAI_GUIDELLM_PROFILE`): `users` (stepped concurrency —
+    max stable concurrency + breaking point), `sweep` (throughput envelope +
+    optimal knee), `custom` (raw rate-type/rate)
+  - default data is GuideLLM synthetic (`prompt_tokens=1200,output_tokens=256`,
+    RAG-turn-shaped); a `/data/*` value mounts the `benchmark-data` PVC
+    instead
+  - writes JSON and CSV to `runs/stage-210-guidellm/<timestamp>/`, then runs
+    `scripts/analyze-guidellm.py` to produce `capacity-report.md`: optimal
+    load, max stable concurrency, breaking point, sustained token capacity,
+    answers/hour, concurrent RAG-chatbot users (discounting the 3 model calls
+    a guarded turn costs), and cost per 1M tokens (`--gpu-cost-per-hour`),
+    all against configurable latency SLOs
+  - deletes temporary Job, copy Job, and PVC unless
     `RHOAI_GUIDELLM_KEEP_RESOURCES=true`
 
 ### `validate.sh`

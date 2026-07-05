@@ -27,7 +27,7 @@ Do not create a `steps/` or `stages/` grouping folder for active content.
 | Range | Theme | Purpose |
 |-------|-------|---------|
 | `100-199` | AI Platform Foundation | Establish the enterprise platform substrate: OpenShift GitOps, ODF/object storage, NFD, GPU Operator, GPU MachineSets, OpenShift AI Self-Managed base install, DSCI/DSC ownership, users/groups, access, and baseline observability. |
-| `200-299` | Production GenAI & Private Data | Demonstrate the GenAI endpoint lifecycle: deploy a model, measure its performance envelope, expose it through governed Models-as-a-Service, and then extend into private data, RAG, guardrails, and model safety. |
+| `200-299` | Production GenAI & Private Data | Demonstrate the GenAI endpoint lifecycle: deploy a model, measure its performance envelope, expose it through governed Models-as-a-Service, and then extend into private data, RAG, guardrails, model safety, and evaluation of the resulting system. |
 | `300-399` | Agentic AI & Enterprise Integration | Demonstrate agentic workflows and integration: Llama Stack, Gen AI Studio, MCP, enterprise tools, multi-step agent workflows, and user-facing GenAI applications. |
 | `400-499` | AI Operations, Evaluation & MLOps | Demonstrate operational control: AI Pipelines, MLflow, distributed workloads, Kueue, evaluation, LLM-as-judge, observability, monitoring, governance evidence, and lifecycle operations. |
 | `500-599` | Edge & Applied AI | Optional future range for edge, predictive AI, device-oriented demos, or applied workloads that do not fit the primary platform-to-operations flow. Use this only when the demo story needs a separate applied track. |
@@ -64,11 +64,11 @@ numbers can change before a stage is created.
 | `stage-220-models-as-a-service` | Production GenAI & Private Data | Govern internal Nemotron access and register external OpenAI `gpt-5.4-mini` through the DNS-safe MaaS resource alias `gpt-5-4-mini`. |
 | `stage-230-private-data-rag` | Production GenAI & Private Data | Private data ingestion, retrieval, and RAG application path. |
 | `stage-240-guardrails-and-safety` | Production GenAI & Private Data | AI safety, guardrails, and policy controls around GenAI workloads. |
+| `stage-250-model-evaluation` | Production GenAI & Private Data | Evaluate the served/guarded GenAI system: EvalHub/LMEval-style checks, LLM-as-judge, and evidence capture. Sits in the GenAI arc after guardrails so evaluation closes the Production-GenAI story. |
 | `stage-310-gen-ai-studio` | Agentic AI & Enterprise Integration | Gen AI Studio or playground-based workflow design and testing. |
 | `stage-320-llama-stack-runtime` | Agentic AI & Enterprise Integration | Llama Stack runtime and API integration. |
 | `stage-330-mcp-enterprise-tools` | Agentic AI & Enterprise Integration | MCP-based connection to enterprise tools and services. |
 | `stage-410-ai-pipelines` | AI Operations, Evaluation & MLOps | AI Pipelines and data processing workflows. |
-| `stage-420-model-evaluation` | AI Operations, Evaluation & MLOps | Evaluation, LLM-as-judge, EvalHub/LMEval-style checks, and evidence capture. |
 | `stage-430-mlflow-experiment-tracking` | AI Operations, Evaluation & MLOps | MLflow experiment tracking and model lifecycle evidence. |
 | `stage-440-observability-and-governance` | AI Operations, Evaluation & MLOps | TrustyAI, monitoring, Grafana dashboards, and operational evidence. |
 | `stage-450-distributed-workload-operations` | AI Operations, Evaluation & MLOps | Kueue, distributed workloads, scheduling, and GPU utilization controls. |

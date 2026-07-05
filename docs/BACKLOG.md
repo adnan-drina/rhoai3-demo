@@ -25,7 +25,7 @@ Not applicable to our stack (recorded so it is not mistaken for a gap):
   MeanShift/KSTest drift do not apply to the LLM/RAG path. The LLM-relevant
   parts of that guide reduce to: TrustyAI component `Managed` (already done
   for guardrails), guardrails observability (Stage 240, done), and formal
-  evaluation (future `stage-420`, EvalHub/LM-Eval).
+  evaluation (future `stage-250`, EvalHub/LM-Eval).
 - Istio `ServiceMonitor`/`PodMonitor` from the managing guide target the
   Service Mesh serving path; our KServe RawDeployment / LLMInference
   Service (llm-d) path does not use Service Mesh.
@@ -35,7 +35,7 @@ Deferred (Technology Preview or future-stage):
 | Item | Priority | Notes |
 |------|----------|-------|
 | Metrics-based autoscaling (KEDA/CMA) | medium | TP in the guide; `serving.kserve.io/autoscalerClass: keda` + `spec.predictor.autoscaling.metrics` on `vllm:num_requests_waiting`. Natural pairing with the capacity benchmark's scale-out signal. |
-| LLM evaluation (EvalHub / LM-Eval) | medium | The LLM quality/safety-measurement half of AI-systems monitoring; belongs in `stage-420-model-evaluation`. |
+| LLM evaluation (EvalHub / LM-Eval) | medium | The LLM quality/safety-measurement half of AI-systems monitoring; belongs in `stage-250-model-evaluation`. |
 | TrustyAI bias/drift demo on an OVMS model | low | Only if the demo adds a predictive OVMS model; out of scope for the GenAI/RAG storyline. |
 
 ## Stage 110: Status — COMPLETE
@@ -184,7 +184,7 @@ shared-owner touches, live findings, and the retrospective are recorded in
 | Chatbot fail-closed shield hardening | medium | The vendored UI logs and skips shield errors (fail open), which hid a broken client call for a full session. Production posture should fail closed or at least surface the error in the UI. |
 | Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it (guide recommends Qwen3-14B as judge starting point). |
 | PII masking mode, retrieval rails, library hate/profanity flows | low | Blocking-only demo scope; retrieval rails blocked by the Llama Stack shield API passing messages, not chunks. |
-| Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-420-model-evaluation`. |
+| Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-250-model-evaluation`. |
 | FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |
 
 ## Candidate Future Stages
@@ -193,9 +193,9 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
+| `stage-250-model-evaluation` | Production GenAI | LMEval / EvalHub evaluation and evidence capture (next stage) |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
-| `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |
 | `stage-440-observability-and-governance` | AI Operations/MLOps | TrustyAI, Grafana, monitoring |
 
 Legacy backlog content is backed up at:

@@ -91,6 +91,17 @@ AutoRAG optimization runs, which evaluate many RAG patterns in a burst and
 would exhaust the interactive developer subscription budgets. This keeps
 governance enforced while sizing quota for the optimization workload.
 
+Serving-health monitoring rides on the same User Workload Monitoring pipeline
+that feeds the Stage 210 Grafana dashboards. A `vllm-serving-health`
+PrometheusRule in `models-as-a-service` (recording rules for TTFT/ITL p95 and
+KV-cache utilization, plus alerts for high TTFT, request-queue backlog,
+KV-cache pressure, and a parked-model info alert) turns the `vllm:*` metrics
+into serving-capacity signals, and a `monitoring-rules-view` RoleBinding lets
+the demo user groups read those rules without cluster-admin. The signals match
+what the Stage 210 GuideLLM capacity benchmark measures, so the alert
+thresholds and the benchmark's breaking point tell the same story. These are
+conservative demo defaults, not a production SLA.
+
 The prerequisite, local Nemotron, external OpenAI, and model-policy resources
 use schemas observed on the current RHOAI 3.4 cluster. Stage 220 pins Red Hat
 Connectivity Link to `rhcl-operator.v1.3.4` with manual InstallPlan approval
