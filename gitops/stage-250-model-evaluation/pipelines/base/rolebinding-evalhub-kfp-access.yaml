@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  # The garak-kfp adapter runs as the EvalHub operator-provisioned tenant
+  # ServiceAccount `evalhub-model-evaluation-job` and submits the risk-
+  # assessment pipeline to the DSPA KFP API. That API authorizes callers with
+  # a SubjectAccessReview on datasciencepipelinesapplications/api, so the SA
+  # must hold the DSPA user-access Role the pipeline operator creates in this
+  # namespace.
+  name: evalhub-jobs-kfp-access
+  namespace: model-evaluation
+  labels:
+    app.kubernetes.io/part-of: evaluation
+    app.kubernetes.io/name: evalhub-jobs-kfp-access
+    app.kubernetes.io/component: evaluation
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+subjects:
+  - kind: ServiceAccount
+    name: evalhub-model-evaluation-job
+    namespace: model-evaluation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ds-pipeline-user-access-dspa-model-evaluation

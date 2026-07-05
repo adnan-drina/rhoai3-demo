@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - dspa.yaml
+  - rolebinding-evalhub-kfp-access.yaml
