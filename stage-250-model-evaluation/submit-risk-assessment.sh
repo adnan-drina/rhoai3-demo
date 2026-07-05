@@ -34,6 +34,11 @@ EVAL_NS="${RHOAI_STAGE250_NAMESPACE:-model-evaluation}"
 MODEL_TOKEN_SECRET="${RHOAI_STAGE250_MODEL_TOKEN_SECRET:-model-evaluation-model-token}"
 TARGET_MODEL="${RHOAI_STAGE250_RISK_TARGET_MODEL:-nemotron-3-nano-30b-a3b}"
 JUDGE_MODEL="${RHOAI_STAGE250_RISK_JUDGE_MODEL:-gpt-4o-mini}"
+# SDG (synthetic adversarial-prompt generation) is the high-volume role and
+# hits a hard 120s per-call timeout. Default it to the local on-GPU model so
+# it does not depend on external-gateway latency; the judge stays external
+# and independent. Override to gpt-4o-mini when external latency is reliable.
+SDG_MODEL="${RHOAI_STAGE250_RISK_SDG_MODEL:-nemotron-3-nano-30b-a3b}"
 DSPA_NAME="${RHOAI_STAGE250_DSPA_NAME:-dspa-model-evaluation}"
 PROXY="http://maas-internal-proxy.${EVAL_NS}.svc.cluster.local:8080/models-as-a-service"
 KFP_ENDPOINT="https://ds-pipeline-${DSPA_NAME}.${EVAL_NS}.svc.cluster.local:8443"
@@ -79,7 +84,7 @@ request=$(cat <<JSON
         },
         "intents_models": {
           "judge": { "url": "${PROXY}/${JUDGE_MODEL}/v1", "name": "${JUDGE_MODEL}" },
-          "sdg":   { "url": "${PROXY}/${JUDGE_MODEL}/v1", "name": "hosted_vllm/${JUDGE_MODEL}" }
+          "sdg":   { "url": "${PROXY}/${SDG_MODEL}/v1", "name": "hosted_vllm/${SDG_MODEL}" }
         }
       }
     }
@@ -89,7 +94,7 @@ JSON
 )
 
 echo "── Submitting garak-kfp risk assessment ──"
-echo "  target: ${TARGET_MODEL} | judge/sdg: ${JUDGE_MODEL}"
+echo "  target: ${TARGET_MODEL} | judge: ${JUDGE_MODEL} | sdg: ${SDG_MODEL}"
 echo "  kfp: ${KFP_ENDPOINT}"
 
 resp=$(oc exec -n "$EVAL_NS" "$EVALHUB_POD" --insecure-skip-tls-verify=true -- \
