@@ -1,0 +1,30 @@
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoMonolithic
+metadata:
+  name: guardrails
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: tempo-guardrails
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Demo-scale single-binary Tempo for NeMo Guardrails trace spans. The Tempo
+  # Operator is installed by the stage-110 observability layer; this is the
+  # first operand in the repo.
+  storage:
+    traces:
+      backend: pv
+      size: 5Gi
+  ingestion:
+    otlp:
+      grpc:
+        enabled: true
+      http:
+        enabled: true
+  jaegerui:
+    enabled: true
+    route:
+      enabled: true

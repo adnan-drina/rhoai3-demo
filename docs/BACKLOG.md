@@ -126,7 +126,25 @@ Validated in `cluster-qt67m` on 2026-07-02:
 |------|----------|-------|
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
 | RAG evaluation | medium | Keep RAGAS or other quality evaluation for a later evaluation-focused stage. |
-| Guardrails and MCP | medium | Add product-backed guardrails and MCP after base RAG works. |
+| Guardrails and MCP | done | MCP landed in Stage 230 (OpenShift MCP connector); product-backed guardrails are Stage 240 (active). |
+
+## Stage 240: Guardrails and Safety (Active)
+
+NeMo Guardrails service with an LLM per the RHOAI 3.4 guardrails guide:
+Presidio + regex detectors, custom Colang rails with Python actions, LLM
+self-check input/output rails through MaaS-governed Nemotron, Llama Stack
+shield wiring for the Stage 230 chatbot, and OpenTelemetry traces to a
+stage-local Tempo. Scope, shared-owner touches, and the deferred list are
+recorded in `stage-240-guardrails-and-safety/PLAN.md`.
+
+### Open / deferred from Stage 240
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it. |
+| PII masking mode, retrieval rails, library hate/profanity flows | low | Blocking-only demo scope; retrieval rails blocked by the Llama Stack shield API passing messages, not chunks. |
+| Guardrails metrics + formal safety measurement | medium | Route to `rhoai-evaluation` in the future `stage-420-model-evaluation`. |
+| FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |
 
 ## Candidate Future Stages
 
@@ -134,7 +152,6 @@ These map to the taxonomy ranges defined in `.agents/skills/project-demo-stage-a
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-240-guardrails-and-safety` | Production GenAI | AI safety, guardrails, and policy controls around GenAI workloads |
 | `stage-320-llama-stack-runtime` | Agentic AI | Llama Stack runtime and API integration |
 | `stage-410-ai-pipelines` | AI Operations/MLOps | AI Pipelines and KFP workflows |
 | `stage-420-model-evaluation` | AI Operations/MLOps | LMEval / EvalHub evaluation and evidence capture |

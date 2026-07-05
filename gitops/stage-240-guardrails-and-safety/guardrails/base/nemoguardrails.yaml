@@ -1,0 +1,47 @@
+apiVersion: trustyai.opendatahub.io/v1alpha1
+kind: NemoGuardrails
+metadata:
+  name: nemo-guardrails
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: nemo-guardrails
+    app.kubernetes.io/component: safety
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    security.opendatahub.io/enable-auth: "true"
+spec:
+  replicas: 1
+  nemoConfigs:
+    - name: demo-safety
+      configMaps:
+        - nemo-guardrails-config
+      default: true
+  env:
+    # Model parameters follow the official 3.4 guide env-substitution
+    # pattern. The endpoint is the stage-local MaaS hairpin proxy, so MaaS
+    # authentication, quotas, and rate limits stay enforced on every
+    # guardrails LLM call.
+    - name: MAIN_MODEL_ENGINE
+      value: openai
+    - name: MAIN_MODEL_BASE_URL
+      value: http://maas-internal-proxy.ai-safety.svc.cluster.local:8080/models-as-a-service/nemotron-3-nano-30b-a3b/v1
+    - name: MODEL_NAME
+      value: nemotron-3-nano-30b-a3b
+    # The MaaS API key is minted by stage-240 deploy.sh; never committed.
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: nemo-guardrails-api-token
+          key: token
+    # OpenTelemetry export to the stage-local collector (official 3.4 guide
+    # variable set).
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://guardrails-collector.ai-safety.svc.cluster.local:4317
+    - name: OTEL_SERVICE_NAME
+      value: nemo-guardrails
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: grpc
+    - name: OTEL_METRICS_EXPORTER
+      value: none

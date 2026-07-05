@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nemo-guardrails-sa-view
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: nemo-guardrails-sa-view
+    app.kubernetes.io/component: safety
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+subjects:
+  - kind: ServiceAccount
+    name: nemo-guardrails-sa
+    namespace: ai-safety
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view

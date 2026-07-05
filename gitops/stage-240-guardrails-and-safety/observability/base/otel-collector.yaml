@@ -1,0 +1,41 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: guardrails
+  namespace: ai-safety
+  labels:
+    app.kubernetes.io/part-of: guardrails
+    app.kubernetes.io/name: otel-guardrails
+    app.kubernetes.io/component: tracing
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Receives OTLP spans from the NeMo Guardrails service and forwards them to
+  # the demo-scale TempoMonolithic instance in this namespace.
+  mode: deployment
+  replicas: 1
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch: {}
+    exporters:
+      otlp:
+        endpoint: tempo-guardrails:4317
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - batch
+          exporters:
+            - otlp

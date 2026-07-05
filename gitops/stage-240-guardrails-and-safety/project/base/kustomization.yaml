@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace-ai-safety.yaml
+  - rolebinding-developer-edit.yaml
+  - rolebinding-admins-admin.yaml

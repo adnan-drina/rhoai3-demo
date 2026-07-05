@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - openai-gpt-4o-mini-access.yaml
   - autorag-optimization-access.yaml
+  - ai-safety-guardrails-access.yaml

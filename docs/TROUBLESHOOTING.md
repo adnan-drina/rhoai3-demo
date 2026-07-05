@@ -1795,6 +1795,81 @@ steps unless those components are intentionally reintroduced.
   `gitops/stage-230-private-data-rag/llamastack/base/configmap.yaml`, then
   restart `deployment/lsd-enterprise-rag` after the ConfigMap syncs.
 
+## Stage 240: Guardrails and Safety
+
+### NemoGuardrails CR never appears or stays un-reconciled
+
+- **Symptom:** Argo shows the stage synced (SkipDryRunOnMissingResource), but
+  `oc get nemoguardrails -n ai-safety` reports the CRD or CR missing.
+- **Likely cause:** the TrustyAI component is not `Managed` yet, or the
+  operator is still rolling out after the DSC patch Job.
+- **Checks:**
+
+  ```bash
+  oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.trustyai.managementState}'
+  oc get pods -n redhat-ods-applications | grep trustyai
+  oc get crd nemoguardrails.trustyai.opendatahub.io
+  ```
+
+  The first TrustyAI reconcile takes several minutes; the Application retry
+  policy re-applies the CR once the CRD lands.
+
+### NeMo pod CrashLoopBackOff on startup
+
+- **Symptom:** the `nemo-guardrails` Deployment crash-loops referencing
+  `OPENAI_API_KEY` or the model endpoint.
+- **Likely cause:** the `nemo-guardrails-api-token` Secret is missing (CR
+  synced before `deploy.sh` ran) or the MaaS proxy config was not generated.
+- **Fix:** run `./stage-240-guardrails-and-safety/deploy.sh`; it creates the
+  Secret, generates `maas-internal-proxy-config`, and restarts the
+  deployment.
+
+### 401 from guardrails endpoints
+
+- **Symptom:** `/v1/guardrail/checks` or `/v1/chat/completions` returns 401.
+- **Likely cause:** missing bearer token — `security.opendatahub.io/enable-auth`
+  is on, so every call needs `Authorization: Bearer $(oc whoami -t)`. Local
+  `oc` session tokens expire after ~24h; re-login first.
+
+### 429 from guarded generation
+
+- **Symptom:** guarded completions fail with 429 while direct MaaS calls work.
+- **Likely cause:** the `ai-safety-guardrails` subscription quota is
+  exhausted — self-check rails triple token spend per guarded turn.
+- **Fix:** raise `tokenRateLimits` in
+  `gitops/stage-220-models-as-a-service/policies/base/ai-safety-guardrails-access.yaml`
+  (Git change), then rotate the API key so the new limits apply.
+
+### Guardrails block everything (or nothing)
+
+- **Symptom:** benign prompts return `status: blocked`, or unsafe test
+  prompts pass.
+- **Likely cause:** self-check policy prompts are policy-as-code and need
+  tuning; the Presidio `PERSON` entity is aggressive on name-like strings.
+- **Fix:** adjust `prompts.yml` / detector entities in
+  `guardrails/base/configmap-nemo-config.yaml`, sync, and restart the NeMo
+  deployment. Record false positives/negatives as expected tuning work in
+  the stage evidence, not as hidden failures.
+
+### Chatbot shield selector is empty
+
+- **Symptom:** the Stage 230 chatbot shows no shields in the guardrail
+  selectors.
+- **Likely cause:** the LSD pod predates the config change (the operator does
+  not roll Deployments on ConfigMap edits), or the NeMo service URL in the
+  `remote::nvidia` provider is wrong.
+- **Checks:**
+
+  ```bash
+  oc exec -n enterprise-rag deploy/lsd-enterprise-rag -- curl -s http://localhost:8321/v1/shields
+  oc get svc -n ai-safety | grep nemo
+  ```
+
+  Restart `deploy/lsd-enterprise-rag` after config changes. If the
+  operator-created NeMo Service name or port differs from the committed
+  default, set `GUARDRAILS_SERVICE_URL` in the LSD environment rather than
+  editing the provider URL live.
+
 ---
 
 Legacy troubleshooting content is backed up at:

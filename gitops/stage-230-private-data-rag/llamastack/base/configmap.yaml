@@ -122,6 +122,15 @@ data:
           module: llama_stack_provider_trustyai_fms==0.3.2
           config:
             shields: {}
+        # Stage 240 NeMo Guardrails service (TrustyAI-managed, ai-safety
+        # namespace). The provider posts shield checks to
+        # /v1/guardrail/checks with the config_id of the NeMo configuration
+        # defined in the stage-240 nemo-guardrails-config ConfigMap.
+        - provider_id: nemo-guardrails
+          provider_type: remote::nvidia
+          config:
+            guardrails_service_url: ${env.GUARDRAILS_SERVICE_URL:=http://nemo-guardrails.ai-safety.svc.cluster.local:8000}
+            config_id: demo-safety
       scoring:
         - provider_id: basic
           provider_type: inline::basic
@@ -215,7 +224,13 @@ data:
           metadata:
             embedding_dimension: 384
       scoring_fns: []
-      shields: []
+      # Stage 240 registers the NeMo Guardrails demo-safety configuration as
+      # a shield; the chatbot guardrail selectors list it for input and
+      # output checks.
+      shields:
+        - shield_id: nemo-demo-safety
+          provider_id: nemo-guardrails
+          provider_shield_id: demo-safety
       tool_groups: []
       vector_stores: []
 
