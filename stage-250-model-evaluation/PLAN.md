@@ -255,3 +255,74 @@ AutoRAG KFP work hit (launcher artifact TLS `SSL_CERT_FILE`, DSPA
 roughly a focused day — the pieces are known, the KFP integration is the
 uncertain part. Strongest narrative payoff: adversarially proving the Stage
 240 guardrails hold, closing the guard→prove loop.
+
+## Doc-Alignment Analysis vs RHOAI 3.4 "Evaluating AI systems"
+
+Audited 2026-07-06 against `rhoai-evaluation` skill's
+`references/validation-checklist.md` (the encoded RHOAI 3.4 guide).
+
+### EvalHub deployment — aligned
+- TrustyAI `Managed`; KServe `RawDeployment` prerequisite met. ✓
+- Dedicated tenant namespace `model-evaluation`
+  (`evalhub.trustyai.opendatahub.io/tenant=true`). ✓
+- PostgreSQL Secret carries `db-url`; no credentials committed. ✓
+- EvalHub CR fields verified against live schema. ✓
+- Providers/collections intentional (`lm-evaluation-harness`, `garak`,
+  `guidellm`, `garak-kfp`; `safety-and-fairness-v1`). ✓
+- **Auth not disabled**: EvalHub REST requires bearer token + `X-Tenant`;
+  verified `/health` + authenticated `/providers`. ✓
+- MLflow enabled with its operator + RBAC ready. ✓
+
+### EvalHub tenant & job — aligned
+- Tenant explicit; `X-Tenant` matches namespace. ✓
+- Operator-provisioned tenant SA `evalhub-model-evaluation-job`; the one
+  extra grant (DSPA KFP API access) is least-privilege, scoped to the DSPA
+  name. ✓
+- Model endpoint auth via Secret (`model.auth.secret_ref` → `api-key`). ✓
+- **Cancel vs delete understood**: EvalHub `DELETE` is a cancel and refuses
+  terminal `failed` jobs — they are immutable audit records by design (this
+  is the guide's "immutable evaluation records" behavior, not a bug). ✓
+- MLflow tracking destination documented; experiment per job. ✓
+
+### LM-Eval — aligned
+- `LMEvalJob` fields verified against live CRD. ✓
+- **`permitOnline`/`permitCodeExecution` justified**: enabled at the DSC
+  level only to download the public tokenizer + benchmark datasets; recorded
+  here and in the deploy Job comment. ✓
+- Model token in a Secret; no HF token needed (public model). ✓
+- KServe/vLLM endpoint path correct (MaaS proxy `/v1/completions`). ✓
+- Dashboard LMEvalJob treated as product evidence, not a substitute for
+  business validation. ✓
+
+### Risk assessment (garak-kfp) — aligned, with documented deviations
+- Pipeline server (stage-owned DSPA) exists before the scan is promised. ✓
+- Benchmark `owasp_llm_top10`, provider `garak-kfp`; KFP
+  endpoint/namespace/S3-secret/TLS match the environment. ✓
+- Model API key + S3 credentials in Secrets. ✓
+- Live result recorded in MLflow: `attack_success_rate` 0.0, pass
+  (threshold 0.3). ✓
+- **Deviation 1 — benchmark default**: the guide's headline flow is the
+  `intents` benchmark; we default to `owasp_llm_top10` because `intents`
+  hardcodes an SDG + multilingual (Helsinki-NLP) + LLM-judge chain that
+  repeatedly failed on this single-GPU, connected-but-flaky cluster.
+  `intents` stays selectable (`RHOAI_STAGE250_RISK_BENCHMARK`). OWASP LLM
+  Top 10 is itself a recognised, defensible risk framework. **Recorded, not
+  silently dropped.**
+- **Deviation 2 — target == judge (intents only)**: the checklist flags
+  "target and judge not the same unless explicitly justified." For `intents`
+  we default SDG + judge to the local Nemotron because the external
+  gpt-4o-mini path failed (SDG 120s timeout; detector loop on truncated
+  streaming). Independent external judge is a one-variable override
+  (`RHOAI_STAGE250_RISK_JUDGE_MODEL`) and the preferred posture when the
+  gateway supports sustained streaming. **Explicitly justified.** OWASP (the
+  default) uses only the target, so this does not apply to the default flow.
+- **Translation strategy**: cluster is connected + online-enabled, so the
+  `intents` Helsinki-NLP models download per the guide's connected path; the
+  guide's disconnected requirement (cache or disable) is noted for air-gapped
+  installs.
+
+### Fail-condition sweep — none tripped
+No ungrounded claims; auth on; tenant explicit; no real secrets in Git;
+`allowOnline`/code-exec justified; S3 Secret has required keys; risk
+assessment has pipeline server + endpoints + judge + S3 + model Secret;
+connected translation path; custom artifacts reviewed as code.

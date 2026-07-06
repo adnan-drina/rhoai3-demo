@@ -78,10 +78,11 @@ gains the `model-evaluation` subscription.
    `nemotron-safety-eval` LMEvalJob results (truthfulqa / arc_easy).
 4. Open **MLflow** and show the evaluation run recorded with its metrics —
    the reproducible evidence artifact.
-5. Run `./submit-risk-assessment.sh` to launch the garak-kfp adversarial
-   red-team pipeline (visible as a KFP run in the dashboard) and show the
-   vulnerability findings — proving the Stage 240 guardrails hold under
-   attack.
+5. Run `./submit-risk-assessment.sh` to launch the garak-kfp OWASP LLM
+   Top 10 scan (visible as a KFP run under the `evalhub-garak` experiment in
+   the dashboard Pipelines → Runs) and show the `attack_success_rate`
+   scorecard against the 0.3 pass threshold — proving the Stage 240
+   guardrails hold under adversarial attack.
 6. Frame it: this is what turns a governed, guarded model into a
    *deployable* one — a scorecard, a threshold, a tracked run, and an
    adversarial red-team, not a spot check.
@@ -94,12 +95,28 @@ gains the `model-evaluation` subscription.
 - MLflow is the **minimal dev pattern** (SQLite + PVC, single writer);
   production-scale MLflow (PostgreSQL + S3, HA) is the future
   `stage-430` scope. EvalHub metadata itself uses PostgreSQL.
-- **Automated risk assessment** (garak-kfp) is implemented: a stage-owned
-  DSPA pipeline server runs the two-phase adversarial red-team (synthetic
-  prompt generation via gpt-4o-mini, then garak attack probes against
-  Nemotron, judged by gpt-4o-mini). Run it on demand with
-  `./submit-risk-assessment.sh`. This is the guard→prove closure — it
-  adversarially tests the model the Stage 240 guardrails protect.
+- **Automated risk assessment** (garak-kfp) is implemented and verified: a
+  stage-owned DSPA pipeline server runs a garak adversarial scan against the
+  governed Nemotron and records the `attack_success_rate` in MLflow. Run it
+  on demand with `./submit-risk-assessment.sh`. The default benchmark is
+  `owasp_llm_top10` — a standard garak probe suite (prompt injection, data
+  leakage, package hallucination, XSS/web injection, misleading assertions)
+  scored by garak's built-in detectors, running entirely on the target
+  model. Live result: **`attack_success_rate` 0.0 vs pass threshold 0.3 →
+  PASS** (Nemotron resisted the OWASP LLM Top 10 probes). This is the
+  guard→prove closure — it adversarially tests the model the Stage 240
+  guardrails protect. The richer context-aware `intents` benchmark (SDG +
+  multilingual translation + LLM judge) is selectable via
+  `RHOAI_STAGE250_RISK_BENCHMARK=intents` where that machinery is provisioned.
+- **Risk-assessment model roles**: the OWASP scan needs only the target
+  model. For `intents`, the SDG and judge roles default to the **local
+  Nemotron** as well (`RHOAI_STAGE250_RISK_SDG_MODEL` /
+  `_JUDGE_MODEL`). This makes target and judge the same model — deliberately,
+  because routing those roles to the external gpt-4o-mini through the MaaS
+  gateway failed (SDG 120s timeout; detector loop on truncated streaming
+  bodies). An independent external judge is the preferred posture and is a
+  one-variable override where the gateway supports sustained streaming; the
+  self-judge trade-off is accepted here for a reliable in-cluster demo.
 - Evaluation is bursty; the demo uses small per-task `limit`s and a generous
   MaaSSubscription quota so a single-GPU run completes without 429s.
 
