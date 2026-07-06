@@ -33,9 +33,9 @@ measures it.
 - **Collection**: `safety-and-fairness-v1` — a weighted set of benchmarks
   (truthfulqa, etc.) with a pass threshold (0.758), producing a single
   scorecard for the governed model.
-- **LMEval** — a dashboard-driven `LMEvalJob` visible on the OpenShift AI
-  console Model Evaluation page, evaluating Nemotron through the governed MaaS
-  endpoint.
+- **LMEval** — a dashboard-driven `LMEvalJob` evaluating Nemotron through the
+  governed MaaS endpoint; results are read from the job's `.status.results`
+  (this 3.4.2 dashboard build has no reliable standalone page for them).
 - **MLflow** (product-managed, `mlflow.opendatahub.io/v1`) — experiment
   tracking so every evaluation run is a queryable historical record. Deployed
   minimally (SQLite metadata + PVC artifacts); EvalHub records runs through
@@ -56,7 +56,7 @@ EvalHub CR ── TrustyAI operator ──► EvalHub server (REST, X-Tenant, Po
    ├─► Nemotron via maas-internal-proxy → MaaS gateway (governed, quota'd)
    └─► MLflow (product operator, SQLite + PVC) — experiment run per evaluation
 
-LMEvalJob (local-completions) ──► Nemotron → console Model Evaluation page
+LMEvalJob (local-completions) ──► Nemotron → LMEvalJob .status.results
 ```
 
 Delta on Stage 240: a new `model-evaluation` namespace is both the EvalHub
@@ -74,15 +74,21 @@ gains the `model-evaluation` subscription.
    `safety-and-fairness-v1` collection against Nemotron; watch the job move
    through `pending → running → completed` and read the weighted scorecard
    against its pass threshold.
-3. Open the OpenShift AI console **Model Evaluation** page and show the
-   `nemotron-safety-eval` LMEvalJob results (truthfulqa / arc_easy).
+3. Show the `nemotron-safety-eval` LMEvalJob capability scorecard
+   (arc_easy 0.76 / 0.84, truthfulqa_mc1 0.36). This 3.4.2 dashboard build
+   has no reliable standalone page for it, so read it from the resource —
+   `oc get lmevaljob nemotron-safety-eval -n model-evaluation
+   -o jsonpath='{.status.results}' | jq` — or put the numbers on a slide.
 4. Open **MLflow** and show the evaluation run recorded with its metrics —
    the reproducible evidence artifact.
 5. Run `./submit-risk-assessment.sh` to launch the garak-kfp OWASP LLM
    Top 10 scan (visible as a KFP run under the `evalhub-garak` experiment in
-   the dashboard Pipelines → Runs) and show the `attack_success_rate`
-   scorecard against the 0.3 pass threshold — proving the Stage 240
-   guardrails hold under adversarial attack.
+   the dashboard Pipelines → Runs). Open the garak HTML report (the
+   `html_report` artifact, served over HTTP) and walk the OWASP module
+   scorecard — it surfaces **real** weaknesses (false-assertion acceptance,
+   prompt-injection hijacking, latent injection), which is the point:
+   evaluation finds what "looks good to me" misses, and gives Stage 240 a
+   concrete risk register to mitigate.
 6. Frame it: this is what turns a governed, guarded model into a
    *deployable* one — a scorecard, a threshold, a tracked run, and an
    adversarial red-team, not a spot check.
@@ -97,17 +103,25 @@ gains the `model-evaluation` subscription.
   `stage-430` scope. EvalHub metadata itself uses PostgreSQL.
 - **Automated risk assessment** (garak-kfp) is implemented and verified: a
   stage-owned DSPA pipeline server runs a garak adversarial scan against the
-  governed Nemotron and records the `attack_success_rate` in MLflow. Run it
+  governed Nemotron and records the run in MLflow. Run it
   on demand with `./submit-risk-assessment.sh`. The default benchmark is
   `owasp_llm_top10` — a standard garak probe suite (prompt injection, data
   leakage, package hallucination, XSS/web injection, misleading assertions)
   scored by garak's built-in detectors, running entirely on the target
-  model. Live result: **`attack_success_rate` 0.0 vs pass threshold 0.3 →
-  PASS** (Nemotron resisted the OWASP LLM Top 10 probes). This is the
-  guard→prove closure — it adversarially tests the model the Stage 240
-  guardrails protect. The richer context-aware `intents` benchmark (SDG +
-  multilingual translation + LLM judge) is selectable via
+  model. **Live result (garak report, authoritative): across 1,750 attack
+  attempts the model resisted 1,324 and was compromised on 426 — a ~24%
+  attack-success rate, with garak's calibrated DEFCON grading flagging 4 of
+  7 OWASP modules below DC-3 (3 Critical, 1 Very High).** Concrete findings
+  include accepting false assertions (`misleading.FalseAssertion` 0/45),
+  prompt-injection hijacking (`promptinject.HijackHateHumans` 0/7), and weak
+  latent-injection resilience (~21–41%). This is the guard→prove closure —
+  the scan surfaces the real weaknesses that Stage 240's guardrails exist to
+  mitigate. The richer context-aware `intents` benchmark (SDG + multilingual
+  translation + LLM judge) is selectable via
   `RHOAI_STAGE250_RISK_BENCHMARK=intents` where that machinery is provisioned.
+  **Caveat**: do not cite EvalHub's aggregate `attack_success_rate` field —
+  it reported `0.0` for this run, inconsistent with the ~0.24 the scan
+  actually produced. Read the garak HTML report, not the aggregate.
 - **Risk-assessment model roles**: the OWASP scan needs only the target
   model. For `intents`, the SDG and judge roles default to the **local
   Nemotron** as well (`RHOAI_STAGE250_RISK_SDG_MODEL` /
