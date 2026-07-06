@@ -122,6 +122,18 @@ gains the `model-evaluation` subscription.
   **Caveat**: do not cite EvalHub's aggregate `attack_success_rate` field —
   it reported `0.0` for this run, inconsistent with the ~0.24 the scan
   actually produced. Read the garak HTML report, not the aggregate.
+- **Guard→prove delta** (the closing evidence): re-running the same OWASP scan
+  against the Stage 240 NeMo Guardrails endpoint
+  (`RHOAI_STAGE250_RISK_TARGET_URL=http://nemo-guardrails-internal.ai-safety.svc.cluster.local:8000/v1`)
+  cuts attack-success from **~24% to ~8%** (resilience 76% → 92%). The rails
+  fully block prompt-injection hijacking (0% → 100% resisted) and latent
+  injection (28% → 100%), but do **not** catch misinformation
+  (`misleading.FalseAssertion` stays 0%) and one evasion regresses
+  (`phrasing.PastTense` 29% → 0%). That residual risk is the point — evaluation
+  measures both the mitigation and what it misses. *Caveat: garak ran more
+  attempts against the guarded endpoint (~11.7k vs 1.75k), so compare the
+  rates, not the raw counts — it is a directional before/after, not a
+  controlled A/B.*
 - **Risk-assessment model roles**: the OWASP scan needs only the target
   model. For `intents`, the SDG and judge roles default to the **local
   Nemotron** as well (`RHOAI_STAGE250_RISK_SDG_MODEL` /

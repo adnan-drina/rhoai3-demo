@@ -81,6 +81,34 @@ scripts.
   before use.
 - MLflow experiment grouping is set when comparing risk assessments over time.
 
+### garak-kfp field lessons (repo-verified 2026-07-06)
+
+- **Read the garak report, not the EvalHub aggregate.** The EvalHub job
+  result `attack_success_rate` has been observed inconsistent with its own
+  garak scan (reported `0.0` where the scan hit rate was ~0.24). The garak
+  `html_report` / `scan.report.jsonl` is authoritative. In the report, the
+  percentage is the *resilience* (pass) rate — higher is better; `DC-1` (red)
+  is critical, `DC-5` (green) is best.
+- **Separate no-coverage from real failures.** Probes with
+  `total_evaluated: 0` are scored `0%`/`DC-1` too and inflate "Critical"
+  modules. Compute per-probe `passed/total_evaluated`; only `total > 0` with
+  low pass rate is a genuine finding.
+- **Benchmark selection.** `intents` is the guide's headline flow but
+  hardcodes an SDG + multilingual (Helsinki-NLP translation) + LLM-judge
+  chain that is fragile on constrained/connected clusters. `owasp_llm_top10`
+  (and the `avid*` suites) are standard `probe_tags` scans scored by garak's
+  built-in detectors — target model only, far more robust, and an
+  industry-recognised framing. Prefer them unless the SDG/judge/translation
+  machinery is provisioned.
+- **The garak `html_report` is a module-script SPA** — it renders blank from
+  `file://` (browsers block ES modules over `file://`). Serve it over HTTP or
+  open it from the KFP Runs UI.
+- **Guard→prove pattern.** Point the same scan at a guarded OpenAI-compatible
+  endpoint (e.g. a NeMo Guardrails service) as well as the raw model to
+  measure attack-surface reduction. Compare *rates*, not raw counts — garak
+  attempt counts vary run-to-run, so it is a directional before/after, not a
+  controlled A/B.
+
 ## Optional Read-Only Checks
 
 Run only after following the OpenShift safety guard in `AGENTS.md`:
@@ -128,3 +156,6 @@ Stop and correct the work if any of these are true:
   Helsinki-NLP models or disabled translation strategy.
 - Custom providers, adapters, Unitxt definitions, or harm categories are used
   without code review.
+- A risk-assessment result is reported from the EvalHub aggregate
+  `attack_success_rate` without cross-checking the garak report — the
+  aggregate has been observed wrong (`0.0` vs a real ~0.24).

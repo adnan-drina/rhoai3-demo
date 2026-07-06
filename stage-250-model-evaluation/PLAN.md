@@ -309,7 +309,18 @@ Audited 2026-07-06 against `rhoai-evaluation` skill's
   reported `0.0` for this run, inconsistent with the ~0.24 its own garak
   scan produced. Treat the garak HTML report / `scan.report.jsonl` as
   authoritative; do not cite the EvalHub aggregate. (Candidate EvalHub
-  garak-kfp adapter bug — worth an upstream note.)
+  garak-kfp adapter bug — worth an upstream note; recorded in `docs/BACKLOG.md`
+  and `docs/TROUBLESHOOTING.md`.)
+- **Guard→prove delta** (`RHOAI_STAGE250_RISK_TARGET_URL` = the Stage 240
+  NeMo Guardrails endpoint): the same OWASP scan through the rails cuts
+  attack-success **~24% → ~8%** (resilience 76% → 92%). Rails fully block
+  prompt-injection hijacking (0% → 100%) and latent injection (28% → 100%);
+  do not catch misinformation (`misleading.FalseAssertion` 0% → 0%); one
+  evasion regresses (`phrasing.PastTense` 29% → 0%). Directional, not a
+  controlled A/B (garak ran ~11.7k attempts guarded vs 1.75k raw — compare
+  rates). MLflow runs: raw `acbb31e0`, guarded `bb255d8e`. This is the
+  literal guard→prove closure of the Production-GenAI arc: Stage 240 guards,
+  Stage 250 measures how much the guard actually helps and what it misses.
 - **Deviation 1 — benchmark default**: the guide's headline flow is the
   `intents` benchmark; we default to `owasp_llm_top10` because `intents`
   hardcodes an SDG + multilingual (Helsinki-NLP) + LLM-judge chain that
