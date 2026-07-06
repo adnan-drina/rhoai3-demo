@@ -1885,6 +1885,69 @@ steps unless those components are intentionally reintroduced.
   default, set `GUARDRAILS_SERVICE_URL` in the LSD environment rather than
   editing the provider URL live.
 
+## Stage 250: Model Evaluation
+
+### EvalHub reports `attack_success_rate: 0` but the garak report shows hits
+
+**Symptom.** A garak-kfp risk-assessment job completes and the EvalHub job
+result shows `attack_success_rate: 0.0` / `pass: true`, but the garak HTML
+report (or `scan.report.jsonl`) clearly shows failing probes and DEFCON-1
+modules.
+
+**Cause.** EvalHub's aggregate `attack_success_rate` field has been observed
+inconsistent with the underlying garak scan — e.g. `0.0` where the scan's
+own hit rate is ~0.24 (426 hits / 1,750 attempts). Suspected garak-kfp
+adapter aggregation bug (likely mishandling zero-coverage probes).
+
+**Fix / rule.** **Do not cite the EvalHub aggregate `attack_success_rate`.**
+Treat the garak `html_report` / `scan.report.jsonl` as authoritative. Read
+per-module DEFCON and per-probe `passed/total_evaluated`. In the report, the
+percentage is the *resilience* (pass) rate — higher is better; `DC-1` (red)
+is critical, `DC-5` (green) is best. Note that probes with
+`total_evaluated: 0` (no coverage) are scored `0%`/`DC-1` too and inflate
+some "Critical" modules — separate those from genuine failures.
+
+### garak `html_report` opens blank from `file://`
+
+The report is a Vite/React SPA loaded via `<script type="module">`; browsers
+block ES-module scripts over `file://` (CORS), so it renders blank. Serve it
+over HTTP: `cd <dir> && python3 -m http.server 8899` →
+`http://localhost:8899/<report>.html`, or open the `html_report` artifact
+from the KFP Runs UI (served over HTTP).
+
+### garak-kfp `intents` benchmark fails on a constrained cluster
+
+The `intents` benchmark hardcodes an SDG + multilingual (Helsinki-NLP
+`TranslationIntent`) + LLM-judge chain. On a single-GPU, connected demo
+cluster it fails in stages: SDG via external gpt-4o-mini times out (litellm
+120s); the LLM-judge/detector loops on truncated streaming from the MaaS
+gateway (`httpx` incomplete chunked read; garak scan `timeout=0`); a
+fully-local `intents` run still exits `rc=1` after loading the translation
+model. **Use the default `owasp_llm_top10`** (standard garak probes, target
+model only), or set SDG + judge to the local model
+(`RHOAI_STAGE250_RISK_SDG_MODEL` / `_JUDGE_MODEL`).
+
+### garak scan fails: KFP launcher x509 / missing S3 keys
+
+- `x509: certificate signed by unknown authority` on artifact transfer: the
+  KFP launcher's S3 client does not read the injected service CA. Point the
+  DSPA object storage and the garak S3 Secret at the NooBaa **HTTP** endpoint
+  (`s3.openshift-storage.svc:80`).
+- `couldn't find key AWS_S3_ENDPOINT`: the garak pipeline needs a full S3
+  connection Secret (`AWS_S3_ENDPOINT`/`AWS_S3_BUCKET`/`AWS_DEFAULT_REGION`),
+  not just NooBaa access keys — `deploy.sh` composes `model-evaluation-s3`.
+- `403 datasciencepipelinesapplications/api`: bind the EvalHub tenant SA
+  `evalhub-model-evaluation-job` to the operator Role
+  `ds-pipeline-user-access-dspa-model-evaluation`.
+
+### LMEvalJob stays offline / can't download tokenizer or datasets
+
+Per-job `allowOnline: true` is not enough — the operator injects
+`HF_HUB_OFFLINE=1` unless online is permitted globally. Set the supported DSC
+toggle `spec.components.trustyai.eval.lmeval.permitOnline: allow` (+
+`permitCodeExecution`); live patches of the operator ConfigMap or the
+TrustyAI CR revert.
+
 ---
 
 Legacy troubleshooting content is backed up at:

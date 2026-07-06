@@ -208,7 +208,8 @@ immutable records, Kueue-at-scale, and protected model servers.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Automated risk assessment (garak-kfp) | done 2026-07-05 | Implemented: stage-owned DSPA + OBC, garak-kfp provider, gpt-4o-mini judge/SDG, submit-risk-assessment.sh. Adversarial red-team closing the guard→prove loop with Stage 240. |
+| Automated risk assessment (garak-kfp) | done 2026-07-06 | Implemented: stage-owned DSPA + OBC, garak-kfp provider, submit-risk-assessment.sh (default owasp_llm_top10, target-URL override). Live scan found real weaknesses in Nemotron (~24% attack-success, 4/7 OWASP modules < DC-3). |
+| File EvalHub `attack_success_rate` aggregate bug upstream | medium | The EvalHub job result reported `attack_success_rate: 0.0` where its own garak scan showed ~0.24 (426/1,750 hits). Reproduce, capture the garak-kfp adapter aggregation path, and file with Red Hat / the TrustyAI EvalHub project. Workaround documented in TROUBLESHOOTING (read the garak report, not the aggregate). |
 | Custom evaluation collection for the RAG assistant | medium | Author a `user`-scoped collection (weighted benchmarks + per-benchmark and collection pass thresholds) tuned to the demo's assistant use case, via ConfigMap/CLI — "understanding evaluation collections". |
 | EvalHub OCI immutable evaluation records | medium | Export weighted results to an OCI registry with SHA256 tags, embedding the evaluation record in the ModelCar — tamper-evident governance evidence ("store immutable AI evaluation records"). Needs the S3/OCI surface deferred here. |
 | EvalHub in CI/CD | medium | Gate model promotion on a collection pass in a pipeline — "add automated AI evaluations to your CI/CD pipeline". |
