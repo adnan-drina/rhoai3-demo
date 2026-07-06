@@ -54,6 +54,12 @@ SDG_MODEL="${RHOAI_STAGE250_RISK_SDG_MODEL:-nemotron-3-nano-30b-a3b}"
 BENCHMARK="${RHOAI_STAGE250_RISK_BENCHMARK:-owasp_llm_top10}"
 DSPA_NAME="${RHOAI_STAGE250_DSPA_NAME:-dspa-model-evaluation}"
 PROXY="http://maas-internal-proxy.${EVAL_NS}.svc.cluster.local:8080/models-as-a-service"
+# Target endpoint. Defaults to the governed raw Nemotron via the MaaS proxy.
+# Override with RHOAI_STAGE250_RISK_TARGET_URL to scan a different
+# OpenAI-compatible endpoint — e.g. the Stage 240 NeMo Guardrails service
+# (http://nemo-guardrails-internal.ai-safety.svc.cluster.local:8000/v1) to
+# measure the attack-surface reduction the guardrails provide (guard->prove).
+TARGET_URL="${RHOAI_STAGE250_RISK_TARGET_URL:-${PROXY}/${TARGET_MODEL}/v1}"
 KFP_ENDPOINT="https://ds-pipeline-${DSPA_NAME}.${EVAL_NS}.svc.cluster.local:8443"
 JOB_NAME="${RHOAI_STAGE250_RISK_JOB_NAME:-nemotron-risk-$(date -u +%Y%m%d%H%M%S)}"
 POLL_TIMEOUT="${RHOAI_STAGE250_RISK_TIMEOUT:-3600}"
@@ -94,7 +100,7 @@ request=$(cat <<JSON
 {
   "name": "${JOB_NAME}",
   "model": {
-    "url": "${PROXY}/${TARGET_MODEL}/v1",
+    "url": "${TARGET_URL}",
     "name": "${TARGET_MODEL}",
     "auth": { "secret_ref": "${MODEL_TOKEN_SECRET}" }
   },
@@ -119,6 +125,7 @@ JSON
 
 echo "── Submitting garak-kfp risk assessment ──"
 echo "  benchmark: ${BENCHMARK} | target: ${TARGET_MODEL}"
+echo "  target url: ${TARGET_URL}"
 [[ "$BENCHMARK" == "intents" ]] && echo "  judge: ${JUDGE_MODEL} | sdg: ${SDG_MODEL}"
 echo "  kfp: ${KFP_ENDPOINT}"
 
