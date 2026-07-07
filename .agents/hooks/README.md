@@ -1,11 +1,11 @@
 # Shared Hook Utilities
 
-This directory contains reusable hook implementations that are not tied to one
-agent tool.
+This directory contains all hook implementations. They are tool-agnostic —
+each AI tool's configuration file (`.cursor/hooks.json`, `.codex/hooks.json`)
+points here instead of maintaining its own copy.
 
-Tool-specific hook configuration files can call these scripts instead of
-duplicating logic under `.cursor/` or `.codex/`.
-
-| Script | Purpose |
-|--------|---------|
-| `guard-openshift-command.py` | Blocks risky OpenShift and Kubernetes mutations unless the project cluster guard matches |
+| Script | Trigger | Purpose |
+|--------|---------|---------|
+| `guard-openshift-command.py` | Before shell (mutating oc/kubectl) | Blocks risky cluster mutations unless `RHOAI_EXPECTED_API_SERVER` matches |
+| `check-docs-consistency.sh` | After file edit | Reminds agents to keep code, docs, and GitOps aligned |
+| `validate-yaml.sh` | After file edit (gitops YAML) | Runs `kustomize build` to catch manifest errors early |

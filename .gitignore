@@ -6,6 +6,7 @@
 *.secrets
 *.kubeconfig
 kubeconfig
+.claude/settings.local.json
 
 # OS, editor, and workspace state
 .DS_Store
