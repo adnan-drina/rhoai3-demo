@@ -103,12 +103,23 @@ implement production PKI for this demo.
 
 ## Branching And Commits
 
-GitHub Flow + Trunk-Based Development. `main` is the stable trunk for released
-demo content. During active refactoring, ArgoCD Applications may temporarily
-pin to the active refactoring branch; update the Application `targetRevision`
-back to the intended release ref when stabilizing.
+Trunk-based development. `main` is the single deployable branch — ArgoCD
+Applications sync from `main`.
 
-Commit format: `type(scope): description` - types: feat, fix, docs, refactor,
+```text
+main ← always deployable, ArgoCD source of truth
+  ├── feat/<slug>       ← short-lived feature branches (squash-merge, then delete)
+  └── upgrade/rhoai-X.Y ← platform version upgrades (merge when validated, tag)
+```
+
+Branch lifecycle:
+- `feat/*` — new stages, capabilities, or fixes. Squash-merge to main, delete.
+- `upgrade/rhoai-X.Y` — platform baseline bumps (operator versions, API
+  changes, doc URL updates). Merge to main when validated on a live cluster,
+  then tag as `vX.Y.0`.
+- Historical snapshots are lightweight tags under `archive/` (not branches).
+
+Commit format: `type(scope): description` — types: feat, fix, docs, refactor,
 chore, ci. Scope: stage identifier or slug for stage-specific changes,
 component name for cross-cutting changes.
 
