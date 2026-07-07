@@ -1,8 +1,0 @@
-# Required for KServe model serving in RHOAI 3.4
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-serverless
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-

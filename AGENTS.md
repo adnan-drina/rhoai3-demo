@@ -4,10 +4,9 @@ Demo of building Private AI platform infrastructure for enterprise generative
 and predictive AI use cases using the product baseline in
 `docs/PLATFORM_BASELINE.md`.
 
-The active implementation is being rewritten. Legacy implementation artifacts
-are backed up under `backup/legacy-implementation-2026-06-09/` and must be
-treated as reference material unless the user explicitly asks to restore or run
-them.
+The active implementation has been rebuilt stage by stage. Legacy
+implementation artifacts were removed from the working tree; they remain
+accessible in git history if needed (`git log --all -- backup/`).
 
 ## Documentation First
 
@@ -38,16 +37,6 @@ docs/                              # Active project docs and product baseline
 .agents/                           # Shared skills, rules, reference maps, and hooks
 ```
 
-Legacy implementation areas are preserved under the backup root with their
-original relative paths:
-
-```text
-backup/legacy-implementation-2026-06-09/gitops/
-backup/legacy-implementation-2026-06-09/scripts/
-backup/legacy-implementation-2026-06-09/steps/
-```
-
-Do not run backup scripts as active project commands.
 
 ## GitOps Constraints
 
@@ -154,7 +143,7 @@ tool-specific skill discovery folders in this repo. Use the prefix plus
 | Group | Prefix | Skills | Purpose |
 |-------|--------|--------|---------|
 | Project Structure | `project-*` | `project-structure`, `project-agent-guidance`, `project-red-hat-doc-skill-authoring`, `project-rhoai-doc-chapter-skill-authoring`, `project-red-hat-operator-gitops`, `project-demo-stage-authoring`, `project-architecture-diagrams`, `project-gitops-authoring`, `project-documentation-authoring`, `project-manifest-review`, `project-red-hat-doc-alignment-review`, `project-doc-alignment-audit` | Repo layout, demo stage lifecycle, GitOps stage conventions, documentation structure, Red Hat narrative grounding, Red Hat docs-to-skill generation, Red Hat Operator GitOps deployment patterns, manifest review, Red Hat source alignment, documentation alignment audit, and shared AI guidance |
-| Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy. Use active stage scripts where they exist and treat legacy backup scripts as reference only. |
+| Demo Environment | `env-*` | `env-deploy-and-evaluate`, `env-troubleshoot`, `env-manage-resources`, `env-validate-demo-flow` | Live AWS/OpenShift demo deployment, validation, troubleshooting, shutdown, recovery, and redeploy |
 | RHOAI Platform | `rhoai-*` | `rhoai-architecture-overview`, `rhoai-release-and-support-posture`, `rhoai-platform-planning`, `rhoai-api-tiers`, `rhoai-update-channels`, `rhoai-self-managed-installation`, `rhoai-dsci-dsc-configuration`, `rhoai-distributed-workloads`, `rhoai-kueue-workload-management`, `rhoai-distributed-workload-operations`, `rhoai-distributed-workload-workflows`, `rhoai-kubeflow-spark-operator`, `rhoai-nvidia-gpu-accelerators`, `rhoai-hardware-profiles`, `rhoai-certificate-management`, `rhoai-observability`, `rhoai-logs-and-audit-records`, `rhoai-installation-troubleshooting`, `rhoai-uninstallation`, `rhoai-users-groups-access`, `rhoai-access-group-selection`, `rhoai-central-authentication-service`, `rhoai-dashboard-applications`, `rhoai-connected-applications`, `rhoai-dashboard-customization`, `rhoai-cluster-pvc-size`, `rhoai-storage-classes`, `rhoai-connection-types`, `rhoai-s3-object-storage-data`, `rhoai-project-workflows`, `rhoai-data-science-ide-workflows`, `rhoai-project-scoped-resources`, `rhoai-component-resource-customization`, `rhoai-telemetry-admin-settings`, `rhoai-feature-store`, `rhoai-automl`, `rhoai-basic-workbenches`, `rhoai-workbenches-custom-images`, `rhoai-workbench-image-import`, `rhoai-workbench-gateway-api-migration`, `rhoai-model-serving-platform`, `rhoai-model-deployment`, `rhoai-maas-governance`, `rhoai-distributed-inference-llmd`, `rhoai-model-management-monitoring`, `rhoai-monitoring-trustyai`, `rhoai-model-catalog-sources`, `rhoai-model-catalog-workflows`, `rhoai-gen-ai-playground`, `rhoai-autorag`, `rhoai-enterprise-rag`, `rhoai-model-registry`, `rhoai-model-registry-workflows`, `rhoai-llama-stack`, `rhoai-ai-pipelines`, `rhoai-mlflow`, `rhoai-model-customization-training`, `rhoai-evaluation`, `rhoai-guardrails-safety`, `rhoai-chatbot-customization`, `rhoai-model-evaluation`, `rhoai-kfp-pipeline-authoring`; additional component skills planned | Official-doc-backed active-baseline RHOAI component installation, configuration, and usage |
 | OpenShift Platform | `ocp-*` | `ocp-ai-workloads`, `ocp-authentication-identity-providers`, `ocp-cicd-builds`, `ocp-distributed-tracing`, `ocp-etcd`, `ocp-grafana-operator`, `ocp-gitops-operator`, `ocp-image-registry-and-mirroring`, `ocp-ingress-gateway-routes`, `ocp-machine-configuration`, `ocp-machine-management`, `ocp-node-feature-discovery`, `ocp-nodes`, `ocp-observability`, `ocp-opentelemetry`, `ocp-security-rbac-scc`, `ocp-storage`, `ocp-web-console`; additional component skills planned | Official-doc-backed OpenShift Container Platform guidance plus repo-approved OpenShift platform extensions for infrastructure, networking, auth, monitoring, GitOps, cluster, and storage integration |
 | OpenShift Data Foundation | `odf-*` | `odf-storagecluster`, `odf-storage-classes`, `odf-object-bucket-claims`, `odf-multicloud-gateway` | Official-doc-backed OpenShift Data Foundation storage, object storage, Ceph, NooBaa, storage class, and data-service integration guidance |

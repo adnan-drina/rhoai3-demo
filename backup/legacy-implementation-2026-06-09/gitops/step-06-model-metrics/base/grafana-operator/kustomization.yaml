@@ -1,9 +1,0 @@
-# Ref: https://github.com/grafana/grafana-operator
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - operator/
-  - instance/
-  - dashboards/
-

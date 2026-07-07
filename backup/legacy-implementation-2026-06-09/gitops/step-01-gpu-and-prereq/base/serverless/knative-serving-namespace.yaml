@@ -1,8 +1,0 @@
-# Required for KnativeServing instance
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: knative-serving
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-

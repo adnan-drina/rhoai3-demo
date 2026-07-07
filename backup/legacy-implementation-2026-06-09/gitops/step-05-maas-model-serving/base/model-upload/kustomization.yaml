@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# S3 upload for models too large for OCI ModelCar (>20GB).
-# Jobs use argocd.argoproj.io/hook: Skip — run by deploy.sh, not ArgoCD.
-# Granite-8B uses OCI ModelCar (no upload needed).
-
-resources:
-  - upload-mistral-bf16.yaml
