@@ -126,7 +126,7 @@ spec:
             - name: GIT_REPO_URL
               value: https://github.com/adnan-drina/rhoai3-demo.git
             - name: GIT_REPO_BRANCH
-              value: rhoai34-refactoring
+              value: main
           resources:
             requests:
               cpu: 500m
