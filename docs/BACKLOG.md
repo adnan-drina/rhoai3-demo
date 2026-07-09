@@ -111,7 +111,7 @@ Stage 210 owns that transition.
 |------|----------|-------|
 | Fresh-environment MachineSet regeneration | high | Tracked in the fresh-environment checklist above. |
 | GPU cost control | done 2026-07-09 | Closed as operational practice: park with Nemotron `LLMInferenceService` replicas 0 + GPU MachineSet scaled to 0 (`env-manage-resources`); exercised at the Stage 230 and 250 wraps. |
-| Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed. A candidate scope element for `stage-450-gpu-self-service`. |
+| Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed. A candidate scope element for `stage-450-gpu-self-service` — the [gpu-booking-app-plugin](https://github.com/rhai-code/gpu-booking-app-plugin) implements exactly this (reserved workloads protected from preemption via per-user ClusterQueue `nominalQuota`). |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
 
 ## Stage 210: Status — COMPLETE
@@ -264,7 +264,7 @@ Numbers are provisional until a stage is created (refined 2026-07-09).
 |-----------|-------|---------|
 | `stage-430-mlflow-experiment-tracking` | AI Operations/MLOps | Advanced MLflow lifecycle: production storage (PostgreSQL + S3, HA) and model-registry integration, extending the Stage 250 MLflow foundation. |
 | `stage-440-observability-and-governance` | AI Operations/MLOps | The governance gap beyond Stage 240/250: audit records, MaaS showback, consolidated operational-evidence dashboards. |
-| `stage-450-gpu-self-service` | AI Operations/MLOps | User-facing GPU request/scheduling application on top of the Stage 120 GPU-as-a-Service layer (Kueue quotas, hardware profiles): request, queue, and schedule GPU capacity as a self-service workflow. Reworks the taxonomy's `stage-450-distributed-workload-operations` concept; can absorb the Kueue preemption and EvalHub-at-scale low items. |
+| `stage-450-gpu-self-service` | AI Operations/MLOps | User-facing GPU request/scheduling application on top of the Stage 120 GPU-as-a-Service layer (Kueue quotas, hardware profiles): request, queue, and schedule GPU capacity as a self-service workflow. Candidate implementation: [gpu-booking-app-plugin](https://github.com/rhai-code/gpu-booking-app-plugin) — an OpenShift Console dynamic plugin (Go backend, React/PatternFly v6 frontend, Helm deploy) with calendar-based GPU reservations, automatic GPU/MIG capacity discovery from node labels, and per-user Kueue ClusterQueues with protected `nominalQuota` enforced via workload preemption. Reworks the taxonomy's `stage-450-distributed-workload-operations` concept; can absorb the Kueue preemption and EvalHub-at-scale low items (the plugin's preemption model covers the former directly). |
 
 Retired candidates (2026-07-09): `stage-250-model-evaluation` shipped;
 `stage-320-llama-stack-runtime` was absorbed by Stage 230 (LSD, Responses
