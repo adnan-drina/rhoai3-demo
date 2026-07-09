@@ -71,7 +71,7 @@ numbers can change before a stage is created.
 | `stage-410-ai-pipelines` | AI Operations, Evaluation & MLOps | AI Pipelines and data processing workflows. |
 | `stage-430-mlflow-experiment-tracking` | AI Operations, Evaluation & MLOps | Advanced MLflow lifecycle and model-registry integration. The MLflow foundation (product operator, tracking) is delivered in `stage-250-model-evaluation`; 430 extends it to production storage (PostgreSQL + S3, HA) and registry workflows. |
 | `stage-440-observability-and-governance` | AI Operations, Evaluation & MLOps | TrustyAI, monitoring, Grafana dashboards, and operational evidence. |
-| `stage-450-distributed-workload-operations` | AI Operations, Evaluation & MLOps | Kueue, distributed workloads, scheduling, and GPU utilization controls. |
+| `stage-450-gpu-self-service` | AI Operations, Evaluation & MLOps | User-facing GPU request/scheduling application on the Stage 120 GPU-as-a-Service layer (Kueue quotas, hardware profiles); absorbs the earlier distributed-workload-operations concept (Kueue, scheduling, GPU utilization controls). |
 
 ## Selection Rules
 
