@@ -80,3 +80,4 @@ venv/
 **/step-11-face-recognition/notebooks/videos/
 **/step-11-face-recognition/notebooks/face-dataset/
 **/step-11-face-recognition/notebooks/*.pt
+stage-230-private-data-rag/chatbot/VERSION

@@ -30,6 +30,27 @@ SPAN_TYPE_GUARDRAIL = "GUARDRAIL"
 _state = {"initialized": False, "enabled": False}
 
 
+def _resolve_version():
+    """Chatbot build version for agent versioning.
+
+    Binary OpenShift builds do not support --build-arg, so deploy.sh writes
+    the git SHA to a VERSION file in the build context; the env var remains
+    as an override for other build paths.
+    """
+    version = os.environ.get("CHATBOT_VERSION", "").strip()
+    if version and version != "dev":
+        return version
+    try:
+        from pathlib import Path
+
+        file_version = Path("/app/VERSION").read_text().strip()
+        if file_version:
+            return file_version
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+    return version or "dev"
+
+
 def _init():
     """Lazily configure MLflow once per process; returns whether enabled."""
     if _state["initialized"]:
@@ -53,8 +74,7 @@ def _init():
 
         # Agent versioning: one LoggedModel per chatbot build; traces link
         # to the app version that produced them (Agent versions UI).
-        # CHATBOT_VERSION is the git SHA baked in as a build arg.
-        version = os.environ.get("CHATBOT_VERSION", "").strip()
+        version = _resolve_version()
         if version:
             try:
                 mlflow.set_active_model(name=f"{APP_NAME}-{version}")
