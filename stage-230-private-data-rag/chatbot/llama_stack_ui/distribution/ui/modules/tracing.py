@@ -21,6 +21,7 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXPERIMENT = "private-rag-chatbot"
+APP_NAME = "private-rag-chatbot"
 
 # GUARDRAIL is not a built-in mlflow SpanType; span_type accepts custom
 # strings and the UI renders them verbatim.
@@ -49,6 +50,17 @@ def _init():
         )
         _state["enabled"] = True
         logger.info("MLflow tracing enabled (tracking URI %s)", uri)
+
+        # Agent versioning: one LoggedModel per chatbot build; traces link
+        # to the app version that produced them (Agent versions UI).
+        # CHATBOT_VERSION is the git SHA baked in as a build arg.
+        version = os.environ.get("CHATBOT_VERSION", "").strip()
+        if version:
+            try:
+                mlflow.set_active_model(name=f"{APP_NAME}-{version}")
+                logger.info("MLflow active model: %s-%s", APP_NAME, version)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("MLflow active model not set: %s", e)
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning(
             "MLflow tracing disabled after initialization error: %s", e
@@ -115,6 +127,31 @@ def set_attributes(live_span, attributes):
         live_span.set_attributes(attributes)
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.debug("MLflow set_attributes failed: %s", e)
+
+
+def set_session(session_id, user=None):
+    """Attach the conversation id to the active trace (Sessions grouping).
+
+    Prefers the dedicated update_current_trace kwargs where the SDK has
+    them; falls back to the documented metadata keys otherwise.
+    """
+    if not _state["enabled"] or not session_id:
+        return
+    try:
+        import mlflow
+
+        try:
+            kwargs = {"session_id": str(session_id)}
+            if user:
+                kwargs["user_id"] = str(user)
+            mlflow.update_current_trace(**kwargs)
+        except TypeError:
+            metadata = {"mlflow.trace.session": str(session_id)}
+            if user:
+                metadata["mlflow.trace.user"] = str(user)
+            mlflow.update_current_trace(metadata=metadata)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.debug("MLflow set_session failed: %s", e)
 
 
 def tag_trace(tags):

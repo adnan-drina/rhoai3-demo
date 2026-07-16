@@ -24,6 +24,9 @@ data:
   MLFLOW_TRACKING_INSECURE_TLS: "true"
   MLFLOW_HTTP_REQUEST_TIMEOUT: "10"
   MLFLOW_EXPERIMENT_NAME: "private-rag-chatbot"
+  # The MLflow client sends usage telemetry to api.mlflow-telemetry.io by
+  # default; keep the demo egress-clean (the server side already disables it).
+  MLFLOW_DISABLE_TELEMETRY: "true"
   # Substring match against Llama Stack model ids; the matching model is
   # sorted first so the sidebar selectbox defaults to it.
   RAG_DEFAULT_MODEL: "nemotron"

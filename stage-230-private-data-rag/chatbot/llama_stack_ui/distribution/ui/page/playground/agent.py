@@ -519,6 +519,7 @@ def agent_process_prompt(prompt, state, config):
         inputs={"prompt": prompt, "model": config.model, "mode": "agent"},
         attributes={"app.mode": "agent", "app.model": config.model},
     ) as turn:
+        tracing.set_session(st.session_state.get("conversation_id"))
         _agent_process_prompt(prompt, state, config, turn)
 
 

@@ -410,3 +410,38 @@ cluster before authoring):
 - Verified live before build: MLflow 3.10.1 serves the v3 tracing API
   (`POST /api/3.0/mlflow/traces/search` 200) and enforces workspace auth
   (400 without `X-MLFLOW-WORKSPACE`/`workspace` param).
+
+## MLflow GenAI Full Implementation (2026-07-16, agreed with user)
+
+Phased plan agreed (user decisions: phased 1→2→3; judge model gpt-4o-mini
+via MaaS; evaluation harness as a KFP pipeline in the stage DSPA). Grounded
+in the rhoai-mlflow skill capture of the RHOAI 3.4 Working with MLflow
+guide + live probes of the product MLflow 3.10.1 server:
+
+- Workspace isolates experiments/runs/registered models/prompts/datasets/
+  traces; RBAC pseudo-resources: experiments (traces, logged models,
+  scorers), registeredmodels (prompts), datasets (evaluation datasets) —
+  all already granted via mlflow-operator-mlflow-integration.
+- Verified live: datasets v3 API works; runs search works; session metadata
+  (mlflow.trace.session) filterable; logged-models search works; prompt
+  registry works through the registered-models layer; scorers/judges are
+  SDK-side only (no server scorer registry in 3.10.1); the MLflow AI
+  Gateway REST surface is ABSENT in this build (gatewayendpoints RBAC is
+  forward-provisioned) → judges run in the harness with a direct
+  OpenAI-compatible endpoint (MaaS), not from the UI.
+- Gen AI studio "Prompts" page = dashboard surface of the MLflow prompt
+  registry (official 3.4 docs).
+
+Phase 1 (this session): Sessions (session_id = chatbot conversation_id on
+every turn trace, both modes) + Agent versions (LoggedModel per chatbot
+build via mlflow.set_active_model, version = git SHA build-arg) +
+MLFLOW_DISABLE_TELEMETRY=true on the chatbot (client was phoning home).
+Phase 2: prompt registry — register system prompt + tool-routing rules as
+versioned prompts (record-only; code remains source of truth; trace tags
+carry prompt version).
+Phase 3: evaluation dataset from the 12-question validate-and-protect
+benchmark (+ curated traces) + mlflow.genai.evaluate KFP pipeline in the
+stage DSPA with built-in judges (RetrievalGroundedness, RelevanceToQuery,
+Safety) + custom make_judge guardrail judge, judge model gpt-4o-mini via
+MaaS (non-streaming, in-cluster proxy path). Realizes BACKLOG burn-down
+item 2 app-side, complementary to EvalHub model-level evals.

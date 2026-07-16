@@ -4,6 +4,12 @@ FROM registry.access.redhat.com/ubi9/python-312:latest
 
 WORKDIR /app
 
+# Chatbot build version (git SHA), recorded as the MLflow agent version so
+# traces link to the app build that produced them. Passed by deploy.sh /
+# oc start-build --build-arg; "dev" for local builds.
+ARG CHATBOT_VERSION=dev
+ENV CHATBOT_VERSION=${CHATBOT_VERSION}
+
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

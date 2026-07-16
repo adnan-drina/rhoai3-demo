@@ -259,6 +259,7 @@ def direct_process_prompt(prompt, state, config):
         inputs={"prompt": prompt, "model": config.model, "mode": "direct"},
         attributes={"app.mode": "direct", "app.model": config.model},
     ) as turn:
+        tracing.set_session(st.session_state.get("conversation_id"))
         _direct_process_prompt(prompt, state, config, turn)
 
 

@@ -650,8 +650,13 @@ ensure_chatbot_build() {
     exit 1
   fi
 
+  # Bake the git SHA in as the chatbot version: tracing registers it as the
+  # MLflow agent version (LoggedModel) so traces link to the build.
+  local chatbot_version
+  chatbot_version=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo dev)
   oc start-build "$CHATBOT_BUILD" -n "$CHATBOT_BUILD_NS" \
     --from-dir="$SCRIPT_DIR/chatbot" \
+    --build-arg="CHATBOT_VERSION=${chatbot_version}" \
     --wait \
     --follow \
     --insecure-skip-tls-verify=true
