@@ -96,7 +96,9 @@ else
 fi
 
 check "Namespace ${SAFETY_NS} exists" "$(resource_exists "namespace/${SAFETY_NS}" "" && echo pass || echo missing)"
-check "RoleBinding rhoai-developers-edit exists" "$(resource_exists "rolebinding/rhoai-developers-edit" "$SAFETY_NS" && echo pass || echo missing)"
+# ai-safety is platform safety infrastructure: developers must NOT have edit
+# access (rhoai-developers-edit deliberately removed in 937542ed).
+check "RoleBinding rhoai-developers-edit is absent (platform-infra posture)" "$(resource_exists "rolebinding/rhoai-developers-edit" "$SAFETY_NS" && echo "unexpectedly present" || echo pass)"
 check "RoleBinding rhods-admins-admin exists" "$(resource_exists "rolebinding/rhods-admins-admin" "$SAFETY_NS" && echo pass || echo missing)"
 
 trustyai_state=$(jsonpath "datasciencecluster/default-dsc" "" "{.spec.components.trustyai.managementState}")
