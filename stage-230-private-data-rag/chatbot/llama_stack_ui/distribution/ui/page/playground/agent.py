@@ -86,6 +86,43 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
     return agent_tools
 
 
+def build_tool_instructions(tools):
+    """Tool-routing rules appended to the system prompt when tools are on.
+
+    Without explicit routing guidance the model can skip file_search and
+    meta-answer about the MCP tool listing instead of answering the
+    question (verified live 2026-07-16: with builtin::rag + mcp::openshift
+    enabled, a documentation question produced no file_search_call at all —
+    the answer described the Kubernetes metrics tools). With these rules the
+    same question calls file_search and cluster questions call MCP tools.
+    """
+    if not tools:
+        return ""
+    rules = []
+    tool_types = {tool.get("type") for tool in tools}
+    if "file_search" in tool_types:
+        rules.append(
+            "- For questions about documentation, products, features, or "
+            "concepts, ALWAYS call the file_search tool first and ground "
+            "your answer in the retrieved documents."
+        )
+    mcp_labels = sorted({
+        tool.get("server_label") for tool in tools
+        if tool.get("type") == "mcp" and tool.get("server_label")
+    })
+    if mcp_labels:
+        rules.append(
+            f"- Use the MCP tools ({', '.join(mcp_labels)}) only when the "
+            "user asks about live cluster or system state (nodes, pods, "
+            "resources, metrics)."
+        )
+    rules.append(
+        "- Never answer by describing the available tools; either use a "
+        "tool or answer the question directly."
+    )
+    return "\n\nTool usage rules:\n" + "\n".join(rules)
+
+
 # ============================================================================
 # Agent Mode - Chunk Handlers
 # ============================================================================
@@ -517,7 +554,7 @@ def _agent_process_prompt(prompt, state, config, turn):
     # Build request for Responses API
     request_kwargs = {
         "model": config.model,
-        "instructions": config.system_prompt,
+        "instructions": config.system_prompt + build_tool_instructions(tools),
         "input": prompt,
         "conversation": config.conversation_id,
         "temperature": config.sampling.temperature,
@@ -541,7 +578,7 @@ def _agent_process_prompt(prompt, state, config, turn):
         span_type="LLM",
         inputs={
             "prompt": prompt,
-            "instructions": config.system_prompt,
+            "instructions": request_kwargs["instructions"],
             "model": config.model,
             "temperature": config.sampling.temperature,
             "max_output_tokens": config.sampling.max_tokens,
