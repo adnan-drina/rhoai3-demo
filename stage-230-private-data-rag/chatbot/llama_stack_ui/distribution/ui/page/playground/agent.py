@@ -374,6 +374,14 @@ def process_chunk_by_type(chunk, state, selected_vector_dbs):
         if hasattr(chunk, 'delta') and chunk.delta:
             state.update_message(chunk.delta, display_fn=strip_file_citations_streaming)
 
+    # Handle truncation: the server ends the stream with response.incomplete
+    # when generation hits max_output_tokens (incomplete_details.reason=
+    # "length"); without this branch the answer just stops silently.
+    elif chunk_type == "response.incomplete":
+        details = getattr(getattr(chunk, "response", None), "incomplete_details", None)
+        state.incomplete_reason = getattr(details, "reason", None) or "incomplete"
+        logger.warning("Agent response incomplete: %s", state.incomplete_reason)
+
     # Handle errors
     elif chunk_type == "response.failed":
         return handle_chunk_error(chunk)
@@ -439,6 +447,8 @@ def save_agent_response_to_session(state):
         response_dict["tool_status"] = state.tool_status
     if state.tool_results:
         response_dict["tool_results"] = state.tool_results
+    if getattr(state, "incomplete_reason", None):
+        response_dict["incomplete_reason"] = state.incomplete_reason
 
     st.session_state.messages.append(response_dict)
 
@@ -552,7 +562,14 @@ def _agent_process_prompt(prompt, state, config, turn):
             "response": state.full_response,
             "reasoning": state.reasoning_text,
             "tool_results": state.tool_results,
+            "incomplete_reason": getattr(state, "incomplete_reason", None),
         })
+
+    if getattr(state, "incomplete_reason", None):
+        st.caption(
+            f"⚠️ Response incomplete (reason: {state.incomplete_reason}). "
+            "Increase Max Tokens in the sidebar and ask again."
+        )
 
     # Run output guardrails after response is fully streamed but before search results
     if output_shields and state.full_response:

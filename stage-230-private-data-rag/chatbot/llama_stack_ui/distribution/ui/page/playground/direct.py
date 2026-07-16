@@ -171,7 +171,8 @@ def stream_completions_direct(completion_response, state):
     for chunk in completion_response:
         logger.debug("Completion chunk: %s", chunk)
         if hasattr(chunk, 'choices') and chunk.choices:
-            delta = chunk.choices[0].delta
+            choice = chunk.choices[0]
+            delta = choice.delta
 
             # Handle reasoning content (for models that support it like R1)
             if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
@@ -180,6 +181,12 @@ def stream_completions_direct(completion_response, state):
             # Handle regular content
             if hasattr(delta, 'content') and delta.content:
                 state.update_message(delta.content)
+
+            # Surface truncation instead of ending silently ("length" =
+            # generation hit the Max Tokens budget).
+            if getattr(choice, 'finish_reason', None) == 'length':
+                state.incomplete_reason = 'length'
+                logger.warning("Direct response incomplete: hit max_tokens")
 
 
 def save_direct_response_to_session(state, all_search_results):
@@ -206,6 +213,9 @@ def save_direct_response_to_session(state, all_search_results):
     # Save reasoning if present
     if state.reasoning_text:
         response_dict["reasoning"] = state.reasoning_text
+
+    if getattr(state, "incomplete_reason", None):
+        response_dict["incomplete_reason"] = state.incomplete_reason
 
     # Save search results for history display if we had any
     if all_search_results:
@@ -348,7 +358,14 @@ def _direct_process_prompt(prompt, state, config, turn):
             tracing.set_outputs(lspan, {
                 "response": state.full_response,
                 "reasoning": state.reasoning_text,
+                "incomplete_reason": getattr(state, "incomplete_reason", None),
             })
+
+        if getattr(state, "incomplete_reason", None):
+            st.caption(
+                f"⚠️ Response incomplete (reason: {state.incomplete_reason}). "
+                "Increase Max Tokens in the sidebar and ask again."
+            )
 
         # Step 5: Run output guardrails
         if output_shields and state.full_response:

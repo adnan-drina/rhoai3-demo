@@ -69,6 +69,13 @@ def render_message(msg):
         if msg.get('content'):
             st.markdown(msg['content'])
 
+        # Flag truncated answers instead of letting them end silently
+        if msg.get('incomplete_reason'):
+            st.caption(
+                f"⚠️ Response incomplete (reason: {msg['incomplete_reason']}). "
+                "Increase Max Tokens in the sidebar and ask again."
+            )
+
 
 def render_history():
     """Renders the chat history from the session state."""
@@ -359,9 +366,12 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list,
         on_change=reset_agent,
         help="Number of documents retrieved per vector store in Direct mode.",
     )
+    # 512 truncated structured doc answers mid-table (Responses API returns
+    # status=incomplete reason=length); 2048 fits the demo answers while the
+    # slider still allows trimming.
     max_tokens = st.slider(
         "Max Tokens",
-        1, 4096, 512, 64,
+        1, 4096, 2048, 64,
         on_change=reset_agent,
         help="Maximum number of tokens to generate.",
     )
@@ -556,6 +566,9 @@ class ResponseState:
 
         # Guardrail block message (set when a shield blocks the request/response)
         self.guardrail_blocked = None
+
+        # Set when generation stopped early (e.g. "length" = hit Max Tokens)
+        self.incomplete_reason = None
 
     @property
     def has_reasoning(self):
