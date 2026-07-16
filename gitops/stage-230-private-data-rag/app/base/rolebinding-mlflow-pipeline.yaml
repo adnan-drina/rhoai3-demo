@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  # The MLflow GenAI evaluation pipeline (KFP task pods run as the DSPA
+  # pipeline-runner ServiceAccount) records the benchmark dataset, the
+  # evaluation run, and per-row traces with judge assessments in the product
+  # MLflow via kubernetes-namespaced auth. mlflow-operator-mlflow-integration
+  # grants the required experiments + datasets pseudo-resource access.
+  # SkipDryRunOnMissingResource: both the ClusterRole (Stage 250 MLflow
+  # operator) and the SA (DSPA reconcile) appear after first sync.
+  name: pipeline-runner-mlflow-integration
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: pipeline-runner-mlflow-integration
+    app.kubernetes.io/component: pipelines
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "21"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+subjects:
+  - kind: ServiceAccount
+    name: pipeline-runner-dspa-enterprise-rag
+    namespace: enterprise-rag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mlflow-operator-mlflow-integration
