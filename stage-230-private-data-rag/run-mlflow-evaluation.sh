@@ -51,7 +51,11 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   python3 -m venv "$VENV"
 fi
 "$VENV/bin/pip" install -q "kfp==2.14.6" "kfp-kubernetes==2.14.6"
-PIPELINE_YAML=$(mktemp "${TMPDIR:-/tmp}/stage230-mlflow-eval.XXXXXX.yaml")
+# BSD mktemp cannot append a suffix after the template Xs, and the kfp
+# compiler requires a .yaml extension - use a temp dir.
+PIPELINE_TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/stage230-mlflow-eval.XXXXXX")
+trap 'rm -rf "$PIPELINE_TMP_DIR"' EXIT
+PIPELINE_YAML="$PIPELINE_TMP_DIR/pipeline.yaml"
 "$VENV/bin/python" "$SCRIPT_DIR/kfp/mlflow_genai_evaluation_pipeline.py" --output "$PIPELINE_YAML"
 echo "   compiled: $PIPELINE_YAML"
 
