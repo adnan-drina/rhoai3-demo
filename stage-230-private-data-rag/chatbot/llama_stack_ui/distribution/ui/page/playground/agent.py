@@ -520,6 +520,10 @@ def agent_process_prompt(prompt, state, config):
         attributes={"app.mode": "agent", "app.model": config.model},
     ) as turn:
         tracing.set_session(st.session_state.get("conversation_id"))
+        tracing.tag_prompts({
+            "system": tracing.ensure_prompt_version(
+                "private-rag-chatbot-system", config.system_prompt),
+        })
         _agent_process_prompt(prompt, state, config, turn)
 
 
@@ -563,10 +567,17 @@ def _agent_process_prompt(prompt, state, config, turn):
         llama_stack_api.client,
     ) or None
 
+    tool_instructions = build_tool_instructions(tools)
+    if tool_instructions:
+        tracing.tag_prompts({
+            "tool-rules": tracing.ensure_prompt_version(
+                "private-rag-chatbot-tool-rules", tool_instructions),
+        })
+
     # Build request for Responses API
     request_kwargs = {
         "model": config.model,
-        "instructions": config.system_prompt + build_tool_instructions(tools),
+        "instructions": config.system_prompt + tool_instructions,
         "input": prompt,
         "conversation": config.conversation_id,
         "temperature": config.sampling.temperature,

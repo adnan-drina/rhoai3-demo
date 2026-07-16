@@ -149,6 +149,62 @@ def set_attributes(live_span, attributes):
         logger.debug("MLflow set_attributes failed: %s", e)
 
 
+_prompt_cache = {}
+
+
+def ensure_prompt_version(name, template):
+    """Register the template in the MLflow prompt registry if it changed.
+
+    Record-only integration: the code remains the source of truth; the
+    registry gives versioned history (visible in the MLflow Prompts page
+    and the Gen AI studio Prompts view) and traces are tagged with the
+    version they ran with. Cached per (name, template) so a version is
+    registered at most once per process. Returns the version or None.
+    """
+    if not _init() or not template:
+        return None
+    cache_key = (name, hash(template))
+    if cache_key in _prompt_cache:
+        return _prompt_cache[cache_key]
+    version = None
+    try:
+        from mlflow.genai import load_prompt, register_prompt
+
+        try:
+            latest = load_prompt(name, allow_missing=True)
+        except TypeError:
+            try:
+                latest = load_prompt(name)
+            except Exception:  # pylint: disable=broad-exception-caught
+                latest = None
+        except Exception:  # pylint: disable=broad-exception-caught
+            latest = None
+        if latest is not None and latest.template == template:
+            version = latest.version
+        else:
+            registered = register_prompt(
+                name=name, template=template,
+                commit_message="registered by chatbot tracing",
+            )
+            version = registered.version
+            logger.info("Registered prompt %s version %s", name, version)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.debug("MLflow prompt registration failed for %s: %s", name, e)
+    _prompt_cache[cache_key] = version
+    return version
+
+
+def tag_prompts(prompt_versions):
+    """Tag the active trace with the prompt versions used this turn."""
+    tags = {
+        f"prompt.{name}": str(version)
+        for name, version in (prompt_versions or {}).items()
+        if version is not None
+    }
+    if tags:
+        tag_trace(tags)
+
+
 def set_session(session_id, user=None):
     """Attach the conversation id to the active trace (Sessions grouping).
 

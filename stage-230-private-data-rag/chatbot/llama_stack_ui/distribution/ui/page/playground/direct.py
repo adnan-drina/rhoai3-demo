@@ -260,6 +260,10 @@ def direct_process_prompt(prompt, state, config):
         attributes={"app.mode": "direct", "app.model": config.model},
     ) as turn:
         tracing.set_session(st.session_state.get("conversation_id"))
+        tracing.tag_prompts({
+            "system": tracing.ensure_prompt_version(
+                "private-rag-chatbot-system", config.system_prompt),
+        })
         _direct_process_prompt(prompt, state, config, turn)
 
 
