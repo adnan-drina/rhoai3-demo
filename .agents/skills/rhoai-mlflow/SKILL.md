@@ -2,7 +2,7 @@
 name: rhoai-mlflow
 metadata:
   author: rhoai3-demo
-  version: 1.0.0
+  version: 1.1.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -130,6 +130,58 @@ For this repo:
 4. Use `examples/mlflow-patterns.md` for focused review patterns.
 5. For live cluster work, follow the OpenShift safety guard in `AGENTS.md`.
 6. Validate with `references/validation-checklist.md`.
+
+## Live-Verified GenAI Behaviors (2026-07-16, product MLflow 3.10.1)
+
+Verified on cluster-qt67m against the deployed product server; these fill
+gaps the guide capture does not cover. Re-verify on new product versions.
+
+1. **AI Gateway is not exposed in this build.** `gatewayendpoints`,
+   `gatewaymodeldefinitions`, and `gatewaysecrets` exist ONLY as RBAC
+   pseudo-resources (rules in the `mlflow-operator-mlflow-*` ClusterRoles);
+   they are NOT CRDs (`oc api-resources` lists only `mlflows` and
+   `mlflowconfigs`) and the tracking server 404s every gateway REST path.
+   Consequence: LLM judges cannot run from the UI; run them SDK-side
+   (`mlflow.genai.scorers` / `make_judge`) with a direct OpenAI-compatible
+   endpoint (`OPENAI_BASE_URL` + `OPENAI_API_KEY`, judge URI
+   `openai:/<model>`); verdicts land as trace assessments.
+2. **Scorers have no server-side registry** (all `/scorers` REST paths
+   404): the Judges UI stays sparse; assessments on traces are the visible
+   artifact.
+3. **Feature-to-REST map:** evaluation datasets are a v3-only surface
+   (`POST /api/3.0/mlflow/datasets/search`; 2.0 paths 404); traces are v3
+   (`POST /api/3.0/mlflow/traces/search`, requires structured `locations`
+   plus the workspace header); logged-models search is 2.0-only and
+   requires `experiment_ids`; prompts have NO dedicated REST path - the
+   SDK (`mlflow.genai.register_prompt` / `load_prompt` / `search_prompts`)
+   layers them on the registered-models registry.
+4. **Sessions** = trace metadata key `mlflow.trace.session`; set per
+   interaction with `mlflow.update_current_trace` and filter with
+   ``metadata.`mlflow.trace.session` = '<id>'``.
+5. **Agent versions** = LoggedModels: `mlflow.set_active_model(name=...)`
+   links subsequent traces to the app version (`mlflow.modelId` metadata).
+6. **Every request needs workspace context**: bearer SA token plus
+   `X-MLFLOW-WORKSPACE: <namespace>` (or `?workspace=`); a valid token
+   without it gets HTTP 400.
+7. **`oc auth can-i` is misleading for pseudo-resources**: it reports "no"
+   even for identities the server authorizes; ground truth is a REST call
+   with the SA token.
+8. **Client telemetry**: the SDK posts usage telemetry to
+   api.mlflow-telemetry.io unless `MLFLOW_DISABLE_TELEMETRY=true` is set
+   on the CLIENT (the server env only covers the server).
+9. **Gen AI studio "Prompts" page** is the dashboard surface of the
+   workspace prompt registry (official 3.4 docs).
+10. **KFP interplay**: DSPA MariaDB rejects pipeline manifests whose
+    embedded component source contains multi-byte characters (Error 1366)
+    - keep evaluation-component source ASCII-only. Binary chatbot builds
+    reject `--build-arg`; ship version identity as a file in the build
+    context.
+
+Working integration reference: Stage 230 chatbot
+(`stage-230-private-data-rag/chatbot/.../modules/tracing.py` - tracing,
+sessions, agent versions, prompt registration) and
+`stage-230-private-data-rag/kfp/mlflow_genai_evaluation_pipeline.py` +
+`run-mlflow-evaluation.sh` (datasets, evaluation runs, judges).
 
 ## References
 

@@ -2,7 +2,7 @@
 name: rhoai-chatbot-customization
 metadata:
   author: rhoai3-demo
-  version: 2.1.0
+  version: 2.2.0
   platform-family: "rhoai"
   platform-baseline: "repo"
   ocp-baseline: "repo"
@@ -238,3 +238,35 @@ For detailed architecture, container constraints, and prompt patterns, read:
 - `references/chatbot-architecture.md`
 - `references/development-constraints.md`
 - `references/prompt-engineering.md`
+
+## MLflow GenAI Integration Surface (added 2.2.0, verified 2026-07-16)
+
+The chatbot is instrumented for the product MLflow (workspace =
+`enterprise-rag`, experiment `private-rag-chatbot`); see `rhoai-mlflow`
+v1.1.0 "Live-Verified GenAI Behaviors" for platform semantics.
+
+- `modules/tracing.py` is the single integration point: no-op-safe lazy
+  init; one trace per turn (root span `direct_chat_turn`/`agent_chat_turn`
+  with GUARDRAIL/RETRIEVER/LLM children); guardrail verdicts recorded via
+  `record_guardrail` (tags `guardrail.blocked/stage/shield_id`);
+  truncation recorded as `incomplete_reason`; `tool_results` captured on
+  the root span at end of turn (the agent-mode fallback search fills them
+  after the generation span closes).
+- Sessions: `set_session(st.session_state["conversation_id"])` per turn.
+- Agent versions: `set_active_model` with `CHATBOT_VERSION`; binary builds
+  reject `--build-arg`, so deploy.sh writes the git SHA to a gitignored
+  `chatbot/VERSION` shipped in the build context (`/app/VERSION`).
+- Prompts: `ensure_prompt_version` registers the effective system prompt
+  (`private-rag-chatbot-system`) and generated agent tool-routing rules
+  (`private-rag-chatbot-tool-rules`), deduped against the latest version;
+  traces are tagged `prompt.system` / `prompt.tool-rules`.
+- Config keys (ConfigMap `private-rag-chatbot-config`): MLFLOW_TRACKING_URI,
+  MLFLOW_TRACKING_AUTH=kubernetes-namespaced, MLFLOW_TRACKING_INSECURE_TLS,
+  MLFLOW_HTTP_REQUEST_TIMEOUT, MLFLOW_EXPERIMENT_NAME,
+  MLFLOW_DISABLE_TELEMETRY. RBAC: RoleBinding
+  `private-rag-chatbot-mlflow-integration` (chatbot SA) and
+  `pipeline-runner-mlflow-integration` (DSPA SA, evaluation pipeline).
+- Validation: stage-230 `validate.sh` asserts the wiring and does a live
+  emit+search trace round-trip through `modules/tracing.py`;
+  `run-mlflow-evaluation.sh` runs the benchmark evaluation (dataset +
+  evaluation run + judge assessments) through the stage DSPA.

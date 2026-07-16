@@ -695,8 +695,47 @@ PY
   else
     check "Stage 230 chatbot MLflow trace round-trip (emit + search)" "$(tail -1 <<<"$trace_roundtrip" | head -c 120)"
   fi
+
+  # GenAI phase 1-2: agent version identity + prompt registry (prompts only
+  # exist after the first real turn, so absence is a warning, not a failure).
+  chatbot_version_resolved=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- \
+    python3 -c 'from llama_stack_ui.distribution.ui.modules import tracing; print(tracing._resolve_version())' 2>/dev/null || true)
+  if [[ -n "$chatbot_version_resolved" && "$chatbot_version_resolved" != "dev" ]]; then
+    check "Stage 230 chatbot resolves a build version for MLflow agent versioning" "pass"
+  else
+    warn "Stage 230 chatbot MLflow agent version" "resolved=${chatbot_version_resolved:-none} (dev build?)"
+  fi
+  prompt_check=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- \
+    python3 -c 'from mlflow.genai import search_prompts; print(",".join(sorted(p.name for p in search_prompts())))' 2>/dev/null || true)
+  if [[ "$prompt_check" == *"private-rag-chatbot-system"* ]]; then
+    check "Stage 230 MLflow prompt registry holds the chatbot system prompt" "pass"
+  else
+    warn "Stage 230 MLflow prompt registry" "no registered prompts yet (run a chat turn): ${prompt_check:-empty}"
+  fi
 else
   warn "Stage 230 chatbot MLflow trace checks skipped" "chatbot pod not found"
+fi
+
+# GenAI phase 3: evaluation pipeline wiring (the run itself is on-demand via
+# run-mlflow-evaluation.sh, like the AutoRAG runners).
+chatbot_telemetry=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.MLFLOW_DISABLE_TELEMETRY}")
+[[ "$chatbot_telemetry" == "true" ]] \
+  && check "Stage 230 chatbot disables MLflow client telemetry" "pass" \
+  || check "Stage 230 chatbot disables MLflow client telemetry" "MLFLOW_DISABLE_TELEMETRY=${chatbot_telemetry:-missing}"
+
+eval_rb_role=$(jsonpath "rolebinding/pipeline-runner-mlflow-integration" "$RAG_NS" "{.roleRef.name}")
+[[ "$eval_rb_role" == "mlflow-operator-mlflow-integration" ]] \
+  && check "Stage 230 evaluation pipeline SA has MLflow integration access" "pass" \
+  || check "Stage 230 evaluation pipeline SA has MLflow integration access" "${eval_rb_role:-missing}"
+
+if [[ -f "$SCRIPT_DIR/kfp/mlflow_genai_evaluation_pipeline.py" && -x "$SCRIPT_DIR/run-mlflow-evaluation.sh" ]]; then
+  if grep -qP "[^\x00-\x7F]" "$SCRIPT_DIR/kfp/mlflow_genai_evaluation_pipeline.py"; then
+    check "Stage 230 MLflow evaluation pipeline source is ASCII-only (KFP MariaDB)" "non-ASCII characters present"
+  else
+    check "Stage 230 MLflow evaluation pipeline source is ASCII-only (KFP MariaDB)" "pass"
+  fi
+else
+  check "Stage 230 MLflow evaluation pipeline + runner present" "missing kfp/mlflow_genai_evaluation_pipeline.py or run-mlflow-evaluation.sh"
 fi
 
 resource_exists "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" \

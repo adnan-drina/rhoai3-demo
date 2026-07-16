@@ -118,3 +118,30 @@ Stop and correct the work if any of these are true:
 - Service account examples use broad roles without a reason.
 - Manual token export is presented as production guidance.
 - Troubleshooting treats MLflow pseudo-resources as Kubernetes objects.
+
+## GenAI Integration Checks (added 1.1.0, verified 2026-07-16)
+
+For chatbot/agent tracing, sessions, versions, prompts, datasets, and
+evaluation-run integrations against the product MLflow:
+
+- Tracing clients must be no-op-safe: missing `MLFLOW_TRACKING_URI` or an
+  init/span failure must not break the instrumented app path.
+- `MLFLOW_DISABLE_TELEMETRY=true` is set on every SDK CLIENT (pods and
+  pipeline components), not only on the server.
+- Session grouping uses the `mlflow.trace.session` metadata key (verify a
+  filtered `search_traces` returns the turns of one conversation).
+- Agent versions use `mlflow.set_active_model` with a version identity that
+  ties to the build (git SHA); verify a trace's `mlflow.modelId` matches
+  the registered LoggedModel.
+- Prompt registration dedupes against the latest registered version before
+  creating a new one (no version-per-restart spam) and instrumented traces
+  are tagged with the prompt versions used.
+- Judges/scorers: do NOT claim UI-run judges or AI Gateway support on this
+  build; verify judge endpoints with a direct REST call using the same
+  env (`OPENAI_BASE_URL`/`OPENAI_API_KEY`) the harness uses.
+- Evaluation pipelines verify their own results: dataset present, latest
+  run has judge metrics, per-row traces carry assessments.
+- KFP evaluation component source is ASCII-only (DSPA MariaDB Error 1366
+  on multi-byte characters in the embedded manifest).
+- Do NOT trust `oc auth can-i` for pseudo-resource access; verify with an
+  authenticated REST call and the `X-MLFLOW-WORKSPACE` header.

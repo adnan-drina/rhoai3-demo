@@ -158,3 +158,43 @@ Artifact override not applied:
 JSON decode error:
   Check OpenShift login and kubernetes-namespaced authentication settings.
 ```
+
+## GenAI Tracing / Sessions / Versions (client-side, verified 3.10.1)
+
+```python
+import mlflow
+
+mlflow.set_tracking_uri("https://mlflow.redhat-ods-applications.svc:8443")
+mlflow.set_experiment("my-genai-app")
+mlflow.set_active_model(name="my-genai-app-<git-sha>")   # Agent versions
+
+with mlflow.start_span(name="chat_turn", span_type="CHAIN") as turn:
+    mlflow.update_current_trace(metadata={"mlflow.trace.session": conversation_id})
+    ...  # child spans: GUARDRAIL / RETRIEVER / LLM
+```
+
+Review points:
+
+- Pod env: `MLFLOW_TRACKING_AUTH=kubernetes-namespaced` + RoleBinding to
+  `mlflow-operator-mlflow-integration`; workspace = pod namespace.
+- Wrap every call defensively; tracing must never break the app.
+
+## GenAI Evaluation with SDK Judges (no AI Gateway on this build)
+
+```python
+import os
+os.environ["OPENAI_BASE_URL"] = "<in-cluster MaaS proxy>/v1"  # + OPENAI_API_KEY
+from mlflow.genai.scorers import Correctness, RelevanceToQuery, RetrievalGroundedness, Safety
+
+dataset = mlflow.genai.datasets.create_dataset(name="...", experiment_id=[exp_id])
+dataset.merge_records([{"inputs": {...}, "expectations": {"expected_facts": [...]}}])
+results = mlflow.genai.evaluate(data=dataset, predict_fn=fn,
+                                scorers=[Correctness(model="openai:/gpt-4o-mini"), ...])
+```
+
+Review points:
+
+- `predict_fn` must emit a RETRIEVER span whose outputs are
+  `[{"page_content": ..., "metadata": {"doc_uri": ...}}]` or
+  RetrievalGroundedness has nothing to judge.
+- Judge verdicts land as assessments on the per-row traces.
