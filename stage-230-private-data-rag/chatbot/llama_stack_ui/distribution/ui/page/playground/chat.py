@@ -287,23 +287,29 @@ def render_guardrails_selection(shields_list):
         st.caption("No guardrails available on this server.")
         return [], []
 
-    input_shields = st.multiselect(
+    # Pills instead of multiselect: with the few shields this demo exposes,
+    # the multiselect dropdown had nothing left to offer once a shield was
+    # selected and showed an empty "No results" panel. Pills render the
+    # options as toggle chips (same widget as the ToolGroups section).
+    input_shields = st.pills(
         "Input Guardrails",
         options=shields_list,
+        selection_mode="multi",
         key="guardrail_input_selector",
         on_change=reset_conversation,
         help="Safety guardrails to check user input before processing.",
     )
 
-    output_shields = st.multiselect(
+    output_shields = st.pills(
         "Output Guardrails",
         options=shields_list,
+        selection_mode="multi",
         key="guardrail_output_selector",
         on_change=reset_conversation,
         help="Safety guardrails to check assistant response after generation.",
     )
 
-    return input_shields, output_shields
+    return list(input_shields or []), list(output_shields or [])
 
 
 def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list,
