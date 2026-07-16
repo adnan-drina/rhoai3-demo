@@ -65,3 +65,11 @@ spec:
         - .spec.template.spec.containers[] | select(.name == "kube-rbac-proxy")
         - .spec.template.spec.volumes[] | select(.name == "kube-rbac-proxy-config")
         - .spec.template.spec.volumes[] | select(.name == "kube-rbac-proxy-tls-certificates")
+      # The dashboard stamps notebook-restart on workbench stop/start and the
+      # notebook-controller owns the cleanup finalizers. A past full-object
+      # apply captured both into last-applied, so Argo diffs their removal
+      # and the Notebook webhook rejects the resulting patch
+      # (metadata.resourceVersion must be specified for an update).
+      jsonPointers:
+        - /metadata/annotations/notebooks.opendatahub.io~1notebook-restart
+        - /metadata/finalizers
