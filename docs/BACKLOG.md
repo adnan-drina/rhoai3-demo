@@ -4,7 +4,10 @@ Active backlog for the reimplementation. Refined 2026-07-09: all seven
 stages (110–250) are complete and wrapped; the current focus is the
 medium-item burn-down below. Fresh-environment recurring gates are
 consolidated into their own checklist so they are not scattered across
-stage sections.
+stage sections. Cleaned 2026-07-16 after the Stage 230 MLflow GenAI
+implementation landed (tracing, sessions, agent versions, prompts,
+evaluation dataset/runs/judges): closed items moved out of the tables;
+dispositions stay recorded in the stage PLANs.
 
 ## Now: Medium-Item Burn-Down (focus chosen 2026-07-09)
 
@@ -14,11 +17,19 @@ small enough to plan and deliver without opening a new stage.
 | # | Item | Stage | Notes |
 |---|------|-------|-------|
 | 1 | File EvalHub `attack_success_rate` aggregate bug upstream | 250 | The EvalHub job result reported `attack_success_rate: 0.0` where its own garak scan showed ~0.24 (426/1,750 hits). Reproduce, capture the garak-kfp adapter aggregation path, and file with Red Hat / the TrustyAI EvalHub project. Workaround documented in TROUBLESHOOTING (read the garak report, not the aggregate). |
-| 2 | Custom evaluation collection for the RAG assistant | 250 | Author a `user`-scoped collection (weighted benchmarks + per-benchmark and collection pass thresholds) tuned to the demo's assistant use case, via ConfigMap/CLI — "understanding evaluation collections". |
 | 3 | MaaS observability | 220 | Keep Technology Preview/showback language; validate metrics now that the request flow works end to end. |
-| 4 | EvalHub in CI/CD | 250 | Gate model promotion on a collection pass in a pipeline — "add automated AI evaluations to your CI/CD pipeline". Also covers the pipeline-centric remainder of the retired `stage-410` candidate. |
+| 4 | EvalHub in CI/CD | 250 | Gate model promotion on a collection pass in a pipeline — "add automated AI evaluations to your CI/CD pipeline". Also covers the pipeline-centric remainder of the retired `stage-410` candidate. The Stage 230 MLflow GenAI evaluation pipeline (2026-07-16) already provides a working KFP evaluation-harness base to gate on. |
 | 5 | EvalHub OCI immutable evaluation records | 250 | Export weighted results to an OCI registry with SHA256 tags, embedding the evaluation record in the ModelCar — tamper-evident governance evidence ("store immutable AI evaluation records"). |
 | 6 | Metrics-based autoscaling (KEDA/CMA) | 210/240 | TP in the managing guide; `serving.kserve.io/autoscalerClass: keda` + `spec.predictor.autoscaling.metrics` on `vllm:num_requests_waiting`. Natural pairing with the capacity benchmark's scale-out signal. |
+
+Closed 2026-07-16 — **item 2, custom evaluation for the RAG assistant**:
+delivered app-side as the Stage 230 MLflow GenAI evaluation (benchmark
+dataset `private-rag-chatbot-benchmark` + `mlflow.genai.evaluate` KFP
+pipeline + gpt-4o-mini judges for Correctness / RelevanceToQuery /
+RetrievalGroundedness / Safety, with per-row assessments on traces). The
+original EvalHub `user`-scoped-collection variant is superseded for the
+assistant use case; revisit only if the demo needs the EvalHub collection
+UI specifically (numbering above intentionally keeps the original ids).
 
 Production MLflow (PostgreSQL + S3, HA) stays out of the burn-down: it is
 the core of the `stage-430` candidate below.
@@ -110,9 +121,11 @@ Stage 210 owns that transition.
 | Item | Priority | Notes |
 |------|----------|-------|
 | Fresh-environment MachineSet regeneration | high | Tracked in the fresh-environment checklist above. |
-| GPU cost control | done 2026-07-09 | Closed as operational practice: park with Nemotron `LLMInferenceService` replicas 0 + GPU MachineSet scaled to 0 (`env-manage-resources`); exercised at the Stage 230 and 250 wraps. |
 | Kueue preemption demo | low | Stage 120 is non-preemptive because workbenches are not suspendable; test preemption later with suspendable jobs if needed. A candidate scope element for `stage-450-gpu-self-service` — the [gpu-booking-app-plugin](https://github.com/rhai-code/gpu-booking-app-plugin) implements exactly this (reserved workloads protected from preemption via per-user ClusterQueue `nominalQuota`). |
 | MIG partitioning | low | Time-slicing is sufficient for this demo stage |
+
+Closed from this table: GPU cost control (done 2026-07-09 as the park
+operational practice; exercised again at the 2026-07-16 restarts).
 
 ## Stage 210: Status — COMPLETE
 
@@ -134,8 +147,10 @@ alignment, with a successful GuideLLM smoke run.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Endpoint auth posture | done | Stage 210 used a controlled direct endpoint for baseline work; the Nemotron deployment migrated into `models-as-a-service` under Stage 220 governance. |
 | Extended operating envelope | medium | Initial chat/RAG GuideLLM policy profiles exist for one `g6e.2xlarge` GPU worker and the Stage 210 `--max-model-len=8192` baseline; Stage 220 serves MaaS Nemotron with `--max-model-len=131072` for Playground MCP headroom. Rerun benchmarks before changing MaaS quotas, GPU shape, prompt sizes, or output-token defaults. |
+
+Closed from this table: endpoint auth posture (the Nemotron deployment
+migrated into `models-as-a-service` under Stage 220 governance).
 
 ## Stage 220: Status — COMPLETE
 
@@ -188,13 +203,18 @@ Wrapped state (cluster-qt67m, `validate.sh` 108/0; 110/1/0 after the Stage
 - RHOAI product-document RAG smoke passed with hybrid search, reranking,
   and Nemotron answers; hybrid metadata filtering and Docling pipeline
   evidence remain recurring fresh-environment gates (see checklist above).
-- **MLflow interaction tracing added 2026-07-16** (user-approved extension):
-  every chatbot turn is an MLflow trace in the Stage 250 product MLflow
-  (workspace `enterprise-rag`, experiment `private-rag-chatbot`) with full
-  prompt/retrieval/response content and guardrail verdicts
-  (`guardrail.blocked` trace tags). See the Stage 230 `PLAN.md` decision
-  record. Trace UI: dashboard `/mlflow`. Production MLflow (PG+S3) remains
-  the `stage-430` candidate below.
+- **MLflow GenAI integration COMPLETE 2026-07-16** (user-approved
+  extension, phased plan in the Stage 230 `PLAN.md`): every chatbot turn
+  is a trace with guardrail verdicts (`guardrail.blocked` tags),
+  truncation state, tool results, and session grouping by conversation;
+  agent versions link traces to the chatbot build (git SHA); the system
+  prompt and tool-routing rules are versioned in the prompt registry; and
+  the 12-question benchmark runs as an MLflow GenAI evaluation KFP
+  pipeline (`run-mlflow-evaluation.sh`) with gpt-4o-mini judges — dataset,
+  evaluation runs, and per-row judge assessments all in the product MLflow
+  (workspace `enterprise-rag`, experiment `private-rag-chatbot`). Skills:
+  `rhoai-mlflow` v1.1.0, `rhoai-chatbot-customization` v2.2.0. Production
+  MLflow (PG+S3) remains the `stage-430` candidate below.
 
 ### Open / deferred from Stage 230
 
@@ -202,8 +222,10 @@ Wrapped state (cluster-qt67m, `validate.sh` 108/0; 110/1/0 after the Stage
 |------|----------|-------|
 | Qwen3 reranker demo exception | medium | Qwen3 reranker is in scope and deployed on CPU. Keep the modelcar and demo-local serving translation recorded as a demo exception, not a Red Hat-supported artifact claim. |
 | ExternalModel `DestinationRule` pool tuning | declined 2026-07-09 | The `gpt-connection-keepalive` CronJob covers the NAT idle-connection drops; patching the operator-owned shared resource is not worth the drift risk. Revisit only if external-model reliability regresses. |
-| Guardrails and MCP | done | MCP landed in Stage 230 (OpenShift MCP connector); product-backed guardrails shipped in Stage 240. |
-| RAG evaluation | done | Delivered by Stage 250 (EvalHub/LMEval); the assistant-specific collection is burn-down item 2. |
+
+Closed from this table: Guardrails and MCP (shipped in Stages 230/240);
+RAG evaluation (EvalHub/LMEval in Stage 250; the assistant-specific
+evaluation shipped 2026-07-16 as the MLflow GenAI evaluation above).
 
 ## Stage 240: Guardrails and Safety — COMPLETE
 
@@ -224,11 +246,14 @@ OWASP scan.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| Chatbot fail-closed shield hardening | done 2026-07-05 | The vendored UI now fails closed on a shield error (blocks with a visible "guardrail unavailable" message); `RAG_SHIELD_FAIL_MODE=open` restores answer-anyway. Earlier a silent fail-open hid a broken client call for a full session. |
 | Separate self-check model | declined 2026-07-05 | Nemotron self-checks itself; revisit only if latency or policy separation demands it (guide recommends Qwen3-14B as judge starting point). |
 | PII masking mode, retrieval rails, library hate/profanity flows | low | Blocking-only demo scope; retrieval rails blocked by the Llama Stack shield API passing messages, not chunks. |
-| Guardrails metrics + formal safety measurement | done | Delivered by Stage 250: garak OWASP risk assessment plus the guard→prove delta against the guardrails endpoint. |
 | FMS Guardrails / Llama Stack PII via FMS | not adopted | Legacy per the guardrails guide and repo Demo Policy; Stage 230 `trustyai_fms` shields stay empty. |
+
+Closed from this table: chatbot fail-closed shield hardening (done
+2026-07-05; further hardened 2026-07-16 — blocks now name the triggered
+rail); guardrails metrics + formal safety measurement (Stage 250 garak
+OWASP assessment + guard→prove delta).
 
 ## Stage 250: Model Evaluation — COMPLETE
 
@@ -269,7 +294,7 @@ Numbers are provisional until a stage is created (refined 2026-07-09).
 
 | Candidate | Theme | Concept |
 |-----------|-------|---------|
-| `stage-430-mlflow-experiment-tracking` | AI Operations/MLOps | Advanced MLflow lifecycle: production storage (PostgreSQL + S3, HA) and model-registry integration, extending the Stage 250 MLflow foundation. |
+| `stage-430-mlflow-experiment-tracking` | AI Operations/MLOps | Advanced MLflow lifecycle: production storage (PostgreSQL + S3, HA) and model-registry integration. Narrowed 2026-07-16: the GenAI lifecycle surface (tracing, sessions, agent versions, prompts, datasets, evaluation runs, judges) shipped in Stage 230 against the Stage 250 MLflow — this candidate is now storage/HA/registry only. |
 | `stage-440-observability-and-governance` | AI Operations/MLOps | The governance gap beyond Stage 240/250: audit records, MaaS showback, consolidated operational-evidence dashboards. |
 | `stage-450-gpu-self-service` | AI Operations/MLOps | User-facing GPU request/scheduling application on top of the Stage 120 GPU-as-a-Service layer (Kueue quotas, hardware profiles): request, queue, and schedule GPU capacity as a self-service workflow. Candidate implementation: [gpu-booking-app-plugin](https://github.com/rhai-code/gpu-booking-app-plugin) — an OpenShift Console dynamic plugin (Go backend, React/PatternFly v6 frontend, Helm deploy) with calendar-based GPU reservations, automatic GPU/MIG capacity discovery from node labels, and per-user Kueue ClusterQueues with protected `nominalQuota` enforced via workload preemption. Reworks the taxonomy's `stage-450-distributed-workload-operations` concept; can absorb the Kueue preemption and EvalHub-at-scale low items (the plugin's preemption model covers the former directly). |
 
