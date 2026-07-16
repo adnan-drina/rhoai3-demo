@@ -133,7 +133,33 @@ def evaluate_rag_assistant(
         raise RuntimeError(f"vector store {vector_store_name!r} not found")
     log.info("vector store %s -> %s", vector_store_name, store_id)
 
+    # Warm the judge connection pool: the gateway pools connections to the
+    # external provider and NAT drops idle ones (stage TROUBLESHOOTING);
+    # require 3 consecutive successes before judging starts.
+    judge_key = os.environ.get("OPENAI_API_KEY", "")
+    consecutive = 0
+    for attempt in range(15):
+        try:
+            ping = requests.post(
+                f"{judge_base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {judge_key}"},
+                json={"model": "gpt-4o-mini",
+                      "messages": [{"role": "user", "content": "ok"}],
+                      "max_tokens": 1},
+                timeout=30,
+            )
+            consecutive = consecutive + 1 if ping.status_code == 200 else 0
+        except Exception:  # pylint: disable=broad-exception-caught
+            consecutive = 0
+        if consecutive >= 3:
+            break
+    log.info("judge endpoint warm (consecutive=%d)", consecutive)
+
     # -- predict_fn: the chatbot's Direct-mode flow, server-side --------------
+    # The @mlflow.trace root is REQUIRED: without it each start_span opens
+    # its own trace, assessments attach to the generate-only trace, and
+    # RetrievalGroundedness finds no RETRIEVER span (observed live).
+    @mlflow.trace(name="rag_predict", span_type="CHAIN")
     def predict_fn(question: str) -> dict:
         with mlflow.start_span(name="retrieve", span_type="RETRIEVER") as rspan:
             rspan.set_inputs({"query": question, "vector_store": vector_store_name})
