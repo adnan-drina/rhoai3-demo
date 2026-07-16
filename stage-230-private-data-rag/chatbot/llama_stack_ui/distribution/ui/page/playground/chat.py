@@ -210,6 +210,22 @@ def reset_agent():
     st.cache_resource.clear()
 
 
+def reset_all():
+    """Full reset for the Clear Chat & Reset Config button.
+
+    Must run as an on_click callback: callbacks execute before the rerun
+    instantiates widgets, so the cleared state actually takes effect. A
+    mid-script clear followed by st.rerun() leaves already-rendered widgets
+    holding their values. The RAG collection selection is explicitly left
+    empty — the suggestion-based pre-selection in render_vector_db_selector
+    is a first-load default only, and an explicit reset should return a
+    blank slate rather than re-select collections.
+    """
+    st.session_state.clear()
+    st.cache_resource.clear()
+    st.session_state["chat_vector_db_selector"] = []
+
+
 def reset_conversation():
     """Reset conversation messages without clearing widget configuration."""
     keys_to_clear = ["messages", "conversation_id", "show_more_questions", "selected_question", "direct_vector_dbs"]
@@ -363,9 +379,11 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list,
         "System Prompt", value=default_prompt, on_change=reset_agent, height=100
     )
 
-    if st.button("Clear Chat & Reset Config", use_container_width=True):
-        reset_agent()
-        st.rerun()
+    st.button(
+        "Clear Chat & Reset Config",
+        use_container_width=True,
+        on_click=reset_all,
+    )
 
     return {
         'model': model,
