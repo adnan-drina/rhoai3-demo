@@ -661,7 +661,7 @@ if [[ -n "$chatbot_pod" ]]; then
   # Emit a trace through the app's tracing module with the pod SA identity,
   # then search it back — proves RBAC, workspace auth, and the v3 trace API
   # end to end.
-  trace_roundtrip=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- python3 - <<'PY' 2>&1 || true
+  trace_roundtrip=$(oc exec -i -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- python3 - <<'PY' 2>&1 || true
 import os
 from llama_stack_ui.distribution.ui.modules import tracing
 
