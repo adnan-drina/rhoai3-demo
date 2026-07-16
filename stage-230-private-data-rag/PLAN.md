@@ -372,3 +372,41 @@ the AutoRAG results-page backend listing verified server-side):
   stores were preserved. DSPA recreation resets run history by design.
 - Runner works for project-admin users (CSV image lookup reads the
   OLM-copied CSV in the stage namespace).
+
+## MLflow Interaction Tracing (2026-07-16, agreed with user)
+
+Scope decision (user-approved): extend Stage 230 so every chatbot turn is
+recorded as an MLflow trace in the Stage 250 product MLflow (3.10.1,
+workspace `enterprise-rag`, experiment `private-rag-chatbot`), with FULL
+content capture (prompt, retrieved chunks with scores/sources, response,
+guardrail verdicts) — demo posture, SQLite/PVC store. Homed in Stage 230
+because the chatbot code and config live here; production MLflow (PG+S3)
+remains the stage-430 candidate.
+
+Design (verified against the RHOAI 3.4 Working with MLflow guide and live
+cluster before authoring):
+
+- Trace shape: root span per turn (`direct_chat_turn` CHAIN /
+  `agent_chat_turn` AGENT) with child spans `input_guardrail` (custom
+  GUARDRAIL type), `retrieve:<store>` (RETRIEVER, Direct mode),
+  `generation` (LLM), `output_guardrail`. Blocked turns tag the trace
+  `guardrail.blocked=true` + `guardrail.stage` + `guardrail.shield_id`
+  from the existing `run_*_shields` verdict tuples (fail-closed errors
+  surface as blocks, matching UI behavior).
+- Client: `mlflow[kubernetes]>=3.11` in the chatbot image;
+  `MLFLOW_TRACKING_AUTH=kubernetes-namespaced` (pod SA token, workspace =
+  own namespace), `MLFLOW_TRACKING_URI=https://mlflow.redhat-ods-
+  applications.svc:8443`, `MLFLOW_TRACKING_INSECURE_TLS=true` (demo
+  self-signed posture per skill), `MLFLOW_HTTP_REQUEST_TIMEOUT=10` so a
+  down MLflow cannot stall the UI. Tracing module
+  (`modules/tracing.py`) is lazy-init and no-op-safe: no URI or any
+  init/span failure disables tracing without touching the chat path.
+- RBAC: RoleBinding `private-rag-chatbot-mlflow-integration` binds the
+  chatbot SA to the operator aggregate ClusterRole
+  `mlflow-operator-mlflow-integration` (experiments pseudo-resource covers
+  traces). Mirrors the Stage 250 EvalHub pattern;
+  SkipDryRunOnMissingResource so Stage 230 can sync before Stage 250
+  enables the MLflow operator (tracing no-ops until then).
+- Verified live before build: MLflow 3.10.1 serves the v3 tracing API
+  (`POST /api/3.0/mlflow/traces/search` 200) and enforces workspace auth
+  (400 without `X-MLFLOW-WORKSPACE`/`workspace` param).

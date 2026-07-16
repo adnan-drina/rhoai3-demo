@@ -14,6 +14,10 @@ dependencies = [
     "requests",
     "streamlit-option-menu",
     "llama-stack==0.7.2",
+    # MLflow tracing of chat turns against the RHOAI 3.4 product MLflow;
+    # the kubernetes extra provides the kubernetes-namespaced auth plugin
+    # (SDK >=3.11 required per the Working with MLflow guide).
+    "mlflow[kubernetes]>=3.11",
     "fire",
     "asyncpg",
     "python-docx",

@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  # The chatbot logs an MLflow trace per chat turn (prompt, retrieval,
+  # generation, guardrail verdicts) to the Stage 250 product MLflow through
+  # the mlflow.kubeflow.org pseudo-resource RBAC (SubjectAccessReview, auth
+  # mode kubernetes-namespaced, workspace = this namespace). The
+  # mlflow-operator-mlflow-integration aggregate ClusterRole grants
+  # experiments access, which covers traces; bind the chatbot ServiceAccount
+  # to it here. The ClusterRole only exists once the MLflow operator (Stage
+  # 250) is enabled — SkipDryRunOnMissingResource lets Stage 230 sync first,
+  # and the chatbot tracing module no-ops until access exists.
+  name: private-rag-chatbot-mlflow-integration
+  namespace: enterprise-rag
+  labels:
+    app.kubernetes.io/name: private-rag-chatbot
+    app.kubernetes.io/component: chatbot-ui
+    app.kubernetes.io/part-of: rag
+  annotations:
+    argocd.argoproj.io/sync-wave: "21"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+subjects:
+  - kind: ServiceAccount
+    name: private-rag-chatbot
+    namespace: enterprise-rag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mlflow-operator-mlflow-integration

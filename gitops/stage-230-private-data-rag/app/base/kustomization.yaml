@@ -6,6 +6,7 @@ resources:
   - build.yaml
   - configmap-chatbot.yaml
   - rbac.yaml
+  - rolebinding-mlflow-chatbot.yaml
   - deployment-chatbot.yaml
   - service-chatbot.yaml
   - route-chatbot.yaml

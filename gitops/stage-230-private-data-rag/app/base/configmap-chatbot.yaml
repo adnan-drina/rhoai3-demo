@@ -12,6 +12,18 @@ metadata:
 data:
   LLAMA_STACK_ENDPOINT: "http://lsd-enterprise-rag-service.enterprise-rag.svc.cluster.local:8321"
   LLAMA_STACK_TIMEOUT: "600"
+  # MLflow tracing (Stage 250 product MLflow): one trace per chat turn with
+  # prompt, retrieved context, response, and guardrail verdicts.
+  # kubernetes-namespaced auth uses the pod ServiceAccount token and targets
+  # the workspace of this namespace (requires the mlflow-integration
+  # RoleBinding). INSECURE_TLS matches the demo self-signed service-cert
+  # posture (per rhoai-mlflow skill); the HTTP timeout bounds first-use
+  # experiment setup so the UI never stalls when MLflow is unreachable.
+  MLFLOW_TRACKING_URI: "https://mlflow.redhat-ods-applications.svc:8443"
+  MLFLOW_TRACKING_AUTH: "kubernetes-namespaced"
+  MLFLOW_TRACKING_INSECURE_TLS: "true"
+  MLFLOW_HTTP_REQUEST_TIMEOUT: "10"
+  MLFLOW_EXPERIMENT_NAME: "private-rag-chatbot"
   # Substring match against Llama Stack model ids; the matching model is
   # sorted first so the sidebar selectbox defaults to it.
   RAG_DEFAULT_MODEL: "nemotron"

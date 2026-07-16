@@ -13,6 +13,7 @@ import traceback
 
 import streamlit as st
 
+from llama_stack_ui.distribution.ui.modules import tracing
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, run_input_shields, run_output_shields, guide_title_from_slug, summarize_search_sources, format_sources_markdown
 
@@ -236,7 +237,22 @@ def _get_live_shields(config):
 
 
 def direct_process_prompt(prompt, state, config):
-    """Direct mode: Manual RAG with completions API."""
+    """Direct mode: Manual RAG with completions API.
+
+    Wraps the turn in an MLflow trace (root span + guardrail/retrieval/
+    generation child spans). Tracing is a no-op when MLflow is not
+    configured and never interrupts the turn on failure.
+    """
+    with tracing.span(
+        "direct_chat_turn",
+        span_type="CHAIN",
+        inputs={"prompt": prompt, "model": config.model, "mode": "direct"},
+        attributes={"app.mode": "direct", "app.model": config.model},
+    ) as turn:
+        _direct_process_prompt(prompt, state, config, turn)
+
+
+def _direct_process_prompt(prompt, state, config, turn):
     input_shields, output_shields = _get_live_shields(config)
     context_parts = []
     all_search_results = []
@@ -250,9 +266,18 @@ def direct_process_prompt(prompt, state, config):
         if input_shields:
             guardrail_status = state.containers.tool_status.empty()
             guardrail_status.markdown("🛡️ :grey[_Running input guardrail check..._]")
-            is_blocked, violation_msg, blocked_shield = run_input_shields(
-                llama_stack_api.client, input_shields, prompt
-            )
+            with tracing.span(
+                "input_guardrail",
+                span_type=tracing.SPAN_TYPE_GUARDRAIL,
+                inputs={"shields": list(input_shields), "prompt": prompt},
+            ) as gspan:
+                is_blocked, violation_msg, blocked_shield = run_input_shields(
+                    llama_stack_api.client, input_shields, prompt
+                )
+                tracing.record_guardrail(
+                    gspan, "input", is_blocked, blocked_shield, violation_msg,
+                    shields=input_shields,
+                )
             if is_blocked:
                 guardrail_status.empty()
                 blocked_msg = f"**Input Guardrail Triggered** (`{blocked_shield}`): {violation_msg}"
@@ -260,6 +285,7 @@ def direct_process_prompt(prompt, state, config):
                 state.guardrail_blocked = blocked_msg
                 state.full_response = ""
                 save_direct_response_to_session(state, [])
+                tracing.record_turn_result(turn, blocked_message=blocked_msg)
                 return
             guardrail_status.empty()
 
@@ -267,9 +293,19 @@ def direct_process_prompt(prompt, state, config):
         for vector_db in vector_dbs:
             vector_db_id = vector_db.id
             vector_db_name = get_vector_db_name(vector_db)
-            search_results, parts, display = search_vector_store_direct(
-                prompt, vector_db_id, vector_db_name, config.sampling.top_k, state
-            )
+            with tracing.span(
+                f"retrieve:{vector_db_name}",
+                span_type="RETRIEVER",
+                inputs={
+                    "query": prompt,
+                    "vector_store": vector_db_name,
+                    "top_k": config.sampling.top_k,
+                },
+            ) as rspan:
+                search_results, parts, display = search_vector_store_direct(
+                    prompt, vector_db_id, vector_db_name, config.sampling.top_k, state
+                )
+                tracing.set_outputs(rspan, {"chunks": display})
             if search_results:
                 all_search_results.append((vector_db_name, display))
             context_parts.extend(parts)
@@ -289,24 +325,51 @@ def direct_process_prompt(prompt, state, config):
             logger.debug("  Message %s (%s): %s...", i, msg['role'], msg['content'][:200])
 
         state.show_thinking()
-        completion_response = llama_stack_api.client.chat.completions.create(
-            model=config.model,
-            messages=messages,
-            temperature=config.sampling.temperature,
-            max_tokens=config.sampling.max_tokens,
-            stream=True,
-        )
+        with tracing.span(
+            "generation",
+            span_type="LLM",
+            inputs={
+                "messages": messages,
+                "model": config.model,
+                "temperature": config.sampling.temperature,
+                "max_tokens": config.sampling.max_tokens,
+            },
+        ) as lspan:
+            completion_response = llama_stack_api.client.chat.completions.create(
+                model=config.model,
+                messages=messages,
+                temperature=config.sampling.temperature,
+                max_tokens=config.sampling.max_tokens,
+                stream=True,
+            )
 
-        # Step 4: Stream response and update UI
-        stream_completions_direct(completion_response, state)
+            # Step 4: Stream response and update UI
+            stream_completions_direct(completion_response, state)
+            tracing.set_outputs(lspan, {
+                "response": state.full_response,
+                "reasoning": state.reasoning_text,
+            })
 
         # Step 5: Run output guardrails
         if output_shields and state.full_response:
             guardrail_status = state.containers.tool_status.empty()
             guardrail_status.markdown("🛡️ :grey[_Running output guardrail check..._]")
-            is_blocked, violation_msg, blocked_shield = run_output_shields(
-                llama_stack_api.client, output_shields, prompt, state.full_response
-            )
+            with tracing.span(
+                "output_guardrail",
+                span_type=tracing.SPAN_TYPE_GUARDRAIL,
+                inputs={
+                    "shields": list(output_shields),
+                    "prompt": prompt,
+                    "response": state.full_response,
+                },
+            ) as gspan:
+                is_blocked, violation_msg, blocked_shield = run_output_shields(
+                    llama_stack_api.client, output_shields, prompt, state.full_response
+                )
+                tracing.record_guardrail(
+                    gspan, "output", is_blocked, blocked_shield, violation_msg,
+                    shields=output_shields,
+                )
             guardrail_status.empty()
             if is_blocked:
                 blocked_msg = f"**Output Guardrail Triggered** (`{blocked_shield}`): {violation_msg}"
@@ -316,10 +379,14 @@ def direct_process_prompt(prompt, state, config):
                 state.guardrail_blocked = blocked_msg
                 state.full_response = ""
                 save_direct_response_to_session(state, [])
+                tracing.record_turn_result(turn, blocked_message=blocked_msg)
                 return
 
         # Step 6: Save to session
         save_direct_response_to_session(state, all_search_results)
+        tracing.record_turn_result(
+            turn, response=state.full_response, reasoning=state.reasoning_text
+        )
 
     except Exception as e:
         st.error(f"Error in Direct mode: {str(e)}")

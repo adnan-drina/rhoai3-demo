@@ -12,6 +12,7 @@ import logging
 
 import streamlit as st
 
+from llama_stack_ui.distribution.ui.modules import tracing
 from llama_stack_ui.distribution.ui.modules.api import llama_stack_api
 from llama_stack_ui.distribution.ui.modules.utils import clean_text, get_vector_db_name, strip_file_citations, strip_file_citations_streaming, run_input_shields, run_output_shields, fetch_mcp_connectors, guide_title_from_slug, summarize_search_sources, format_sources_markdown
 
@@ -450,16 +451,40 @@ def _get_live_shields(config):
 
 
 def agent_process_prompt(prompt, state, config):
-    """Agent-based mode: Use Responses API with automatic tool calling."""
+    """Agent-based mode: Use Responses API with automatic tool calling.
+
+    Wraps the turn in an MLflow trace (root span + guardrail/generation
+    child spans). Tracing is a no-op when MLflow is not configured and
+    never interrupts the turn on failure.
+    """
+    with tracing.span(
+        "agent_chat_turn",
+        span_type="AGENT",
+        inputs={"prompt": prompt, "model": config.model, "mode": "agent"},
+        attributes={"app.mode": "agent", "app.model": config.model},
+    ) as turn:
+        _agent_process_prompt(prompt, state, config, turn)
+
+
+def _agent_process_prompt(prompt, state, config, turn):
     input_shields, output_shields = _get_live_shields(config)
 
     # Run input guardrails before calling the API
     if input_shields:
         guardrail_status = state.containers.tool_status.empty()
         guardrail_status.markdown("🛡️ :grey[_Running input guardrail check..._]")
-        is_blocked, violation_msg, blocked_shield = run_input_shields(
-            llama_stack_api.client, input_shields, prompt
-        )
+        with tracing.span(
+            "input_guardrail",
+            span_type=tracing.SPAN_TYPE_GUARDRAIL,
+            inputs={"shields": list(input_shields), "prompt": prompt},
+        ) as gspan:
+            is_blocked, violation_msg, blocked_shield = run_input_shields(
+                llama_stack_api.client, input_shields, prompt
+            )
+            tracing.record_guardrail(
+                gspan, "input", is_blocked, blocked_shield, violation_msg,
+                shields=input_shields,
+            )
         if is_blocked:
             guardrail_status.empty()
             blocked_msg = f"**Input Guardrail Triggered** (`{blocked_shield}`): {violation_msg}"
@@ -467,6 +492,7 @@ def agent_process_prompt(prompt, state, config):
             state.guardrail_blocked = blocked_msg
             state.full_response = ""
             save_agent_response_to_session(state)
+            tracing.record_turn_result(turn, blocked_message=blocked_msg)
             return
         guardrail_status.empty()
 
@@ -500,23 +526,54 @@ def agent_process_prompt(prompt, state, config):
 
     logger.debug("Request: %s", request_kwargs)
     state.show_thinking()
-    try:
-        response = llama_stack_api.client.responses.create(**request_kwargs)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        st.error(f"❌ Error: {str(e)}")
-        logger.error("Agent mode create() error: %s", e)
-        return
+    with tracing.span(
+        "generation",
+        span_type="LLM",
+        inputs={
+            "prompt": prompt,
+            "instructions": config.system_prompt,
+            "model": config.model,
+            "temperature": config.sampling.temperature,
+            "max_output_tokens": config.sampling.max_tokens,
+            "tools": [tool.get("type") for tool in (tools or [])],
+        },
+    ) as lspan:
+        try:
+            response = llama_stack_api.client.responses.create(**request_kwargs)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            st.error(f"❌ Error: {str(e)}")
+            logger.error("Agent mode create() error: %s", e)
+            tracing.set_outputs(lspan, {"error": str(e)})
+            return
 
-    # Stream response and update UI
-    stream_agent_response(response, state, config.selected_vector_dbs)
+        # Stream response and update UI
+        stream_agent_response(response, state, config.selected_vector_dbs)
+        tracing.set_outputs(lspan, {
+            "response": state.full_response,
+            "reasoning": state.reasoning_text,
+            "tool_results": state.tool_results,
+        })
 
     # Run output guardrails after response is fully streamed but before search results
     if output_shields and state.full_response:
         guardrail_status = state.containers.tool_status.empty()
         guardrail_status.markdown("🛡️ :grey[_Running output guardrail check..._]")
-        is_blocked, violation_msg, blocked_shield = run_output_shields(
-            llama_stack_api.client, output_shields, prompt, state.full_response
-        )
+        with tracing.span(
+            "output_guardrail",
+            span_type=tracing.SPAN_TYPE_GUARDRAIL,
+            inputs={
+                "shields": list(output_shields),
+                "prompt": prompt,
+                "response": state.full_response,
+            },
+        ) as gspan:
+            is_blocked, violation_msg, blocked_shield = run_output_shields(
+                llama_stack_api.client, output_shields, prompt, state.full_response
+            )
+            tracing.record_guardrail(
+                gspan, "output", is_blocked, blocked_shield, violation_msg,
+                shields=output_shields,
+            )
         guardrail_status.empty()
         if is_blocked:
             blocked_msg = f"**Output Guardrail Triggered** (`{blocked_shield}`): {violation_msg}"
@@ -528,6 +585,7 @@ def agent_process_prompt(prompt, state, config):
             state.tool_results = []
             state.tool_status = None
             save_agent_response_to_session(state)
+            tracing.record_turn_result(turn, blocked_message=blocked_msg)
             return
 
     # Fetch file search results only if response was not blocked
@@ -536,3 +594,6 @@ def agent_process_prompt(prompt, state, config):
 
     # Save response to session
     save_agent_response_to_session(state)
+    tracing.record_turn_result(
+        turn, response=state.full_response, reasoning=state.reasoning_text
+    )

@@ -188,6 +188,13 @@ Wrapped state (cluster-qt67m, `validate.sh` 108/0; 110/1/0 after the Stage
 - RHOAI product-document RAG smoke passed with hybrid search, reranking,
   and Nemotron answers; hybrid metadata filtering and Docling pipeline
   evidence remain recurring fresh-environment gates (see checklist above).
+- **MLflow interaction tracing added 2026-07-16** (user-approved extension):
+  every chatbot turn is an MLflow trace in the Stage 250 product MLflow
+  (workspace `enterprise-rag`, experiment `private-rag-chatbot`) with full
+  prompt/retrieval/response content and guardrail verdicts
+  (`guardrail.blocked` trace tags). See the Stage 230 `PLAN.md` decision
+  record. Trace UI: dashboard `/mlflow`. Production MLflow (PG+S3) remains
+  the `stage-430` candidate below.
 
 ### Open / deferred from Stage 230
 

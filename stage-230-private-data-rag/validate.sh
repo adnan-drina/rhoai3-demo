@@ -631,6 +631,74 @@ else
   warn "Stage 230 chatbot client/server version comparison skipped" "pods not found"
 fi
 
+# ── MLflow interaction tracing (Stage 250 product MLflow) ────────────────────
+# Every chat turn is traced to MLflow (workspace = enterprise-rag, experiment
+# private-rag-chatbot) with guardrail verdicts. Static wiring first, then a
+# live round-trip through the app's own tracing module (per the chatbot
+# skill: verify through the app helpers, not just REST).
+mlflow_rb_role=$(jsonpath "rolebinding/private-rag-chatbot-mlflow-integration" "$RAG_NS" "{.roleRef.name}")
+[[ "$mlflow_rb_role" == "mlflow-operator-mlflow-integration" ]] \
+  && check "Stage 230 chatbot MLflow RoleBinding grants mlflow-integration" "pass" \
+  || check "Stage 230 chatbot MLflow RoleBinding grants mlflow-integration" "${mlflow_rb_role:-missing}"
+
+chatbot_mlflow_uri=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.MLFLOW_TRACKING_URI}")
+chatbot_mlflow_auth=$(jsonpath "configmap/private-rag-chatbot-config" "$RAG_NS" "{.data.MLFLOW_TRACKING_AUTH}")
+if [[ "$chatbot_mlflow_uri" == https://mlflow.* && "$chatbot_mlflow_auth" == "kubernetes-namespaced" ]]; then
+  check "Stage 230 chatbot MLflow tracking env is configured" "pass"
+else
+  check "Stage 230 chatbot MLflow tracking env is configured" "uri=${chatbot_mlflow_uri:-missing},auth=${chatbot_mlflow_auth:-missing}"
+fi
+
+if [[ -n "$chatbot_pod" ]]; then
+  chatbot_mlflow_version=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- \
+    python3 -c 'import importlib.metadata; print(importlib.metadata.version("mlflow"))' 2>/dev/null || true)
+  if [[ -n "$chatbot_mlflow_version" && "${chatbot_mlflow_version%%.*}" -ge 3 ]]; then
+    check "Stage 230 chatbot image ships the MLflow SDK (>=3)" "pass"
+  else
+    check "Stage 230 chatbot image ships the MLflow SDK (>=3)" "version=${chatbot_mlflow_version:-missing}"
+  fi
+
+  # Emit a trace through the app's tracing module with the pod SA identity,
+  # then search it back — proves RBAC, workspace auth, and the v3 trace API
+  # end to end.
+  trace_roundtrip=$(oc exec -n "$RAG_NS" "$chatbot_pod" --insecure-skip-tls-verify=true -- python3 - <<'PY' 2>&1 || true
+import os
+from llama_stack_ui.distribution.ui.modules import tracing
+
+assert tracing.enabled(), "tracing module reports disabled"
+with tracing.span("validation_smoke", span_type="CHAIN",
+                  inputs={"prompt": "validation ping"}) as s:
+    tracing.record_turn_result(s, response="validation pong")
+
+import mlflow
+try:
+    mlflow.flush_trace_async_logging()
+except Exception:
+    pass
+
+exp = mlflow.get_experiment_by_name(
+    os.environ.get("MLFLOW_EXPERIMENT_NAME", "private-rag-chatbot"))
+assert exp is not None, "experiment not found"
+try:
+    traces = mlflow.search_traces(
+        experiment_ids=[exp.experiment_id], max_results=5, return_type="list")
+    n = len(traces)
+except TypeError:
+    n = len(mlflow.search_traces(
+        experiment_ids=[exp.experiment_id], max_results=5))
+assert n > 0, "no traces returned"
+print(f"TRACE_ROUNDTRIP_OK {n}")
+PY
+)
+  if grep -q "TRACE_ROUNDTRIP_OK" <<<"$trace_roundtrip"; then
+    check "Stage 230 chatbot MLflow trace round-trip (emit + search)" "pass"
+  else
+    check "Stage 230 chatbot MLflow trace round-trip (emit + search)" "$(tail -1 <<<"$trace_roundtrip" | head -c 120)"
+  fi
+else
+  warn "Stage 230 chatbot MLflow trace checks skipped" "chatbot pod not found"
+fi
+
 resource_exists "odhapplication/${CHATBOT_DASHBOARD_APP}" "$RHOAI_DASHBOARD_NS" \
   && check "Stage 230 RHOAI dashboard chatbot tile exists" "pass" \
   || check "Stage 230 RHOAI dashboard chatbot tile exists" "missing"
