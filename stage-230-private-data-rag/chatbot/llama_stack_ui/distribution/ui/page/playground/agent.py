@@ -35,20 +35,29 @@ def build_response_tools(toolgroup_selection, selected_vector_dbs, top_k, client
     """
     agent_tools = []
 
+    # file_search is keyed off the selected collections directly, NOT the
+    # builtin::rag toolgroup: llama-stack 0.7.x has no toolgroups API, so
+    # the Built-in tools pills never contain builtin::rag and the toolgroup
+    # path silently dropped RAG from the request (verified live 2026-07-16 —
+    # a collection-selected agent turn carried tools=["mcp"] or none, and
+    # answers were ungrounded while the fallback search rendered sources).
+    if selected_vector_dbs:
+        vector_dbs = client.vector_stores.list() or []
+        vector_db_ids = [
+            vector_db.id for vector_db in vector_dbs
+            if get_vector_db_name(vector_db) in selected_vector_dbs
+        ]
+        if vector_db_ids:
+            agent_tools.append({
+                "type": "file_search",
+                "max_num_results": top_k,
+                "vector_store_ids": list(vector_db_ids),
+            })
+
     for toolgroup_name in toolgroup_selection:
         if toolgroup_name == "builtin::rag":
-            if len(selected_vector_dbs) > 0:
-                vector_dbs = client.vector_stores.list() or []
-                vector_db_ids = [
-                    vector_db.id for vector_db in vector_dbs
-                    if get_vector_db_name(vector_db) in selected_vector_dbs
-                ]
-                # Use file_search tool format
-                agent_tools.append({
-                    "type": "file_search",
-                    "max_num_results": top_k,
-                    "vector_store_ids": list(vector_db_ids),
-                })
+            # Handled above from the collection selection.
+            continue
         elif "web_search" in toolgroup_name or "search" in toolgroup_name.lower():
             # Convert search tools to web_search format
             agent_tools.append({"type": "web_search"})
@@ -543,13 +552,15 @@ def _agent_process_prompt(prompt, state, config, turn):
             return
         guardrail_status.empty()
 
-    # Build tools list from selected toolgroups
+    # Build tools from the selected collections and toolgroups. Always call:
+    # file_search comes from the collection selection alone (there is no
+    # builtin::rag toolgroup on llama-stack 0.7.x to gate on).
     tools = build_response_tools(
-        config.toolgroup_selection,
+        config.toolgroup_selection or [],
         config.selected_vector_dbs,
         config.sampling.top_k,
         llama_stack_api.client,
-    ) if config.toolgroup_selection else None
+    ) or None
 
     # Build request for Responses API
     request_kwargs = {
