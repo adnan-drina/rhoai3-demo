@@ -372,14 +372,16 @@ def render_sidebar_configuration(model_list, builtin_tools_list, mcp_tools_list,
         on_change=reset_agent,
         help="Number of documents retrieved per vector store in Direct mode.",
     )
-    # 512 truncated structured doc answers mid-table (Responses API returns
-    # status=incomplete reason=length); 2048 fits the demo answers while the
-    # slider still allows trimming.
+    # Nemotron is deployed with --max-model-len=131072 (prompt + retrieved
+    # context + reasoning + answer share it), and its reasoning tokens draw
+    # from this same output budget — 512 and even 2048 truncated structured
+    # doc answers (Responses API returns status=incomplete reason=length).
+    # 4096 fits the demo answers; the cap costs nothing for short answers.
     max_tokens = st.slider(
         "Max Tokens",
-        1, 4096, 2048, 64,
+        256, 8192, 4096, 256,
         on_change=reset_agent,
-        help="Maximum number of tokens to generate.",
+        help="Maximum number of tokens to generate (model context is 131072).",
     )
     max_infer_iters = st.slider(
         "Max Inference Iterations",
