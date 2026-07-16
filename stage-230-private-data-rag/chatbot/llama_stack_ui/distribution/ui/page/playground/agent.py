@@ -649,5 +649,6 @@ def _agent_process_prompt(prompt, state, config, turn):
     # Save response to session
     save_agent_response_to_session(state)
     tracing.record_turn_result(
-        turn, response=state.full_response, reasoning=state.reasoning_text
+        turn, response=state.full_response, reasoning=state.reasoning_text,
+        tool_results=state.tool_results,
     )

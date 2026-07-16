@@ -149,8 +149,13 @@ def record_guardrail(live_span, stage, is_blocked, shield_id=None,
 
 
 def record_turn_result(turn_span, response=None, blocked_message=None,
-                       reasoning=None):
-    """Record the final outcome of a chat turn on the root span."""
+                       reasoning=None, tool_results=None):
+    """Record the final outcome of a chat turn on the root span.
+
+    tool_results must be captured here, at end of turn: the agent-mode
+    fallback vector search (and any late-streamed tool items) populate the
+    sources AFTER the generation span's outputs are snapshotted.
+    """
     outputs = {"blocked": blocked_message is not None}
     if blocked_message is not None:
         outputs["blocked_message"] = blocked_message
@@ -158,6 +163,8 @@ def record_turn_result(turn_span, response=None, blocked_message=None,
         outputs["response"] = response
         if reasoning:
             outputs["reasoning"] = reasoning
+    if tool_results is not None:
+        outputs["tool_results"] = tool_results
     set_outputs(turn_span, outputs)
     if blocked_message is None:
         tag_trace({"guardrail.blocked": "false"})

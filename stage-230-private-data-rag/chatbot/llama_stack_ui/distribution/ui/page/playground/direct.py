@@ -402,7 +402,8 @@ def _direct_process_prompt(prompt, state, config, turn):
         # Step 6: Save to session
         save_direct_response_to_session(state, all_search_results)
         tracing.record_turn_result(
-            turn, response=state.full_response, reasoning=state.reasoning_text
+            turn, response=state.full_response, reasoning=state.reasoning_text,
+            tool_results=state.tool_results,
         )
 
     except Exception as e:
