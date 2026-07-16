@@ -92,7 +92,7 @@ def evaluate_rag_assistant(
     )
     log.info("experiment id %s", experiment.experiment_id)
 
-    # ── Evaluation dataset (Datasets UI): create once, merge benchmark rows ──
+    # -- Evaluation dataset (Datasets UI): create once, merge benchmark rows --
     records = []
     for item in json.loads(benchmark_json):
         records.append({
@@ -122,7 +122,7 @@ def evaluate_rag_assistant(
     dataset.merge_records(records)
     log.info("dataset has benchmark records merged (%d rows)", len(records))
 
-    # ── Resolve the vector store id by display name (chatbot parity) ─────────
+    # -- Resolve the vector store id by display name (chatbot parity) ---------
     stores = requests.get(
         f"{llama_stack_base_url}/v1/vector_stores", timeout=30
     ).json().get("data", [])
@@ -133,7 +133,7 @@ def evaluate_rag_assistant(
         raise RuntimeError(f"vector store {vector_store_name!r} not found")
     log.info("vector store %s -> %s", vector_store_name, store_id)
 
-    # ── predict_fn: the chatbot's Direct-mode flow, server-side ──────────────
+    # -- predict_fn: the chatbot's Direct-mode flow, server-side --------------
     def predict_fn(question: str) -> dict:
         with mlflow.start_span(name="retrieve", span_type="RETRIEVER") as rspan:
             rspan.set_inputs({"query": question, "vector_store": vector_store_name})
