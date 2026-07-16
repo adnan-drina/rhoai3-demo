@@ -291,6 +291,28 @@ def fetch_available_shields(client):
     return []
 
 
+def _describe_violation(violation, default_message):
+    """Build a user-facing violation message that names the triggered rails.
+
+    NeMo shield responses carry per-rail statuses in violation.metadata
+    (e.g. {'detect sensitive data on output': {'status': 'blocked'}, ...});
+    the bare user_message ("Sorry I cannot do this.") gives operators no
+    clue which rail fired, so append the blocked rail names.
+    """
+    message = getattr(violation, "user_message", None) or default_message
+    metadata = getattr(violation, "metadata", None) or {}
+    try:
+        triggered = [
+            rail for rail, result in metadata.items()
+            if isinstance(result, dict) and result.get("status") == "blocked"
+        ]
+    except Exception:  # pylint: disable=broad-exception-caught
+        triggered = []
+    if triggered:
+        message = f"{message} — triggered rail: {', '.join(triggered)}"
+    return message
+
+
 def run_input_shields(client, shield_ids, user_message):
     """
     Run input safety shields on the user's message before processing.
@@ -317,8 +339,8 @@ def run_input_shields(client, shield_ids, user_message):
             )
             logger.debug("Input shield %s response: %s", shield_id, shield_response)
             if hasattr(shield_response, "violation") and shield_response.violation:
-                violation_msg = getattr(
-                    shield_response.violation, "user_message", "Content blocked by safety guardrail"
+                violation_msg = _describe_violation(
+                    shield_response.violation, "Content blocked by safety guardrail"
                 )
                 logger.warning("Input blocked by shield %s: %s", shield_id, violation_msg)
                 return True, violation_msg, shield_id
@@ -360,8 +382,8 @@ def run_output_shields(client, shield_ids, user_message, assistant_response):
             )
             logger.debug("Output shield %s response: %s", shield_id, shield_response)
             if hasattr(shield_response, "violation") and shield_response.violation:
-                violation_msg = getattr(
-                    shield_response.violation, "user_message", "Response blocked by safety guardrail"
+                violation_msg = _describe_violation(
+                    shield_response.violation, "Response blocked by safety guardrail"
                 )
                 logger.warning("Output blocked by shield %s: %s", shield_id, violation_msg)
                 return True, violation_msg, shield_id

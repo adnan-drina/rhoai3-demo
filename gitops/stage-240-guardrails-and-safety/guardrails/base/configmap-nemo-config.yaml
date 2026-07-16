@@ -41,11 +41,19 @@ data:
               - PHONE_NUMBER
               - CREDIT_CARD
               - US_SSN
+          # PERSON is deliberately NOT detected on output: the Presidio
+          # PERSON recognizer is spaCy NER and false-positives on technical
+          # prose — product names like "Llama-2-7B", "Chroma", "Milvus" tag
+          # as person names (verified live 2026-07-16: the benign "How do I
+          # set up a RAG pipeline with Llama Stack?" answer was blocked).
+          # The generated-PII demo chip still blocks on EMAIL_ADDRESS +
+          # PHONE_NUMBER, which are pattern-based and high precision.
           output:
             entities:
               - EMAIL_ADDRESS
               - PHONE_NUMBER
-              - PERSON
+              - CREDIT_CARD
+              - US_SSN
         regex_detection:
           input:
             patterns:
